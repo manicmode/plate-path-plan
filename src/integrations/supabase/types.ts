@@ -9,7 +9,90 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      food_recognitions: {
+        Row: {
+          confidence_scores: number[] | null
+          created_at: string
+          detected_labels: string[] | null
+          id: string
+          image_url: string | null
+          raw_response: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence_scores?: number[] | null
+          created_at?: string
+          detected_labels?: string[] | null
+          id?: string
+          image_url?: string | null
+          raw_response?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence_scores?: number[] | null
+          created_at?: string
+          detected_labels?: string[] | null
+          id?: string
+          image_url?: string | null
+          raw_response?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      nutrition_logs: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          confidence: number | null
+          created_at: string
+          fat: number | null
+          fiber: number | null
+          food_name: string
+          id: string
+          image_url: string | null
+          protein: number | null
+          serving_size: string | null
+          sodium: number | null
+          source: string | null
+          sugar: number | null
+          user_id: string | null
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string
+          fat?: number | null
+          fiber?: number | null
+          food_name: string
+          id?: string
+          image_url?: string | null
+          protein?: number | null
+          serving_size?: string | null
+          sodium?: number | null
+          source?: string | null
+          sugar?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string
+          fat?: number | null
+          fiber?: number | null
+          food_name?: string
+          id?: string
+          image_url?: string | null
+          protein?: number | null
+          serving_size?: string | null
+          sodium?: number | null
+          source?: string | null
+          sugar?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

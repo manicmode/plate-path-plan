@@ -1,1 +1,5 @@
+
 project_id = "uzoiiijqtahohfafqirm"
+
+[functions.vision-label-reader]
+verify_jwt = false
