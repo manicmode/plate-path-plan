@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -154,7 +155,8 @@ Maintain consistent meal timing and include resistance training for optimal body
         </div>
       </div>
 
-      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 440px)' }}>
+      {/* Chat Container with fixed height to prevent overlap */}
+      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 500px)' }}>
         <CardHeader className="flex-shrink-0 pb-4">
           <CardTitle className="flex items-center justify-center space-x-3">
             <div className="flex items-center space-x-2">
@@ -165,7 +167,8 @@ Maintain consistent meal timing and include resistance training for optimal body
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-6 space-y-4 overflow-hidden">
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-6">
+          {/* Messages area with proper padding to prevent overlap */}
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-8">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -224,35 +227,42 @@ Maintain consistent meal timing and include resistance training for optimal body
         </CardContent>
       </Card>
 
-      {/* Fixed bottom input area */}
+      {/* Spacer to ensure proper separation */}
+      <div className="h-8"></div>
+
+      {/* Fixed bottom input area with solid background and better spacing */}
       <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-50">
-        <div className="glass-card rounded-3xl p-4 space-y-4 border-2 border-white/40 shadow-2xl">
-          <div className="flex flex-wrap gap-2">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={action.text}
-                  onClick={() => {
-                    setInputValue(action.text);
-                    handleSendMessage();
-                  }}
-                  className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium micro-bounce"
-                >
-                  <Icon className="h-3 w-3 mr-2" />
-                  {action.text}
-                </Button>
-              );
-            })}
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl p-6 space-y-6 border-2 border-white/40 shadow-2xl">
+          {/* Quick action buttons with clear separation */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <div className="flex flex-wrap gap-3 justify-center">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={action.text}
+                    onClick={() => {
+                      setInputValue(action.text);
+                      handleSendMessage();
+                    }}
+                    className="glass-button text-emerald-600 hover:text-emerald-700 text-sm font-medium micro-bounce px-4 py-2"
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {action.text}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
 
+          {/* Input area */}
           <div className="flex space-x-3">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask your AI coach anything..."
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              className="flex-1 glass-button border-0 rounded-2xl bg-white/30 placeholder:text-gray-500"
+              className="flex-1 glass-button border-0 rounded-2xl bg-white/50 dark:bg-gray-800/50 placeholder:text-gray-500 h-12"
             />
             <Button 
               onClick={handleSendMessage}

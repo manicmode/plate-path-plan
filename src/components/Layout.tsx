@@ -59,9 +59,9 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      {/* Bottom Navigation - Adjusted for 5 items with more spacing */}
+      {/* Bottom Navigation with solid background */}
       <nav className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-        <div className="glass-card rounded-3xl px-4 py-3 shadow-2xl border-2 border-white/40">
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl px-4 py-3 shadow-2xl border-2 border-white/40">
           <div className="flex space-x-2">
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
