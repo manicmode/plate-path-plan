@@ -60,8 +60,8 @@ const Profile = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Profile & Settings</h1>
-        <p className="text-gray-600">Manage your account and nutrition goals</p>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2">Profile & Settings</h1>
+        <p className="text-emerald-600 dark:text-emerald-400 font-semibold">Manage your account and nutrition goals</p>
       </div>
 
       {/* Profile Header */}

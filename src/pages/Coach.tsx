@@ -151,7 +151,7 @@ Maintain consistent meal timing and include resistance training for optimal body
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
             AI Wellness Coach
           </h1>
-          <p className="text-gray-600 font-medium">Advanced intelligence • Personalized insights</p>
+          <p className="text-emerald-600 dark:text-emerald-400 font-semibold">Advanced intelligence • Personalized insights</p>
         </div>
       </div>
 
@@ -160,7 +160,7 @@ Maintain consistent meal timing and include resistance training for optimal body
           <CardTitle className="flex items-center justify-center space-x-3">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-lg font-semibold text-gray-900">Neural Network Active</span>
+              <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">Neural Network Active</span>
             </div>
           </CardTitle>
         </CardHeader>
@@ -188,11 +188,11 @@ Maintain consistent meal timing and include resistance training for optimal body
                   <div className={`rounded-2xl p-4 ${
                     message.sender === 'user'
                       ? 'gradient-primary text-white neon-glow'
-                      : 'glass-card text-gray-900'
+                      : 'glass-card text-gray-900 dark:text-gray-100'
                   }`}>
                     <p className="text-sm whitespace-pre-line font-medium">{message.text}</p>
                     <p className={`text-xs mt-2 ${
-                      message.sender === 'user' ? 'text-white/70' : 'text-gray-500'
+                      message.sender === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
