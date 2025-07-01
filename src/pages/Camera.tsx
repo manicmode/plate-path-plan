@@ -127,8 +127,8 @@ const CameraPage = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Log Your Food</h1>
-        <p className="text-gray-600">Take a photo or upload an image of your meal</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
+        <p className="text-gray-600 dark:text-gray-300">Take a photo or upload an image of your meal</p>
       </div>
 
       {!selectedImage && (
