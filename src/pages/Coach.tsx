@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,8 @@ import { Send, Bot, User, Sparkles, Target, TrendingUp, Zap, ChevronDown } from 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 interface Message {
   id: string;
@@ -31,7 +32,7 @@ const Coach = () => {
   useEffect(() => {
     const welcomeMessage: Message = {
       id: '1',
-      text: `Hello ${user?.name?.split(' ')[0] || 'there'}! 🤖 I'm your AI nutrition coach. What would you like to explore today?`,
+      text: `Hello ${user?.name?.split(' ')[0] || 'there'}! 🤖 I'm your AI nutrition coach powered by ChatGPT. I can provide personalized advice based on your nutrition data. What would you like to explore today?`,
       sender: 'coach',
       timestamp: new Date(),
     };
@@ -46,65 +47,45 @@ const Coach = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const generateCoachResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
-    
-    const calorieTarget = user?.targetCalories || 2000;
-    const proteinTarget = user?.targetProtein || 150;
-    const calorieProgress = (progress.calories / calorieTarget) * 100;
-    const proteinProgress = (progress.protein / proteinTarget) * 100;
+  const callAICoach = async (userMessage: string): Promise<string> => {
+    try {
+      const userContext = {
+        targetCalories: user?.targetCalories || 2000,
+        targetProtein: user?.targetProtein || 150,
+        progress: {
+          calories: progress.calories,
+          protein: progress.protein,
+          carbs: progress.carbs,
+          fat: progress.fat,
+        }
+      };
 
-    if (message.includes('progress') || message.includes('how am i doing')) {
-      return `🔍 **Today's Analysis:**
+      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
+        body: {
+          message: userMessage,
+          userContext: userContext
+        }
+      });
 
-📊 **Performance:**
-• Calories: ${progress.calories}/${calorieTarget} (${calorieProgress.toFixed(0)}%)
-• Protein: ${progress.protein}g/${proteinTarget}g (${proteinProgress.toFixed(0)}%)
-• Carbs: ${progress.carbs}g
-• Fat: ${progress.fat}g
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
 
-💡 **Recommendations:**
-${calorieProgress < 80 ? '⚡ Add a balanced snack to boost energy' : '✅ Great energy management!'}
-
-${proteinProgress < 80 ? '💪 Try adding lean proteins like quinoa or legumes' : '🎉 Excellent protein intake!'}`;
+      return data.response;
+    } catch (error) {
+      console.error('Error calling AI coach:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please try again.",
+        variant: "destructive"
+      });
+      return "I'm sorry, I'm having trouble connecting right now. Please try again in a moment! 🤖";
     }
-
-    if (message.includes('meal') || message.includes('eat') || message.includes('food')) {
-      const suggestions = [
-        "🥗 **Smart Meal**: Quinoa bowl with chickpeas, avocado, and tahini - perfect balance for sustained energy!",
-        "🍳 **Power Breakfast**: Spinach omelet with nutritional yeast - great amino acid profile!",
-        "🐟 **Omega Boost**: Salmon with sweet potato and greens - excellent for brain and heart health!",
-        "🥙 **Energy Wrap**: Hummus, tempeh, and veggies in whole grain wrap - complete protein with fiber!",
-      ];
-      return suggestions[Math.floor(Math.random() * suggestions.length)];
-    }
-
-    if (message.includes('lose weight') || message.includes('weight loss')) {
-      return `⚖️ **Weight Optimization:**
-
-🎯 **Strategy:**
-• Moderate caloric deficit (0.5-1kg/week)
-• Prioritize protein for muscle preservation
-• Focus on fiber-rich foods for satiety
-• Stay hydrated and maintain consistent meal timing
-
-📈 **Current Status:**
-Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great for progress!' : 'is slightly above target range.'}
-
-💪 **Tip:** Include resistance training for optimal results.`;
-    }
-
-    const defaultResponses = [
-      "🤖 **Ready to help!** What aspect of your health journey would you like to optimize today?",
-      "✨ **AI Coach Active** - I can help with meal planning, progress tracking, or goal achievement. What's your priority?",
-      "🧠 **Health Intelligence Online** - Whether it's nutrition advice or motivation, I'm here to help elevate your wellness!",
-    ];
-
-    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -114,32 +95,37 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const messageToSend = inputValue;
     setInputValue('');
     setIsTyping(true);
     setShowQuickActions(false);
 
+    // Get AI response
+    const aiResponse = await callAICoach(messageToSend);
+    
+    // Add AI response after a short delay for better UX
     setTimeout(() => {
       const coachResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateCoachResponse(inputValue),
+        text: aiResponse,
         sender: 'coach',
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, coachResponse]);
       setIsTyping(false);
-    }, 1500);
+    }, 800);
   };
 
   const quickActions = [
     { text: "Analyze my progress", icon: TrendingUp },
-    { text: "Optimize my next meal", icon: Target },
-    { text: "Enhance performance", icon: Sparkles },
+    { text: "Suggest my next meal", icon: Target },
+    { text: "Help me reach my goals", icon: Sparkles },
   ];
 
   const handleQuickAction = (actionText: string) => {
     setInputValue(actionText);
-    handleSendMessage();
+    setTimeout(() => handleSendMessage(), 100);
   };
 
   return (
@@ -161,7 +147,7 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
             AI Wellness Coach
           </h1>
           <p className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
-            {isMobile ? 'AI • Personalized insights' : 'Advanced intelligence • Personalized insights'}
+            {isMobile ? 'ChatGPT • Personalized insights' : 'Powered by ChatGPT • Personalized insights'}
           </p>
         </div>
       </div>
@@ -173,7 +159,7 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
               <span className={`${isMobile ? 'text-sm' : 'text-lg'} font-semibold text-emerald-600 dark:text-emerald-400`}>
-                {isMobile ? 'Online' : 'Neural Network Active'}
+                {isMobile ? 'AI Online' : 'ChatGPT Neural Network Active'}
               </span>
             </div>
           </CardTitle>
@@ -181,7 +167,7 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
 
         <CardContent className="flex flex-col flex-1 p-4 space-y-4 min-h-0">
           {/* Messages area - Mobile optimized */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2" style={{ maxHeight: 'calc(100vh - 300px)' }}>
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -205,11 +191,11 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
                   
                   <div className={`rounded-2xl ${isMobile ? 'p-3' : 'p-4'} ${
                     message.sender === 'user'
-                      ? 'gradient-primary text-white neon-glow'
-                      : 'glass-card text-gray-900 dark:text-gray-100'
+                      ? 'gradient-primary text-white border-0'
+                      : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-gray-100'
                   }`}>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} whitespace-pre-line font-medium`}>{message.text}</p>
-                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} mt-1 ${
+                    <p className={`${isMobile ? 'text-sm' : 'text-sm'} whitespace-pre-line font-medium leading-relaxed`}>{message.text}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} mt-2 ${
                       message.sender === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -227,7 +213,7 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
                       <Bot className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="glass-card rounded-2xl p-3">
+                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl p-3">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -241,8 +227,11 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Spacer for better mobile spacing */}
+          <div className="h-4"></div>
+
           {/* Input area - Mobile optimized */}
-          <div className="flex-shrink-0 space-y-3">
+          <div className="flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-200/50 dark:border-gray-700/50">
             {/* Quick actions - Mobile collapsible */}
             {isMobile ? (
               <div className="space-y-2">
@@ -294,9 +283,10 @@ Your ${progress.calories} calories today ${calorieProgress < 100 ? 'looks great 
               <Input
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder={isMobile ? "Ask your coach..." : "Ask your AI coach anything..."}
+                placeholder={isMobile ? "Ask your AI coach..." : "Ask your AI coach anything..."}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 className={`flex-1 glass-button border-0 rounded-2xl bg-white/50 dark:bg-gray-800/50 placeholder:text-gray-500 ${isMobile ? 'h-10 text-sm' : 'h-12'}`}
+                disabled={isTyping}
               />
               <Button 
                 onClick={handleSendMessage}

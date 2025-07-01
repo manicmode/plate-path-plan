@@ -3,3 +3,6 @@ project_id = "uzoiiijqtahohfafqirm"
 
 [functions.vision-label-reader]
 verify_jwt = false
+
+[functions.ai-coach-chat]
+verify_jwt = false
