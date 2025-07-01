@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,55 +30,61 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <Layout>{children}</Layout>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <ThemeProvider>
-        <AuthProvider>
-          <NutritionProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/camera" element={
-                  <ProtectedRoute>
-                    <Camera />
-                  </ProtectedRoute>
-                } />
-                <Route path="/hydration" element={
-                  <ProtectedRoute>
-                    <Hydration />
-                  </ProtectedRoute>
-                } />
-                <Route path="/supplements" element={
-                  <ProtectedRoute>
-                    <Supplements />
-                  </ProtectedRoute>
-                } />
-                <Route path="/analytics" element={
-                  <ProtectedRoute>
-                    <Analytics />
-                  </ProtectedRoute>
-                } />
-                <Route path="/coach" element={
-                  <ProtectedRoute>
-                    <Coach />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </NutritionProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  console.log('App component rendering');
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <ThemeProvider>
+          <AuthProvider>
+            <NutritionProvider>
+              <BrowserRouter>
+                <div className="min-h-screen">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/camera" element={
+                      <ProtectedRoute>
+                        <Camera />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hydration" element={
+                      <ProtectedRoute>
+                        <Hydration />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/supplements" element={
+                      <ProtectedRoute>
+                        <Supplements />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/analytics" element={
+                      <ProtectedRoute>
+                        <Analytics />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/coach" element={
+                      <ProtectedRoute>
+                        <Coach />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/profile" element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
+              </BrowserRouter>
+            </NutritionProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
