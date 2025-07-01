@@ -18,7 +18,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
-    { path: '/analytics', icon: BarChart3, label: 'Progress' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
