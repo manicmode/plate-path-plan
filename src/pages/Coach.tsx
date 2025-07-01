@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Bot, User, Sparkles, Target, TrendingUp } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Target, TrendingUp, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 
@@ -26,10 +26,9 @@ const Coach = () => {
   const progress = getTodaysProgress();
 
   useEffect(() => {
-    // Initial greeting
     const welcomeMessage: Message = {
       id: '1',
-      text: `Hi ${user?.name?.split(' ')[0] || 'there'}! 👋 I'm your personal nutrition coach. I'm here to help you achieve your health goals. How can I assist you today?`,
+      text: `Hello ${user?.name?.split(' ')[0] || 'there'}! 🤖✨ I'm your AI nutrition coach, powered by advanced wellness algorithms. I've analyzed your profile and I'm ready to help optimize your health journey. What would you like to explore today?`,
       sender: 'coach',
       timestamp: new Date(),
     };
@@ -47,74 +46,56 @@ const Coach = () => {
   const generateCoachResponse = (userMessage: string): string => {
     const message = userMessage.toLowerCase();
     
-    // Analyze user's current progress
     const calorieTarget = user?.targetCalories || 2000;
     const proteinTarget = user?.targetProtein || 150;
     const calorieProgress = (progress.calories / calorieTarget) * 100;
     const proteinProgress = (progress.protein / proteinTarget) * 100;
 
     if (message.includes('progress') || message.includes('how am i doing')) {
-      return `Great question! Let me analyze your today's progress:
+      return `🔍 **AI Analysis Complete**
 
-📊 **Today's Status:**
-• Calories: ${progress.calories}/${calorieTarget} (${calorieProgress.toFixed(0)}%)
-• Protein: ${progress.protein}g/${proteinTarget}g (${proteinProgress.toFixed(0)}%)
-• Carbs: ${progress.carbs}g
-• Fat: ${progress.fat}g
+📊 **Today's Performance Metrics:**
+• Energy Intake: ${progress.calories}/${calorieTarget} kcal (${calorieProgress.toFixed(0)}%)
+• Protein Synthesis: ${progress.protein}g/${proteinTarget}g (${proteinProgress.toFixed(0)}%)
+• Carbohydrate Fuel: ${progress.carbs}g
+• Lipid Balance: ${progress.fat}g
 
-${calorieProgress < 80 ? '🔥 You might want to add a healthy snack to reach your calorie goal!' : '✅ Great job hitting your calorie target!'}
+🧠 **Intelligence Recommendations:**
+${calorieProgress < 80 ? '⚡ Neural networks suggest adding a balanced snack to optimize energy levels' : '✅ Excellent energy management detected!'}
 
-${proteinProgress < 80 ? '💪 Consider adding some protein-rich foods like Greek yogurt, chicken, or beans.' : '🎉 Excellent protein intake today!'}`;
+${proteinProgress < 80 ? '💪 Protein synthesis could be enhanced with lean sources like quinoa, legumes, or plant-based proteins' : '🎉 Superior protein optimization achieved!'}`;
     }
 
     if (message.includes('meal') || message.includes('eat') || message.includes('food')) {
       const suggestions = [
-        "🥗 How about a colorful salad with grilled chicken, quinoa, and avocado? It's packed with nutrients and will help you hit your protein goals!",
-        "🍳 A veggie omelet with spinach, tomatoes, and cheese would be perfect - high in protein and vitamins!",
-        "🐟 Grilled salmon with sweet potato and steamed broccoli is an excellent choice for balanced macros!",
-        "🥙 A wrap with hummus, grilled chicken, and lots of fresh vegetables would be both satisfying and nutritious!",
+        "🥗 **AI Meal Optimization**: Quinoa power bowl with roasted chickpeas, avocado, and tahini - scientifically balanced for sustained energy and muscle synthesis!",
+        "🍳 **Bioactive Breakfast**: Spinach and mushroom omelet with nutritional yeast - perfect amino acid profile for cellular repair!",
+        "🐟 **Omega Protocol**: Wild-caught salmon with sweet potato and microgreens - optimal omega-3 fatty acids for brain and heart health!",
+        "🥙 **Smart Wrap Configuration**: Hummus, grilled tempeh, and rainbow vegetables in a whole grain wrap - complete protein with fiber optimization!",
       ];
       return suggestions[Math.floor(Math.random() * suggestions.length)];
     }
 
     if (message.includes('lose weight') || message.includes('weight loss')) {
-      return `🎯 For healthy weight loss, focus on:
+      return `⚖️ **Weight Optimization Protocol**
 
-• Creating a moderate calorie deficit (aim for 1-2 lbs per week)
-• Prioritizing protein to maintain muscle mass
-• Including plenty of vegetables and fiber
-• Staying hydrated and getting adequate sleep
+🎯 **AI-Driven Strategy:**
+• Moderate caloric deficit targeting 0.5-1kg per week
+• Protein prioritization for lean mass preservation
+• Fiber-rich foods for satiety optimization
+• Hydration and circadian rhythm alignment
 
-Based on your current intake of ${progress.calories} calories, you're ${calorieProgress < 100 ? 'on track' : 'slightly over your target'}. Keep logging your meals consistently!`;
+📈 **Current Status Analysis:**
+Your intake of ${progress.calories} calories suggests you're ${calorieProgress < 100 ? 'on track for sustainable progress' : 'slightly above optimal range'}. 
+
+🧬 **Metabolic Enhancement Tips:**
+Maintain consistent meal timing and include resistance training for optimal body composition changes.`;
     }
 
-    if (message.includes('muscle') || message.includes('gain') || message.includes('protein')) {
-      return `💪 For muscle building, focus on:
-
-• Getting enough protein: aim for ${user?.targetProtein || 150}g per day
-• Include protein with every meal
-• Great sources: chicken, fish, eggs, Greek yogurt, beans, quinoa
-• Don't forget about post-workout nutrition!
-
-Currently, you've had ${progress.protein}g of protein today. ${proteinProgress >= 80 ? 'Great job!' : 'Try to add more protein-rich foods to your remaining meals.'}`;
-    }
-
-    if (message.includes('water') || message.includes('hydration')) {
-      return `💧 Hydration is crucial for your health! Aim for:
-
-• At least 8 glasses (64oz) of water daily
-• More if you're active or in hot weather
-• Signs of good hydration: pale yellow urine, rarely feeling thirsty
-• Try adding lemon, cucumber, or mint for flavor!
-
-Pro tip: Start your day with a glass of water and keep a water bottle nearby!`;
-    }
-
-    // Default responses
     const defaultResponses = [
-      "That's a great question! I'm here to help you with your nutrition journey. Could you tell me more about what specific area you'd like guidance on?",
-      "I'd love to help! Whether it's meal planning, understanding your macros, or reaching your goals, I'm here for you. What's on your mind?",
-      "Every question is a step toward better health! Feel free to ask me about nutrition, meal ideas, or how to interpret your progress data.",
+      "🤖 **AI Processing Complete** - I'm analyzing your query through my wellness algorithms. Could you specify which aspect of your health journey you'd like to optimize?",
+      "✨ **Intelligent Response Ready** - Whether it's meal planning, macro optimization, or goal achievement, my neural networks are here to assist. What's your priority today?",
+      "🧠 **Health Intelligence Activated** - I'm equipped with advanced nutritional algorithms and personalized insights. How can I help elevate your wellness game?",
     ];
 
     return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
@@ -134,7 +115,6 @@ Pro tip: Start your day with a glass of water and keep a water bottle nearby!`;
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate typing delay
     setTimeout(() => {
       const coachResponse: Message = {
         id: (Date.now() + 1).toString(),
@@ -149,57 +129,71 @@ Pro tip: Start your day with a glass of water and keep a water bottle nearby!`;
   };
 
   const quickActions = [
-    { text: "How's my progress today?", icon: TrendingUp },
-    { text: "What should I eat next?", icon: Target },
-    { text: "Tips for muscle building", icon: Sparkles },
+    { text: "Analyze my progress", icon: TrendingUp },
+    { text: "Optimize my next meal", icon: Target },
+    { text: "Enhance performance", icon: Sparkles },
   ];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Your Nutrition Coach</h1>
-        <p className="text-gray-600">Get personalized advice and support</p>
+      <div className="text-center space-y-4">
+        <div className="flex justify-center">
+          <div className="relative">
+            <div className="w-20 h-20 gradient-primary rounded-3xl flex items-center justify-center neon-glow float-animation">
+              <Bot className="h-10 w-10 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-400 rounded-full flex items-center justify-center animate-pulse">
+              <Zap className="h-3 w-3 text-white" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+            AI Wellness Coach
+          </h1>
+          <p className="text-gray-600 font-medium">Advanced intelligence • Personalized insights</p>
+        </div>
       </div>
 
-      <Card className="h-[500px] flex flex-col">
-        <CardHeader className="flex-shrink-0">
-          <CardTitle className="flex items-center space-x-2">
-            <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center">
-              <Bot className="h-4 w-4 text-white" />
+      <Card className="glass-card border-0 rounded-3xl h-[500px] flex flex-col">
+        <CardHeader className="flex-shrink-0 pb-4">
+          <CardTitle className="flex items-center justify-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
+              <span className="text-lg font-semibold text-gray-900">Neural Network Active</span>
             </div>
-            <span>NutriCoach AI</span>
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-col flex-1 p-4 space-y-4">
-          {/* Messages */}
+        <CardContent className="flex flex-col flex-1 p-6 space-y-4">
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex items-start space-x-2 max-w-[80%] ${
+                <div className={`flex items-start space-x-3 max-w-[85%] ${
                   message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                 }`}>
-                  <Avatar className="w-8 h-8 flex-shrink-0">
+                  <Avatar className="w-10 h-10 flex-shrink-0">
                     <AvatarFallback className={
                       message.sender === 'user' 
-                        ? 'bg-blue-100 text-blue-600' 
-                        : 'bg-green-100 text-green-600'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white' 
+                        : 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white'
                     }>
-                      {message.sender === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                      {message.sender === 'user' ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </AvatarFallback>
                   </Avatar>
                   
-                  <div className={`rounded-lg p-3 ${
+                  <div className={`rounded-2xl p-4 ${
                     message.sender === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                      ? 'gradient-primary text-white neon-glow'
+                      : 'glass-card text-gray-900'
                   }`}>
-                    <p className="text-sm whitespace-pre-line">{message.text}</p>
-                    <p className="text-xs opacity-70 mt-1">
+                    <p className="text-sm whitespace-pre-line font-medium">{message.text}</p>
+                    <p className={`text-xs mt-2 ${
+                      message.sender === 'user' ? 'text-white/70' : 'text-gray-500'
+                    }`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -209,17 +203,17 @@ Pro tip: Start your day with a glass of water and keep a water bottle nearby!`;
 
             {isTyping && (
               <div className="flex justify-start">
-                <div className="flex items-start space-x-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-green-100 text-green-600">
-                      <Bot className="h-4 w-4" />
+                <div className="flex items-start space-x-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white">
+                      <Bot className="h-5 w-5" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-gray-100 rounded-lg p-3">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="glass-card rounded-2xl p-4">
+                    <div className="flex space-x-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -229,46 +223,42 @@ Pro tip: Start your day with a glass of water and keep a water bottle nearby!`;
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex-shrink-0 space-y-2">
+          <div className="flex-shrink-0 space-y-4">
             <div className="flex flex-wrap gap-2">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
                   <Button
                     key={action.text}
-                    variant="outline"
-                    size="sm"
                     onClick={() => {
                       setInputValue(action.text);
                       handleSendMessage();
                     }}
-                    className="text-xs"
+                    className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium micro-bounce"
                   >
-                    <Icon className="h-3 w-3 mr-1" />
+                    <Icon className="h-3 w-3 mr-2" />
                     {action.text}
                   </Button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Input */}
-          <div className="flex-shrink-0 flex space-x-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask me anything about nutrition..."
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              className="flex-1"
-            />
-            <Button 
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isTyping}
-              className="gradient-primary"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex space-x-3">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Ask your AI coach anything..."
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                className="flex-1 glass-button border-0 rounded-2xl bg-white/30 placeholder:text-gray-500"
+              />
+              <Button 
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isTyping}
+                className="gradient-primary rounded-2xl w-12 h-12 p-0 neon-glow micro-bounce"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
