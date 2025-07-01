@@ -155,8 +155,8 @@ Maintain consistent meal timing and include resistance training for optimal body
         </div>
       </div>
 
-      {/* Chat Container with fixed height to prevent overlap */}
-      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 500px)' }}>
+      {/* Chat Container with proper height calculation to prevent overlap */}
+      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 580px)' }}>
         <CardHeader className="flex-shrink-0 pb-4">
           <CardTitle className="flex items-center justify-center space-x-3">
             <div className="flex items-center space-x-2">
@@ -167,8 +167,8 @@ Maintain consistent meal timing and include resistance training for optimal body
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-6 space-y-4 overflow-hidden">
-          {/* Messages area with proper padding to prevent overlap */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-8">
+          {/* Messages area with significant bottom padding to prevent overlap */}
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-16">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -227,10 +227,10 @@ Maintain consistent meal timing and include resistance training for optimal body
         </CardContent>
       </Card>
 
-      {/* Spacer to ensure proper separation */}
-      <div className="h-8"></div>
+      {/* Large spacer to ensure proper separation - equivalent to half inch */}
+      <div className="h-12"></div>
 
-      {/* Fixed bottom input area with solid background and better spacing */}
+      {/* Fixed bottom input area with solid background and proper spacing */}
       <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-50">
         <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl p-6 space-y-6 border-2 border-white/40 shadow-2xl">
           {/* Quick action buttons with clear separation */}
