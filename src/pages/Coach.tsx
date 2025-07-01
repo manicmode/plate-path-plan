@@ -135,7 +135,7 @@ Maintain consistent meal timing and include resistance training for optimal body
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-32">
       <div className="text-center space-y-4">
         <div className="flex justify-center">
           <div className="relative">
@@ -155,7 +155,7 @@ Maintain consistent meal timing and include resistance training for optimal body
         </div>
       </div>
 
-      <Card className="glass-card border-0 rounded-3xl h-[500px] flex flex-col">
+      <Card className="glass-card border-0 rounded-3xl h-[400px] flex flex-col">
         <CardHeader className="flex-shrink-0 pb-4">
           <CardTitle className="flex items-center justify-center space-x-3">
             <div className="flex items-center space-x-2">
@@ -222,46 +222,49 @@ Maintain consistent meal timing and include resistance training for optimal body
             
             <div ref={messagesEndRef} />
           </div>
-
-          <div className="flex-shrink-0 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Button
-                    key={action.text}
-                    onClick={() => {
-                      setInputValue(action.text);
-                      handleSendMessage();
-                    }}
-                    className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium micro-bounce"
-                  >
-                    <Icon className="h-3 w-3 mr-2" />
-                    {action.text}
-                  </Button>
-                );
-              })}
-            </div>
-
-            <div className="flex space-x-3">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask your AI coach anything..."
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1 glass-button border-0 rounded-2xl bg-white/30 placeholder:text-gray-500"
-              />
-              <Button 
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isTyping}
-                className="gradient-primary rounded-2xl w-12 h-12 p-0 neon-glow micro-bounce"
-              >
-                <Send className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Fixed bottom input area */}
+      <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-40">
+        <div className="glass-card rounded-3xl p-4 space-y-4 border-2 border-white/40">
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Button
+                  key={action.text}
+                  onClick={() => {
+                    setInputValue(action.text);
+                    handleSendMessage();
+                  }}
+                  className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium micro-bounce"
+                >
+                  <Icon className="h-3 w-3 mr-2" />
+                  {action.text}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="flex space-x-3">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Ask your AI coach anything..."
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              className="flex-1 glass-button border-0 rounded-2xl bg-white/30 placeholder:text-gray-500"
+            />
+            <Button 
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isTyping}
+              className="gradient-primary rounded-2xl w-12 h-12 p-0 neon-glow micro-bounce"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
