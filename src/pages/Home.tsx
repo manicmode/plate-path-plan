@@ -114,10 +114,10 @@ const Home = () => {
         <p className="text-gray-600 dark:text-gray-300 font-medium">Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Three Progress Rings */}
+      {/* Three Progress Rings - Enhanced Visibility */}
       <div className="grid grid-cols-3 gap-4 animate-scale-in">
         {/* Calories Ring */}
-        <Card className="glass-card border-0 p-4 rounded-3xl">
+        <Card className="visible-card border-0 p-4 rounded-3xl">
           <CardContent className="flex flex-col items-center space-y-2 p-0">
             <div className="relative w-20 h-20">
               <svg className="w-20 h-20 progress-ring" viewBox="0 0 80 80">
@@ -146,7 +146,7 @@ const Home = () => {
         </Card>
 
         {/* Hydration Ring */}
-        <Card className="glass-card border-0 p-4 rounded-3xl">
+        <Card className="visible-card border-0 p-4 rounded-3xl">
           <CardContent className="flex flex-col items-center space-y-2 p-0">
             <div className="relative w-20 h-20">
               <svg className="w-20 h-20 progress-ring" viewBox="0 0 80 80">
@@ -175,7 +175,7 @@ const Home = () => {
         </Card>
 
         {/* Supplements Ring */}
-        <Card className="glass-card border-0 p-4 rounded-3xl">
+        <Card className="visible-card border-0 p-4 rounded-3xl">
           <CardContent className="flex flex-col items-center space-y-2 p-0">
             <div className="relative w-20 h-20">
               <svg className="w-20 h-20 progress-ring" viewBox="0 0 80 80">
@@ -204,7 +204,7 @@ const Home = () => {
         </Card>
       </div>
 
-      {/* Glowing Action Buttons */}
+      {/* Glowing Action Buttons - Enhanced Visibility */}
       <div className="grid grid-cols-3 gap-4">
         {actionButtons.map((action, index) => {
           const Icon = action.icon;
@@ -212,7 +212,7 @@ const Home = () => {
             <Button
               key={action.title}
               onClick={action.action}
-              className={`glass-button h-20 flex flex-col items-center space-y-2 rounded-2xl border-0 micro-bounce animate-slide-up`}
+              className={`visible-card glass-button h-20 flex flex-col items-center space-y-2 rounded-2xl border-0 micro-bounce animate-slide-up hover:shadow-lg`}
               style={{ animationDelay: `${index * 150}ms` }}
             >
               <div className={`w-8 h-8 bg-gradient-to-r ${action.gradient} rounded-xl flex items-center justify-center neon-glow`}>
@@ -224,9 +224,9 @@ const Home = () => {
         })}
       </div>
 
-      {/* Horizontal Scrollable Macro Cards */}
+      {/* Horizontal Scrollable Macro Cards - Enhanced Visibility */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center">Today's Nutrients</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center drop-shadow-lg">Today's Nutrients</h3>
         <div className="flex space-x-4 overflow-x-auto scroll-cards pb-2">
           {macroCards.map((macro, index) => {
             const percentage = Math.min((macro.current / macro.target) * 100, 100);
@@ -235,7 +235,7 @@ const Home = () => {
             return (
               <Card
                 key={macro.name}
-                className={`glass-card border-0 min-w-[140px] rounded-2xl animate-slide-up`}
+                className={`visible-card border-0 min-w-[140px] rounded-2xl animate-slide-up`}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <CardContent className="p-4 text-center">
@@ -262,8 +262,8 @@ const Home = () => {
         </div>
       </div>
 
-      {/* AI Insights Card */}
-      <Card className="glass-card border-0 rounded-3xl animate-slide-up float-animation" style={{ animationDelay: '600ms' }}>
+      {/* AI Insights Card - Enhanced Visibility */}
+      <Card className="visible-card border-0 rounded-3xl animate-slide-up float-animation" style={{ animationDelay: '600ms' }}>
         <CardContent className="p-6">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center neon-glow">

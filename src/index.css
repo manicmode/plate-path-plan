@@ -43,15 +43,15 @@
     --emerald: 174 100% 39%;
     --electric-blue: 218 100% 59%;
     --mint: 174 60% 95%;
-    --glass-white: 0 0% 100% / 0.8;
-    --glass-mint: 174 60% 95% / 0.6;
+    --glass-white: 0 0% 100% / 0.95;
+    --glass-mint: 174 60% 95% / 0.8;
     --neon-glow: 174 100% 39% / 0.3;
     
-    /* Gradients - Light Mode */
-    --gradient-main: linear-gradient(135deg, #f7fcfc 0%, #e6f7f1 50%, #d4f7e8 100%);
+    /* Bright Colorful Gradients - Light Mode */
+    --gradient-main: linear-gradient(135deg, #00E5FF 0%, #00C896 25%, #2E8BFF 50%, #9C27B0 75%, #FF6B35 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
-    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
+    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
   }
 
   .dark {
@@ -87,15 +87,15 @@
     --emerald: 174 100% 45%;
     --electric-blue: 218 100% 65%;
     --mint: 174 30% 15%;
-    --glass-white: 0 0% 100% / 0.1;
-    --glass-mint: 174 30% 15% / 0.8;
+    --glass-white: 0 0% 100% / 0.15;
+    --glass-mint: 174 30% 15% / 0.9;
     --neon-glow: 174 100% 45% / 0.4;
     
-    /* Gradients - Dark Mode */
-    --gradient-main: linear-gradient(135deg, #0a0f0f 0%, #0d1a17 50%, #111f1b 100%);
+    /* Dark Gradients */
+    --gradient-main: linear-gradient(135deg, #0a1a1f 0%, #0d2818 25%, #111f2b 50%, #1a0d2b 75%, #2b1a0d 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
-    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
   }
 }
 
@@ -109,6 +109,7 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     background: var(--gradient-main);
+    background-attachment: fixed;
     min-height: 100vh;
     transition: background 0.3s ease, color 0.3s ease;
   }
@@ -118,6 +119,7 @@
   /* Futuristic Gradients */
   .gradient-main {
     background: var(--gradient-main);
+    background-attachment: fixed;
   }
   
   .gradient-primary {
@@ -132,35 +134,50 @@
     background: var(--gradient-glass);
   }
 
-  /* Glassmorphism Effects */
+  /* Enhanced Glassmorphism Effects */
   .glass-card {
-    background: var(--glass-mint);
+    background: var(--glass-white);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 8px 32px var(--neon-glow);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 200, 150, 0.1);
     transition: all 0.3s ease;
   }
   
   .glass-button {
     background: var(--glass-white);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .glass-button:hover {
-    background: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 25px var(--neon-glow);
+    background: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 200, 150, 0.2);
     transform: translateY(-2px);
   }
   
   .dark .glass-button {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
   }
   
   .dark .glass-button:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Enhanced Card Visibility */
+  .visible-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 200, 150, 0.15);
+    backdrop-filter: blur(20px);
+  }
+
+  .dark .visible-card {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 200, 150, 0.2);
   }
 
   /* Neon Glow Effects */
