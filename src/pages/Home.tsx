@@ -61,20 +61,23 @@ const Home = () => {
       action: () => navigate('/camera'),
       gradient: 'from-emerald-500 to-blue-500',
       glow: 'emerald',
+      description: 'Take a photo of your meal to log nutrition'
     },
     {
       title: 'Hydration',
       icon: Droplets,
-      action: () => {},
+      action: () => alert('🚧 Hydration tracking coming soon! This will help you log your daily water intake and set hydration goals.'),
       gradient: 'from-blue-500 to-cyan-500',
       glow: 'blue',
+      description: 'Track your daily water intake'
     },
     {
       title: 'Supplements',
       icon: Pill,
-      action: () => {},
+      action: () => alert('🚧 Supplement tracking coming soon! This will help you log vitamins, minerals, and other supplements.'),
       gradient: 'from-purple-500 to-pink-500',
       glow: 'purple',
+      description: 'Log vitamins and supplements'
     },
   ];
 
@@ -83,14 +86,14 @@ const Home = () => {
       {/* Futuristic Greeting */}
       <div className="text-center space-y-4 py-8">
         <div className="inline-block">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-2">
             Let's optimize your day,
           </h1>
           <h2 className="text-4xl font-bold neon-text">
             {user?.name?.split(' ')[0] || 'Superstar'}! ✨
           </h2>
         </div>
-        <p className="text-gray-600 font-medium">Your intelligent wellness companion is ready</p>
+        <p className="text-gray-600 dark:text-gray-300 font-medium">Your intelligent wellness companion is ready</p>
       </div>
 
       {/* Circular Progress Ring */}
@@ -132,11 +135,11 @@ const Home = () => {
                 <span className="text-2xl font-bold neon-text">
                   {Math.round(progressPercentage)}%
                 </span>
-                <span className="text-xs text-gray-500 font-medium">Daily Goal</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Daily Goal</span>
               </div>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 {currentCalories.toFixed(0)} / {totalCalories} calories
               </p>
             </div>
@@ -158,7 +161,7 @@ const Home = () => {
               <div className={`w-8 h-8 bg-gradient-to-r ${action.gradient} rounded-xl flex items-center justify-center neon-glow`}>
                 <Icon className="h-4 w-4 text-white" />
               </div>
-              <span className="text-xs font-semibold text-gray-700">{action.title}</span>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{action.title}</span>
             </Button>
           );
         })}
@@ -166,7 +169,7 @@ const Home = () => {
 
       {/* Horizontal Scrollable Macro Cards */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-gray-900 text-center">Today's Nutrients</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center">Today's Nutrients</h3>
         <div className="flex space-x-4 overflow-x-auto scroll-cards pb-2">
           {macroCards.map((macro, index) => {
             const percentage = Math.min((macro.current / macro.target) * 100, 100);
@@ -182,14 +185,14 @@ const Home = () => {
                   <div className={`w-10 h-10 bg-gradient-to-r ${macro.color} rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
                     <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <h4 className="font-semibold text-gray-900 mb-1">{macro.name}</h4>
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{macro.name}</h4>
                   <p className="text-lg font-bold neon-text">
                     {macro.current.toFixed(0)}{macro.unit}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     of {macro.target}{macro.unit}
                   </p>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
                     <div
                       className={`bg-gradient-to-r ${macro.color} h-1.5 rounded-full transition-all duration-700`}
                       style={{ width: `${percentage}%` }}
@@ -209,14 +212,14 @@ const Home = () => {
             <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center neon-glow">
               <Zap className="h-4 w-4 text-white" />
             </div>
-            <h3 className="font-bold text-gray-900">AI Insights</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white">AI Insights</h3>
           </div>
           <div className="space-y-2">
-            <p className="text-sm text-gray-700 font-medium">
+            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
               🎯 You're {progressPercentage >= 80 ? 'crushing' : 'building toward'} your daily goals!
             </p>
             {progressPercentage < 80 && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 💡 Consider a nutrient-dense snack to optimize your intake.
               </p>
             )}

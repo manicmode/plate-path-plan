@@ -32,21 +32,21 @@ const Layout = ({ children }: LayoutProps) => {
               <span className="text-white font-bold text-lg">N</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">NutriCoach</h1>
-              <p className="text-xs text-muted-foreground font-medium">AI Wellness Assistant</p>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">NutriCoach</h1>
+              <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">AI Wellness Assistant</p>
             </div>
           </div>
           
-          {/* Dark Mode Toggle */}
+          {/* Dark Mode Toggle - Improved visibility */}
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 glass-button px-3 py-2 rounded-xl">
+            <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
               <Sun className={`h-4 w-4 transition-colors ${!isDarkMode ? 'text-yellow-500' : 'text-gray-400'}`} />
               <Switch
                 checked={isDarkMode}
                 onCheckedChange={toggleDarkMode}
                 className="data-[state=checked]:bg-blue-600"
               />
-              <Moon className={`h-4 w-4 transition-colors ${isDarkMode ? 'text-blue-400' : 'text-gray-400'}`} />
+              <Moon className={`h-4 w-4 transition-colors ${isDarkMode ? 'text-blue-400' : 'text-gray-500'}`} />
             </div>
             <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-full neon-glow animate-pulse"></div>
           </div>
@@ -72,7 +72,7 @@ const Layout = ({ children }: LayoutProps) => {
                   className={`flex flex-col items-center space-y-1 h-16 w-16 rounded-2xl transition-all duration-300 ${
                     isActive 
                       ? 'gradient-primary text-white neon-glow scale-110' 
-                      : 'glass-button text-muted-foreground hover:text-foreground'
+                      : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                   }`}
                   onClick={() => navigate(path)}
                 >
