@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -155,7 +154,7 @@ Maintain consistent meal timing and include resistance training for optimal body
         </div>
       </div>
 
-      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 420px)' }}>
+      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 440px)' }}>
         <CardHeader className="flex-shrink-0 pb-4">
           <CardTitle className="flex items-center justify-center space-x-3">
             <div className="flex items-center space-x-2">
@@ -166,7 +165,7 @@ Maintain consistent meal timing and include resistance training for optimal body
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-6 space-y-4 overflow-hidden">
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-6">
             {messages.map((message) => (
               <div
                 key={message.id}
