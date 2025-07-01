@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Camera, MessageCircle, User, Moon, Sun } from 'lucide-react';
+import { Home, Camera, MessageCircle, User, Moon, Sun, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -18,6 +18,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
@@ -54,14 +55,14 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8 pb-40">
+      <main className="max-w-4xl mx-auto px-6 py-8 pb-32">
         {children}
       </main>
 
-      {/* Bottom Navigation - Smaller and More Compact */}
+      {/* Bottom Navigation - Adjusted for 5 items */}
       <nav className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-        <div className="glass-card rounded-3xl px-4 py-3 shadow-2xl border-2 border-white/40">
-          <div className="flex space-x-3">
+        <div className="glass-card rounded-3xl px-3 py-2 shadow-2xl border-2 border-white/40">
+          <div className="flex space-x-1">
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
               return (
@@ -69,14 +70,14 @@ const Layout = ({ children }: LayoutProps) => {
                   key={path}
                   variant="ghost"
                   size="sm"
-                  className={`flex flex-col items-center space-y-1 h-16 w-16 rounded-2xl transition-all duration-300 ${
+                  className={`flex flex-col items-center space-y-1 h-14 w-14 rounded-xl transition-all duration-300 ${
                     isActive 
                       ? 'gradient-primary text-white neon-glow scale-110 shadow-lg' 
                       : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
                   }`}
                   onClick={() => navigate(path)}
                 >
-                  <Icon className={`h-5 w-5 ${isActive ? 'animate-pulse' : ''}`} />
+                  <Icon className={`h-4 w-4 ${isActive ? 'animate-pulse' : ''}`} />
                   <span className="text-xs font-semibold">{label}</span>
                 </Button>
               );
