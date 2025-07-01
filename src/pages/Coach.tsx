@@ -135,7 +135,7 @@ Maintain consistent meal timing and include resistance training for optimal body
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in pb-32">
+    <div className="space-y-6 animate-fade-in">
       <div className="text-center space-y-4">
         <div className="flex justify-center">
           <div className="relative">
@@ -155,7 +155,7 @@ Maintain consistent meal timing and include resistance training for optimal body
         </div>
       </div>
 
-      <Card className="glass-card border-0 rounded-3xl h-[400px] flex flex-col">
+      <Card className="glass-card border-0 rounded-3xl flex flex-col" style={{ height: 'calc(100vh - 420px)' }}>
         <CardHeader className="flex-shrink-0 pb-4">
           <CardTitle className="flex items-center justify-center space-x-3">
             <div className="flex items-center space-x-2">
@@ -165,8 +165,8 @@ Maintain consistent meal timing and include resistance training for optimal body
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-col flex-1 p-6 space-y-4">
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <CardContent className="flex flex-col flex-1 p-6 space-y-4 overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -226,8 +226,8 @@ Maintain consistent meal timing and include resistance training for optimal body
       </Card>
 
       {/* Fixed bottom input area */}
-      <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-40">
-        <div className="glass-card rounded-3xl p-4 space-y-4 border-2 border-white/40">
+      <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-50">
+        <div className="glass-card rounded-3xl p-4 space-y-4 border-2 border-white/40 shadow-2xl">
           <div className="flex flex-wrap gap-2">
             {quickActions.map((action) => {
               const Icon = action.icon;
