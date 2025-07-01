@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +9,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Camera from "./pages/Camera";
+import Hydration from "./pages/Hydration";
+import Supplements from "./pages/Supplements";
 import Analytics from "./pages/Analytics";
 import Coach from "./pages/Coach";
 import Profile from "./pages/Profile";
@@ -42,6 +43,16 @@ const App = () => (
                 <Route path="/camera" element={
                   <ProtectedRoute>
                     <Camera />
+                  </ProtectedRoute>
+                } />
+                <Route path="/hydration" element={
+                  <ProtectedRoute>
+                    <Hydration />
+                  </ProtectedRoute>
+                } />
+                <Route path="/supplements" element={
+                  <ProtectedRoute>
+                    <Supplements />
                   </ProtectedRoute>
                 } />
                 <Route path="/analytics" element={

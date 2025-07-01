@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target } from 'lucide-react';
@@ -8,16 +7,19 @@ import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const { user } = useAuth();
-  const { getTodaysProgress } = useNutrition();
+  const { getTodaysProgress, getHydrationGoal, getSupplementGoal } = useNutrition();
   const navigate = useNavigate();
   const progress = getTodaysProgress();
 
   const totalCalories = user?.targetCalories || 2000;
   const currentCalories = progress.calories;
   const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
-  const circumference = 2 * Math.PI * 60;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+
+  const hydrationGoal = getHydrationGoal();
+  const hydrationPercentage = Math.min((progress.hydration / hydrationGoal) * 100, 100);
+
+  const supplementGoal = getSupplementGoal();
+  const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
 
   const macroCards = [
     {
@@ -52,6 +54,22 @@ const Home = () => {
       color: 'from-purple-400 to-purple-600',
       icon: Target,
     },
+    {
+      name: 'Hydration',
+      current: progress.hydration,
+      target: hydrationGoal,
+      unit: 'ml',
+      color: 'from-cyan-400 to-blue-600',
+      icon: Droplets,
+    },
+    {
+      name: 'Supplements',
+      current: progress.supplements,
+      target: supplementGoal,
+      unit: '',
+      color: 'from-purple-500 to-pink-600',
+      icon: Pill,
+    },
   ];
 
   const actionButtons = [
@@ -66,7 +84,7 @@ const Home = () => {
     {
       title: 'Hydration',
       icon: Droplets,
-      action: () => alert('🚧 Hydration tracking coming soon! This will help you log your daily water intake and set hydration goals.'),
+      action: () => navigate('/hydration'),
       gradient: 'from-blue-500 to-cyan-500',
       glow: 'blue',
       description: 'Track your daily water intake'
@@ -74,7 +92,7 @@ const Home = () => {
     {
       title: 'Supplements',
       icon: Pill,
-      action: () => alert('🚧 Supplement tracking coming soon! This will help you log vitamins, minerals, and other supplements.'),
+      action: () => navigate('/supplements'),
       gradient: 'from-purple-500 to-pink-500',
       glow: 'purple',
       description: 'Log vitamins and supplements'
@@ -96,52 +114,91 @@ const Home = () => {
         <p className="text-gray-600 dark:text-gray-300 font-medium">Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Circular Progress Ring */}
-      <div className="flex justify-center animate-scale-in">
-        <Card className="glass-card border-0 p-8 rounded-3xl">
-          <CardContent className="flex flex-col items-center space-y-4 p-0">
-            <div className="relative w-32 h-32">
-              <svg className="w-32 h-32 progress-ring" viewBox="0 0 120 120">
-                {/* Background circle */}
+      {/* Three Progress Rings */}
+      <div className="grid grid-cols-3 gap-4 animate-scale-in">
+        {/* Calories Ring */}
+        <Card className="glass-card border-0 p-4 rounded-3xl">
+          <CardContent className="flex flex-col items-center space-y-2 p-0">
+            <div className="relative w-20 h-20">
+              <svg className="w-20 h-20 progress-ring" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(0, 200, 150, 0.1)" strokeWidth="6" />
                 <circle
-                  cx="60"
-                  cy="60"
-                  r="56"
-                  fill="none"
-                  stroke="rgba(0, 200, 150, 0.1)"
-                  strokeWidth="8"
-                />
-                {/* Progress circle */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="56"
-                  fill="none"
-                  stroke="url(#gradient)"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={strokeDasharray}
-                  strokeDashoffset={strokeDashoffset}
+                  cx="40" cy="40" r="36" fill="none" stroke="url(#calorieGradient)" strokeWidth="6"
+                  strokeLinecap="round" strokeDasharray={226} strokeDashoffset={226 - (progressPercentage / 100) * 226}
                   className="transition-all duration-1000 ease-out"
                 />
                 <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#00C896" />
                     <stop offset="100%" stopColor="#2E8BFF" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold neon-text">
-                  {Math.round(progressPercentage)}%
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Daily Goal</span>
+                <span className="text-sm font-bold neon-text">{Math.round(progressPercentage)}%</span>
               </div>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                {currentCalories.toFixed(0)} / {totalCalories} calories
-              </p>
+              <p className="text-xs font-semibold text-gray-900 dark:text-white">Calories</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{currentCalories.toFixed(0)}/{totalCalories}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Hydration Ring */}
+        <Card className="glass-card border-0 p-4 rounded-3xl">
+          <CardContent className="flex flex-col items-center space-y-2 p-0">
+            <div className="relative w-20 h-20">
+              <svg className="w-20 h-20 progress-ring" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(6, 182, 212, 0.1)" strokeWidth="6" />
+                <circle
+                  cx="40" cy="40" r="36" fill="none" stroke="url(#hydrationGradient)" strokeWidth="6"
+                  strokeLinecap="round" strokeDasharray={226} strokeDashoffset={226 - (hydrationPercentage / 100) * 226}
+                  className="transition-all duration-1000 ease-out"
+                />
+                <defs>
+                  <linearGradient id="hydrationGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#06B6D4" />
+                    <stop offset="100%" stopColor="#3B82F6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">{Math.round(hydrationPercentage)}%</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-semibold text-gray-900 dark:text-white">Hydration</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{progress.hydration}/{hydrationGoal}ml</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Supplements Ring */}
+        <Card className="glass-card border-0 p-4 rounded-3xl">
+          <CardContent className="flex flex-col items-center space-y-2 p-0">
+            <div className="relative w-20 h-20">
+              <svg className="w-20 h-20 progress-ring" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(168, 85, 247, 0.1)" strokeWidth="6" />
+                <circle
+                  cx="40" cy="40" r="36" fill="none" stroke="url(#supplementGradient)" strokeWidth="6"
+                  strokeLinecap="round" strokeDasharray={226} strokeDashoffset={226 - (supplementPercentage / 100) * 226}
+                  className="transition-all duration-1000 ease-out"
+                />
+                <defs>
+                  <linearGradient id="supplementGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#A855F7" />
+                    <stop offset="100%" stopColor="#EC4899" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{Math.round(supplementPercentage)}%</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-semibold text-gray-900 dark:text-white">Supplements</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{progress.supplements}/{supplementGoal}</p>
             </div>
           </CardContent>
         </Card>
