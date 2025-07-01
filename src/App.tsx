@@ -4,87 +4,71 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NutritionProvider } from "@/contexts/NutritionContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import Layout from "@/components/Layout";
-import Index from "./pages/Index";
-import Camera from "./pages/Camera";
-import Hydration from "./pages/Hydration";
-import Supplements from "./pages/Supplements";
-import Analytics from "./pages/Analytics";
-import Coach from "./pages/Coach";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
-import { useAuth } from "@/contexts/AuthContext";
+import Index from "@/pages/Index";
+import Home from "@/pages/Home";
+import Camera from "@/pages/Camera";
+import Analytics from "@/pages/Analytics";
+import Coach from "@/pages/Coach";
+import Profile from "@/pages/Profile";
+import Hydration from "@/pages/Hydration";
+import Supplements from "@/pages/Supplements";
+import NotFound from "@/pages/NotFound";
+import AllergenAlarm from "@/components/AllergenAlarm";
+import { useAllergenDetection } from "@/hooks/useAllergenDetection";
+import "./App.css";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  
-  if (!isAuthenticated) {
-    return <Index />;
-  }
-  
-  return <Layout>{children}</Layout>;
-};
+function AppContent() {
+  const { detectedAllergens, clearAllergenAlert } = useAllergenDetection();
 
-const App = () => {
-  console.log('App component rendering');
-  
+  return (
+    <>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/camera" element={<Camera />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/coach" element={<Coach />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/hydration" element={<Hydration />} />
+          <Route path="/supplements" element={<Supplements />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Layout>
+      
+      {/* Allergen Alarm Component */}
+      <AllergenAlarm 
+        detectedAllergens={detectedAllergens}
+        onDismiss={clearAllergenAlert}
+      />
+    </>
+  );
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <ThemeProvider>
-          <AuthProvider>
-            <NutritionProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <NutritionProvider>
+            <TooltipProvider>
               <BrowserRouter>
-                <div className="min-h-screen">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/camera" element={
-                      <ProtectedRoute>
-                        <Camera />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/hydration" element={
-                      <ProtectedRoute>
-                        <Hydration />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/supplements" element={
-                      <ProtectedRoute>
-                        <Supplements />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/analytics" element={
-                      <ProtectedRoute>
-                        <Analytics />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/coach" element={
-                      <ProtectedRoute>
-                        <Coach />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/profile" element={
-                      <ProtectedRoute>
-                        <Profile />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </div>
+                <AppContent />
+                <Toaster />
+                <Sonner />
               </BrowserRouter>
-            </NutritionProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </TooltipProvider>
+            </TooltipProvider>
+          </NutritionProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;

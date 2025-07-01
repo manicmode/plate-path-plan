@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, User, Moon, Sun, BarChart3 } from 'lucide-react';
@@ -18,7 +17,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { path: '/analytics', icon: BarChart3, label: 'Progress' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
