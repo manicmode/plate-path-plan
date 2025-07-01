@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -15,12 +14,12 @@ const Analytics = () => {
 
   // Mock data for different time periods
   const dailyData = [
-    { time: '6AM', calories: 0, protein: 0, carbs: 0, fat: 0, hydration: 0 },
-    { time: '9AM', calories: 450, protein: 25, carbs: 45, fat: 15, hydration: 250 },
-    { time: '12PM', calories: 850, protein: 65, carbs: 95, fat: 28, hydration: 750 },
-    { time: '3PM', calories: 1200, protein: 90, carbs: 130, fat: 35, hydration: 1200 },
-    { time: '6PM', calories: 1650, protein: 115, carbs: 165, fat: 50, hydration: 1500 },
-    { time: '9PM', calories: progress.calories, protein: progress.protein, carbs: progress.carbs, fat: progress.fat, hydration: progress.hydration },
+    { time: '6AM', calories: 0, protein: 0, carbs: 0, fat: 0, hydration: 0, supplements: 0 },
+    { time: '9AM', calories: 450, protein: 25, carbs: 45, fat: 15, hydration: 250, supplements: 1 },
+    { time: '12PM', calories: 850, protein: 65, carbs: 95, fat: 28, hydration: 750, supplements: 2 },
+    { time: '3PM', calories: 1200, protein: 90, carbs: 130, fat: 35, hydration: 1200, supplements: 2 },
+    { time: '6PM', calories: 1650, protein: 115, carbs: 165, fat: 50, hydration: 1500, supplements: 3 },
+    { time: '9PM', calories: progress.calories, protein: progress.protein, carbs: progress.carbs, fat: progress.fat, hydration: progress.hydration, supplements: progress.supplements },
   ];
 
   const weeklyData = [
@@ -34,10 +33,25 @@ const Analytics = () => {
   ];
 
   const monthlyData = [
-    { week: 'Week 1', avgCalories: 1950, avgProtein: 135, avgCarbs: 190, avgFat: 65, avgHydration: 2100 },
-    { week: 'Week 2', avgCalories: 2050, avgProtein: 142, avgCarbs: 205, avgFat: 68, avgHydration: 2200 },
-    { week: 'Week 3', avgCalories: 1980, avgProtein: 138, avgCarbs: 195, avgFat: 66, avgHydration: 2050 },
-    { week: 'Week 4', avgCalories: 2020, avgProtein: 140, avgCarbs: 200, avgFat: 67, avgHydration: 2150 },
+    { week: 'Week 1', avgCalories: 1950, avgProtein: 135, avgCarbs: 190, avgFat: 65, avgHydration: 2100, avgSupplements: 2.5 },
+    { week: 'Week 2', avgCalories: 2050, avgProtein: 142, avgCarbs: 205, avgFat: 68, avgHydration: 2200, avgSupplements: 2.8 },
+    { week: 'Week 3', avgCalories: 1980, avgProtein: 138, avgCarbs: 195, avgFat: 66, avgHydration: 2050, avgSupplements: 2.3 },
+    { week: 'Week 4', avgCalories: 2020, avgProtein: 140, avgCarbs: 200, avgFat: 67, avgHydration: 2150, avgSupplements: 2.7 },
+  ];
+
+  const yearlyData = [
+    { month: 'Jan', avgCalories: 1980, avgProtein: 138, avgCarbs: 195, avgFat: 66, avgHydration: 2100, avgSupplements: 2.6 },
+    { month: 'Feb', avgCalories: 2020, avgProtein: 142, avgCarbs: 200, avgFat: 68, avgHydration: 2150, avgSupplements: 2.8 },
+    { month: 'Mar', avgCalories: 2050, avgProtein: 145, avgCarbs: 205, avgFat: 70, avgHydration: 2200, avgSupplements: 2.9 },
+    { month: 'Apr', avgCalories: 1950, avgProtein: 135, avgCarbs: 190, avgFat: 65, avgHydration: 2050, avgSupplements: 2.4 },
+    { month: 'May', avgCalories: 2100, avgProtein: 148, avgCarbs: 210, avgFat: 72, avgHydration: 2300, avgSupplements: 3.0 },
+    { month: 'Jun', avgCalories: 2080, avgProtein: 146, avgCarbs: 208, avgFat: 71, avgHydration: 2250, avgSupplements: 2.8 },
+    { month: 'Jul', avgCalories: 2000, avgProtein: 140, avgCarbs: 200, avgFat: 67, avgHydration: 2150, avgSupplements: 2.7 },
+    { month: 'Aug', avgCalories: 1980, avgProtein: 138, avgCarbs: 195, avgFat: 66, avgHydration: 2100, avgSupplements: 2.5 },
+    { month: 'Sep', avgCalories: 2040, avgProtein: 143, avgCarbs: 203, avgFat: 69, avgHydration: 2180, avgSupplements: 2.8 },
+    { month: 'Oct', avgCalories: 2060, avgProtein: 144, avgCarbs: 206, avgFat: 70, avgHydration: 2200, avgSupplements: 2.9 },
+    { month: 'Nov', avgCalories: 1990, avgProtein: 139, avgCarbs: 198, avgFat: 67, avgHydration: 2120, avgSupplements: 2.6 },
+    { month: 'Dec', avgCalories: progress.calories, avgProtein: progress.protein, avgCarbs: progress.carbs, avgFat: progress.fat, avgHydration: progress.hydration, avgSupplements: progress.supplements },
   ];
 
   const macroDistribution = [
@@ -139,54 +153,150 @@ const Analytics = () => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="daily" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="daily">Daily</TabsTrigger>
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="yearly">Yearly</TabsTrigger>
             </TabsList>
             
             <TabsContent value="daily" className="space-y-4">
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                     <XAxis dataKey="time" />
                     <YAxis />
                     <Tooltip />
                     <Area type="monotone" dataKey="calories" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
                     <Area type="monotone" dataKey="protein" stackId="2" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
+                    <Area type="monotone" dataKey="hydration" stackId="3" stroke="#22E7E7" fill="#22E7E7" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="supplements" stackId="4" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3} />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-4 gap-4 mt-4">
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Calories</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Protein</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-cyan-400 rounded-full mx-auto mb-2 shadow-lg shadow-cyan-300/50"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Hydration</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-purple-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Supplements</p>
+                </div>
               </div>
             </TabsContent>
             
             <TabsContent value="weekly" className="space-y-4">
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <LineChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                     <XAxis dataKey="day" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="calories" fill="#10B981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="protein" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Line type="monotone" dataKey="calories" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', strokeWidth: 2, r: 5 }} />
+                    <Line type="monotone" dataKey="protein" stroke="#3B82F6" strokeWidth={3} dot={{ fill: '#3B82F6', strokeWidth: 2, r: 5 }} />
+                    <Line type="monotone" dataKey="hydration" stroke="#22E7E7" strokeWidth={3} dot={{ fill: '#22E7E7', strokeWidth: 2, r: 5 }} />
+                    <Line type="monotone" dataKey="supplements" stroke="#8B5CF6" strokeWidth={3} dot={{ fill: '#8B5CF6', strokeWidth: 2, r: 5 }} />
+                  </LineChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-4 gap-4 mt-4">
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Calories</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Protein</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-cyan-400 rounded-full mx-auto mb-2 shadow-lg shadow-cyan-300/50"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Hydration</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-purple-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Supplements</p>
+                </div>
               </div>
             </TabsContent>
             
             <TabsContent value="monthly" className="space-y-4">
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                     <XAxis dataKey="week" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="avgCalories" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="avgProtein" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="avgHydration" fill="#22E7E7" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="avgSupplements" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-4 gap-4 mt-4">
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Avg Calories</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Avg Protein</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-cyan-400 rounded-full mx-auto mb-2 shadow-lg shadow-cyan-300/50"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Avg Hydration</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-purple-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Avg Supplements</p>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="yearly" className="space-y-4">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={yearlyData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip />
                     <Line type="monotone" dataKey="avgCalories" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', strokeWidth: 2, r: 6 }} />
                     <Line type="monotone" dataKey="avgProtein" stroke="#3B82F6" strokeWidth={3} dot={{ fill: '#3B82F6', strokeWidth: 2, r: 6 }} />
+                    <Line type="monotone" dataKey="avgHydration" stroke="#22E7E7" strokeWidth={3} dot={{ fill: '#22E7E7', strokeWidth: 2, r: 6 }} />
+                    <Line type="monotone" dataKey="avgSupplements" stroke="#8B5CF6" strokeWidth={3} dot={{ fill: '#8B5CF6', strokeWidth: 2, r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-4 gap-4 mt-4">
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-emerald-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Monthly Avg Calories</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Monthly Avg Protein</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-cyan-400 rounded-full mx-auto mb-2 shadow-lg shadow-cyan-300/50"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Monthly Avg Hydration</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-4 h-4 bg-purple-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Monthly Avg Supplements</p>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
@@ -197,7 +307,12 @@ const Analytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="visible-card border-0 animate-slide-up" style={{ animationDelay: '500ms' }}>
           <CardHeader>
-            <CardTitle className="text-emerald-600 dark:text-emerald-400">Today's Macro Distribution</CardTitle>
+            <CardTitle className="text-emerald-600 dark:text-emerald-400">Today's Macro Breakdown</CardTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Shows how your daily calories are distributed across the three main macronutrients. 
+              This helps you understand if you're getting balanced nutrition - ideally 10-35% protein, 
+              45-65% carbs, and 20-35% fat.
+            </p>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -210,23 +325,32 @@ const Analytics = () => {
                     outerRadius={80}
                     dataKey="value"
                     label={({ name, percentage }) => `${name} ${percentage}%`}
+                    labelLine={false}
                   >
                     {macroDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `${value} calories`} />
+                  <Tooltip formatter={(value: number) => [`${value} calories`, 'Calories from']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="grid grid-cols-3 gap-4 mt-4">
               {macroDistribution.map((macro) => (
-                <div key={macro.name} className="text-center">
+                <div key={macro.name} className="text-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div className="w-4 h-4 rounded-full mx-auto mb-2" style={{ backgroundColor: macro.color }}></div>
                   <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{macro.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{macro.percentage}%</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{macro.percentage}% of calories</p>
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{macro.value} cal</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                💡 <strong>Insight:</strong> A balanced macro split supports energy levels, muscle maintenance, and overall health. 
+                Your current distribution shows {macroDistribution.find(m => m.name === 'Protein')?.percentage}% protein, which is 
+                {(macroDistribution.find(m => m.name === 'Protein')?.percentage || 0) >= 15 ? ' excellent' : ' could be improved'} for most fitness goals.
+              </p>
             </div>
           </CardContent>
         </Card>
