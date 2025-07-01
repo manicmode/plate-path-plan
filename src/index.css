@@ -47,8 +47,12 @@
     --glass-mint: 174 60% 95% / 0.8;
     --neon-glow: 174 100% 39% / 0.3;
     
-    /* Ultra Bright Colorful Gradients - Light Mode */
-    --gradient-main: linear-gradient(135deg, #00FFFF 0%, #00FF80 15%, #40FF00 30%, #FFFF00 45%, #FF8000 60%, #FF0080 75%, #8000FF 90%, #0080FF 100%);
+    /* Modern Light Gradients with Grain */
+    --gradient-main: 
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+      linear-gradient(135deg, #fefefe 0%, #f9fafb 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
     --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
@@ -112,6 +116,24 @@
     background-attachment: fixed;
     min-height: 100vh;
     transition: background 0.3s ease, color 0.3s ease;
+    position: relative;
+  }
+
+  /* Grain texture overlay for light mode */
+  body:not(.dark)::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: 
+      radial-gradient(circle at 25% 25%, #000 2px, transparent 0),
+      radial-gradient(circle at 75% 75%, #000 1px, transparent 0);
+    background-size: 100px 100px;
+    z-index: -1;
   }
 }
 
