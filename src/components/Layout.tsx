@@ -54,14 +54,14 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8 pb-24">
+      <main className="max-w-4xl mx-auto px-6 py-8 pb-32">
         {children}
       </main>
 
-      {/* Futuristic Bottom Navigation */}
+      {/* Enhanced Bottom Navigation - Bigger and More Pronounced */}
       <nav className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-        <div className="glass-card rounded-3xl px-2 py-2">
-          <div className="flex space-x-2">
+        <div className="glass-card rounded-3xl px-4 py-3 shadow-2xl border-2 border-white/30">
+          <div className="flex space-x-3">
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
               return (
@@ -69,15 +69,15 @@ const Layout = ({ children }: LayoutProps) => {
                   key={path}
                   variant="ghost"
                   size="sm"
-                  className={`flex flex-col items-center space-y-1 h-16 w-16 rounded-2xl transition-all duration-300 ${
+                  className={`flex flex-col items-center space-y-2 h-20 w-20 rounded-3xl transition-all duration-300 ${
                     isActive 
-                      ? 'gradient-primary text-white neon-glow scale-110' 
-                      : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                      ? 'gradient-primary text-white neon-glow scale-110 shadow-lg' 
+                      : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
                   }`}
                   onClick={() => navigate(path)}
                 >
-                  <Icon className={`h-5 w-5 ${isActive ? 'animate-pulse' : ''}`} />
-                  <span className="text-xs font-medium">{label}</span>
+                  <Icon className={`h-6 w-6 ${isActive ? 'animate-pulse' : ''}`} />
+                  <span className="text-xs font-semibold">{label}</span>
                 </Button>
               );
             })}
