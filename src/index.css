@@ -47,8 +47,8 @@
     --glass-mint: 174 60% 95% / 0.8;
     --neon-glow: 174 100% 39% / 0.3;
     
-    /* Bright Colorful Gradients - Light Mode */
-    --gradient-main: linear-gradient(135deg, #00E5FF 0%, #00C896 25%, #2E8BFF 50%, #9C27B0 75%, #FF6B35 100%);
+    /* Ultra Bright Colorful Gradients - Light Mode */
+    --gradient-main: linear-gradient(135deg, #00FFFF 0%, #00FF80 15%, #40FF00 30%, #FFFF00 45%, #FF8000 60%, #FF0080 75%, #8000FF 90%, #0080FF 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
     --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);

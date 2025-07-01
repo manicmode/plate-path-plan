@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -292,17 +291,17 @@ const Home = () => {
         </div>
       </div>
 
-      {/* AI Insights Card - Enhanced Visibility with More Bottom Margin */}
-      <Card className="visible-card border-0 rounded-3xl animate-slide-up float-animation mb-32" style={{ animationDelay: '600ms' }}>
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center neon-glow">
-              <Zap className="h-4 w-4 text-white" />
+      {/* AI Insights Card - Enhanced Visibility with Much More Bottom Margin */}
+      <Card className="visible-card border-0 rounded-3xl animate-slide-up float-animation mb-48" style={{ animationDelay: '600ms' }}>
+        <CardContent className="p-8">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-10 h-10 gradient-primary rounded-full flex items-center justify-center neon-glow">
+              <Zap className="h-5 w-5 text-white" />
             </div>
-            <h3 className="font-bold text-gray-900 dark:text-white">AI Insights</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">AI Insights</h3>
           </div>
-          <div className="space-y-2">
-            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+          <div className="space-y-4">
+            <p className="text-base text-gray-700 dark:text-gray-300 font-medium">
               🎯 You're {progressPercentage >= 80 ? 'crushing' : 'building toward'} your daily goals!
             </p>
             {progressPercentage < 80 && (
@@ -312,9 +311,9 @@ const Home = () => {
             )}
             <Button
               onClick={() => navigate('/coach')}
-              className="glass-button text-emerald-600 hover:text-emerald-700 p-0 h-auto font-medium"
+              className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 neon-glow"
             >
-              Ask your AI coach →
+              Ask your AI coach ✨ →
             </Button>
           </div>
         </CardContent>
