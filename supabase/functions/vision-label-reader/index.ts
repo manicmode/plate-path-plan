@@ -1,3 +1,44 @@
+/*
+TEST PAYLOAD EXAMPLE:
+You can test this function with the following JSON payload:
+
+{
+  "imageBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+}
+
+To test with authorization header:
+Authorization: Bearer <your-jwt-token>
+
+Expected response format:
+{
+  "labels": [
+    {
+      "description": "Food",
+      "score": 0.95
+    }
+  ],
+  "foodLabels": [
+    {
+      "description": "Apple",
+      "score": 0.89
+    }
+  ],
+  "nutritionData": {
+    "calories": 95,
+    "protein": 0.5,
+    "carbs": 25
+  },
+  "textDetected": "Nutrition Facts\nCalories 95\nProtein 0.5g",
+  "objects": [
+    {
+      "name": "Fruit",
+      "score": 0.92
+    }
+  ]
+}
+
+User ID for testing: 84ecf6a4-6f75-4c4c-be78-0451c517e7b8
+*/
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
