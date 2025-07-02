@@ -116,12 +116,12 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Enhanced Progress Rings - Mobile Responsive */}
+      {/* Enhanced Progress Rings - Mobile Responsive with Fixed Heights */}
       <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-4'} animate-scale-in`}>
         {/* Calories Ring */}
-        <Card className="visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300">
-          <CardContent className="flex flex-col items-center space-y-1 sm:space-y-2 p-0">
-            <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'}`}>
+        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'} flex flex-col`}>
+          <CardContent className="flex flex-col items-center justify-between space-y-1 sm:space-y-2 p-0 h-full">
+            <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'} flex-shrink-0`}>
               <svg className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0, 200, 150, 0.1)" strokeWidth="8" />
                 <circle
@@ -141,17 +141,17 @@ const Home = () => {
                 {progressPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-3 w-3'} text-emerald-400 animate-pulse`} />}
               </div>
             </div>
-            <div className="text-center">
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white`}>Calories</p>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>{currentCalories.toFixed(0)}/{totalCalories}</p>
+            <div className="text-center flex-shrink-0">
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white leading-tight`}>Calories</p>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>{currentCalories.toFixed(0)}/{totalCalories}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Hydration Ring */}
-        <Card className="visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300">
-          <CardContent className="flex flex-col items-center space-y-1 sm:space-y-2 p-0">
-            <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'}`}>
+        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'} flex flex-col`}>
+          <CardContent className="flex flex-col items-center justify-between space-y-1 sm:space-y-2 p-0 h-full">
+            <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'} flex-shrink-0`}>
               <svg className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(6, 182, 212, 0.1)" strokeWidth="8" />
                 <circle
@@ -171,17 +171,17 @@ const Home = () => {
                 {hydrationPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-3 w-3'} text-cyan-400 animate-pulse`} />}
               </div>
             </div>
-            <div className="text-center">
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white`}>Hydration</p>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>{progress.hydration}/{hydrationGoal}ml</p>
+            <div className="text-center flex-shrink-0">
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white leading-tight`}>Hydration</p>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>{progress.hydration}/{hydrationGoal}ml</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Supplements Ring */}
-        <Card className="visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300">
-          <CardContent className="flex flex-col items-center space-y-1 sm:space-y-2 p-0">
-            <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'}`}>
+        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'} flex flex-col`}>
+          <CardContent className="flex flex-col items-center justify-between space-y-1 sm:space-y-2 p-0 h-full">
+            <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'} flex-shrink-0`}>
               <svg className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(168, 85, 247, 0.1)" strokeWidth="8" />
                 <circle
@@ -201,9 +201,9 @@ const Home = () => {
                 {supplementPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-3 w-3'} text-purple-400 animate-pulse`} />}
               </div>
             </div>
-            <div className="text-center">
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white`}>Supplements</p>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>{progress.supplements}/{supplementGoal}</p>
+            <div className="text-center flex-shrink-0">
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white leading-tight`}>Supplements</p>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>{progress.supplements}/{supplementGoal}</p>
             </div>
           </CardContent>
         </Card>
