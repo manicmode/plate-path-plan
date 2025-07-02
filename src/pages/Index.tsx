@@ -1,7 +1,6 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import AuthForm from '@/components/auth/AuthForm';
-import Layout from '@/components/Layout';
 import Home from './Home';
 
 const Index = () => {
@@ -19,11 +18,7 @@ const Index = () => {
   }
 
   console.log('User authenticated, showing Home');
-  return (
-    <Layout>
-      <Home />
-    </Layout>
-  );
+  return <Home />;
 };
 
 export default Index;
