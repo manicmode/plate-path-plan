@@ -1,24 +1,33 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import AuthForm from '@/components/auth/AuthForm';
-import Home from './Home';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   console.log('Index component rendering, isAuthenticated:', isAuthenticated);
 
-  if (!isAuthenticated) {
-    console.log('User not authenticated, showing AuthForm');
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <AuthForm />
-      </div>
-    );
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('User authenticated, redirecting to /home');
+      navigate('/home');
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) {
+    // Show nothing while redirecting
+    return null;
   }
 
-  console.log('User authenticated, showing Home');
-  return <Home />;
+  console.log('User not authenticated, showing AuthForm');
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <AuthForm />
+    </div>
+  );
 };
 
 export default Index;
