@@ -64,7 +64,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Bottom Navigation - Enhanced Design */}
       <nav className={`fixed ${isMobile ? 'bottom-2 left-2 right-2' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
         <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl px-3 sm:px-6 py-3 sm:py-4 shadow-2xl border-2 border-white/40">
-          <div className={`flex ${isMobile ? 'justify-between' : 'space-x-3'}`}>
+          <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-3'}`}>
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
               return (
@@ -74,7 +74,7 @@ const Layout = ({ children }: LayoutProps) => {
                   size="sm"
                   className={`flex flex-col items-center justify-center space-y-1 ${
                     isMobile 
-                      ? 'h-14 px-2 min-w-[60px] flex-1' 
+                      ? 'h-14 px-2 min-w-[56px] flex-1' 
                       : 'h-18 w-20 px-3'
                   } rounded-2xl transition-all duration-300 ${
                     isActive 
