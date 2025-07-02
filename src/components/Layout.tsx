@@ -56,8 +56,8 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main Content - Mobile Optimized */}
-      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${isMobile ? 'pb-28' : 'pb-36'}`}>
+      {/* Main Content - Mobile Optimized with proper header offset */}
+      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${isMobile ? 'pb-28 pt-6' : 'pb-36'}`}>
         {children}
       </main>
 

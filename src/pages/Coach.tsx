@@ -195,9 +195,9 @@ const Coach = () => {
   };
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
+    <div className={`flex flex-col animate-fade-in ${isMobile ? 'min-h-[calc(100vh-140px)]' : 'h-full'}`}>
       {/* Compact Header */}
-      <div className="text-center space-y-2 mb-4">
+      <div className="text-center space-y-2 mb-4 flex-shrink-0">
         <div className="flex justify-center">
           <div className="relative">
             <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center neon-glow float-animation`}>
@@ -232,8 +232,15 @@ const Coach = () => {
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-2 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
-          {/* Messages area - Mobile optimized */}
-          <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2" style={{ maxHeight: isMobile ? 'calc(100vh - 280px)' : 'calc(100vh - 300px)' }}>
+          {/* Messages area - Mobile optimized with better height calculation */}
+          <div 
+            className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2" 
+            style={{ 
+              maxHeight: isMobile 
+                ? 'calc(100vh - 400px)' 
+                : 'calc(100vh - 300px)' 
+            }}
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
