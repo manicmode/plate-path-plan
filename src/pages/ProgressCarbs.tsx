@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Zap, TrendingUp, TrendingDown } from 'lucide-react';
@@ -7,7 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ProgressCarbs = () => {
   const navigate = useNavigate();
@@ -15,6 +14,11 @@ const ProgressCarbs = () => {
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   const targetCarbs = user?.targetCarbs || 200;
   const todayProgress = getTodaysProgress();

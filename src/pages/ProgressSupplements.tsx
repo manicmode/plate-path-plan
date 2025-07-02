@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pill, TrendingUp, TrendingDown } from 'lucide-react';
@@ -6,13 +5,18 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ProgressSupplements = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   const targetSupplements = user?.targetSupplements || 3;
   const currentSupplements = 2; // Mock current value
