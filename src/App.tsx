@@ -16,6 +16,11 @@ import Profile from "./pages/Profile";
 import Hydration from "./pages/Hydration";
 import Supplements from "./pages/Supplements";
 import ProgressCalories from "./pages/ProgressCalories";
+import ProgressProtein from "./pages/ProgressProtein";
+import ProgressCarbs from "./pages/ProgressCarbs";
+import ProgressFat from "./pages/ProgressFat";
+import ProgressHydration from "./pages/ProgressHydration";
+import ProgressSupplements from "./pages/ProgressSupplements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +44,11 @@ function App() {
                   <Route path="/hydration" element={<Layout><Hydration /></Layout>} />
                   <Route path="/supplements" element={<Layout><Supplements /></Layout>} />
                   <Route path="/progress/calories" element={<Layout><ProgressCalories /></Layout>} />
+                  <Route path="/progress/protein" element={<Layout><ProgressProtein /></Layout>} />
+                  <Route path="/progress/carbs" element={<Layout><ProgressCarbs /></Layout>} />
+                  <Route path="/progress/fat" element={<Layout><ProgressFat /></Layout>} />
+                  <Route path="/progress/hydration" element={<Layout><ProgressHydration /></Layout>} />
+                  <Route path="/progress/supplements" element={<Layout><ProgressSupplements /></Layout>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
