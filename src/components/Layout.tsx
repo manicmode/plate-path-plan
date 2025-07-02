@@ -20,7 +20,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { path: '/analytics', icon: BarChart3, label: 'Progress' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
@@ -61,10 +61,10 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      {/* Bottom Navigation - Mobile Optimized */}
+      {/* Bottom Navigation - Enhanced Design */}
       <nav className={`fixed ${isMobile ? 'bottom-2 left-2 right-2' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
-        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl px-2 sm:px-4 py-2 sm:py-3 shadow-2xl border-2 border-white/40">
-          <div className={`flex ${isMobile ? 'justify-around' : 'space-x-2'}`}>
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl px-3 sm:px-6 py-3 sm:py-4 shadow-2xl border-2 border-white/40">
+          <div className={`flex ${isMobile ? 'justify-between' : 'space-x-3'}`}>
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
               return (
@@ -72,15 +72,23 @@ const Layout = ({ children }: LayoutProps) => {
                   key={path}
                   variant="ghost"
                   size="sm"
-                  className={`flex flex-col items-center space-y-1 ${isMobile ? 'h-12 w-12 px-1' : 'h-16 w-16'} rounded-xl transition-all duration-300 ${
+                  className={`flex flex-col items-center justify-center space-y-1 ${
+                    isMobile 
+                      ? 'h-14 px-2 min-w-[60px] flex-1' 
+                      : 'h-18 w-20 px-3'
+                  } rounded-2xl transition-all duration-300 ${
                     isActive 
-                      ? 'gradient-primary text-white neon-glow scale-110 shadow-lg' 
+                      ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
                       : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
                   }`}
                   onClick={() => navigate(path)}
                 >
-                  <Icon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${isActive ? 'animate-pulse' : ''}`} />
-                  <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-semibold`}>{label}</span>
+                  <Icon className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
+                  <span className={`${
+                    isMobile ? 'text-xs' : 'text-sm'
+                  } font-semibold leading-tight text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}>
+                    {label}
+                  </span>
                 </Button>
               );
             })}
