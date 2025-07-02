@@ -354,7 +354,7 @@ const Coach = () => {
                       return (
                         <Button
                           key={action.text}
-                          onClick={()={() => handleQuickAction(action.text)}
+                          onClick={() => handleQuickAction(action.text)}
                           className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium justify-start py-2"
                         >
                           <Icon className="h-3 w-3 mr-2" />
