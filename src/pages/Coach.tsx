@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Bot, User, Sparkles, Target, TrendingUp, Zap, ChevronDown, AlertCircle } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Target, TrendingUp, Zap, ChevronDown, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -26,6 +26,7 @@ const Coach = () => {
   const [lastRequestTime, setLastRequestTime] = useState(0);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -80,6 +81,7 @@ const Coach = () => {
   const callAICoach = async (userMessage: string): Promise<string> => {
     try {
       console.log('Calling AI coach with message:', userMessage);
+      setConnectionError(null); // Clear any previous errors
       
       // Check rate limiting
       const now = Date.now();
@@ -114,20 +116,35 @@ const Coach = () => {
 
       if (error) {
         console.error('Edge function error:', error);
+        setConnectionError(`Connection error: ${error.message}`);
         throw new Error(error.message || 'Failed to connect to AI service');
       }
 
       if (data?.error) {
         console.error('AI service error:', data.error);
+        
+        // Set specific connection error for display
+        if (data.error.includes('configuration') || data.error.includes('API key')) {
+          setConnectionError('AI service configuration issue detected');
+        } else if (data.error.includes('quota') || data.error.includes('credits')) {
+          setConnectionError('AI service quota/credits issue detected');
+        } else if (data.error.includes('authentication')) {
+          setConnectionError('AI service authentication issue detected');
+        } else {
+          setConnectionError('AI service error detected');
+        }
+        
         throw new Error(data.error);
       }
 
       if (!data?.response) {
         console.error('No response from AI service:', data);
+        setConnectionError('No response received from AI service');
         throw new Error('No response received from AI service');
       }
 
       console.log('AI response received successfully');
+      setConnectionError(null); // Clear error on success
       return data.response;
     } catch (error) {
       console.error('Error calling AI coach:', error);
@@ -221,6 +238,15 @@ const Coach = () => {
     setTimeout(() => handleSendMessage(), 100);
   };
 
+  const handleRetryConnection = () => {
+    setConnectionError(null);
+    toast({
+      title: "Connection Reset",
+      description: "You can now try sending a message again.",
+      variant: "default"
+    });
+  };
+
   return (
     <div className={`flex flex-col animate-fade-in ${isMobile ? 'h-[calc(100vh-200px)]' : 'h-full'}`}>
       {/* Compact Header */}
@@ -245,14 +271,40 @@ const Coach = () => {
         </div>
       </div>
 
+      {/* Connection Error Alert */}
+      {connectionError && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <span className="text-sm text-red-800 dark:text-red-200 font-medium">
+                {connectionError}
+              </span>
+            </div>
+            <Button
+              onClick={handleRetryConnection}
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-xs border-red-300 text-red-700 hover:bg-red-100 dark:border-red-600 dark:text-red-300 dark:hover:bg-red-900/30"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Chat Container - Mobile optimized with fixed height */}
       <Card className="glass-card border-0 rounded-3xl flex flex-col flex-1 min-h-0 max-h-full">
         <CardHeader className="flex-shrink-0 pb-2">
           <CardTitle className="flex items-center justify-center space-x-2">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className={`${isMobile ? 'text-sm' : 'text-lg'} font-semibold text-emerald-600 dark:text-emerald-400`}>
-                {isMobile ? 'AI Online' : 'ChatGPT Neural Network Active'}
+              <div className={`w-2 h-2 rounded-full animate-pulse ${connectionError ? 'bg-red-400' : 'bg-emerald-400'}`}></div>
+              <span className={`${isMobile ? 'text-sm' : 'text-lg'} font-semibold ${connectionError ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                {isMobile 
+                  ? (connectionError ? 'AI Offline' : 'AI Online') 
+                  : (connectionError ? 'ChatGPT Connection Error' : 'ChatGPT Neural Network Active')
+                }
               </span>
             </div>
           </CardTitle>

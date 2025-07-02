@@ -41,15 +41,54 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log('=== AI Coach Chat Function Started ===');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+
   try {
-    const { message, userContext } = await req.json();
+    const requestBody = await req.json();
+    console.log('Request body received:', JSON.stringify({
+      messageLength: requestBody.message?.length,
+      hasUserContext: !!requestBody.userContext,
+      userContext: requestBody.userContext
+    }));
+
+    const { message, userContext } = requestBody;
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    console.log('AI Coach request received:', { messageLength: message?.length, hasUserContext: !!userContext });
-
+    // Enhanced API key validation
     if (!openAIApiKey) {
-      console.error('OpenAI API key not found in environment');
-      throw new Error('OpenAI API key not configured');
+      console.error('CRITICAL: OpenAI API key not found in environment variables');
+      console.log('Available env vars:', Object.keys(Deno.env.toObject()));
+      return new Response(JSON.stringify({ 
+        error: 'AI service configuration error. OpenAI API key is missing. Please contact support.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (openAIApiKey.length < 20) {
+      console.error('CRITICAL: OpenAI API key appears to be invalid (too short)');
+      return new Response(JSON.stringify({ 
+        error: 'AI service configuration error. OpenAI API key appears invalid. Please contact support.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('OpenAI API key found, length:', openAIApiKey.length);
+    console.log('API key starts with:', openAIApiKey.substring(0, 10) + '...');
+
+    if (!message || message.trim().length === 0) {
+      console.error('Invalid message received:', message);
+      return new Response(JSON.stringify({ 
+        error: 'Please provide a valid message to continue our conversation.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Create system prompt with user context
@@ -68,35 +107,83 @@ User Context:
 
 Always provide actionable advice and maintain a supportive, professional tone.`;
 
+    console.log('System prompt created, length:', systemPrompt.length);
+    console.log('User message length:', message.length);
+
+    const requestPayload = {
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    };
+
+    console.log('OpenAI request payload:', JSON.stringify({
+      model: requestPayload.model,
+      messagesCount: requestPayload.messages.length,
+      maxTokens: requestPayload.max_tokens,
+      temperature: requestPayload.temperature
+    }));
+
     const makeOpenAIRequest = async () => {
       console.log('Making request to OpenAI API...');
-      return await fetch('https://api.openai.com/v1/chat/completions', {
+      const startTime = Date.now();
+      
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: message }
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      const endTime = Date.now();
+      console.log(`OpenAI API request completed in ${endTime - startTime}ms`);
+      console.log('OpenAI response status:', response.status);
+      console.log('OpenAI response headers:', Object.fromEntries(response.headers.entries()));
+
+      return response;
     };
 
     const response = await retryWithBackoff(makeOpenAIRequest);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', {
+      console.error('OpenAI API error details:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText
+        headers: Object.fromEntries(response.headers.entries()),
+        body: errorText
       });
+      
+      // Parse error details if possible
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('Parsed OpenAI error:', errorJson);
+        
+        if (errorJson.error?.code === 'invalid_api_key') {
+          return new Response(JSON.stringify({ 
+            error: 'AI service authentication failed. Please verify your OpenAI API key is valid and has sufficient credits.' 
+          }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        if (errorJson.error?.code === 'insufficient_quota') {
+          return new Response(JSON.stringify({ 
+            error: 'AI service quota exceeded. Please check your OpenAI account credits and billing.' 
+          }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (parseError) {
+        console.error('Could not parse OpenAI error response:', parseError);
+      }
       
       // Provide specific error messages based on status code
       let errorMessage = 'AI service temporarily unavailable. Please try again.';
@@ -104,31 +191,51 @@ Always provide actionable advice and maintain a supportive, professional tone.`;
       if (response.status === 429) {
         errorMessage = 'AI service is busy right now. Please wait a moment and try again.';
       } else if (response.status === 401) {
-        errorMessage = 'AI service configuration error. Please contact support.';
+        errorMessage = 'AI service authentication error. Please contact support to verify API key configuration.';
       } else if (response.status === 400) {
         errorMessage = 'Invalid request format. Please try rephrasing your message.';
       } else if (response.status === 500) {
         errorMessage = 'AI service is experiencing issues. Please try again shortly.';
       }
       
-      throw new Error(errorMessage);
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const data = await response.json();
-    console.log('OpenAI response received successfully');
+    console.log('OpenAI response structure:', {
+      hasChoices: !!data.choices,
+      choicesLength: data.choices?.length,
+      hasFirstChoice: !!data.choices?.[0],
+      hasMessage: !!data.choices?.[0]?.message,
+      hasContent: !!data.choices?.[0]?.message?.content,
+      usage: data.usage
+    });
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Unexpected OpenAI response format:', data);
-      throw new Error('Unexpected response format from AI service');
+      return new Response(JSON.stringify({ 
+        error: 'Received unexpected response format from AI service. Please try again.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const aiResponse = data.choices[0].message.content;
+    console.log('AI response generated successfully, length:', aiResponse?.length);
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
-    console.error('Error in ai-coach-chat function:', error);
+    console.error('=== CRITICAL ERROR in ai-coach-chat function ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     // Return user-friendly error messages
     const errorMessage = error.message?.includes('AI service') 
@@ -141,3 +248,4 @@ Always provide actionable advice and maintain a supportive, professional tone.`;
     });
   }
 });
+
