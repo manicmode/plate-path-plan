@@ -47,15 +47,21 @@
     --glass-mint: 174 60% 95% / 0.8;
     --neon-glow: 174 100% 39% / 0.3;
     
-    /* Modern Light Gradients with Grain */
+    /* Enhanced Light Gradients with Subtle Tints */
     --gradient-main: 
-      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-      linear-gradient(135deg, #fefefe 0%, #f9fafb 100%);
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+      linear-gradient(135deg, #fcfcfd 0%, #f8fafc 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
-    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+    
+    /* Enhanced Card Gradients */
+    --gradient-card-nutrients: linear-gradient(135deg, rgba(252,252,253,0.98) 0%, rgba(241,245,249,0.95) 100%);
+    --gradient-card-log: linear-gradient(135deg, rgba(239,246,255,0.98) 0%, rgba(219,234,254,0.95) 100%);
+    --gradient-card-hydration: linear-gradient(135deg, rgba(240,253,250,0.98) 0%, rgba(204,251,241,0.95) 100%);
+    --gradient-card-supplements: linear-gradient(135deg, rgba(250,245,255,0.98) 0%, rgba(233,213,255,0.95) 100%);
   }
 
   .dark {
@@ -87,19 +93,21 @@
     --input: 220 13% 18%;
     --ring: 174 100% 39%;
 
-    /* Futuristic Color System - Dark Mode */
-    --emerald: 174 100% 45%;
-    --electric-blue: 218 100% 65%;
-    --mint: 174 30% 15%;
-    --glass-white: 0 0% 100% / 0.15;
-    --glass-mint: 174 30% 15% / 0.9;
-    --neon-glow: 174 100% 45% / 0.4;
-    
-    /* Dark Gradients */
-    --gradient-main: linear-gradient(135deg, #0a1a1f 0%, #0d2818 25%, #111f2b 50%, #1a0d2b 75%, #2b1a0d 100%);
+    /* Enhanced Dark Gradients */
+    --gradient-main: 
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+      linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
-    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
+    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.10) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%);
+    
+    /* Enhanced Dark Card Gradients */
+    --gradient-card-nutrients: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
+    --gradient-card-log: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.08) 100%);
+    --gradient-card-hydration: linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.08) 100%);
+    --gradient-card-supplements: linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(147,51,234,0.08) 100%);
   }
 }
 
@@ -119,7 +127,7 @@
     position: relative;
   }
 
-  /* Grain texture overlay for light mode */
+  /* Enhanced grain texture for light mode */
   body:not(.dark)::before {
     content: '';
     position: fixed;
@@ -128,17 +136,17 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    opacity: 0.05;
+    opacity: 0.03;
     background-image: 
       radial-gradient(circle at 25% 25%, #000 2px, transparent 0),
       radial-gradient(circle at 75% 75%, #000 1px, transparent 0);
-    background-size: 100px 100px;
+    background-size: 120px 120px;
     z-index: -1;
   }
 }
 
 @layer utilities {
-  /* Futuristic Gradients */
+  /* Enhanced Futuristic Gradients */
   .gradient-main {
     background: var(--gradient-main);
     background-attachment: fixed;
@@ -156,60 +164,169 @@
     background: var(--gradient-glass);
   }
 
-  /* Enhanced Glassmorphism Effects */
+  /* New Enhanced Card Gradients */
+  .gradient-card-nutrients {
+    background: var(--gradient-card-nutrients);
+  }
+  
+  .gradient-card-log {
+    background: var(--gradient-card-log);
+  }
+  
+  .gradient-card-hydration {
+    background: var(--gradient-card-hydration);
+  }
+  
+  .gradient-card-supplements {
+    background: var(--gradient-card-supplements);
+  }
+
+  /* Enhanced Glassmorphism Effects with Better Shadows */
   .glass-card {
     background: var(--glass-white);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 200, 150, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.08),
+      0 4px 16px rgba(0, 200, 150, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.04);
     transition: all 0.3s ease;
   }
   
   .glass-button {
     background: var(--glass-white);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 
+      0 4px 16px rgba(0, 0, 0, 0.06),
+      0 2px 8px rgba(0, 0, 0, 0.04);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .glass-button:hover {
-    background: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 8px 25px rgba(0, 200, 150, 0.2);
-    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 
+      0 8px 25px rgba(0, 200, 150, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
   }
   
   .dark .glass-button {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.3);
   }
   
   .dark .glass-button:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
   }
 
-  /* Enhanced Card Visibility */
+  /* Enhanced Card Visibility with Better Shadows and Neumorphism */
   .visible-card {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 200, 150, 0.15);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.08),
+      0 6px 20px rgba(0, 200, 150, 0.12),
+      0 2px 8px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(20px);
+    border-radius: 1.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .visible-card:hover {
+    box-shadow: 
+      0 16px 50px rgba(0, 0, 0, 0.12),
+      0 8px 25px rgba(0, 200, 150, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
   }
 
   .dark .visible-card {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 200, 150, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.25),
+      0 6px 20px rgba(0, 200, 150, 0.15),
+      0 2px 8px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
-  /* Neon Glow Effects */
+  .dark .visible-card:hover {
+    box-shadow: 
+      0 16px 50px rgba(0, 0, 0, 0.35),
+      0 8px 25px rgba(0, 200, 150, 0.2),
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  /* Enhanced Interactive Cards */
+  .interactive-card {
+    background: var(--gradient-card);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.06),
+      0 4px 16px rgba(0, 200, 150, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    border-radius: 1.25rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .interactive-card:hover {
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.1),
+      0 6px 20px rgba(0, 200, 150, 0.12),
+      0 3px 12px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px) scale(1.02);
+  }
+
+  .dark .interactive-card {
+    background: var(--gradient-card);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 200, 150, 0.1),
+      0 2px 8px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .dark .interactive-card:hover {
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.3),
+      0 6px 20px rgba(0, 200, 150, 0.15),
+      0 3px 12px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* Enhanced Neon Glow Effects */
   .neon-glow {
-    box-shadow: 0 0 20px var(--neon-glow), 0 0 40px rgba(0, 200, 150, 0.1);
+    box-shadow: 
+      0 0 20px var(--neon-glow), 
+      0 0 40px rgba(0, 200, 150, 0.08),
+      0 4px 16px rgba(0, 200, 150, 0.12);
   }
   
   .neon-text {
     color: hsl(var(--emerald));
     text-shadow: 0 0 10px var(--neon-glow);
+  }
+
+  /* Enhanced Spacing Utilities */
+  .section-spacing {
+    @apply mb-8 last:mb-0;
+  }
+
+  .card-spacing {
+    @apply p-6 sm:p-8;
+  }
+
+  .enhanced-padding {
+    @apply px-6 py-8 sm:px-8 sm:py-10;
   }
 
   /* Progress Ring Animation */
@@ -218,37 +335,56 @@
     transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  /* Floating Animation */
+  /* Enhanced Floating Animation */
   .float-animation {
-    animation: float 6s ease-in-out infinite;
+    animation: enhancedFloat 8s ease-in-out infinite;
   }
   
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+  @keyframes enhancedFloat {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-8px) rotate(1deg); }
+    50% { transform: translateY(-12px) rotate(0deg); }
+    75% { transform: translateY(-6px) rotate(-1deg); }
   }
 
-  /* Smooth Animations */
+  /* Enhanced Smooth Animations */
   .animate-slide-up {
-    animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: enhancedSlideUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .animate-fade-in {
-    animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: enhancedFadeIn 1s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .animate-scale-in {
-    animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: enhancedScaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Micro Interactions */
+  /* Enhanced Micro Interactions */
   .micro-bounce:hover {
-    animation: microBounce 0.3s ease-in-out;
+    animation: enhancedMicroBounce 0.4s ease-in-out;
   }
   
-  @keyframes microBounce {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+  @keyframes enhancedMicroBounce {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.03) rotate(0.5deg); }
+    50% { transform: scale(1.06) rotate(0deg); }
+    75% { transform: scale(1.03) rotate(-0.5deg); }
+  }
+
+  /* Enhanced Tab Styling */
+  .enhanced-tab {
+    @apply interactive-card px-6 py-4 text-center transition-all duration-300;
+    min-height: 4.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .enhanced-tab:hover {
+    @apply scale-105;
   }
 
   /* Scrollable Cards */
@@ -262,29 +398,36 @@
   }
 }
 
-@keyframes slideUp {
+@keyframes enhancedSlideUp {
   from { 
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(40px) scale(0.98);
   }
   to { 
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleIn {
+@keyframes enhancedFadeIn {
   from { 
     opacity: 0;
-    transform: scale(0.9);
+    filter: blur(4px);
   }
   to { 
     opacity: 1;
-    transform: scale(1);
+    filter: blur(0);
   }
 }
+
+@keyframes enhancedScaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.92) rotate(-1deg);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
