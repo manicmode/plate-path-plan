@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -152,15 +153,15 @@ const Home = () => {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>🔥</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg leading-none`}>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-orange-900 dark:text-white drop-shadow-lg leading-none`}>
                   {Math.round(progressPercentage)}%
                 </span>
                 {progressPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-200 animate-pulse mt-1`} />}
               </div>
             </div>
             <div className="text-center">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md mb-1`}>Calories</p>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-orange-100 drop-shadow-sm`}>
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-orange-900 dark:text-white drop-shadow-md mb-1`}>Calories</p>
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-orange-800 dark:text-orange-100 drop-shadow-sm`}>
                 {currentCalories.toFixed(0)}/{totalCalories}
               </p>
             </div>
@@ -194,15 +195,15 @@ const Home = () => {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💧</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg leading-none`}>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-blue-900 dark:text-white drop-shadow-lg leading-none`}>
                   {Math.round(hydrationPercentage)}%
                 </span>
                 {hydrationPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-cyan-200 animate-pulse mt-1`} />}
               </div>
             </div>
             <div className="text-center">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md mb-1`}>Hydration</p>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-cyan-100 drop-shadow-sm`}>
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-blue-900 dark:text-white drop-shadow-md mb-1`}>Hydration</p>
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-blue-800 dark:text-cyan-100 drop-shadow-sm`}>
                 {progress.hydration}/{hydrationGoal}ml
               </p>
             </div>
@@ -236,15 +237,15 @@ const Home = () => {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💊</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg leading-none`}>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-purple-900 dark:text-white drop-shadow-lg leading-none`}>
                   {Math.round(supplementPercentage)}%
                 </span>
                 {supplementPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-200 animate-pulse mt-1`} />}
               </div>
             </div>
             <div className="text-center">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md mb-1`}>Supplements</p>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-purple-100 drop-shadow-sm`}>
+              <p className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold text-purple-900 dark:text-white drop-shadow-md mb-1`}>Supplements</p>
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-purple-800 dark:text-purple-100 drop-shadow-sm`}>
                 {progress.supplements}/{supplementGoal}
               </p>
             </div>
