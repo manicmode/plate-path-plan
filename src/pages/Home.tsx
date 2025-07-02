@@ -124,127 +124,133 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Enhanced Daily Tracker Cards */}
+      {/* Redesigned Daily Tracker Cards */}
       <div className={`grid grid-cols-3 ${isMobile ? 'gap-6' : 'gap-8'} animate-scale-in items-stretch`}>
-        {/* Enhanced Calories Tracker */}
-        <Card 
-          className={`modern-tracker-card calories-tracker border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group`}
+        {/* Vibrant Calories Tracker */}
+        <div 
+          className={`calories-tracker-vibrant border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
           onClick={() => setShowCelebration(true)}
           title={getMotivationalMessage(progressPercentage, 'Calories')}
         >
-          <CardContent className="flex flex-col items-center justify-between p-0 h-full">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-red-500/15 to-pink-500/10 backdrop-blur-xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-orange-600/30 via-transparent to-transparent"></div>
+          <div className="relative flex flex-col items-center justify-between h-full">
             <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex-shrink-0 mt-2`}>
               <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 87, 34, 0.2)" strokeWidth="6" />
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 154, 0, 0.2)" strokeWidth="4" />
                 <circle
-                  cx="60" cy="60" r="50" fill="none" stroke="url(#calorieGradient)" strokeWidth="8"
+                  cx="60" cy="60" r="50" fill="none" stroke="url(#calorieGradientVibrant)" strokeWidth="6"
                   strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (progressPercentage / 100) * 314}
-                  className="transition-all duration-2000 ease-out calories-ring-glow"
+                  className="transition-all duration-2000 ease-out filter drop-shadow-lg"
                 />
                 <defs>
-                  <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FF9800" />
-                    <stop offset="50%" stopColor="#FF5722" />
-                    <stop offset="100%" stopColor="#E65100" />
+                  <linearGradient id="calorieGradientVibrant" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FF6B35" />
+                    <stop offset="50%" stopColor="#F7931E" />
+                    <stop offset="100%" stopColor="#FF4500" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform`}>🔥</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-orange-600 dark:text-orange-400`}>
+                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>🔥</span>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg`}>
                   {Math.round(progressPercentage)}%
                 </span>
-                {progressPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-400 animate-pulse mt-1`} />}
+                {progressPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-200 animate-pulse mt-1`} />}
               </div>
             </div>
             <div className="text-center flex-shrink-0 space-y-2">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>Calories</p>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md`}>Calories</p>
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-orange-100 drop-shadow-sm`}>
                 {currentCalories.toFixed(0)}/{totalCalories}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Enhanced Hydration Tracker */}
-        <Card 
-          className={`modern-tracker-card hydration-tracker border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group`}
+        {/* Vibrant Hydration Tracker */}
+        <div 
+          className={`hydration-tracker-vibrant border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
           onClick={() => navigate('/hydration')}
           title={getMotivationalMessage(hydrationPercentage, 'Hydration')}
         >
-          <CardContent className="flex flex-col items-center justify-between p-0 h-full">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-500/15 to-indigo-500/10 backdrop-blur-xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-600/30 via-transparent to-transparent"></div>
+          <div className="relative flex flex-col items-center justify-between h-full">
             <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex-shrink-0 mt-2`}>
               <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(3, 169, 244, 0.2)" strokeWidth="6" />
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0, 191, 255, 0.2)" strokeWidth="4" />
                 <circle
-                  cx="60" cy="60" r="50" fill="none" stroke="url(#hydrationGradient)" strokeWidth="8"
+                  cx="60" cy="60" r="50" fill="none" stroke="url(#hydrationGradientVibrant)" strokeWidth="6"
                   strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (hydrationPercentage / 100) * 314}
-                  className="transition-all duration-2000 ease-out hydration-ring-glow"
+                  className="transition-all duration-2000 ease-out filter drop-shadow-lg"
                 />
                 <defs>
-                  <linearGradient id="hydrationGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#00E5FF" />
-                    <stop offset="50%" stopColor="#03A9F4" />
-                    <stop offset="100%" stopColor="#0277BD" />
+                  <linearGradient id="hydrationGradientVibrant" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#00D4FF" />
+                    <stop offset="50%" stopColor="#0099CC" />
+                    <stop offset="100%" stopColor="#006699" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform`}>💧</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-cyan-600 dark:text-cyan-400`}>
+                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💧</span>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg`}>
                   {Math.round(hydrationPercentage)}%
                 </span>
-                {hydrationPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-cyan-400 animate-pulse mt-1`} />}
+                {hydrationPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-cyan-200 animate-pulse mt-1`} />}
               </div>
             </div>
             <div className="text-center flex-shrink-0 space-y-2">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>Hydration</p>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md`}>Hydration</p>
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-cyan-100 drop-shadow-sm`}>
                 {progress.hydration}/{hydrationGoal}ml
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Enhanced Supplements Tracker */}
-        <Card 
-          className={`modern-tracker-card supplements-tracker border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group`}
+        {/* Vibrant Supplements Tracker */}
+        <div 
+          className={`supplements-tracker-vibrant border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
           onClick={() => navigate('/supplements')}
           title={getMotivationalMessage(supplementPercentage, 'Supplements')}
         >
-          <CardContent className="flex flex-col items-center justify-between p-0 h-full">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-violet-500/15 to-pink-500/10 backdrop-blur-xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-purple-600/30 via-transparent to-transparent"></div>
+          <div className="relative flex flex-col items-center justify-between h-full">
             <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex-shrink-0 mt-2`}>
               <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(156, 39, 176, 0.2)" strokeWidth="6" />
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(147, 51, 234, 0.2)" strokeWidth="4" />
                 <circle
-                  cx="60" cy="60" r="50" fill="none" stroke="url(#supplementGradient)" strokeWidth="8"
+                  cx="60" cy="60" r="50" fill="none" stroke="url(#supplementGradientVibrant)" strokeWidth="6"
                   strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (supplementPercentage / 100) * 314}
-                  className="transition-all duration-2000 ease-out supplements-ring-glow"
+                  className="transition-all duration-2000 ease-out filter drop-shadow-lg"
                 />
                 <defs>
-                  <linearGradient id="supplementGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#BA55D3" />
-                    <stop offset="50%" stopColor="#9C27B0" />
-                    <stop offset="100%" stopColor="#7B1FA2" />
+                  <linearGradient id="supplementGradientVibrant" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#DA44BB" />
+                    <stop offset="50%" stopColor="#9333EA" />
+                    <stop offset="100%" stopColor="#7C3AED" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform`}>💊</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-purple-600 dark:text-purple-400`}>
+                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💊</span>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg`}>
                   {Math.round(supplementPercentage)}%
                 </span>
-                {supplementPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-400 animate-pulse mt-1`} />}
+                {supplementPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-200 animate-pulse mt-1`} />}
               </div>
             </div>
             <div className="text-center flex-shrink-0 space-y-2">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>Supplements</p>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md`}>Supplements</p>
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-purple-100 drop-shadow-sm`}>
                 {progress.supplements}/{supplementGoal}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Enhanced Logging Actions Section */}
