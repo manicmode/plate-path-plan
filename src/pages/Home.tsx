@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -134,8 +133,8 @@ const Home = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-red-500/15 to-pink-500/10 backdrop-blur-xl"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-orange-600/30 via-transparent to-transparent"></div>
-          <div className="relative flex flex-col items-center justify-between h-full">
-            <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex-shrink-0 mt-2`}>
+          <div className="relative flex flex-col items-center justify-center h-full">
+            <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex items-center justify-center mb-4`}>
               <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 154, 0, 0.2)" strokeWidth="4" />
                 <circle
@@ -152,15 +151,15 @@ const Home = () => {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>🔥</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg`}>
+                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>🔥</span>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg leading-none`}>
                   {Math.round(progressPercentage)}%
                 </span>
                 {progressPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-200 animate-pulse mt-1`} />}
               </div>
             </div>
-            <div className="text-center flex-shrink-0 space-y-2">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md`}>Calories</p>
+            <div className="text-center">
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md mb-1`}>Calories</p>
               <p className={`${isMobile ? 'text-sm' : 'text-base'} text-orange-100 drop-shadow-sm`}>
                 {currentCalories.toFixed(0)}/{totalCalories}
               </p>
@@ -176,8 +175,8 @@ const Home = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-500/15 to-indigo-500/10 backdrop-blur-xl"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-blue-600/30 via-transparent to-transparent"></div>
-          <div className="relative flex flex-col items-center justify-between h-full">
-            <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex-shrink-0 mt-2`}>
+          <div className="relative flex flex-col items-center justify-center h-full">
+            <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex items-center justify-center mb-4`}>
               <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0, 191, 255, 0.2)" strokeWidth="4" />
                 <circle
@@ -194,15 +193,15 @@ const Home = () => {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💧</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg`}>
+                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💧</span>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg leading-none`}>
                   {Math.round(hydrationPercentage)}%
                 </span>
                 {hydrationPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-cyan-200 animate-pulse mt-1`} />}
               </div>
             </div>
-            <div className="text-center flex-shrink-0 space-y-2">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md`}>Hydration</p>
+            <div className="text-center">
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md mb-1`}>Hydration</p>
               <p className={`${isMobile ? 'text-sm' : 'text-base'} text-cyan-100 drop-shadow-sm`}>
                 {progress.hydration}/{hydrationGoal}ml
               </p>
@@ -218,8 +217,8 @@ const Home = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-violet-500/15 to-pink-500/10 backdrop-blur-xl"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-purple-600/30 via-transparent to-transparent"></div>
-          <div className="relative flex flex-col items-center justify-between h-full">
-            <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex-shrink-0 mt-2`}>
+          <div className="relative flex flex-col items-center justify-center h-full">
+            <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex items-center justify-center mb-4`}>
               <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(147, 51, 234, 0.2)" strokeWidth="4" />
                 <circle
@@ -236,15 +235,15 @@ const Home = () => {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💊</span>
-                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg`}>
+                <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>💊</span>
+                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-white drop-shadow-lg leading-none`}>
                   {Math.round(supplementPercentage)}%
                 </span>
                 {supplementPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-200 animate-pulse mt-1`} />}
               </div>
             </div>
-            <div className="text-center flex-shrink-0 space-y-2">
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md`}>Supplements</p>
+            <div className="text-center">
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white drop-shadow-md mb-1`}>Supplements</p>
               <p className={`${isMobile ? 'text-sm' : 'text-base'} text-purple-100 drop-shadow-sm`}>
                 {progress.supplements}/{supplementGoal}
               </p>
