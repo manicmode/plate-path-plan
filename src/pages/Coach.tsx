@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Bot, User, Sparkles, Target, TrendingUp, Zap, ChevronDown } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Target, TrendingUp, Zap, ChevronDown, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,6 +16,7 @@ interface Message {
   text: string;
   sender: 'user' | 'coach';
   timestamp: Date;
+  isError?: boolean;
 }
 
 const Coach = () => {
@@ -54,6 +55,8 @@ const Coach = () => {
 
   const callAICoach = async (userMessage: string): Promise<string> => {
     try {
+      console.log('Calling AI coach with message:', userMessage);
+      
       // Check rate limiting
       const now = Date.now();
       if (now - lastRequestTime < RATE_LIMIT_MS) {
@@ -74,6 +77,8 @@ const Coach = () => {
         }
       };
 
+      console.log('User context:', userContext);
+
       const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
         body: {
           message: userMessage,
@@ -81,15 +86,24 @@ const Coach = () => {
         }
       });
 
+      console.log('Supabase function response:', { data, error });
+
       if (error) {
         console.error('Edge function error:', error);
-        throw error;
+        throw new Error(error.message || 'Failed to connect to AI service');
       }
 
-      if (data.error) {
+      if (data?.error) {
+        console.error('AI service error:', data.error);
         throw new Error(data.error);
       }
 
+      if (!data?.response) {
+        console.error('No response from AI service:', data);
+        throw new Error('No response received from AI service');
+      }
+
+      console.log('AI response received successfully');
       return data.response;
     } catch (error) {
       console.error('Error calling AI coach:', error);
@@ -97,14 +111,16 @@ const Coach = () => {
       // Show user-friendly error toast
       const errorMessage = error.message || "Failed to get AI response. Please try again.";
       toast({
-        title: "AI Coach Unavailable",
+        title: "AI Coach Error",
         description: errorMessage,
         variant: "destructive"
       });
       
-      // Return fallback message
-      if (error.message && error.message.includes('busy')) {
+      // Return fallback message based on error type
+      if (error.message?.includes('busy') || error.message?.includes('rate')) {
         return "I'm experiencing high demand right now. Please wait a moment and try again! 🤖⏰";
+      } else if (error.message?.includes('configuration') || error.message?.includes('key')) {
+        return "There's a configuration issue with the AI service. Please contact support. 🔧";
       }
       
       return "I'm having trouble connecting right now. Please try again in a moment! 🤖";
@@ -148,6 +164,7 @@ const Coach = () => {
         text: aiResponse,
         sender: 'coach',
         timestamp: new Date(),
+        isError: aiResponse.includes("having trouble connecting") || aiResponse.includes("configuration issue")
       };
 
       setMessages(prev => [...prev, coachResponse]);
@@ -229,10 +246,14 @@ const Coach = () => {
                     <AvatarFallback className={
                       message.sender === 'user' 
                         ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white' 
+                        : message.isError
+                        ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white'
                         : 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white'
                     }>
                       {message.sender === 'user' ? 
                         <User className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} /> : 
+                        message.isError ?
+                        <AlertCircle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} /> :
                         <Bot className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
                       }
                     </AvatarFallback>
@@ -241,6 +262,8 @@ const Coach = () => {
                   <div className={`rounded-2xl ${isMobile ? 'p-3' : 'p-4'} ${
                     message.sender === 'user'
                       ? 'gradient-primary text-white border-0'
+                      : message.isError
+                      ? 'bg-red-50 dark:bg-red-900/20 backdrop-blur-sm border border-red-200/50 dark:border-red-700/50 text-red-900 dark:text-red-100'
                       : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-gray-100'
                   }`}>
                     <p className={`${isMobile ? 'text-sm' : 'text-sm'} whitespace-pre-line font-medium leading-relaxed`}>{message.text}</p>
