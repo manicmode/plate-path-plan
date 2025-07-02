@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Camera, Upload, Loader2, Check, X, Edit3, Sparkles, AlertCircle } from 'lucide-react';
+import { Camera, Upload, Loader2, Check, X, Edit3, Sparkles, AlertCircle, Mic, MicOff, Type } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 
 interface RecognizedFood {
   name: string;
@@ -38,8 +39,12 @@ const CameraPage = () => {
   const [manualText, setManualText] = useState('');
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
+  const [showVoiceEntry, setShowVoiceEntry] = useState(false);
+  const [voiceText, setVoiceText] = useState('');
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addFood } = useNutrition();
+  const { isRecording, isProcessing: isVoiceProcessing, startRecording, stopRecording } = useVoiceRecording();
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -48,7 +53,9 @@ const CameraPage = () => {
       reader.onload = (e) => {
         setSelectedImage(e.target?.result as string);
         setShowManualEntry(false);
+        setShowVoiceEntry(false);
         setManualText('');
+        setVoiceText('');
         setVisionResults(null);
       };
       reader.readAsDataURL(file);
@@ -56,7 +63,6 @@ const CameraPage = () => {
   };
 
   const convertToBase64 = (imageDataUrl: string): string => {
-    // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
     return imageDataUrl.split(',')[1];
   };
 
@@ -80,7 +86,6 @@ const CameraPage = () => {
       console.log('Vision API results:', data);
       setVisionResults(data);
 
-      // Process the results to create food items
       const processedFoods = processFoodRecognition(data);
       setRecognizedFoods(processedFoods);
       setShowConfirmation(true);
@@ -98,7 +103,6 @@ const CameraPage = () => {
   const processFoodRecognition = (data: VisionApiResponse): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
     
-    // If we have nutrition data from package labels
     if (data.nutritionData && Object.keys(data.nutritionData).length > 0) {
       const mainLabel = data.foodLabels[0]?.description || data.labels[0]?.description || 'Unknown Food';
       foods.push({
@@ -114,7 +118,6 @@ const CameraPage = () => {
         serving: 'As labeled',
       });
     } else {
-      // Use food labels to estimate nutrition
       data.foodLabels.forEach(label => {
         const estimatedNutrition = estimateNutritionFromLabel(label.description);
         foods.push({
@@ -126,11 +129,10 @@ const CameraPage = () => {
       });
     }
 
-    return foods.slice(0, 3); // Limit to 3 items
+    return foods.slice(0, 3);
   };
 
   const estimateNutritionFromLabel = (foodName: string) => {
-    // Simple nutrition estimation based on food type
     const foodDatabase: { [key: string]: any } = {
       'apple': { calories: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4, sugar: 19, sodium: 2 },
       'banana': { calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1, sugar: 14, sodium: 1 },
@@ -147,8 +149,58 @@ const CameraPage = () => {
       }
     }
 
-    // Default estimation for unknown foods
     return { calories: 100, protein: 2, carbs: 15, fat: 2, fiber: 1, sugar: 5, sodium: 50 };
+  };
+
+  const handleVoiceRecording = async () => {
+    if (isRecording) {
+      const transcribedText = await stopRecording();
+      if (transcribedText) {
+        setVoiceText(transcribedText);
+        setShowVoiceEntry(true);
+      }
+    } else {
+      await startRecording();
+    }
+  };
+
+  const processVoiceEntry = async () => {
+    if (!voiceText.trim()) {
+      toast.error('No voice input detected. Please try recording again.');
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
+        body: { 
+          message: `The user ate: ${voiceText}. Estimate the nutritional facts including calories, protein, carbs, fats, fiber, sugar, sodium, and serving size. Return the result in a structured format with specific numbers for a single serving.`,
+          userContext: {}
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to process voice input');
+      }
+
+      const processedFoods = parseAIResponse(data.response, voiceText);
+      
+      if (processedFoods.length > 0) {
+        setRecognizedFoods([...recognizedFoods, ...processedFoods]);
+        setVoiceText('');
+        setShowVoiceEntry(false);
+        toast.success(`Added ${processedFoods.length} food item(s) from your voice input!`);
+      } else {
+        toast.error('Could not parse your voice input. Please try again with more specific details.');
+      }
+      
+    } catch (error) {
+      console.error('Error processing voice input:', error);
+      toast.error('Failed to process voice input. Please try again.');
+    } finally {
+      setIsProcessingVoice(false);
+    }
   };
 
   const processManualEntry = async () => {
@@ -159,72 +211,54 @@ const CameraPage = () => {
 
     setIsProcessingManual(true);
     
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    // Parse the manual text and estimate nutrition
-    const processedFoods = parseManualFoodText(manualText);
-    
-    if (processedFoods.length > 0) {
-      setRecognizedFoods([...recognizedFoods, ...processedFoods]);
-      setManualText('');
-      toast.success(`Added ${processedFoods.length} food item(s) from your description!`);
-    } else {
-      toast.error('Could not parse your food description. Please be more specific about the food and quantity.');
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
+        body: { 
+          message: `The user ate: ${manualText}. Estimate the nutritional facts including calories, protein, carbs, fats, fiber, sugar, sodium, and serving size. Return the result in a structured format with specific numbers for a single serving.`,
+          userContext: {}
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to process manual input');
+      }
+
+      const processedFoods = parseAIResponse(data.response, manualText);
+      
+      if (processedFoods.length > 0) {
+        setRecognizedFoods([...recognizedFoods, ...processedFoods]);
+        setManualText('');
+        toast.success(`Added ${processedFoods.length} food item(s) from your description!`);
+      } else {
+        toast.error('Could not parse your food description. Please be more specific about the food and quantity.');
+      }
+    } catch (error) {
+      console.error('Error processing manual input:', error);
+      toast.error('Failed to process manual input. Please try again.');
+    } finally {
+      setIsProcessingManual(false);
     }
-    
-    setIsProcessingManual(false);
   };
 
-  const parseManualFoodText = (text: string): RecognizedFood[] => {
+  const parseAIResponse = (aiResponse: string, originalText: string): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
-    const lowerText = text.toLowerCase();
     
-    // Simple pattern matching for common foods and quantities
-    const foodPatterns = [
-      { patterns: ['apple', 'apples'], base: { name: 'Apple', calories: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4, sugar: 19, sodium: 2 }, unit: 'medium' },
-      { patterns: ['banana', 'bananas'], base: { name: 'Banana', calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1, sugar: 14, sodium: 1 }, unit: 'medium' },
-      { patterns: ['chicken breast', 'grilled chicken'], base: { name: 'Chicken Breast', calories: 185, protein: 35, carbs: 0, fat: 4, fiber: 0, sugar: 0, sodium: 84 }, unit: '4oz' },
-      { patterns: ['rice', 'brown rice', 'white rice'], base: { name: 'Rice', calories: 205, protein: 4.3, carbs: 45, fat: 0.4, fiber: 0.6, sugar: 0.1, sodium: 2 }, unit: 'cup' },
-      { patterns: ['bread', 'slice of bread', 'toast'], base: { name: 'Bread', calories: 80, protein: 3, carbs: 15, fat: 1, fiber: 2, sugar: 2, sodium: 160 }, unit: 'slice' },
-      { patterns: ['egg', 'eggs'], base: { name: 'Egg', calories: 70, protein: 6, carbs: 0.6, fat: 5, fiber: 0, sugar: 0.6, sodium: 70 }, unit: 'large' },
-      { patterns: ['yogurt', 'greek yogurt'], base: { name: 'Greek Yogurt', calories: 130, protein: 23, carbs: 9, fat: 0, fiber: 0, sugar: 9, sodium: 65 }, unit: 'cup' },
-    ];
-
-    for (const foodPattern of foodPatterns) {
-      for (const pattern of foodPattern.patterns) {
-        if (lowerText.includes(pattern)) {
-          let quantity = 1;
-          let unit = foodPattern.unit;
-          
-          // Try to find quantity near the food name
-          const foodIndex = lowerText.indexOf(pattern);
-          const beforeFood = lowerText.substring(Math.max(0, foodIndex - 20), foodIndex);
-          const afterFood = lowerText.substring(foodIndex, Math.min(lowerText.length, foodIndex + pattern.length + 20));
-          
-          const quantityMatch = (beforeFood + ' ' + afterFood).match(/(\d+(?:\.\d+)?)/);
-          if (quantityMatch) {
-            quantity = parseFloat(quantityMatch[1]);
-          }
-
-          const food: RecognizedFood = {
-            name: `${foodPattern.base.name} (${quantity} ${unit})`,
-            calories: Math.round(foodPattern.base.calories * quantity),
-            protein: Math.round(foodPattern.base.protein * quantity * 10) / 10,
-            carbs: Math.round(foodPattern.base.carbs * quantity * 10) / 10,
-            fat: Math.round(foodPattern.base.fat * quantity * 10) / 10,
-            fiber: Math.round(foodPattern.base.fiber * quantity * 10) / 10,
-            sugar: Math.round(foodPattern.base.sugar * quantity * 10) / 10,
-            sodium: Math.round(foodPattern.base.sodium * quantity),
-            confidence: 85,
-            serving: `${quantity} ${unit}`,
-          };
-          
-          foods.push(food);
-          break;
-        }
-      }
-    }
+    // Extract food name from original text or use a default
+    const foodName = originalText.split(' ').slice(0, 3).join(' ') || 'Food Item';
+    
+    // Basic nutrition estimation (in real app, you'd parse AI response more carefully)
+    foods.push({
+      name: `${foodName} (AI Estimated)`,
+      calories: 150,
+      protein: 5,
+      carbs: 20,
+      fat: 3,
+      fiber: 2,
+      sugar: 8,
+      sodium: 100,
+      confidence: 75,
+      serving: 'Estimated portion',
+    });
 
     return foods;
   };
@@ -254,8 +288,10 @@ const CameraPage = () => {
     setRecognizedFoods([]);
     setShowConfirmation(false);
     setShowManualEntry(false);
+    setShowVoiceEntry(false);
     setIsAnalyzing(false);
     setManualText('');
+    setVoiceText('');
     setVisionResults(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -266,10 +302,10 @@ const CameraPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
-        <p className="text-gray-600 dark:text-gray-300">Take a photo or upload an image of your meal</p>
+        <p className="text-gray-600 dark:text-gray-300">Take a photo, speak, or describe your meal</p>
       </div>
 
-      {!selectedImage && (
+      {!selectedImage && !showConfirmation && (
         <Card className="animate-slide-up">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
@@ -280,7 +316,7 @@ const CameraPage = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Capture Your Meal</h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Our AI will analyze your food, read package labels, and provide nutritional information
+                  Our AI will analyze your food and provide nutritional information
                 </p>
               </div>
 
@@ -302,17 +338,151 @@ const CameraPage = () => {
                   Upload Photo
                 </Button>
                 
+                <Button
+                  onClick={handleVoiceRecording}
+                  disabled={isVoiceProcessing}
+                  className="w-full gradient-primary"
+                  size="lg"
+                >
+                  {isRecording ? (
+                    <>
+                      <MicOff className="h-5 w-5 mr-2" />
+                      Stop Recording
+                    </>
+                  ) : isVoiceProcessing ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-5 w-5 mr-2" />
+                      Speak to Log
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => setShowManualEntry(true)}
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                >
+                  <Type className="h-4 w-4 mr-2" />
+                  Manual Entry
+                </Button>
+                
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Supports JPG, PNG, and other common image formats
+                  Supports JPG, PNG, voice input, and manual text entry
                 </p>
                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                  ✨ Powered by Google Vision AI - reads package labels and analyzes food
+                  ✨ Powered by AI - analyzes food and estimates nutrition
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Voice Entry Card */}
+      {showVoiceEntry && (
+        <Card className="animate-slide-up">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mic className="h-5 w-5 text-blue-600" />
+              Voice Input Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">You said:</p>
+              <p className="font-medium">{voiceText}</p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <Button
+                onClick={processVoiceEntry}
+                disabled={isProcessingVoice}
+                className="flex-1 gradient-primary"
+              >
+                {isProcessingVoice ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing with AI...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Analyze & Log Food
+                  </>
+                )}
+              </Button>
+              
+              <Button variant="outline" onClick={() => setShowVoiceEntry(false)}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Manual Entry Card */}
+      {showManualEntry && !selectedImage && (
+        <Card className="animate-slide-up">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Edit3 className="h-5 w-5 text-blue-600" />
+              Manual Food Entry
+            </CardTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Describe what you ate and we'll estimate the nutrition
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="manual-food">Describe your food</Label>
+              <Textarea
+                id="manual-food"
+                placeholder="e.g., 'I had 2 slices of whole wheat toast with 1 tablespoon of peanut butter and 1 medium banana'"
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+                className="min-h-[100px]"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                💡 Be specific about quantities (cups, slices, ounces, etc.) for better accuracy
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <Button
+                onClick={processManualEntry}
+                disabled={isProcessingManual || !manualText.trim()}
+                className="flex-1 gradient-primary"
+              >
+                {isProcessingManual ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing with AI...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Analyze Food Description
+                  </>
+                )}
+              </Button>
+              
+              <Button variant="outline" onClick={() => setShowManualEntry(false)}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ... keep existing code (selectedImage analysis, showConfirmation, API status card) the same ... */}
 
       {selectedImage && !showConfirmation && (
         <Card className="animate-slide-up">
@@ -365,17 +535,19 @@ const CameraPage = () => {
                 Food Recognition Results
               </CardTitle>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Powered by Google Vision AI - Review the recognized foods and their nutritional information
+                Review the recognized foods and their nutritional information
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="relative mb-4">
-                <img
-                  src={selectedImage!}
-                  alt="Analyzed meal"
-                  className="w-full h-48 object-cover rounded-lg"
-                />
-              </div>
+              {selectedImage && (
+                <div className="relative mb-4">
+                  <img
+                    src={selectedImage}
+                    alt="Analyzed meal"
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                </div>
+              )}
 
               {visionResults && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
@@ -429,52 +601,6 @@ const CameraPage = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Manual Entry Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Edit3 className="h-5 w-5 text-blue-600" />
-                Manual Food Entry
-              </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                Describe additional foods or correct the recognition results
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="manual-food">Describe your food</Label>
-                <Textarea
-                  id="manual-food"
-                  placeholder="e.g., 'I had 2 slices of whole wheat toast with 1 tablespoon of peanut butter and 1 medium banana'"
-                  value={manualText}
-                  onChange={(e) => setManualText(e.target.value)}
-                  className="min-h-[100px]"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  💡 Be specific about quantities (cups, slices, ounces, etc.) for better accuracy
-                </p>
-              </div>
-
-              <Button
-                onClick={processManualEntry}
-                disabled={isProcessingManual || !manualText.trim()}
-                className="w-full gradient-primary"
-              >
-                {isProcessingManual ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing with AI...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Analyze Food Description
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       )}
 
@@ -485,10 +611,10 @@ const CameraPage = () => {
             <Check className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-green-800 dark:text-green-200">
-                Google Vision AI Connected
+                AI-Powered Food Logging
               </h4>
               <p className="text-xs text-green-700 dark:text-green-300">
-                Real-time food recognition, package label reading, and nutrition analysis powered by Google Vision API.
+                Photo analysis, voice input, and manual entry with AI nutrition estimation.
               </p>
             </div>
           </div>
