@@ -5,7 +5,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* NutriCoach Futuristic Design System */
+/* NutriCoach Enhanced Futuristic Design System */
 
 @layer base {
   :root {
@@ -39,29 +39,30 @@
 
     --radius: 1rem;
 
-    /* Futuristic Color System - Light Mode */
+    /* Enhanced Futuristic Color System - Light Mode */
     --emerald: 174 100% 39%;
     --electric-blue: 218 100% 59%;
     --mint: 174 60% 95%;
-    --glass-white: 0 0% 100% / 0.95;
-    --glass-mint: 174 60% 95% / 0.8;
-    --neon-glow: 174 100% 39% / 0.3;
+    --glass-white: 0 0% 100% / 0.98;
+    --glass-mint: 174 60% 95% / 0.85;
+    --neon-glow: 174 100% 39% / 0.4;
     
-    /* Enhanced Light Gradients with Subtle Tints */
+    /* Enhanced Light Gradients with Subtle Section Tints */
     --gradient-main: 
-      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.12) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
-      linear-gradient(135deg, #fcfcfd 0%, #f8fafc 100%);
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.04) 0%, transparent 50%),
+      linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
     --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
     
-    /* Enhanced Card Gradients */
-    --gradient-card-nutrients: linear-gradient(135deg, rgba(252,252,253,0.98) 0%, rgba(241,245,249,0.95) 100%);
-    --gradient-card-log: linear-gradient(135deg, rgba(239,246,255,0.98) 0%, rgba(219,234,254,0.95) 100%);
-    --gradient-card-hydration: linear-gradient(135deg, rgba(240,253,250,0.98) 0%, rgba(204,251,241,0.95) 100%);
-    --gradient-card-supplements: linear-gradient(135deg, rgba(250,245,255,0.98) 0%, rgba(233,213,255,0.95) 100%);
+    /* Enhanced Section Background Tints */
+    --section-bg-light: rgba(248, 249, 251, 0.6);
+    --section-bg-calories: rgba(16, 185, 129, 0.03);
+    --section-bg-hydration: rgba(6, 182, 212, 0.03);
+    --section-bg-supplements: rgba(147, 51, 234, 0.03);
+    --section-bg-log-food: rgba(59, 130, 246, 0.03);
   }
 
   .dark {
@@ -95,19 +96,20 @@
 
     /* Enhanced Dark Gradients */
     --gradient-main: 
-      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.10) 0%, transparent 50%),
       radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
       linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     --gradient-primary: linear-gradient(135deg, #00C896 0%, #2E8BFF 100%);
-    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.10) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%);
+    --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.10) 100%);
     
-    /* Enhanced Dark Card Gradients */
-    --gradient-card-nutrients: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
-    --gradient-card-log: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.08) 100%);
-    --gradient-card-hydration: linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.08) 100%);
-    --gradient-card-supplements: linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(147,51,234,0.08) 100%);
+    /* Enhanced Dark Section Background Tints */
+    --section-bg-light: rgba(30, 41, 59, 0.4);
+    --section-bg-calories: rgba(16, 185, 129, 0.08);
+    --section-bg-hydration: rgba(6, 182, 212, 0.08);
+    --section-bg-supplements: rgba(147, 51, 234, 0.08);
+    --section-bg-log-food: rgba(59, 130, 246, 0.08);
   }
 }
 
@@ -127,8 +129,8 @@
     position: relative;
   }
 
-  /* Enhanced grain texture for light mode */
-  body:not(.dark)::before {
+  /* Enhanced grain texture for both modes */
+  body::before {
     content: '';
     position: fixed;
     top: 0;
@@ -136,17 +138,179 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    opacity: 0.03;
+    opacity: 0.02;
     background-image: 
-      radial-gradient(circle at 25% 25%, #000 2px, transparent 0),
-      radial-gradient(circle at 75% 75%, #000 1px, transparent 0);
-    background-size: 120px 120px;
+      radial-gradient(circle at 25% 25%, currentColor 1px, transparent 0),
+      radial-gradient(circle at 75% 75%, currentColor 0.5px, transparent 0);
+    background-size: 100px 100px;
     z-index: -1;
+  }
+
+  .dark body::before {
+    opacity: 0.03;
   }
 }
 
 @layer utilities {
-  /* Enhanced Futuristic Gradients */
+  /* Enhanced Section Styling */
+  .enhanced-section {
+    background: var(--section-bg-light);
+    border-radius: 1.5rem;
+    padding: 1rem;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  @media (min-width: 640px) {
+    .enhanced-section {
+      padding: 1.5rem;
+    }
+  }
+
+  /* Enhanced Card System */
+  .enhanced-card {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 
+      0 16px 50px rgba(0, 0, 0, 0.08),
+      0 8px 25px rgba(0, 200, 150, 0.12),
+      0 4px 12px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark .enhanced-card {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 16px 50px rgba(0, 0, 0, 0.25),
+      0 8px 25px rgba(0, 200, 150, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  /* Enhanced Hover Effects */
+  .enhanced-hover:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.12),
+      0 12px 30px rgba(0, 200, 150, 0.18),
+      0 6px 16px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .dark .enhanced-hover:hover {
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.35),
+      0 12px 30px rgba(0, 200, 150, 0.25),
+      0 6px 16px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* Enhanced Progress Card Specific Styles */
+  .enhanced-progress-card.calories-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .enhanced-progress-card.calories-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  .enhanced-progress-card.hydration-card {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .enhanced-progress-card.hydration-card {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  .enhanced-progress-card.supplements-card {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.08) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .enhanced-progress-card.supplements-card {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.15) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  /* Enhanced Action Card Specific Styles */
+  .log-food-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .log-food-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  .hydration-action-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .hydration-action-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  .supplements-action-card {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .supplements-action-card {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.12) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  .nutrients-card {
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .nutrients-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.08) 100%);
+  }
+
+  .ai-insights-card {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%);
+  }
+
+  .dark .ai-insights-card {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(255, 255, 255, 0.12) 100%);
+  }
+
+  /* Enhanced Icon Glow Effects */
+  .enhanced-icon-glow {
+    box-shadow: 
+      0 0 20px rgba(0, 200, 150, 0.4), 
+      0 0 40px rgba(0, 200, 150, 0.2),
+      0 4px 16px rgba(0, 200, 150, 0.3);
+  }
+
+  /* Enhanced Progress Ring Styling */
+  .enhanced-progress-ring {
+    transform: rotate(-90deg);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 4px 8px rgba(0, 200, 150, 0.3));
+  }
+
+  /* Enhanced Progress Bar */
+  .enhanced-progress-bar {
+    box-shadow: 
+      0 2px 8px rgba(0, 200, 150, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  /* Enhanced Animations */
+  .animate-pulse-glow {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { 
+      filter: drop-shadow(0 4px 8px rgba(0, 200, 150, 0.3));
+    }
+    50% { 
+      filter: drop-shadow(0 6px 12px rgba(0, 200, 150, 0.5));
+    }
+  }
+
+  /* Keep existing utilities */
   .gradient-main {
     background: var(--gradient-main);
     background-attachment: fixed;
@@ -164,24 +328,6 @@
     background: var(--gradient-glass);
   }
 
-  /* New Enhanced Card Gradients */
-  .gradient-card-nutrients {
-    background: var(--gradient-card-nutrients);
-  }
-  
-  .gradient-card-log {
-    background: var(--gradient-card-log);
-  }
-  
-  .gradient-card-hydration {
-    background: var(--gradient-card-hydration);
-  }
-  
-  .gradient-card-supplements {
-    background: var(--gradient-card-supplements);
-  }
-
-  /* Enhanced Glassmorphism Effects with Better Shadows */
   .glass-card {
     background: var(--glass-white);
     backdrop-filter: blur(20px);
@@ -220,7 +366,6 @@
     background: rgba(255, 255, 255, 0.25);
   }
 
-  /* Enhanced Card Visibility with Better Shadows and Neumorphism */
   .visible-card {
     background: rgba(255, 255, 255, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.6);
@@ -261,49 +406,6 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.25);
   }
 
-  /* Enhanced Interactive Cards */
-  .interactive-card {
-    background: var(--gradient-card);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.06),
-      0 4px 16px rgba(0, 200, 150, 0.08),
-      0 2px 8px rgba(0, 0, 0, 0.03),
-      inset 0 1px 0 rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(16px);
-    border-radius: 1.25rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-  }
-
-  .interactive-card:hover {
-    box-shadow: 
-      0 12px 40px rgba(0, 0, 0, 0.1),
-      0 6px 20px rgba(0, 200, 150, 0.12),
-      0 3px 12px rgba(0, 0, 0, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    transform: translateY(-1px) scale(1.02);
-  }
-
-  .dark .interactive-card {
-    background: var(--gradient-card);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.2),
-      0 4px 16px rgba(0, 200, 150, 0.1),
-      0 2px 8px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  }
-
-  .dark .interactive-card:hover {
-    box-shadow: 
-      0 12px 40px rgba(0, 0, 0, 0.3),
-      0 6px 20px rgba(0, 200, 150, 0.15),
-      0 3px 12px rgba(0, 0, 0, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-
-  /* Enhanced Neon Glow Effects */
   .neon-glow {
     box-shadow: 
       0 0 20px var(--neon-glow), 
@@ -316,7 +418,6 @@
     text-shadow: 0 0 10px var(--neon-glow);
   }
 
-  /* Enhanced Spacing Utilities */
   .section-spacing {
     @apply mb-8 last:mb-0;
   }
@@ -329,13 +430,11 @@
     @apply px-6 py-8 sm:px-8 sm:py-10;
   }
 
-  /* Progress Ring Animation */
   .progress-ring {
     transform: rotate(-90deg);
     transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  /* Enhanced Floating Animation */
   .float-animation {
     animation: enhancedFloat 8s ease-in-out infinite;
   }
@@ -347,7 +446,6 @@
     75% { transform: translateY(-6px) rotate(-1deg); }
   }
 
-  /* Enhanced Smooth Animations */
   .animate-slide-up {
     animation: enhancedSlideUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -360,7 +458,6 @@
     animation: enhancedScaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Enhanced Micro Interactions */
   .micro-bounce:hover {
     animation: enhancedMicroBounce 0.4s ease-in-out;
   }
@@ -372,9 +469,8 @@
     75% { transform: scale(1.03) rotate(-0.5deg); }
   }
 
-  /* Enhanced Tab Styling */
   .enhanced-tab {
-    @apply interactive-card px-6 py-4 text-center transition-all duration-300;
+    @apply enhanced-card px-6 py-4 text-center transition-all duration-300;
     min-height: 4.5rem;
     display: flex;
     flex-direction: column;
@@ -387,7 +483,6 @@
     @apply scale-105;
   }
 
-  /* Scrollable Cards */
   .scroll-cards {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -430,4 +525,3 @@
     transform: scale(1) rotate(0deg);
   }
 }
-
