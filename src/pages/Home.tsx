@@ -116,11 +116,11 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Enhanced Progress Rings - Mobile Responsive with Fixed Heights */}
-      <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-4'} animate-scale-in`}>
+      {/* Enhanced Progress Rings - Fixed Heights with Consistent Layout */}
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-4'} animate-scale-in items-stretch`}>
         {/* Calories Ring */}
-        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'} flex flex-col`}>
-          <CardContent className="flex flex-col items-center justify-between space-y-1 sm:space-y-2 p-0 h-full">
+        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'}`}>
+          <CardContent className="flex flex-col items-center justify-between p-0 h-full">
             <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'} flex-shrink-0`}>
               <svg className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0, 200, 150, 0.1)" strokeWidth="8" />
@@ -141,7 +141,7 @@ const Home = () => {
                 {progressPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-3 w-3'} text-emerald-400 animate-pulse`} />}
               </div>
             </div>
-            <div className="text-center flex-shrink-0">
+            <div className="text-center flex-shrink-0 mt-1">
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white leading-tight`}>Calories</p>
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>{currentCalories.toFixed(0)}/{totalCalories}</p>
             </div>
@@ -149,8 +149,8 @@ const Home = () => {
         </Card>
 
         {/* Hydration Ring */}
-        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'} flex flex-col`}>
-          <CardContent className="flex flex-col items-center justify-between space-y-1 sm:space-y-2 p-0 h-full">
+        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'}`}>
+          <CardContent className="flex flex-col items-center justify-between p-0 h-full">
             <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'} flex-shrink-0`}>
               <svg className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(6, 182, 212, 0.1)" strokeWidth="8" />
@@ -171,7 +171,7 @@ const Home = () => {
                 {hydrationPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-3 w-3'} text-cyan-400 animate-pulse`} />}
               </div>
             </div>
-            <div className="text-center flex-shrink-0">
+            <div className="text-center flex-shrink-0 mt-1">
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white leading-tight`}>Hydration</p>
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>{progress.hydration}/{hydrationGoal}ml</p>
             </div>
@@ -179,8 +179,8 @@ const Home = () => {
         </Card>
 
         {/* Supplements Ring */}
-        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'} flex flex-col`}>
-          <CardContent className="flex flex-col items-center justify-between space-y-1 sm:space-y-2 p-0 h-full">
+        <Card className={`visible-card border-0 p-2 sm:p-4 rounded-2xl hover:scale-105 transition-all duration-300 ${isMobile ? 'h-32' : 'h-40'}`}>
+          <CardContent className="flex flex-col items-center justify-between p-0 h-full">
             <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-24 h-24'} flex-shrink-0`}>
               <svg className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} progress-ring`} viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(168, 85, 247, 0.1)" strokeWidth="8" />
@@ -201,7 +201,7 @@ const Home = () => {
                 {supplementPercentage >= 100 && <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-3 w-3'} text-purple-400 animate-pulse`} />}
               </div>
             </div>
-            <div className="text-center flex-shrink-0">
+            <div className="text-center flex-shrink-0 mt-1">
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-white leading-tight`}>Supplements</p>
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>{progress.supplements}/{supplementGoal}</p>
             </div>
@@ -234,24 +234,24 @@ const Home = () => {
           </CardContent>
         </Card>
 
-        {/* Secondary Actions: Hydration & Supplements (Side by Side) */}
-        <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
+        {/* Secondary Actions: Hydration & Supplements (Fixed Heights) */}
+        <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'} items-stretch`}>
           {/* Hydration Card */}
           <Card 
-            className="visible-card border-0 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200/50 dark:border-emerald-800/50"
+            className={`visible-card border-0 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200/50 dark:border-emerald-800/50 ${isMobile ? 'h-24' : 'h-28'}`}
             onClick={() => navigate('/hydration')}
             style={{ animationDelay: '150ms' }}
           >
-            <CardContent className={`${isMobile ? 'p-3' : 'p-4'} text-center`}>
-              <div className="flex flex-col items-center space-y-2">
-                <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md`}>
+            <CardContent className="flex flex-col items-center justify-between h-full p-0">
+              <div className={`flex flex-col items-center space-y-1 ${isMobile ? 'p-3' : 'p-4'}`}>
+                <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0`}>
                   <Droplets className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
                 </div>
-                <div className="space-y-1">
-                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800 dark:text-gray-100`}>
+                <div className="text-center flex-shrink-0">
+                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
                     Hydration
                   </h4>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-tight`}>
                     Track water
                   </p>
                 </div>
@@ -261,20 +261,20 @@ const Home = () => {
 
           {/* Supplements Card */}
           <Card 
-            className="visible-card border-0 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border-purple-200/50 dark:border-purple-800/50"
+            className={`visible-card border-0 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border-purple-200/50 dark:border-purple-800/50 ${isMobile ? 'h-24' : 'h-28'}`}
             onClick={() => navigate('/supplements')}
             style={{ animationDelay: '300ms' }}
           >
-            <CardContent className={`${isMobile ? 'p-3' : 'p-4'} text-center`}>
-              <div className="flex flex-col items-center space-y-2">
-                <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md`}>
+            <CardContent className="flex flex-col items-center justify-between h-full p-0">
+              <div className={`flex flex-col items-center space-y-1 ${isMobile ? 'p-3' : 'p-4'}`}>
+                <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0`}>
                   <Pill className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
                 </div>
-                <div className="space-y-1">
-                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800 dark:text-gray-100`}>
+                <div className="text-center flex-shrink-0">
+                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
                     Supplements
                   </h4>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-tight`}>
                     Log vitamins
                   </p>
                 </div>
@@ -284,7 +284,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Horizontal Scrollable Macro Cards - Mobile Optimized */}
+      {/* Horizontal Scrollable Macro Cards - Fixed Heights */}
       <div className="space-y-3 sm:space-y-4 mt-8">
         <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white text-center drop-shadow-lg`}>Today's Nutrients</h3>
         <div className="flex space-x-3 sm:space-x-4 overflow-x-auto scroll-cards pb-2">
@@ -295,25 +295,31 @@ const Home = () => {
             return (
               <Card
                 key={macro.name}
-                className={`visible-card border-0 ${isMobile ? 'min-w-[100px]' : 'min-w-[120px]'} rounded-2xl animate-slide-up`}
+                className={`visible-card border-0 ${isMobile ? 'min-w-[100px] h-32' : 'min-w-[120px] h-36'} rounded-2xl animate-slide-up flex-shrink-0`}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <CardContent className={`${isMobile ? 'p-2' : 'p-3'} text-center`}>
-                  <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-gradient-to-r ${macro.color} rounded-xl flex items-center justify-center mx-auto mb-1 sm:mb-2 neon-glow`}>
-                    <Icon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white`} />
-                  </div>
-                  <h4 className={`font-semibold text-gray-900 dark:text-white mb-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>{macro.name}</h4>
-                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold neon-text`}>
-                    {macro.current.toFixed(0)}{macro.unit}
-                  </p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400`}>
-                    of {macro.target}{macro.unit}
-                  </p>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mt-1">
-                    <div
-                      className={`bg-gradient-to-r ${macro.color} h-1 rounded-full transition-all duration-700`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
+                <CardContent className="flex flex-col justify-between h-full p-0">
+                  <div className={`${isMobile ? 'p-2' : 'p-3'} text-center flex flex-col justify-between h-full`}>
+                    <div className="flex-shrink-0">
+                      <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-gradient-to-r ${macro.color} rounded-xl flex items-center justify-center mx-auto mb-1 sm:mb-2 neon-glow`}>
+                        <Icon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white`} />
+                      </div>
+                      <h4 className={`font-semibold text-gray-900 dark:text-white mb-1 ${isMobile ? 'text-xs' : 'text-sm'} leading-tight`}>{macro.name}</h4>
+                    </div>
+                    <div className="flex-grow flex flex-col justify-center">
+                      <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold neon-text leading-tight`}>
+                        {macro.current.toFixed(0)}{macro.unit}
+                      </p>
+                      <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                        of {macro.target}{macro.unit}
+                      </p>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mt-1 flex-shrink-0">
+                      <div
+                        className={`bg-gradient-to-r ${macro.color} h-1 rounded-full transition-all duration-700`}
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
