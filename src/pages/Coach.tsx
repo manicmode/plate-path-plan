@@ -222,7 +222,7 @@ const Coach = () => {
   };
 
   return (
-    <div className={`flex flex-col animate-fade-in ${isMobile ? 'min-h-[calc(100vh-140px)]' : 'h-full'}`}>
+    <div className={`flex flex-col animate-fade-in ${isMobile ? 'h-[calc(100vh-200px)]' : 'h-full'}`}>
       {/* Compact Header */}
       <div className="text-center space-y-2 mb-4 flex-shrink-0">
         <div className="flex justify-center">
@@ -245,8 +245,8 @@ const Coach = () => {
         </div>
       </div>
 
-      {/* Chat Container - Mobile optimized */}
-      <Card className="glass-card border-0 rounded-3xl flex flex-col flex-1 min-h-0">
+      {/* Chat Container - Mobile optimized with fixed height */}
+      <Card className="glass-card border-0 rounded-3xl flex flex-col flex-1 min-h-0 max-h-full">
         <CardHeader className="flex-shrink-0 pb-2">
           <CardTitle className="flex items-center justify-center space-x-2">
             <div className="flex items-center space-x-2">
@@ -259,13 +259,13 @@ const Coach = () => {
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-2 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
-          {/* Messages area - Mobile optimized with scroll tracking */}
+          {/* Messages area - Mobile optimized with reduced height */}
           <div 
             ref={messagesContainerRef}
             className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2" 
             style={{ 
               maxHeight: isMobile 
-                ? 'calc(100vh - 400px)' 
+                ? 'calc(100vh - 500px)' 
                 : 'calc(100vh - 300px)' 
             }}
             onScroll={handleScroll}
@@ -335,7 +335,7 @@ const Coach = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input area - Mobile optimized */}
+          {/* Input area - Mobile optimized with fixed positioning */}
           <div className={`flex-shrink-0 space-y-2 sm:space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl ${isMobile ? 'p-3' : 'p-4'} border border-gray-200/50 dark:border-gray-700/50`}>
             {/* Quick actions - Mobile collapsible */}
             {isMobile ? (
