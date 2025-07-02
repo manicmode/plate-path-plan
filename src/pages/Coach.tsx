@@ -23,12 +23,16 @@ const Coach = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [lastRequestTime, setLastRequestTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
   const isMobile = useIsMobile();
 
   const progress = getTodaysProgress();
+
+  // Rate limiting: minimum 2 seconds between requests
+  const RATE_LIMIT_MS = 2000;
 
   useEffect(() => {
     const welcomeMessage: Message = {
@@ -50,6 +54,15 @@ const Coach = () => {
 
   const callAICoach = async (userMessage: string): Promise<string> => {
     try {
+      // Check rate limiting
+      const now = Date.now();
+      if (now - lastRequestTime < RATE_LIMIT_MS) {
+        const waitTime = RATE_LIMIT_MS - (now - lastRequestTime);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+      
+      setLastRequestTime(Date.now());
+
       const userContext = {
         targetCalories: user?.targetCalories || 2000,
         targetProtein: user?.targetProtein || 150,
@@ -73,20 +86,44 @@ const Coach = () => {
         throw error;
       }
 
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       return data.response;
     } catch (error) {
       console.error('Error calling AI coach:', error);
+      
+      // Show user-friendly error toast
+      const errorMessage = error.message || "Failed to get AI response. Please try again.";
       toast({
-        title: "Error",
-        description: "Failed to get AI response. Please try again.",
+        title: "AI Coach Unavailable",
+        description: errorMessage,
         variant: "destructive"
       });
-      return "I'm sorry, I'm having trouble connecting right now. Please try again in a moment! 🤖";
+      
+      // Return fallback message
+      if (error.message && error.message.includes('busy')) {
+        return "I'm experiencing high demand right now. Please wait a moment and try again! 🤖⏰";
+      }
+      
+      return "I'm having trouble connecting right now. Please try again in a moment! 🤖";
     }
   };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;
+
+    // Prevent rapid successive requests
+    const now = Date.now();
+    if (now - lastRequestTime < RATE_LIMIT_MS) {
+      toast({
+        title: "Please wait",
+        description: "Please wait a moment before sending another message.",
+        variant: "default"
+      });
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -125,6 +162,17 @@ const Coach = () => {
   ];
 
   const handleQuickAction = (actionText: string) => {
+    // Check rate limiting for quick actions too
+    const now = Date.now();
+    if (now - lastRequestTime < RATE_LIMIT_MS) {
+      toast({
+        title: "Please wait",
+        description: "Please wait a moment before sending another message.",
+        variant: "default"
+      });
+      return;
+    }
+
     setInputValue(actionText);
     setTimeout(() => handleSendMessage(), 100);
   };
