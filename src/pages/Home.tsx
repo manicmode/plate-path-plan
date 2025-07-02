@@ -123,8 +123,8 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Redesigned Daily Tracker Cards */}
-      <div className={`grid grid-cols-3 ${isMobile ? 'gap-6' : 'gap-8'} animate-scale-in items-stretch`}>
+      {/* Redesigned Daily Tracker Cards - Reduced gap for larger cards */}
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-3'} animate-scale-in items-stretch`}>
         {/* Vibrant Calories Tracker */}
         <div 
           className={`calories-tracker-vibrant border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
