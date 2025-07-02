@@ -1,9 +1,7 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Camera, Upload, Loader2, Check, X, Edit3, Sparkles, AlertCircle, Mic, MicOff, Type } from 'lucide-react';
+import { Camera, Upload, Loader2, Check, X, Sparkles, Mic, MicOff } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,13 +33,10 @@ const CameraPage = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [showManualEntry, setShowManualEntry] = useState(false);
-  const [manualText, setManualText] = useState('');
-  const [isProcessingManual, setIsProcessingManual] = useState(false);
-  const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, startRecording, stopRecording } = useVoiceRecording();
@@ -52,9 +47,7 @@ const CameraPage = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelectedImage(e.target?.result as string);
-        setShowManualEntry(false);
         setShowVoiceEntry(false);
-        setManualText('');
         setVoiceText('');
         setVisionResults(null);
       };
@@ -203,43 +196,6 @@ const CameraPage = () => {
     }
   };
 
-  const processManualEntry = async () => {
-    if (!manualText.trim()) {
-      toast.error('Please enter a description of your food.');
-      return;
-    }
-
-    setIsProcessingManual(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
-        body: { 
-          message: `The user ate: ${manualText}. Estimate the nutritional facts including calories, protein, carbs, fats, fiber, sugar, sodium, and serving size. Return the result in a structured format with specific numbers for a single serving.`,
-          userContext: {}
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to process manual input');
-      }
-
-      const processedFoods = parseAIResponse(data.response, manualText);
-      
-      if (processedFoods.length > 0) {
-        setRecognizedFoods([...recognizedFoods, ...processedFoods]);
-        setManualText('');
-        toast.success(`Added ${processedFoods.length} food item(s) from your description!`);
-      } else {
-        toast.error('Could not parse your food description. Please be more specific about the food and quantity.');
-      }
-    } catch (error) {
-      console.error('Error processing manual input:', error);
-      toast.error('Failed to process manual input. Please try again.');
-    } finally {
-      setIsProcessingManual(false);
-    }
-  };
-
   const parseAIResponse = (aiResponse: string, originalText: string): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
     
@@ -287,10 +243,8 @@ const CameraPage = () => {
     setSelectedImage(null);
     setRecognizedFoods([]);
     setShowConfirmation(false);
-    setShowManualEntry(false);
     setShowVoiceEntry(false);
     setIsAnalyzing(false);
-    setManualText('');
     setVoiceText('');
     setVisionResults(null);
     if (fileInputRef.current) {
@@ -302,7 +256,7 @@ const CameraPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
-        <p className="text-gray-600 dark:text-gray-300">Take a photo, speak, or describe your meal</p>
+        <p className="text-gray-600 dark:text-gray-300">Take a photo or speak your meal</p>
       </div>
 
       {!selectedImage && !showConfirmation && (
@@ -362,18 +316,8 @@ const CameraPage = () => {
                   )}
                 </Button>
                 
-                <Button
-                  onClick={() => setShowManualEntry(true)}
-                  variant="outline"
-                  className="w-full"
-                  size="sm"
-                >
-                  <Type className="h-4 w-4 mr-2" />
-                  Manual Entry
-                </Button>
-                
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Supports JPG, PNG, voice input, and manual text entry
+                  Supports JPG, PNG, and voice input
                 </p>
                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                   ✨ Powered by AI - analyzes food and estimates nutrition
@@ -419,61 +363,6 @@ const CameraPage = () => {
               </Button>
               
               <Button variant="outline" onClick={() => setShowVoiceEntry(false)}>
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Manual Entry Card */}
-      {showManualEntry && !selectedImage && (
-        <Card className="animate-slide-up">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Edit3 className="h-5 w-5 text-blue-600" />
-              Manual Food Entry
-            </CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Describe what you ate and we'll estimate the nutrition
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="manual-food">Describe your food</Label>
-              <Textarea
-                id="manual-food"
-                placeholder="e.g., 'I had 2 slices of whole wheat toast with 1 tablespoon of peanut butter and 1 medium banana'"
-                value={manualText}
-                onChange={(e) => setManualText(e.target.value)}
-                className="min-h-[100px]"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                💡 Be specific about quantities (cups, slices, ounces, etc.) for better accuracy
-              </p>
-            </div>
-
-            <div className="flex space-x-3">
-              <Button
-                onClick={processManualEntry}
-                disabled={isProcessingManual || !manualText.trim()}
-                className="flex-1 gradient-primary"
-              >
-                {isProcessingManual ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing with AI...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Analyze Food Description
-                  </>
-                )}
-              </Button>
-              
-              <Button variant="outline" onClick={() => setShowManualEntry(false)}>
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -614,7 +503,7 @@ const CameraPage = () => {
                 AI-Powered Food Logging
               </h4>
               <p className="text-xs text-green-700 dark:text-green-300">
-                Photo analysis, voice input, and manual entry with AI nutrition estimation.
+                Photo analysis and voice input with AI nutrition estimation.
               </p>
             </div>
           </div>

@@ -56,12 +56,14 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main Content - Mobile Optimized with proper header offset */}
-      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${isMobile ? 'pb-28 pt-6' : 'pb-36'}`}>
+      {/* Main Content - Enhanced spacing to prevent overlap with bottom nav */}
+      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
+        isMobile ? 'pb-32' : 'pb-40'
+      } min-h-[calc(100vh-140px)]`}>
         {children}
       </main>
 
-      {/* Bottom Navigation - Enhanced Design */}
+      {/* Bottom Navigation - Enhanced Design with proper z-index */}
       <nav className={`fixed ${isMobile ? 'bottom-2 left-2 right-2' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
         <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl px-3 sm:px-6 py-3 sm:py-4 shadow-2xl border-2 border-white/40">
           <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-3'}`}>
