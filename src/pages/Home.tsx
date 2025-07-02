@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -340,7 +339,7 @@ const Home = () => {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <CardContent className="flex flex-col justify-between h-full p-0">
-                  <div className={`${isMobile ? 'p-5' : 'p-6'} text-center flex flex-col justify-between h-full`}>
+                  <div className={`${isMobile ? 'p-5 pb-6' : 'p-6 pb-7'} text-center flex flex-col justify-between h-full`}>
                     <div className="flex-shrink-0">
                       <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg`}>
                         <Icon className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
@@ -355,7 +354,7 @@ const Home = () => {
                         of {macro.target}{macro.unit}
                       </p>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mt-4 flex-shrink-0">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mt-5 flex-shrink-0">
                       <div
                         className={`bg-gradient-to-r ${macro.color} h-3 rounded-full transition-all duration-1500 shadow-sm`}
                         style={{ width: `${percentage}%` }}
@@ -370,7 +369,7 @@ const Home = () => {
       </div>
 
       {/* AI Insights Card */}
-      <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 ${isMobile ? 'mb-32' : 'mb-64'} shadow-xl hover:shadow-2xl`} style={{ animationDelay: '600ms' }}>
+      <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 ${isMobile ? 'mb-32' : 'mb-48'} shadow-xl hover:shadow-2xl`} style={{ animationDelay: '600ms' }}>
         <CardContent className={`${isMobile ? 'p-8' : 'p-10'}`}>
           <div className={`flex items-center ${isMobile ? 'space-x-4' : 'space-x-5'} mb-6 sm:mb-8`}>
             <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} gradient-primary rounded-full flex items-center justify-center shadow-lg ai-glow`}>

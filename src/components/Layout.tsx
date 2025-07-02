@@ -58,7 +58,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content - Enhanced spacing to prevent overlap with bottom nav */}
       <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-        isMobile ? 'pb-40' : 'pb-44'
+        isMobile ? 'pb-40' : 'pb-60'
       } min-h-[calc(100vh-140px)]`}>
         {children}
       </main>
