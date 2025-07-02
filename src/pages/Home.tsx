@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -90,39 +91,6 @@ const Home = () => {
       unit: '',
       color: 'from-purple-500 to-pink-600',
       icon: Pill,
-    },
-  ];
-
-  const actionButtons = [
-    {
-      title: 'Log Food',
-      icon: Camera,
-      action: () => navigate('/camera'),
-      gradient: 'from-emerald-500 to-blue-500',
-      glow: 'emerald',
-      description: 'Take a photo of your meal to log nutrition',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      borderColor: 'border-blue-200 dark:border-blue-800'
-    },
-    {
-      title: 'Hydration',
-      icon: Droplets,
-      action: () => navigate('/hydration'),
-      gradient: 'from-blue-500 to-cyan-500',
-      glow: 'blue',  
-      description: 'Track your daily water intake',
-      bgColor: 'bg-cyan-50 dark:bg-cyan-900/20',
-      borderColor: 'border-cyan-200 dark:border-cyan-800'
-    },
-    {
-      title: 'Supplements',
-      icon: Pill,
-      action: () => navigate('/supplements'),
-      gradient: 'from-purple-500 to-pink-500',
-      glow: 'purple',
-      description: 'Log vitamins and supplements',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      borderColor: 'border-purple-200 dark:border-purple-800'
     },
   ];
 
@@ -241,57 +209,83 @@ const Home = () => {
         </Card>
       </div>
 
-      {/* Redesigned Action Buttons - New Layout */}
-      <div className="space-y-3 sm:space-y-4">
-        {/* Primary Action: Log Food (Full Width) */}
-        <Button
-          onClick={actionButtons[0].action}
-          className={`w-full ${actionButtons[0].bgColor} ${actionButtons[0].borderColor} border-2 ${isMobile ? 'h-16 py-3' : 'h-20 py-4'} flex items-center justify-center space-x-3 rounded-2xl hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up`}
+      {/* Enhanced Logging Actions Section */}
+      <div className="space-y-4 sm:space-y-6">
+        {/* Primary Action: Log Food (Full Width Card) */}
+        <Card 
+          className="visible-card border-0 rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30 border-blue-200/50 dark:border-blue-800/50"
+          onClick={() => navigate('/camera')}
           style={{ animationDelay: '0ms' }}
         >
-          <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-gradient-to-r ${actionButtons[0].gradient} rounded-xl flex items-center justify-center neon-glow`}>
-            <Camera className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
-          </div>
-          <div className="flex flex-col items-start">
-            <span className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-700 dark:text-gray-200`}>Log Food</span>
-            <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>Take a photo of your meal</span>
-          </div>
-        </Button>
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} text-center`}>
+            <div className="flex flex-col items-center space-y-2 sm:space-y-3">
+              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-blue-500 to-sky-500 rounded-2xl flex items-center justify-center neon-glow shadow-lg`}>
+                <Camera className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+              </div>
+              <div className="space-y-1">
+                <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                  Log Food
+                </h3>
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+                  Take a photo of your meal
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Secondary Actions: Hydration & Supplements (Side by Side) */}
-        <div className={`grid grid-cols-2 ${isMobile ? 'gap-2' : 'gap-4'}`}>
-          <Button
-            onClick={actionButtons[1].action}
-            className={`${actionButtons[1].bgColor} ${actionButtons[1].borderColor} border-2 ${isMobile ? 'h-16 py-2' : 'h-20 py-3'} flex flex-col items-center justify-center space-y-1 rounded-2xl hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up`}
+        <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
+          {/* Hydration Card */}
+          <Card 
+            className="visible-card border-0 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200/50 dark:border-emerald-800/50"
+            onClick={() => navigate('/hydration')}
             style={{ animationDelay: '150ms' }}
           >
-            <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-gradient-to-r ${actionButtons[1].gradient} rounded-xl flex items-center justify-center neon-glow`}>
-              <Droplets className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white`} />
-            </div>
-            <div className="text-center">
-              <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-200 block`}>Hydration</span>
-              <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>Track water</span>
-            </div>
-          </Button>
+            <CardContent className={`${isMobile ? 'p-3' : 'p-4'} text-center`}>
+              <div className="flex flex-col items-center space-y-2">
+                <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md`}>
+                  <Droplets className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800 dark:text-gray-100`}>
+                    Hydration
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Track water
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <Button
-            onClick={actionButtons[2].action}
-            className={`${actionButtons[2].bgColor} ${actionButtons[2].borderColor} border-2 ${isMobile ? 'h-16 py-2' : 'h-20 py-3'} flex flex-col items-center justify-center space-y-1 rounded-2xl hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up`}
+          {/* Supplements Card */}
+          <Card 
+            className="visible-card border-0 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-slide-up cursor-pointer bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border-purple-200/50 dark:border-purple-800/50"
+            onClick={() => navigate('/supplements')}
             style={{ animationDelay: '300ms' }}
           >
-            <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} bg-gradient-to-r ${actionButtons[2].gradient} rounded-xl flex items-center justify-center neon-glow`}>
-              <Pill className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white`} />
-            </div>
-            <div className="text-center">
-              <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-200 block`}>Supplements</span>
-              <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>Log vitamins</span>
-            </div>
-          </Button>
+            <CardContent className={`${isMobile ? 'p-3' : 'p-4'} text-center`}>
+              <div className="flex flex-col items-center space-y-2">
+                <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md`}>
+                  <Pill className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800 dark:text-gray-100`}>
+                    Supplements
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Log vitamins
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
       {/* Horizontal Scrollable Macro Cards - Mobile Optimized */}
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-3 sm:space-y-4 mt-8">
         <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white text-center drop-shadow-lg`}>Today's Nutrients</h3>
         <div className="flex space-x-3 sm:space-x-4 overflow-x-auto scroll-cards pb-2">
           {macroCards.map((macro, index) => {
