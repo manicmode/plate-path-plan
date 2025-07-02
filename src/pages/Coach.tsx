@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,10 @@ const Coach = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [lastRequestTime, setLastRequestTime] = useState(0);
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
   const isMobile = useIsMobile();
@@ -35,6 +37,12 @@ const Coach = () => {
   // Rate limiting: minimum 2 seconds between requests
   const RATE_LIMIT_MS = 2000;
 
+  // Scroll to top of page when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Initialize welcome message
   useEffect(() => {
     const welcomeMessage: Message = {
       id: '1',
@@ -43,15 +51,31 @@ const Coach = () => {
       timestamp: new Date(),
     };
     setMessages([welcomeMessage]);
+    setHasInitialized(true);
   }, [user?.name]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // Handle scroll position tracking
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50; // 50px threshold
+      setIsUserAtBottom(isAtBottom);
+    }
   };
+
+  // Smart scroll to bottom - only if user is already at bottom or it's a new message
+  const scrollToBottom = (force: boolean = false) => {
+    if (force || isUserAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Only scroll for new messages (not the initial welcome message)
+  useEffect(() => {
+    if (hasInitialized && messages.length > 1) {
+      scrollToBottom();
+    }
+  }, [messages, hasInitialized, isUserAtBottom]);
 
   const callAICoach = async (userMessage: string): Promise<string> => {
     try {
@@ -154,6 +178,9 @@ const Coach = () => {
     setIsTyping(true);
     setShowQuickActions(false);
 
+    // Force scroll to bottom for new user message
+    setTimeout(() => scrollToBottom(true), 100);
+
     // Get AI response
     const aiResponse = await callAICoach(messageToSend);
     
@@ -232,14 +259,16 @@ const Coach = () => {
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-2 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
-          {/* Messages area - Mobile optimized with better height calculation */}
+          {/* Messages area - Mobile optimized with scroll tracking */}
           <div 
+            ref={messagesContainerRef}
             className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2" 
             style={{ 
               maxHeight: isMobile 
                 ? 'calc(100vh - 400px)' 
                 : 'calc(100vh - 300px)' 
             }}
+            onScroll={handleScroll}
           >
             {messages.map((message) => (
               <div
@@ -325,7 +354,7 @@ const Coach = () => {
                       return (
                         <Button
                           key={action.text}
-                          onClick={() => handleQuickAction(action.text)}
+                          onClick={()={() => handleQuickAction(action.text)}
                           className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium justify-start py-2"
                         >
                           <Icon className="h-3 w-3 mr-2" />
