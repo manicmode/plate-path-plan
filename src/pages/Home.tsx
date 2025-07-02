@@ -1,13 +1,12 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, Mic, MicOff, Loader2 } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import CelebrationPopup from '@/components/CelebrationPopup';
 
 const Home = () => {
@@ -19,8 +18,6 @@ const Home = () => {
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
-
-  const { isRecording, isProcessing, startRecording, stopRecording, transcribedText } = useVoiceRecording();
 
   const totalCalories = user?.targetCalories || 2000;
   const currentCalories = progress.calories;
@@ -45,18 +42,6 @@ const Home = () => {
       setShowCelebration(true);
     }
   }, [progressPercentage, hydrationPercentage, supplementPercentage]);
-
-  const handleVoiceRecording = async () => {
-    if (isRecording) {
-      const transcript = await stopRecording();
-      if (transcript) {
-        // Here you would process the transcript with AI to extract nutrition data
-        console.log('Voice transcript:', transcript);
-      }
-    } else {
-      await startRecording();
-    }
-  };
 
   const macroCards = [
     {
@@ -279,41 +264,8 @@ const Home = () => {
                   Log Food
                 </h3>
                 <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-600 dark:text-gray-400`}>
-                  Take photo or speak to log meals
+                  Take photo to log meals
                 </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Voice to Log Feature */}
-        <Card 
-          className="modern-action-card voice-log-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
-          onClick={handleVoiceRecording}
-        >
-          <CardContent className={`${isMobile ? 'p-6' : 'p-8'} text-center`}>
-            <div className="flex flex-col items-center space-y-4">
-              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-green-500 to-emerald-500 rounded-3xl flex items-center justify-center shadow-2xl voice-log-glow ${isRecording ? 'animate-pulse' : ''}`}>
-                {isProcessing ? (
-                  <Loader2 className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white animate-spin`} />
-                ) : isRecording ? (
-                  <MicOff className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
-                ) : (
-                  <Mic className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
-                  {isProcessing ? 'Processing...' : isRecording ? 'Stop Recording' : 'Voice to Log'}
-                </h3>
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
-                  {isRecording ? 'Tap to stop recording' : 'Speak your meal description'}
-                </p>
-                {transcribedText && (
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-green-600 dark:text-green-400 italic mt-2`}>
-                    "{transcribedText}"
-                  </p>
-                )}
               </div>
             </div>
           </CardContent>
