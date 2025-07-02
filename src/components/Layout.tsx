@@ -27,8 +27,8 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
-      {/* Single Header - Mobile Optimized */}
-      <header className="glass-card sticky top-0 z-50 border-0">
+      {/* Enhanced Header with better spacing */}
+      <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} gradient-primary rounded-2xl flex items-center justify-center neon-glow`}>
@@ -40,7 +40,7 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </div>
           
-          {/* Dark Mode Toggle - Mobile Optimized */}
+          {/* Enhanced Dark Mode Toggle */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`flex items-center space-x-1 sm:space-x-2 bg-gray-100 dark:bg-gray-800 ${isMobile ? 'px-2 py-1' : 'px-4 py-2'} rounded-xl border-2 border-gray-400 dark:border-gray-600`}>
               <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} transition-colors ${!isDarkMode ? 'text-yellow-500' : 'text-gray-400'}`} />
@@ -58,15 +58,15 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content - Enhanced spacing to prevent overlap with bottom nav */}
       <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-        isMobile ? 'pb-32' : 'pb-40'
+        isMobile ? 'pb-40' : 'pb-44'
       } min-h-[calc(100vh-140px)]`}>
         {children}
       </main>
 
-      {/* Bottom Navigation - Enhanced Design with proper z-index */}
-      <nav className={`fixed ${isMobile ? 'bottom-2 left-2 right-2' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
-        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-3xl px-3 sm:px-6 py-3 sm:py-4 shadow-2xl border-2 border-white/40">
-          <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-3'}`}>
+      {/* Enhanced Bottom Navigation - Fixed positioning and better backdrop */}
+      <nav className={`fixed ${isMobile ? 'bottom-3 left-3 right-3' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
+        <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
+          <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = location.pathname === path;
               return (
@@ -76,8 +76,8 @@ const Layout = ({ children }: LayoutProps) => {
                   size="sm"
                   className={`flex flex-col items-center justify-center space-y-1 ${
                     isMobile 
-                      ? 'h-14 px-2 min-w-[56px] flex-1' 
-                      : 'h-18 w-20 px-3'
+                      ? 'h-16 px-2 min-w-[60px] flex-1' 
+                      : 'h-20 w-24 px-4'
                   } rounded-2xl transition-all duration-300 ${
                     isActive 
                       ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
@@ -85,7 +85,7 @@ const Layout = ({ children }: LayoutProps) => {
                   }`}
                   onClick={() => navigate(path)}
                 >
-                  <Icon className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
+                  <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
                   <span className={`${
                     isMobile ? 'text-xs' : 'text-sm'
                   } font-semibold leading-tight text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}>
