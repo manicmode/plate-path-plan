@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Zap, Target, Calendar, Award, Flame, Droplets, Pill } from 'lucide-react';
@@ -107,20 +106,18 @@ const Analytics = () => {
       <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
         {/* Calories Tracker */}
         <Card className="visible-card">
-          <CardContent className="p-6 text-center">
-            <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 neon-glow`}>
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
               <Flame className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
             </div>
             
-            <div className="mb-4">
-              <CircularProgress 
-                percentage={Math.min((todayProgress.calories / targetCalories) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="orange"
-              />
-            </div>
+            <CircularProgress 
+              percentage={Math.min((todayProgress.calories / targetCalories) * 100, 100)} 
+              size={isMobile ? 80 : 100} 
+              color="orange"
+            />
             
-            <h3 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
               Calories
             </h3>
             <p className="text-gray-600 dark:text-gray-300">
@@ -134,20 +131,18 @@ const Analytics = () => {
 
         {/* Hydration Tracker */}
         <Card className="visible-card">
-          <CardContent className="p-6 text-center">
-            <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 neon-glow`}>
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
               <Droplets className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
             </div>
             
-            <div className="mb-4">
-              <CircularProgress 
-                percentage={Math.min((currentHydration / targetHydration) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="blue"
-              />
-            </div>
+            <CircularProgress 
+              percentage={Math.min((currentHydration / targetHydration) * 100, 100)} 
+              size={isMobile ? 80 : 100} 
+              color="blue"
+            />
             
-            <h3 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
               Hydration
             </h3>
             <p className="text-gray-600 dark:text-gray-300">
@@ -161,20 +156,18 @@ const Analytics = () => {
 
         {/* Supplements Tracker */}
         <Card className="visible-card">
-          <CardContent className="p-6 text-center">
-            <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 neon-glow`}>
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
               <Pill className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
             </div>
             
-            <div className="mb-4">
-              <CircularProgress 
-                percentage={Math.min((currentSupplements / targetSupplements) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="purple"
-              />
-            </div>
+            <CircularProgress 
+              percentage={Math.min((currentSupplements / targetSupplements) * 100, 100)} 
+              size={isMobile ? 80 : 100} 
+              color="purple"
+            />
             
-            <h3 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
               Supplements
             </h3>
             <p className="text-gray-600 dark:text-gray-300">
