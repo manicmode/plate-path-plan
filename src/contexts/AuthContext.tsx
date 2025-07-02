@@ -3,22 +3,23 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 interface User {
   id: string;
-  email: string;
   name: string;
-  avatar?: string;
-  dietaryGoals?: string[];
-  allergies?: string[];
-  targetCalories?: number;
-  targetProtein?: number;
-  targetCarbs?: number;
-  targetFat?: number;
+  email: string;
+  targetCalories: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+  targetHydration: number;
+  targetSupplements: number;
+  allergies: string[];
+  dietaryGoals: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
 }
@@ -39,65 +40,77 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     // Check for existing session
-    const savedUser = localStorage.getItem('nutricoach_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      // Ensure new fields have default values for existing users
+      const userWithDefaults = {
+        ...parsedUser,
+        targetHydration: parsedUser.targetHydration || 8,
+        targetSupplements: parsedUser.targetSupplements || 3,
+      };
+      setUser(userWithDefaults);
+      setIsAuthenticated(true);
     }
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    // Mock login - in real app, this would call an API
     const mockUser: User = {
       id: '1',
-      email,
-      name: 'Demo User',
+      name: 'John Doe',
+      email: email,
       targetCalories: 2000,
       targetProtein: 150,
       targetCarbs: 200,
       targetFat: 65,
-      dietaryGoals: ['weight_loss', 'muscle_gain'],
-      allergies: []
+      targetHydration: 8,
+      targetSupplements: 3,
+      allergies: [],
+      dietaryGoals: ['general_health'],
     };
     
     setUser(mockUser);
-    localStorage.setItem('nutricoach_user', JSON.stringify(mockUser));
+    setIsAuthenticated(true);
+    localStorage.setItem('user', JSON.stringify(mockUser));
   };
 
-  const signup = async (email: string, password: string, name: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+  const register = async (email: string, password: string, name: string) => {
+    // Mock registration - in real app, this would call an API
     const mockUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
+      id: '1',
+      name: name,
+      email: email,
       targetCalories: 2000,
       targetProtein: 150,
       targetCarbs: 200,
       targetFat: 65,
+      targetHydration: 8,
+      targetSupplements: 3,
+      allergies: [],
       dietaryGoals: [],
-      allergies: []
     };
     
     setUser(mockUser);
-    localStorage.setItem('nutricoach_user', JSON.stringify(mockUser));
+    setIsAuthenticated(true);
+    localStorage.setItem('user', JSON.stringify(mockUser));
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('nutricoach_user');
+    setIsAuthenticated(false);
+    localStorage.removeItem('user');
   };
 
   const updateProfile = (updates: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem('nutricoach_user', JSON.stringify(updatedUser));
+      localStorage.setItem('user', JSON.stringify(updatedUser));
     }
   };
 
@@ -105,9 +118,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        isAuthenticated,
         login,
-        signup,
+        register,
         logout,
         updateProfile,
       }}

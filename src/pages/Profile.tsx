@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,11 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { User, Settings, Target, Heart, Shield, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const Profile = () => {
   const { user, updateProfile, logout } = useAuth();
   const isMobile = useIsMobile();
+  const location = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -23,9 +24,45 @@ const Profile = () => {
     targetProtein: user?.targetProtein || 150,
     targetCarbs: user?.targetCarbs || 200,
     targetFat: user?.targetFat || 65,
+    targetHydration: user?.targetHydration || 8,
+    targetSupplements: user?.targetSupplements || 3,
     allergies: user?.allergies?.join(', ') || '',
     dietaryGoals: user?.dietaryGoals || [],
   });
+
+  // Handle URL parameters for auto-editing
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shouldEdit = params.get('edit') === 'true';
+    const focusField = params.get('focus');
+    
+    if (shouldEdit) {
+      setIsEditing(true);
+      
+      // Focus on specific field if specified
+      if (focusField) {
+        setTimeout(() => {
+          const fieldMap = {
+            'calories': 'calories',
+            'protein': 'protein', 
+            'carbs': 'carbs',
+            'fat': 'fat',
+            'hydration': 'hydration',
+            'supplements': 'supplements'
+          };
+          
+          const fieldId = fieldMap[focusField];
+          if (fieldId) {
+            const element = document.getElementById(fieldId);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              element.focus();
+            }
+          }
+        }, 100);
+      }
+    }
+  }, [location]);
 
   const handleSave = () => {
     updateProfile({
@@ -34,6 +71,8 @@ const Profile = () => {
       targetProtein: Number(formData.targetProtein),
       targetCarbs: Number(formData.targetCarbs),
       targetFat: Number(formData.targetFat),
+      targetHydration: Number(formData.targetHydration),
+      targetSupplements: Number(formData.targetSupplements),
       allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
       dietaryGoals: formData.dietaryGoals,
     });
@@ -145,7 +184,7 @@ const Profile = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className={`space-y-3 sm:space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-4 gap-4'}`}>
+          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-3 gap-4'}`}>
             <div className="space-y-2">
               <Label htmlFor="calories" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Calories</Label>
               <Input
@@ -186,6 +225,28 @@ const Profile = () => {
                 type="number"
                 value={formData.targetFat}
                 onChange={(e) => setFormData(prev => ({...prev, targetFat: Number(e.target.value)}))}
+                disabled={!isEditing}
+                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hydration" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Hydration (glasses)</Label>
+              <Input
+                id="hydration"
+                type="number"
+                value={formData.targetHydration}
+                onChange={(e) => setFormData(prev => ({...prev, targetHydration: Number(e.target.value)}))}
+                disabled={!isEditing}
+                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplements" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Supplements (count)</Label>
+              <Input
+                id="supplements"
+                type="number"
+                value={formData.targetSupplements}
+                onChange={(e) => setFormData(prev => ({...prev, targetSupplements: Number(e.target.value)}))}
                 disabled={!isEditing}
                 className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
               />
@@ -260,6 +321,8 @@ const Profile = () => {
                 targetProtein: user?.targetProtein || 150,
                 targetCarbs: user?.targetCarbs || 200,
                 targetFat: user?.targetFat || 65,
+                targetHydration: user?.targetHydration || 8,
+                targetSupplements: user?.targetSupplements || 3,
                 allergies: user?.allergies?.join(', ') || '',
                 dietaryGoals: user?.dietaryGoals || [],
               });
