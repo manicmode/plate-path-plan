@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -165,9 +166,9 @@ const Coach = () => {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-col flex-1 p-4 space-y-4 min-h-0">
+        <CardContent className="flex flex-col flex-1 p-2 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
           {/* Messages area - Mobile optimized */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2" style={{ maxHeight: isMobile ? 'calc(100vh - 280px)' : 'calc(100vh - 300px)' }}>
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -227,11 +228,8 @@ const Coach = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Spacer for better mobile spacing */}
-          <div className="h-4"></div>
-
           {/* Input area - Mobile optimized */}
-          <div className="flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-200/50 dark:border-gray-700/50">
+          <div className={`flex-shrink-0 space-y-2 sm:space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl ${isMobile ? 'p-3' : 'p-4'} border border-gray-200/50 dark:border-gray-700/50`}>
             {/* Quick actions - Mobile collapsible */}
             {isMobile ? (
               <div className="space-y-2">
@@ -250,7 +248,7 @@ const Coach = () => {
                         <Button
                           key={action.text}
                           onClick={() => handleQuickAction(action.text)}
-                          className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium justify-start"
+                          className="glass-button text-emerald-600 hover:text-emerald-700 text-xs font-medium justify-start py-2"
                         >
                           <Icon className="h-3 w-3 mr-2" />
                           {action.text}
