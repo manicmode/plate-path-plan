@@ -128,7 +128,7 @@ const Home = () => {
         {/* Vibrant Calories Tracker */}
         <div 
           className={`calories-tracker-vibrant border-0 ${isMobile ? 'h-52 p-4' : 'h-60 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
-          onClick={() => setShowCelebration(true)}
+          onClick={() => navigate('/camera')}
           title={getMotivationalMessage(progressPercentage, 'Calories')}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-red-500/15 to-pink-500/10 backdrop-blur-xl"></div>
