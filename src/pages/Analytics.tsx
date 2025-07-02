@@ -108,40 +108,40 @@ const Analytics = () => {
     };
 
     return (
-      <div className="flex gap-2 mt-4 px-2">
+      <div className="flex gap-2 px-1">
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={() => navigate(logPath)}
-          className="flex-1 h-10 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
+          className="flex-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          <span className="text-sm">Log</span>
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Log</span>
         </Button>
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={handleSetGoal}
-          className="flex-1 h-10 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-green-50/80 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 font-medium"
+          className="flex-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-green-50/80 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 font-medium"
         >
-          <Settings className="h-4 w-4 mr-2" />
-          <span className="text-sm">Goal</span>
+          <Settings className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Goal</span>
         </Button>
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={handleViewProgress}
-          className="flex-1 h-10 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-purple-50/80 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium"
+          className="flex-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-purple-50/80 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium"
         >
-          <BarChart3 className="h-4 w-4 mr-2" />
-          <span className="text-sm">Progress</span>
+          <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Progress</span>
         </Button>
       </div>
     );
   };
 
-  // Tracker card component for consistent styling
-  const TrackerCard = ({ 
+  // Tracker card component with integrated tabs
+  const TrackerSection = ({ 
     icon, 
     title, 
     current, 
@@ -162,23 +162,23 @@ const Analytics = () => {
     logPath: string;
     progressPath: string;
   }) => (
-    <div className="space-y-4">
-      <Card className="visible-card shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-        <CardContent className="p-6 flex flex-col items-center justify-center min-h-[280px]">
-          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} rounded-2xl flex items-center justify-center neon-glow mb-4`}>
+    <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-100/50 dark:border-gray-700/50">
+      <Card className="visible-card shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0">
+        <CardContent className="p-4 flex flex-col items-center justify-center min-h-[220px]">
+          <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-2xl flex items-center justify-center neon-glow mb-3`}>
             {icon}
           </div>
           
           <CircularProgress 
             percentage={Math.min((current / target) * 100, 100)} 
-            size={isMobile ? 80 : 100} 
+            size={isMobile ? 70 : 85} 
             color={color}
           />
           
-          <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+          <h3 className={`font-bold text-gray-900 dark:text-white mt-3 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
             {title}
           </h3>
-          <p className="text-gray-600 dark:text-gray-300 text-center">
+          <p className="text-gray-600 dark:text-gray-300 text-center text-sm">
             <span className="font-semibold">{Math.round(current)}</span>
             <span className="mx-1">/</span>
             <span>{target}</span>
@@ -186,12 +186,15 @@ const Analytics = () => {
           </p>
         </CardContent>
       </Card>
-      <ActionTabs category={category} logPath={logPath} progressPath={progressPath} />
+      
+      <div className="mt-3">
+        <ActionTabs category={category} logPath={logPath} progressPath={progressPath} />
+      </div>
     </div>
   );
 
   return (
-    <div className="space-y-8 animate-fade-in pb-8">
+    <div className="space-y-6 animate-fade-in pb-8">
       {/* Header */}
       <div className="text-center space-y-4">
         <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow`}>
@@ -203,10 +206,10 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* Primary Progress Trackers - Reordered with improved layout */}
-      <div className={`grid ${isMobile ? 'grid-cols-1 gap-8' : 'grid-cols-2 lg:grid-cols-3 gap-8'}`}>
-        <TrackerCard
-          icon={<Flame className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+      {/* Primary Progress Trackers with integrated tabs */}
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-5' : 'grid-cols-2 lg:grid-cols-3 gap-5'}`}>
+        <TrackerSection
+          icon={<Flame className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Calories"
           current={todayProgress.calories}
           target={targetCalories}
@@ -217,8 +220,8 @@ const Analytics = () => {
           progressPath="/analytics"
         />
 
-        <TrackerCard
-          icon={<Target className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+        <TrackerSection
+          icon={<Target className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Protein"
           current={todayProgress.protein}
           target={targetProtein}
@@ -229,8 +232,8 @@ const Analytics = () => {
           progressPath="/analytics"
         />
 
-        <TrackerCard
-          icon={<Zap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+        <TrackerSection
+          icon={<Zap className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Carbs"
           current={todayProgress.carbs}
           target={targetCarbs}
@@ -241,8 +244,8 @@ const Analytics = () => {
           progressPath="/analytics"
         />
 
-        <TrackerCard
-          icon={<Target className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+        <TrackerSection
+          icon={<Target className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Fat"
           current={todayProgress.fat}
           target={targetFat}
@@ -253,8 +256,8 @@ const Analytics = () => {
           progressPath="/analytics"
         />
 
-        <TrackerCard
-          icon={<Droplets className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+        <TrackerSection
+          icon={<Droplets className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Hydration"
           current={currentHydration}
           target={targetHydration}
@@ -265,8 +268,8 @@ const Analytics = () => {
           progressPath="/analytics"
         />
 
-        <TrackerCard
-          icon={<Pill className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+        <TrackerSection
+          icon={<Pill className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Supplements"
           current={currentSupplements}
           target={targetSupplements}
