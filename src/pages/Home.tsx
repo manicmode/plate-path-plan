@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -370,7 +369,7 @@ const Home = () => {
       </div>
 
       {/* AI Insights Card */}
-      <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 ${isMobile ? 'mb-32' : 'mb-40'} shadow-xl hover:shadow-2xl`} style={{ animationDelay: '600ms' }}>
+      <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 ${isMobile ? 'mb-32' : 'mb-52'} shadow-xl hover:shadow-2xl`} style={{ animationDelay: '600ms' }}>
         <CardContent className={`${isMobile ? 'p-8' : 'p-10'}`}>
           <div className={`flex items-center ${isMobile ? 'space-x-4' : 'space-x-5'} mb-6 sm:mb-8`}>
             <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} gradient-primary rounded-full flex items-center justify-center shadow-lg ai-glow`}>
