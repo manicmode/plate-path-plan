@@ -97,7 +97,7 @@ const Analytics = () => {
     );
   };
 
-  // Action tabs component with improved styling
+  // Action tabs component with enhanced shadows for light mode
   const ActionTabs = ({ category, logPath, progressPath }: { category: string, logPath: string, progressPath: string }) => {
     const handleSetGoal = () => {
       navigate('/profile?edit=true&focus=' + category.toLowerCase());
@@ -113,7 +113,7 @@ const Analytics = () => {
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={() => navigate(logPath)}
-          className="flex-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
         >
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           <span className="text-xs">Log</span>
@@ -122,7 +122,7 @@ const Analytics = () => {
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={handleSetGoal}
-          className="flex-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-green-50/80 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 font-medium"
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-green-50/80 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 font-medium"
         >
           <Settings className="h-3.5 w-3.5 mr-1.5" />
           <span className="text-xs">Goal</span>
@@ -131,7 +131,7 @@ const Analytics = () => {
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={handleViewProgress}
-          className="flex-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-purple-50/80 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium"
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-purple-50/80 hover:bg-purple-100 dark:bg-purple-900/20 dark:dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium"
         >
           <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
           <span className="text-xs">Progress</span>
@@ -140,7 +140,20 @@ const Analytics = () => {
     );
   };
 
-  // Tracker card component with integrated tabs
+  // Icon background helper function
+  const getIconBackground = (category: string) => {
+    const backgrounds = {
+      'Calories': 'bg-gradient-to-br from-orange-400 to-red-500',
+      'Protein': 'bg-gradient-to-br from-emerald-400 to-green-600',
+      'Carbs': 'bg-gradient-to-br from-yellow-400 to-amber-500',
+      'Fat': 'bg-gradient-to-br from-purple-400 to-violet-600',
+      'Hydration': 'bg-gradient-to-br from-blue-400 to-cyan-500',
+      'Supplements': 'bg-gradient-to-br from-pink-400 to-rose-500'
+    };
+    return backgrounds[category] || 'bg-gradient-to-br from-gray-400 to-gray-600';
+  };
+
+  // Tracker card component with integrated tabs and enhanced shadows
   const TrackerSection = ({ 
     icon, 
     title, 
@@ -162,10 +175,10 @@ const Analytics = () => {
     logPath: string;
     progressPath: string;
   }) => (
-    <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-100/50 dark:border-gray-700/50">
-      <Card className="visible-card shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0">
-        <CardContent className="p-4 flex flex-col items-center justify-center min-h-[220px]">
-          <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-2xl flex items-center justify-center neon-glow mb-3`}>
+    <div className="bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-100/50 dark:border-gray-700/50">
+      <Card className="visible-card shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border-0">
+        <CardContent className="p-4 flex flex-col items-center justify-center min-h-[200px]">
+          <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} ${getIconBackground(category)} rounded-2xl flex items-center justify-center neon-glow mb-3 shadow-lg`}>
             {icon}
           </div>
           
@@ -197,7 +210,7 @@ const Analytics = () => {
     <div className="space-y-6 animate-fade-in pb-8">
       {/* Header */}
       <div className="text-center space-y-4">
-        <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow`}>
+        <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow shadow-xl`}>
           <TrendingUp className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
         </div>
         <div>
@@ -207,7 +220,7 @@ const Analytics = () => {
       </div>
 
       {/* Primary Progress Trackers with integrated tabs */}
-      <div className={`grid ${isMobile ? 'grid-cols-1 gap-5' : 'grid-cols-2 lg:grid-cols-3 gap-5'}`}>
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-6' : 'grid-cols-2 lg:grid-cols-3 gap-6'}`}>
         <TrackerSection
           icon={<Flame className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
           title="Calories"
@@ -283,9 +296,9 @@ const Analytics = () => {
 
       {/* Secondary Stats */}
       <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
-        <Card className="visible-card shadow-md hover:shadow-lg transition-shadow duration-200">
+        <Card className="visible-card shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardContent className="p-6 text-center">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow shadow-lg`}>
               <Calendar className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
             <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Days Tracked</h3>
@@ -301,9 +314,9 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="visible-card shadow-md hover:shadow-lg transition-shadow duration-200">
+        <Card className="visible-card shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardContent className="p-6 text-center">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-violet-400 to-violet-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-violet-400 to-violet-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow shadow-lg`}>
               <Award className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
             <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Goal Achievement</h3>
@@ -319,9 +332,9 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="visible-card shadow-md hover:shadow-lg transition-shadow duration-200">
+        <Card className="visible-card shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardContent className="p-6 text-center">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow shadow-lg`}>
               <TrendingUp className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
             <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Weekly Average</h3>
@@ -339,7 +352,7 @@ const Analytics = () => {
       </div>
 
       {/* Weekly Progress Chart */}
-      <Card className="visible-card shadow-lg">
+      <Card className="visible-card shadow-xl">
         <CardHeader>
           <CardTitle className="text-center text-gray-900 dark:text-white">Weekly Progress</CardTitle>
         </CardHeader>
@@ -377,7 +390,7 @@ const Analytics = () => {
       </Card>
 
       {/* Today's Macros */}
-      <Card className="visible-card shadow-lg">
+      <Card className="visible-card shadow-xl">
         <CardHeader>
           <CardTitle className="text-center text-gray-900 dark:text-white">Today's Macros</CardTitle>
         </CardHeader>
@@ -418,20 +431,20 @@ const Analytics = () => {
       </Card>
 
       {/* Recent Achievements */}
-      <Card className="visible-card shadow-lg">
+      <Card className="visible-card shadow-xl">
         <CardHeader>
           <CardTitle className="text-center text-gray-900 dark:text-white">Recent Achievements</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-sm">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-md">
             <span className="text-gray-700 dark:text-gray-300 font-medium">Weekly Streak</span>
             <Badge variant="default" className="bg-emerald-500 shadow-sm">7 days</Badge>
           </div>
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800 shadow-md">
             <span className="text-gray-700 dark:text-gray-300 font-medium">Average Calories</span>
             <Badge variant="secondary" className="shadow-sm">1950</Badge>
           </div>
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800 shadow-md">
             <span className="text-gray-700 dark:text-gray-300 font-medium">Goal Achievement</span>
             <Badge 
               variant={Math.round((todayProgress.calories / targetCalories) * 100) >= 80 ? "default" : "secondary"}
