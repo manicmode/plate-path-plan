@@ -20,8 +20,8 @@ const Analytics = () => {
   const targetProtein = user?.targetProtein || 150;
   const targetCarbs = user?.targetCarbs || 200;
   const targetFat = user?.targetFat || 65;
-  const targetHydration = user?.targetHydration || 8; // glasses
-  const targetSupplements = user?.targetSupplements || 3; // pills
+  const targetHydration = user?.targetHydration || 8;
+  const targetSupplements = user?.targetSupplements || 3;
 
   // Mock current values for hydration and supplements
   const currentHydration = 5;
@@ -44,7 +44,7 @@ const Analytics = () => {
     { name: 'Fat', value: todayProgress.fat, color: '#8B5CF6' },
   ];
 
-  // Circular progress component matching Home page style
+  // Circular progress component
   const CircularProgress = ({ percentage, size = 100, strokeWidth = 8, color = 'emerald' }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -97,47 +97,101 @@ const Analytics = () => {
     );
   };
 
-  // Action tabs component
+  // Action tabs component with improved styling
   const ActionTabs = ({ category, logPath, progressPath }: { category: string, logPath: string, progressPath: string }) => {
     const handleSetGoal = () => {
       navigate('/profile?edit=true&focus=' + category.toLowerCase());
     };
 
+    const handleViewProgress = () => {
+      navigate(`/progress/${category.toLowerCase()}`);
+    };
+
     return (
-      <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'} mt-4`}>
+      <div className="flex gap-2 mt-4 px-2">
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={() => navigate(logPath)}
-          className="flex-1 glass-button border-0 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          className="flex-1 h-10 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
         >
-          <Plus className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
-          <span className={isMobile ? 'text-xs' : 'text-sm'}>Log</span>
+          <Plus className="h-4 w-4 mr-2" />
+          <span className="text-sm">Log</span>
         </Button>
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
           onClick={handleSetGoal}
-          className="flex-1 glass-button border-0 hover:bg-green-50 dark:hover:bg-green-900/20"
+          className="flex-1 h-10 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-green-50/80 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 font-medium"
         >
-          <Settings className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
-          <span className={isMobile ? 'text-xs' : 'text-sm'}>Goal</span>
+          <Settings className="h-4 w-4 mr-2" />
+          <span className="text-sm">Goal</span>
         </Button>
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
-          onClick={() => navigate(progressPath)}
-          className="flex-1 glass-button border-0 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+          onClick={handleViewProgress}
+          className="flex-1 h-10 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-0 bg-purple-50/80 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium"
         >
-          <BarChart3 className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
-          <span className={isMobile ? 'text-xs' : 'text-sm'}>Progress</span>
+          <BarChart3 className="h-4 w-4 mr-2" />
+          <span className="text-sm">Progress</span>
         </Button>
       </div>
     );
   };
 
+  // Tracker card component for consistent styling
+  const TrackerCard = ({ 
+    icon, 
+    title, 
+    current, 
+    target, 
+    unit, 
+    color, 
+    category, 
+    logPath, 
+    progressPath 
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    current: number;
+    target: number;
+    unit: string;
+    color: string;
+    category: string;
+    logPath: string;
+    progressPath: string;
+  }) => (
+    <div className="space-y-4">
+      <Card className="visible-card shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+        <CardContent className="p-6 flex flex-col items-center justify-center min-h-[280px]">
+          <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} rounded-2xl flex items-center justify-center neon-glow mb-4`}>
+            {icon}
+          </div>
+          
+          <CircularProgress 
+            percentage={Math.min((current / target) * 100, 100)} 
+            size={isMobile ? 80 : 100} 
+            color={color}
+          />
+          
+          <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            {title}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 text-center">
+            <span className="font-semibold">{Math.round(current)}</span>
+            <span className="mx-1">/</span>
+            <span>{target}</span>
+            <span className="ml-1 text-xs">{unit}</span>
+          </p>
+        </CardContent>
+      </Card>
+      <ActionTabs category={category} logPath={logPath} progressPath={progressPath} />
+    </div>
+  );
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in pb-8">
       {/* Header */}
       <div className="text-center space-y-4">
         <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow`}>
@@ -149,182 +203,85 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* Primary Progress Trackers - Reordered */}
-      <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-2 lg:grid-cols-3 gap-6'}`}>
-        {/* Calories Tracker */}
-        <div className="space-y-0">
-          <Card className="visible-card">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
-                <Flame className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-              </div>
-              
-              <CircularProgress 
-                percentage={Math.min((todayProgress.calories / targetCalories) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="orange"
-              />
-              
-              <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Calories
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                <span className="font-semibold">{Math.round(todayProgress.calories)}</span>
-                <span className="mx-1">/</span>
-                <span>{targetCalories}</span>
-                <span className="ml-1 text-xs">kcal</span>
-              </p>
-            </CardContent>
-          </Card>
-          <ActionTabs category="Calories" logPath="/camera" progressPath="/analytics" />
-        </div>
+      {/* Primary Progress Trackers - Reordered with improved layout */}
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-8' : 'grid-cols-2 lg:grid-cols-3 gap-8'}`}>
+        <TrackerCard
+          icon={<Flame className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+          title="Calories"
+          current={todayProgress.calories}
+          target={targetCalories}
+          unit="kcal"
+          color="orange"
+          category="Calories"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
 
-        {/* Protein Tracker */}
-        <div className="space-y-0">
-          <Card className="visible-card">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
-                <Target className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-              </div>
-              
-              <CircularProgress 
-                percentage={Math.min((todayProgress.protein / targetProtein) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="emerald"
-              />
-              
-              <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Protein
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                <span className="font-semibold">{Math.round(todayProgress.protein)}</span>
-                <span className="mx-1">/</span>
-                <span>{targetProtein}</span>
-                <span className="ml-1 text-xs">g</span>
-              </p>
-            </CardContent>
-          </Card>
-          <ActionTabs category="Protein" logPath="/camera" progressPath="/analytics" />
-        </div>
+        <TrackerCard
+          icon={<Target className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+          title="Protein"
+          current={todayProgress.protein}
+          target={targetProtein}
+          unit="g"
+          color="emerald"
+          category="Protein"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
 
-        {/* Carbohydrates Tracker */}
-        <div className="space-y-0">
-          <Card className="visible-card">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-yellow-400 to-amber-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
-                <Zap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-              </div>
-              
-              <CircularProgress 
-                percentage={Math.min((todayProgress.carbs / targetCarbs) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="yellow"
-              />
-              
-              <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Carbs
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                <span className="font-semibold">{Math.round(todayProgress.carbs)}</span>
-                <span className="mx-1">/</span>
-                <span>{targetCarbs}</span>
-                <span className="ml-1 text-xs">g</span>
-              </p>
-            </CardContent>
-          </Card>
-          <ActionTabs category="Carbs" logPath="/camera" progressPath="/analytics" />
-        </div>
+        <TrackerCard
+          icon={<Zap className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+          title="Carbs"
+          current={todayProgress.carbs}
+          target={targetCarbs}
+          unit="g"
+          color="yellow"
+          category="Carbs"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
 
-        {/* Fat Tracker */}
-        <div className="space-y-0">
-          <Card className="visible-card">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-purple-400 to-violet-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
-                <Target className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-              </div>
-              
-              <CircularProgress 
-                percentage={Math.min((todayProgress.fat / targetFat) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="purple"
-              />
-              
-              <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Fat
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                <span className="font-semibold">{Math.round(todayProgress.fat)}</span>
-                <span className="mx-1">/</span>
-                <span>{targetFat}</span>
-                <span className="ml-1 text-xs">g</span>
-              </p>
-            </CardContent>
-          </Card>
-          <ActionTabs category="Fat" logPath="/camera" progressPath="/analytics" />
-        </div>
+        <TrackerCard
+          icon={<Target className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+          title="Fat"
+          current={todayProgress.fat}
+          target={targetFat}
+          unit="g"
+          color="purple"
+          category="Fat"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
 
-        {/* Hydration Tracker */}
-        <div className="space-y-0">
-          <Card className="visible-card">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
-                <Droplets className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-              </div>
-              
-              <CircularProgress 
-                percentage={Math.min((currentHydration / targetHydration) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="blue"
-              />
-              
-              <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Hydration
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                <span className="font-semibold">{currentHydration}</span>
-                <span className="mx-1">/</span>
-                <span>{targetHydration}</span>
-                <span className="ml-1 text-xs">glasses</span>
-              </p>
-            </CardContent>
-          </Card>
-          <ActionTabs category="Hydration" logPath="/hydration" progressPath="/analytics" />
-        </div>
+        <TrackerCard
+          icon={<Droplets className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+          title="Hydration"
+          current={currentHydration}
+          target={targetHydration}
+          unit="glasses"
+          color="blue"
+          category="Hydration"
+          logPath="/hydration"
+          progressPath="/analytics"
+        />
 
-        {/* Supplements Tracker */}
-        <div className="space-y-0">
-          <Card className="visible-card">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center neon-glow mb-4`}>
-                <Pill className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
-              </div>
-              
-              <CircularProgress 
-                percentage={Math.min((currentSupplements / targetSupplements) * 100, 100)} 
-                size={isMobile ? 80 : 100} 
-                color="pink"
-              />
-              
-              <h3 className={`font-bold text-gray-900 dark:text-white mt-4 mb-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                Supplements
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                <span className="font-semibold">{currentSupplements}</span>
-                <span className="mx-1">/</span>
-                <span>{targetSupplements}</span>
-                <span className="ml-1 text-xs">pills</span>
-              </p>
-            </CardContent>
-          </Card>
-          <ActionTabs category="Supplements" logPath="/supplements" progressPath="/analytics" />
-        </div>
+        <TrackerCard
+          icon={<Pill className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />}
+          title="Supplements"
+          current={currentSupplements}
+          target={targetSupplements}
+          unit="pills"
+          color="pink"
+          category="Supplements"
+          logPath="/supplements"
+          progressPath="/analytics"
+        />
       </div>
 
       {/* Secondary Stats */}
-      <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-3 gap-4'}`}>
-        {/* Days Tracked */}
-        <Card className="visible-card">
-          <CardContent className="p-4 text-center">
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
+        <Card className="visible-card shadow-md hover:shadow-lg transition-shadow duration-200">
+          <CardContent className="p-6 text-center">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
               <Calendar className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
@@ -341,9 +298,8 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        {/* Goal Achievement */}
-        <Card className="visible-card">
-          <CardContent className="p-4 text-center">
+        <Card className="visible-card shadow-md hover:shadow-lg transition-shadow duration-200">
+          <CardContent className="p-6 text-center">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-violet-400 to-violet-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
               <Award className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
@@ -360,9 +316,8 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        {/* Weekly Average */}
-        <Card className="visible-card">
-          <CardContent className="p-4 text-center">
+        <Card className="visible-card shadow-md hover:shadow-lg transition-shadow duration-200">
+          <CardContent className="p-6 text-center">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow`}>
               <TrendingUp className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
@@ -381,7 +336,7 @@ const Analytics = () => {
       </div>
 
       {/* Weekly Progress Chart */}
-      <Card className="visible-card">
+      <Card className="visible-card shadow-lg">
         <CardHeader>
           <CardTitle className="text-center text-gray-900 dark:text-white">Weekly Progress</CardTitle>
         </CardHeader>
@@ -419,7 +374,7 @@ const Analytics = () => {
       </Card>
 
       {/* Today's Macros */}
-      <Card className="visible-card">
+      <Card className="visible-card shadow-lg">
         <CardHeader>
           <CardTitle className="text-center text-gray-900 dark:text-white">Today's Macros</CardTitle>
         </CardHeader>
@@ -460,23 +415,24 @@ const Analytics = () => {
       </Card>
 
       {/* Recent Achievements */}
-      <Card className="visible-card">
+      <Card className="visible-card shadow-lg">
         <CardHeader>
           <CardTitle className="text-center text-gray-900 dark:text-white">Recent Achievements</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-sm">
             <span className="text-gray-700 dark:text-gray-300 font-medium">Weekly Streak</span>
-            <Badge variant="default" className="bg-emerald-500">7 days</Badge>
+            <Badge variant="default" className="bg-emerald-500 shadow-sm">7 days</Badge>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
             <span className="text-gray-700 dark:text-gray-300 font-medium">Average Calories</span>
-            <Badge variant="secondary">1950</Badge>
+            <Badge variant="secondary" className="shadow-sm">1950</Badge>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm">
             <span className="text-gray-700 dark:text-gray-300 font-medium">Goal Achievement</span>
             <Badge 
               variant={Math.round((todayProgress.calories / targetCalories) * 100) >= 80 ? "default" : "secondary"}
+              className="shadow-sm"
             >
               {Math.round((todayProgress.calories / targetCalories) * 100)}%
             </Badge>
