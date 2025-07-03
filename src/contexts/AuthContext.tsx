@@ -41,6 +41,7 @@ export const useAuth = () => {
 const loadUserPreferences = () => {
   try {
     const stored = localStorage.getItem('user_preferences');
+    console.log('Loading preferences from localStorage:', stored);
     return stored ? JSON.parse(stored) : {};
   } catch (error) {
     console.error('Failed to load preferences:', error);
@@ -50,32 +51,10 @@ const loadUserPreferences = () => {
 
 const saveUserPreferences = (preferences: any) => {
   try {
+    console.log('Saving preferences to localStorage:', preferences);
     localStorage.setItem('user_preferences', JSON.stringify(preferences));
   } catch (error) {
     console.error('Failed to save preferences:', error);
-  }
-};
-
-const loadUserPreferences = () => {
-  try {
-    const stored = localStorage.getItem('user_preferences');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('Error loading user preferences:', e);
-  }
-  return {
-    selectedTrackers: ['calories', 'hydration', 'supplements'],
-  };
-};
-
-const saveUserPreferences = (prefs: any) => {
-  try {
-    localStorage.setItem('user_preferences', JSON.stringify(prefs));
-    console.log('User preferences saved to localStorage:', prefs);
-  } catch (e) {
-    console.error('Error saving user preferences:', e);
   }
 };
 
@@ -93,24 +72,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       
-const preferences = loadUserPreferences();
+      const preferences = loadUserPreferences();
+      console.log('Loaded preferences on startup:', preferences);
 
-// Only set defaults if not already stored
-const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+      // Only set defaults if not already stored
+      const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
 
-const userWithDefaults = {
-  ...parsedUser,
-  targetHydration: parsedUser.targetHydration || 8,
-  targetSupplements: parsedUser.targetSupplements || 3,
-  selectedTrackers,
-};
+      const userWithDefaults = {
+        ...parsedUser,
+        targetHydration: parsedUser.targetHydration || 8,
+        targetSupplements: parsedUser.targetSupplements || 3,
+        selectedTrackers,
+      };
 
-// Save the loaded ones back only if nothing was saved before
-if (!preferences.selectedTrackers) {
-  saveUserPreferences({ selectedTrackers });
-}
+      // Save the loaded ones back only if nothing was saved before
+      if (!preferences.selectedTrackers) {
+        console.log('No saved preferences found, saving defaults');
+        saveUserPreferences({ selectedTrackers });
+      }
 
-      
       setUser(userWithDefaults);
       localStorage.setItem('user', JSON.stringify(userWithDefaults));
       
