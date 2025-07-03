@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -57,10 +56,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         targetSupplements: parsedUser.targetSupplements || 3,
         selectedTrackers: parsedUser.selectedTrackers || ['calories', 'hydration', 'supplements'],
       };
+      
+      // Load user preferences from Supabase
+      loadUserPreferences(userWithDefaults);
+      
       setUser(userWithDefaults);
       setIsAuthenticated(true);
     }
   }, []);
+
+  const loadUserPreferences = async (currentUser: User) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('selected_trackers')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (data && data.selected_trackers) {
+        const updatedUser = { ...currentUser, selectedTrackers: data.selected_trackers };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.log('No user preferences found in Supabase, using defaults');
+    }
+  };
 
   const login = async (email: string, password: string) => {
     // Mock login - in real app, this would call an API
@@ -82,6 +103,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(mockUser);
     setIsAuthenticated(true);
     localStorage.setItem('user', JSON.stringify(mockUser));
+    
+    // Load preferences from Supabase after login
+    loadUserPreferences(mockUser);
   };
 
   const register = async (email: string, password: string, name: string) => {

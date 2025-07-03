@@ -240,7 +240,7 @@ const Home = () => {
         {displayedTrackers.map((tracker, index) => (
           <div 
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden shadow-xl hover:shadow-2xl`}
             onClick={tracker.onClick}
             title={getMotivationalMessage(tracker.percentage, tracker.name)}
           >
