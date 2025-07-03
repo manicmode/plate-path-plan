@@ -60,7 +60,7 @@ const CameraPage = () => {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
-  const [inputSource, setInputSource<'photo' | 'voice'>('photo');
+  const [inputSource, setInputSource] = useState<'photo' | 'voice'>('photo');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, startRecording, stopRecording } = useVoiceRecording();
@@ -226,11 +226,7 @@ const CameraPage = () => {
       }
 
       // Parse the structured response from the updated edge function
-      const voiceApiResponse: VoiceApiResponse = {
-        success: result.success,
-        data: result.message ? JSON.parse(result.message) : { foodItems: [], analysis: '' },
-        originalText: voiceText,
-      };
+      const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
 
       console.log('Voice API Response:', voiceApiResponse);
       setVoiceResults(voiceApiResponse);
@@ -240,8 +236,8 @@ const CameraPage = () => {
       
       if (processedFoods.length > 0) {
         setRecognizedFoods(processedFoods);
-        setShowConfirmation(true); // THIS IS THE KEY FIX - show confirmation modal
-        setShowVoiceEntry(false); // Hide voice entry card
+        setShowConfirmation(true);
+        setShowVoiceEntry(false);
         toast.success(`Analyzed ${processedFoods.length} food item(s)! Please review and confirm.`);
       } else {
         toast.error('Could not identify any food items from your voice input.');
