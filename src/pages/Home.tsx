@@ -1,11 +1,10 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CelebrationPopup from '@/components/CelebrationPopup';
 
@@ -15,6 +14,7 @@ const Home = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
+  const trackerCardsRef = useRef<HTMLDivElement>(null);
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
@@ -28,6 +28,27 @@ const Home = () => {
 
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
+
+  // Auto-scroll to tracker cards position when component mounts
+  useEffect(() => {
+    const scrollToTrackerCards = () => {
+      if (trackerCardsRef.current) {
+        const element = trackerCardsRef.current;
+        const elementTop = element.offsetTop;
+        // Adjust offset for mobile/desktop to position tracker cards at top of viewport
+        const offset = isMobile ? 20 : 40; 
+        
+        window.scrollTo({
+          top: elementTop - offset,
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    // Small delay to ensure DOM is fully rendered and layout is calculated
+    const timer = setTimeout(scrollToTrackerCards, 150);
+    return () => clearTimeout(timer);
+  }, [isMobile]);
 
   // Check for goal completion and trigger celebration
   useEffect(() => {
@@ -124,8 +145,8 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Redesigned Daily Tracker Cards with better spacing */}
-      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch`}>
+      {/* Redesigned Daily Tracker Cards with better spacing - TARGET SCROLL POSITION */}
+      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch`}>
         {/* Vibrant Calories Tracker */}
         <div 
           className={`calories-tracker-vibrant border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden`}
