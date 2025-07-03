@@ -79,7 +79,7 @@ const CameraPage = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addFood } = useNutrition();
-  const { isRecording, isProcessing: isVoiceProcessing, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
   // Unified function to process nutrition data from both photo and voice sources
   const processNutritionData = (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
@@ -444,6 +444,13 @@ const CameraPage = () => {
     }
   };
 
+  // Format recording duration for display
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
@@ -484,29 +491,42 @@ const CameraPage = () => {
                   Upload Photo
                 </Button>
                 
-                <Button
-                  onClick={handleVoiceRecording}
-                  disabled={isVoiceProcessing || !!processingStep}
-                  className="w-full gradient-primary"
-                  size="lg"
-                >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="h-5 w-5 mr-2" />
-                      Stop Recording
-                    </>
-                  ) : (isVoiceProcessing || processingStep) ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      {processingStep || 'Processing...'}
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-5 w-5 mr-2" />
-                      Speak to Log
-                    </>
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleVoiceRecording}
+                    disabled={isVoiceProcessing || !!processingStep}
+                    className={`w-full ${isRecording 
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                      : 'gradient-primary'
+                    }`}
+                    size="lg"
+                  >
+                    {isRecording ? (
+                      <>
+                        <MicOff className="h-5 w-5 mr-2" />
+                        Stop Recording ({formatRecordingTime(recordingDuration)})
+                      </>
+                    ) : (isVoiceProcessing || processingStep) ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        {processingStep || 'Processing...'}
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-5 w-5 mr-2" />
+                        Speak to Log
+                      </>
+                    )}
+                  </Button>
+                  
+                  {isRecording && (
+                    <div className="text-center">
+                      <p className="text-sm text-red-600 font-medium animate-pulse">
+                        🔴 Recording... Click button again to stop
+                      </p>
+                    </div>
                   )}
-                </Button>
+                </div>
                 
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Supports JPG, PNG, and voice input

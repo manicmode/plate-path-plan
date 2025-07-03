@@ -1,11 +1,12 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
   isProcessing: boolean;
+  recordingDuration: number;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<string | null>;
   transcribedText: string | null;
@@ -14,9 +15,34 @@ interface UseVoiceRecordingReturn {
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const [transcribedText, setTranscribedText] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Timer effect to track recording duration
+  useEffect(() => {
+    if (isRecording) {
+      setRecordingDuration(0);
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setRecordingDuration(0);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isRecording]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -101,7 +127,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         }
       };
 
-      mediaRecorderRef.current.stop();
+      mediaRecorder.stop();
       
       // Stop all tracks
       if (mediaRecorderRef.current.stream) {
@@ -113,6 +139,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   return {
     isRecording,
     isProcessing,
+    recordingDuration,
     startRecording,
     stopRecording,
     transcribedText,
