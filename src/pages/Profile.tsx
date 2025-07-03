@@ -12,6 +12,7 @@ import { NutritionGoals } from '@/components/profile/NutritionGoals';
 import { DietaryGoals } from '@/components/profile/DietaryGoals';
 import { TrackerSelection } from '@/components/profile/TrackerSelection';
 import { AllergiesSection } from '@/components/profile/AllergiesSection';
+import { NotificationSettings } from '@/components/profile/NotificationSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 
@@ -207,6 +208,9 @@ const Profile = () => {
         isEditing={isEditing}
         onToggleTracker={toggleTracker}
       />
+
+      {/* Notification Settings */}
+      <NotificationSettings />
 
       {/* Allergies & Restrictions */}
       <AllergiesSection 
