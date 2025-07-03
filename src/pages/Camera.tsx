@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Upload, Loader2, Check, X, Sparkles, Mic, MicOff } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Camera, Upload, Loader2, Check, X, Sparkles, Mic, MicOff, AlertCircle, Edit3 } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +49,10 @@ interface VoiceApiResponse {
     analysis: string;
   };
   originalText: string;
+  errorType?: string;
+  errorMessage?: string;
+  suggestions?: string[];
+  detectedItems?: string[];
   error?: string;
 }
 
@@ -58,15 +64,25 @@ const CameraPage = () => {
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [processingStep, setProcessingStep] = useState('');
   const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
-  const [inputSource, setInputSource] = useState<'photo' | 'voice'>('photo');
+  const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual'>('photo');
+  
+  // Error handling states
+  const [showError, setShowError] = useState(false);
+  const [errorType, setErrorType] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errorSuggestions, setErrorSuggestions] = useState<string[]>([]);
+  const [showManualEdit, setShowManualEdit] = useState(false);
+  const [manualEditText, setManualEditText] = useState('');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, startRecording, stopRecording } = useVoiceRecording();
 
   // Unified function to process nutrition data from both photo and voice sources
-  const processNutritionData = (source: 'photo' | 'voice', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
+  const processNutritionData = (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
     
     if (source === 'voice' && 'data' in data) {
@@ -133,6 +149,7 @@ const CameraPage = () => {
         setVisionResults(null);
         setVoiceResults(null);
         setInputSource('photo');
+        resetErrorState();
       };
       reader.readAsDataURL(file);
     }
@@ -146,6 +163,7 @@ const CameraPage = () => {
     if (!selectedImage) return;
 
     setIsAnalyzing(true);
+    setProcessingStep('Analyzing image...');
     
     try {
       const imageBase64 = convertToBase64(selectedImage);
@@ -174,6 +192,7 @@ const CameraPage = () => {
       toast.error(error instanceof Error ? error.message : 'Failed to analyze image. Please try again.');
     } finally {
       setIsAnalyzing(false);
+      setProcessingStep('');
     }
   };
 
@@ -199,32 +218,49 @@ const CameraPage = () => {
 
   const handleVoiceRecording = async () => {
     if (isRecording) {
+      setProcessingStep('Transcribing...');
       const transcribedText = await stopRecording();
       if (transcribedText) {
         setVoiceText(transcribedText);
         setShowVoiceEntry(true);
         setInputSource('voice');
+        resetErrorState();
       }
+      setProcessingStep('');
     } else {
       await startRecording();
+      resetErrorState();
     }
   };
 
   const processVoiceEntry = async () => {
     if (!voiceText.trim()) {
-      toast.error('No voice input detected. Please try recording again.');
+      showErrorState('NO_INPUT', 'No voice input detected. Please try recording again.', [
+        'Make sure to speak clearly into the microphone',
+        'Try recording in a quieter environment'
+      ]);
       return;
     }
 
     setIsProcessingVoice(true);
+    setProcessingStep('Processing voice input...');
     
     try {
+      setProcessingStep('Analyzing nutrition...');
       const result = await sendToLogVoice(voiceText);
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to process voice input');
+        // Handle structured error response from edge function
+        const errorData = result.message ? JSON.parse(result.message) : {};
+        showErrorState(
+          errorData.errorType || 'UNKNOWN_ERROR',
+          errorData.errorMessage || result.error || 'Failed to process voice input',
+          errorData.suggestions || ['Please try again with more specific descriptions']
+        );
+        return;
       }
 
+      setProcessingStep('Preparing results...');
       // Parse the structured response from the updated edge function
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
 
@@ -238,17 +274,106 @@ const CameraPage = () => {
         setRecognizedFoods(processedFoods);
         setShowConfirmation(true);
         setShowVoiceEntry(false);
+        resetErrorState();
         toast.success(`Analyzed ${processedFoods.length} food item(s)! Please review and confirm.`);
       } else {
-        toast.error('Could not identify any food items from your voice input.');
+        showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
+          'Try mentioning specific food names',
+          'Include quantities or portions in your description'
+        ]);
       }
       
     } catch (error) {
       console.error('Error processing voice input:', error);
-      toast.error('Failed to process voice input. Please try again.');
+      showErrorState('SYSTEM_ERROR', 'Failed to process voice input. Please try again.', [
+        'Check your internet connection',
+        'Try again in a moment'
+      ]);
     } finally {
       setIsProcessingVoice(false);
+      setProcessingStep('');
     }
+  };
+
+  const processManualEntry = async () => {
+    if (!manualEditText.trim()) {
+      toast.error('Please enter some food information');
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    setProcessingStep('Processing manual input...');
+
+    try {
+      setProcessingStep('Analyzing nutrition...');
+      const result = await sendToLogVoice(manualEditText);
+
+      if (!result.success) {
+        const errorData = result.message ? JSON.parse(result.message) : {};
+        showErrorState(
+          errorData.errorType || 'UNKNOWN_ERROR',
+          errorData.errorMessage || result.error || 'Failed to process manual input',
+          errorData.suggestions || ['Please try again with more specific descriptions']
+        );
+        return;
+      }
+
+      setProcessingStep('Preparing results...');
+      const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
+      setVoiceResults(voiceApiResponse);
+
+      const processedFoods = processNutritionData('manual', voiceApiResponse);
+      
+      if (processedFoods.length > 0) {
+        setRecognizedFoods(processedFoods);
+        setShowConfirmation(true);
+        setShowManualEdit(false);
+        setInputSource('manual');
+        resetErrorState();
+        toast.success(`Analyzed ${processedFoods.length} food item(s)! Please review and confirm.`);
+      } else {
+        showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your input.', [
+          'Try mentioning specific food names',
+          'Include quantities or portions in your description'
+        ]);
+      }
+    } catch (error) {
+      console.error('Error processing manual input:', error);
+      showErrorState('SYSTEM_ERROR', 'Failed to process manual input. Please try again.', [
+        'Check your internet connection',
+        'Try again in a moment'
+      ]);
+    } finally {
+      setIsProcessingVoice(false);
+      setProcessingStep('');
+    }
+  };
+
+  const showErrorState = (type: string, message: string, suggestions: string[]) => {
+    setErrorType(type);
+    setErrorMessage(message);
+    setErrorSuggestions(suggestions);
+    setShowError(true);
+    setShowVoiceEntry(false);
+    setShowConfirmation(false);
+  };
+
+  const resetErrorState = () => {
+    setShowError(false);
+    setErrorType('');
+    setErrorMessage('');
+    setErrorSuggestions([]);
+  };
+
+  const handleRetryVoice = () => {
+    resetErrorState();
+    setShowVoiceEntry(true);
+  };
+
+  const handleEditManually = () => {
+    resetErrorState();
+    setManualEditText(voiceText || '');
+    setShowManualEdit(true);
   };
 
   const confirmFoods = async () => {
@@ -282,7 +407,7 @@ const CameraPage = () => {
             sodium: food.sodium,
             confidence: food.confidence,
             serving_size: food.serving,
-            source: inputSource === 'voice' ? 'voice' : 'vision_api',
+            source: inputSource === 'voice' ? 'voice' : inputSource === 'manual' ? 'manual' : 'vision_api',
             image_url: selectedImage || null,
           });
 
@@ -305,11 +430,15 @@ const CameraPage = () => {
     setRecognizedFoods([]);
     setShowConfirmation(false);
     setShowVoiceEntry(false);
+    setShowManualEdit(false);
     setIsAnalyzing(false);
     setVoiceText('');
+    setManualEditText('');
     setVisionResults(null);
     setVoiceResults(null);
     setInputSource('photo');
+    setProcessingStep('');
+    resetErrorState();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -322,7 +451,7 @@ const CameraPage = () => {
         <p className="text-gray-600 dark:text-gray-300">Take a photo or speak your meal</p>
       </div>
 
-      {!selectedImage && !showConfirmation && (
+      {!selectedImage && !showConfirmation && !showError && !showManualEdit && (
         <Card className="animate-slide-up">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
@@ -357,7 +486,7 @@ const CameraPage = () => {
                 
                 <Button
                   onClick={handleVoiceRecording}
-                  disabled={isVoiceProcessing}
+                  disabled={isVoiceProcessing || !!processingStep}
                   className="w-full gradient-primary"
                   size="lg"
                 >
@@ -366,10 +495,10 @@ const CameraPage = () => {
                       <MicOff className="h-5 w-5 mr-2" />
                       Stop Recording
                     </>
-                  ) : isVoiceProcessing ? (
+                  ) : (isVoiceProcessing || processingStep) ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Processing...
+                      {processingStep || 'Processing...'}
                     </>
                   ) : (
                     <>
@@ -409,13 +538,13 @@ const CameraPage = () => {
             <div className="flex space-x-3">
               <Button
                 onClick={processVoiceEntry}
-                disabled={isProcessingVoice}
+                disabled={isProcessingVoice || !!processingStep}
                 className="flex-1 gradient-primary"
               >
-                {isProcessingVoice ? (
+                {isProcessingVoice || processingStep ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing with AI...
+                    {processingStep || 'Analyzing with AI...'}
                   </>
                 ) : (
                   <>
@@ -425,7 +554,108 @@ const CameraPage = () => {
                 )}
               </Button>
               
-              <Button variant="outline" onClick={() => setShowVoiceEntry(false)}>
+              <Button variant="outline" onClick={() => setShowVoiceEntry(false)} className="flex-1">
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Display Card */}
+      {showError && (
+        <Card className="animate-slide-up border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-200">
+              <AlertCircle className="h-5 w-5" />
+              Unable to Process Input
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <p className="text-red-700 dark:text-red-300 font-medium">{errorMessage}</p>
+              
+              {errorSuggestions.length > 0 && (
+                <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Try these suggestions:</p>
+                  <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
+                    {errorSuggestions.map((suggestion, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-red-500 mt-1">•</span>
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex space-x-3">
+              <Button onClick={handleRetryVoice} className="flex-1 gradient-primary">
+                <Mic className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+              
+              <Button onClick={handleEditManually} variant="outline" className="flex-1">
+                <Edit3 className="h-4 w-4 mr-2" />
+                Edit Manually
+              </Button>
+              
+              <Button variant="outline" onClick={resetState} className="flex-1">
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Manual Edit Card */}
+      {showManualEdit && (
+        <Card className="animate-slide-up">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Edit3 className="h-5 w-5 text-green-600" />
+              Manual Food Entry
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Describe what you ate:
+              </label>
+              <Textarea
+                value={manualEditText}
+                onChange={(e) => setManualEditText(e.target.value)}
+                placeholder="e.g., 1 cup white rice, 4 oz grilled chicken breast, 1 medium apple..."
+                className="min-h-20"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Be specific with quantities and food names for better accuracy
+              </p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <Button
+                onClick={processManualEntry}
+                disabled={isProcessingVoice || !!processingStep}
+                className="flex-1 gradient-primary"
+              >
+                {isProcessingVoice || processingStep ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {processingStep || 'Processing...'}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Analyze Food
+                  </>
+                )}
+              </Button>
+              
+              <Button variant="outline" onClick={() => setShowManualEdit(false)} className="flex-1">
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -458,7 +688,7 @@ const CameraPage = () => {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing with Google Vision AI...
+                    {processingStep || 'Analyzing with Google Vision AI...'}
                   </>
                 ) : (
                   <>
@@ -468,7 +698,7 @@ const CameraPage = () => {
                 )}
               </Button>
               
-              <Button variant="outline" onClick={resetState}>
+              <Button variant="outline" onClick={resetState} className="flex-1">
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -477,7 +707,7 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Unified Confirmation Modal for both Photo and Voice */}
+      {/* Unified Confirmation Modal for all input types */}
       {showConfirmation && (
         <div className="space-y-6 animate-slide-up">
           <Card>
@@ -486,7 +716,7 @@ const CameraPage = () => {
                 <Check className="h-5 w-5 text-green-600" />
                 Food Recognition Results
                 <span className="text-sm font-normal text-gray-500">
-                  ({inputSource === 'voice' ? 'Voice Input' : 'Photo Analysis'})
+                  ({inputSource === 'voice' ? 'Voice Input' : inputSource === 'manual' ? 'Manual Input' : 'Photo Analysis'})
                 </span>
               </CardTitle>
               <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -505,14 +735,23 @@ const CameraPage = () => {
                 </div>
               )}
 
-              {/* Show transcribed text for voice input */}
-              {inputSource === 'voice' && voiceText && (
+              {/* Show transcribed text for voice/manual input */}
+              {(inputSource === 'voice' || inputSource === 'manual') && (voiceText || manualEditText) && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    <Mic className="h-4 w-4 inline mr-2" />
-                    Voice Input: "{voiceText}"
+                    {inputSource === 'voice' ? (
+                      <>
+                        <Mic className="h-4 w-4 inline mr-2" />
+                        Voice Input: "{voiceText}"
+                      </>
+                    ) : (
+                      <>
+                        <Edit3 className="h-4 w-4 inline mr-2" />
+                        Manual Input: "{manualEditText}"
+                      </>
+                    )}
                   </h4>
-                  {voiceResults?.data.analysis && (
+                  {voiceResults?.data?.analysis && (
                     <p className="text-sm text-blue-700 dark:text-blue-300">
                       {voiceResults.data.analysis}
                     </p>
@@ -566,7 +805,7 @@ const CameraPage = () => {
                   Confirm & Add to Log
                 </Button>
                 
-                <Button variant="outline" onClick={resetState}>
+                <Button variant="outline" onClick={resetState} className="flex-1">
                   <X className="h-4 w-4 mr-2" />
                   Try Again
                 </Button>

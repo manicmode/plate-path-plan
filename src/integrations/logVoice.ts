@@ -26,25 +26,31 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
 
     const data = await response.json();
     
-    // Handle the new structured response from the updated edge function
+    // Handle both success and error responses from the enhanced edge function
     if (data.success && data.data) {
       return {
-        message: JSON.stringify(data.data), // Convert structured data back to string for parsing in Camera.tsx
+        message: JSON.stringify(data), // Return the full structured response
         success: true
       };
     } else {
+      // Handle structured error responses
       return {
-        message: '',
+        message: JSON.stringify(data), // Return structured error for parsing in Camera.tsx
         success: false,
-        error: data.error || 'Unknown error occurred'
+        error: data.errorMessage || data.error || 'Unknown error occurred'
       };
     }
   } catch (error) {
     console.error('Error calling log-voice API:', error);
     return {
-      message: '',
+      message: JSON.stringify({
+        success: false,
+        errorType: 'NETWORK_ERROR',
+        errorMessage: 'Unable to connect to the service',
+        suggestions: ['Check your internet connection', 'Try again in a moment']
+      }),
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? error.message : 'Network error occurred'
     };
   }
 };
