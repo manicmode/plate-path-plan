@@ -3,12 +3,13 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBqJ8Q9qZ9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9",
-  authDomain: "plate-path-plan.firebaseapp.com",
-  projectId: "plate-path-plan",
-  storageBucket: "plate-path-plan.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456789012345678"
+  apiKey: "AIzaSyCKQW3vYzxCyVA9gN6mddTKrYgDghBChe4",
+  authDomain: "nutricoach-app-c2580.firebaseapp.com",
+  projectId: "nutricoach-app-c2580",
+  storageBucket: "nutricoach-app-c2580.firebasestorage.app",
+  messagingSenderId: "22648299355",
+  appId: "1:22648299355:web:db68d2e8755a6c9c47847e",
+  measurementId: "G-SK13GBDK15"
 };
 
 firebase.initializeApp(firebaseConfig);
