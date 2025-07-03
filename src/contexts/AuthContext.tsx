@@ -41,6 +41,24 @@ export const useAuth = () => {
 const loadUserPreferences = () => {
   try {
     const stored = localStorage.getItem('user_preferences');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Failed to load preferences:', error);
+    return {};
+  }
+};
+
+const saveUserPreferences = (preferences: any) => {
+  try {
+    localStorage.setItem('user_preferences', JSON.stringify(preferences));
+  } catch (error) {
+    console.error('Failed to save preferences:', error);
+  }
+};
+
+const loadUserPreferences = () => {
+  try {
+    const stored = localStorage.getItem('user_preferences');
     if (stored) {
       return JSON.parse(stored);
     }
@@ -85,6 +103,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         targetSupplements: parsedUser.targetSupplements || 3,
         selectedTrackers: preferences.selectedTrackers || ['calories', 'hydration', 'supplements'],
       };
+      saveUserPreferences({ selectedTrackers: userWithDefaults.selectedTrackers });
       
       setUser(userWithDefaults);
       setIsAuthenticated(true);

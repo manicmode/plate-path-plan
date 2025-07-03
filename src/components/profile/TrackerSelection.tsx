@@ -1,9 +1,10 @@
-
+import { saveUserPreferences } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Monitor } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+
 
 interface TrackerSelectionProps {
   selectedTrackers: string[];
@@ -30,15 +31,21 @@ export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker 
     
     if (isSelected) {
       // Remove tracker (but ensure at least 1 remains)
-      if (selectedTrackers.length > 1) {
-        onToggleTracker(trackerId);
+     if (selectedTrackers.length > 1) {
+  onToggleTracker(trackerId);
+  saveUserPreferences({ selectedTrackers });
+}
+
       } else {
         toast.error('You must have at least 1 tracker selected');
       }
     } else {
       // Add tracker if less than 3 selected
-      if (selectedTrackers.length < 3) {
-        onToggleTracker(trackerId);
+if (selectedTrackers.length < 3) {
+  onToggleTracker(trackerId);
+  saveUserPreferences({ selectedTrackers });
+}
+
       } else {
         toast.error('You can only select 3 trackers');
       }
