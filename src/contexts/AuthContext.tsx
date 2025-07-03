@@ -93,17 +93,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       
-      // Load preferences from localStorage
-      const preferences = loadUserPreferences();
-      
-      // Ensure new fields have default values for existing users
-      const userWithDefaults = {
-        ...parsedUser,
-        targetHydration: parsedUser.targetHydration || 8,
-        targetSupplements: parsedUser.targetSupplements || 3,
-        selectedTrackers: preferences.selectedTrackers || ['calories', 'hydration', 'supplements'],
-      };
-      saveUserPreferences({ selectedTrackers: userWithDefaults.selectedTrackers });
+const preferences = loadUserPreferences();
+
+// Only set defaults if not already stored
+const selectedTrackers = preferences.selectedTrackers?.length
+  ? preferences.selectedTrackers
+  : ['calories', 'hydration', 'supplements'];
+
+const userWithDefaults = {
+  ...parsedUser,
+  targetHydration: parsedUser.targetHydration || 8,
+  targetSupplements: parsedUser.targetSupplements || 3,
+  selectedTrackers,
+};
+
+// Only save defaults if nothing was stored
+if (!preferences.selectedTrackers?.length) {
+  saveUserPreferences({ selectedTrackers });
+}
+
       
       setUser(userWithDefaults);
       setIsAuthenticated(true);
