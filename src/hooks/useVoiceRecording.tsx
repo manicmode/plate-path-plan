@@ -127,7 +127,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         }
       };
 
-      mediaRecorder.stop();
+      mediaRecorderRef.current.stop();
       
       // Stop all tracks
       if (mediaRecorderRef.current.stream) {
