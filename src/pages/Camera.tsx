@@ -611,7 +611,7 @@ const CameraPage = () => {
               )}
             </div>
             
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={handleRetryVoice} className="flex-1 gradient-primary">
                 <Mic className="h-4 w-4 mr-2" />
                 Try Again
@@ -819,7 +819,7 @@ const CameraPage = () => {
                 ))}
               </div>
 
-              <div className="flex space-x-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button onClick={confirmFoods} className="flex-1 gradient-primary">
                   <Check className="h-4 w-4 mr-2" />
                   Confirm & Add to Log

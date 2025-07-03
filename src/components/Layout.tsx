@@ -68,7 +68,9 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
           <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
             {navItems.map(({ path, icon: Icon, label }) => {
-              const isActive = location.pathname === path;
+              // Fix the active state detection for home route
+              const isActive = (path === '/' && (location.pathname === '/' || location.pathname === '/home')) || 
+                              (path !== '/' && location.pathname === path);
               return (
                 <Button
                   key={path}
