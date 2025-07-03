@@ -131,6 +131,7 @@ const Home = () => {
       textColor: 'text-orange-900 dark:text-white',
       textColorSecondary: 'text-orange-800 dark:text-orange-100',
       percentage: progressPercentage,
+      shadow: 'shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]',
       onClick: () => navigate('/camera'),
     },
     protein: {
@@ -144,6 +145,7 @@ const Home = () => {
       textColor: 'text-blue-900 dark:text-white',
       textColorSecondary: 'text-blue-800 dark:text-blue-100',
       percentage: Math.min((progress.protein / (user?.targetProtein || 150)) * 100, 100),
+      shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)]',
       onClick: () => navigate('/camera'),
     },
     carbs: {
@@ -157,6 +159,7 @@ const Home = () => {
       textColor: 'text-yellow-900 dark:text-white',
       textColorSecondary: 'text-yellow-800 dark:text-yellow-100',
       percentage: Math.min((progress.carbs / (user?.targetCarbs || 200)) * 100, 100),
+      shadow: 'shadow-[0_0_20px_rgba(251,191,36,0.4)] hover:shadow-[0_0_30px_rgba(251,191,36,0.6)]',
       onClick: () => navigate('/camera'),
     },
     fat: {
@@ -170,6 +173,7 @@ const Home = () => {
       textColor: 'text-green-900 dark:text-white',
       textColorSecondary: 'text-green-800 dark:text-green-100',
       percentage: Math.min((progress.fat / (user?.targetFat || 65)) * 100, 100),
+      shadow: 'shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]',
       onClick: () => navigate('/camera'),
     },
     hydration: {
@@ -183,6 +187,7 @@ const Home = () => {
       textColor: 'text-blue-900 dark:text-white',
       textColorSecondary: 'text-blue-800 dark:text-cyan-100',
       percentage: hydrationPercentage,
+      shadow: 'shadow-[0_0_20px_rgba(0,212,255,0.4)] hover:shadow-[0_0_30px_rgba(0,212,255,0.6)]',
       onClick: () => navigate('/hydration'),
     },
     supplements: {
@@ -196,6 +201,7 @@ const Home = () => {
       textColor: 'text-purple-900 dark:text-white',
       textColorSecondary: 'text-purple-800 dark:text-purple-100',
       percentage: supplementPercentage,
+      shadow: 'shadow-[0_0_20px_rgba(218,68,187,0.4)] hover:shadow-[0_0_30px_rgba(218,68,187,0.6)]',
       onClick: () => navigate('/supplements'),
     },
   };
@@ -284,12 +290,12 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Dynamic Tracker Cards based on user selection - Fixed drop shadows and z-index */}
+      {/* Dynamic Tracker Cards based on user selection - With restored colorful drop shadows */}
       <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
         {displayedTrackers.map((tracker, index) => (
           <div 
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden shadow-xl hover:shadow-2xl z-20`}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
             onClick={tracker.onClick}
             title={getMotivationalMessage(tracker.percentage, tracker.name)}
             style={{ 
