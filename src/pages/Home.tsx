@@ -36,8 +36,8 @@ const Home = () => {
         const element = trackerCardsRef.current;
         const elementTop = element.offsetTop;
         // Adjust offset for mobile/desktop to position tracker cards at top of viewport
-        // Increased offset to hide Today's Nutrients section below menu
-        const offset = isMobile ? 60 : 80; 
+        // Reduced offset to hide Today's Nutrients section below menu
+        const offset = isMobile ? 40 : 60; 
         
         window.scrollTo({
           top: elementTop - offset,
@@ -337,7 +337,7 @@ const Home = () => {
                   <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
                     Supplements
                   </h4>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-tight`}>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-purple-100 leading-tight`}>
                     Log vitamins & minerals
                   </p>
                 </div>
