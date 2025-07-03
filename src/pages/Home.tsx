@@ -36,8 +36,8 @@ const Home = () => {
         const element = trackerCardsRef.current;
         const elementTop = element.offsetTop;
         // Adjust offset for mobile/desktop to position tracker cards at top of viewport
-        // Reduced offset to hide Today's Nutrients section below menu
-        const offset = isMobile ? 40 : 60; 
+        // Fine-tuned offset to completely hide Today's Nutrients section below menu
+        const offset = isMobile ? 35 : 55; 
         
         window.scrollTo({
           top: elementTop - offset,
