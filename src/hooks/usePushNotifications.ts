@@ -36,7 +36,8 @@ export const usePushNotifications = () => {
   };
 
   useEffect(() => {
-    const unsubscribe = onMessageListener()
+    // Set up message listener for foreground messages
+    onMessageListener()
       .then((payload: any) => {
         console.log('Foreground message received:', payload);
         
@@ -49,11 +50,7 @@ export const usePushNotifications = () => {
       })
       .catch((err) => console.log('Failed to receive foreground message:', err));
 
-    return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    // No cleanup needed as onMessageListener doesn't return an unsubscribe function
   }, []);
 
   return {
