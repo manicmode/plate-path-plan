@@ -96,9 +96,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 const preferences = loadUserPreferences();
 
 // Only set defaults if not already stored
-const selectedTrackers = preferences.selectedTrackers?.length
-  ? preferences.selectedTrackers
-  : ['calories', 'hydration', 'supplements'];
+const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
 
 const userWithDefaults = {
   ...parsedUser,
@@ -107,13 +105,15 @@ const userWithDefaults = {
   selectedTrackers,
 };
 
-// Only save defaults if nothing was stored
-if (!preferences.selectedTrackers?.length) {
+// Save the loaded ones back only if nothing was saved before
+if (!preferences.selectedTrackers) {
   saveUserPreferences({ selectedTrackers });
 }
 
       
       setUser(userWithDefaults);
+      localStorage.setItem('user', JSON.stringify(userWithDefaults));
+      
       setIsAuthenticated(true);
       console.log('User loaded with preferences:', userWithDefaults.selectedTrackers);
     }
