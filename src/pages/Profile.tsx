@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,6 +66,8 @@ const Profile = () => {
   }, [location]);
 
   const handleSave = async () => {
+    console.log('Saving profile with trackers:', formData.selectedTrackers);
+    
     updateProfile({
       name: formData.name,
       targetCalories: Number(formData.targetCalories),
@@ -79,11 +80,11 @@ const Profile = () => {
       dietaryGoals: formData.dietaryGoals,
     });
     
-    // Update selected trackers
+    // Update selected trackers - this will trigger localStorage and user state updates
     await updateSelectedTrackers(formData.selectedTrackers);
     
     setIsEditing(false);
-    toast.success('Profile updated successfully!');
+    toast.success('Profile updated successfully! Changes will appear on the home page.');
   };
 
   const dietaryGoalOptions = [
@@ -120,14 +121,20 @@ const Profile = () => {
       const isSelected = currentTrackers.includes(trackerId);
       
       if (isSelected) {
-        // Remove tracker
-        return {
-          ...prev,
-          selectedTrackers: currentTrackers.filter(t => t !== trackerId)
-        };
+        // Remove tracker (but ensure at least 1 remains)
+        if (currentTrackers.length > 1) {
+          return {
+            ...prev,
+            selectedTrackers: currentTrackers.filter(t => t !== trackerId)
+          };
+        } else {
+          toast.error('You must have at least 1 tracker selected');
+          return prev;
+        }
       } else {
         // Add tracker if less than 3 selected
         if (currentTrackers.length < 3) {
+          console.log('Adding tracker:', trackerId, 'to current:', currentTrackers);
           return {
             ...prev,
             selectedTrackers: [...currentTrackers, trackerId]

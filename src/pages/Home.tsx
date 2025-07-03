@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
@@ -8,6 +7,21 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CelebrationPopup from '@/components/CelebrationPopup';
+
+// Utility function to get current user preferences from localStorage
+const loadUserPreferences = () => {
+  try {
+    const stored = localStorage.getItem('user_preferences');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('Error loading user preferences:', e);
+  }
+  return {
+    selectedTrackers: ['calories', 'hydration', 'supplements'],
+  };
+};
 
 const Home = () => {
   const { user } = useAuth();
@@ -19,6 +33,40 @@ const Home = () => {
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
+  const [preferences, setPreferences] = useState(loadUserPreferences());
+
+  // Listen for changes to localStorage preferences
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const newPreferences = loadUserPreferences();
+      setPreferences(newPreferences);
+      console.log('Preferences updated from localStorage:', newPreferences.selectedTrackers);
+    };
+
+    // Listen for storage events (when localStorage changes)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check for changes periodically (in case same-tab changes don't trigger storage event)
+    const interval = setInterval(() => {
+      const newPreferences = loadUserPreferences();
+      if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
+        setPreferences(newPreferences);
+        console.log('Preferences refreshed:', newPreferences.selectedTrackers);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [preferences]);
+
+  // Update preferences when user state changes
+  useEffect(() => {
+    if (user?.selectedTrackers) {
+      setPreferences({ selectedTrackers: user.selectedTrackers });
+    }
+  }, [user?.selectedTrackers]);
 
   const totalCalories = user?.targetCalories || 2000;
   const currentCalories = progress.calories;
@@ -66,8 +114,9 @@ const Home = () => {
     }
   }, [progressPercentage, hydrationPercentage, supplementPercentage]);
 
-  // Get selected trackers or use defaults
-  const selectedTrackers = user?.selectedTrackers || ['calories', 'hydration', 'supplements'];
+  // Use preferences from localStorage/state instead of user object
+  const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+  console.log('Currently selected trackers for display:', selectedTrackers);
 
   // Define all tracker configurations
   const allTrackerConfigs = {
@@ -235,18 +284,23 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Dynamic Tracker Cards based on user selection */}
-      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch`}>
+      {/* Dynamic Tracker Cards based on user selection - Fixed drop shadows and z-index */}
+      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
         {displayedTrackers.map((tracker, index) => (
           <div 
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden shadow-xl hover:shadow-2xl`}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden shadow-xl hover:shadow-2xl z-20`}
             onClick={tracker.onClick}
             title={getMotivationalMessage(tracker.percentage, tracker.name)}
+            style={{ 
+              background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
+              position: 'relative',
+              zIndex: 20
+            }}
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-xl`}></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
-            <div className="relative flex flex-col items-center justify-center h-full">
+            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
+            <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
               <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
                 <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />

@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,6 +37,30 @@ export const useAuth = () => {
   return context;
 };
 
+// Utility functions for localStorage-based preferences
+const loadUserPreferences = () => {
+  try {
+    const stored = localStorage.getItem('user_preferences');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('Error loading user preferences:', e);
+  }
+  return {
+    selectedTrackers: ['calories', 'hydration', 'supplements'],
+  };
+};
+
+const saveUserPreferences = (prefs: any) => {
+  try {
+    localStorage.setItem('user_preferences', JSON.stringify(prefs));
+    console.log('User preferences saved to localStorage:', prefs);
+  } catch (e) {
+    console.error('Error saving user preferences:', e);
+  }
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -49,39 +74,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
+      
+      // Load preferences from localStorage
+      const preferences = loadUserPreferences();
+      
       // Ensure new fields have default values for existing users
       const userWithDefaults = {
         ...parsedUser,
         targetHydration: parsedUser.targetHydration || 8,
         targetSupplements: parsedUser.targetSupplements || 3,
-        selectedTrackers: parsedUser.selectedTrackers || ['calories', 'hydration', 'supplements'],
+        selectedTrackers: preferences.selectedTrackers || ['calories', 'hydration', 'supplements'],
       };
-      
-      // Load user preferences from Supabase
-      loadUserPreferences(userWithDefaults);
       
       setUser(userWithDefaults);
       setIsAuthenticated(true);
+      console.log('User loaded with preferences:', userWithDefaults.selectedTrackers);
     }
   }, []);
-
-  const loadUserPreferences = async (currentUser: User) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('selected_trackers')
-        .eq('user_id', currentUser.id)
-        .single();
-
-      if (data && data.selected_trackers) {
-        const updatedUser = { ...currentUser, selectedTrackers: data.selected_trackers };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-    } catch (error) {
-      console.log('No user preferences found in Supabase, using defaults');
-    }
-  };
 
   const login = async (email: string, password: string) => {
     // Mock login - in real app, this would call an API
@@ -100,12 +109,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       selectedTrackers: ['calories', 'hydration', 'supplements'],
     };
     
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+    // Load preferences from localStorage
+    const preferences = loadUserPreferences();
+    const userWithPreferences = {
+      ...mockUser,
+      selectedTrackers: preferences.selectedTrackers || mockUser.selectedTrackers,
+    };
     
-    // Load preferences from Supabase after login
-    loadUserPreferences(mockUser);
+    setUser(userWithPreferences);
+    setIsAuthenticated(true);
+    localStorage.setItem('user', JSON.stringify(userWithPreferences));
+    console.log('User logged in with preferences:', userWithPreferences.selectedTrackers);
   };
 
   const register = async (email: string, password: string, name: string) => {
@@ -128,12 +142,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(mockUser);
     setIsAuthenticated(true);
     localStorage.setItem('user', JSON.stringify(mockUser));
+    
+    // Save initial preferences
+    saveUserPreferences({ selectedTrackers: mockUser.selectedTrackers });
   };
 
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('user');
+    localStorage.removeItem('user_preferences');
   };
 
   const updateProfile = (updates: Partial<User>) => {
@@ -145,12 +163,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const updateSelectedTrackers = async (trackers: string[]) => {
+    console.log('Updating selected trackers to:', trackers);
+    
     if (user) {
       const updatedUser = { ...user, selectedTrackers: trackers };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
-      // Save to Supabase
+      // Save to localStorage preferences
+      saveUserPreferences({ selectedTrackers: trackers });
+      
+      // Also try to save to Supabase as backup (but don't fail if it doesn't work)
       try {
         const { error } = await supabase
           .from('user_profiles')
@@ -161,10 +184,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           });
         
         if (error) {
-          console.error('Error saving tracker selection:', error);
+          console.log('Supabase backup failed (using localStorage instead):', error);
+        } else {
+          console.log('Preferences saved to Supabase as backup');
         }
       } catch (error) {
-        console.error('Error updating tracker selection:', error);
+        console.log('Supabase not available (using localStorage instead):', error);
       }
     }
   };
