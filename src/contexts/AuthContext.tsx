@@ -1,5 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -13,6 +14,7 @@ interface User {
   targetSupplements: number;
   allergies: string[];
   dietaryGoals: string[];
+  selectedTrackers: string[];
 }
 
 interface AuthContextType {
@@ -22,6 +24,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
+  updateSelectedTrackers: (trackers: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         ...parsedUser,
         targetHydration: parsedUser.targetHydration || 8,
         targetSupplements: parsedUser.targetSupplements || 3,
+        selectedTrackers: parsedUser.selectedTrackers || ['calories', 'hydration', 'supplements'],
       };
       setUser(userWithDefaults);
       setIsAuthenticated(true);
@@ -72,6 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       targetSupplements: 3,
       allergies: [],
       dietaryGoals: ['general_health'],
+      selectedTrackers: ['calories', 'hydration', 'supplements'],
     };
     
     setUser(mockUser);
@@ -93,6 +98,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       targetSupplements: 3,
       allergies: [],
       dietaryGoals: [],
+      selectedTrackers: ['calories', 'hydration', 'supplements'],
     };
     
     setUser(mockUser);
@@ -114,6 +120,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const updateSelectedTrackers = async (trackers: string[]) => {
+    if (user) {
+      const updatedUser = { ...user, selectedTrackers: trackers };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Save to Supabase
+      try {
+        const { error } = await supabase
+          .from('user_profiles')
+          .upsert({
+            user_id: user.id,
+            selected_trackers: trackers,
+            updated_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          console.error('Error saving tracker selection:', error);
+        }
+      } catch (error) {
+        console.error('Error updating tracker selection:', error);
+      }
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -123,6 +154,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         updateProfile,
+        updateSelectedTrackers,
       }}
     >
       {children}

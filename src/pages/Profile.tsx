@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,14 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { User, Settings, Target, Heart, Shield, LogOut } from 'lucide-react';
+import { User, Settings, Target, Heart, Shield, LogOut, Monitor } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const Profile = () => {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
   const [isEditing, setIsEditing] = useState(false);
@@ -28,6 +29,7 @@ const Profile = () => {
     targetSupplements: user?.targetSupplements || 3,
     allergies: user?.allergies?.join(', ') || '',
     dietaryGoals: user?.dietaryGoals || [],
+    selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
   });
 
   // Handle URL parameters for auto-editing
@@ -64,7 +66,7 @@ const Profile = () => {
     }
   }, [location]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     updateProfile({
       name: formData.name,
       targetCalories: Number(formData.targetCalories),
@@ -76,6 +78,9 @@ const Profile = () => {
       allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
       dietaryGoals: formData.dietaryGoals,
     });
+    
+    // Update selected trackers
+    await updateSelectedTrackers(formData.selectedTrackers);
     
     setIsEditing(false);
     toast.success('Profile updated successfully!');
@@ -89,6 +94,15 @@ const Profile = () => {
     { id: 'general_health', label: 'General Health' },
   ];
 
+  const trackerOptions = [
+    { id: 'calories', label: 'Calories' },
+    { id: 'protein', label: 'Protein' },
+    { id: 'carbs', label: 'Carbs' },
+    { id: 'fat', label: 'Fat' },
+    { id: 'hydration', label: 'Hydration' },
+    { id: 'supplements', label: 'Supplements' },
+  ];
+
   const toggleDietaryGoal = (goalId: string) => {
     setFormData(prev => ({
       ...prev,
@@ -96,6 +110,34 @@ const Profile = () => {
         ? prev.dietaryGoals.filter(g => g !== goalId)
         : [...prev.dietaryGoals, goalId]
     }));
+  };
+
+  const toggleTracker = (trackerId: string) => {
+    if (!isEditing) return;
+    
+    setFormData(prev => {
+      const currentTrackers = prev.selectedTrackers;
+      const isSelected = currentTrackers.includes(trackerId);
+      
+      if (isSelected) {
+        // Remove tracker
+        return {
+          ...prev,
+          selectedTrackers: currentTrackers.filter(t => t !== trackerId)
+        };
+      } else {
+        // Add tracker if less than 3 selected
+        if (currentTrackers.length < 3) {
+          return {
+            ...prev,
+            selectedTrackers: [...currentTrackers, trackerId]
+          };
+        } else {
+          toast.error('You can only select 3 trackers');
+          return prev;
+        }
+      }
+    });
   };
 
   return (
@@ -279,6 +321,35 @@ const Profile = () => {
         </CardContent>
       </Card>
 
+      {/* Home Page Display */}
+      <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '350ms' }}>
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Monitor className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
+            <span>Home Page Display</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+          <div className="space-y-3">
+            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+              Choose which 3 trackers appear on your home page ({formData.selectedTrackers.length}/3 selected)
+            </p>
+            <div className={`flex flex-wrap ${isMobile ? 'gap-1' : 'gap-2'}`}>
+              {trackerOptions.map(tracker => (
+                <Badge
+                  key={tracker.id}
+                  variant={formData.selectedTrackers.includes(tracker.id) ? "default" : "outline"}
+                  className={`cursor-pointer ${isEditing ? 'hover:bg-green-100' : 'cursor-default'} ${isMobile ? 'text-xs px-2 py-1' : 'text-sm'}`}
+                  onClick={() => toggleTracker(tracker.id)}
+                >
+                  {tracker.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Allergies & Restrictions */}
       <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '400ms' }}>
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
@@ -325,6 +396,7 @@ const Profile = () => {
                 targetSupplements: user?.targetSupplements || 3,
                 allergies: user?.allergies?.join(', ') || '',
                 dietaryGoals: user?.dietaryGoals || [],
+                selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
               });
             }}
             className={`${isMobile ? 'w-full h-12' : ''} glass-button border-0`}
