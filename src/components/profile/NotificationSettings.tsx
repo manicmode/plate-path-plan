@@ -2,13 +2,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Bell, Clock, Smartphone } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
   const isMobile = useIsMobile();
-  const { preferences, updatePreferences } = useNotifications();
+  const { preferences, updatePreferences, requestPushPermission } = useNotifications();
+  const { permission, requestPermission, hasPermission } = usePushNotifications();
 
   const notificationTypes = [
     { key: 'reminders', label: 'Daily Reminders', description: 'Gentle nudges to log your meals' },
@@ -26,6 +30,20 @@ export const NotificationSettings = () => {
 
   const handleFrequencyChange = (value: string) => {
     updatePreferences({ frequency: value as 'normal' | 'low' });
+  };
+
+  const handleDeliveryModeChange = (value: string) => {
+    updatePreferences({ deliveryMode: value as 'toast' | 'push' | 'both' });
+  };
+
+  const handlePushPermissionRequest = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      updatePreferences({ pushEnabled: true });
+      toast.success('Push notifications enabled! You\'ll receive notifications even when the app is closed.');
+    } else {
+      toast.error('Push notifications were denied. You can enable them in your browser settings.');
+    }
   };
 
   const handleQuietHoursChange = (type: 'start' | 'end', value: string) => {
@@ -53,6 +71,59 @@ export const NotificationSettings = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-6`}>
+        {/* Push Notification Setup */}
+        <div className="space-y-3">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Smartphone className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+            <span>Push Notifications</span>
+          </h4>
+          <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                  Enable Push Notifications
+                </div>
+                <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  Get notified even when the app is closed
+                </div>
+              </div>
+              {!hasPermission ? (
+                <Button 
+                  onClick={handlePushPermissionRequest}
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Enable
+                </Button>
+              ) : (
+                <div className="text-emerald-600 text-sm font-medium">✓ Enabled</div>
+              )}
+            </div>
+            {permission === 'denied' && (
+              <div className="text-amber-600 text-xs mt-2">
+                Push notifications are blocked. Enable them in your browser settings to receive notifications.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Delivery Mode */}
+        <div className="space-y-3">
+          <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+            Delivery Method
+          </h4>
+          <Select value={preferences.deliveryMode} onValueChange={handleDeliveryModeChange}>
+            <SelectTrigger className="rounded-2xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="toast">Toast Only - Show when app is open</SelectItem>
+              <SelectItem value="push">Push Only - Send to device when app is closed</SelectItem>
+              <SelectItem value="both">Both - Smart delivery based on app state</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Notification Types */}
         <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>

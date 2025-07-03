@@ -1,8 +1,8 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { useNutrition } from './NutritionContext';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface NotificationPreferences {
   reminders: boolean;
@@ -13,8 +13,10 @@ export interface NotificationPreferences {
   encouragement: boolean;
   reEngagement: boolean;
   frequency: 'normal' | 'low';
-  quietHoursStart: number; // 22 for 10pm
-  quietHoursEnd: number; // 7 for 7am
+  quietHoursStart: number;
+  quietHoursEnd: number;
+  deliveryMode: 'toast' | 'push' | 'both';
+  pushEnabled: boolean;
 }
 
 export interface NotificationHistory {
@@ -46,6 +48,8 @@ interface NotificationContextType {
   updatePreferences: (prefs: Partial<NotificationPreferences>) => void;
   checkNotifications: () => void;
   dismissNotification: (type: string) => void;
+  requestPushPermission: () => Promise<boolean>;
+  isAppActive: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -69,6 +73,8 @@ const defaultPreferences: NotificationPreferences = {
   frequency: 'normal',
   quietHoursStart: 22,
   quietHoursEnd: 7,
+  deliveryMode: 'both',
+  pushEnabled: false,
 };
 
 const defaultHistory: NotificationHistory = {
@@ -111,6 +117,28 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const saved = localStorage.getItem('behavior_data');
     return saved ? JSON.parse(saved) : defaultBehaviorData;
   });
+
+  const [isAppActive, setIsAppActive] = useState(true);
+
+  // Track app visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsAppActive(!document.hidden);
+    };
+
+    const handleFocus = () => setIsAppActive(true);
+    const handleBlur = () => setIsAppActive(false);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   // Update app open timestamp
   useEffect(() => {
@@ -168,6 +196,64 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('notification_preferences', JSON.stringify(newPreferences));
   };
 
+  const requestPushPermission = async (): Promise<boolean> => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        // Here you would initialize Firebase and get FCM token
+        const token = localStorage.getItem('fcm_token');
+        updatePreferences({ pushEnabled: true });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error requesting push permission:', error);
+      return false;
+    }
+  };
+
+  const sendNotification = async (title: string, body: string, type: string) => {
+    const shouldUsePush = !isAppActive && preferences.pushEnabled && 
+      (preferences.deliveryMode === 'push' || preferences.deliveryMode === 'both');
+    
+    const shouldUseToast = isAppActive && 
+      (preferences.deliveryMode === 'toast' || preferences.deliveryMode === 'both');
+
+    if (shouldUseToast) {
+      // Use existing toast system
+      if (type === 'milestone' || type === 'encouragement') {
+        toast.success(title, { description: body });
+      } else if (type === 'reminder' || type === 'reEngagement') {
+        toast.info(title, { description: body });
+      } else {
+        toast(title, { description: body });
+      }
+    }
+
+    if (shouldUsePush) {
+      const token = localStorage.getItem('fcm_token');
+      if (token) {
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              token,
+              title,
+              body,
+              data: { type, timestamp: new Date().toISOString() }
+            }
+          });
+          console.log('Push notification sent successfully');
+        } catch (error) {
+          console.error('Failed to send push notification:', error);
+          // Fallback to toast if push fails and app is active
+          if (isAppActive) {
+            toast.error('Failed to send push notification');
+          }
+        }
+      }
+    }
+  };
+
   const isQuietHours = () => {
     const now = new Date();
     const hour = now.getHours();
@@ -206,7 +292,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const now = new Date().toISOString();
     const newHistory = { ...history };
 
-    // 1. Reminder Notifications (8+ hours inactive)
+    // 1. Reminder Notifications
     if (preferences.reminders && shouldSendNotification('reminders', history.lastReminderSent, 24)) {
       const hoursSinceFood = getHoursSince(behaviorData.lastFoodLog);
       const hoursSinceHydration = getHoursSince(behaviorData.lastHydrationLog);
@@ -218,7 +304,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           "Your nutrition coach is here! Time for a quick check-in? 🌟",
           "Hey there! Just a gentle reminder to stay on track today 💚",
         ];
-        toast.success(messages[Math.floor(Math.random() * messages.length)]);
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        sendNotification("Gentle Reminder", message, "reminder");
         newHistory.lastReminderSent = now;
       }
     }
@@ -238,7 +325,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             60: "Two months! 💎 You're absolutely crushing this journey!",
             100: "100 DAYS! 🎊 You're a legend — this is incredible!"
           };
-          toast.success(messages[milestone as keyof typeof messages]);
+          const message = messages[milestone as keyof typeof messages];
+          sendNotification("Milestone Achieved!", message, "milestone");
           newHistory.milestonesAchieved.push(`streak_${milestone}`);
           newHistory.lastMilestoneCelebrated = now;
           break;
@@ -255,10 +343,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       };
 
       if (progress.protein / targets.protein < 0.5) {
-        toast.info("You've been low on protein lately — want help with ideas? 🧠💪");
+        sendNotification("Progress Tip", "You've been low on protein lately — want help with ideas? 🧠💪", "suggestion");
         newHistory.lastProgressSuggestion = now;
       } else if (progress.hydration / targets.hydration < 0.5) {
-        toast.info("Hydration looking low — your body will thank you for more water! 💧✨");
+        sendNotification("Hydration Reminder", "Hydration looking low — your body will thank you for more water! 💧✨", "suggestion");
         newHistory.lastProgressSuggestion = now;
       }
     }
@@ -269,10 +357,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const hoursSinceHydration = getHoursSince(behaviorData.lastHydrationLog);
 
       if (hoursSinceSupplement >= 120) {
-        toast.info("Haven't seen any supplements lately — all good? Need a reminder? 💊");
+        sendNotification("Smart Tip", "Haven't seen any supplements lately — all good? Need a reminder? 💊", "tip");
         newHistory.lastSmartTip = now;
       } else if (hoursSinceHydration >= 120) {
-        toast.info("Missing hydration logs? Even small sips count! 💧");
+        sendNotification("Hydration Check", "Missing hydration logs? Even small sips count! 💧", "tip");
         newHistory.lastSmartTip = now;
       }
     }
@@ -283,7 +371,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const calorieTarget = user?.targetCalories || 2000;
       
       if (progress.calories / calorieTarget >= 1.4 && shouldSendNotification('overlimitAlerts', history.lastOverlimitAlert, 24)) {
-        toast.info("Looks like today went a bit over. No worries — tomorrow's a fresh start 🌅");
+        sendNotification("Daily Summary", "Looks like today went a bit over. No worries — tomorrow's a fresh start 🌅", "alert");
         newHistory.lastOverlimitAlert = now;
       }
     }
@@ -296,7 +384,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           "Every small step counts. You've got this! 🌱",
           "Progress isn't always linear. Be kind to yourself today 🤗",
         ];
-        toast.info(messages[Math.floor(Math.random() * messages.length)]);
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        sendNotification("Encouragement", message, "encouragement");
         newHistory.lastEncouragement = now;
       }
     }
@@ -310,7 +399,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           "Your wellness journey is waiting for you! Welcome back 🌟",
           "Small steps, big changes. Let's continue your journey! 🚀",
         ];
-        toast.success(messages[Math.floor(Math.random() * messages.length)]);
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        sendNotification("We Miss You!", message, "reEngagement");
         newHistory.lastReEngagement = now;
       }
     }
@@ -348,6 +438,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         updatePreferences,
         checkNotifications,
         dismissNotification,
+        requestPushPermission,
+        isAppActive,
       }}
     >
       {children}

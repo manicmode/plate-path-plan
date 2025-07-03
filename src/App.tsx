@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,10 +22,27 @@ import ProgressFat from "./pages/ProgressFat";
 import ProgressHydration from "./pages/ProgressHydration";
 import ProgressSupplements from "./pages/ProgressSupplements";
 import NotFound from "./pages/NotFound";
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 function App() {
+  const { requestPermission } = usePushNotifications();
+
+  // Initialize push notifications on app load
+  useEffect(() => {
+    const initializePushNotifications = async () => {
+      const hasPermission = Notification.permission === 'granted';
+      if (!hasPermission) {
+        // Don't auto-request permission, let user do it in settings
+        console.log('Push notifications not enabled');
+      }
+    };
+
+    initializePushNotifications();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
