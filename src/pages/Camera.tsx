@@ -29,6 +29,27 @@ interface VisionApiResponse {
   objects: Array<{ name: string; score: number }>;
 }
 
+interface VoiceApiResponse {
+  success: boolean;
+  data: {
+    foodItems: Array<{
+      name: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber: number;
+      sugar: number;
+      sodium: number;
+      confidence: number;
+      serving: string;
+    }>;
+    analysis: string;
+  };
+  originalText: string;
+  error?: string;
+}
+
 const CameraPage = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -38,9 +59,68 @@ const CameraPage = () => {
   const [voiceText, setVoiceText] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
+  const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
+  const [inputSource, setInputSource<'photo' | 'voice'>('photo');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, startRecording, stopRecording } = useVoiceRecording();
+
+  // Unified function to process nutrition data from both photo and voice sources
+  const processNutritionData = (source: 'photo' | 'voice', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
+    const foods: RecognizedFood[] = [];
+    
+    if (source === 'voice' && 'data' in data) {
+      // Process voice API response
+      const voiceData = data as VoiceApiResponse;
+      if (voiceData.success && voiceData.data.foodItems) {
+        voiceData.data.foodItems.forEach(item => {
+          foods.push({
+            name: `${item.name} (Voice Input)`,
+            calories: item.calories || 0,
+            protein: item.protein || 0,
+            carbs: item.carbs || 0,
+            fat: item.fat || 0,
+            fiber: item.fiber || 0,
+            sugar: item.sugar || 0,
+            sodium: item.sodium || 0,
+            confidence: item.confidence || 80,
+            serving: item.serving || 'Voice estimated portion',
+          });
+        });
+      }
+    } else if (source === 'photo' && 'labels' in data) {
+      // Process vision API response (existing logic)
+      const visionData = data as VisionApiResponse;
+      
+      if (visionData.nutritionData && Object.keys(visionData.nutritionData).length > 0) {
+        const mainLabel = visionData.foodLabels[0]?.description || visionData.labels[0]?.description || 'Unknown Food';
+        foods.push({
+          name: mainLabel,
+          calories: visionData.nutritionData.calories || 0,
+          protein: visionData.nutritionData.protein || 0,
+          carbs: visionData.nutritionData.carbs || 0,
+          fat: visionData.nutritionData.fat || 0,
+          fiber: visionData.nutritionData.fiber || 0,
+          sugar: visionData.nutritionData.sugar || 0,
+          sodium: visionData.nutritionData.sodium || 0,
+          confidence: Math.round((visionData.foodLabels[0]?.score || 0.5) * 100),
+          serving: 'As labeled',
+        });
+      } else {
+        visionData.foodLabels.forEach(label => {
+          const estimatedNutrition = estimateNutritionFromLabel(label.description);
+          foods.push({
+            name: label.description,
+            ...estimatedNutrition,
+            confidence: Math.round(label.score * 100),
+            serving: 'Estimated portion',
+          });
+        });
+      }
+    }
+
+    return foods.slice(0, 3);
+  };
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,6 +131,8 @@ const CameraPage = () => {
         setShowVoiceEntry(false);
         setVoiceText('');
         setVisionResults(null);
+        setVoiceResults(null);
+        setInputSource('photo');
       };
       reader.readAsDataURL(file);
     }
@@ -80,8 +162,9 @@ const CameraPage = () => {
       console.log('Vision API results:', data);
       setVisionResults(data);
 
-      const processedFoods = processFoodRecognition(data);
+      const processedFoods = processNutritionData('photo', data);
       setRecognizedFoods(processedFoods);
+      setInputSource('photo');
       setShowConfirmation(true);
       
       toast.success(`Detected items: ${data.labels.slice(0, 3).map((l: any) => l.description).join(', ')}`);
@@ -92,38 +175,6 @@ const CameraPage = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const processFoodRecognition = (data: VisionApiResponse): RecognizedFood[] => {
-    const foods: RecognizedFood[] = [];
-    
-    if (data.nutritionData && Object.keys(data.nutritionData).length > 0) {
-      const mainLabel = data.foodLabels[0]?.description || data.labels[0]?.description || 'Unknown Food';
-      foods.push({
-        name: mainLabel,
-        calories: data.nutritionData.calories || 0,
-        protein: data.nutritionData.protein || 0,
-        carbs: data.nutritionData.carbs || 0,
-        fat: data.nutritionData.fat || 0,
-        fiber: data.nutritionData.fiber || 0,
-        sugar: data.nutritionData.sugar || 0,
-        sodium: data.nutritionData.sodium || 0,
-        confidence: Math.round((data.foodLabels[0]?.score || 0.5) * 100),
-        serving: 'As labeled',
-      });
-    } else {
-      data.foodLabels.forEach(label => {
-        const estimatedNutrition = estimateNutritionFromLabel(label.description);
-        foods.push({
-          name: label.description,
-          ...estimatedNutrition,
-          confidence: Math.round(label.score * 100),
-          serving: 'Estimated portion',
-        });
-      });
-    }
-
-    return foods.slice(0, 3);
   };
 
   const estimateNutritionFromLabel = (foodName: string) => {
@@ -152,6 +203,7 @@ const CameraPage = () => {
       if (transcribedText) {
         setVoiceText(transcribedText);
         setShowVoiceEntry(true);
+        setInputSource('voice');
       }
     } else {
       await startRecording();
@@ -173,21 +225,26 @@ const CameraPage = () => {
         throw new Error(result.error || 'Failed to process voice input');
       }
 
-      // Display the AI-generated response from data.message
-      const aiMessage = result.message;
-      
-      // Parse the AI response to extract food information
-      const processedFoods = parseAIResponseForFood(aiMessage, voiceText);
+      // Parse the structured response from the updated edge function
+      const voiceApiResponse: VoiceApiResponse = {
+        success: result.success,
+        data: result.message ? JSON.parse(result.message) : { foodItems: [], analysis: '' },
+        originalText: voiceText,
+      };
+
+      console.log('Voice API Response:', voiceApiResponse);
+      setVoiceResults(voiceApiResponse);
+
+      // Use unified processing function
+      const processedFoods = processNutritionData('voice', voiceApiResponse);
       
       if (processedFoods.length > 0) {
-        setRecognizedFoods([...recognizedFoods, ...processedFoods]);
-        setVoiceText('');
-        setShowVoiceEntry(false);
-        toast.success(`Added ${processedFoods.length} food item(s) from your voice input!`);
+        setRecognizedFoods(processedFoods);
+        setShowConfirmation(true); // THIS IS THE KEY FIX - show confirmation modal
+        setShowVoiceEntry(false); // Hide voice entry card
+        toast.success(`Analyzed ${processedFoods.length} food item(s)! Please review and confirm.`);
       } else {
-        // Show the AI response even if we can't parse specific foods
-        toast.success('Voice input processed! Check the details below.');
-        console.log('AI Response:', aiMessage);
+        toast.error('Could not identify any food items from your voice input.');
       }
       
     } catch (error) {
@@ -198,52 +255,53 @@ const CameraPage = () => {
     }
   };
 
-  const parseAIResponseForFood = (aiResponse: string, originalText: string): RecognizedFood[] => {
-    const foods: RecognizedFood[] = [];
-    
-    // Extract food name from original text or use a default
-    const foodName = originalText.split(' ').slice(0, 3).join(' ') || 'Food Item';
-    
-    // Try to extract numbers from AI response for better estimation
-    const caloriesMatch = aiResponse.match(/(\d+)\s*(?:calories|kcal)/i);
-    const proteinMatch = aiResponse.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\s*(?:of\s+)?protein/i);
-    const carbsMatch = aiResponse.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\s*(?:of\s+)?carb/i);
-    const fatMatch = aiResponse.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\s*(?:of\s+)?fat/i);
-    
-    foods.push({
-      name: `${foodName} (AI Analyzed)`,
-      calories: caloriesMatch ? parseInt(caloriesMatch[1]) : 150,
-      protein: proteinMatch ? parseFloat(proteinMatch[1]) : 5,
-      carbs: carbsMatch ? parseFloat(carbsMatch[1]) : 20,
-      fat: fatMatch ? parseFloat(fatMatch[1]) : 3,
-      fiber: 2,
-      sugar: 8,
-      sodium: 100,
-      confidence: 80,
-      serving: 'AI Estimated portion',
-    });
+  const confirmFoods = async () => {
+    try {
+      // Add foods to context and mark as confirmed
+      for (const food of recognizedFoods) {
+        addFood({
+          name: food.name,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          fiber: food.fiber,
+          sugar: food.sugar,
+          sodium: food.sodium,
+          confidence: food.confidence,
+          image: selectedImage || undefined,
+        });
 
-    return foods;
-  };
+        // Persist to Supabase nutrition_logs table
+        const { error } = await supabase
+          .from('nutrition_logs')
+          .insert({
+            food_name: food.name,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            fiber: food.fiber,
+            sugar: food.sugar,
+            sodium: food.sodium,
+            confidence: food.confidence,
+            serving_size: food.serving,
+            source: inputSource === 'voice' ? 'voice' : 'vision_api',
+            image_url: selectedImage || null,
+          });
 
-  const confirmFoods = () => {
-    recognizedFoods.forEach(food => {
-      addFood({
-        name: food.name,
-        calories: food.calories,
-        protein: food.protein,
-        carbs: food.carbs,
-        fat: food.fat,
-        fiber: food.fiber,
-        sugar: food.sugar,
-        sodium: food.sodium,
-        confidence: food.confidence,
-        image: selectedImage || undefined,
-      });
-    });
+        if (error) {
+          console.error('Error saving to Supabase:', error);
+          // Don't throw error to avoid disrupting UX, but log it
+        }
+      }
 
-    toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
-    resetState();
+      toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
+      resetState();
+    } catch (error) {
+      console.error('Error confirming foods:', error);
+      toast.error('Failed to save some items. Please try again.');
+    }
   };
 
   const resetState = () => {
@@ -254,6 +312,8 @@ const CameraPage = () => {
     setIsAnalyzing(false);
     setVoiceText('');
     setVisionResults(null);
+    setVoiceResults(null);
+    setInputSource('photo');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -378,8 +438,7 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* ... keep existing code (selectedImage analysis, showConfirmation, API status card) the same ... */}
-
+      {/* Photo Analysis Card */}
       {selectedImage && !showConfirmation && (
         <Card className="animate-slide-up">
           <CardHeader>
@@ -422,6 +481,7 @@ const CameraPage = () => {
         </Card>
       )}
 
+      {/* Unified Confirmation Modal for both Photo and Voice */}
       {showConfirmation && (
         <div className="space-y-6 animate-slide-up">
           <Card>
@@ -429,13 +489,17 @@ const CameraPage = () => {
               <CardTitle className="flex items-center gap-2">
                 <Check className="h-5 w-5 text-green-600" />
                 Food Recognition Results
+                <span className="text-sm font-normal text-gray-500">
+                  ({inputSource === 'voice' ? 'Voice Input' : 'Photo Analysis'})
+                </span>
               </CardTitle>
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 Review the recognized foods and their nutritional information
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectedImage && (
+              {/* Show image for photo input */}
+              {selectedImage && inputSource === 'photo' && (
                 <div className="relative mb-4">
                   <img
                     src={selectedImage}
@@ -445,7 +509,23 @@ const CameraPage = () => {
                 </div>
               )}
 
-              {visionResults && (
+              {/* Show transcribed text for voice input */}
+              {inputSource === 'voice' && voiceText && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    <Mic className="h-4 w-4 inline mr-2" />
+                    Voice Input: "{voiceText}"
+                  </h4>
+                  {voiceResults?.data.analysis && (
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {voiceResults.data.analysis}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Show vision results for photo input */}
+              {visionResults && inputSource === 'photo' && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
                     Detected items: {visionResults.labels.slice(0, 5).map(l => l.description).join(', ')}

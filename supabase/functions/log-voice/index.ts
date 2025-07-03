@@ -37,14 +37,35 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a nutrition expert. When a user describes food they ate, extract and estimate the nutritional information. Respond with a detailed analysis including estimated calories, protein, carbs, fats, fiber, sugar, sodium, and serving size. Be specific with numbers and provide a clear breakdown. Format your response as a helpful nutritional summary.`
+            content: `You are a nutrition expert. When a user describes food they ate, extract and estimate the nutritional information. 
+
+IMPORTANT: Respond with valid JSON in this exact format:
+{
+  "foodItems": [
+    {
+      "name": "food name",
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "fiber": number,
+      "sugar": number,
+      "sodium": number,
+      "confidence": number (0-100),
+      "serving": "serving description"
+    }
+  ],
+  "analysis": "brief analysis text"
+}
+
+Be specific with numbers and provide realistic estimates. If multiple foods are mentioned, include them as separate items in the foodItems array.`
           },
           {
             role: 'user',
-            content: `The user said: "${text}". Please analyze this food input and provide nutritional estimates.`
+            content: `The user said: "${text}". Please analyze this food input and provide nutritional estimates in the required JSON format.`
           }
         ],
-        max_tokens: 500,
+        max_tokens: 600,
         temperature: 0.3
       }),
     });
@@ -54,12 +75,37 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || 'Unable to process the food description.';
+    const aiResponse = data.choices[0]?.message?.content || '';
+
+    // Try to parse the JSON response
+    let structuredData;
+    try {
+      structuredData = JSON.parse(aiResponse);
+    } catch (parseError) {
+      // Fallback if AI doesn't return valid JSON
+      console.error('Failed to parse AI response as JSON:', parseError);
+      structuredData = {
+        foodItems: [{
+          name: text.split(' ').slice(0, 3).join(' ') || 'Food Item',
+          calories: 150,
+          protein: 5,
+          carbs: 20,
+          fat: 3,
+          fiber: 2,
+          sugar: 8,
+          sodium: 100,
+          confidence: 70,
+          serving: 'Estimated portion'
+        }],
+        analysis: 'Could not parse detailed nutrition information, using estimated values.'
+      };
+    }
 
     return new Response(
       JSON.stringify({ 
-        message: aiResponse,
-        success: true 
+        success: true,
+        data: structuredData,
+        originalText: text
       }),
       { 
         headers: { 
@@ -73,7 +119,6 @@ serve(async (req) => {
     console.error('Error in log-voice function:', error);
     return new Response(
       JSON.stringify({ 
-        message: 'Failed to process voice input',
         success: false,
         error: error.message 
       }),

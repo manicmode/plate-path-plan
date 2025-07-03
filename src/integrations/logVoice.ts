@@ -25,10 +25,20 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     }
 
     const data = await response.json();
-    return {
-      message: data.message || 'No response received',
-      success: true
-    };
+    
+    // Handle the new structured response from the updated edge function
+    if (data.success && data.data) {
+      return {
+        message: JSON.stringify(data.data), // Convert structured data back to string for parsing in Camera.tsx
+        success: true
+      };
+    } else {
+      return {
+        message: '',
+        success: false,
+        error: data.error || 'Unknown error occurred'
+      };
+    }
   } catch (error) {
     console.error('Error calling log-voice API:', error);
     return {

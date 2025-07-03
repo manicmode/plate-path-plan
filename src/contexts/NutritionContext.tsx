@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface FoodItem {
@@ -108,7 +107,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const [weeklyData, setWeeklyData] = useState<DailyNutrition[]>([]);
 
   const calculateTotals = (foods: FoodItem[], hydration: HydrationItem[]) => {
-    const foodTotals = foods.reduce((totals, food) => ({
+    // Only include confirmed foods in the totals calculation
+    const confirmedFoods = foods.filter(food => food.confirmed);
+    
+    const foodTotals = confirmedFoods.reduce((totals, food) => ({
       totalCalories: totals.totalCalories + food.calories,
       totalProtein: totals.totalProtein + food.protein,
       totalCarbs: totals.totalCarbs + food.carbs,
@@ -134,9 +136,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const addFood = (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed'>) => {
     const newFood: FoodItem = {
       ...food,
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // More unique ID
       timestamp: new Date(),
-      confirmed: false,
+      confirmed: true, // Mark as confirmed when added through confirmation flow
     };
 
     const updatedFoods = [...currentDay.foods, newFood];
@@ -147,6 +149,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       foods: updatedFoods,
       ...totals,
     });
+
+    console.log('Food added to context:', newFood);
+    console.log('Updated totals:', totals);
   };
 
   const addHydration = (hydration: Omit<HydrationItem, 'id' | 'timestamp'>) => {
@@ -184,9 +189,12 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       food.id === foodId ? { ...food, confirmed: true } : food
     );
 
+    const totals = calculateTotals(updatedFoods, currentDay.hydration);
+
     setCurrentDay({
       ...currentDay,
       foods: updatedFoods,
+      ...totals,
     });
   };
 
