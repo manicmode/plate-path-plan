@@ -6,3 +6,9 @@ verify_jwt = false
 
 [functions.ai-coach-chat]
 verify_jwt = false
+
+[functions.log-voice]
+verify_jwt = false
+
+[functions.voice-to-text]
+verify_jwt = false

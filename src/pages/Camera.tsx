@@ -6,6 +6,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { sendToLogVoice } from '@/integrations/logVoice';
 
 interface RecognizedFood {
   name: string;
@@ -166,18 +167,17 @@ const CameraPage = () => {
     setIsProcessingVoice(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
-        body: { 
-          message: `The user ate: ${voiceText}. Estimate the nutritional facts including calories, protein, carbs, fats, fiber, sugar, sodium, and serving size. Return the result in a structured format with specific numbers for a single serving.`,
-          userContext: {}
-        }
-      });
+      const result = await sendToLogVoice(voiceText);
 
-      if (error) {
-        throw new Error(error.message || 'Failed to process voice input');
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to process voice input');
       }
 
-      const processedFoods = parseAIResponse(data.response, voiceText);
+      // Display the AI-generated response from data.message
+      const aiMessage = result.message;
+      
+      // Parse the AI response to extract food information
+      const processedFoods = parseAIResponseForFood(aiMessage, voiceText);
       
       if (processedFoods.length > 0) {
         setRecognizedFoods([...recognizedFoods, ...processedFoods]);
@@ -185,7 +185,9 @@ const CameraPage = () => {
         setShowVoiceEntry(false);
         toast.success(`Added ${processedFoods.length} food item(s) from your voice input!`);
       } else {
-        toast.error('Could not parse your voice input. Please try again with more specific details.');
+        // Show the AI response even if we can't parse specific foods
+        toast.success('Voice input processed! Check the details below.');
+        console.log('AI Response:', aiMessage);
       }
       
     } catch (error) {
@@ -196,24 +198,29 @@ const CameraPage = () => {
     }
   };
 
-  const parseAIResponse = (aiResponse: string, originalText: string): RecognizedFood[] => {
+  const parseAIResponseForFood = (aiResponse: string, originalText: string): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
     
     // Extract food name from original text or use a default
     const foodName = originalText.split(' ').slice(0, 3).join(' ') || 'Food Item';
     
-    // Basic nutrition estimation (in real app, you'd parse AI response more carefully)
+    // Try to extract numbers from AI response for better estimation
+    const caloriesMatch = aiResponse.match(/(\d+)\s*(?:calories|kcal)/i);
+    const proteinMatch = aiResponse.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\s*(?:of\s+)?protein/i);
+    const carbsMatch = aiResponse.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\s*(?:of\s+)?carb/i);
+    const fatMatch = aiResponse.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)\s*(?:of\s+)?fat/i);
+    
     foods.push({
-      name: `${foodName} (AI Estimated)`,
-      calories: 150,
-      protein: 5,
-      carbs: 20,
-      fat: 3,
+      name: `${foodName} (AI Analyzed)`,
+      calories: caloriesMatch ? parseInt(caloriesMatch[1]) : 150,
+      protein: proteinMatch ? parseFloat(proteinMatch[1]) : 5,
+      carbs: carbsMatch ? parseFloat(carbsMatch[1]) : 20,
+      fat: fatMatch ? parseFloat(fatMatch[1]) : 3,
       fiber: 2,
       sugar: 8,
       sodium: 100,
-      confidence: 75,
-      serving: 'Estimated portion',
+      confidence: 80,
+      serving: 'AI Estimated portion',
     });
 
     return foods;

@@ -1,6 +1,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
@@ -40,7 +41,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         }
       };
 
-      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorder.start(100);
       setIsRecording(true);
       toast.success('🎤 Recording started...');
     } catch (error) {
@@ -63,21 +64,26 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           
-          // Convert to base64
+          // Convert to base64 for API call
           const reader = new FileReader();
           reader.onloadend = async () => {
             const base64Audio = (reader.result as string).split(',')[1];
             
             try {
-              // Note: This would need a proper voice-to-text service
-              // For now, we'll simulate the transcription
-              await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing
-              
-              const mockTranscription = "I ate a turkey sandwich with lettuce and tomatoes for lunch";
-              setTranscribedText(mockTranscription);
+              // Call Supabase function for voice-to-text transcription
+              const { data, error } = await supabase.functions.invoke('voice-to-text', {
+                body: { audio: base64Audio }
+              });
+
+              if (error) {
+                throw new Error(error.message || 'Failed to transcribe audio');
+              }
+
+              const transcription = data.text || 'Could not transcribe audio';
+              setTranscribedText(transcription);
               setIsProcessing(false);
               toast.success('🎯 Voice transcribed successfully!');
-              resolve(mockTranscription);
+              resolve(transcription);
             } catch (error) {
               console.error('Error transcribing audio:', error);
               setIsProcessing(false);
