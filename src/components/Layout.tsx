@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, User, Moon, Sun, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const isMobile = useIsMobile();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
@@ -25,15 +26,33 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
-  const handleNavigation = (path: string) => {
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }, []);
+
+  const handleNavigation = useCallback((path: string) => {
+    if (isNavigating || location.pathname === path) return;
+    
+    setIsNavigating(true);
+    
+    // Navigate first
     navigate(path);
-    // Scroll to top when navigating to camera/log page
-    if (path === '/camera') {
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 100);
-    }
-  };
+    
+    // Then scroll to top after a small delay
+    setTimeout(() => {
+      scrollToTop();
+      setIsNavigating(false);
+    }, 150);
+  }, [navigate, location.pathname, isNavigating, scrollToTop]);
+
+  // Reset navigation state when location changes
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
@@ -66,19 +85,18 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main Content - Enhanced spacing to prevent overlap with bottom nav */}
+      {/* Main Content */}
       <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
         isMobile ? 'pb-40' : 'pb-60'
       } min-h-[calc(100vh-140px)]`}>
         {children}
       </main>
 
-      {/* Enhanced Bottom Navigation - Fixed positioning and better backdrop */}
+      {/* Enhanced Bottom Navigation */}
       <nav className={`fixed ${isMobile ? 'bottom-3 left-3 right-3' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
         <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
           <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
             {navItems.map(({ path, icon: Icon, label }) => {
-              // Fix the active state detection for home route
               const isActive = (path === '/' && (location.pathname === '/' || location.pathname === '/home')) || 
                               (path !== '/' && location.pathname === path);
               return (
@@ -86,6 +104,7 @@ const Layout = ({ children }: LayoutProps) => {
                   key={path}
                   variant="ghost"
                   size="sm"
+                  disabled={isNavigating}
                   className={`flex flex-col items-center justify-center space-y-1 ${
                     isMobile 
                       ? 'h-16 px-2 min-w-[60px] flex-1' 
@@ -94,7 +113,7 @@ const Layout = ({ children }: LayoutProps) => {
                     isActive 
                       ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
                       : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
-                  }`}
+                  } ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={() => handleNavigation(path)}
                 >
                   <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />

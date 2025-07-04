@@ -4,8 +4,9 @@ import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucid
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import CelebrationPopup from '@/components/CelebrationPopup';
 
 // Utility function to get current user preferences from localStorage
@@ -29,7 +30,9 @@ const Home = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
-  const trackerCardsRef = useRef<HTMLDivElement>(null);
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
@@ -40,18 +43,14 @@ const Home = () => {
     const handleStorageChange = () => {
       const newPreferences = loadUserPreferences();
       setPreferences(newPreferences);
-      console.log('Preferences updated from localStorage:', newPreferences.selectedTrackers);
     };
 
-    // Listen for storage events (when localStorage changes)
     window.addEventListener('storage', handleStorageChange);
     
-    // Also check for changes periodically (in case same-tab changes don't trigger storage event)
     const interval = setInterval(() => {
       const newPreferences = loadUserPreferences();
       if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
         setPreferences(newPreferences);
-        console.log('Preferences refreshed:', newPreferences.selectedTrackers);
       }
     }, 1000);
 
@@ -78,28 +77,6 @@ const Home = () => {
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
 
-  // Auto-scroll to tracker cards position when component mounts
-  useEffect(() => {
-    const scrollToTrackerCards = () => {
-      if (trackerCardsRef.current) {
-        const element = trackerCardsRef.current;
-        const elementTop = element.offsetTop;
-        // Adjust offset for mobile/desktop to position tracker cards at top of viewport
-        // Fine-tuned offset to completely hide Today's Nutrients section below menu
-        const offset = isMobile ? 35 : 55; 
-        
-        window.scrollTo({
-          top: elementTop - offset,
-          behavior: 'smooth'
-        });
-      }
-    };
-
-    // Small delay to ensure DOM is fully rendered and layout is calculated
-    const timer = setTimeout(scrollToTrackerCards, 150);
-    return () => clearTimeout(timer);
-  }, [isMobile]);
-
   // Check for goal completion and trigger celebration
   useEffect(() => {
     if (progressPercentage >= 100 && progressPercentage < 105) {
@@ -116,9 +93,7 @@ const Home = () => {
 
   // Use preferences from localStorage/state instead of user object
   const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
-  console.log('Currently selected trackers for display:', selectedTrackers);
 
-  // Define all tracker configurations
   const allTrackerConfigs = {
     calories: {
       name: 'Calories',
@@ -290,8 +265,8 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Dynamic Tracker Cards based on user selection - With restored colorful drop shadows */}
-      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+      {/* Dynamic Tracker Cards based on user selection */}
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
         {displayedTrackers.map((tracker, index) => (
           <div 
             key={tracker.name}
