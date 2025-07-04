@@ -87,13 +87,16 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
 
       console.log('Profile data to save:', profileData);
 
+      // Use upsert to handle existing profiles
       const { error } = await supabase
         .from('user_profiles')
-        .upsert(profileData);
+        .upsert(profileData, {
+          onConflict: 'user_id'
+        });
 
       if (error) {
         console.error('Error saving profile:', error);
-        toast.error(`Failed to save your information: ${error.message}`);
+        toast.error('Failed to save your information. Please try again.');
         return;
       }
 
@@ -102,7 +105,7 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
       onComplete();
     } catch (error: any) {
       console.error('Error during onboarding:', error);
-      toast.error(`Something went wrong: ${error.message || 'Please try again.'}`);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

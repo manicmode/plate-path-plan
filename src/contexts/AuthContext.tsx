@@ -108,6 +108,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           
           setUser(authUser);
           setIsAuthenticated(true);
+
+          // Create user profile in database if it doesn't exist (but don't fail if it already exists)
+          if (event === 'SIGNED_UP') {
+            setTimeout(async () => {
+              try {
+                const { error } = await supabase
+                  .from('user_profiles')
+                  .upsert({
+                    user_id: session.user.id,
+                    selected_trackers: selectedTrackers,
+                    onboarding_completed: false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'user_id'
+                  });
+                
+                if (error && !error.message.includes('duplicate key')) {
+                  console.error('Error creating user profile:', error);
+                }
+              } catch (error) {
+                console.log('Profile creation handled by trigger or already exists');
+              }
+            }, 0);
+          }
         } else {
           setUser(null);
           setIsAuthenticated(false);
@@ -211,6 +236,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             user_id: user.id,
             selected_trackers: trackers,
             updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
           });
         
         if (error) {
