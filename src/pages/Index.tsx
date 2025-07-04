@@ -19,13 +19,15 @@ const Index = () => {
   });
 
   useEffect(() => {
-    if (isAuthenticated && isOnboardingComplete === true) {
-      console.log('User authenticated and onboarded, redirecting to /home');
-      navigate('/home');
+    // If user is authenticated, redirect to home regardless of onboarding status
+    // This prevents the infinite redirect loop
+    if (isAuthenticated && !isLoading) {
+      console.log('User authenticated, redirecting to /home');
+      navigate('/home', { replace: true });
     }
-  }, [isAuthenticated, isOnboardingComplete, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
 
-  // Show loading while checking authentication and onboarding status
+  // Show loading while checking authentication status
   if (isLoading) {
     console.log('Index showing loading state');
     return (
@@ -54,13 +56,13 @@ const Index = () => {
     return (
       <OnboardingScreen onComplete={() => {
         markOnboardingComplete();
-        navigate('/home');
+        navigate('/home', { replace: true });
       }} />
     );
   }
 
-  // Authenticated and onboarded - redirect to home (handled by useEffect)
-  console.log('Index: authenticated and onboarded, should redirect to home');
+  // Authenticated - show loading while redirecting
+  console.log('Index: authenticated, showing redirect loading');
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
       <div className="text-center">
