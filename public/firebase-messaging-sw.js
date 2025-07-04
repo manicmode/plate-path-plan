@@ -12,39 +12,59 @@ const firebaseConfig = {
   measurementId: "G-SK13GBDK15"
 };
 
-firebase.initializeApp(firebaseConfig);
+try {
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
 
-const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    console.log('Background message received:', payload);
+    
+    try {
+      const notificationTitle = payload.notification.title;
+      const notificationOptions = {
+        body: payload.notification.body,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'nutrition-coach',
+        renotify: true,
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'open',
+            title: 'Open App',
+            icon: '/favicon.ico'
+          }
+        ]
+      };
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('Background message received:', payload);
-  
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: 'nutrition-coach',
-    renotify: true,
-    requireInteraction: true,
-    actions: [
-      {
-        action: 'open',
-        title: 'Open App',
-        icon: '/favicon.ico'
-      }
-    ]
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+      self.registration.showNotification(notificationTitle, notificationOptions);
+    } catch (error) {
+      console.error('Error showing notification:', error);
+    }
+  });
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+}
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  if (event.action === 'open' || !event.action) {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
+  try {
+    event.notification.close();
+    
+    if (event.action === 'open' || !event.action) {
+      event.waitUntil(
+        clients.openWindow('/')
+      );
+    }
+  } catch (error) {
+    console.error('Notification click error:', error);
   }
+});
+
+// Add error handling for service worker errors
+self.addEventListener('error', (event) => {
+  console.error('Service Worker error:', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('Service Worker unhandled rejection:', event.reason);
 });

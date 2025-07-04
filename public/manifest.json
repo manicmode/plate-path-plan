@@ -1,0 +1,23 @@
+
+{
+  "name": "NutriCoach - Your Personal Nutrition Companion",
+  "short_name": "NutriCoach",
+  "description": "AI-powered nutrition coaching app with photo-based food logging, analytics, and personalized guidance",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "nutrition"],
+  "prefer_related_applications": false
+}
