@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Zap, Target, Calendar, Award, Flame, Droplets, Pill, BarChart3, Settings } from 'lucide-react';
+import { TrendingUp, TrendingDown, Zap, Target, Calendar, Award, Flame, Droplets, Pill, Plus, BarChart3, Settings } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -96,8 +97,8 @@ const Analytics = () => {
     );
   };
 
-  // Action tabs component with only Goal and Progress buttons
-  const ActionTabs = ({ category, progressPath }: { category: string, progressPath: string }) => {
+  // Action tabs component with enhanced shadows for light mode
+  const ActionTabs = ({ category, logPath, progressPath }: { category: string, logPath: string, progressPath: string }) => {
     const handleSetGoal = () => {
       navigate('/profile?edit=true&focus=' + category.toLowerCase());
     };
@@ -108,6 +109,15 @@ const Analytics = () => {
 
     return (
       <div className="flex gap-2 px-1">
+        <Button
+          variant="outline"
+          size={isMobile ? "sm" : "default"}
+          onClick={() => navigate(logPath)}
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Log</span>
+        </Button>
         <Button
           variant="outline"
           size={isMobile ? "sm" : "default"}
@@ -152,6 +162,7 @@ const Analytics = () => {
     unit, 
     color, 
     category, 
+    logPath, 
     progressPath 
   }: {
     icon: React.ReactNode;
@@ -161,6 +172,7 @@ const Analytics = () => {
     unit: string;
     color: string;
     category: string;
+    logPath: string;
     progressPath: string;
   }) => (
     <div className="bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-100/50 dark:border-gray-700/50">
@@ -189,7 +201,7 @@ const Analytics = () => {
       </Card>
       
       <div className="mt-3">
-        <ActionTabs category={category} progressPath={progressPath} />
+        <ActionTabs category={category} logPath={logPath} progressPath={progressPath} />
       </div>
     </div>
   );
@@ -217,6 +229,7 @@ const Analytics = () => {
           unit="kcal"
           color="orange"
           category="Calories"
+          logPath="/camera"
           progressPath="/analytics"
         />
 
@@ -228,6 +241,7 @@ const Analytics = () => {
           unit="g"
           color="emerald"
           category="Protein"
+          logPath="/camera"
           progressPath="/analytics"
         />
 
@@ -239,6 +253,7 @@ const Analytics = () => {
           unit="g"
           color="yellow"
           category="Carbs"
+          logPath="/camera"
           progressPath="/analytics"
         />
 
@@ -250,6 +265,7 @@ const Analytics = () => {
           unit="g"
           color="purple"
           category="Fat"
+          logPath="/camera"
           progressPath="/analytics"
         />
 
@@ -261,6 +277,7 @@ const Analytics = () => {
           unit="glasses"
           color="blue"
           category="Hydration"
+          logPath="/hydration"
           progressPath="/analytics"
         />
 
@@ -272,6 +289,7 @@ const Analytics = () => {
           unit="pills"
           color="pink"
           category="Supplements"
+          logPath="/supplements"
           progressPath="/analytics"
         />
       </div>
