@@ -159,7 +159,7 @@ const Coach = () => {
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 flex flex-col flex-1`}>
           {/* Messages */}
-          <ScrollArea className="flex-1 mb-4" ref={scrollAreaRef}>
+          <ScrollArea className="flex-1 mb-4 pr-2" ref={scrollAreaRef}>
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -182,13 +182,20 @@ const Coach = () => {
                     )}
                   </div>
                   <div
-                    className={`max-w-[80%] p-3 rounded-2xl ${
+                    className={`${
+                      isMobile ? 'max-w-[75%]' : 'max-w-[80%]'
+                    } p-3 rounded-2xl overflow-hidden break-words hyphens-auto ${
                       message.isUser
                         ? 'bg-emerald-600 text-white ml-auto'
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                     }`}
+                    style={{ 
+                      wordWrap: 'break-word',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word'
+                    }}
                   >
-                    <p className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-pre-wrap`}>
+                    <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed`}>
                       {message.content}
                     </p>
                   </div>

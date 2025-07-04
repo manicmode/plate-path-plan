@@ -152,6 +152,23 @@
 }
 
 @layer utilities {
+  /* Enhanced Text Wrapping Utilities */
+  .text-wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  .text-wrap-break {
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+
+  .text-constrain {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* New Vibrant Tracker Card Styles */
   .calories-tracker-vibrant {
     position: relative;
@@ -574,6 +591,11 @@
   
   .scroll-cards::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Enhanced Floating Animation */
+  .animate-float {
+    animation: enhancedFloat 6s ease-in-out infinite;
   }
 }
 
