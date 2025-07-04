@@ -218,7 +218,7 @@ const CameraPage = () => {
 
   const handleVoiceRecording = async () => {
     if (isRecording) {
-      setProcessingStep('Transcribing...');
+      setProcessingStep('Processing...');
       const transcribedText = await stopRecording();
       if (transcribedText) {
         setVoiceText(transcribedText);
@@ -243,10 +243,10 @@ const CameraPage = () => {
     }
 
     setIsProcessingVoice(true);
-    setProcessingStep('Processing voice input...');
+    setProcessingStep('Processing...');
     
     try {
-      setProcessingStep('Analyzing nutrition...');
+      setProcessingStep('Analyzing...');
       const result = await sendToLogVoice(voiceText);
 
       if (!result.success) {
@@ -260,7 +260,7 @@ const CameraPage = () => {
         return;
       }
 
-      setProcessingStep('Preparing results...');
+      setProcessingStep('Preparing...');
       // Parse the structured response from the updated edge function
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
 
@@ -302,10 +302,10 @@ const CameraPage = () => {
     }
 
     setIsProcessingVoice(true);
-    setProcessingStep('Processing manual input...');
+    setProcessingStep('Processing...');
 
     try {
-      setProcessingStep('Analyzing nutrition...');
+      setProcessingStep('Analyzing...');
       const result = await sendToLogVoice(manualEditText);
 
       if (!result.success) {
@@ -318,7 +318,7 @@ const CameraPage = () => {
         return;
       }
 
-      setProcessingStep('Preparing results...');
+      setProcessingStep('Preparing...');
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
       setVoiceResults(voiceApiResponse);
 
@@ -559,12 +559,12 @@ const CameraPage = () => {
               <Button
                 onClick={processVoiceEntry}
                 disabled={isProcessingVoice || !!processingStep}
-                className="flex-1 gradient-primary"
+                className="flex-1 gradient-primary min-w-[120px]"
               >
                 {isProcessingVoice || processingStep ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {processingStep || 'Analyzing with AI...'}
+                    {processingStep || 'Processing...'}
                   </>
                 ) : (
                   <>
@@ -574,7 +574,7 @@ const CameraPage = () => {
                 )}
               </Button>
               
-              <Button variant="outline" onClick={() => setShowVoiceEntry(false)} className="flex-1">
+              <Button variant="outline" onClick={() => setShowVoiceEntry(false)} className="flex-1 min-w-[80px]">
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -660,7 +660,7 @@ const CameraPage = () => {
               <Button
                 onClick={processManualEntry}
                 disabled={isProcessingVoice || !!processingStep}
-                className="flex-1 gradient-primary"
+                className="flex-1 gradient-primary min-w-[120px]"
               >
                 {isProcessingVoice || processingStep ? (
                   <>
@@ -675,7 +675,7 @@ const CameraPage = () => {
                 )}
               </Button>
               
-              <Button variant="outline" onClick={() => setShowManualEdit(false)} className="flex-1">
+              <Button variant="outline" onClick={() => setShowManualEdit(false)} className="flex-1 min-w-[80px]">
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -703,12 +703,12 @@ const CameraPage = () => {
               <Button
                 onClick={analyzeImage}
                 disabled={isAnalyzing}
-                className="flex-1 gradient-primary"
+                className="flex-1 gradient-primary min-w-[120px]"
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {processingStep || 'Analyzing with Google Vision AI...'}
+                    {processingStep || 'Processing...'}
                   </>
                 ) : (
                   <>
@@ -718,7 +718,7 @@ const CameraPage = () => {
                 )}
               </Button>
               
-              <Button variant="outline" onClick={resetState} className="flex-1">
+              <Button variant="outline" onClick={resetState} className="flex-1 min-w-[80px]">
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
