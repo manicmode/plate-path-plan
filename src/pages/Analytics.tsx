@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, Target, Calendar, Award } from 'lucide-react';
 
 const Analytics = () => {
-  const { nutritionHistory, getTodaysProgress } = useNutrition();
+  const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   const isMobile = useIsMobile();
   
@@ -16,22 +17,22 @@ const Analytics = () => {
 
   const progress = getTodaysProgress();
   
-  // Prepare data for the weekly overview chart
-  const weeklyData = nutritionHistory.slice(-7).map((day, index) => ({
+  // Prepare data for the weekly overview chart using weeklyData
+  const weeklyChartData = weeklyData.slice(-7).map((day, index) => ({
     day: `Day ${index + 1}`,
-    calories: day.calories,
-    protein: day.protein,
-    carbs: day.carbs,
-    fat: day.fat,
+    calories: day.totalCalories,
+    protein: day.totalProtein,
+    carbs: day.totalCarbs,
+    fat: day.totalFat,
     target: user?.targetCalories || 2000
   }));
 
   // Calculate weekly averages
   const weeklyAverage = {
-    calories: weeklyData.reduce((sum, day) => sum + day.calories, 0) / weeklyData.length,
-    protein: weeklyData.reduce((sum, day) => sum + day.protein, 0) / weeklyData.length,
-    carbs: weeklyData.reduce((sum, day) => sum + day.carbs, 0) / weeklyData.length,
-    fat: weeklyData.reduce((sum, day) => sum + day.fat, 0) / weeklyData.length,
+    calories: weeklyChartData.reduce((sum, day) => sum + day.calories, 0) / (weeklyChartData.length || 1),
+    protein: weeklyChartData.reduce((sum, day) => sum + day.protein, 0) / (weeklyChartData.length || 1),
+    carbs: weeklyChartData.reduce((sum, day) => sum + day.carbs, 0) / (weeklyChartData.length || 1),
+    fat: weeklyChartData.reduce((sum, day) => sum + day.fat, 0) / (weeklyChartData.length || 1),
   };
 
   // Today's macronutrient distribution
@@ -44,7 +45,7 @@ const Analytics = () => {
   // Hydration data
   const hydrationData = [
     { name: 'Completed', value: progress.hydration, color: '#06B6D4' },
-    { name: 'Remaining', value: Math.max(0, (user?.targetHydration || 8) - progress.hydration), color: '#E5E7EB' },
+    { name: 'Remaining', value: Math.max(0, (user?.targetHydration || 2000) - progress.hydration), color: '#E5E7EB' },
   ];
 
   const COLORS = ['#3B82F6', '#F59E0B', '#10B981', '#06B6D4', '#E5E7EB'];
@@ -111,7 +112,7 @@ const Analytics = () => {
         <CardContent className={`${isMobile ? 'p-4 pt-0' : 'p-6 pt-0'}`}>
           <div className={`${isMobile ? 'h-48' : 'h-64'}`}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData}>
+              <BarChart data={weeklyChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
