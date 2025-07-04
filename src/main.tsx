@@ -7,9 +7,13 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 console.log('App initialization starting...', {
   isMobile,
+  isIOS,
+  isSafari,
   userAgent: navigator.userAgent.substring(0, 100),
   localStorage: (() => {
     try {
@@ -20,8 +24,35 @@ console.log('App initialization starting...', {
       return `blocked: ${e.message}`;
     }
   })(),
-  url: window.location.href
+  url: window.location.href,
+  timestamp: new Date().toISOString()
 });
+
+// Additional mobile-specific checks
+if (isMobile) {
+  console.log('Mobile-specific info:', {
+    screen: {
+      width: window.screen.width,
+      height: window.screen.height,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight
+    },
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight
+    },
+    memory: (performance as any).memory ? {
+      used: Math.round((performance as any).memory.usedJSHeapSize / 1048576) + ' MB',
+      total: Math.round((performance as any).memory.totalJSHeapSize / 1048576) + ' MB',
+      limit: Math.round((performance as any).memory.jsHeapSizeLimit / 1048576) + ' MB'
+    } : 'unavailable',
+    connection: (navigator as any).connection ? {
+      effectiveType: (navigator as any).connection.effectiveType,
+      downlink: (navigator as any).connection.downlink,
+      rtt: (navigator as any).connection.rtt
+    } : 'unavailable'
+  });
+}
 
 const rootElement = document.getElementById("root");
 
@@ -39,6 +70,7 @@ window.addEventListener('error', (event) => {
     lineno: event.lineno,
     colno: event.colno,
     error: event.error,
+    stack: event.error?.stack,
     isMobile,
     timestamp: new Date().toISOString()
   });
@@ -48,15 +80,51 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', {
     reason: event.reason,
     promise: event.promise,
+    stack: event.reason?.stack,
     isMobile,
     timestamp: new Date().toISOString()
   });
 });
 
-root.render(
+// Add focus/blur handlers to track app state
+window.addEventListener('focus', () => {
+  console.log('App focused');
+});
+
+window.addEventListener('blur', () => {
+  console.log('App blurred');
+});
+
+// For iOS Safari, add specific handlers
+if (isIOS && isSafari) {
+  console.log('iOS Safari detected, adding specific handlers...');
+  
+  // Handle iOS Safari storage issues
+  try {
+    const testStorage = () => {
+      localStorage.setItem('ios_test', 'test');
+      const value = localStorage.getItem('ios_test');
+      localStorage.removeItem('ios_test');
+      return value === 'test';
+    };
+    
+    console.log('iOS Safari storage test:', testStorage() ? 'passed' : 'failed');
+  } catch (error) {
+    console.error('iOS Safari storage test failed:', error);
+  }
+}
+
+// Disable strict mode on mobile to reduce re-renders
+const AppWrapper = isMobile ? App : () => (
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>,
+    <App />
+  </StrictMode>
+);
+
+console.log('Rendering app...', { strictMode: !isMobile });
+
+root.render(
+  <ErrorBoundary>
+    <AppWrapper />
+  </ErrorBoundary>
 );
