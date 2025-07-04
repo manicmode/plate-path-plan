@@ -69,6 +69,8 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
     setIsSubmitting(true);
 
     try {
+      console.log('Submitting onboarding data for user:', user.id);
+      
       const profileData = {
         user_id: user.id,
         age: parseInt(formData.age),
@@ -83,21 +85,24 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
         updated_at: new Date().toISOString()
       };
 
+      console.log('Profile data to save:', profileData);
+
       const { error } = await supabase
         .from('user_profiles')
         .upsert(profileData);
 
       if (error) {
         console.error('Error saving profile:', error);
-        toast.error('Failed to save your information. Please try again.');
+        toast.error(`Failed to save your information: ${error.message}`);
         return;
       }
 
+      console.log('Profile saved successfully');
       toast.success('Welcome to NutriCoach! Your profile has been set up successfully.');
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during onboarding:', error);
-      toast.error('Something went wrong. Please try again.');
+      toast.error(`Something went wrong: ${error.message || 'Please try again.'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -142,6 +147,7 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                 min="13"
                 max="120"
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -156,6 +162,7 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                 value={formData.heightUnit}
                 onValueChange={(value: 'ft' | 'cm') => updateFormData({ heightUnit: value })}
                 className="flex space-x-6"
+                disabled={isSubmitting}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="ft" id="ft" />
@@ -171,7 +178,11 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="feet">Feet</Label>
-                    <Select value={formData.heightFeet} onValueChange={(value) => updateFormData({ heightFeet: value })}>
+                    <Select 
+                      value={formData.heightFeet} 
+                      onValueChange={(value) => updateFormData({ heightFeet: value })}
+                      disabled={isSubmitting}
+                    >
                       <SelectTrigger className="glass-button border-0">
                         <SelectValue placeholder="Feet" />
                       </SelectTrigger>
@@ -184,7 +195,11 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                   </div>
                   <div>
                     <Label htmlFor="inches">Inches</Label>
-                    <Select value={formData.heightInches} onValueChange={(value) => updateFormData({ heightInches: value })}>
+                    <Select 
+                      value={formData.heightInches} 
+                      onValueChange={(value) => updateFormData({ heightInches: value })}
+                      disabled={isSubmitting}
+                    >
                       <SelectTrigger className="glass-button border-0">
                         <SelectValue placeholder="Inches" />
                       </SelectTrigger>
@@ -205,6 +220,7 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                   className="glass-button border-0"
                   min="100"
                   max="250"
+                  disabled={isSubmitting}
                 />
               )}
             </div>
@@ -227,8 +243,13 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                   max="500"
                   step="0.1"
                   required
+                  disabled={isSubmitting}
                 />
-                <Select value={formData.weightUnit} onValueChange={(value: 'lb' | 'kg') => updateFormData({ weightUnit: value })}>
+                <Select 
+                  value={formData.weightUnit} 
+                  onValueChange={(value: 'lb' | 'kg') => updateFormData({ weightUnit: value })}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="glass-button border-0 w-20">
                     <SelectValue />
                   </SelectTrigger>
@@ -247,6 +268,7 @@ export const OnboardingScreen = ({ onComplete }: OnboardingScreenProps) => {
                 value={formData.gender}
                 onValueChange={(value: 'male' | 'female' | 'other' | 'prefer_not_to_say') => updateFormData({ gender: value })}
                 className="grid grid-cols-2 gap-4"
+                disabled={isSubmitting}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="male" id="male" />

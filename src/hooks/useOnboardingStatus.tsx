@@ -17,6 +17,8 @@ export const useOnboardingStatus = () => {
       }
 
       try {
+        console.log('Checking onboarding status for user:', user.id);
+        
         const { data, error } = await supabase
           .from('user_profiles')
           .select('onboarding_completed')
@@ -25,9 +27,12 @@ export const useOnboardingStatus = () => {
 
         if (error) {
           console.error('Error checking onboarding status:', error);
+          // If no profile exists yet, assume onboarding is not complete
           setIsOnboardingComplete(false);
         } else {
-          setIsOnboardingComplete(data?.onboarding_completed || false);
+          const isComplete = data?.onboarding_completed || false;
+          console.log('Onboarding status:', isComplete);
+          setIsOnboardingComplete(isComplete);
         }
       } catch (error) {
         console.error('Error in onboarding status check:', error);
@@ -41,6 +46,7 @@ export const useOnboardingStatus = () => {
   }, [user, isAuthenticated]);
 
   const markOnboardingComplete = () => {
+    console.log('Marking onboarding as complete');
     setIsOnboardingComplete(true);
   };
 

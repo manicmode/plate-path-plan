@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { User, Lock, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 
 const AuthForm = () => {
   const { login, register } = useAuth();
@@ -16,22 +18,53 @@ const AuthForm = () => {
     password: '',
     name: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    
     try {
       await login(formData.email, formData.password);
-    } catch (error) {
+      toast.success('Welcome back!');
+    } catch (error: any) {
       console.error('Login failed:', error);
+      
+      // Handle specific error messages
+      if (error.message?.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password. Please try again.');
+      } else if (error.message?.includes('Email not confirmed')) {
+        toast.error('Please check your email and click the confirmation link before signing in.');
+      } else {
+        toast.error('Login failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    
     try {
       await register(formData.email, formData.password, formData.name);
-    } catch (error) {
+      toast.success('Account created! Please check your email for confirmation.');
+    } catch (error: any) {
       console.error('Registration failed:', error);
+      
+      // Handle specific error messages
+      if (error.message?.includes('User already registered')) {
+        toast.error('An account with this email already exists. Please sign in instead.');
+      } else if (error.message?.includes('Password should be at least')) {
+        toast.error('Password should be at least 6 characters long.');
+      } else if (error.message?.includes('Unable to validate email')) {
+        toast.error('Please enter a valid email address.');
+      } else {
+        toast.error('Registration failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,6 +109,7 @@ const AuthForm = () => {
                     onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -91,10 +125,15 @@ const AuthForm = () => {
                     onChange={(e) => setFormData(prev => ({...prev, password: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
                     required
+                    disabled={isLoading}
                   />
                 </div>
-                <Button type="submit" className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}>
-                  Sign In
+                <Button 
+                  type="submit" 
+                  className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
@@ -114,6 +153,7 @@ const AuthForm = () => {
                     onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -129,6 +169,7 @@ const AuthForm = () => {
                     onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -139,15 +180,21 @@ const AuthForm = () => {
                   <Input
                     id="register-password"
                     type="password"
-                    placeholder="Create a password"
+                    placeholder="Create a password (min 6 characters)"
                     value={formData.password}
                     onChange={(e) => setFormData(prev => ({...prev, password: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
                     required
+                    minLength={6}
+                    disabled={isLoading}
                   />
                 </div>
-                <Button type="submit" className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}>
-                  Create Account
+                <Button 
+                  type="submit" 
+                  className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                 </Button>
               </form>
             </TabsContent>

@@ -1,8 +1,9 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
-interface User {
+interface AuthUser {
   id: string;
   name: string;
   email: string;
@@ -28,12 +29,12 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  updateProfile: (updates: Partial<AuthUser>) => void;
   updateSelectedTrackers: (trackers: string[]) => Promise<void>;
 }
 
@@ -73,111 +74,122 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      
-      const preferences = loadUserPreferences();
-      console.log('Loaded preferences on startup:', preferences);
-
-      // Only set defaults if not already stored
-      const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
-
-      const userWithDefaults = {
-        ...parsedUser,
-        targetHydration: parsedUser.targetHydration || 8,
-        targetSupplements: parsedUser.targetSupplements || 3,
-        selectedTrackers,
-      };
-
-      // Save the loaded ones back only if nothing was saved before
-      if (!preferences.selectedTrackers) {
-        console.log('No saved preferences found, saving defaults');
-        saveUserPreferences({ selectedTrackers });
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
+        setSession(session);
+        
+        if (session?.user) {
+          // Create AuthUser object from Supabase user
+          const preferences = loadUserPreferences();
+          const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+          
+          const authUser: AuthUser = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email || '',
+            targetCalories: 2000,
+            targetProtein: 150,
+            targetCarbs: 200,
+            targetFat: 65,
+            targetHydration: 8,
+            targetSupplements: 3,
+            allergies: [],
+            dietaryGoals: ['general_health'],
+            selectedTrackers,
+            onboardingCompleted: false,
+          };
+          
+          setUser(authUser);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       }
+    );
 
-      setUser(userWithDefaults);
-      localStorage.setItem('user', JSON.stringify(userWithDefaults));
-      
-      setIsAuthenticated(true);
-      console.log('User loaded with preferences:', userWithDefaults.selectedTrackers);
-    }
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const preferences = loadUserPreferences();
+        const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+        
+        const authUser: AuthUser = {
+          id: session.user.id,
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          targetCalories: 2000,
+          targetProtein: 150,
+          targetCarbs: 200,
+          targetFat: 65,
+          targetHydration: 8,
+          targetSupplements: 3,
+          allergies: [],
+          dietaryGoals: ['general_health'],
+          selectedTrackers,
+          onboardingCompleted: false,
+        };
+        
+        setUser(authUser);
+        setIsAuthenticated(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Mock login - in real app, this would call an API
-    const mockUser: User = {
-      id: '1',
-      name: 'John Doe',
-      email: email,
-      targetCalories: 2000,
-      targetProtein: 150,
-      targetCarbs: 200,
-      targetFat: 65,
-      targetHydration: 8,
-      targetSupplements: 3,
-      allergies: [],
-      dietaryGoals: ['general_health'],
-      selectedTrackers: ['calories', 'hydration', 'supplements'],
-      onboardingCompleted: false,
-    };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     
-    // Load preferences from localStorage
-    const preferences = loadUserPreferences();
-    const userWithPreferences = {
-      ...mockUser,
-      selectedTrackers: preferences.selectedTrackers || mockUser.selectedTrackers,
-    };
+    if (error) {
+      throw error;
+    }
     
-    setUser(userWithPreferences);
-    setIsAuthenticated(true);
-    localStorage.setItem('user', JSON.stringify(userWithPreferences));
-    console.log('User logged in with preferences:', userWithPreferences.selectedTrackers);
+    console.log('User logged in:', data.user?.id);
   };
 
   const register = async (email: string, password: string, name: string) => {
-    // Mock registration - in real app, this would call an API
-    const mockUser: User = {
-      id: '1',
-      name: name,
-      email: email,
-      targetCalories: 2000,
-      targetProtein: 150,
-      targetCarbs: 200,
-      targetFat: 65,
-      targetHydration: 8,
-      targetSupplements: 3,
-      allergies: [],
-      dietaryGoals: [],
-      selectedTrackers: ['calories', 'hydration', 'supplements'],
-      onboardingCompleted: false,
-    };
+    const redirectUrl = `${window.location.origin}/`;
     
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: name,
+        },
+        emailRedirectTo: redirectUrl
+      }
+    });
     
-    // Save initial preferences
-    saveUserPreferences({ selectedTrackers: mockUser.selectedTrackers });
+    if (error) {
+      throw error;
+    }
+    
+    console.log('User registered:', data.user?.id);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('user');
     localStorage.removeItem('user_preferences');
   };
 
-  const updateProfile = (updates: Partial<User>) => {
+  const updateProfile = (updates: Partial<AuthUser>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
     }
   };
 
@@ -187,7 +199,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (user) {
       const updatedUser = { ...user, selectedTrackers: trackers };
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
       
       // Save to localStorage preferences
       saveUserPreferences({ selectedTrackers: trackers });
