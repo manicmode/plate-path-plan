@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -14,8 +14,41 @@ export const NotificationSettings = () => {
   const { preferences, updatePreferences, requestPushPermission } = useNotifications();
   const { permission, requestPermission, hasPermission } = usePushNotifications();
 
-  const notificationTypes = [
-    { key: 'reminders', label: 'Daily Reminders', description: 'Gentle nudges to log your meals' },
+  const smartCoachNotifications = [
+    { 
+      key: 'mealReminders', 
+      label: 'Meal Logging Reminders', 
+      description: 'Gentle nudges to log meals at 12 PM and 6 PM',
+      icon: Target
+    },
+    { 
+      key: 'hydrationNudges', 
+      label: 'Hydration Nudges', 
+      description: 'Reminders when you haven\'t logged water for 6+ hours',
+      icon: Droplets
+    },
+    { 
+      key: 'consistencyPraise', 
+      label: 'Consistency Praise', 
+      description: 'Celebrate your tracking streaks and achievements',
+      icon: Heart
+    },
+    { 
+      key: 'coachCheckins', 
+      label: 'AI Coach Check-ins', 
+      description: 'Suggestions to chat with your coach after 3+ days',
+      icon: Brain
+    },
+    { 
+      key: 'progressReflection', 
+      label: 'Weekly Progress Reflection', 
+      description: 'Sunday reminders to review your weekly progress',
+      icon: Calendar
+    },
+  ];
+
+  const generalNotifications = [
+    { key: 'reminders', label: 'General Reminders', description: 'Daily reminders to stay on track' },
     { key: 'milestones', label: 'Milestone Celebrations', description: 'Celebrate your streaks and achievements' },
     { key: 'progressSuggestions', label: 'Progress Suggestions', description: 'Helpful tips when goals are low' },
     { key: 'smartTips', label: 'Smart Tips', description: 'Insights about missing nutrition categories' },
@@ -124,13 +157,42 @@ export const NotificationSettings = () => {
           </Select>
         </div>
 
-        {/* Notification Types */}
+        {/* Smart Coach Notifications */}
         <div className="space-y-4">
-          <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
-            Notification Types
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Brain className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-purple-600`} />
+            <span>Smart Coach Notifications</span>
           </h4>
           <div className="space-y-3">
-            {notificationTypes.map(({ key, label, description }) => (
+            {smartCoachNotifications.map(({ key, label, description, icon: Icon }) => (
+              <div key={key} className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20">
+                <div className="flex-1 flex items-center space-x-3">
+                  <Icon className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+                  <div>
+                    <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                      {label}
+                    </div>
+                    <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      {description}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={preferences[key as keyof typeof preferences] as boolean}
+                  onCheckedChange={(value) => handleToggle(key, value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* General Notification Types */}
+        <div className="space-y-4">
+          <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+            General Notifications
+          </h4>
+          <div className="space-y-3">
+            {generalNotifications.map(({ key, label, description }) => (
               <div key={key} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
                 <div className="flex-1">
                   <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>

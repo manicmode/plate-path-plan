@@ -12,6 +12,12 @@ export interface NotificationPreferences {
   overlimitAlerts: boolean;
   encouragement: boolean;
   reEngagement: boolean;
+  // New Smart Coach notifications
+  mealReminders: boolean;
+  hydrationNudges: boolean;
+  consistencyPraise: boolean;
+  coachCheckins: boolean;
+  progressReflection: boolean;
   frequency: 'normal' | 'low';
   quietHoursStart: number;
   quietHoursEnd: number;
@@ -27,9 +33,16 @@ export interface NotificationHistory {
   lastOverlimitAlert: string | null;
   lastEncouragement: string | null;
   lastReEngagement: string | null;
+  // New Smart Coach history
+  lastMealReminder: string | null;
+  lastHydrationNudge: string | null;
+  lastConsistencyPraise: string | null;
+  lastCoachCheckin: string | null;
+  lastProgressReflection: string | null;
   milestonesAchieved: string[];
   consecutiveDays: number;
   lastAppOpen: string;
+  lastCoachInteraction: string | null;
 }
 
 export interface BehaviorData {
@@ -39,6 +52,8 @@ export interface BehaviorData {
   dailyCompletionRate: number;
   weeklyPattern: { [key: string]: number };
   averageGoalCompletion: { [key: string]: number };
+  todayMealCount: number;
+  todayHydrationCount: number;
 }
 
 interface NotificationContextType {
@@ -50,6 +65,7 @@ interface NotificationContextType {
   dismissNotification: (type: string) => void;
   requestPushPermission: () => Promise<boolean>;
   isAppActive: boolean;
+  recordCoachInteraction: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -70,6 +86,12 @@ const defaultPreferences: NotificationPreferences = {
   overlimitAlerts: true,
   encouragement: true,
   reEngagement: true,
+  // New Smart Coach notifications - enabled by default
+  mealReminders: true,
+  hydrationNudges: true,
+  consistencyPraise: true,
+  coachCheckins: true,
+  progressReflection: true,
   frequency: 'normal',
   quietHoursStart: 22,
   quietHoursEnd: 7,
@@ -85,9 +107,16 @@ const defaultHistory: NotificationHistory = {
   lastOverlimitAlert: null,
   lastEncouragement: null,
   lastReEngagement: null,
+  // New Smart Coach history
+  lastMealReminder: null,
+  lastHydrationNudge: null,
+  lastConsistencyPraise: null,
+  lastCoachCheckin: null,
+  lastProgressReflection: null,
   milestonesAchieved: [],
   consecutiveDays: 0,
   lastAppOpen: new Date().toISOString(),
+  lastCoachInteraction: null,
 };
 
 const defaultBehaviorData: BehaviorData = {
@@ -97,6 +126,8 @@ const defaultBehaviorData: BehaviorData = {
   dailyCompletionRate: 0,
   weeklyPattern: {},
   averageGoalCompletion: {},
+  todayMealCount: 0,
+  todayHydrationCount: 0,
 };
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
@@ -105,12 +136,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   
   const [preferences, setPreferences] = useState<NotificationPreferences>(() => {
     const saved = localStorage.getItem('notification_preferences');
-    return saved ? JSON.parse(saved) : defaultPreferences;
+    return saved ? { ...defaultPreferences, ...JSON.parse(saved) } : defaultPreferences;
   });
 
   const [history, setHistory] = useState<NotificationHistory>(() => {
     const saved = localStorage.getItem('notification_history');
-    return saved ? JSON.parse(saved) : defaultHistory;
+    return saved ? { ...defaultHistory, ...JSON.parse(saved) } : defaultHistory;
   });
 
   const [behaviorData, setBehaviorData] = useState<BehaviorData>(() => {
@@ -150,16 +181,27 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   // Update behavior data based on current nutrition data
   useEffect(() => {
     const now = new Date().toISOString();
+    const today = new Date().toDateString();
     const newBehaviorData = { ...behaviorData };
 
-    // Update last log timestamps
-    if (currentDay.foods.length > 0) {
-      const lastFood = currentDay.foods[currentDay.foods.length - 1];
+    // Update last log timestamps and today's counts
+    const todayFoods = currentDay.foods.filter(f => 
+      new Date(f.timestamp).toDateString() === today
+    );
+    const todayHydration = currentDay.hydration.filter(h => 
+      new Date(h.timestamp).toDateString() === today
+    );
+
+    newBehaviorData.todayMealCount = todayFoods.length;
+    newBehaviorData.todayHydrationCount = todayHydration.length;
+
+    if (todayFoods.length > 0) {
+      const lastFood = todayFoods[todayFoods.length - 1];
       newBehaviorData.lastFoodLog = lastFood.timestamp.toISOString();
     }
 
-    if (currentDay.hydration.length > 0) {
-      const lastHydration = currentDay.hydration[currentDay.hydration.length - 1];
+    if (todayHydration.length > 0) {
+      const lastHydration = todayHydration[todayHydration.length - 1];
       newBehaviorData.lastHydrationLog = lastHydration.timestamp.toISOString();
     }
 
@@ -194,6 +236,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const newPreferences = { ...preferences, ...prefs };
     setPreferences(newPreferences);
     localStorage.setItem('notification_preferences', JSON.stringify(newPreferences));
+  };
+
+  const recordCoachInteraction = () => {
+    const newHistory = { ...history, lastCoachInteraction: new Date().toISOString() };
+    setHistory(newHistory);
+    localStorage.setItem('notification_history', JSON.stringify(newHistory));
   };
 
   const requestPushPermission = async (): Promise<boolean> => {
@@ -289,8 +337,99 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const checkNotifications = () => {
-    const now = new Date().toISOString();
+    const now = new Date();
+    const hour = now.getHours();
     const newHistory = { ...history };
+
+    // Smart Coach Notifications
+
+    // 1. Meal Logging Reminders
+    if (preferences.mealReminders) {
+      const userName = user?.name || 'superstar';
+      
+      // 12:00 PM reminder if no meals logged
+      if (hour === 12 && behaviorData.todayMealCount === 0 && 
+          shouldSendNotification('mealReminders', history.lastMealReminder, 6)) {
+        sendNotification(
+          "🥗 Meal Reminder", 
+          `Hey ${userName}, don't forget to log your breakfast and start the day strong!`, 
+          "meal-reminder"
+        );
+        newHistory.lastMealReminder = now.toISOString();
+      }
+      
+      // 6:00 PM reminder if still no meals logged
+      if (hour === 18 && behaviorData.todayMealCount === 0 && 
+          shouldSendNotification('mealReminders', history.lastMealReminder, 2)) {
+        sendNotification(
+          "🌇 Evening Check-in", 
+          "The day's almost over! Tap here and log what you've had today 💪", 
+          "meal-reminder"
+        );
+        newHistory.lastMealReminder = now.toISOString();
+      }
+    }
+
+    // 2. Hydration Nudges
+    if (preferences.hydrationNudges) {
+      const hoursSinceHydration = getHoursSince(behaviorData.lastHydrationLog);
+      if (hoursSinceHydration >= 6 && 
+          shouldSendNotification('hydrationNudges', history.lastHydrationNudge, 6)) {
+        sendNotification(
+          "💧 Hydration Check", 
+          "Hydration check! A quick sip now keeps your glow on 🔥", 
+          "hydration-nudge"
+        );
+        newHistory.lastHydrationNudge = now.toISOString();
+      }
+    }
+
+    // 3. Consistency Praise
+    if (preferences.consistencyPraise && behaviorData.todayMealCount > 0) {
+      // Calculate consecutive days (simplified logic)
+      const daysSinceLastLog = getHoursSince(behaviorData.lastFoodLog) / 24;
+      if (daysSinceLastLog <= 1) {
+        newHistory.consecutiveDays = Math.max(newHistory.consecutiveDays + 1, 1);
+      } else {
+        newHistory.consecutiveDays = 1;
+      }
+
+      if (newHistory.consecutiveDays >= 3 && 
+          shouldSendNotification('consistencyPraise', history.lastConsistencyPraise, 24)) {
+        sendNotification(
+          "👏 You're Amazing!", 
+          `You're on fire! ${newHistory.consecutiveDays} days in a row of awesome tracking. Keep it up 🚀`, 
+          "consistency-praise"
+        );
+        newHistory.lastConsistencyPraise = now.toISOString();
+      }
+    }
+
+    // 4. AI Coach Check-in Suggestion
+    if (preferences.coachCheckins) {
+      const hoursSinceCoachInteraction = getHoursSince(history.lastCoachInteraction);
+      if (hoursSinceCoachInteraction >= 72 && 
+          shouldSendNotification('coachCheckins', history.lastCoachCheckin, 72)) {
+        sendNotification(
+          "🧠 Your Coach Misses You", 
+          "Your coach misses you! Got questions, goals, or just wanna chat?", 
+          "coach-checkin"
+        );
+        newHistory.lastCoachCheckin = now.toISOString();
+      }
+    }
+
+    // 5. Progress Reflection Reminder (Sundays)
+    if (preferences.progressReflection && now.getDay() === 0 && hour === 19) { // Sunday 7 PM
+      if (shouldSendNotification('progressReflection', history.lastProgressReflection, 168)) { // Once per week
+        sendNotification(
+          "📊 Weekly Reflection", 
+          "Let's take a moment to review your week. Tap to see how far you've come 🌟", 
+          "progress-reflection"
+        );
+        newHistory.lastProgressReflection = now.toISOString();
+      }
+    }
 
     // 1. Reminder Notifications
     if (preferences.reminders && shouldSendNotification('reminders', history.lastReminderSent, 24)) {
@@ -440,6 +579,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         dismissNotification,
         requestPushPermission,
         isAppActive,
+        recordCoachInteraction,
       }}
     >
       {children}
