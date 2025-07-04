@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 const Profile = () => {
   const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
   const isMobile = useIsMobile();
+  const [isEditing, setIsEditing] = useState(false);
   
   // Always scroll to top when entering Profile page
   useScrollToTop(true);
@@ -58,12 +60,7 @@ const Profile = () => {
   const handleProfileUpdate = (updates: Partial<typeof userData>) => {
     const updatedData = { ...userData, ...updates };
     setUserData(updatedData);
-
-    // Optimistically update local state
     updateProfile(updates);
-
-    // Persist changes to AuthContext and Supabase
-    updateProfile(updatedData);
   };
 
   const handleTrackerSelectionUpdate = async (trackers: string[]) => {
@@ -71,13 +68,62 @@ const Profile = () => {
     await updateSelectedTrackers(trackers);
   };
 
+  const handleToggleGoal = (goalId: string) => {
+    const currentGoals = userData.dietaryGoals;
+    const updatedGoals = currentGoals.includes(goalId)
+      ? currentGoals.filter(g => g !== goalId)
+      : [...currentGoals, goalId];
+    handleProfileUpdate({ dietaryGoals: updatedGoals });
+  };
+
+  const handleToggleTracker = (trackerId: string) => {
+    const currentTrackers = userData.selectedTrackers;
+    const updatedTrackers = currentTrackers.includes(trackerId)
+      ? currentTrackers.filter(t => t !== trackerId)
+      : [...currentTrackers, trackerId];
+    handleTrackerSelectionUpdate(updatedTrackers);
+  };
+
+  const handleSave = () => {
+    setIsEditing(false);
+    // All updates are already handled by individual components
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    // Reset to original user data
+    if (user) {
+      setUserData({
+        name: user.name || '',
+        email: user.email || '',
+        targetCalories: user.targetCalories || 2000,
+        targetProtein: user.targetProtein || 150,
+        targetCarbs: user.targetCarbs || 200,
+        targetFat: user.targetFat || 65,
+        targetHydration: user.targetHydration || 8,
+        targetSupplements: user.targetSupplements || 3,
+        allergies: user.allergies || [],
+        dietaryGoals: user.dietaryGoals || [],
+        selectedTrackers: user.selectedTrackers || ['calories', 'hydration', 'supplements'],
+      });
+    }
+  };
+
   return (
     <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
       {/* Profile Header */}
-      <ProfileHeader />
+      <ProfileHeader 
+        user={user}
+        isEditing={isEditing}
+        onEditToggle={() => setIsEditing(!isEditing)}
+      />
 
       {/* Profile Actions */}
-      <ProfileActions />
+      <ProfileActions 
+        isEditing={isEditing}
+        onSave={handleSave}
+        onCancel={handleCancel}
+      />
 
       {/* Personal Information */}
       <Card className="glass-card border-0 rounded-3xl">
@@ -89,9 +135,9 @@ const Profile = () => {
         </CardHeader>
         <CardContent className="p-6">
           <PersonalInformation
-            name={userData.name}
-            email={userData.email}
-            onUpdate={handleProfileUpdate}
+            formData={{ name: userData.name, email: userData.email }}
+            isEditing={isEditing}
+            onFormDataChange={handleProfileUpdate}
           />
         </CardContent>
       </Card>
@@ -106,13 +152,16 @@ const Profile = () => {
         </CardHeader>
         <CardContent className="p-6">
           <NutritionGoals
-            targetCalories={userData.targetCalories}
-            targetProtein={userData.targetProtein}
-            targetCarbs={userData.targetCarbs}
-            targetFat={userData.targetFat}
-            targetHydration={userData.targetHydration}
-            targetSupplements={userData.targetSupplements}
-            onUpdate={handleProfileUpdate}
+            formData={{
+              targetCalories: userData.targetCalories,
+              targetProtein: userData.targetProtein,
+              targetCarbs: userData.targetCarbs,
+              targetFat: userData.targetFat,
+              targetHydration: userData.targetHydration,
+              targetSupplements: userData.targetSupplements,
+            }}
+            isEditing={isEditing}
+            onFormDataChange={handleProfileUpdate}
           />
         </CardContent>
       </Card>
@@ -127,8 +176,9 @@ const Profile = () => {
         </CardHeader>
         <CardContent className="p-6">
           <AllergiesSection
-            allergies={userData.allergies}
-            onUpdate={handleProfileUpdate}
+            allergies={userData.allergies.join(', ')}
+            isEditing={isEditing}
+            onAllergiesChange={(allergies) => handleProfileUpdate({ allergies: allergies.split(', ').filter(a => a.trim()) })}
           />
         </CardContent>
       </Card>
@@ -144,7 +194,8 @@ const Profile = () => {
         <CardContent className="p-6">
           <DietaryGoals
             dietaryGoals={userData.dietaryGoals}
-            onUpdate={handleProfileUpdate}
+            isEditing={isEditing}
+            onToggleGoal={handleToggleGoal}
           />
         </CardContent>
       </Card>
@@ -160,7 +211,8 @@ const Profile = () => {
         <CardContent className="p-6">
           <TrackerSelection
             selectedTrackers={userData.selectedTrackers}
-            onUpdate={handleTrackerSelectionUpdate}
+            isEditing={isEditing}
+            onToggleTracker={handleToggleTracker}
           />
         </CardContent>
       </Card>
