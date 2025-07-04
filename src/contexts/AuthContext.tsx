@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setIsAuthenticated(true);
 
           // Create user profile in database if it doesn't exist (but don't fail if it already exists)
-          if (event === 'SIGNED_UP') {
+          if (event === 'SIGNED_IN') {
             setTimeout(async () => {
               try {
                 const { error } = await supabase
