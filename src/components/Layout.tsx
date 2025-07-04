@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, User, Moon, Sun, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,16 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    // Scroll to top when navigating to camera/log page
+    if (path === '/camera') {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+    }
+  };
 
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
@@ -85,7 +95,7 @@ const Layout = ({ children }: LayoutProps) => {
                       ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
                       : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
                   }`}
-                  onClick={() => navigate(path)}
+                  onClick={() => handleNavigation(path)}
                 >
                   <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
                   <span className={`${
