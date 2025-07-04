@@ -23,7 +23,6 @@ import ProgressFat from "./pages/ProgressFat";
 import ProgressHydration from "./pages/ProgressHydration";
 import ProgressSupplements from "./pages/ProgressSupplements";
 import NotFound from "./pages/NotFound";
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -42,23 +41,31 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { requestPermission } = usePushNotifications();
+  // Remove the usePushNotifications hook from here - it was causing crashes
+  // Push notifications will be initialized only when the user requests them
 
-  // Initialize push notifications on app load
+  // Optional: Initialize push notifications after app is fully loaded
   useEffect(() => {
-    const initializePushNotifications = async () => {
+    const initializePushNotificationsLater = async () => {
       try {
-        const hasPermission = Notification.permission === 'granted';
-        if (!hasPermission) {
-          console.log('Push notifications not enabled');
+        // Only attempt to initialize if browser supports it
+        if ('Notification' in window && 'serviceWorker' in navigator && window.isSecureContext) {
+          const hasPermission = Notification.permission === 'granted';
+          if (hasPermission) {
+            console.log('Push notifications already enabled');
+          } else {
+            console.log('Push notifications available but not enabled');
+          }
+        } else {
+          console.log('Push notifications not supported on this browser');
         }
       } catch (error) {
-        console.log('Push notifications not available:', error);
+        console.log('Push notifications check failed safely:', error);
       }
     };
 
-    // Delay initialization slightly to avoid blocking app startup
-    setTimeout(initializePushNotifications, 1000);
+    // Delay initialization to avoid blocking app startup
+    setTimeout(initializePushNotificationsLater, 2000);
   }, []);
 
   console.log('App component rendering...');

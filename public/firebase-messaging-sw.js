@@ -12,47 +12,75 @@ const firebaseConfig = {
   measurementId: "G-SK13GBDK15"
 };
 
+let messaging = null;
+
+// Safer Firebase initialization
 try {
-  firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
+  // Check if Firebase is available
+  if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+    messaging = firebase.messaging();
+    console.log('Firebase messaging initialized in service worker');
 
-  messaging.onBackgroundMessage((payload) => {
-    console.log('Background message received:', payload);
-    
-    try {
-      const notificationTitle = payload.notification.title;
-      const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: 'nutrition-coach',
-        renotify: true,
-        requireInteraction: true,
-        actions: [
-          {
-            action: 'open',
-            title: 'Open App',
-            icon: '/favicon.ico'
-          }
-        ]
-      };
+    messaging.onBackgroundMessage((payload) => {
+      console.log('Background message received:', payload);
+      
+      if (!payload.notification) {
+        console.log('No notification payload found');
+        return;
+      }
 
-      self.registration.showNotification(notificationTitle, notificationOptions);
-    } catch (error) {
-      console.error('Error showing notification:', error);
-    }
-  });
+      try {
+        const notificationTitle = payload.notification.title || 'NutriCoach';
+        const notificationOptions = {
+          body: payload.notification.body || '',
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: 'nutrition-coach',
+          renotify: true,
+          data: payload.data || {},
+          actions: [
+            {
+              action: 'open',
+              title: 'Open App',
+              icon: '/favicon.ico'
+            }
+          ]
+        };
+
+        // Only show notification if we're not in a mobile browser that might not support it well
+        self.registration.showNotification(notificationTitle, notificationOptions);
+      } catch (error) {
+        console.error('Error showing notification:', error);
+      }
+    });
+  } else {
+    console.log('Firebase not available in service worker environment');
+  }
 } catch (error) {
-  console.error('Firebase initialization error:', error);
+  console.error('Firebase initialization error in service worker:', error);
 }
 
+// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   try {
+    console.log('Notification clicked:', event);
     event.notification.close();
     
     if (event.action === 'open' || !event.action) {
       event.waitUntil(
-        clients.openWindow('/')
+        clients.matchAll({ type: 'window' }).then((clientList) => {
+          // Check if app is already open
+          for (const client of clientList) {
+            if (client.url.includes(self.location.origin) && 'focus' in client) {
+              return client.focus();
+            }
+          }
+          // Open new window if app not open
+          if (clients.openWindow) {
+            return clients.openWindow('/');
+          }
+        })
       );
     }
   } catch (error) {
@@ -60,11 +88,23 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-// Add error handling for service worker errors
+// Enhanced error handling for mobile browsers
 self.addEventListener('error', (event) => {
   console.error('Service Worker error:', event.error);
 });
 
 self.addEventListener('unhandledrejection', (event) => {
   console.error('Service Worker unhandled rejection:', event.reason);
+  event.preventDefault(); // Prevent default browser behavior
+});
+
+// Add install and activate event listeners for better mobile support
+self.addEventListener('install', (event) => {
+  console.log('Service Worker installing');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating');
+  event.waitUntil(self.clients.claim());
 });

@@ -1,9 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -11,8 +10,8 @@ import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
   const isMobile = useIsMobile();
-  const { preferences, updatePreferences, requestPushPermission } = useNotifications();
-  const { permission, requestPermission, hasPermission } = usePushNotifications();
+  const { preferences, updatePreferences } = useNotifications();
+  const { permission, requestPermission, hasPermission, isSupported } = usePushNotifications();
 
   const smartCoachNotifications = [
     { 
@@ -110,52 +109,71 @@ export const NotificationSettings = () => {
             <Smartphone className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
             <span>Push Notifications</span>
           </h4>
-          <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Enable Push Notifications
-                </div>
-                <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  Get notified even when the app is closed
+          
+          {!isSupported ? (
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                <div>
+                  <div className={`font-medium text-amber-800 dark:text-amber-200 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Push Notifications Not Available
+                  </div>
+                  <div className={`text-amber-700 dark:text-amber-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Your browser doesn't support push notifications. You'll still receive in-app notifications.
+                  </div>
                 </div>
               </div>
-              {!hasPermission ? (
-                <Button 
-                  onClick={handlePushPermissionRequest}
-                  size="sm"
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  Enable
-                </Button>
-              ) : (
-                <div className="text-emerald-600 text-sm font-medium">✓ Enabled</div>
+            </div>
+          ) : (
+            <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Enable Push Notifications
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Get notified even when the app is closed
+                  </div>
+                </div>
+                {!hasPermission ? (
+                  <Button 
+                    onClick={handlePushPermissionRequest}
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    Enable
+                  </Button>
+                ) : (
+                  <div className="text-emerald-600 text-sm font-medium">✓ Enabled</div>
+                )}
+              </div>
+              {permission === 'denied' && (
+                <div className="text-amber-600 text-xs mt-2">
+                  Push notifications are blocked. Enable them in your browser settings to receive notifications.
+                </div>
               )}
             </div>
-            {permission === 'denied' && (
-              <div className="text-amber-600 text-xs mt-2">
-                Push notifications are blocked. Enable them in your browser settings to receive notifications.
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Delivery Mode */}
-        <div className="space-y-3">
-          <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
-            Delivery Method
-          </h4>
-          <Select value={preferences.deliveryMode} onValueChange={handleDeliveryModeChange}>
-            <SelectTrigger className="rounded-2xl">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="toast">Toast Only - Show when app is open</SelectItem>
-              <SelectItem value="push">Push Only - Send to device when app is closed</SelectItem>
-              <SelectItem value="both">Both - Smart delivery based on app state</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Delivery Mode - only show if push notifications are supported */}
+        {isSupported && (
+          <div className="space-y-3">
+            <h4 className={`font-semibold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+              Delivery Method
+            </h4>
+            <Select value={preferences.deliveryMode} onValueChange={handleDeliveryModeChange}>
+              <SelectTrigger className="rounded-2xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="toast">Toast Only - Show when app is open</SelectItem>
+                <SelectItem value="push">Push Only - Send to device when app is closed</SelectItem>
+                <SelectItem value="both">Both - Smart delivery based on app state</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Smart Coach Notifications */}
         <div className="space-y-4">
