@@ -290,12 +290,12 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Dynamic Tracker Cards based on user selection - Restored to larger size matching reference image */}
-      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-4 mx-1' : 'gap-6 mx-2'} animate-scale-in items-stretch relative z-10`}>
+      {/* Large Tracker Cards - Restored to original size matching reference image */}
+      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-4 mx-1' : 'gap-6'} animate-scale-in items-stretch relative z-10`}>
         {displayedTrackers.map((tracker, index) => (
           <div 
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-56 p-4' : 'h-64 p-6'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
+            className={`border-0 ${isMobile ? 'h-80 p-6' : 'h-96 p-8'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
             onClick={tracker.onClick}
             title={getMotivationalMessage(tracker.percentage, tracker.name)}
             style={{ 
@@ -307,8 +307,8 @@ const Home = () => {
             <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
             <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
-              <div className={`relative ${isMobile ? 'w-28 h-28' : 'w-36 h-36'} flex items-center justify-center mb-4`}>
-                <svg className={`${isMobile ? 'w-28 h-28' : 'w-36 h-36'} enhanced-progress-ring`} viewBox="0 0 120 120">
+              <div className={`relative ${isMobile ? 'w-40 h-40' : 'w-48 h-48'} flex items-center justify-center mb-6`}>
+                <svg className={`${isMobile ? 'w-40 h-40' : 'w-48 h-48'} enhanced-progress-ring`} viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
                   <circle
                     cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
@@ -363,16 +363,16 @@ const Home = () => {
                   </defs>
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-2 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
-                  <span className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
+                  <span className={`${isMobile ? 'text-5xl' : 'text-6xl'} mb-3 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
+                  <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
                     {Math.round(tracker.percentage)}%
                   </span>
-                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white animate-pulse mt-1`} />}
+                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white animate-pulse mt-2`} />}
                 </div>
               </div>
               <div className="text-center">
-                <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} ${tracker.textColorSecondary} drop-shadow-sm`}>
+                <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold ${tracker.textColor} drop-shadow-md mb-2`}>{tracker.name}</p>
+                <p className={`${isMobile ? 'text-base' : 'text-lg'} ${tracker.textColorSecondary} drop-shadow-sm`}>
                   {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
                 </p>
               </div>
