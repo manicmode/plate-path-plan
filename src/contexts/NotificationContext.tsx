@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { useNutrition } from './NutritionContext';
 import { useAuth } from './AuthContext';
@@ -130,35 +131,71 @@ const defaultBehaviorData: BehaviorData = {
   todayHydrationCount: 0,
 };
 
+// Safe localStorage operations for mobile Safari
+const safeLocalStorageGet = (key: string, defaultValue: any) => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? { ...defaultValue, ...JSON.parse(saved) } : defaultValue;
+  } catch (error) {
+    console.warn(`Failed to read from localStorage: ${key}`, error);
+    return defaultValue;
+  }
+};
+
+const safeLocalStorageSet = (key: string, value: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Failed to write to localStorage: ${key}`, error);
+  }
+};
+
+// Mobile device detection
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
+  console.log('NotificationProvider initializing...');
+  
   const { currentDay, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   
+  // Use refs to prevent unnecessary re-renders
+  const initializationRef = useRef(false);
+  const lastUpdateRef = useRef<string>('');
+  
   const [preferences, setPreferences] = useState<NotificationPreferences>(() => {
-    const saved = localStorage.getItem('notification_preferences');
-    return saved ? { ...defaultPreferences, ...JSON.parse(saved) } : defaultPreferences;
+    return safeLocalStorageGet('notification_preferences', defaultPreferences);
   });
 
   const [history, setHistory] = useState<NotificationHistory>(() => {
-    const saved = localStorage.getItem('notification_history');
-    return saved ? { ...defaultHistory, ...JSON.parse(saved) } : defaultHistory;
+    return safeLocalStorageGet('notification_history', defaultHistory);
   });
 
   const [behaviorData, setBehaviorData] = useState<BehaviorData>(() => {
-    const saved = localStorage.getItem('behavior_data');
-    return saved ? JSON.parse(saved) : defaultBehaviorData;
+    return safeLocalStorageGet('behavior_data', defaultBehaviorData);
   });
 
   const [isAppActive, setIsAppActive] = useState(true);
 
-  // Track app visibility
+  // Track app visibility with proper cleanup
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsAppActive(!document.hidden);
+      const isActive = !document.hidden;
+      setIsAppActive(isActive);
+      console.log('App visibility changed:', isActive ? 'active' : 'inactive');
     };
 
-    const handleFocus = () => setIsAppActive(true);
-    const handleBlur = () => setIsAppActive(false);
+    const handleFocus = () => {
+      setIsAppActive(true);
+      console.log('App focused');
+    };
+    
+    const handleBlur = () => {
+      setIsAppActive(false);
+      console.log('App blurred');
+    };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
@@ -171,24 +208,23 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Update app open timestamp - FIXED: Only run once on mount
+  // Initialize app open timestamp only once
   useEffect(() => {
-    const updateLastAppOpen = () => {
+    if (!initializationRef.current) {
+      initializationRef.current = true;
+      const timestamp = new Date().toISOString();
       setHistory(prevHistory => {
-        const newHistory = { ...prevHistory, lastAppOpen: new Date().toISOString() };
-        localStorage.setItem('notification_history', JSON.stringify(newHistory));
+        const newHistory = { ...prevHistory, lastAppOpen: timestamp };
+        safeLocalStorageSet('notification_history', newHistory);
         return newHistory;
       });
-    };
-    
-    updateLastAppOpen();
-  }, []); // Empty dependency array - only run once
+      console.log('NotificationProvider initialized');
+    }
+  }, []);
 
-  // Update behavior data based on current nutrition data - FIXED: Proper dependencies
-  useEffect(() => {
+  // Memoized calculation to prevent unnecessary re-renders
+  const nutritionCounts = useMemo(() => {
     const today = new Date().toDateString();
-    
-    // Update last log timestamps and today's counts
     const todayFoods = currentDay.foods.filter(f => 
       new Date(f.timestamp).toDateString() === today
     );
@@ -196,68 +232,93 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       new Date(h.timestamp).toDateString() === today
     );
 
-    const newBehaviorData = { ...behaviorData };
-    newBehaviorData.todayMealCount = todayFoods.length;
-    newBehaviorData.todayHydrationCount = todayHydration.length;
-
-    if (todayFoods.length > 0) {
-      const lastFood = todayFoods[todayFoods.length - 1];
-      newBehaviorData.lastFoodLog = lastFood.timestamp.toISOString();
-    }
-
-    if (todayHydration.length > 0) {
-      const lastHydration = todayHydration[todayHydration.length - 1];
-      newBehaviorData.lastHydrationLog = lastHydration.timestamp.toISOString();
-    }
-
-    if (currentDay.supplements.length > 0) {
-      const lastSupplement = currentDay.supplements[currentDay.supplements.length - 1];
-      newBehaviorData.lastSupplementLog = lastSupplement.timestamp.toISOString();
-    }
-
-    // Calculate daily completion rate
-    const progress = getTodaysProgress();
-    const targets = {
-      calories: user?.targetCalories || 2000,
-      protein: user?.targetProtein || 150,
-      hydration: 2000, // ml
-      supplements: 3,
+    return {
+      mealCount: todayFoods.length,
+      hydrationCount: todayHydration.length,
+      lastFoodLog: todayFoods.length > 0 ? todayFoods[todayFoods.length - 1].timestamp.toISOString() : null,
+      lastHydrationLog: todayHydration.length > 0 ? todayHydration[todayHydration.length - 1].timestamp.toISOString() : null,
+      lastSupplementLog: currentDay.supplements.length > 0 ? currentDay.supplements[currentDay.supplements.length - 1].timestamp.toISOString() : null,
     };
+  }, [currentDay.foods.length, currentDay.hydration.length, currentDay.supplements.length]);
 
-    const completionRates = [
-      Math.min(progress.calories / targets.calories, 1),
-      Math.min(progress.protein / targets.protein, 1),
-      Math.min(progress.hydration / targets.hydration, 1),
-      Math.min(progress.supplements / targets.supplements, 1),
-    ];
-
-    newBehaviorData.dailyCompletionRate = completionRates.reduce((a, b) => a + b, 0) / completionRates.length;
-
-    // Only update if data has changed
-    if (JSON.stringify(newBehaviorData) !== JSON.stringify(behaviorData)) {
-      setBehaviorData(newBehaviorData);
-      localStorage.setItem('behavior_data', JSON.stringify(newBehaviorData));
+  // Update behavior data with debouncing
+  useEffect(() => {
+    // Create a unique key for current data state
+    const currentDataKey = `${nutritionCounts.mealCount}-${nutritionCounts.hydrationCount}-${user?.targetCalories}-${user?.targetProtein}`;
+    
+    // Skip if data hasn't actually changed
+    if (lastUpdateRef.current === currentDataKey) {
+      return;
     }
-  }, [currentDay.foods.length, currentDay.hydration.length, currentDay.supplements.length, user?.targetCalories, user?.targetProtein, user?.targetCarbs, user?.targetFat]); // Specific dependencies
+
+    const timeoutId = setTimeout(() => {
+      console.log('Updating behavior data...');
+      
+      try {
+        const progress = getTodaysProgress();
+        const targets = {
+          calories: user?.targetCalories || 2000,
+          protein: user?.targetProtein || 150,
+          hydration: 2000,
+          supplements: 3,
+        };
+
+        const completionRates = [
+          Math.min(progress.calories / targets.calories, 1),
+          Math.min(progress.protein / targets.protein, 1),
+          Math.min(progress.hydration / targets.hydration, 1),
+          Math.min(progress.supplements / targets.supplements, 1),
+        ];
+
+        const newBehaviorData: BehaviorData = {
+          lastFoodLog: nutritionCounts.lastFoodLog,
+          lastHydrationLog: nutritionCounts.lastHydrationLog,
+          lastSupplementLog: nutritionCounts.lastSupplementLog,
+          todayMealCount: nutritionCounts.mealCount,
+          todayHydrationCount: nutritionCounts.hydrationCount,
+          dailyCompletionRate: completionRates.reduce((a, b) => a + b, 0) / completionRates.length,
+          weeklyPattern: {},
+          averageGoalCompletion: {},
+        };
+
+        setBehaviorData(newBehaviorData);
+        safeLocalStorageSet('behavior_data', newBehaviorData);
+        lastUpdateRef.current = currentDataKey;
+        
+        console.log('Behavior data updated successfully');
+      } catch (error) {
+        console.error('Error updating behavior data:', error);
+      }
+    }, 2000); // 2 second debounce for mobile
+
+    return () => clearTimeout(timeoutId);
+  }, [nutritionCounts.mealCount, nutritionCounts.hydrationCount, nutritionCounts.lastFoodLog, nutritionCounts.lastHydrationLog, nutritionCounts.lastSupplementLog, user?.targetCalories, user?.targetProtein, getTodaysProgress]);
 
   const updatePreferences = useCallback((prefs: Partial<NotificationPreferences>) => {
+    console.log('Updating preferences:', prefs);
     setPreferences(prevPrefs => {
       const newPreferences = { ...prevPrefs, ...prefs };
-      localStorage.setItem('notification_preferences', JSON.stringify(newPreferences));
+      safeLocalStorageSet('notification_preferences', newPreferences);
       return newPreferences;
     });
   }, []);
 
   const recordCoachInteraction = useCallback(() => {
+    const timestamp = new Date().toISOString();
     setHistory(prevHistory => {
-      const newHistory = { ...prevHistory, lastCoachInteraction: new Date().toISOString() };
-      localStorage.setItem('notification_history', JSON.stringify(newHistory));
+      const newHistory = { ...prevHistory, lastCoachInteraction: timestamp };
+      safeLocalStorageSet('notification_history', newHistory);
       return newHistory;
     });
   }, []);
 
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
     try {
+      if (!('Notification' in window)) {
+        console.warn('Notifications not supported');
+        return false;
+      }
+      
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         updatePreferences({ pushEnabled: true });
@@ -271,154 +332,174 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, [updatePreferences]);
 
   const sendNotification = useCallback(async (title: string, body: string, type: string) => {
-    const shouldUsePush = !isAppActive && preferences.pushEnabled && 
-      (preferences.deliveryMode === 'push' || preferences.deliveryMode === 'both');
-    
-    const shouldUseToast = isAppActive && 
-      (preferences.deliveryMode === 'toast' || preferences.deliveryMode === 'both');
+    try {
+      const shouldUsePush = !isAppActive && preferences.pushEnabled && 
+        (preferences.deliveryMode === 'push' || preferences.deliveryMode === 'both');
+      
+      const shouldUseToast = isAppActive && 
+        (preferences.deliveryMode === 'toast' || preferences.deliveryMode === 'both');
 
-    if (shouldUseToast) {
-      if (type === 'milestone' || type === 'encouragement') {
-        toast.success(title, { description: body });
-      } else if (type === 'reminder' || type === 'reEngagement') {
-        toast.info(title, { description: body });
-      } else {
-        toast(title, { description: body });
+      if (shouldUseToast) {
+        if (type === 'milestone' || type === 'encouragement') {
+          toast.success(title, { description: body });
+        } else if (type === 'reminder' || type === 'reEngagement') {
+          toast.info(title, { description: body });
+        } else {
+          toast(title, { description: body });
+        }
       }
-    }
 
-    if (shouldUsePush) {
-      const token = localStorage.getItem('fcm_token');
-      if (token) {
-        try {
-          await supabase.functions.invoke('send-push-notification', {
-            body: {
-              token,
-              title,
-              body,
-              data: { type, timestamp: new Date().toISOString() }
-            }
-          });
-          console.log('Push notification sent successfully');
-        } catch (error) {
-          console.error('Failed to send push notification:', error);
-          if (isAppActive) {
-            toast.error('Failed to send push notification');
+      if (shouldUsePush) {
+        const token = localStorage.getItem('fcm_token');
+        if (token) {
+          try {
+            await supabase.functions.invoke('send-push-notification', {
+              body: {
+                token,
+                title,
+                body,
+                data: { type, timestamp: new Date().toISOString() }
+              }
+            });
+            console.log('Push notification sent successfully');
+          } catch (error) {
+            console.error('Failed to send push notification:', error);
           }
         }
       }
+    } catch (error) {
+      console.error('Error in sendNotification:', error);
     }
   }, [isAppActive, preferences.pushEnabled, preferences.deliveryMode]);
 
   const isQuietHours = useCallback(() => {
-    const now = new Date();
-    const hour = now.getHours();
-    const { quietHoursStart, quietHoursEnd } = preferences;
-    
-    if (quietHoursStart > quietHoursEnd) {
-      return hour >= quietHoursStart || hour < quietHoursEnd;
-    } else {
-      return hour >= quietHoursStart && hour < quietHoursEnd;
+    try {
+      const now = new Date();
+      const hour = now.getHours();
+      const { quietHoursStart, quietHoursEnd } = preferences;
+      
+      if (quietHoursStart > quietHoursEnd) {
+        return hour >= quietHoursStart || hour < quietHoursEnd;
+      } else {
+        return hour >= quietHoursStart && hour < quietHoursEnd;
+      }
+    } catch (error) {
+      console.error('Error checking quiet hours:', error);
+      return false;
     }
   }, [preferences.quietHoursStart, preferences.quietHoursEnd]);
 
   const shouldSendNotification = useCallback((type: keyof NotificationPreferences, lastSent: string | null, cooldownHours: number) => {
-    if (!preferences[type] || isQuietHours()) return false;
-    
-    if (!lastSent) return true;
-    
-    const lastSentTime = new Date(lastSent);
-    const now = new Date();
-    const hoursSinceLastSent = (now.getTime() - lastSentTime.getTime()) / (1000 * 60 * 60);
-    
-    const multiplier = preferences.frequency === 'low' ? 2 : 1;
-    return hoursSinceLastSent >= (cooldownHours * multiplier);
+    try {
+      if (!preferences[type] || isQuietHours()) return false;
+      
+      if (!lastSent) return true;
+      
+      const lastSentTime = new Date(lastSent);
+      const now = new Date();
+      const hoursSinceLastSent = (now.getTime() - lastSentTime.getTime()) / (1000 * 60 * 60);
+      
+      const multiplier = preferences.frequency === 'low' ? 2 : 1;
+      const mobileMultiplier = isMobileDevice() ? 1.5 : 1; // Reduce frequency on mobile
+      
+      return hoursSinceLastSent >= (cooldownHours * multiplier * mobileMultiplier);
+    } catch (error) {
+      console.error('Error checking notification timing:', error);
+      return false;
+    }
   }, [preferences, isQuietHours]);
 
-  const getHoursSince = useCallback((timestamp: string | null) => {
-    if (!timestamp) return Infinity;
-    const then = new Date(timestamp);
-    const now = new Date();
-    return (now.getTime() - then.getTime()) / (1000 * 60 * 60);
-  }, []);
-
   const checkNotifications = useCallback(() => {
-    const now = new Date();
-    const hour = now.getHours();
-
-    setHistory(prevHistory => {
-      const newHistory = { ...prevHistory };
-      let hasChanges = false;
-
-      // Smart Coach Notifications - simplified to prevent loops
-      if (preferences.mealReminders) {
-        const userName = user?.name || 'superstar';
-        
-        if (hour === 12 && behaviorData.todayMealCount === 0 && 
-            shouldSendNotification('mealReminders', prevHistory.lastMealReminder, 6)) {
-          sendNotification(
-            "🥗 Meal Reminder", 
-            `Hey ${userName}, don't forget to log your breakfast and start the day strong!`, 
-            "meal-reminder"
-          );
-          newHistory.lastMealReminder = now.toISOString();
-          hasChanges = true;
-        }
-        
-        if (hour === 18 && behaviorData.todayMealCount === 0 && 
-            shouldSendNotification('mealReminders', prevHistory.lastMealReminder, 2)) {
-          sendNotification(
-            "🌇 Evening Check-in", 
-            "The day's almost over! Tap here and log what you've had today 💪", 
-            "meal-reminder"
-          );
-          newHistory.lastMealReminder = now.toISOString();
-          hasChanges = true;
-        }
+    try {
+      if (!preferences.mealReminders || !isAppActive) {
+        return;
       }
 
-      // Only update if there are actual changes
-      if (hasChanges) {
-        localStorage.setItem('notification_history', JSON.stringify(newHistory));
-        return newHistory;
+      const now = new Date();
+      const hour = now.getHours();
+      const userName = user?.name || 'superstar';
+
+      // Only check during specific hours to prevent spam
+      if (hour === 12 && behaviorData.todayMealCount === 0 && 
+          shouldSendNotification('mealReminders', history.lastMealReminder, 6)) {
+        
+        sendNotification(
+          "🥗 Meal Reminder", 
+          `Hey ${userName}, don't forget to log your breakfast and start the day strong!`, 
+          "meal-reminder"
+        );
+        
+        setHistory(prevHistory => {
+          const newHistory = { ...prevHistory, lastMealReminder: now.toISOString() };
+          safeLocalStorageSet('notification_history', newHistory);
+          return newHistory;
+        });
+      } else if (hour === 18 && behaviorData.todayMealCount === 0 && 
+                 shouldSendNotification('mealReminders', history.lastMealReminder, 2)) {
+        
+        sendNotification(
+          "🌇 Evening Check-in", 
+          "The day's almost over! Tap here and log what you've had today 💪", 
+          "meal-reminder"
+        );
+        
+        setHistory(prevHistory => {
+          const newHistory = { ...prevHistory, lastMealReminder: now.toISOString() };
+          safeLocalStorageSet('notification_history', newHistory);
+          return newHistory;
+        });
       }
-      return prevHistory;
-    });
-  }, [preferences, behaviorData, user, sendNotification, shouldSendNotification]);
+    } catch (error) {
+      console.error('Error in checkNotifications:', error);
+    }
+  }, [preferences.mealReminders, isAppActive, behaviorData.todayMealCount, history.lastMealReminder, user?.name, sendNotification, shouldSendNotification]);
 
   const dismissNotification = useCallback((type: string) => {
     console.log(`Notification dismissed: ${type}`);
   }, []);
 
-  // Check notifications periodically - FIXED: Proper dependencies and debouncing
+  // Check notifications with proper debouncing and mobile optimization
   useEffect(() => {
-    // Debounce notification checks to prevent rapid firing
+    const intervalTime = isMobileDevice() ? 60 * 60 * 1000 : 30 * 60 * 1000; // 1 hour on mobile, 30 min on desktop
+    
     const timeoutId = setTimeout(() => {
       checkNotifications();
-    }, 1000);
+    }, 5000); // Initial delay
 
-    const interval = setInterval(checkNotifications, 30 * 60 * 1000); // Every 30 minutes
+    const interval = setInterval(checkNotifications, intervalTime);
     
     return () => {
       clearTimeout(timeoutId);
       clearInterval(interval);
     };
-  }, [checkNotifications]); // Only depend on the memoized checkNotifications
+  }, [checkNotifications]);
+
+  const contextValue = useMemo(() => ({
+    preferences,
+    history,
+    behaviorData,
+    updatePreferences,
+    checkNotifications,
+    dismissNotification,
+    requestPushPermission,
+    isAppActive,
+    recordCoachInteraction,
+  }), [
+    preferences,
+    history,
+    behaviorData,
+    updatePreferences,
+    checkNotifications,
+    dismissNotification,
+    requestPushPermission,
+    isAppActive,
+    recordCoachInteraction,
+  ]);
+
+  console.log('NotificationProvider rendering with context value');
 
   return (
-    <NotificationContext.Provider
-      value={{
-        preferences,
-        history,
-        behaviorData,
-        updatePreferences,
-        checkNotifications,
-        dismissNotification,
-        requestPushPermission,
-        isAppActive,
-        recordCoachInteraction,
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );
