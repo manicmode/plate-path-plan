@@ -9,6 +9,7 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Brain } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from 'sonner';
 
 interface Message {
@@ -23,6 +24,10 @@ const Coach = () => {
   const { getTodaysProgress, currentDay } = useNutrition();
   const { recordCoachInteraction } = useNotification();
   const isMobile = useIsMobile();
+  
+  // Always scroll to top when entering Coach page
+  useScrollToTop(true);
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -36,11 +41,6 @@ const Coach = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
-
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
