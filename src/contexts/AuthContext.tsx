@@ -4,11 +4,31 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Extended user type with profile data
+interface ExtendedUser extends User {
+  name?: string;
+  targetCalories?: number;
+  targetProtein?: number;
+  targetCarbs?: number;
+  targetFat?: number;
+  targetHydration?: number;
+  targetSupplements?: number;
+  allergies?: string[];
+  dietaryGoals?: string[];
+  selectedTrackers?: string[];
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: ExtendedUser | null;
   session: Session | null;
   loading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>;
+  updateProfile: (profileData: Partial<ExtendedUser>) => void;
+  updateSelectedTrackers: (trackers: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,10 +48,48 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   console.log('AuthProvider initializing...');
   
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading user profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in loadUserProfile:', error);
+      return null;
+    }
+  };
+
+  const updateUserWithProfile = async (supabaseUser: User) => {
+    const profile = await loadUserProfile(supabaseUser.id);
+    const extendedUser: ExtendedUser = {
+      ...supabaseUser,
+      name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
+      targetCalories: 2000,
+      targetProtein: 150,
+      targetCarbs: 200,
+      targetFat: 65,
+      targetHydration: 8,
+      targetSupplements: 3,
+      allergies: [],
+      dietaryGoals: [],
+      selectedTrackers: profile?.selected_trackers || ['calories', 'hydration', 'supplements'],
+    };
+    setUser(extendedUser);
+  };
 
   useEffect(() => {
     console.log('AuthProvider effect starting...');
@@ -42,7 +100,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         console.log('Getting initial session...');
         
-        // Get initial session with timeout
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Session timeout')), 5000);
@@ -55,10 +112,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (error) {
           console.error('Error getting initial session:', error);
-        } else if (mounted) {
-          console.log('Initial session:', initialSession ? 'Found' : 'None');
+        } else if (mounted && initialSession?.user) {
+          console.log('Initial session found');
           setSession(initialSession);
-          setUser(initialSession?.user ?? null);
+          await updateUserWithProfile(initialSession.user);
         }
         
         if (mounted) {
@@ -71,25 +128,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (mounted) {
           setLoading(false);
           setIsInitialized(true);
-          // Continue without auth rather than crashing
         }
       }
     };
 
     initializeAuth();
 
-    // Set up auth listener with error handling
     let authListener: any = null;
     
     try {
-      authListener = supabase.auth.onAuthStateChange((event, session) => {
+      authListener = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!mounted) return;
         
         console.log('Auth state change:', event, session?.user?.id || 'no user');
         
         try {
           setSession(session);
-          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            await updateUserWithProfile(session.user);
+          } else {
+            setUser(null);
+          }
           
           if (event === 'SIGNED_OUT') {
             console.log('User signed out');
@@ -117,6 +177,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
+  const login = async (email: string, password: string) => {
+    try {
+      console.log('Attempting login...');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      console.log('Login successful');
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  };
+
+  const register = async (email: string, password: string, name?: string) => {
+    try {
+      console.log('Attempting registration...');
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: name ? { name } : undefined,
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      
+      if (error) throw error;
+      
+      console.log('Registration successful');
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
       console.log('Signing out...');
@@ -129,11 +227,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const logout = signOut;
+
+  const updateProfile = (profileData: Partial<ExtendedUser>) => {
+    if (user) {
+      const updatedUser = { ...user, ...profileData };
+      setUser(updatedUser);
+      console.log('Profile updated locally:', profileData);
+    }
+  };
+
+  const updateSelectedTrackers = async (trackers: string[]) => {
+    try {
+      if (!user) return;
+      
+      // Update in database
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          selected_trackers: trackers,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error updating trackers in database:', error);
+      } else {
+        console.log('Trackers updated in database:', trackers);
+      }
+
+      // Update local storage
+      localStorage.setItem('user_preferences', JSON.stringify({ selectedTrackers: trackers }));
+      
+      // Update local user state
+      updateProfile({ selectedTrackers: trackers });
+      
+    } catch (error) {
+      console.error('Error updating selected trackers:', error);
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
     session,
     loading,
+    isAuthenticated: !!session?.user,
+    login,
+    register,
     signOut,
+    logout,
+    updateProfile,
+    updateSelectedTrackers,
   };
 
   console.log('AuthProvider rendering, loading:', loading, 'user:', user ? 'present' : 'none');

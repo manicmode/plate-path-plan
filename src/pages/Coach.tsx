@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { useNotifications } from '@/contexts/NotificationContext';
+import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Brain } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -22,7 +21,7 @@ interface Message {
 const Coach = () => {
   const { user } = useAuth();
   const { getTodaysProgress, currentDay } = useNutrition();
-  const { recordCoachInteraction } = useNotifications();
+  const { recordCoachInteraction } = useNotification();
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([
     {

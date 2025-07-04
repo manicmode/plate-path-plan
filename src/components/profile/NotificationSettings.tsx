@@ -1,16 +1,17 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useNotifications } from '@/contexts/NotificationContext';
+import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
   const isMobile = useIsMobile();
-  const { preferences, updatePreferences } = useNotifications();
+  const { preferences, updatePreferences } = useNotification();
   const { permission, requestPermission, hasPermission, isSupported } = usePushNotifications();
 
   const smartCoachNotifications = [
