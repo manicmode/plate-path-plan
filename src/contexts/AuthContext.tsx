@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { safeGetJSON, safeSetJSON, safeStorage } from '@/lib/safeStorage';
 
 interface AuthUser {
   id: string;
@@ -48,12 +49,10 @@ export const useAuth = () => {
   return context;
 };
 
-// Utility functions for localStorage-based preferences
+// Utility functions for localStorage-based preferences using safe storage
 const loadUserPreferences = () => {
   try {
-    const stored = localStorage.getItem('user_preferences');
-    console.log('Loading preferences from localStorage:', stored);
-    return stored ? JSON.parse(stored) : {};
+    return safeGetJSON('user_preferences', {});
   } catch (error) {
     console.error('Failed to load preferences:', error);
     return {};
@@ -62,8 +61,7 @@ const loadUserPreferences = () => {
 
 const saveUserPreferences = (preferences: any) => {
   try {
-    console.log('Saving preferences to localStorage:', preferences);
-    localStorage.setItem('user_preferences', JSON.stringify(preferences));
+    safeSetJSON('user_preferences', preferences);
   } catch (error) {
     console.error('Failed to save preferences:', error);
   }
@@ -79,14 +77,84 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         console.log('Auth state change:', event, session?.user?.id);
         setSession(session);
         
         if (session?.user) {
-          // Create AuthUser object from Supabase user
+          try {
+            // Create AuthUser object from Supabase user
+            const preferences = loadUserPreferences();
+            const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+            
+            const authUser: AuthUser = {
+              id: session.user.id,
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+              email: session.user.email || '',
+              targetCalories: 2000,
+              targetProtein: 150,
+              targetCarbs: 200,
+              targetFat: 65,
+              targetHydration: 8,
+              targetSupplements: 3,
+              allergies: [],
+              dietaryGoals: ['general_health'],
+              selectedTrackers,
+              onboardingCompleted: false,
+            };
+            
+            setUser(authUser);
+            setIsAuthenticated(true);
+
+            // Create user profile in database if it doesn't exist (but don't fail if it already exists)
+            if (event === 'SIGNED_IN') {
+              setTimeout(async () => {
+                if (!mounted) return;
+                try {
+                  const { error } = await supabase
+                    .from('user_profiles')
+                    .upsert({
+                      user_id: session.user.id,
+                      selected_trackers: selectedTrackers,
+                      onboarding_completed: false,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    }, {
+                      onConflict: 'user_id'
+                    });
+                  
+                  if (error && !error.message.includes('duplicate key')) {
+                    console.error('Error creating user profile:', error);
+                  }
+                } catch (error) {
+                  console.log('Profile creation handled by trigger or already exists');
+                }
+              }, 0);
+            }
+          } catch (error) {
+            console.error('Error processing auth state:', error);
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
+      if (session?.user) {
+        try {
           const preferences = loadUserPreferences();
           const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
           
@@ -108,66 +176,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           
           setUser(authUser);
           setIsAuthenticated(true);
-
-          // Create user profile in database if it doesn't exist (but don't fail if it already exists)
-          if (event === 'SIGNED_IN') {
-            setTimeout(async () => {
-              try {
-                const { error } = await supabase
-                  .from('user_profiles')
-                  .upsert({
-                    user_id: session.user.id,
-                    selected_trackers: selectedTrackers,
-                    onboarding_completed: false,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  }, {
-                    onConflict: 'user_id'
-                  });
-                
-                if (error && !error.message.includes('duplicate key')) {
-                  console.error('Error creating user profile:', error);
-                }
-              } catch (error) {
-                console.log('Profile creation handled by trigger or already exists');
-              }
-            }, 0);
-          }
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
+        } catch (error) {
+          console.error('Error loading existing session:', error);
         }
       }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const preferences = loadUserPreferences();
-        const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
-        
-        const authUser: AuthUser = {
-          id: session.user.id,
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          targetCalories: 2000,
-          targetProtein: 150,
-          targetCarbs: 200,
-          targetFat: 65,
-          targetHydration: 8,
-          targetSupplements: 3,
-          allergies: [],
-          dietaryGoals: ['general_health'],
-          selectedTrackers,
-          onboardingCompleted: false,
-        };
-        
-        setUser(authUser);
-        setIsAuthenticated(true);
-      }
+    }).catch(error => {
+      console.error('Error getting session:', error);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -205,10 +225,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('user_preferences');
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setIsAuthenticated(false);
+      safeStorage.removeItem('user_preferences');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Force cleanup even if logout fails
+      setUser(null);
+      setIsAuthenticated(false);
+      safeStorage.removeItem('user_preferences');
+    }
   };
 
   const updateProfile = (updates: Partial<AuthUser>) => {
@@ -225,7 +253,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const updatedUser = { ...user, selectedTrackers: trackers };
       setUser(updatedUser);
       
-      // Save to localStorage preferences
+      // Save to safe storage preferences
       saveUserPreferences({ selectedTrackers: trackers });
       
       // Also try to save to Supabase as backup (but don't fail if it doesn't work)
@@ -241,12 +269,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           });
         
         if (error) {
-          console.log('Supabase backup failed (using localStorage instead):', error);
+          console.log('Supabase backup failed (using safe storage instead):', error);
         } else {
           console.log('Preferences saved to Supabase as backup');
         }
       } catch (error) {
-        console.log('Supabase not available (using localStorage instead):', error);
+        console.log('Supabase not available (using safe storage instead):', error);
       }
     }
   };

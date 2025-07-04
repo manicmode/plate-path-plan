@@ -1,9 +1,9 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { useNutrition } from './NutritionContext';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 
 export interface NotificationPreferences {
   reminders: boolean;
@@ -131,23 +131,13 @@ const defaultBehaviorData: BehaviorData = {
   todayHydrationCount: 0,
 };
 
-// Safe localStorage operations for mobile Safari
+// Safe storage operations using the new safe storage wrapper
 const safeLocalStorageGet = (key: string, defaultValue: any) => {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved ? { ...defaultValue, ...JSON.parse(saved) } : defaultValue;
-  } catch (error) {
-    console.warn(`Failed to read from localStorage: ${key}`, error);
-    return defaultValue;
-  }
+  return safeGetJSON(key, defaultValue);
 };
 
 const safeLocalStorageSet = (key: string, value: any) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.warn(`Failed to write to localStorage: ${key}`, error);
-  }
+  safeSetJSON(key, value);
 };
 
 // Mobile device detection
@@ -222,29 +212,40 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Memoized calculation to prevent unnecessary re-renders
+  // Simplified memoized calculation to prevent unnecessary re-renders
   const nutritionCounts = useMemo(() => {
-    const today = new Date().toDateString();
-    const todayFoods = currentDay.foods.filter(f => 
-      new Date(f.timestamp).toDateString() === today
-    );
-    const todayHydration = currentDay.hydration.filter(h => 
-      new Date(h.timestamp).toDateString() === today
-    );
+    try {
+      const today = new Date().toDateString();
+      const todayFoods = currentDay?.foods?.filter(f => 
+        f?.timestamp && new Date(f.timestamp).toDateString() === today
+      ) || [];
+      const todayHydration = currentDay?.hydration?.filter(h => 
+        h?.timestamp && new Date(h.timestamp).toDateString() === today
+      ) || [];
 
-    return {
-      mealCount: todayFoods.length,
-      hydrationCount: todayHydration.length,
-      lastFoodLog: todayFoods.length > 0 ? todayFoods[todayFoods.length - 1].timestamp.toISOString() : null,
-      lastHydrationLog: todayHydration.length > 0 ? todayHydration[todayHydration.length - 1].timestamp.toISOString() : null,
-      lastSupplementLog: currentDay.supplements.length > 0 ? currentDay.supplements[currentDay.supplements.length - 1].timestamp.toISOString() : null,
-    };
-  }, [currentDay.foods.length, currentDay.hydration.length, currentDay.supplements.length]);
+      return {
+        mealCount: todayFoods.length,
+        hydrationCount: todayHydration.length,
+        lastFoodLog: todayFoods.length > 0 ? todayFoods[todayFoods.length - 1].timestamp.toISOString() : null,
+        lastHydrationLog: todayHydration.length > 0 ? todayHydration[todayHydration.length - 1].timestamp.toISOString() : null,
+        lastSupplementLog: currentDay?.supplements?.length > 0 ? currentDay.supplements[currentDay.supplements.length - 1].timestamp.toISOString() : null,
+      };
+    } catch (error) {
+      console.error('Error calculating nutrition counts:', error);
+      return {
+        mealCount: 0,
+        hydrationCount: 0,
+        lastFoodLog: null,
+        lastHydrationLog: null,
+        lastSupplementLog: null,
+      };
+    }
+  }, [currentDay?.foods?.length, currentDay?.hydration?.length, currentDay?.supplements?.length]);
 
-  // Update behavior data with debouncing
+  // Update behavior data with debouncing and error handling
   useEffect(() => {
-    // Create a unique key for current data state
-    const currentDataKey = `${nutritionCounts.mealCount}-${nutritionCounts.hydrationCount}-${user?.targetCalories}-${user?.targetProtein}`;
+    // Create a simple key for current data state
+    const currentDataKey = `${nutritionCounts.mealCount}-${nutritionCounts.hydrationCount}`;
     
     // Skip if data hasn't actually changed
     if (lastUpdateRef.current === currentDataKey) {
@@ -289,10 +290,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error('Error updating behavior data:', error);
       }
-    }, 2000); // 2 second debounce for mobile
+    }, 3000); // Increased debounce time for mobile
 
     return () => clearTimeout(timeoutId);
-  }, [nutritionCounts.mealCount, nutritionCounts.hydrationCount, nutritionCounts.lastFoodLog, nutritionCounts.lastHydrationLog, nutritionCounts.lastSupplementLog, user?.targetCalories, user?.targetProtein, getTodaysProgress]);
+  }, [nutritionCounts.mealCount, nutritionCounts.hydrationCount, user?.targetCalories, user?.targetProtein, getTodaysProgress]);
 
   const updatePreferences = useCallback((prefs: Partial<NotificationPreferences>) => {
     console.log('Updating preferences:', prefs);
@@ -350,9 +351,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (shouldUsePush) {
-        const token = localStorage.getItem('fcm_token');
-        if (token) {
-          try {
+        try {
+          const token = safeLocalStorageGet('fcm_token', null);
+          if (token) {
             await supabase.functions.invoke('send-push-notification', {
               body: {
                 token,
@@ -362,9 +363,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
               }
             });
             console.log('Push notification sent successfully');
-          } catch (error) {
-            console.error('Failed to send push notification:', error);
           }
+        } catch (error) {
+          console.error('Failed to send push notification:', error);
         }
       }
     } catch (error) {
@@ -460,11 +461,11 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Check notifications with proper debouncing and mobile optimization
   useEffect(() => {
-    const intervalTime = isMobileDevice() ? 60 * 60 * 1000 : 30 * 60 * 1000; // 1 hour on mobile, 30 min on desktop
+    const intervalTime = isMobileDevice() ? 2 * 60 * 60 * 1000 : 60 * 60 * 1000; // 2 hours on mobile, 1 hour on desktop
     
     const timeoutId = setTimeout(() => {
       checkNotifications();
-    }, 5000); // Initial delay
+    }, 10000); // Initial delay of 10 seconds
 
     const interval = setInterval(checkNotifications, intervalTime);
     
