@@ -445,7 +445,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         ];
         const message = messages[Math.floor(Math.random() * messages.length)];
         sendNotification("Gentle Reminder", message, "reminder");
-        newHistory.lastReminderSent = now;
+        newHistory.lastReminderSent = now.toISOString();
       }
     }
 
@@ -467,7 +467,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           const message = messages[milestone as keyof typeof messages];
           sendNotification("Milestone Achieved!", message, "milestone");
           newHistory.milestonesAchieved.push(`streak_${milestone}`);
-          newHistory.lastMilestoneCelebrated = now;
+          newHistory.lastMilestoneCelebrated = now.toISOString();
           break;
         }
       }
@@ -483,10 +483,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
       if (progress.protein / targets.protein < 0.5) {
         sendNotification("Progress Tip", "You've been low on protein lately — want help with ideas? 🧠💪", "suggestion");
-        newHistory.lastProgressSuggestion = now;
+        newHistory.lastProgressSuggestion = now.toISOString();
       } else if (progress.hydration / targets.hydration < 0.5) {
         sendNotification("Hydration Reminder", "Hydration looking low — your body will thank you for more water! 💧✨", "suggestion");
-        newHistory.lastProgressSuggestion = now;
+        newHistory.lastProgressSuggestion = now.toISOString();
       }
     }
 
@@ -497,10 +497,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
       if (hoursSinceSupplement >= 120) {
         sendNotification("Smart Tip", "Haven't seen any supplements lately — all good? Need a reminder? 💊", "tip");
-        newHistory.lastSmartTip = now;
+        newHistory.lastSmartTip = now.toISOString();
       } else if (hoursSinceHydration >= 120) {
         sendNotification("Hydration Check", "Missing hydration logs? Even small sips count! 💧", "tip");
-        newHistory.lastSmartTip = now;
+        newHistory.lastSmartTip = now.toISOString();
       }
     }
 
@@ -511,7 +511,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       
       if (progress.calories / calorieTarget >= 1.4 && shouldSendNotification('overlimitAlerts', history.lastOverlimitAlert, 24)) {
         sendNotification("Daily Summary", "Looks like today went a bit over. No worries — tomorrow's a fresh start 🌅", "alert");
-        newHistory.lastOverlimitAlert = now;
+        newHistory.lastOverlimitAlert = now.toISOString();
       }
     }
 
@@ -525,7 +525,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         ];
         const message = messages[Math.floor(Math.random() * messages.length)];
         sendNotification("Encouragement", message, "encouragement");
-        newHistory.lastEncouragement = now;
+        newHistory.lastEncouragement = now.toISOString();
       }
     }
 
@@ -540,7 +540,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         ];
         const message = messages[Math.floor(Math.random() * messages.length)];
         sendNotification("We Miss You!", message, "reEngagement");
-        newHistory.lastReEngagement = now;
+        newHistory.lastReEngagement = now.toISOString();
       }
     }
 
