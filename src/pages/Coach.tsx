@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -137,7 +138,7 @@ const Coach = () => {
   ];
 
   return (
-    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-40' : 'pb-48'}`}>
+    <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-40' : 'pb-48'}`}>
       {/* Animated Robot Head Header */}
       <div className="text-center py-6">
         <div className="flex justify-center mb-4">
@@ -154,100 +155,78 @@ const Coach = () => {
       </div>
 
       {/* Chat Interface */}
-      <Card className={`glass-card border-0 rounded-3xl flex flex-col ${isMobile ? 'h-[450px]' : 'h-[500px]'}`}>
+      <Card className={`glass-card border-0 rounded-3xl flex flex-col`}>
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
           <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
             <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
             <span>Chat with Your Coach</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 flex flex-col flex-1`}>
-          {/* Messages */}
-          <ScrollArea className="flex-1 mb-4 px-2 w-full overflow-hidden" ref={scrollAreaRef}>
-            <div className="space-y-4 w-full">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex items-start space-x-3 w-full max-w-full ${
-                    message.isUser ? 'flex-row-reverse space-x-reverse' : ''
-                  }`}
-                >
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 flex flex-col`}>
+          {/* Messages Container with proper height */}
+          <div className={`${isMobile ? 'min-h-[350px] max-h-[400px]' : 'min-h-[400px] max-h-[450px]'} flex flex-col`}>
+            <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
+              <div className="space-y-4 py-2">
+                {messages.map((message) => (
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.isUser
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-purple-600 text-white'
+                    key={message.id}
+                    className={`flex items-start space-x-3 w-full ${
+                      message.isUser ? 'flex-row-reverse space-x-reverse' : ''
                     }`}
                   >
-                    {message.isUser ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Bot className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div
-                    className={`${
-                      isMobile ? 'max-w-[65%]' : 'max-w-[70%]'
-                    } p-3 rounded-2xl min-w-0 flex-shrink text-wrap-anywhere ${
-                      message.isUser
-                        ? 'bg-emerald-600 text-white ml-auto'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                    }`}
-                    style={{ 
-                      wordWrap: 'break-word',
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'break-word',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed`}>
-                      {message.content}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-start space-x-3 w-full">
-                  <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center flex-shrink-0">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                  <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl">
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                      <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
-                        Thinking...
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        message.isUser
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-purple-600 text-white'
+                      }`}
+                    >
+                      {message.isUser ? (
+                        <User className="h-4 w-4" />
+                      ) : (
+                        <Bot className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div
+                      className={`flex-1 min-w-0 max-w-[calc(100%-60px)] p-3 rounded-2xl ${
+                        message.isUser
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                      }`}
+                      style={{ 
+                        wordWrap: 'break-word',
+                        overflowWrap: 'anywhere',
+                        wordBreak: 'break-word',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed`}>
+                        {message.content}
                       </p>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Quick Questions */}
-          {messages.length === 1 && (
-            <div className="mb-4">
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300 mb-3 font-medium`}>
-                Quick start:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {quickQuestions.map((question, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setInput(question)}
-                    className={`${isMobile ? 'text-xs px-3 py-2 h-auto' : 'text-sm px-4 py-3 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 border-purple-200 dark:border-purple-700 hover:from-purple-100 hover:to-emerald-100 dark:hover:from-purple-800/30 dark:hover:to-emerald-800/30 transition-all duration-200 hover:scale-105`}
-                  >
-                    {question}
-                  </Button>
                 ))}
+                {isLoading && (
+                  <div className="flex items-start space-x-3 w-full">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center flex-shrink-0">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl">
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+                          Thinking...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            </ScrollArea>
+          </div>
 
-          {/* Input - Enhanced spacing from bottom menu */}
-          <div className={`flex space-x-2 ${isMobile ? 'mb-6' : 'mb-8'}`}>
+          {/* Input Area */}
+          <div className={`flex space-x-2 mt-4 ${isMobile ? 'mb-2' : 'mb-4'}`}>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -268,6 +247,28 @@ const Coach = () => {
                 <Send className="h-4 w-4" />
               )}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Questions - Outside the chat card */}
+      <Card className="glass-card border-0 rounded-3xl">
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300 mb-4 font-medium text-center`}>
+            Quick start questions:
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {quickQuestions.map((question, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => setInput(question)}
+                className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 border-purple-200 dark:border-purple-700 hover:from-purple-100 hover:to-emerald-100 dark:hover:from-purple-800/30 dark:hover:to-emerald-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
+              >
+                {question}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
