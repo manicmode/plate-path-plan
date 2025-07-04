@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -30,46 +31,6 @@ interface AuthContextType {
   updateSelectedTrackers: (trackers: string[]) => Promise<void>;
 }
 
-interface NotificationPreferences {
-  mealReminders: boolean;
-  hydrationNudges: boolean;
-  consistencyPraise: boolean;
-  coachCheckins: boolean;
-  progressReflection: boolean;
-  reminders: boolean;
-  milestones: boolean;
-  progressSuggestions: boolean;
-  smartTips: boolean;
-  overlimitAlerts: boolean;
-  encouragement: boolean;
-  reEngagement: boolean;
-  frequency: 'normal' | 'low';
-  deliveryMode: 'toast' | 'push' | 'both';
-  pushEnabled: boolean;
-  quietHoursStart: number;
-  quietHoursEnd: number;
-}
-
-const defaultPreferences: NotificationPreferences = {
-  mealReminders: true,
-  hydrationNudges: true,
-  consistencyPraise: true,
-  coachCheckins: true,
-  progressReflection: true,
-  reminders: true,
-  milestones: true,
-  progressSuggestions: true,
-  smartTips: true,
-  overlimitAlerts: true,
-  encouragement: true,
-  reEngagement: true,
-  frequency: 'normal',
-  deliveryMode: 'both',
-  pushEnabled: false,
-  quietHoursStart: 22,
-  quietHoursEnd: 7,
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -92,8 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Memoize functions to prevent unnecessary re-renders
-  const loadUserProfile = useCallback(async (userId: string) => {
+  const loadUserProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -111,11 +71,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Error in loadUserProfile:', error);
       return null;
     }
-  }, []);
+  };
 
-  const updateUserWithProfile = useCallback(async (supabaseUser: User) => {
-    if (isInitialized) return; // Prevent multiple initializations
-    
+  const updateUserWithProfile = async (supabaseUser: User) => {
     const profile = await loadUserProfile(supabaseUser.id);
     const extendedUser: ExtendedUser = {
       ...supabaseUser,
@@ -131,7 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       selectedTrackers: profile?.selected_trackers || ['calories', 'hydration', 'supplements'],
     };
     setUser(extendedUser);
-  }, [loadUserProfile, isInitialized]);
+  };
 
   useEffect(() => {
     console.log('AuthProvider effect starting...');
@@ -142,7 +100,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         console.log('Getting initial session...');
         
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Session timeout')), 5000);
+        });
+        
+        const { data: { session: initialSession }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
         
         if (error) {
           console.error('Error getting initial session:', error);
@@ -166,44 +132,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    // Only initialize once
-    if (!isInitialized) {
-      initializeAuth();
-    }
+    initializeAuth();
 
-    const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      
-      console.log('Auth state change:', event, session?.user?.id || 'no user');
-      
-      try {
-        setSession(session);
+    let authListener: any = null;
+    
+    try {
+      authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
         
-        if (session?.user) {
-          // Use setTimeout to prevent deadlocks
-          setTimeout(() => {
-            updateUserWithProfile(session.user);
-          }, 0);
-        } else {
-          setUser(null);
-        }
+        console.log('Auth state change:', event, session?.user?.id || 'no user');
         
-        if (event === 'SIGNED_OUT') {
-          console.log('User signed out');
-        } else if (event === 'SIGNED_IN') {
-          console.log('User signed in');
+        try {
+          setSession(session);
+          
+          if (session?.user) {
+            await updateUserWithProfile(session.user);
+          } else {
+            setUser(null);
+          }
+          
+          if (event === 'SIGNED_OUT') {
+            console.log('User signed out');
+          } else if (event === 'SIGNED_IN') {
+            console.log('User signed in');
+          }
+        } catch (error) {
+          console.error('Error handling auth state change:', error);
         }
-      } catch (error) {
-        console.error('Error handling auth state change:', error);
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
+    }
 
     return () => {
       console.log('AuthProvider cleanup');
       mounted = false;
-      authListener?.data?.subscription?.unsubscribe?.();
+      if (authListener) {
+        try {
+          authListener.data?.subscription?.unsubscribe?.();
+        } catch (error) {
+          console.error('Error cleaning up auth listener:', error);
+        }
+      }
     };
-  }, [updateUserWithProfile, isInitialized]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     try {

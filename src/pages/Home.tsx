@@ -1,243 +1,534 @@
-import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Target, TrendingUp, Award, Droplets, Pill, Camera, BarChart3, User, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useScrollToTop } from '@/hooks/useScrollToTop';
+import CelebrationPopup from '@/components/CelebrationPopup';
+
+// Utility function to get current user preferences from localStorage
+const loadUserPreferences = () => {
+  try {
+    const stored = localStorage.getItem('user_preferences');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('Error loading user preferences:', e);
+  }
+  return {
+    selectedTrackers: ['calories', 'hydration', 'supplements'],
+  };
+};
 
 const Home = () => {
   const { user } = useAuth();
-  const { getTodaysProgress, currentDay } = useNutrition();
+  const { getTodaysProgress, getHydrationGoal, getSupplementGoal } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  
-  // Only scroll to top when coming from other pages, not on initial load
-  const [shouldScrollToTop, setShouldScrollToTop] = useState(false);
-  
-  useScrollToTop(shouldScrollToTop);
-
   const progress = getTodaysProgress();
+  const trackerCardsRef = useRef<HTMLDivElement>(null);
 
-  // Detect if user navigated here from another page
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationType, setCelebrationType] = useState('');
+  const [preferences, setPreferences] = useState(loadUserPreferences());
+
+  // Listen for changes to localStorage preferences
   useEffect(() => {
-    const hasNavigated = sessionStorage.getItem('hasNavigated');
-    if (hasNavigated) {
-      setShouldScrollToTop(true);
-      // Reset the flag after scrolling
-      setTimeout(() => setShouldScrollToTop(false), 200);
+    const handleStorageChange = () => {
+      const newPreferences = loadUserPreferences();
+      setPreferences(newPreferences);
+      console.log('Preferences updated from localStorage:', newPreferences.selectedTrackers);
+    };
+
+    // Listen for storage events (when localStorage changes)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check for changes periodically (in case same-tab changes don't trigger storage event)
+    const interval = setInterval(() => {
+      const newPreferences = loadUserPreferences();
+      if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
+        setPreferences(newPreferences);
+        console.log('Preferences refreshed:', newPreferences.selectedTrackers);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [preferences]);
+
+  // Update preferences when user state changes
+  useEffect(() => {
+    if (user?.selectedTrackers) {
+      setPreferences({ selectedTrackers: user.selectedTrackers });
     }
-    sessionStorage.setItem('hasNavigated', 'true');
-  }, []);
+  }, [user?.selectedTrackers]);
 
-  const trackers = user?.selectedTrackers || ['calories', 'hydration', 'supplements'];
-  const showCalories = trackers.includes('calories');
-  const showHydration = trackers.includes('hydration');
-  const showSupplements = trackers.includes('supplements');
+  const totalCalories = user?.targetCalories || 2000;
+  const currentCalories = progress.calories;
+  const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
 
-  const caloriesTarget = user?.targetCalories || 2000;
+  const hydrationGoal = getHydrationGoal();
+  const hydrationPercentage = Math.min((progress.hydration / hydrationGoal) * 100, 100);
 
-  const getCaloriesColor = () => {
-    const percentage = (progress.calories / caloriesTarget) * 100;
-    if (percentage >= 100) return 'text-green-600';
-    if (percentage >= 80) return 'text-yellow-600';
-    return 'text-red-600';
+  const supplementGoal = getSupplementGoal();
+  const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
+
+  // Auto-scroll to tracker cards position when component mounts
+  useEffect(() => {
+    const scrollToTrackerCards = () => {
+      if (trackerCardsRef.current) {
+        const element = trackerCardsRef.current;
+        const elementTop = element.offsetTop;
+        // Adjust offset for mobile/desktop to position tracker cards at top of viewport
+        // Fine-tuned offset to completely hide Today's Nutrients section below menu
+        const offset = isMobile ? 35 : 55; 
+        
+        window.scrollTo({
+          top: elementTop - offset,
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    // Small delay to ensure DOM is fully rendered and layout is calculated
+    const timer = setTimeout(scrollToTrackerCards, 150);
+    return () => clearTimeout(timer);
+  }, [isMobile]);
+
+  // Check for goal completion and trigger celebration
+  useEffect(() => {
+    if (progressPercentage >= 100 && progressPercentage < 105) {
+      setCelebrationType('Calories Goal Smashed! 🔥');
+      setShowCelebration(true);
+    } else if (hydrationPercentage >= 100 && hydrationPercentage < 105) {
+      setCelebrationType('Hydration Goal Achieved! 💧');
+      setShowCelebration(true);
+    } else if (supplementPercentage >= 100 && supplementPercentage < 105) {
+      setCelebrationType('Supplements Complete! 💊');
+      setShowCelebration(true);
+    }
+  }, [progressPercentage, hydrationPercentage, supplementPercentage]);
+
+  // Use preferences from localStorage/state instead of user object
+  const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+  console.log('Currently selected trackers for display:', selectedTrackers);
+
+  // Define all tracker configurations
+  const allTrackerConfigs = {
+    calories: {
+      name: 'Calories',
+      current: progress.calories,
+      target: totalCalories,
+      unit: '',
+      color: 'from-orange-500/20 via-red-500/15 to-pink-500/10',
+      gradient: 'calorieGradientVibrant',
+      emoji: '🔥',
+      textColor: 'text-orange-900 dark:text-white',
+      textColorSecondary: 'text-orange-800 dark:text-orange-100',
+      percentage: progressPercentage,
+      shadow: 'shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]',
+      onClick: () => navigate('/camera'),
+    },
+    protein: {
+      name: 'Protein',
+      current: progress.protein,
+      target: user?.targetProtein || 150,
+      unit: 'g',
+      color: 'from-blue-500/20 via-indigo-500/15 to-purple-500/10',
+      gradient: 'proteinGradientVibrant',
+      emoji: '💪',
+      textColor: 'text-blue-900 dark:text-white',
+      textColorSecondary: 'text-blue-800 dark:text-blue-100',
+      percentage: Math.min((progress.protein / (user?.targetProtein || 150)) * 100, 100),
+      shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)]',
+      onClick: () => navigate('/camera'),
+    },
+    carbs: {
+      name: 'Carbs',
+      current: progress.carbs,
+      target: user?.targetCarbs || 200,
+      unit: 'g',
+      color: 'from-yellow-500/20 via-orange-500/15 to-red-500/10',
+      gradient: 'carbsGradientVibrant',
+      emoji: '🍞',
+      textColor: 'text-yellow-900 dark:text-white',
+      textColorSecondary: 'text-yellow-800 dark:text-yellow-100',
+      percentage: Math.min((progress.carbs / (user?.targetCarbs || 200)) * 100, 100),
+      shadow: 'shadow-[0_0_20px_rgba(251,191,36,0.4)] hover:shadow-[0_0_30px_rgba(251,191,36,0.6)]',
+      onClick: () => navigate('/camera'),
+    },
+    fat: {
+      name: 'Fat',
+      current: progress.fat,
+      target: user?.targetFat || 65,
+      unit: 'g',
+      color: 'from-green-500/20 via-emerald-500/15 to-teal-500/10',
+      gradient: 'fatGradientVibrant',
+      emoji: '🥑',
+      textColor: 'text-green-900 dark:text-white',
+      textColorSecondary: 'text-green-800 dark:text-green-100',
+      percentage: Math.min((progress.fat / (user?.targetFat || 65)) * 100, 100),
+      shadow: 'shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]',
+      onClick: () => navigate('/camera'),
+    },
+    hydration: {
+      name: 'Hydration',
+      current: progress.hydration,
+      target: hydrationGoal,
+      unit: 'ml',
+      color: 'from-cyan-500/20 via-blue-500/15 to-indigo-500/10',
+      gradient: 'hydrationGradientVibrant',
+      emoji: '💧',
+      textColor: 'text-blue-900 dark:text-white',
+      textColorSecondary: 'text-blue-800 dark:text-cyan-100',
+      percentage: hydrationPercentage,
+      shadow: 'shadow-[0_0_20px_rgba(0,212,255,0.4)] hover:shadow-[0_0_30px_rgba(0,212,255,0.6)]',
+      onClick: () => navigate('/hydration'),
+    },
+    supplements: {
+      name: 'Supplements',
+      current: progress.supplements,
+      target: supplementGoal,
+      unit: '',
+      color: 'from-purple-500/20 via-violet-500/15 to-pink-500/10',
+      gradient: 'supplementGradientVibrant',
+      emoji: '💊',
+      textColor: 'text-purple-900 dark:text-white',
+      textColorSecondary: 'text-purple-800 dark:text-purple-100',
+      percentage: supplementPercentage,
+      shadow: 'shadow-[0_0_20px_rgba(218,68,187,0.4)] hover:shadow-[0_0_30px_rgba(218,68,187,0.6)]',
+      onClick: () => navigate('/supplements'),
+    },
   };
 
-  const getProteinColor = () => {
-    const proteinTarget = user?.targetProtein || 150;
-    const percentage = (progress.protein / proteinTarget) * 100;
-    if (percentage >= 100) return 'text-green-600';
-    if (percentage >= 80) return 'text-yellow-600';
-    return 'text-red-600';
+  // Get the three selected tracker configs
+  const displayedTrackers = selectedTrackers.map(trackerId => allTrackerConfigs[trackerId]).filter(Boolean);
+
+  const getMotivationalMessage = (percentage: number, type: string) => {
+    if (percentage >= 100) return `${type} goal crushed! Amazing! 🎉`;
+    if (percentage >= 80) return `Almost there! Just ${100 - Math.round(percentage)}% to go! 💪`;
+    if (percentage >= 50) return `Great progress! Keep it up! 🔥`;
+    if (percentage >= 25) return `Good start! You've got this! ⭐`;
+    return `Let's get started with your ${type.toLowerCase()} today! 🚀`;
   };
 
-  const getCarbsColor = () => {
-    const carbsTarget = user?.targetCarbs || 200;
-    const percentage = (progress.carbs / carbsTarget) * 100;
-    if (percentage >= 100) return 'text-green-600';
-    if (percentage >= 80) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getFatColor = () => {
-    const fatTarget = user?.targetFat || 65;
-    const percentage = (progress.fat / fatTarget) * 100;
-    if (percentage >= 100) return 'text-green-600';
-    if (percentage >= 80) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const quickActions = [
+  const macroCards = [
     {
-      icon: Camera,
-      label: 'Log Food',
-      description: 'Scan or add meals',
-      path: '/camera',
-      color: 'bg-gradient-to-br from-blue-500 to-purple-600',
+      name: 'Calories',
+      current: progress.calories,
+      target: totalCalories,
+      unit: '',
+      color: 'from-emerald-400 to-emerald-600',
+      icon: Zap,
     },
     {
-      icon: BarChart3,
-      label: 'Analytics',
-      description: 'View progress',
-      path: '/analytics',
-      color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+      name: 'Protein',
+      current: progress.protein,
+      target: user?.targetProtein || 150,
+      unit: 'g',
+      color: 'from-blue-400 to-blue-600',
+      icon: Target,
     },
     {
-      icon: MessageSquare,
-      label: 'AI Coach',
-      description: 'Get guidance',
-      path: '/coach',
-      color: 'bg-gradient-to-br from-purple-500 to-pink-600',
+      name: 'Carbs',
+      current: progress.carbs,
+      target: user?.targetCarbs || 200,
+      unit: 'g',
+      color: 'from-orange-400 to-orange-600',
+      icon: TrendingUp,
     },
     {
-      icon: User,
-      label: 'Profile',
-      description: 'Settings & goals',
-      path: '/profile',
-      color: 'bg-gradient-to-br from-orange-500 to-red-600',
+      name: 'Fat',
+      current: progress.fat,
+      target: user?.targetFat || 65,
+      unit: 'g',
+      color: 'from-purple-400 to-purple-600',
+      icon: Target,
+    },
+    {
+      name: 'Hydration',
+      current: progress.hydration,
+      target: hydrationGoal,
+      unit: 'ml',
+      color: 'from-cyan-400 to-blue-600',
+      icon: Droplets,
+    },
+    {
+      name: 'Supplements',
+      current: progress.supplements,
+      target: supplementGoal,
+      unit: '',
+      color: 'from-purple-500 to-pink-600',
+      icon: Pill,
     },
   ];
 
   return (
-    <div className={`space-y-6 ${isMobile ? 'pb-24' : 'pb-32'}`}>
-      {/* Welcome Section - No auto scroll, let users see naturally */}
-      <div className="text-center py-6">
-        <div className="flex justify-center mb-4">
-          <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-emerald-400 via-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-pulse shadow-2xl`}>
-            <Target className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white animate-bounce`} />
-          </div>
+    <div className="space-y-12 sm:space-y-16 animate-fade-in">
+      {/* Celebration Popup */}
+      <CelebrationPopup 
+        show={showCelebration} 
+        message={celebrationType}
+        onClose={() => setShowCelebration(false)}
+      />
+
+      {/* Enhanced Greeting Section */}
+      <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
+        <div className="inline-block">
+          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4`}>
+            {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
+          </h1>
+          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text`}>
+            {user?.name?.split(' ')[0] || 'Superstar'}! ✨
+          </h2>
         </div>
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>
-          Welcome back, {user?.name || 'there'}! 👋
-        </h1>
-        <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>
-          Let's make today count!
-        </p>
+        <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {showCalories && (
-          <Card className="glass-card border-0 rounded-2xl">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-sm font-medium">Calories</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <div className="text-2xl font-semibold">
-                {progress.calories} / {caloriesTarget}
-                <span className={`ml-2 ${getCaloriesColor()}`}>
-                  ({((progress.calories / caloriesTarget) * 100).toFixed(0)}%)
-                </span>
+      {/* Dynamic Tracker Cards based on user selection - With restored colorful drop shadows */}
+      <div ref={trackerCardsRef} className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+        {displayedTrackers.map((tracker, index) => (
+          <div 
+            key={tracker.name}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
+            onClick={tracker.onClick}
+            title={getMotivationalMessage(tracker.percentage, tracker.name)}
+            style={{ 
+              background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
+              position: 'relative',
+              zIndex: 20
+            }}
+          >
+            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
+            <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
+              <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
+                <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
+                  <circle
+                    cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
+                    strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
+                    className="transition-all duration-2000 ease-out filter drop-shadow-lg"
+                  />
+                  <defs>
+                    <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
+                      {tracker.name === 'Calories' && (
+                        <>
+                          <stop offset="0%" stopColor="#FF6B35" />
+                          <stop offset="50%" stopColor="#F7931E" />
+                          <stop offset="100%" stopColor="#FF4500" />
+                        </>
+                      )}
+                      {tracker.name === 'Protein' && (
+                        <>
+                          <stop offset="0%" stopColor="#3B82F6" />
+                          <stop offset="50%" stopColor="#1E40AF" />
+                          <stop offset="100%" stopColor="#1E3A8A" />
+                        </>
+                      )}
+                      {tracker.name === 'Carbs' && (
+                        <>
+                          <stop offset="0%" stopColor="#FBBF24" />
+                          <stop offset="50%" stopColor="#F59E0B" />
+                          <stop offset="100%" stopColor="#D97706" />
+                        </>
+                      )}
+                      {tracker.name === 'Fat' && (
+                        <>
+                          <stop offset="0%" stopColor="#10B981" />
+                          <stop offset="50%" stopColor="#059669" />
+                          <stop offset="100%" stopColor="#047857" />
+                        </>
+                      )}
+                      {tracker.name === 'Hydration' && (
+                        <>
+                          <stop offset="0%" stopColor="#00D4FF" />
+                          <stop offset="50%" stopColor="#0099CC" />
+                          <stop offset="100%" stopColor="#006699" />
+                        </>
+                      )}
+                      {tracker.name === 'Supplements' && (
+                        <>
+                          <stop offset="0%" stopColor="#DA44BB" />
+                          <stop offset="50%" stopColor="#9333EA" />
+                          <stop offset="100%" stopColor="#7C3AED" />
+                        </>
+                      )}
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
+                  <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
+                    {Math.round(tracker.percentage)}%
+                  </span>
+                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
+                </div>
               </div>
-              <Progress value={(progress.calories / caloriesTarget) * 100} className="h-4 mt-2" />
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="glass-card border-0 rounded-2xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-sm font-medium">Protein</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <div className="text-2xl font-semibold">
-              {progress.protein} / {user?.targetProtein || 150}
-              <span className={`ml-2 ${getProteinColor()}`}>
-                ({((progress.protein / (user?.targetProtein || 150)) * 100).toFixed(0)}%)
-              </span>
+              <div className="text-center">
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
+                  {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
+                </p>
+              </div>
             </div>
-            <Progress value={(progress.protein / (user?.targetProtein || 150)) * 100} className="h-4 mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-0 rounded-2xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-sm font-medium">Carbs</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <div className="text-2xl font-semibold">
-              {progress.carbs} / {user?.targetCarbs || 200}
-              <span className={`ml-2 ${getCarbsColor()}`}>
-                ({((progress.carbs / (user?.targetCarbs || 200)) * 100).toFixed(0)}%)
-              </span>
-            </div>
-            <Progress value={(progress.carbs / (user?.targetCarbs || 200)) * 100} className="h-4 mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-0 rounded-2xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-sm font-medium">Fat</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <div className="text-2xl font-semibold">
-              {progress.fat} / {user?.targetFat || 65}
-              <span className={`ml-2 ${getFatColor()}`}>
-                ({((progress.fat / (user?.targetFat || 65)) * 100).toFixed(0)}%)
-              </span>
-            </div>
-            <Progress value={(progress.fat / (user?.targetFat || 65)) * 100} className="h-4 mt-2" />
-          </CardContent>
-        </Card>
-
-        {showHydration && (
-          <Card className="glass-card border-0 rounded-2xl">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-sm font-medium">Hydration</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <div className="text-2xl font-semibold">
-                {currentDay.totalHydration} / {user?.targetHydration || 8}
-                <span className="ml-2 text-blue-600">
-                  ({((currentDay.totalHydration / (user?.targetHydration || 8)) * 100).toFixed(0)}%)
-                </span>
-              </div>
-              <Progress value={(currentDay.totalHydration / (user?.targetHydration || 8)) * 100} className="h-4 mt-2" />
-            </CardContent>
-          </Card>
-        )}
-
-        {showSupplements && (
-          <Card className="glass-card border-0 rounded-2xl">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-sm font-medium">Supplements</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <div className="text-2xl font-semibold">
-                {currentDay.supplements.length} / {user?.targetSupplements || 3}
-                <span className="ml-2 text-yellow-600">
-                  ({((currentDay.supplements.length / (user?.targetSupplements || 3)) * 100).toFixed(0)}%)
-                </span>
-              </div>
-              <Progress value={(currentDay.supplements.length / (user?.targetSupplements || 3)) * 100} className="h-4 mt-2" />
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {quickActions.map((action, index) => (
-          <Card key={index} className="glass-card border-0 rounded-2xl hover:scale-105 transition-transform duration-200">
-            <CardContent className="flex items-center space-x-4 p-4">
-              <div className={`${action.color} w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md`}>
-                <action.icon className="h-6 w-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">{action.label}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{action.description}</p>
-                <Button variant="link" className="text-blue-500 hover:text-blue-700 p-0" onClick={() => navigate(action.path)}>
-                  Go &rarr;
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         ))}
       </div>
+
+      {/* Enhanced Logging Actions Section with proper spacing */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        {/* Primary Action: Log Food - Full Width */}
+        <Card 
+          className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
+          onClick={() => navigate('/camera')}
+        >
+          <CardContent className={`${isMobile ? 'p-6' : 'p-8'} text-center`}>
+            <div className="flex flex-col items-center space-y-4">
+              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-blue-500 to-sky-500 rounded-3xl flex items-center justify-center shadow-2xl log-food-glow`}>
+                <Camera className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
+              </div>
+              <div className="space-y-2">
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                  Log Food
+                </h3>
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+                  Take photo or speak to log
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Secondary Actions: Hydration & Supplements */}
+        <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
+          {/* Enhanced Hydration Action Card */}
+          <Card 
+            className={`modern-action-card hydration-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'} shadow-lg hover:shadow-xl`}
+            onClick={() => navigate('/hydration')}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-full p-0">
+              <div className={`flex flex-col items-center space-y-3 ${isMobile ? 'p-4' : 'p-5'}`}>
+                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg hydration-action-glow flex-shrink-0`}>
+                  <Droplets className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                </div>
+                <div className="text-center flex-shrink-0">
+                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                    Hydration
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-tight`}>
+                    Track water intake
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Supplements Action Card */}
+          <Card 
+            className={`modern-action-card supplements-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'} shadow-lg hover:shadow-xl`}
+            onClick={() => navigate('/supplements')}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-full p-0">
+              <div className={`flex flex-col items-center space-y-3 ${isMobile ? 'p-4' : 'p-5'}`}>
+                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center shadow-lg supplements-action-glow flex-shrink-0`}>
+                  <Pill className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+                </div>
+                <div className="text-center flex-shrink-0">
+                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                    Supplements
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-purple-100 leading-tight`}>
+                    Log vitamins & minerals
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Today's Nutrients Section with improved card alignment */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>Today's Nutrients</h3>
+        <div className="flex justify-center">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+            {macroCards.map((macro, index) => {
+              const percentage = Math.min((macro.current / macro.target) * 100, 100);
+              const Icon = macro.icon;
+              
+              return (
+                <Card
+                  key={macro.name}
+                  className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <CardContent className="flex flex-col justify-between h-full p-0">
+                    <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                      <div className="flex-shrink-0">
+                        <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-lg`}>
+                          <Icon className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
+                        </div>
+                        <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-xs' : 'text-sm'} leading-tight`}>{macro.name}</h4>
+                      </div>
+                      <div className="flex-grow flex flex-col justify-center space-y-1">
+                        <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold neon-text leading-tight`}>
+                          {macro.current.toFixed(0)}{macro.unit}
+                        </p>
+                        <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                          of {macro.target}{macro.unit}
+                        </p>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2 flex-shrink-0">
+                        <div
+                          className={`bg-gradient-to-r ${macro.color} h-1.5 rounded-full transition-all duration-1500 shadow-sm`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Compact AI Insights Card */}
+      <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl mx-2 sm:mx-4`} style={{ animationDelay: '600ms' }}>
+        <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
+          <div className={`flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'} mb-4 sm:mb-6`}>
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} gradient-primary rounded-full flex items-center justify-center shadow-lg ai-glow`}>
+              <Zap className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+            </div>
+            <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>AI Insights</h3>
+          </div>
+          <div className="space-y-4 sm:space-y-5">
+            <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-700 dark:text-gray-300 font-medium`}>
+              🎯 You're {progressPercentage >= 80 ? 'crushing' : 'building toward'} your daily goals!
+            </p>
+            {progressPercentage < 80 && (
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+                💡 Consider a nutrient-dense snack to optimize your intake.
+              </p>
+            )}
+            <Button
+              onClick={() => navigate('/coach')}
+              className={`bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white ${isMobile ? 'px-6 py-4 text-base' : 'px-8 py-5 text-lg'} rounded-3xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 coach-button-glow`}
+            >
+              Ask your AI coach ✨ →
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Extra bottom padding to ensure menu is always visible */}
+      <div className={`${isMobile ? 'pb-24' : 'pb-32'}`}></div>
     </div>
   );
 };

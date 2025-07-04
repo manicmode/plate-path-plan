@@ -1,212 +1,458 @@
-import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNutrition } from '@/contexts/NutritionContext';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { CalendarDays, TrendingUp, Award, Target, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, Zap, Target, Calendar, Award, Flame, Droplets, Pill, Plus, BarChart3, Settings } from 'lucide-react';
+import { useNutrition } from '@/contexts/NutritionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { useNavigate } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const Analytics = () => {
+  const { getTodaysProgress } = useNutrition();
   const { user } = useAuth();
-  const { nutritionHistory, getTodaysProgress } = useNutrition();
   const isMobile = useIsMobile();
-  
-  // Always scroll to top when entering Analytics page
-  useScrollToTop(true);
+  const navigate = useNavigate();
+  const todayProgress = getTodaysProgress();
 
-  const progress = getTodaysProgress();
-  
-  const caloriesTarget = user?.targetCalories || 2000;
-  const proteinTarget = user?.targetProtein || 150;
-  const carbsTarget = user?.targetCarbs || 200;
-  const fatTarget = user?.targetFat || 65;
-  const hydrationTarget = user?.targetHydration || 8;
-  const supplementsTarget = user?.targetSupplements || 3;
+  const targetCalories = user?.targetCalories || 2000;
+  const targetProtein = user?.targetProtein || 150;
+  const targetCarbs = user?.targetCarbs || 200;
+  const targetFat = user?.targetFat || 65;
+  const targetHydration = user?.targetHydration || 8;
+  const targetSupplements = user?.targetSupplements || 3;
 
-  const dailyCalorieData = nutritionHistory.map(day => ({
-    date: day.date,
-    calories: day.foods.reduce((sum, food) => sum + food.calories, 0),
-    target: caloriesTarget,
-  }));
+  // Mock current values for hydration and supplements
+  const currentHydration = 5;
+  const currentSupplements = 2;
 
-  const macroData = nutritionHistory.map(day => ({
-    date: day.date,
-    protein: day.foods.reduce((sum, food) => sum + food.protein, 0),
-    carbs: day.foods.reduce((sum, food) => sum + food.carbs, 0),
-    fat: day.foods.reduce((sum, food) => sum + food.fat, 0),
-    proteinTarget: proteinTarget,
-    carbsTarget: carbsTarget,
-    fatTarget: fatTarget,
-  }));
-
-  const COLORS = ['#16a34a', '#dc2626', '#facc15', '#0ea5e9', '#9333ea', '#d946ef'];
-
-  const pieData = [
-    { name: 'Protein', value: progress.protein },
-    { name: 'Carbs', value: progress.carbs },
-    { name: 'Fat', value: progress.fat },
+  // Mock weekly data for charts
+  const weeklyChartData = [
+    { day: 'Mon', calories: 1800, protein: 120 },
+    { day: 'Tue', calories: 2100, protein: 140 },
+    { day: 'Wed', calories: 1950, protein: 130 },
+    { day: 'Thu', calories: 2200, protein: 150 },
+    { day: 'Fri', calories: 1850, protein: 125 },
+    { day: 'Sat', calories: 2000, protein: 135 },
+    { day: 'Today', calories: Math.round(todayProgress.calories), protein: Math.round(todayProgress.protein) },
   ];
 
-  const RADIAN = Math.PI / 180;
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }: any) => {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const macroData = [
+    { name: 'Protein', value: todayProgress.protein, color: '#3B82F6' },
+    { name: 'Carbs', value: todayProgress.carbs, color: '#F59E0B' },
+    { name: 'Fat', value: todayProgress.fat, color: '#8B5CF6' },
+  ];
+
+  // Circular progress component
+  const CircularProgress = ({ percentage, size = 100, strokeWidth = 8, color = 'emerald' }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    const colorClasses = {
+      emerald: 'text-emerald-500',
+      orange: 'text-orange-500',
+      blue: 'text-blue-500',
+      purple: 'text-purple-500',
+      yellow: 'text-yellow-500',
+      pink: 'text-pink-500'
+    };
 
     return (
-      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
-        {`${pieData[index].name} ${(percent * 100).toFixed(0)}%`}
-      </text>
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="transform -rotate-90" width={size} height={size}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            className="text-gray-200 dark:text-gray-700"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            className={`${colorClasses[color]} transition-all duration-1000 ease-out`}
+            style={{
+              strokeDasharray: circumference,
+              strokeDashoffset: offset,
+              strokeLinecap: 'round',
+            }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>
+              {Math.round(percentage)}%
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Analytics Overview Section */}
-      <div className="text-center py-6">
-        <div className="flex justify-center mb-4">
-          <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-emerald-400 via-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-pulse shadow-2xl`}>
-            <BarChart className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white animate-bounce`} />
+  // Action tabs component with enhanced shadows for light mode
+  const ActionTabs = ({ category, logPath, progressPath }: { category: string, logPath: string, progressPath: string }) => {
+    const handleSetGoal = () => {
+      navigate('/profile?edit=true&focus=' + category.toLowerCase());
+    };
+
+    const handleViewProgress = () => {
+      navigate(`/progress/${category.toLowerCase()}`);
+    };
+
+    return (
+      <div className="flex gap-2 px-1">
+        <Button
+          variant="outline"
+          size={isMobile ? "sm" : "default"}
+          onClick={() => navigate(logPath)}
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Log</span>
+        </Button>
+        <Button
+          variant="outline"
+          size={isMobile ? "sm" : "default"}
+          onClick={handleSetGoal}
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-green-50/80 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-300 font-medium"
+        >
+          <Settings className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Goal</span>
+        </Button>
+        <Button
+          variant="outline"
+          size={isMobile ? "sm" : "default"}
+          onClick={handleViewProgress}
+          className="flex-1 h-9 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-purple-50/80 hover:bg-purple-100 dark:bg-purple-900/20 dark:dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium"
+        >
+          <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Progress</span>
+        </Button>
+      </div>
+    );
+  };
+
+  // Icon background helper function
+  const getIconBackground = (category: string) => {
+    const backgrounds = {
+      'Calories': 'bg-gradient-to-br from-orange-400 to-red-500',
+      'Protein': 'bg-gradient-to-br from-emerald-400 to-green-600',
+      'Carbs': 'bg-gradient-to-br from-yellow-400 to-amber-500',
+      'Fat': 'bg-gradient-to-br from-purple-400 to-violet-600',
+      'Hydration': 'bg-gradient-to-br from-blue-400 to-cyan-500',
+      'Supplements': 'bg-gradient-to-br from-pink-400 to-rose-500'
+    };
+    return backgrounds[category] || 'bg-gradient-to-br from-gray-400 to-gray-600';
+  };
+
+  // Tracker card component with integrated tabs and enhanced shadows
+  const TrackerSection = ({ 
+    icon, 
+    title, 
+    current, 
+    target, 
+    unit, 
+    color, 
+    category, 
+    logPath, 
+    progressPath 
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    current: number;
+    target: number;
+    unit: string;
+    color: string;
+    category: string;
+    logPath: string;
+    progressPath: string;
+  }) => (
+    <div className="bg-white/60 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-100/50 dark:border-gray-700/50">
+      <Card className="visible-card shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border-0">
+        <CardContent className="p-4 flex flex-col items-center justify-center min-h-[200px]">
+          <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} ${getIconBackground(category)} rounded-2xl flex items-center justify-center neon-glow mb-3 shadow-lg`}>
+            {icon}
           </div>
+          
+          <CircularProgress 
+            percentage={Math.min((current / target) * 100, 100)} 
+            size={isMobile ? 70 : 85} 
+            color={color}
+          />
+          
+          <h3 className={`font-bold text-gray-900 dark:text-white mt-3 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            {title}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 text-center text-sm">
+            <span className="font-semibold">{Math.round(current)}</span>
+            <span className="mx-1">/</span>
+            <span>{target}</span>
+            <span className="ml-1 text-xs">{unit}</span>
+          </p>
+        </CardContent>
+      </Card>
+      
+      <div className="mt-3">
+        <ActionTabs category={category} logPath={logPath} progressPath={progressPath} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 animate-fade-in pb-8">
+      {/* Header */}
+      <div className="text-center space-y-4">
+        <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow shadow-xl`}>
+          <TrendingUp className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
         </div>
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>
-          Your Progress at a Glance
-        </h1>
-        <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>
-          Stay informed, stay motivated!
-        </p>
+        <div>
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900 dark:text-white`}>Analytics</h1>
+          <p className="text-gray-600 dark:text-gray-300 font-medium">Track your nutrition journey</p>
+        </div>
       </div>
 
-      {/* Today's Progress Card */}
-      <Card className="glass-card border-0 rounded-3xl">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center space-x-2 text-lg">
-            <CalendarDays className="h-4 w-4 text-emerald-600" />
-            <span>Today's Progress</span>
-          </CardTitle>
+      {/* Primary Progress Trackers with integrated tabs */}
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-6' : 'grid-cols-2 lg:grid-cols-3 gap-6'}`}>
+        <TrackerSection
+          icon={<Flame className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
+          title="Calories"
+          current={todayProgress.calories}
+          target={targetCalories}
+          unit="kcal"
+          color="orange"
+          category="Calories"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
+
+        <TrackerSection
+          icon={<Target className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
+          title="Protein"
+          current={todayProgress.protein}
+          target={targetProtein}
+          unit="g"
+          color="emerald"
+          category="Protein"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
+
+        <TrackerSection
+          icon={<Zap className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
+          title="Carbs"
+          current={todayProgress.carbs}
+          target={targetCarbs}
+          unit="g"
+          color="yellow"
+          category="Carbs"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
+
+        <TrackerSection
+          icon={<Target className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
+          title="Fat"
+          current={todayProgress.fat}
+          target={targetFat}
+          unit="g"
+          color="purple"
+          category="Fat"
+          logPath="/camera"
+          progressPath="/analytics"
+        />
+
+        <TrackerSection
+          icon={<Droplets className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
+          title="Hydration"
+          current={currentHydration}
+          target={targetHydration}
+          unit="glasses"
+          color="blue"
+          category="Hydration"
+          logPath="/hydration"
+          progressPath="/analytics"
+        />
+
+        <TrackerSection
+          icon={<Pill className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />}
+          title="Supplements"
+          current={currentSupplements}
+          target={targetSupplements}
+          unit="pills"
+          color="pink"
+          category="Supplements"
+          logPath="/supplements"
+          progressPath="/analytics"
+        />
+      </div>
+
+      {/* Secondary Stats */}
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
+        <Card className="visible-card shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-6 text-center">
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow shadow-lg`}>
+              <Calendar className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+            </div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Days Tracked</h3>
+            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-blue-600 dark:text-blue-400 mb-2`}>
+              7 days
+            </p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all duration-700"
+                style={{ width: '23%' }}
+              ></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="visible-card shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-6 text-center">
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-violet-400 to-violet-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow shadow-lg`}>
+              <Award className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+            </div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Goal Achievement</h3>
+            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-violet-600 dark:text-violet-400 mb-2`}>
+              {Math.round((todayProgress.calories / targetCalories) * 100)}%
+            </p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-violet-400 to-violet-600 h-2 rounded-full transition-all duration-700"
+                style={{ width: `${Math.min((todayProgress.calories / targetCalories) * 100, 100)}%` }}
+              ></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="visible-card shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardContent className="p-6 text-center">
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 neon-glow shadow-lg`}>
+              <TrendingUp className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+            </div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Weekly Average</h3>
+            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-emerald-600 dark:text-emerald-400 mb-2`}>
+              1950 kcal
+            </p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-2 rounded-full transition-all duration-700"
+                style={{ width: '78%' }}
+              ></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Weekly Progress Chart */}
+      <Card className="visible-card shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-center text-gray-900 dark:text-white">Weekly Progress</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <span>Calories</span>
-              <Badge variant="secondary">{progress.calories} / {caloriesTarget}</Badge>
-            </div>
-            <Progress value={(progress.calories / caloriesTarget) * 100} />
-
-            <div className="flex items-center justify-between">
-              <span>Protein</span>
-              <Badge variant="secondary">{progress.protein} / {proteinTarget}</Badge>
-            </div>
-            <Progress value={(progress.protein / proteinTarget) * 100} />
-
-            <div className="flex items-center justify-between">
-              <span>Carbs</span>
-              <Badge variant="secondary">{progress.carbs} / {carbsTarget}</Badge>
-            </div>
-            <Progress value={(progress.carbs / carbsTarget) * 100} />
-
-            <div className="flex items-center justify-between">
-              <span>Fat</span>
-              <Badge variant="secondary">{progress.fat} / {fatTarget}</Badge>
-            </div>
-            <Progress value={(progress.fat / fatTarget) * 100} />
-
-            <div className="flex items-center justify-between">
-              <span>Hydration</span>
-              <Badge variant="secondary">{progress.totalHydration} / {hydrationTarget}</Badge>
-            </div>
-            <Progress value={(progress.totalHydration / hydrationTarget) * 100} />
-
-            <div className="flex items-center justify-between">
-              <span>Supplements</span>
-              <Badge variant="secondary">{progress.supplements} / {supplementsTarget}</Badge>
-            </div>
-            <Progress value={(progress.supplements / supplementsTarget) * 100} />
+        <CardContent>
+          <div className={`${isMobile ? 'h-48' : 'h-64'} w-full`}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyChartData}>
+                <XAxis 
+                  dataKey="day" 
+                  tick={{ fontSize: isMobile ? 11 : 12, fill: 'currentColor' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  hide={isMobile}
+                  tick={{ fontSize: 12, fill: 'currentColor' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Bar 
+                  dataKey="calories" 
+                  fill="url(#calorieGradient)" 
+                  radius={[4, 4, 0, 0]}
+                />
+                <defs>
+                  <linearGradient id="calorieGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F97316" stopOpacity={0.9}/>
+                    <stop offset="95%" stopColor="#EA580C" stopOpacity={0.7}/>
+                  </linearGradient>
+                </defs>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
 
-      {/* Calorie Intake Chart */}
-      <Card className="glass-card border-0 rounded-3xl">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center space-x-2 text-lg">
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
-            <span>Daily Calorie Intake</span>
-          </CardTitle>
+      {/* Today's Macros */}
+      <Card className="visible-card shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-center text-gray-900 dark:text-white">Today's Macros</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={dailyCalorieData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="calories" fill="#82ca9d" name="Calories Consumed" />
-              <Line type="monotone" dataKey="target" stroke="#8884d8" name="Calorie Target" />
-            </BarChart>
-          </ResponsiveContainer>
+        <CardContent>
+          <div className={`${isMobile ? 'h-40' : 'h-56'} w-full`}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={macroData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={isMobile ? 30 : 50}
+                  outerRadius={isMobile ? 60 : 90}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {macroData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-center space-x-6 mt-4">
+            {macroData.map((macro) => (
+              <div key={macro.name} className="flex items-center space-x-2">
+                <div 
+                  className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} rounded-full`}
+                  style={{ backgroundColor: macro.color }}
+                ></div>
+                <span className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 font-medium`}>
+                  {macro.name}
+                </span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Macro Tracking Chart */}
-      <Card className="glass-card border-0 rounded-3xl">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center space-x-2 text-lg">
-            <Activity className="h-4 w-4 text-emerald-600" />
-            <span>Macro Nutrients Over Time</span>
-          </CardTitle>
+      {/* Recent Achievements */}
+      <Card className="visible-card shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-center text-gray-900 dark:text-white">Recent Achievements</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={macroData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="protein" stroke="#82ca9d" name="Protein" />
-              <Line type="monotone" dataKey="carbs" stroke="#8884d8" name="Carbs" />
-              <Line type="monotone" dataKey="fat" stroke="#ffc658" name="Fat" />
-              <Line type="monotone" dataKey="proteinTarget" stroke="#82ca9d" strokeDasharray="5 5" name="Protein Target" />
-              <Line type="monotone" dataKey="carbsTarget" stroke="#8884d8" strokeDasharray="5 5" name="Carbs Target" />
-              <Line type="monotone" dataKey="fatTarget" stroke="#ffc658" strokeDasharray="5 5" name="Fat Target" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Macro Distribution Pie Chart */}
-      <Card className="glass-card border-0 rounded-3xl">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center space-x-2 text-lg">
-            <Award className="h-4 w-4 text-emerald-600" />
-            <span>Today's Macro Distribution</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={renderCustomizedLabel}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-md">
+            <span className="text-gray-700 dark:text-gray-300 font-medium">Weekly Streak</span>
+            <Badge variant="default" className="bg-emerald-500 shadow-sm">7 days</Badge>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800 shadow-md">
+            <span className="text-gray-700 dark:text-gray-300 font-medium">Average Calories</span>
+            <Badge variant="secondary" className="shadow-sm">1950</Badge>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800 shadow-md">
+            <span className="text-gray-700 dark:text-gray-300 font-medium">Goal Achievement</span>
+            <Badge 
+              variant={Math.round((todayProgress.calories / targetCalories) * 100) >= 80 ? "default" : "secondary"}
+              className="shadow-sm"
+            >
+              {Math.round((todayProgress.calories / targetCalories) * 100)}%
+            </Badge>
+          </div>
         </CardContent>
       </Card>
     </div>
