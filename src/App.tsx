@@ -23,7 +23,7 @@ import ProgressFat from "@/pages/ProgressFat";
 import ProgressHydration from "@/pages/ProgressHydration";
 import ProgressSupplements from "@/pages/ProgressSupplements";
 import AuthForm from "@/components/auth/AuthForm";
-import OnboardingScreen from "@/components/onboarding/OnboardingScreen";
+import { OnboardingScreen } from "@/components/onboarding/OnboardingScreen";
 import FirebaseSetup from "@/pages/FirebaseSetup";
 import NotFound from "@/pages/NotFound";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -32,13 +32,9 @@ import "./App.css";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-  
-  if (!user) {
+  if (!user && !isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
   
@@ -46,13 +42,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-  
-  if (user) {
+  if (user || isAuthenticated) {
     return <Navigate to="/home" replace />;
   }
   
@@ -79,7 +71,7 @@ function App() {
                       } />
                       <Route path="/onboarding" element={
                         <ProtectedRoute>
-                          <OnboardingScreen />
+                          <OnboardingScreen onComplete={() => {}} />
                         </ProtectedRoute>
                       } />
                       <Route path="/firebase-setup" element={<FirebaseSetup />} />
