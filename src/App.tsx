@@ -23,7 +23,6 @@ import ProgressFat from "@/pages/ProgressFat";
 import ProgressHydration from "@/pages/ProgressHydration";
 import ProgressSupplements from "@/pages/ProgressSupplements";
 import AuthForm from "@/components/auth/AuthForm";
-import { OnboardingScreen } from "@/components/onboarding/OnboardingScreen";
 import FirebaseSetup from "@/pages/FirebaseSetup";
 import NotFound from "@/pages/NotFound";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -68,11 +67,6 @@ function App() {
                         <PublicRoute>
                           <AuthForm />
                         </PublicRoute>
-                      } />
-                      <Route path="/onboarding" element={
-                        <ProtectedRoute>
-                          <OnboardingScreen onComplete={() => {}} />
-                        </ProtectedRoute>
                       } />
                       <Route path="/firebase-setup" element={<FirebaseSetup />} />
                       <Route path="/*" element={
