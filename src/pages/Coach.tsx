@@ -126,14 +126,14 @@ const Coach = () => {
   };
 
   const quickQuestions = [
-    "How am I doing with my goals today?",
-    "What should I eat for my next meal?",
-    "Give me tips to increase my protein intake",
-    "How can I stay motivated?",
+    "Analyze my progress",
+    "Meal suggestions?",
+    "Boost my protein",
+    "Stay motivated",
   ];
 
   return (
-    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''}`}>
+    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-32' : 'pb-40'}`}>
       {/* Animated Robot Head Header */}
       <div className="text-center py-6">
         <div className="flex justify-center mb-4">
@@ -150,7 +150,7 @@ const Coach = () => {
       </div>
 
       {/* Chat Interface */}
-      <Card className="glass-card border-0 rounded-3xl flex flex-col h-[500px]">
+      <Card className={`glass-card border-0 rounded-3xl flex flex-col ${isMobile ? 'h-[450px]' : 'h-[500px]'}`}>
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
           <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
             <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
@@ -215,17 +215,17 @@ const Coach = () => {
           {/* Quick Questions */}
           {messages.length === 1 && (
             <div className="mb-4">
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300 mb-3`}>
-                Quick questions to get started:
+              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300 mb-3 font-medium`}>
+                Quick start:
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {quickQuestions.map((question, index) => (
                   <Button
                     key={index}
                     variant="outline"
                     size="sm"
                     onClick={() => setInput(question)}
-                    className="text-left justify-start h-auto p-3 whitespace-normal"
+                    className={`${isMobile ? 'text-xs px-3 py-2 h-auto' : 'text-sm px-4 py-3 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 border-purple-200 dark:border-purple-700 hover:from-purple-100 hover:to-emerald-100 dark:hover:from-purple-800/30 dark:hover:to-emerald-800/30 transition-all duration-200 hover:scale-105`}
                   >
                     {question}
                   </Button>
@@ -234,8 +234,8 @@ const Coach = () => {
             </div>
           )}
 
-          {/* Input */}
-          <div className="flex space-x-2">
+          {/* Input - with extra margin bottom for menu spacing */}
+          <div className={`flex space-x-2 ${isMobile ? 'mb-4' : 'mb-6'}`}>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
