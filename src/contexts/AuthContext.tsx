@@ -15,6 +15,16 @@ interface User {
   allergies: string[];
   dietaryGoals: string[];
   selectedTrackers: string[];
+  // New onboarding fields
+  age?: number;
+  heightFeet?: number;
+  heightInches?: number;
+  heightCm?: number;
+  weight?: number;
+  weightUnit?: 'lb' | 'kg';
+  heightUnit?: 'ft' | 'cm';
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  onboardingCompleted?: boolean;
 }
 
 interface AuthContextType {
@@ -114,6 +124,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       allergies: [],
       dietaryGoals: ['general_health'],
       selectedTrackers: ['calories', 'hydration', 'supplements'],
+      onboardingCompleted: false,
     };
     
     // Load preferences from localStorage
@@ -144,6 +155,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       allergies: [],
       dietaryGoals: [],
       selectedTrackers: ['calories', 'hydration', 'supplements'],
+      onboardingCompleted: false,
     };
     
     setUser(mockUser);

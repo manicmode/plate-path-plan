@@ -95,25 +95,52 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          age: number | null
           created_at: string
+          gender: string | null
+          height_cm: number | null
+          height_feet: number | null
+          height_inches: number | null
+          height_unit: string | null
           id: string
+          onboarding_completed: boolean | null
           selected_trackers: string[] | null
           updated_at: string
           user_id: string
+          weight: number | null
+          weight_unit: string | null
         }
         Insert: {
+          age?: number | null
           created_at?: string
+          gender?: string | null
+          height_cm?: number | null
+          height_feet?: number | null
+          height_inches?: number | null
+          height_unit?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           selected_trackers?: string[] | null
           updated_at?: string
           user_id: string
+          weight?: number | null
+          weight_unit?: string | null
         }
         Update: {
+          age?: number | null
           created_at?: string
+          gender?: string | null
+          height_cm?: number | null
+          height_feet?: number | null
+          height_inches?: number | null
+          height_unit?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           selected_trackers?: string[] | null
           updated_at?: string
           user_id?: string
+          weight?: number | null
+          weight_unit?: string | null
         }
         Relationships: []
       }
