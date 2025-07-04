@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Brain, Target, TrendingUp } from 'lucide-react';
+import { Send, Bot, User, Loader2, Brain } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
@@ -134,8 +134,13 @@ const Coach = () => {
 
   return (
     <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''}`}>
-      {/* Header */}
-      <div className="text-center">
+      {/* Animated Robot Head Header */}
+      <div className="text-center py-6">
+        <div className="flex justify-center mb-4">
+          <div className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} bg-gradient-to-br from-purple-600 via-blue-600 to-emerald-600 rounded-full flex items-center justify-center neon-glow animate-float shadow-2xl`}>
+            <Brain className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} text-white animate-pulse`} />
+          </div>
+        </div>
         <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-purple-600 to-emerald-600 bg-clip-text text-transparent mb-2`}>
           AI Nutrition Coach
         </h1>
@@ -143,36 +148,6 @@ const Coach = () => {
           Your personal nutrition expert, powered by AI
         </p>
       </div>
-
-      {/* Progress Overview */}
-      <Card className="glass-card border-0 rounded-3xl">
-        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-            <TrendingUp className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
-            <span>Today's Progress</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-emerald-600">{Math.round(progress.calories)}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">Calories</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{Math.round(progress.protein)}g</div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">Protein</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-cyan-600">{Math.round(progress.hydration)}ml</div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">Hydration</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{progress.supplements}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">Supplements</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Chat Interface */}
       <Card className="glass-card border-0 rounded-3xl flex flex-col h-[500px]">
