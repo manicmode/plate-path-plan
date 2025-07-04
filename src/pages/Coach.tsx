@@ -49,12 +49,13 @@ const Coach = () => {
     }
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (messageText?: string) => {
+    const messageToSend = messageText || input.trim();
+    if (!messageToSend || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: input.trim(),
+      content: messageToSend,
       isUser: true,
       timestamp: new Date(),
     };
@@ -91,7 +92,7 @@ const Coach = () => {
 
       const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
         body: {
-          message: input.trim(),
+          message: messageToSend,
           context: contextData,
         },
       });
@@ -130,6 +131,10 @@ const Coach = () => {
     }
   };
 
+  const handleQuickQuestion = (question: string) => {
+    sendMessage(question);
+  };
+
   const quickQuestions = [
     "Analyze my progress",
     "Meal suggestions?",
@@ -138,7 +143,7 @@ const Coach = () => {
   ];
 
   return (
-    <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-40' : 'pb-48'}`}>
+    <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
       {/* Animated Robot Head Header */}
       <div className="text-center py-6">
         <div className="flex justify-center mb-4">
@@ -155,16 +160,16 @@ const Coach = () => {
       </div>
 
       {/* Chat Interface */}
-      <Card className={`glass-card border-0 rounded-3xl flex flex-col`}>
+      <Card className="glass-card border-0 rounded-3xl">
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
           <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
             <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
             <span>Chat with Your Coach</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 flex flex-col`}>
-          {/* Messages Container with proper height */}
-          <div className={`${isMobile ? 'min-h-[350px] max-h-[400px]' : 'min-h-[400px] max-h-[450px]'} flex flex-col`}>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+          {/* Messages Container with improved height */}
+          <div className={`${isMobile ? 'h-[500px]' : 'h-[600px]'} flex flex-col`}>
             <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
               <div className="space-y-4 py-2">
                 {messages.map((message) => (
@@ -188,19 +193,18 @@ const Coach = () => {
                       )}
                     </div>
                     <div
-                      className={`flex-1 min-w-0 max-w-[calc(100%-60px)] p-3 rounded-2xl ${
+                      className={`flex-1 p-3 rounded-2xl break-words ${
                         message.isUser
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                          ? 'bg-emerald-600 text-white max-w-[80%] ml-auto'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
                       }`}
                       style={{ 
                         wordWrap: 'break-word',
-                        overflowWrap: 'anywhere',
-                        wordBreak: 'break-word',
-                        boxSizing: 'border-box'
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word'
                       }}
                     >
-                      <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed`}>
+                      <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed whitespace-pre-wrap`}>
                         {message.content}
                       </p>
                     </div>
@@ -226,7 +230,7 @@ const Coach = () => {
           </div>
 
           {/* Input Area */}
-          <div className={`flex space-x-2 mt-4 ${isMobile ? 'mb-2' : 'mb-4'}`}>
+          <div className={`flex space-x-2 mt-4`}>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -236,7 +240,7 @@ const Coach = () => {
               className="flex-1 rounded-2xl"
             />
             <Button
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || isLoading}
               size="sm"
               className="bg-purple-600 hover:bg-purple-700 rounded-2xl px-4"
@@ -251,7 +255,7 @@ const Coach = () => {
         </CardContent>
       </Card>
 
-      {/* Quick Questions - Outside the chat card */}
+      {/* Quick Questions - Separate Card */}
       <Card className="glass-card border-0 rounded-3xl">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300 mb-4 font-medium text-center`}>
@@ -263,8 +267,9 @@ const Coach = () => {
                 key={index}
                 variant="outline"
                 size="sm"
-                onClick={() => setInput(question)}
+                onClick={() => handleQuickQuestion(question)}
                 className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 border-purple-200 dark:border-purple-700 hover:from-purple-100 hover:to-emerald-100 dark:hover:from-purple-800/30 dark:hover:to-emerald-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
+                disabled={isLoading}
               >
                 {question}
               </Button>
