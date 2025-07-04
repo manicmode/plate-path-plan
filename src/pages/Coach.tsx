@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,11 @@ const Coach = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -133,7 +137,7 @@ const Coach = () => {
   ];
 
   return (
-    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-32' : 'pb-40'}`}>
+    <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-40' : 'pb-48'}`}>
       {/* Animated Robot Head Header */}
       <div className="text-center py-6">
         <div className="flex justify-center mb-4">
@@ -159,12 +163,12 @@ const Coach = () => {
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 flex flex-col flex-1`}>
           {/* Messages */}
-          <ScrollArea className="flex-1 mb-4 pr-2" ref={scrollAreaRef}>
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 mb-4 px-2 w-full overflow-hidden" ref={scrollAreaRef}>
+            <div className="space-y-4 w-full">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex items-start space-x-3 ${
+                  className={`flex items-start space-x-3 w-full max-w-full ${
                     message.isUser ? 'flex-row-reverse space-x-reverse' : ''
                   }`}
                 >
@@ -183,8 +187,8 @@ const Coach = () => {
                   </div>
                   <div
                     className={`${
-                      isMobile ? 'max-w-[75%]' : 'max-w-[80%]'
-                    } p-3 rounded-2xl overflow-hidden break-words hyphens-auto ${
+                      isMobile ? 'max-w-[65%]' : 'max-w-[70%]'
+                    } p-3 rounded-2xl min-w-0 flex-shrink text-wrap-anywhere ${
                       message.isUser
                         ? 'bg-emerald-600 text-white ml-auto'
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
@@ -192,7 +196,8 @@ const Coach = () => {
                     style={{ 
                       wordWrap: 'break-word',
                       overflowWrap: 'anywhere',
-                      wordBreak: 'break-word'
+                      wordBreak: 'break-word',
+                      boxSizing: 'border-box'
                     }}
                   >
                     <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed`}>
@@ -202,7 +207,7 @@ const Coach = () => {
                 </div>
               ))}
               {isLoading && (
-                <div className="flex items-start space-x-3">
+                <div className="flex items-start space-x-3 w-full">
                   <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center flex-shrink-0">
                     <Bot className="h-4 w-4" />
                   </div>
@@ -241,13 +246,13 @@ const Coach = () => {
             </div>
           )}
 
-          {/* Input - with extra margin bottom for menu spacing */}
-          <div className={`flex space-x-2 ${isMobile ? 'mb-4' : 'mb-6'}`}>
+          {/* Input - Enhanced spacing from bottom menu */}
+          <div className={`flex space-x-2 ${isMobile ? 'mb-6' : 'mb-8'}`}>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about nutrition..."
+              placeholder="Ask me anything..."
               disabled={isLoading}
               className="flex-1 rounded-2xl"
             />
