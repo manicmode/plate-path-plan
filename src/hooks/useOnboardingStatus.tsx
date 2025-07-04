@@ -31,7 +31,7 @@ export const useOnboardingStatus = () => {
           setIsOnboardingComplete(false);
         } else {
           const isComplete = data?.onboarding_completed || false;
-          console.log('Onboarding status:', isComplete);
+          console.log('Onboarding status from database:', isComplete);
           setIsOnboardingComplete(isComplete);
         }
       } catch (error) {
@@ -45,9 +45,36 @@ export const useOnboardingStatus = () => {
     checkOnboardingStatus();
   }, [user, isAuthenticated]);
 
-  const markOnboardingComplete = () => {
-    console.log('Marking onboarding as complete');
-    setIsOnboardingComplete(true);
+  const markOnboardingComplete = async () => {
+    if (!user) {
+      console.error('No user found when marking onboarding complete');
+      return;
+    }
+
+    try {
+      console.log('Marking onboarding as complete in database for user:', user.id);
+      
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        console.error('Error marking onboarding complete:', error);
+        throw error;
+      }
+
+      console.log('Successfully marked onboarding as complete');
+      setIsOnboardingComplete(true);
+    } catch (error) {
+      console.error('Failed to mark onboarding complete:', error);
+      // Don't update local state if database update failed
+    }
   };
 
   return {
