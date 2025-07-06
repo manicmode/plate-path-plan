@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 
 // Extended user type with profile data
 interface ExtendedUser extends User {
@@ -49,6 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -88,48 +89,88 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(extendedUser);
   };
 
+  const initializeAuth = async (retryCount = 0) => {
+    try {
+      console.log(`Auth initialization attempt ${retryCount + 1}`);
+      
+      const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting initial session:', error);
+        if (retryCount < 2) {
+          setTimeout(() => initializeAuth(retryCount + 1), 1000);
+          return;
+        }
+      } else if (initialSession?.user) {
+        setSession(initialSession);
+        await updateUserWithProfile(initialSession.user);
+      }
+      
+      setLoading(false);
+      setInitializationAttempts(retryCount + 1);
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      if (retryCount < 2) {
+        setTimeout(() => initializeAuth(retryCount + 1), 1000);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  // App lifecycle callbacks
+  const handleAppForeground = () => {
+    console.log('App came to foreground - refreshing auth state');
+    if (loading && initializationAttempts > 0) {
+      initializeAuth();
+    }
+  };
+
+  const handleAppBackground = () => {
+    console.log('App went to background');
+  };
+
+  useAppLifecycle({
+    onForeground: handleAppForeground,
+    onBackground: handleAppBackground,
+  });
+
   useEffect(() => {
     let mounted = true;
     
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting initial session:', error);
-        } else if (mounted && initialSession?.user) {
-          setSession(initialSession);
-          await updateUserWithProfile(initialSession.user);
-        }
-        
-        if (mounted) {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
+      console.log('Auth state changed:', event);
       setSession(session);
       
       if (session?.user) {
-        await updateUserWithProfile(session.user);
+        // Defer profile loading to prevent deadlocks
+        setTimeout(async () => {
+          if (mounted) {
+            await updateUserWithProfile(session.user);
+          }
+        }, 0);
       } else {
         setUser(null);
       }
     });
 
+    // Initialize auth with timeout
+    const initTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth initialization timeout - forcing completion');
+        setLoading(false);
+      }
+    }, 10000);
+
+    initializeAuth();
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearTimeout(initTimeout);
     };
   }, []);
 

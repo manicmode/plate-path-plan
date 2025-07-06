@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 
 interface FoodItem {
   id: string;
@@ -105,6 +106,32 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   });
 
   const [weeklyData, setWeeklyData] = useState<DailyNutrition[]>([]);
+
+  // App lifecycle awareness
+  useAppLifecycle({
+    onForeground: () => {
+      console.log('Nutrition context: App came to foreground');
+      // Check if date has changed while app was in background
+      const newToday = new Date().toISOString().split('T')[0];
+      if (currentDay.date !== newToday) {
+        console.log('Date changed while app was in background, resetting nutrition data');
+        setCurrentDay({
+          date: newToday,
+          foods: [],
+          hydration: [],
+          supplements: [],
+          totalCalories: 0,
+          totalProtein: 0,
+          totalCarbs: 0,
+          totalFat: 0,
+          totalFiber: 0,
+          totalSugar: 0,
+          totalSodium: 0,
+          totalHydration: 0,
+        });
+      }
+    },
+  });
 
   const calculateTotals = (foods: FoodItem[], hydration: HydrationItem[]) => {
     // Only include confirmed foods in the totals calculation

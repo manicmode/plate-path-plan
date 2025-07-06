@@ -1,12 +1,13 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 import CelebrationPopup from '@/components/CelebrationPopup';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -29,7 +30,7 @@ const loadUserPreferences = () => {
 };
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -38,6 +39,19 @@ const Home = () => {
   
   // Use the scroll-to-top hook
   useScrollToTop();
+
+  // Loading timeout with recovery
+  const { hasTimedOut, showRecovery, retry } = useLoadingTimeout(authLoading, {
+    timeoutMs: 10000,
+    onTimeout: () => {
+      console.warn('Home page loading timeout - showing recovery options');
+      toast({
+        title: "Loading taking longer than expected",
+        description: "Tap to retry or refresh the page",
+        variant: "destructive",
+      });
+    },
+  });
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
@@ -303,6 +317,58 @@ const Home = () => {
     // Reset selected food
     setSelectedFood(null);
   };
+
+  // Emergency recovery handler
+  const handleEmergencyRecovery = () => {
+    console.log('Emergency recovery triggered');
+    retry();
+    // Force a page refresh as last resort
+    setTimeout(() => {
+      if (authLoading) {
+        window.location.reload();
+      }
+    }, 5000);
+  };
+
+  // Show loading state with recovery options
+  if (authLoading && !hasTimedOut) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show recovery options if loading has timed out
+  if (authLoading && hasTimedOut && showRecovery) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <RefreshCw className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">Taking longer than usual</h2>
+          <p className="text-muted-foreground">
+            The app seems to be taking longer to load than expected.
+          </p>
+          <div className="space-y-2">
+            <Button onClick={handleEmergencyRecovery} className="w-full">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.reload()} 
+              className="w-full"
+            >
+              Refresh Page
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">

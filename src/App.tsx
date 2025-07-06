@@ -44,22 +44,35 @@ const queryClient = new QueryClient({
 
 function App() {
   useEffect(() => {
-    // App lifecycle management for mobile devices
+    // Enhanced mobile app lifecycle management
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    console.log('App initializing with device info:', { isMobile, isIOS, isSafari });
+
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('App regained focus - refreshing queries');
+        console.log('App regained visibility - invalidating queries');
         queryClient.invalidateQueries();
       }
     };
 
     const handleFocus = () => {
-      console.log('Window focused - refreshing queries');
+      console.log('Window focused - invalidating queries');
       queryClient.invalidateQueries();
     };
 
     const handleOnline = () => {
-      console.log('Network reconnected - refreshing queries');
+      console.log('Network reconnected - invalidating queries');
       queryClient.invalidateQueries();
+    };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('Page restored from cache (iOS) - invalidating queries');
+        queryClient.invalidateQueries();
+      }
     };
 
     // Add event listeners for app lifecycle
@@ -68,27 +81,34 @@ function App() {
     window.addEventListener('online', handleOnline);
 
     // iOS Safari specific handling
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile) {
-      // Handle iOS Safari page show event
-      window.addEventListener('pageshow', (event) => {
-        if (event.persisted) {
-          console.log('Page restored from cache - refreshing queries');
-          queryClient.invalidateQueries();
-        }
-      });
+    if (isIOS && isSafari) {
+      window.addEventListener('pageshow', handlePageShow);
     }
+
+    // Emergency recovery mechanism - force refresh if app seems stuck
+    const emergencyRefresh = setTimeout(() => {
+      if (document.hidden) {
+        console.log('Emergency refresh - app may be stuck');
+        queryClient.invalidateQueries();
+      }
+    }, 30000); // 30 seconds
 
     // Cleanup function
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleOnline);
+      
+      if (isIOS && isSafari) {
+        window.removeEventListener('pageshow', handlePageShow);
+      }
+      
+      clearTimeout(emergencyRefresh);
     };
   }, []);
 
   useEffect(() => {
-    // Simple app initialization
+    // Simple app initialization with error handling
     const initializeApp = () => {
       try {
         console.log('App initialized successfully');
