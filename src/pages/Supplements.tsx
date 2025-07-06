@@ -121,12 +121,12 @@ const Supplements = () => {
               <Button
                 key={supplement.name}
                 onClick={() => handleQuickAdd(supplement)}
-                className={`glass-button ${isMobile ? 'h-36' : 'h-40'} flex flex-col items-center justify-center space-y-3 micro-bounce rounded-2xl bg-white/80 dark:bg-gray-800/80 hover:bg-white/95 dark:hover:bg-gray-700/95 transition-all duration-300 border border-gray-200/50 dark:border-gray-600/50 shadow-lg hover:shadow-xl`}
+                className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 micro-bounce rounded-2xl`}
               >
-                <Icon className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} text-purple-600 dark:text-purple-400`} />
-                <div className="text-center space-y-2">
-                  <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
-                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-purple-700 dark:text-purple-300 leading-tight`}>{supplement.dosage} {supplement.unit}</p>
+                <Icon className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
+                <div className="text-center">
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-300 leading-tight`}>{supplement.dosage} {supplement.unit}</p>
                 </div>
               </Button>
             );
@@ -138,18 +138,18 @@ const Supplements = () => {
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className={`glass-button ${isMobile ? 'h-28' : 'h-32'} flex flex-col items-center justify-center space-y-4 rounded-2xl bg-white/80 dark:bg-gray-800/80 hover:bg-white/95 dark:hover:bg-gray-700/95 transition-all duration-300 border border-gray-200/50 dark:border-gray-600/50 shadow-lg hover:shadow-xl`}
+          className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 rounded-2xl`}
         >
-          <Camera className={`${isMobile ? 'h-8 w-8' : 'h-9 w-9'} text-purple-600 dark:text-purple-400`} />
-          <span className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-gray-100 text-center leading-tight`}>Capture Supplement</span>
+          <Camera className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>Capture Supplement</span>
         </Button>
         
         <Button
           onClick={() => setShowManualEntry(!showManualEntry)}
-          className={`glass-button ${isMobile ? 'h-28' : 'h-32'} flex flex-col items-center justify-center space-y-4 rounded-2xl bg-white/80 dark:bg-gray-800/80 hover:bg-white/95 dark:hover:bg-gray-700/95 transition-all duration-300 border border-gray-200/50 dark:border-gray-600/50 shadow-lg hover:shadow-xl`}
+          className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 rounded-2xl`}
         >
-          <Plus className={`${isMobile ? 'h-8 w-8' : 'h-9 w-9'} text-purple-600 dark:text-purple-400`} />
-          <span className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-gray-100 text-center leading-tight`}>Manual Entry</span>
+          <Plus className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>Manual Entry</span>
         </Button>
       </div>
 
