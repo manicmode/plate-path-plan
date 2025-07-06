@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +14,7 @@ import { WeeklyProgressRing } from '@/components/analytics/WeeklyProgressRing';
 import { LoggingStreakTracker } from '@/components/analytics/LoggingStreakTracker';
 import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
 import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
+import { EnhancedDailyAverageCard } from '@/components/analytics/EnhancedDailyAverageCard';
 
 const Analytics = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
@@ -223,7 +223,7 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Daily Averages */}
+        {/* Enhanced Daily Averages */}
         <div>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
@@ -234,37 +234,37 @@ const Analytics = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                    {Math.round(weeklyAverage.calories).toLocaleString()} kcal
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Avg Daily Calories</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                    {Math.round(weeklyAverage.protein)}g
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Avg Daily Protein</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                    {Math.round(weeklyAverage.steps).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Avg Daily Steps</div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <EnhancedDailyAverageCard
+              title="Avg Daily Calories"
+              value={weeklyAverage.calories}
+              suffix=" kcal"
+              icon={<Flame className="h-6 w-6" />}
+              gradientFrom="#F97316"
+              gradientTo="#FB923C"
+              progress={Math.round((weeklyAverage.calories / (user?.targetCalories || 2000)) * 100)}
+              target={user?.targetCalories || 2000}
+            />
+            <EnhancedDailyAverageCard
+              title="Avg Daily Protein"
+              value={weeklyAverage.protein}
+              suffix="g"
+              icon={<Zap className="h-6 w-6" />}
+              gradientFrom="#10B981"
+              gradientTo="#34D399"
+              progress={Math.round((weeklyAverage.protein / (user?.targetProtein || 120)) * 100)}
+              target={user?.targetProtein || 120}
+            />
+            <EnhancedDailyAverageCard
+              title="Avg Daily Steps"
+              value={weeklyAverage.steps}
+              suffix=""
+              icon={<Activity className="h-6 w-6" />}
+              gradientFrom="#3B82F6"
+              gradientTo="#60A5FA"
+              progress={Math.round((weeklyAverage.steps / 10000) * 100)}
+              target={10000}
+            />
           </div>
         </div>
 
