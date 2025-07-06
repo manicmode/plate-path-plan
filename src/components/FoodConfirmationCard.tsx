@@ -6,7 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Trash2, Check, AlertTriangle, Info } from 'lucide-react';
+import { Edit, Trash2, Check, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FoodItem {
@@ -72,9 +72,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const getHealthBadge = (score: number) => {
-    if (score >= 80) return { label: 'Excellent', color: 'bg-green-500', emoji: '🟢' };
-    if (score >= 60) return { label: 'Moderate', color: 'bg-yellow-500', emoji: '🟡' };
-    return { label: 'Poor', color: 'bg-red-500', emoji: '🔴' };
+    if (score >= 80) return { label: 'Excellent', variant: 'default', bgColor: 'bg-green-500', emoji: '🟢' };
+    if (score >= 50) return { label: 'Moderate', variant: 'secondary', bgColor: 'bg-yellow-500', emoji: '🟡' };
+    return { label: 'Poor', variant: 'destructive', bgColor: 'bg-red-500', emoji: '🔴' };
   };
 
   const getHealthFlags = (food: FoodItem) => {
@@ -236,46 +236,48 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             </TabsContent>
             
             <TabsContent value="health" className="space-y-4 mt-4">
-              {/* Health Score Badge */}
+              {/* Health Score Badge - Improved Design */}
               <div className="text-center">
-                <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full ${healthBadge.color} text-white font-medium`}>
+                <Badge className={`${healthBadge.bgColor} text-white font-medium px-4 py-2 text-sm rounded-full inline-flex items-center space-x-2`}>
                   <span>{healthBadge.emoji}</span>
                   <span>{healthBadge.label}</span>
-                  <span className="text-sm">({healthScore}/100)</span>
-                </div>
+                  <span className="text-xs">({healthScore}/100)</span>
+                </Badge>
               </div>
               
-              {/* Health Flags */}
+              {/* Health Flags - Improved Layout */}
               <div className="space-y-2">
-                {healthFlags.map((flag, index) => (
-                  <div 
-                    key={index}
-                    className={`flex items-center space-x-3 p-3 rounded-lg ${
-                      flag.positive 
-                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
-                        : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
-                    }`}
-                  >
-                    <span className="text-lg">{flag.emoji}</span>
-                    <span className={`text-sm font-medium ${
-                      flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
-                    }`}>
-                      {flag.label}
+                {healthFlags.length > 0 ? (
+                  healthFlags.map((flag, index) => (
+                    <div 
+                      key={index}
+                      className={`flex items-center space-x-3 p-3 rounded-lg ${
+                        flag.positive 
+                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                          : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                      }`}
+                    >
+                      <span className="text-lg">{flag.emoji}</span>
+                      <span className={`text-sm font-medium ${
+                        flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
+                      }`}>
+                        {flag.label}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-center space-x-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      No specific health flags detected
                     </span>
-                  </div>
-                ))}
-                
-                {healthFlags.length === 0 && (
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-                    <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No specific health flags detected</p>
                   </div>
                 )}
               </div>
             </TabsContent>
           </Tabs>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Improved with Icons */}
           <div className="flex space-x-3">
             <Button
               variant="outline"

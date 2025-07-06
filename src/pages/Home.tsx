@@ -273,7 +273,7 @@ const Home = () => {
   const handleQuickLog = (foodItem: typeof quickLogSuggestions[0]) => {
     console.log('Quick logging:', foodItem);
     
-    // Instead of directly adding food, show confirmation card
+    // Show confirmation card for all food selections
     setSelectedFood({
       name: foodItem.name,
       calories: foodItem.calories,
@@ -302,49 +302,6 @@ const Home = () => {
 
     // Reset selected food
     setSelectedFood(null);
-  };
-
-  const handleQuickActionMenu = (action: string, foodItem: any) => {
-    console.log(`${action} action for:`, foodItem);
-    
-    switch (action) {
-      case 'edit':
-        toast({
-          title: "Edit Food",
-          description: `Editing ${foodItem.name} - feature coming soon!`,
-        });
-        break;
-      case 'details':
-        toast({
-          title: "Food Details",
-          description: `${foodItem.name}: ${foodItem.calories} cal, ${foodItem.protein}g protein`,
-        });
-        break;
-      case 'delete':
-        toast({
-          title: "Removed",
-          description: `${foodItem.name} removed from recent logs.`,
-        });
-        break;
-      case 'edit-prediction':
-        toast({
-          title: "Edit Prediction",
-          description: `Customizing ${foodItem.name} prediction - feature coming soon!`,
-        });
-        break;
-      case 'remove-quick':
-        toast({
-          title: "Removed from Quick List",
-          description: `${foodItem.name} won't appear in quick suggestions.`,
-        });
-        break;
-      case 'favorite':
-        toast({
-          title: "Added to Favorites",
-          description: `${foodItem.name} marked as favorite!`,
-        });
-        break;
-    }
   };
 
   return (
@@ -516,60 +473,37 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Quick Suggestions - Horizontal Layout with improved spacing */}
-                <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-3'}`}>
+                {/* Quick Suggestions - Full width clickable blocks */}
+                <div className={`grid grid-cols-1 ${isMobile ? 'gap-2' : 'gap-3'}`}>
                   {quickLogSuggestions.map((item) => (
-                    <div key={item.id} className="space-y-2">
-                      <div
-                        onClick={() => handleQuickLog(item)}
-                        className={`${isMobile ? 'p-3' : 'p-4'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-md group`}
-                      >
-                        <div className="text-center space-y-1">
-                          <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors`}>
-                            {item.name}
-                          </p>
-                          <div className="flex items-center justify-center space-x-1">
-                            <span className="text-xs">🕒</span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {item.usualTime}
+                    <div
+                      key={item.id}
+                      onClick={() => handleQuickLog(item)}
+                      className={`${isMobile ? 'p-4' : 'p-5'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-md group w-full`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="text-3xl">🍽️</div>
+                          <div className="flex-1">
+                            <p className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors`}>
+                              {item.name}
                             </p>
+                            <div className="flex items-center space-x-3 mt-1">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs">🕒</span>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {item.usualTime}
+                                </p>
+                              </div>
+                              <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                                {item.calories} cal
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      {/* Three-dot menu under each AI suggestion */}
-                      <div className="flex justify-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
-                            >
-                              <MoreHorizontal className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="center" className="w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-lg">
-                            <DropdownMenuItem 
-                              onClick={() => handleQuickActionMenu('edit-prediction', item)}
-                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
-                            >
-                              Edit Prediction
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleQuickActionMenu('favorite', item)}
-                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
-                            >
-                              Mark as Favorite
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleQuickActionMenu('remove-quick', item)}
-                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
-                            >
-                              Remove from Quick List
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="text-emerald-500 group-hover:scale-110 transition-transform">
+                          <span className="text-sm font-medium">Tap to log</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -611,63 +545,30 @@ const Home = () => {
                     {recentLogs.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 transition-all duration-300"
+                        onClick={() => handleQuickLog(item)}
+                        className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group w-full"
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div className="flex items-center space-x-3">
+                          <div className="text-2xl">🍽️</div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                               {item.name}
                             </p>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              • {item.calories} cal
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-1 mt-1">
-                            <span className="text-xs">🕒</span>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Usually {item.usualTime}
-                            </p>
+                            <div className="flex items-center space-x-3 mt-1">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs">🕒</span>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  Usually {item.usualTime}
+                                </p>
+                              </div>
+                              <p className="text-xs text-gray-600 dark:text-gray-300">
+                                {item.calories} cal
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleQuickLog(item)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                          >
-                            Log
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 h-auto hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-lg">
-                              <DropdownMenuItem 
-                                onClick={() => handleQuickActionMenu('edit', item)}
-                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleQuickActionMenu('details', item)}
-                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
-                              >
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleQuickActionMenu('delete', item)}
-                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <div className="text-emerald-500 group-hover:scale-110 transition-transform">
+                          <span className="text-xs font-medium">Tap to log</span>
                         </div>
                       </div>
                     ))}
