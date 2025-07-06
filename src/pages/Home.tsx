@@ -693,7 +693,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Today's Nutrients Section with improved card alignment */}
+      {/* Today's Nutrients Section with improved card alignment and positioned sliders */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>Today's Nutrients</h3>
         <div className="flex justify-center">
@@ -702,31 +702,52 @@ const Home = () => {
               const percentage = Math.min((macro.current / macro.target) * 100, 100);
               const Icon = macro.icon;
               
+              // Define colors that match the tracker icons
+              const getProgressColor = (name: string) => {
+                switch (name) {
+                  case 'Calories':
+                    return 'from-emerald-400 to-emerald-600';
+                  case 'Protein':
+                    return 'from-blue-400 to-blue-600';
+                  case 'Carbs':
+                    return 'from-orange-400 to-orange-600';
+                  case 'Fat':
+                    return 'from-purple-400 to-purple-600';
+                  case 'Hydration':
+                    return 'from-cyan-400 to-blue-600';
+                  case 'Supplements':
+                    return 'from-purple-500 to-pink-600';
+                  default:
+                    return macro.color;
+                }
+              };
+              
               return (
                 <Card
                   key={macro.name}
-                  className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-44' : 'h-48'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                  className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <CardContent className="flex flex-col justify-between h-full p-0">
                     <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
                       <div className="flex-shrink-0">
-                        <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-                          <Icon className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
+                        <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                          <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
                         </div>
-                        <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>{macro.name}</h4>
+                        <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{macro.name}</h4>
                       </div>
-                      <div className="flex-grow flex flex-col justify-center space-y-1">
-                        <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold neon-text leading-tight`}>
+                      <div className="flex-grow flex flex-col justify-center space-y-2">
+                        <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
                           {macro.current.toFixed(0)}{macro.unit}
                         </p>
-                        <p className={`${isMobile ? 'text-sm' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
                           of {macro.target}{macro.unit}
                         </p>
                       </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2 flex-shrink-0">
+                      {/* Positioned slider with proper spacing and matching colors */}
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
                         <div
-                          className={`bg-gradient-to-r ${macro.color} h-1.5 rounded-full transition-all duration-1500 shadow-sm`}
+                          className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
                           style={{ width: `${percentage}%` }}
                         ></div>
                       </div>

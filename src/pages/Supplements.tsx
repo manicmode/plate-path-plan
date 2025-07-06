@@ -1,11 +1,10 @@
+
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Camera, Plus, Pill, Clock, Bell } from 'lucide-react';
+import { Camera, Upload, Plus, Pill, Zap, Heart, Brain, Shield, Sun, Bone } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,10 +15,6 @@ const Supplements = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [supplementName, setSupplementName] = useState('');
   const [dosage, setDosage] = useState('');
-  const [unit, setUnit] = useState('mg');
-  const [frequency, setFrequency] = useState('');
-  const [enableNotifications, setEnableNotifications] = useState(false);
-  const [notificationTimes, setNotificationTimes] = useState(['']);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addSupplement } = useNutrition();
@@ -27,12 +22,12 @@ const Supplements = () => {
   const isMobile = useIsMobile();
 
   const quickSupplements = [
-    { name: 'Protein Shake', dosage: '30', unit: 'g' },
-    { name: 'Multivitamin', dosage: '1', unit: 'tablet' },
-    { name: 'Omega-3', dosage: '1000', unit: 'mg' },
-    { name: 'Vitamin D', dosage: '2000', unit: 'IU' },
-    { name: 'Creatine', dosage: '5', unit: 'g' },
-    { name: 'BCAA', dosage: '10', unit: 'g' },
+    { name: 'Vitamin D', dosage: '1000 IU', icon: Sun },
+    { name: 'Vitamin C', dosage: '500mg', icon: Shield },
+    { name: 'Omega-3', dosage: '1000mg', icon: Heart },
+    { name: 'Multivitamin', dosage: '1 tablet', icon: Pill },
+    { name: 'Calcium', dosage: '600mg', icon: Bone },
+    { name: 'B-Complex', dosage: '1 tablet', icon: Brain },
   ];
 
   const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,13 +40,12 @@ const Supplements = () => {
 
     // Simulate AI analysis
     setTimeout(() => {
-      setSupplementName('Protein Powder');
-      setDosage('30');
-      setUnit('g');
+      setSupplementName('Vitamin D');
+      setDosage('1000 IU');
       setIsAnalyzing(false);
       toast({
         title: "Supplement Analyzed!",
-        description: "We detected protein powder. Please confirm the details.",
+        description: "We detected Vitamin D. Please confirm the details.",
       });
     }, 2000);
   };
@@ -59,59 +53,38 @@ const Supplements = () => {
   const handleQuickAdd = (supplement: typeof quickSupplements[0]) => {
     addSupplement({
       name: supplement.name,
-      dosage: parseFloat(supplement.dosage),
-      unit: supplement.unit,
-      notifications: [],
+      dosage: supplement.dosage,
+      type: 'vitamin',
     });
     
     toast({
       title: "Supplement Added!",
-      description: `${supplement.name} logged successfully.`,
+      description: `${supplement.name} (${supplement.dosage}) logged successfully.`,
     });
     
     navigate('/');
-  };
-
-  const addNotificationTime = () => {
-    setNotificationTimes([...notificationTimes, '']);
-  };
-
-  const updateNotificationTime = (index: number, time: string) => {
-    const updated = [...notificationTimes];
-    updated[index] = time;
-    setNotificationTimes(updated);
-  };
-
-  const removeNotificationTime = (index: number) => {
-    setNotificationTimes(notificationTimes.filter((_, i) => i !== index));
   };
 
   const handleManualSubmit = () => {
     if (!supplementName || !dosage) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all fields.",
         variant: "destructive",
       });
       return;
     }
 
-    const notifications = enableNotifications 
-      ? notificationTimes.filter(time => time).map(time => ({ time, frequency: frequency || 'daily' }))
-      : [];
-
     addSupplement({
       name: supplementName,
-      dosage: parseFloat(dosage),
-      unit,
-      frequency,
-      notifications,
+      dosage: dosage,
+      type: 'supplement',
       image: selectedImage || undefined,
     });
 
     toast({
       title: "Supplement Added!",
-      description: `${supplementName} logged with ${notifications.length} reminder${notifications.length !== 1 ? 's' : ''}.`,
+      description: `${supplementName} (${dosage}) logged successfully.`,
     });
 
     navigate('/');
@@ -124,8 +97,8 @@ const Supplements = () => {
           <Pill className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
         </div>
         <div>
-          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text`}>Supplements</h1>
-          <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Track your vitamins & supplements</p>
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text`}>Supplement Tracker</h1>
+          <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Track your vitamins and minerals</p>
         </div>
       </div>
 
@@ -135,19 +108,22 @@ const Supplements = () => {
           <CardTitle className={`text-center text-gray-900 dark:text-white ${isMobile ? 'text-base' : 'text-lg'}`}>Quick Add</CardTitle>
         </CardHeader>
         <CardContent className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 gap-4'} ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          {quickSupplements.map((supplement) => (
-            <Button
-              key={supplement.name}
-              onClick={() => handleQuickAdd(supplement)}
-              className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 micro-bounce rounded-2xl`}
-            >
-              <Pill className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
-              <div className="text-center">
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-300 leading-tight`}>{supplement.dosage}{supplement.unit}</p>
-              </div>
-            </Button>
-          ))}
+          {quickSupplements.map((supplement) => {
+            const Icon = supplement.icon;
+            return (
+              <Button
+                key={supplement.name}
+                onClick={() => handleQuickAdd(supplement)}
+                className={`glass-button ${isMobile ? 'h-24' : 'h-28'} flex flex-col items-center justify-center space-y-3 micro-bounce rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 border border-gray-200/30 dark:border-gray-600/30`}
+              >
+                <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-purple-600 dark:text-purple-400`} />
+                <div className="text-center space-y-1">
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-700 dark:text-gray-300 leading-tight`}>{supplement.dosage}</p>
+                </div>
+              </Button>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -155,18 +131,18 @@ const Supplements = () => {
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 rounded-2xl`}
+          className={`glass-button ${isMobile ? 'h-24' : 'h-28'} flex flex-col items-center justify-center space-y-3 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 border border-gray-200/30 dark:border-gray-600/30`}
         >
-          <Camera className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
-          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>Capture Supplement</span>
+          <Camera className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-purple-600 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-gray-100`}>Capture Supplement</span>
         </Button>
         
         <Button
           onClick={() => setShowManualEntry(!showManualEntry)}
-          className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 rounded-2xl`}
+          className={`glass-button ${isMobile ? 'h-24' : 'h-28'} flex flex-col items-center justify-center space-y-3 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 border border-gray-200/30 dark:border-gray-600/30`}
         >
-          <Plus className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
-          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>>Manual Entry</span>
+          <Plus className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-purple-600 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-gray-100`}>Manual Entry</span>
         </Button>
       </div>
 
@@ -190,7 +166,7 @@ const Supplements = () => {
             />
             {isAnalyzing && (
               <div className="text-center">
-                <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                <div className="animate-spin h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-2"></div>
                 <p className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Analyzing your supplement...</p>
               </div>
             )}
@@ -211,109 +187,24 @@ const Supplements = () => {
                 id="supplementName"
                 value={supplementName}
                 onChange={(e) => setSupplementName(e.target.value)}
-                placeholder="e.g., Protein Powder, Multivitamin"
+                placeholder="e.g., Vitamin D, Omega-3, Calcium"
                 className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
               />
             </div>
-            
-            <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-4'}`}>
-              <div>
-                <Label htmlFor="dosage" className={`text-gray-700 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Dosage</Label>
-                <Input
-                  id="dosage"
-                  type="number"
-                  value={dosage}
-                  onChange={(e) => setDosage(e.target.value)}
-                  placeholder="e.g., 30, 1"
-                  className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-                />
-              </div>
-              <div>
-                <Label htmlFor="unit" className={`text-gray-700 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Unit</Label>
-                <Select value={unit} onValueChange={setUnit}>
-                  <SelectTrigger className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mg">mg</SelectItem>
-                    <SelectItem value="g">g</SelectItem>
-                    <SelectItem value="IU">IU</SelectItem>
-                    <SelectItem value="tablet">tablet</SelectItem>
-                    <SelectItem value="capsule">capsule</SelectItem>
-                    <SelectItem value="ml">ml</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div>
-              <Label htmlFor="frequency" className={`text-gray-700 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Frequency</Label>
-              <Select value={frequency} onValueChange={setFrequency}>
-                <SelectTrigger className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}>
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="twice-daily">Twice Daily</SelectItem>
-                  <SelectItem value="three-times-daily">Three Times Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="as-needed">As Needed</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="dosage" className={`text-gray-700 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Dosage</Label>
+              <Input
+                id="dosage"
+                value={dosage}
+                onChange={(e) => setDosage(e.target.value)}
+                placeholder="e.g., 1000mg, 2 tablets, 500 IU"
+                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+              />
             </div>
-
-            {/* Notifications */}
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className={`text-gray-700 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Enable Reminders</Label>
-                <Switch
-                  checked={enableNotifications}
-                  onCheckedChange={setEnableNotifications}
-                />
-              </div>
-
-              {enableNotifications && (
-                <div className="space-y-3">
-                  <Label className={`text-gray-700 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>Reminder Times</Label>
-                  {notificationTimes.map((time, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        type="time"
-                        value={time}
-                        onChange={(e) => updateNotificationTime(index, e.target.value)}
-                        className={`glass-button border-0 flex-1 ${isMobile ? 'h-10' : 'h-12'}`}
-                      />
-                      {notificationTimes.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size={isMobile ? "sm" : "default"}
-                          onClick={() => removeNotificationTime(index)}
-                          className="glass-button border-0"
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addNotificationTime}
-                    className={`glass-button border-0 w-full ${isMobile ? 'h-10' : 'h-12'}`}
-                  >
-                    <Clock className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />
-                    Add Reminder Time
-                  </Button>
-                </div>
-              )}
-            </div>
-
             <Button
               onClick={handleManualSubmit}
               className={`gradient-primary w-full rounded-2xl ${isMobile ? 'h-10' : 'h-12'} neon-glow`}
             >
-              <Bell className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />
               Log Supplement
             </Button>
           </CardContent>
