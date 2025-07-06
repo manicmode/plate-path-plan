@@ -27,31 +27,54 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// Create query client with simplified configuration
+// Optimized query client for mobile
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false, // Disable to prevent loading issues
-      refetchOnReconnect: false, // Disable to prevent loading issues
-      retry: 1, // Reduce retries to prevent loops
+      staleTime: 1000 * 60 * 10, // 10 minutes
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      retry: (failureCount, error) => {
+        // Only retry on network errors, max 2 times
+        return failureCount < 2 && error?.message?.includes('fetch');
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      retry: 1,
     },
   },
 });
 
 function App() {
   useEffect(() => {
-    // Simple app initialization without aggressive refreshing
-    console.log('App initialized successfully');
+    console.log('App mounted successfully');
+    
+    // Mobile-specific optimizations
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log('Mobile device detected, applying optimizations');
+      
+      // Prevent zoom on input focus (iOS Safari)
+      const viewport = document.querySelector('meta[name=viewport]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+      }
+    }
+
+    return () => {
+      console.log('App unmounting');
+    };
   }, []);
 
   return (
     <ErrorBoundary fallback={
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
-          <h2 className="text-2xl font-bold text-foreground">App Loading Error</h2>
+          <h2 className="text-2xl font-bold text-foreground">App Error</h2>
           <p className="text-muted-foreground">
-            There was an issue loading the app. Please refresh the page.
+            Something went wrong. Please refresh the page.
           </p>
           <button 
             onClick={() => window.location.reload()} 

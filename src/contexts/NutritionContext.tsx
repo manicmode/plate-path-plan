@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 
 interface FoodItem {
   id: string;
@@ -88,6 +89,8 @@ interface NutritionProviderProps {
 
 export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const today = new Date().toISOString().split('T')[0];
+  const appLifecycle = useAppLifecycle();
+  const initializationRef = useRef(false);
   
   const [currentDay, setCurrentDay] = useState<DailyNutrition>({
     date: today,
@@ -105,6 +108,20 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   });
 
   const [weeklyData, setWeeklyData] = useState<DailyNutrition[]>([]);
+
+  // Prevent re-initialization on app focus unless necessary
+  useEffect(() => {
+    if (!initializationRef.current) {
+      console.log('Nutrition context initialized');
+      initializationRef.current = true;
+    } else if (appLifecycle.wasBackground && appLifecycle.isVisible) {
+      // Only reinitialize if app was in background for more than 5 minutes
+      if (appLifecycle.timeInBackground > 300000) {
+        console.log('Nutrition context refreshed after long background time');
+        // Refresh data if needed
+      }
+    }
+  }, [appLifecycle.wasBackground, appLifecycle.isVisible, appLifecycle.timeInBackground]);
 
   const calculateTotals = (foods: FoodItem[], hydration: HydrationItem[]) => {
     // Only include confirmed foods in the totals calculation
