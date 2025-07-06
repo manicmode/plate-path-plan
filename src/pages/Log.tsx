@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, Edit, Clock, ScanLine, Save } from 'lucide-react';
+import { Camera, Mic, Edit, Clock, ScanLine, Save, Droplets, Pill } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
@@ -105,6 +105,14 @@ const Log = () => {
     setShowConfirmationCard(true);
   };
 
+  const handleHydration = () => {
+    navigate('/hydration');
+  };
+
+  const handleSupplements = () => {
+    navigate('/supplements');
+  };
+
   const handleUnrecognizedInput = () => {
     setIsAnalyzing(false);
     toast({
@@ -131,14 +139,12 @@ const Log = () => {
     });
   };
 
-  // Define the 6 logging options in 2x3 grid format
-  const logOptions = [
-    // Row 1
+  // Define the 8 logging options in 2x4 grid format
+  const primaryLogOptions = [
     {
       id: 'photo',
       title: 'Upload Photo',
       icon: Camera,
-      color: 'from-blue-500 to-cyan-500',
       description: 'Take a photo of your meal',
       onClick: handlePhotoCapture,
     },
@@ -146,7 +152,6 @@ const Log = () => {
       id: 'voice',
       title: 'Speak to Log',
       icon: Mic,
-      color: 'from-pink-500 to-rose-500',
       description: 'Say what you ate',
       onClick: handleVoiceLog,
     },
@@ -154,40 +159,52 @@ const Log = () => {
       id: 'manual',
       title: 'Manual Entry',
       icon: Edit,
-      color: 'from-orange-500 to-yellow-500',
       description: 'Enter food details manually',
       onClick: handleManualEntry,
     },
-    // Row 2
     {
       id: 'barcode',
       title: 'Scan Barcode',
       icon: ScanLine,
-      color: 'from-green-500 to-emerald-500',
       description: 'Scan product barcode',
       onClick: handleBarcodeScan,
     },
+  ];
+
+  const secondaryLogOptions = [
+    {
+      id: 'saved',
+      title: 'Saved Logs',
+      icon: Save,
+      description: 'Your frequently saved foods',
+      onClick: handleSaved,
+    },
     {
       id: 'recent',
-      title: 'Recent',
+      title: 'Recent Logs',
       icon: Clock,
-      color: 'from-indigo-500 to-blue-500',
       description: 'Previously logged foods',
       onClick: handleRecent,
     },
     {
-      id: 'saved',
-      title: 'Saved',
-      icon: Save,
-      color: 'from-purple-500 to-violet-500',
-      description: 'Your saved foods',
-      onClick: handleSaved,
+      id: 'hydration',
+      title: 'Hydration Log',
+      icon: Droplets,
+      description: 'Track your water intake',
+      onClick: handleHydration,
+    },
+    {
+      id: 'supplements',
+      title: 'Supplement Log',
+      icon: Pill,
+      description: 'Log your supplements',
+      onClick: handleSupplements,
     },
   ];
 
   if (isAnalyzing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 dark:from-gray-900 dark:to-gray-800 p-4">
         <div className="text-center space-y-6 max-w-sm">
           <div className="relative">
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
@@ -200,20 +217,20 @@ const Log = () => {
             <div className="absolute inset-0 w-20 h-20 mx-auto rounded-full border-4 border-blue-200 border-t-blue-500 animate-spin"></div>
           </div>
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h3 className="text-xl font-bold text-white">
               Analyzing your food...
             </h3>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-300">
               {analysisType === 'photo' ? 'Processing image' : 'Processing audio'}
             </p>
-            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+            <div className="text-sm text-blue-400 font-medium">
               ~3 seconds left
             </div>
           </div>
           <Button 
             variant="outline" 
             onClick={handleUnrecognizedInput}
-            className="mt-4"
+            className="mt-4 border-white/20 text-white hover:bg-white/10"
           >
             Having trouble? Enter manually
           </Button>
@@ -223,43 +240,73 @@ const Log = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4 pt-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+        <div className="text-center space-y-3 pt-6">
+          <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Log Your Food
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            Take a photo or speak your meal
+          <p className="text-base lg:text-lg text-white/70">
+            Choose how you'd like to log today
           </p>
         </div>
 
-        {/* 2x3 Grid Layout */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 max-w-2xl mx-auto">
-          {logOptions.map((option) => {
-            const Icon = option.icon;
-            return (
-              <Card
-                key={option.id}
-                className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden aspect-square"
-                onClick={option.onClick}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${option.color} opacity-90`} />
-                <CardContent className="relative h-full flex flex-col items-center justify-center text-center p-4 text-white">
-                  <div className="w-12 h-12 lg:w-16 lg:h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-3 lg:mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Icon className="h-6 w-6 lg:h-8 lg:w-8" />
-                  </div>
-                  <h3 className="text-base lg:text-lg font-bold mb-1 lg:mb-2">
-                    {option.title}
-                  </h3>
-                  <p className="text-xs lg:text-sm opacity-90 leading-tight">
-                    {option.description}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
+        {/* 2x4 Grid Layout */}
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {/* Top Row - Primary Options (Larger Cards) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            {primaryLogOptions.map((option, index) => {
+              const Icon = option.icon;
+              return (
+                <Card
+                  key={option.id}
+                  className="group cursor-pointer border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden bg-white/10 backdrop-blur-sm hover:bg-white/15 aspect-square animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                  onClick={option.onClick}
+                >
+                  <CardContent className="h-full flex flex-col items-center justify-center text-center p-4 text-white">
+                    <div className="w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-2xl flex items-center justify-center mb-3 lg:mb-4 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-400/50 transition-all duration-300">
+                      <Icon className="h-7 w-7 lg:h-8 lg:w-8" />
+                    </div>
+                    <h3 className="text-sm lg:text-base font-bold mb-1 lg:mb-2">
+                      {option.title}
+                    </h3>
+                    <p className="text-xs lg:text-sm text-white/80 leading-tight">
+                      {option.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Bottom Row - Secondary Options (Slightly Smaller) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            {secondaryLogOptions.map((option, index) => {
+              const Icon = option.icon;
+              return (
+                <Card
+                  key={option.id}
+                  className="group cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden bg-white/5 backdrop-blur-sm hover:bg-white/10 aspect-square animate-fade-in"
+                  style={{ animationDelay: `${(index + 4) * 100}ms` }}
+                  onClick={option.onClick}
+                >
+                  <CardContent className="h-full flex flex-col items-center justify-center text-center p-3 text-white">
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500/70 to-indigo-500/70 rounded-xl flex items-center justify-center mb-2 lg:mb-3 group-hover:scale-110 group-hover:shadow-md group-hover:shadow-blue-400/30 transition-all duration-300">
+                      <Icon className="h-6 w-6 lg:h-7 lg:w-7" />
+                    </div>
+                    <h3 className="text-xs lg:text-sm font-bold mb-1">
+                      {option.title}
+                    </h3>
+                    <p className="text-xs text-white/70 leading-tight">
+                      {option.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       </div>
 
