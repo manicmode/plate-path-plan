@@ -1,3 +1,4 @@
+
 /*
 TEST PAYLOAD EXAMPLE:
 You can test this function with the following JSON payload:
@@ -53,72 +54,108 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const googleVisionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
 
+// Timeout wrapper function
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  
+  return Promise.race([promise, timeoutPromise]);
+};
+
 serve(async (req) => {
+  console.log('Vision function called:', new Date().toISOString());
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('Processing vision request...');
+    
     const { imageBase64 } = await req.json();
+    console.log('Image data received, length:', imageBase64?.length || 0);
 
     if (!imageBase64) {
+      console.error('No image data provided');
       throw new Error('Image data is required');
     }
 
     if (!googleVisionApiKey) {
+      console.error('Google Vision API key not configured');
       throw new Error('Google Vision API key not configured');
     }
 
-    console.log('Processing image with Google Vision API...');
+    console.log('Calling Google Vision API with timeout...');
 
-    // Call Google Vision API
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: {
-                content: imageBase64,
+    // Call Google Vision API with timeout
+    const visionResponse = await withTimeout(
+      fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requests: [
+              {
+                image: {
+                  content: imageBase64,
+                },
+                features: [
+                  {
+                    type: 'LABEL_DETECTION',
+                    maxResults: 10,
+                  },
+                  {
+                    type: 'TEXT_DETECTION',
+                    maxResults: 10,
+                  },
+                  {
+                    type: 'OBJECT_LOCALIZATION',
+                    maxResults: 10,
+                  },
+                ],
               },
-              features: [
-                {
-                  type: 'LABEL_DETECTION',
-                  maxResults: 10,
-                },
-                {
-                  type: 'TEXT_DETECTION',
-                  maxResults: 10,
-                },
-                {
-                  type: 'OBJECT_LOCALIZATION',
-                  maxResults: 10,
-                },
-              ],
-            },
-          ],
-        }),
-      }
+            ],
+          }),
+        }
+      ),
+      30000 // 30 second timeout
     );
+
+    console.log('Vision API response status:', visionResponse.status);
 
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
       console.error('Google Vision API Error:', errorText);
-      throw new Error(`Google Vision API error: ${visionResponse.status}`);
+      throw new Error(`Google Vision API error: ${visionResponse.status} - ${errorText}`);
     }
 
     const visionData = await visionResponse.json();
-    console.log('Vision API response:', JSON.stringify(visionData, null, 2));
+    console.log('Vision API response received, processing...');
+
+    if (!visionData.responses || !visionData.responses[0]) {
+      console.error('Invalid Vision API response structure');
+      throw new Error('Invalid response from Vision API');
+    }
 
     const annotations = visionData.responses[0];
+    
+    // Check for Vision API errors
+    if (annotations.error) {
+      console.error('Vision API returned error:', annotations.error);
+      throw new Error(`Vision API error: ${annotations.error.message}`);
+    }
+
     const labels = annotations.labelAnnotations || [];
     const textAnnotations = annotations.textAnnotations || [];
     const objects = annotations.localizedObjectAnnotations || [];
+
+    console.log(`Found ${labels.length} labels, ${textAnnotations.length} text annotations, ${objects.length} objects`);
 
     // Extract food-related labels and nutrition information
     const foodLabels = labels.filter((label: any) => 
@@ -137,6 +174,8 @@ serve(async (req) => {
     const nutritionText = textAnnotations.length > 0 ? textAnnotations[0].description : '';
     const nutritionData = extractNutritionFromText(nutritionText);
 
+    console.log('Processing database operations...');
+
     // Create a supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -145,54 +184,75 @@ serve(async (req) => {
     let userId = null;
     
     if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id;
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        userId = user?.id;
+        console.log('User ID extracted:', userId);
+      } catch (authError) {
+        console.warn('Could not extract user ID:', authError);
+      }
     }
 
-    // Store the recognition result
-    const { error: dbError } = await supabase
-      .from('food_recognitions')
-      .insert({
-        user_id: userId,
-        detected_labels: labels.map((l: any) => l.description),
-        confidence_scores: labels.map((l: any) => l.score),
-        raw_response: visionData,
-      });
+    // Store the recognition result (non-blocking)
+    try {
+      const { error: dbError } = await supabase
+        .from('food_recognitions')
+        .insert({
+          user_id: userId,
+          detected_labels: labels.map((l: any) => l.description),
+          confidence_scores: labels.map((l: any) => l.score),
+          raw_response: visionData,
+        });
 
-    if (dbError) {
-      console.error('Database error:', dbError);
+      if (dbError) {
+        console.error('Database error (non-critical):', dbError);
+      } else {
+        console.log('Recognition result stored in database');
+      }
+    } catch (dbError) {
+      console.error('Database operation failed (non-critical):', dbError);
     }
 
+    // Prepare response
+    const response = {
+      labels: labels.map((label: any) => ({
+        description: label.description,
+        score: label.score,
+      })),
+      foodLabels: foodLabels.map((label: any) => ({
+        description: label.description,
+        score: label.score,
+      })),
+      nutritionData,
+      textDetected: nutritionText,
+      objects: objects.map((obj: any) => ({
+        name: obj.name,
+        score: obj.score,
+      })),
+    };
+
+    console.log('Returning successful response');
+    
     // Return the processed results
     return new Response(
-      JSON.stringify({
-        labels: labels.map((label: any) => ({
-          description: label.description,
-          score: label.score,
-        })),
-        foodLabels: foodLabels.map((label: any) => ({
-          description: label.description,
-          score: label.score,
-        })),
-        nutritionData,
-        textDetected: nutritionText,
-        objects: objects.map((obj: any) => ({
-          name: obj.name,
-          score: obj.score,
-        })),
-      }),
+      JSON.stringify(response),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   } catch (error) {
     console.error('Error in vision-label-reader function:', error);
+    
+    // Return a proper error response
+    const errorResponse = {
+      error: error.message || 'Unknown error occurred',
+      details: 'Check function logs for more information',
+      timestamp: new Date().toISOString()
+    };
+    
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        details: 'Check function logs for more information'
-      }),
+      JSON.stringify(errorResponse),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
