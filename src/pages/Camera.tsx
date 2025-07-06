@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Upload, Loader2, Check, X, Sparkles, Mic, MicOff, AlertCircle, Edit3 } from 'lucide-react';
+import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3 } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
+import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
+import { RetryActions } from '@/components/camera/RetryActions';
+import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 
 interface RecognizedFood {
   name: string;
@@ -79,6 +81,8 @@ const CameraPage = () => {
   const [errorSuggestions, setErrorSuggestions] = useState<string[]>([]);
   const [showManualEdit, setShowManualEdit] = useState(false);
   const [manualEditText, setManualEditText] = useState('');
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  const [imageInfo, setImageInfo] = useState<{ width: number; height: number; size: string } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -187,30 +191,52 @@ const CameraPage = () => {
 
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      console.log('Image selected:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
+    if (!file) return;
+
+    console.log('Image selected:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+
+    // Validate the image file
+    const validation = validateImageFile(file);
+    if (!validation.isValid) {
+      toast.error(validation.error);
+      return;
+    }
+
+    if (validation.warning) {
+      setValidationWarning(validation.warning);
+      toast.warning(validation.warning);
+    }
+
+    try {
+      // Get image dimensions for display
+      const dimensions = await getImageDimensions(file);
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+      setImageInfo({
+        width: dimensions.width,
+        height: dimensions.height,
+        size: `${sizeInMB} MB`
       });
+
+      // Compress image if needed and convert to base64
+      const imageBase64 = await compressImageIfNeeded(file);
+      const imageDataUrl = `data:${file.type};base64,${imageBase64}`;
       
-      try {
-        // Compress image if needed and convert to base64
-        const imageBase64 = await compressImageIfNeeded(file);
-        const imageDataUrl = `data:${file.type};base64,${imageBase64}`;
-        
-        console.log('Image processed, data URL length:', imageDataUrl.length);
-        setSelectedImage(imageDataUrl);
-        setShowVoiceEntry(false);
-        setVoiceText('');
-        setVisionResults(null);
-        setVoiceResults(null);
-        setInputSource('photo');
-        resetErrorState();
-      } catch (error) {
-        console.error('Error processing image:', error);
-        toast.error('Failed to process image. Please try again.');
-      }
+      console.log('Image processed successfully');
+      setSelectedImage(imageDataUrl);
+      setShowVoiceEntry(false);
+      setVoiceText('');
+      setVisionResults(null);
+      setVoiceResults(null);
+      setInputSource('photo');
+      resetErrorState();
+      setValidationWarning(null);
+    } catch (error) {
+      console.error('Error processing image:', error);
+      toast.error('Failed to process image. Please try again.');
     }
   };
 
@@ -225,14 +251,9 @@ const CameraPage = () => {
       return;
     }
 
-    console.log('=== CLIENT: Starting image analysis ===', {
-      timestamp: new Date().toISOString(),
-      imageSize: selectedImage.length,
-      hasImage: !!selectedImage
-    });
-
+    console.log('=== Starting image analysis ===');
     setIsAnalyzing(true);
-    setProcessingStep('Initializing...');
+    setProcessingStep('Validating image...');
     
     // Create AbortController for this request
     abortControllerRef.current = new AbortController();
@@ -240,15 +261,11 @@ const CameraPage = () => {
     try {
       const imageBase64 = convertToBase64(selectedImage);
       
-      console.log('CLIENT: Prepared image data', {
-        imageBase64Length: imageBase64.length,
-        timestamp: new Date().toISOString()
-      });
+      setProcessingStep('Compressing image...');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
       
       setProcessingStep('Sending to Vision API...');
-      
-      console.log('CLIENT: About to invoke vision-label-reader function...');
-      console.log('Calling Supabase function vision-label-reader now...');
+      console.log('Calling Supabase function vision-label-reader...');
       
       // Set up 25-second timeout using Promise.race
       const functionCallPromise = supabase.functions.invoke('vision-label-reader', {
@@ -257,7 +274,7 @@ const CameraPage = () => {
 
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          console.log('CLIENT: 25-second timeout reached, aborting request');
+          console.log('25-second timeout reached, aborting request');
           if (abortControllerRef.current) {
             abortControllerRef.current.abort();
           }
@@ -271,20 +288,18 @@ const CameraPage = () => {
         timeoutPromise
       ]) as any;
 
-      console.log('Function result:', data, error);
+      console.log('Function result received');
 
       // Check if the request was aborted
       if (abortControllerRef.current?.signal.aborted) {
-        console.log('CLIENT: Request was aborted');
+        console.log('Request was aborted');
         toast.error('Analysis timed out');
         return;
       }
 
       if (error) {
-        console.error('CLIENT: Supabase function error:', error);
-        console.error('Vision error:', error);
+        console.error('Supabase function error:', error);
         
-        // Check if it's a timeout or network error
         if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
           toast.error('Analysis timed out - please try again');
         } else {
@@ -294,23 +309,18 @@ const CameraPage = () => {
       }
 
       if (!data) {
-        console.error('CLIENT: No data returned from vision API');
+        console.error('No data returned from vision API');
         toast.error('No data returned from analysis. Please try again.');
         return;
       }
 
-      // Check if the response indicates an error from the edge function
       if (data.error) {
-        console.error('CLIENT: Vision API returned error:', data.message);
+        console.error('Vision API returned error:', data.message);
         toast.error(`Analysis failed: ${data.message}`);
         return;
       }
 
-      console.log('CLIENT: Processing Vision API results...', {
-        labelsCount: data.labels?.length || 0,
-        foodLabelsCount: data.foodLabels?.length || 0
-      });
-      
+      console.log('Processing Vision API results...');
       setVisionResults(data);
 
       const processedFoods = processNutritionData('photo', data);
@@ -327,21 +337,18 @@ const CameraPage = () => {
       toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
       
     } catch (error) {
-      console.error('CLIENT: Error analyzing image:', error);
-      console.error('Vision error:', error);
+      console.error('Error analyzing image:', error);
       
-      // Check if the error is due to abort or timeout
       if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
-        console.log('CLIENT: Request timed out');
+        console.log('Request timed out');
         toast.error('Analysis timed out - please try again');
       } else if (error.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
-        console.log('CLIENT: Request was aborted due to timeout');
+        console.log('Request was aborted due to timeout');
         toast.error('Analysis timed out');
       } else {
         toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
       }
     } finally {
-      // Always reset the analyzing state
       setIsAnalyzing(false);
       setProcessingStep('');
       abortControllerRef.current = null;
@@ -591,6 +598,8 @@ const CameraPage = () => {
     setInputSource('photo');
     setProcessingStep('');
     resetErrorState();
+    setValidationWarning(null);
+    setImageInfo(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -612,12 +621,41 @@ const CameraPage = () => {
     };
   }, []);
 
+  const handleRetryPhoto = () => {
+    resetErrorState();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleRetryAnalysis = () => {
+    if (selectedImage) {
+      analyzeImage();
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
         <p className="text-gray-600 dark:text-gray-300">Take a photo or speak your meal</p>
       </div>
+
+      {/* Processing Status */}
+      <ProcessingStatus 
+        isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
+        processingStep={processingStep}
+        showTimeout={isAnalyzing}
+      />
+
+      {/* Validation Warning */}
+      {validationWarning && (
+        <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
+          <CardContent className="p-4">
+            <p className="text-yellow-800 dark:text-yellow-200">{validationWarning}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {!selectedImage && !showConfirmation && !showError && !showManualEdit && (
         <Card className="animate-slide-up">
@@ -644,10 +682,7 @@ const CameraPage = () => {
 
               <div className="space-y-3">
                 <Button
-                  onClick={() => {
-                    console.log('Upload Photo button clicked');
-                    fileInputRef.current?.click();
-                  }}
+                  onClick={() => fileInputRef.current?.click()}
                   className="w-full gradient-primary"
                   size="lg"
                 >
@@ -672,8 +707,10 @@ const CameraPage = () => {
                       </>
                     ) : (isVoiceProcessing || processingStep) ? (
                       <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        {processingStep || 'Processing...'}
+                        <ProcessingStatus 
+                          isProcessing={true}
+                          processingStep={processingStep || 'Processing...'}
+                        />
                       </>
                     ) : (
                       <>
@@ -693,7 +730,7 @@ const CameraPage = () => {
                 </div>
                 
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Supports JPG, PNG, and voice input
+                  Supports JPG, PNG, WebP • Max size: 50MB
                 </p>
                 <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                   ✨ Powered by AI - analyzes food and estimates nutrition
@@ -727,8 +764,10 @@ const CameraPage = () => {
               >
                 {isProcessingVoice || processingStep ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {processingStep || 'Processing...'}
+                    <ProcessingStatus 
+                      isProcessing={true}
+                      processingStep={processingStep || 'Processing...'}
+                    />
                   </>
                 ) : (
                   <>
@@ -752,7 +791,7 @@ const CameraPage = () => {
         <Card className="animate-slide-up border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-200">
-              <AlertCircle className="h-5 w-5" />
+              <X className="h-5 w-5" />
               Unable to Process Input
             </CardTitle>
           </CardHeader>
@@ -828,8 +867,10 @@ const CameraPage = () => {
               >
                 {isProcessingVoice || processingStep ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {processingStep || 'Processing...'}
+                    <ProcessingStatus 
+                      isProcessing={true}
+                      processingStep={processingStep || 'Processing...'}
+                    />
                   </>
                 ) : (
                   <>
@@ -848,7 +889,7 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Photo Analysis Card */}
+      {/* Enhanced Photo Analysis Card */}
       {selectedImage && !showConfirmation && (
         <Card className="animate-slide-up">
           <CardHeader>
@@ -861,28 +902,25 @@ const CameraPage = () => {
                 alt="Selected meal"
                 className="w-full h-64 object-cover rounded-lg"
               />
+              {imageInfo && (
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  {imageInfo.width}×{imageInfo.height} • {imageInfo.size}
+                </div>
+              )}
             </div>
             
             <div className="flex space-x-3">
               <Button
-                onClick={() => {
-                  console.log('Analyze Food button clicked');
-                  analyzeImage();
-                }}
+                onClick={analyzeImage}
                 disabled={isAnalyzing}
                 className="flex-1 gradient-primary min-w-[120px]"
               >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {processingStep || 'Analyzing...'}
-                  </>
-                ) : (
+                {!isAnalyzing ? (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
                     Analyze Food
                   </>
-                )}
+                ) : null}
               </Button>
               
               <Button 
@@ -895,13 +933,14 @@ const CameraPage = () => {
                 Cancel
               </Button>
             </div>
-            
-            {isAnalyzing && (
-              <div className="text-center">
-                <p className="text-sm text-blue-600 font-medium">
-                  ⏱️ Analysis timeout: 25 seconds
-                </p>
-              </div>
+
+            {/* Retry Actions for Failed Analysis */}
+            {!isAnalyzing && !showConfirmation && (
+              <RetryActions
+                onRetryPhoto={handleRetryPhoto}
+                onStartOver={resetState}
+                disabled={isAnalyzing}
+              />
             )}
           </CardContent>
         </Card>
@@ -1015,17 +1054,17 @@ const CameraPage = () => {
         </div>
       )}
 
-      {/* Enhanced API Status Card */}
+      {/* Enhanced Status Card */}
       <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
             <Check className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-green-800 dark:text-green-200">
-                AI-Powered Food Logging
+                Enhanced AI Food Logging
               </h4>
               <p className="text-xs text-green-700 dark:text-green-300">
-                Enhanced with 25s timeout, comprehensive logging, and robust error handling.
+                Improved with image validation, better error handling, and enhanced user feedback.
               </p>
             </div>
           </div>
