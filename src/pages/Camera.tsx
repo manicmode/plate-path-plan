@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Camera as CameraIcon, Upload, Mic, Scan, Edit, Utensils, Coffee, Apple, Pizza } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import ProcessingStatus from '@/components/camera/ProcessingStatus';
-import RetryActions from '@/components/camera/RetryActions';
+import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
+import { RetryActions } from '@/components/camera/RetryActions';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import FoodEditScreen from '@/components/FoodEditScreen';
 
@@ -14,6 +15,7 @@ const Camera = () => {
   const [error, setError] = useState<string | null>(null);
   const [recognizedFood, setRecognizedFood] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTabAction = useCallback((tabType: string) => {
@@ -33,6 +35,18 @@ const Camera = () => {
       // Simulate processing
       setTimeout(() => {
         setIsProcessing(false);
+        const mockFood = {
+          name: "Grilled Chicken Salad",
+          calories: 350,
+          protein: 30,
+          carbs: 15,
+          fat: 18,
+          fiber: 5,
+          sugar: 8,
+          sodium: 450
+        };
+        setRecognizedFood(mockFood);
+        setIsConfirmationOpen(true);
         toast({
           title: "Photo Uploaded!",
           description: "Your food photo has been processed.",
@@ -65,17 +79,29 @@ const Camera = () => {
     setIsProcessing(false);
   }, []);
 
-  if (isEditing && recognizedFood) {
-    return <FoodEditScreen food={recognizedFood} onBack={() => setIsEditing(false)} />;
-  }
+  const handleConfirmFood = (foodItem: any) => {
+    console.log('Food confirmed:', foodItem);
+    setRecognizedFood(null);
+    setIsConfirmationOpen(false);
+    toast({
+      title: "Food Logged!",
+      description: `${foodItem.name} has been added to your log.`,
+    });
+  };
 
-  if (recognizedFood) {
+  const handleEditFood = (updatedFood: any, logTime: Date, note: string) => {
+    console.log('Food edited:', updatedFood, logTime, note);
+    setRecognizedFood(updatedFood);
+    setIsEditing(false);
+  };
+
+  if (isEditing && recognizedFood) {
     return (
-      <FoodConfirmationCard
-        food={recognizedFood}
-        onConfirm={() => setRecognizedFood(null)}
-        onEdit={() => setIsEditing(true)}
-        onRetry={() => setRecognizedFood(null)}
+      <FoodEditScreen
+        isOpen={true}
+        onClose={() => setIsEditing(false)}
+        onSave={handleEditFood}
+        foodItem={recognizedFood}
       />
     );
   }
@@ -178,20 +204,40 @@ const Camera = () => {
           />
 
           {/* Processing Status */}
-          {isProcessing && <ProcessingStatus />}
+          {isProcessing && (
+            <ProcessingStatus 
+              isProcessing={true}
+              processingStep="Analyzing your meal..."
+              showTimeout={true}
+            />
+          )}
 
           {/* Error State */}
           {error && (
             <RetryActions 
-              error={error} 
-              onRetry={() => {
+              onRetryPhoto={() => {
                 setError(null);
                 setIsProcessing(false);
-              }} 
+              }}
+              onStartOver={() => {
+                setError(null);
+                setIsProcessing(false);
+              }}
             />
           )}
         </CardContent>
       </Card>
+
+      {/* Food Confirmation Modal */}
+      <FoodConfirmationCard
+        isOpen={isConfirmationOpen}
+        onClose={() => {
+          setIsConfirmationOpen(false);
+          setRecognizedFood(null);
+        }}
+        onConfirm={handleConfirmFood}
+        foodItem={recognizedFood}
+      />
     </div>
   );
 };
