@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -589,7 +590,6 @@ const CameraPage = () => {
     setProcessingStep('');
     resetErrorState();
     setValidationWarning(null);
-    setImageInfo(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
