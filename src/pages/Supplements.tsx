@@ -22,12 +22,12 @@ const Supplements = () => {
   const isMobile = useIsMobile();
 
   const quickSupplements = [
-    { name: 'Vitamin D', dosage: '1000 IU', icon: Sun },
-    { name: 'Vitamin C', dosage: '500mg', icon: Shield },
-    { name: 'Omega-3', dosage: '1000mg', icon: Heart },
-    { name: 'Multivitamin', dosage: '1 tablet', icon: Pill },
-    { name: 'Calcium', dosage: '600mg', icon: Bone },
-    { name: 'B-Complex', dosage: '1 tablet', icon: Brain },
+    { name: 'Vitamin D', dosage: 1000, unit: 'IU', icon: Sun },
+    { name: 'Vitamin C', dosage: 500, unit: 'mg', icon: Shield },
+    { name: 'Omega-3', dosage: 1000, unit: 'mg', icon: Heart },
+    { name: 'Multivitamin', dosage: 1, unit: 'tablet', icon: Pill },
+    { name: 'Calcium', dosage: 600, unit: 'mg', icon: Bone },
+    { name: 'B-Complex', dosage: 1, unit: 'tablet', icon: Brain },
   ];
 
   const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,7 +41,7 @@ const Supplements = () => {
     // Simulate AI analysis
     setTimeout(() => {
       setSupplementName('Vitamin D');
-      setDosage('1000 IU');
+      setDosage('1000');
       setIsAnalyzing(false);
       toast({
         title: "Supplement Analyzed!",
@@ -54,12 +54,13 @@ const Supplements = () => {
     addSupplement({
       name: supplement.name,
       dosage: supplement.dosage,
-      type: 'vitamin',
+      unit: supplement.unit,
+      notifications: [],
     });
     
     toast({
       title: "Supplement Added!",
-      description: `${supplement.name} (${supplement.dosage}) logged successfully.`,
+      description: `${supplement.name} (${supplement.dosage}${supplement.unit}) logged successfully.`,
     });
     
     navigate('/');
@@ -75,16 +76,22 @@ const Supplements = () => {
       return;
     }
 
+    // Parse dosage to extract number and unit
+    const dosageMatch = dosage.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]*)/);
+    const dosageNumber = dosageMatch ? parseFloat(dosageMatch[1]) : parseFloat(dosage);
+    const dosageUnit = dosageMatch?.[2] || 'unit';
+
     addSupplement({
       name: supplementName,
-      dosage: dosage,
-      type: 'supplement',
+      dosage: dosageNumber,
+      unit: dosageUnit,
+      notifications: [],
       image: selectedImage || undefined,
     });
 
     toast({
       title: "Supplement Added!",
-      description: `${supplementName} (${dosage}) logged successfully.`,
+      description: `${supplementName} (${dosageNumber}${dosageUnit}) logged successfully.`,
     });
 
     navigate('/');
@@ -114,12 +121,12 @@ const Supplements = () => {
               <Button
                 key={supplement.name}
                 onClick={() => handleQuickAdd(supplement)}
-                className={`glass-button ${isMobile ? 'h-24' : 'h-28'} flex flex-col items-center justify-center space-y-3 micro-bounce rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 border border-gray-200/30 dark:border-gray-600/30`}
+                className={`glass-button ${isMobile ? 'h-32' : 'h-36'} flex flex-col items-center justify-center space-y-4 micro-bounce rounded-2xl bg-white/70 dark:bg-gray-800/70 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all duration-300 border border-gray-200/40 dark:border-gray-600/40 shadow-lg`}
               >
-                <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-purple-600 dark:text-purple-400`} />
-                <div className="text-center space-y-1">
-                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-700 dark:text-gray-300 leading-tight`}>{supplement.dosage}</p>
+                <Icon className={`${isMobile ? 'h-9 w-9' : 'h-10 w-10'} text-purple-600 dark:text-purple-400`} />
+                <div className="text-center space-y-2">
+                  <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-300 leading-tight`}>{supplement.dosage}{supplement.unit}</p>
                 </div>
               </Button>
             );
@@ -131,18 +138,18 @@ const Supplements = () => {
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className={`glass-button ${isMobile ? 'h-24' : 'h-28'} flex flex-col items-center justify-center space-y-3 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 border border-gray-200/30 dark:border-gray-600/30`}
+          className={`glass-button ${isMobile ? 'h-28' : 'h-32'} flex flex-col items-center justify-center space-y-4 rounded-2xl bg-white/70 dark:bg-gray-800/70 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all duration-300 border border-gray-200/40 dark:border-gray-600/40 shadow-lg`}
         >
-          <Camera className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-purple-600 dark:text-purple-400`} />
-          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-gray-100`}>Capture Supplement</span>
+          <Camera className={`${isMobile ? 'h-8 w-8' : 'h-9 w-9'} text-purple-600 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-gray-100 text-center leading-tight`}>Capture Supplement</span>
         </Button>
         
         <Button
           onClick={() => setShowManualEntry(!showManualEntry)}
-          className={`glass-button ${isMobile ? 'h-24' : 'h-28'} flex flex-col items-center justify-center space-y-3 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-all duration-300 border border-gray-200/30 dark:border-gray-600/30`}
+          className={`glass-button ${isMobile ? 'h-28' : 'h-32'} flex flex-col items-center justify-center space-y-4 rounded-2xl bg-white/70 dark:bg-gray-800/70 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all duration-300 border border-gray-200/40 dark:border-gray-600/40 shadow-lg`}
         >
-          <Plus className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-purple-600 dark:text-purple-400`} />
-          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-gray-100`}>Manual Entry</span>
+          <Plus className={`${isMobile ? 'h-8 w-8' : 'h-9 w-9'} text-purple-600 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-gray-100 text-center leading-tight`}>Manual Entry</span>
         </Button>
       </div>
 
