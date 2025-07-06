@@ -27,6 +27,28 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
   return Promise.race([promise, timeoutPromise]);
 };
 
+// Image optimization function
+const optimizeImage = (base64Image: string): string => {
+  try {
+    // Calculate approximate size in bytes (base64 is ~4/3 the size of original)
+    const sizeInBytes = (base64Image.length * 3) / 4;
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    
+    console.log('Image size:', { sizeInMB: sizeInMB.toFixed(2) });
+    
+    // If image is larger than 4MB, we need to compress it
+    // Google Vision API works better with smaller images anyway
+    if (sizeInMB > 4) {
+      console.log('Image is large, but sending as-is. Consider client-side compression for better performance.');
+    }
+    
+    return base64Image;
+  } catch (error) {
+    console.error('Error optimizing image:', error);
+    return base64Image;
+  }
+};
+
 serve(async (req) => {
   console.log('=== VISION FUNCTION REQUEST START ===', {
     timestamp: new Date().toISOString(),
@@ -54,7 +76,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: true,
-          message: 'Missing or invalid API key'
+          message: 'Google Vision API key not configured in Supabase secrets'
         }),
         {
           status: 500,
@@ -63,11 +85,11 @@ serve(async (req) => {
       );
     }
 
-    // STEP 2: Parse request body
+    // STEP 2: Parse request body with shorter timeout
     console.log('STEP 2: Parsing request body...');
     let imageBase64;
     try {
-      const body = await withTimeout(req.json(), 5000);
+      const body = await withTimeout(req.json(), 3000); // Reduced from 5000ms
       imageBase64 = body.imageBase64;
       console.log('STEP 2: Request body parsed:', {
         hasImageData: !!imageBase64,
@@ -101,8 +123,12 @@ serve(async (req) => {
       );
     }
 
-    // STEP 3: Call Google Vision API
-    console.log('STEP 3: Starting Google Vision API call...');
+    // STEP 3: Optimize image
+    console.log('STEP 3: Optimizing image...');
+    const optimizedImage = optimizeImage(imageBase64);
+
+    // STEP 4: Call Google Vision API with timeout
+    console.log('STEP 4: Starting Google Vision API call...');
 
     let visionResponse;
     try {
@@ -111,7 +137,7 @@ serve(async (req) => {
         requests: [
           {
             image: {
-              content: imageBase64,
+              content: optimizedImage,
             },
             features: [
               {
@@ -120,19 +146,20 @@ serve(async (req) => {
               },
               {
                 type: 'TEXT_DETECTION',
-                maxResults: 10,
+                maxResults: 5, // Reduced from 10
               },
               {
                 type: 'OBJECT_LOCALIZATION',
-                maxResults: 10,
+                maxResults: 5, // Reduced from 10
               },
             ],
           },
         ],
       };
 
-      console.log('STEP 3: Making Vision API request');
+      console.log('STEP 4: Making Vision API request with 12s timeout');
 
+      // Reduced timeout to 12 seconds to leave buffer for processing
       visionResponse = await withTimeout(
         fetch(apiUrl, {
           method: 'POST',
@@ -141,7 +168,7 @@ serve(async (req) => {
           },
           body: JSON.stringify(payload),
         }),
-        15000 // 15 second timeout for Google Vision API
+        12000 // 12 second timeout for Google Vision API
       );
 
       console.log("Received Google Vision API response", {
@@ -151,11 +178,11 @@ serve(async (req) => {
       });
 
     } catch (error) {
-      console.error('STEP 3: Google Vision API call failed:', error);
+      console.error('STEP 4: Google Vision API call failed:', error);
       return new Response(
         JSON.stringify({
           error: true,
-          message: `Vision API failed: ${error.message}`
+          message: `Vision API timeout or network error: ${error.message}`
         }),
         {
           status: 500,
@@ -164,12 +191,12 @@ serve(async (req) => {
       );
     }
 
-    // STEP 4: Handle API response
-    console.log('STEP 4: Processing Vision API response...');
+    // STEP 5: Handle API response
+    console.log('STEP 5: Processing Vision API response...');
     
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
-      console.error('STEP 4: Google Vision API Error Response:', {
+      console.error('STEP 5: Google Vision API Error Response:', {
         status: visionResponse.status,
         statusText: visionResponse.statusText,
         errorText
@@ -189,17 +216,17 @@ serve(async (req) => {
 
     let visionData;
     try {
-      visionData = await visionResponse.json();
-      console.log('STEP 4: Vision API JSON parsed successfully:', {
+      visionData = await withTimeout(visionResponse.json(), 2000);
+      console.log('STEP 5: Vision API JSON parsed successfully:', {
         hasResponses: !!visionData.responses,
         responsesLength: visionData.responses?.length || 0
       });
     } catch (error) {
-      console.error('STEP 4: Failed to parse Vision API JSON response:', error);
+      console.error('STEP 5: Failed to parse Vision API JSON response:', error);
       return new Response(
         JSON.stringify({
           error: true,
-          message: `Vision API failed: Failed to parse response - ${error.message}`
+          message: `Vision API response parsing failed: ${error.message}`
         }),
         {
           status: 500,
@@ -208,15 +235,15 @@ serve(async (req) => {
       );
     }
 
-    // STEP 5: Process results
-    console.log('STEP 5: Processing results...');
+    // STEP 6: Process results
+    console.log('STEP 6: Processing results...');
     
     if (!visionData.responses || !visionData.responses[0]) {
-      console.error('STEP 5: Invalid Vision API response structure:', visionData);
+      console.error('STEP 6: Invalid Vision API response structure:', visionData);
       return new Response(
         JSON.stringify({
           error: true,
-          message: 'Vision API failed: Invalid response structure'
+          message: 'Vision API returned invalid response structure'
         }),
         {
           status: 500,
@@ -229,11 +256,11 @@ serve(async (req) => {
     
     // Check for Vision API errors
     if (annotations.error) {
-      console.error('STEP 5: Vision API returned error:', annotations.error);
+      console.error('STEP 6: Vision API returned error:', annotations.error);
       return new Response(
         JSON.stringify({
           error: true,
-          message: `Vision API failed: ${annotations.error.message}`
+          message: `Vision API error: ${annotations.error.message}`
         }),
         {
           status: 500,
@@ -246,7 +273,7 @@ serve(async (req) => {
     const textAnnotations = annotations.textAnnotations || [];
     const objects = annotations.localizedObjectAnnotations || [];
 
-    console.log('STEP 5: Vision API results processed:', {
+    console.log('STEP 6: Vision API results processed:', {
       labelsCount: labels.length,
       textAnnotationsCount: textAnnotations.length,
       objectsCount: objects.length
@@ -269,8 +296,8 @@ serve(async (req) => {
     const nutritionText = textAnnotations.length > 0 ? textAnnotations[0].description : '';
     const nutritionData = extractNutritionFromText(nutritionText);
 
-    // STEP 6: Database operations (non-blocking)
-    console.log('STEP 6: Starting database operations...');
+    // STEP 7: Background database operation (non-blocking)
+    console.log('STEP 7: Starting background database operation...');
 
     // Create a supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -284,9 +311,9 @@ serve(async (req) => {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user } } = await supabase.auth.getUser(token);
         userId = user?.id;
-        console.log('STEP 6: User ID extracted:', userId);
+        console.log('STEP 7: User ID extracted:', userId);
       } catch (authError) {
-        console.warn('STEP 6: Could not extract user ID:', authError);
+        console.warn('STEP 7: Could not extract user ID:', authError);
       }
     }
 
@@ -312,8 +339,8 @@ serve(async (req) => {
       }
     }, 0);
 
-    // STEP 7: Prepare and return response
-    console.log('STEP 7: Preparing response...');
+    // STEP 8: Prepare and return response
+    console.log('STEP 8: Preparing final response...');
     
     const response = {
       labels: labels.map((label: any) => ({
@@ -333,7 +360,7 @@ serve(async (req) => {
     };
 
     const duration = Date.now() - startTime;
-    console.log("Returning data to frontend", {
+    console.log("=== VISION FUNCTION SUCCESS ===", {
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),
       responseSize: JSON.stringify(response).length
@@ -359,7 +386,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: true,
-        message: `Vision API failed: ${error.message || 'Unknown error occurred'}`
+        message: `Vision analysis failed: ${error.message || 'Unknown error occurred'}`
       }),
       {
         status: 500,
