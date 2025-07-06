@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import CelebrationPopup from '@/components/CelebrationPopup';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -37,6 +38,7 @@ const Home = () => {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
   const [preferences, setPreferences] = useState(loadUserPreferences());
+  const [isQuickLogExpanded, setIsQuickLogExpanded] = useState(false);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -243,6 +245,29 @@ const Home = () => {
     },
   ];
 
+  // Mock data for Smart Quick-Log (placeholder for future AI integration)
+  const quickLogSuggestions = [
+    { id: 1, name: 'Greek Yogurt', usualTime: '8:30 AM', calories: 150 },
+    { id: 2, name: 'Chicken Salad', usualTime: '12:45 PM', calories: 420 },
+    { id: 3, name: 'Protein Shake', usualTime: '6:00 PM', calories: 280 },
+  ];
+
+  const recentLogs = [
+    { id: 4, name: 'Oatmeal with Berries', usualTime: '7:15 AM', calories: 320 },
+    { id: 5, name: 'Turkey Sandwich', usualTime: '1:00 PM', calories: 380 },
+    { id: 6, name: 'Apple', usualTime: '3:30 PM', calories: 95 },
+    { id: 7, name: 'Grilled Salmon', usualTime: '7:30 PM', calories: 450 },
+    { id: 8, name: 'Almonds', usualTime: '10:00 AM', calories: 160 },
+    { id: 9, name: 'Green Tea', usualTime: '4:00 PM', calories: 5 },
+    { id: 10, name: 'Dark Chocolate', usualTime: '9:00 PM', calories: 70 },
+  ];
+
+  const handleQuickLog = (foodItem: typeof quickLogSuggestions[0]) => {
+    console.log('Quick logging:', foodItem);
+    // Future: Add to nutrition log
+    navigate('/camera');
+  };
+
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
       {/* Celebration Popup */}
@@ -379,6 +404,127 @@ const Home = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Smart Quick-Log Dropdown Section */}
+        <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
+          <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
+            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+              {/* AI Quick Predictions Area - Collapsed State */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center">
+                      <Zap className="h-4 w-4 text-white" />
+                    </div>
+                    <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-200`}>
+                      AI Quick Predictions
+                    </h4>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-1">
+                    <Clock className="h-3 w-3" />
+                    <span>Smart suggestions</span>
+                  </div>
+                </div>
+
+                {/* Quick Suggestions - Horizontal Layout */}
+                <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-3'}`}>
+                  {quickLogSuggestions.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleQuickLog(item)}
+                      className={`${isMobile ? 'p-3' : 'p-4'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-md`}
+                    >
+                      <div className="text-center space-y-1">
+                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-900 dark:text-gray-100 truncate`}>
+                          {item.name}
+                        </p>
+                        <div className="flex items-center justify-center space-x-1">
+                          <span className="text-xs">🕒</span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {item.usualTime}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Expand/Collapse Toggle */}
+                <CollapsibleTrigger asChild>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                    >
+                      {isQuickLogExpanded ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          Show more
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CollapsibleTrigger>
+              </div>
+
+              {/* Expanded Content */}
+              <CollapsibleContent className="mt-4">
+                <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Recent & Saved Logs
+                  </h5>
+                  <div className="space-y-2">
+                    {recentLogs.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 transition-all duration-300"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {item.name}
+                            </p>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              • {item.calories} cal
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1 mt-1">
+                            <span className="text-xs">🕒</span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Usually {item.usualTime}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleQuickLog(item)}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            Log
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 h-auto"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Card>
+        </Collapsible>
 
         {/* Secondary Actions: Hydration & Supplements */}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
