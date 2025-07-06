@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,15 +5,20 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { TrendingUp, Target, Calendar, Award, Droplets, Flame, Zap, Activity, Brain, Trophy, ChevronRight, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
+
+// Import new components
+import { WeeklyProgressRing } from '@/components/analytics/WeeklyProgressRing';
+import { LoggingStreakTracker } from '@/components/analytics/LoggingStreakTracker';
+import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
+import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 
 const Analytics = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month'>('week');
   const [animationDelay, setAnimationDelay] = useState(0);
   
   useScrollToTop();
@@ -170,171 +174,123 @@ const Analytics = () => {
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
       <div className="space-y-6 p-4 animate-fade-in">
-        {/* Header with Animation */}
-        <div className="text-center space-y-3 pt-4 relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-2xl blur-3xl"></div>
-          <div className="relative">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              🏆 Your Progress Journey
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 font-medium">
-              Track your transformation with smart insights ✨
-            </p>
+        {/* Simplified Header */}
+        <div className="text-center pt-4">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+            🏆 Your Progress Journey
+          </h1>
+          
+          {/* Weekly Progress Ring - Hero Element */}
+          <div className="mb-8">
+            <WeeklyProgressRing />
           </div>
         </div>
 
-        {/* Weekly Summary Card - Enhanced */}
-        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-t-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl shadow-lg">
-                <Star className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-gray-900 dark:text-white">Weekly Summary 🔥</CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Great work this week! You're 80% on track.</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{Math.round(weeklyAverage.calories * 7).toLocaleString()}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Total Calories</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{weeklySteps.toLocaleString()}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Steps Walked</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{weeklyExerciseMinutes}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Exercise Minutes</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{hydrationCompliance}%</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Hydration Goals</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Daily Progress Cards - Enhanced with Visual Indicators */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <DailyProgressCard
+            title="Calories"
+            value={progress.calories}
+            target={user?.targetCalories || 2000}
+            unit="kcal"
+            icon={<Flame className="h-6 w-6" />}
+            color="#F97316"
+          />
+          <DailyProgressCard
+            title="Protein"
+            value={progress.protein}
+            target={user?.targetProtein || 120}
+            unit="g"
+            icon={<Zap className="h-6 w-6" />}
+            color="#10B981"
+          />
+          <DailyProgressCard
+            title="Hydration"
+            value={progress.hydration}
+            target={user?.targetHydration || 2000}
+            unit="ml"
+            icon={<Droplets className="h-6 w-6" />}
+            color="#06B6D4"
+          />
+          <DailyProgressCard
+            title="Steps"
+            value={8500}
+            target={10000}
+            unit=""
+            icon={<Activity className="h-6 w-6" />}
+            color="#22C55E"
+          />
+        </div>
 
         {/* Daily Averages */}
         <div>
-          <SectionHeader icon={TrendingUp} title="Daily Averages" subtitle="Your weekly performance overview" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+              <TrendingUp className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Daily Averages</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-4">
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
-                <AnimatedCounter 
-                  value={weeklyAverage.calories} 
-                  label="Avg Daily Calories"
-                  suffix=" kcal"
-                />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    {Math.round(weeklyAverage.calories).toLocaleString()} kcal
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">Avg Daily Calories</div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
-                <AnimatedCounter 
-                  value={weeklyAverage.protein} 
-                  label="Avg Daily Protein"
-                  suffix="g"
-                />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    {Math.round(weeklyAverage.protein)}g
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">Avg Daily Protein</div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
-                <AnimatedCounter 
-                  value={weeklyAverage.steps} 
-                  label="Avg Daily Steps"
-                />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    {Math.round(weeklyAverage.steps).toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">Avg Daily Steps</div>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Weekly Overview Chart - Enhanced */}
+        {/* Logging Consistency Tracker */}
         <div>
-          <SectionHeader icon={Calendar} title="Weekly Overview" subtitle="Track your nutrition trends" />
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-gray-900 dark:text-white">Nutrition Trends</CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant={selectedTimeframe === 'week' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTimeframe('week')}
-                    className="text-xs"
-                  >
-                    Week
-                  </Button>
-                  <Button
-                    variant={selectedTimeframe === 'month' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTimeframe('month')}
-                    className="text-xs"
-                  >
-                    Month
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={weeklyChartData}>
-                    <defs>
-                      <linearGradient id="caloriesGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4}/>
-                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
-                      </linearGradient>
-                      <linearGradient id="proteinGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(148 163 184 / 0.2)" />
-                    <XAxis 
-                      dataKey="day" 
-                      tick={{ fill: 'currentColor', fontSize: 12 }} 
-                      className="text-gray-600 dark:text-gray-300"
-                    />
-                    <YAxis 
-                      tick={{ fill: 'currentColor', fontSize: 12 }} 
-                      className="text-gray-600 dark:text-gray-300"
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="calories" 
-                      stroke="#3B82F6" 
-                      fillOpacity={1} 
-                      fill="url(#caloriesGradient)"
-                      name="Calories"
-                      strokeWidth={3}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="protein" 
-                      stroke="#10B981" 
-                      fillOpacity={1}
-                      fill="url(#proteinGradient)"
-                      name="Protein"
-                      strokeWidth={3}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <LoggingStreakTracker />
+        </div>
+
+        {/* Weekly Overview Chart - Enhanced with Dropdown */}
+        <div>
+          <WeeklyOverviewChart />
         </div>
 
         {/* Macros and Hydration - Enhanced */}
         <div>
-          <SectionHeader icon={Zap} title="Today's Breakdown" subtitle="Macros and hydration status" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+              <Zap className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Today's Breakdown</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Macros and hydration status</p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Macronutrient Distribution */}
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                   <Zap className="h-5 w-5 text-yellow-500" />
@@ -386,7 +342,7 @@ const Analytics = () => {
             </Card>
 
             {/* Hydration Progress */}
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+            <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                   <Droplets className="h-5 w-5 text-cyan-500" />
@@ -395,34 +351,39 @@ const Analytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-center mb-4">
-                  <CircularProgress
-                    value={progress.hydration}
-                    max={user?.targetHydration || 2000}
-                    color="#06B6D4"
-                    size={120}
-                  />
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">Weekly Trend</div>
-                  <div className="h-16">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={hydrationWeeklyData}>
-                        <Line
-                          type="monotone"
-                          dataKey="amount"
-                          stroke="#06B6D4"
-                          strokeWidth={3}
-                          dot={{ fill: '#06B6D4', r: 4, strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 6, stroke: '#06B6D4', strokeWidth: 2 }}
-                        />
-                        <XAxis 
-                          dataKey="day" 
-                          tick={{ fontSize: 10 }} 
-                          className="text-gray-600 dark:text-gray-300"
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="relative w-32 h-32">
+                    <svg width="128" height="128" className="transform -rotate-90">
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="54"
+                        stroke="rgb(148 163 184 / 0.2)"
+                        strokeWidth="10"
+                        fill="none"
+                      />
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="54"
+                        stroke="#06B6D4"
+                        strokeWidth="10"
+                        fill="none"
+                        strokeDasharray={339.3}
+                        strokeDashoffset={339.3 - (progress.hydration / (user?.targetHydration || 2000)) * 339.3}
+                        className="transition-all duration-[2s] ease-out"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-gray-900 dark:text-white">
+                          {Math.round((progress.hydration / (user?.targetHydration || 2000)) * 100)}%
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">
+                          {progress.hydration}/{user?.targetHydration || 2000}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
