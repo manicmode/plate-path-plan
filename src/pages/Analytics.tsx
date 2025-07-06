@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -216,7 +217,7 @@ const Analytics = () => {
             title="Steps"
             value={8500}
             target={10000}
-            unit=""
+            unit="steps"
             icon={<Activity className="h-6 w-6" />}
             color="#22C55E"
           />
