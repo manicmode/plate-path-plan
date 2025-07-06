@@ -82,7 +82,6 @@ const CameraPage = () => {
   const [showManualEdit, setShowManualEdit] = useState(false);
   const [manualEditText, setManualEditText] = useState('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
-  const [imageInfo, setImageInfo] = useState<{ width: number; height: number; size: string } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -212,15 +211,6 @@ const CameraPage = () => {
     }
 
     try {
-      // Get image dimensions for display
-      const dimensions = await getImageDimensions(file);
-      const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-      setImageInfo({
-        width: dimensions.width,
-        height: dimensions.height,
-        size: `${sizeInMB} MB`
-      });
-
       // Compress image if needed and convert to base64
       const imageBase64 = await compressImageIfNeeded(file);
       const imageDataUrl = `data:${file.type};base64,${imageBase64}`;
@@ -889,7 +879,7 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Enhanced Photo Analysis Card */}
+      {/* Photo Analysis Card - Updated to remove overlay and improve loading */}
       {selectedImage && !showConfirmation && (
         <Card className="animate-slide-up">
           <CardHeader>
@@ -902,11 +892,6 @@ const CameraPage = () => {
                 alt="Selected meal"
                 className="w-full h-64 object-cover rounded-lg"
               />
-              {imageInfo && (
-                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {imageInfo.width}×{imageInfo.height} • {imageInfo.size}
-                </div>
-              )}
             </div>
             
             <div className="flex space-x-3">
