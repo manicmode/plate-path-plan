@@ -9,6 +9,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import CelebrationPopup from '@/components/CelebrationPopup';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -27,10 +29,11 @@ const loadUserPreferences = () => {
 
 const Home = () => {
   const { user } = useAuth();
-  const { getTodaysProgress, getHydrationGoal, getSupplementGoal } = useNutrition();
+  const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
+  const { toast } = useToast();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -247,25 +250,85 @@ const Home = () => {
 
   // Mock data for Smart Quick-Log (placeholder for future AI integration)
   const quickLogSuggestions = [
-    { id: 1, name: 'Greek Yogurt', usualTime: '8:30 AM', calories: 150 },
-    { id: 2, name: 'Chicken Salad', usualTime: '12:45 PM', calories: 420 },
-    { id: 3, name: 'Protein Shake', usualTime: '6:00 PM', calories: 280 },
+    { id: 1, name: 'Greek Yogurt', usualTime: '8:30 AM', calories: 150, protein: 15, carbs: 12, fat: 0, fiber: 0, sugar: 12, sodium: 50 },
+    { id: 2, name: 'Chicken Salad', usualTime: '12:45 PM', calories: 420, protein: 35, carbs: 8, fat: 28, fiber: 3, sugar: 5, sodium: 890 },
+    { id: 3, name: 'Protein Shake', usualTime: '6:00 PM', calories: 280, protein: 25, carbs: 15, fat: 12, fiber: 2, sugar: 8, sodium: 120 },
   ];
 
   const recentLogs = [
-    { id: 4, name: 'Oatmeal with Berries', usualTime: '7:15 AM', calories: 320 },
-    { id: 5, name: 'Turkey Sandwich', usualTime: '1:00 PM', calories: 380 },
-    { id: 6, name: 'Apple', usualTime: '3:30 PM', calories: 95 },
-    { id: 7, name: 'Grilled Salmon', usualTime: '7:30 PM', calories: 450 },
-    { id: 8, name: 'Almonds', usualTime: '10:00 AM', calories: 160 },
-    { id: 9, name: 'Green Tea', usualTime: '4:00 PM', calories: 5 },
-    { id: 10, name: 'Dark Chocolate', usualTime: '9:00 PM', calories: 70 },
+    { id: 4, name: 'Oatmeal with Berries', usualTime: '7:15 AM', calories: 320, protein: 8, carbs: 65, fat: 4, fiber: 8, sugar: 12, sodium: 5 },
+    { id: 5, name: 'Turkey Sandwich', usualTime: '1:00 PM', calories: 380, protein: 28, carbs: 42, fat: 12, fiber: 4, sugar: 6, sodium: 1200 },
+    { id: 6, name: 'Apple', usualTime: '3:30 PM', calories: 95, protein: 0, carbs: 25, fat: 0, fiber: 4, sugar: 19, sodium: 2 },
+    { id: 7, name: 'Grilled Salmon', usualTime: '7:30 PM', calories: 450, protein: 40, carbs: 2, fat: 32, fiber: 0, sugar: 0, sodium: 380 },
+    { id: 8, name: 'Almonds', usualTime: '10:00 AM', calories: 160, protein: 6, carbs: 6, fat: 14, fiber: 3, sugar: 1, sodium: 0 },
+    { id: 9, name: 'Green Tea', usualTime: '4:00 PM', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0, sodium: 2 },
+    { id: 10, name: 'Dark Chocolate', usualTime: '9:00 PM', calories: 70, protein: 1, carbs: 8, fat: 4, fiber: 1, sugar: 6, sodium: 2 },
   ];
 
   const handleQuickLog = (foodItem: typeof quickLogSuggestions[0]) => {
     console.log('Quick logging:', foodItem);
-    // Future: Add to nutrition log
-    navigate('/camera');
+    
+    // Add the food item to nutrition context
+    addFood({
+      name: foodItem.name,
+      calories: foodItem.calories,
+      protein: foodItem.protein,
+      carbs: foodItem.carbs,
+      fat: foodItem.fat,
+      fiber: foodItem.fiber,
+      sugar: foodItem.sugar,
+      sodium: foodItem.sodium,
+    });
+
+    // Show success toast with animation
+    toast({
+      title: "Food Logged! ✨",
+      description: `${foodItem.name} (${foodItem.calories} cal) added to your daily log.`,
+      duration: 3000,
+    });
+  };
+
+  const handleQuickActionMenu = (action: string, foodItem: any) => {
+    console.log(`${action} action for:`, foodItem);
+    
+    switch (action) {
+      case 'edit':
+        toast({
+          title: "Edit Food",
+          description: `Editing ${foodItem.name} - feature coming soon!`,
+        });
+        break;
+      case 'details':
+        toast({
+          title: "Food Details",
+          description: `${foodItem.name}: ${foodItem.calories} cal, ${foodItem.protein}g protein`,
+        });
+        break;
+      case 'delete':
+        toast({
+          title: "Removed",
+          description: `${foodItem.name} removed from recent logs.`,
+        });
+        break;
+      case 'edit-prediction':
+        toast({
+          title: "Edit Prediction",
+          description: `Customizing ${foodItem.name} prediction - feature coming soon!`,
+        });
+        break;
+      case 'remove-quick':
+        toast({
+          title: "Removed from Quick List",
+          description: `${foodItem.name} won't appear in quick suggestions.`,
+        });
+        break;
+      case 'favorite':
+        toast({
+          title: "Added to Favorites",
+          description: `${foodItem.name} marked as favorite!`,
+        });
+        break;
+    }
   };
 
   return (
@@ -405,7 +468,7 @@ const Home = () => {
           </CardContent>
         </Card>
 
-        {/* Smart Quick-Log Dropdown Section */}
+        {/* Smart Quick-Log Dropdown Section - Same width as Log Food button */}
         <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
           <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
             <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
@@ -426,51 +489,89 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Quick Suggestions - Horizontal Layout */}
+                {/* Quick Suggestions - Horizontal Layout with improved spacing */}
                 <div className={`grid grid-cols-3 ${isMobile ? 'gap-2' : 'gap-3'}`}>
                   {quickLogSuggestions.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleQuickLog(item)}
-                      className={`${isMobile ? 'p-3' : 'p-4'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-md`}
-                    >
-                      <div className="text-center space-y-1">
-                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-900 dark:text-gray-100 truncate`}>
-                          {item.name}
-                        </p>
-                        <div className="flex items-center justify-center space-x-1">
-                          <span className="text-xs">🕒</span>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {item.usualTime}
+                    <div key={item.id} className="space-y-2">
+                      <div
+                        onClick={() => handleQuickLog(item)}
+                        className={`${isMobile ? 'p-3' : 'p-4'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-md group`}
+                      >
+                        <div className="text-center space-y-1">
+                          <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors`}>
+                            {item.name}
                           </p>
+                          <div className="flex items-center justify-center space-x-1">
+                            <span className="text-xs">🕒</span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {item.usualTime}
+                            </p>
+                          </div>
                         </div>
+                      </div>
+                      
+                      {/* Three-dot menu under each AI suggestion */}
+                      <div className="flex justify-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              <MoreHorizontal className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="center" className="w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-lg">
+                            <DropdownMenuItem 
+                              onClick={() => handleQuickActionMenu('edit-prediction', item)}
+                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              Edit Prediction
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleQuickActionMenu('favorite', item)}
+                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              Mark as Favorite
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleQuickActionMenu('remove-quick', item)}
+                              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
+                            >
+                              Remove from Quick List
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Expand/Collapse Toggle */}
-                <CollapsibleTrigger asChild>
-                  <div className="flex justify-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                    >
-                      {isQuickLogExpanded ? (
-                        <>
-                          <ChevronUp className="h-4 w-4 mr-1" />
-                          Show less
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4 mr-1" />
-                          Show more
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CollapsibleTrigger>
+                {/* Increased spacing before expand toggle */}
+                <div className="pt-4">
+                  <CollapsibleTrigger asChild>
+                    <div className="flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                      >
+                        {isQuickLogExpanded ? (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-1" />
+                            Show less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                            Show more
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CollapsibleTrigger>
+                </div>
               </div>
 
               {/* Expanded Content */}
@@ -505,17 +606,41 @@ const Home = () => {
                           <Button
                             size="sm"
                             onClick={() => handleQuickLog(item)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg"
                           >
                             Log
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 h-auto"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 h-auto hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-lg">
+                              <DropdownMenuItem 
+                                onClick={() => handleQuickActionMenu('edit', item)}
+                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleQuickActionMenu('details', item)}
+                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                              >
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleQuickActionMenu('delete', item)}
+                                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
