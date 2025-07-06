@@ -39,13 +39,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
-  const [isChecked, setIsChecked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false); // Separate state for saving
   const { toast } = useToast();
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
     setCurrentFoodItem(foodItem);
-    setIsChecked(false); // Reset checkbox when new food item is loaded
+    setIsSaved(false); // Reset save state when new food item is loaded
   }, [foodItem]);
 
   if (!currentFoodItem) return null;
@@ -101,16 +101,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return flags;
   };
 
-  const handleConfirm = async () => {
-    if (!isChecked) {
-      toast({
-        title: "Please confirm",
-        description: "Check the green ✅ to confirm this food log.",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Separate function for saving food item
+  const handleSave = () => {
+    const foodToSave = {
+      ...adjustedFood,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      timestamp: new Date(),
+      saved: true
+    };
 
+    // Save to localStorage for now (later can be replaced with Supabase)
+    const savedFoods = JSON.parse(localStorage.getItem('savedFoods') || '[]');
+    savedFoods.unshift(foodToSave);
+    localStorage.setItem('savedFoods', JSON.stringify(savedFoods.slice(0, 50))); // Keep only 50 most recent
+
+    setIsSaved(!isSaved);
+    
+    toast({
+      title: isSaved ? "Removed from Saved" : "Saved Successfully! ⭐",
+      description: isSaved 
+        ? `${adjustedFood.name} removed from your saved foods.`
+        : `${adjustedFood.name} saved to your collection for quick logging.`,
+      duration: 2000,
+    });
+  };
+
+  const handleConfirm = async () => {
     setIsConfirming(true);
     
     // Success animation delay
@@ -160,16 +176,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
-              {/* Green Checkmark with ✅ emoji */}
+              {/* Green Save Button with ✅ emoji - Separate from confirmation */}
               <button
-                onClick={() => setIsChecked(!isChecked)}
+                onClick={handleSave}
                 className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
-                  isChecked 
+                  isSaved 
                     ? 'bg-green-500 border-green-500 text-white shadow-lg transform scale-110' 
                     : 'bg-white border-gray-300 text-gray-400 hover:border-green-400'
                 }`}
+                title={isSaved ? "Remove from Saved" : "Save for Quick Logging"}
               >
-                {isChecked && <span className="text-lg">✅</span>}
+                {isSaved && <span className="text-lg">✅</span>}
               </button>
               
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
@@ -177,7 +194,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </DialogTitle>
             </DialogHeader>
 
-            {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               {currentFoodItem.image ? (
                 <img 
@@ -200,7 +216,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             </div>
 
-            {/* Portion Size Slider */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -227,7 +242,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             </div>
 
-            {/* Tabs for Nutrition and Health */}
             <Tabs defaultValue="nutrition" className="mb-6">
               <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-700 rounded-xl">
                 <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
@@ -272,7 +286,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsContent>
               
               <TabsContent value="health" className="space-y-4 mt-4">
-                {/* Health Score Badge - Improved Design */}
                 <div className="text-center">
                   <Badge className={`${healthBadge.bgColor} text-white font-medium px-4 py-2 text-sm rounded-full inline-flex items-center space-x-2`}>
                     <span>{healthBadge.emoji}</span>
@@ -281,7 +294,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   </Badge>
                 </div>
                 
-                {/* Health Flags - Improved Layout */}
                 <div className="space-y-2">
                   {healthFlags.length > 0 ? (
                     healthFlags.map((flag, index) => (
@@ -331,11 +343,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 <Trash2 className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
+              {/* Confirm button - Always has its color, independent of save state */}
               <Button
                 onClick={handleConfirm}
-                disabled={isConfirming || portionPercentage[0] === 0 || !isChecked}
+                disabled={isConfirming || portionPercentage[0] === 0}
                 className={`flex-1 transition-all duration-300 ${
-                  isChecked && !isConfirming
+                  !isConfirming && portionPercentage[0] > 0
                     ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 } ${isConfirming ? 'animate-pulse' : ''}`}

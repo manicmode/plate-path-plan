@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Camera from "./pages/Camera";
+import Log from "./pages/Log";
 import Analytics from "./pages/Analytics";
 import Coach from "./pages/Coach";
 import Profile from "./pages/Profile";
@@ -23,18 +23,17 @@ import ProgressFat from "./pages/ProgressFat";
 import ProgressHydration from "./pages/ProgressHydration";
 import ProgressSupplements from "./pages/ProgressSupplements";
 import NotFound from "./pages/NotFound";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// Create query client with mobile-optimized settings and app lifecycle handling
+// Create query client with improved mobile lifecycle handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: true, // Refetch when app regains focus
-      refetchOnReconnect: true, // Refetch on network reconnection
+      refetchOnWindowFocus: false, // Disable automatic refetch to prevent conflicts
+      refetchOnReconnect: true,
       retry: (failureCount, error) => {
-        // Reduce retries on mobile to prevent hanging
         const maxRetries = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 1 : 3;
         return failureCount < maxRetries;
       },
@@ -43,26 +42,57 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const lastFocusTime = useRef<number>(0);
+  const isRefreshing = useRef<boolean>(false);
+
   useEffect(() => {
-    // App lifecycle management for mobile devices
+    // Improved app lifecycle management
     const handleVisibilityChange = () => {
+      const now = Date.now();
+      
       if (!document.hidden) {
-        console.log('App regained focus - refreshing queries');
-        queryClient.invalidateQueries();
+        // Only refresh if more than 30 seconds have passed since last focus
+        if (now - lastFocusTime.current > 30000 && !isRefreshing.current) {
+          console.log('App regained focus after significant time - refreshing data');
+          isRefreshing.current = true;
+          
+          // Delay refresh to allow UI to settle
+          setTimeout(() => {
+            queryClient.invalidateQueries();
+            isRefreshing.current = false;
+          }, 500);
+        }
+        lastFocusTime.current = now;
       }
     };
 
     const handleFocus = () => {
-      console.log('Window focused - refreshing queries');
-      queryClient.invalidateQueries();
+      const now = Date.now();
+      if (now - lastFocusTime.current > 30000 && !isRefreshing.current) {
+        console.log('Window focused after delay - refreshing data');
+        isRefreshing.current = true;
+        
+        setTimeout(() => {
+          queryClient.invalidateQueries();
+          isRefreshing.current = false;
+        }, 500);
+      }
+      lastFocusTime.current = now;
     };
 
     const handleOnline = () => {
-      console.log('Network reconnected - refreshing queries');
-      queryClient.invalidateQueries();
+      if (!isRefreshing.current) {
+        console.log('Network reconnected - refreshing data');
+        isRefreshing.current = true;
+        
+        setTimeout(() => {
+          queryClient.invalidateQueries();
+          isRefreshing.current = false;
+        }, 1000);
+      }
     };
 
-    // Add event listeners for app lifecycle
+    // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleOnline);
@@ -70,14 +100,22 @@ function App() {
     // iOS Safari specific handling
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
-      // Handle iOS Safari page show event
       window.addEventListener('pageshow', (event) => {
         if (event.persisted) {
-          console.log('Page restored from cache - refreshing queries');
-          queryClient.invalidateQueries();
+          console.log('Page restored from cache - refreshing data');
+          if (!isRefreshing.current) {
+            isRefreshing.current = true;
+            setTimeout(() => {
+              queryClient.invalidateQueries();
+              isRefreshing.current = false;
+            }, 1000);
+          }
         }
       });
     }
+
+    // Initialize last focus time
+    lastFocusTime.current = Date.now();
 
     // Cleanup function
     return () => {
@@ -129,6 +167,7 @@ function App() {
                       <Route path="/" element={<Index />} />
                       <Route path="/home" element={<Layout><Home /></Layout>} />
                       <Route path="/camera" element={<Layout><Camera /></Layout>} />
+                      <Route path="/log" element={<Layout><Log /></Layout>} />
                       <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
                       <Route path="/coach" element={<Layout><Coach /></Layout>} />
                       <Route path="/profile" element={<Layout><Profile /></Layout>} />
