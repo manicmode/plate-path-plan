@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -82,7 +81,6 @@ const CameraPage = () => {
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
-  // Unified function to process nutrition data from both photo and voice sources
   const processNutritionData = (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
     
@@ -166,22 +164,46 @@ const CameraPage = () => {
     setIsAnalyzing(true);
     setProcessingStep('Analyzing image...');
     
+    // Client-side timeout protection
+    const timeoutId = setTimeout(() => {
+      if (isAnalyzing) {
+        console.error('Client-side timeout: Analysis took too long');
+        setIsAnalyzing(false);
+        setProcessingStep('');
+        toast.error('Analysis timed out. Please try again or check your internet connection.');
+      }
+    }, 25000); // 25 second client-side timeout
+    
     try {
       const imageBase64 = convertToBase64(selectedImage);
       
-      console.log('Calling vision-label-reader function...');
+      console.log('=== CLIENT: Starting image analysis ===', {
+        timestamp: new Date().toISOString(),
+        imageSize: imageBase64.length
+      });
+      
+      setProcessingStep('Sending to AI...');
+      
       const { data, error } = await supabase.functions.invoke('vision-label-reader', {
         body: { imageBase64 }
       });
 
+      console.log('=== CLIENT: Supabase function response ===', {
+        hasData: !!data,
+        hasError: !!error,
+        timestamp: new Date().toISOString()
+      });
+
       if (error) {
         console.error('Supabase function error:', error);
+        clearTimeout(timeoutId);
         toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
         return;
       }
 
       if (!data) {
         console.error('No data returned from vision API');
+        clearTimeout(timeoutId);
         toast.error('No data returned from analysis. Please try again.');
         return;
       }
@@ -192,6 +214,7 @@ const CameraPage = () => {
       const processedFoods = processNutritionData('photo', data);
       
       if (processedFoods.length === 0) {
+        clearTimeout(timeoutId);
         toast.error('No food items detected in the image. Please try a different photo.');
         return;
       }
@@ -201,14 +224,17 @@ const CameraPage = () => {
       setShowConfirmation(true);
       
       toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
+      clearTimeout(timeoutId);
       
     } catch (error) {
       console.error('Error analyzing image:', error);
+      clearTimeout(timeoutId);
       toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
     } finally {
       // Always reset the analyzing state
       setIsAnalyzing(false);
       setProcessingStep('');
+      clearTimeout(timeoutId);
     }
   };
 
@@ -724,7 +750,7 @@ const CameraPage = () => {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {processingStep || 'Processing...'}
+                    {processingStep || 'Analyzing...'}
                   </>
                 ) : (
                   <>
@@ -861,7 +887,7 @@ const CameraPage = () => {
                 AI-Powered Food Logging
               </h4>
               <p className="text-xs text-green-700 dark:text-green-300">
-                Photo analysis and voice input with AI nutrition estimation.
+                Enhanced with timeout protection and error diagnostics.
               </p>
             </div>
           </div>

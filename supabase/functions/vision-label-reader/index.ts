@@ -54,17 +54,26 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const googleVisionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
 
-// Timeout wrapper function
+// Enhanced timeout wrapper with AbortController
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  const controller = new AbortController();
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+    setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
   });
   
   return Promise.race([promise, timeoutPromise]);
 };
 
 serve(async (req) => {
-  console.log('Vision function called:', new Date().toISOString());
+  const startTime = Date.now();
+  console.log('=== VISION FUNCTION START ===', {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url
+  });
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -73,74 +82,185 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Processing vision request...');
+    // Validate API key immediately
+    if (!googleVisionApiKey) {
+      console.error('CRITICAL: Google Vision API key not configured');
+      return new Response(
+        JSON.stringify({
+          error: 'Google Vision API key not configured',
+          details: 'Please add GOOGLE_VISION_API_KEY to Supabase Edge Function secrets',
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('API key validation: OK');
     
-    const { imageBase64 } = await req.json();
-    console.log('Image data received, length:', imageBase64?.length || 0);
+    // Parse request body with timeout
+    let imageBase64;
+    try {
+      const body = await withTimeout(req.json(), 5000);
+      imageBase64 = body.imageBase64;
+      console.log('Request body parsed:', {
+        hasImageData: !!imageBase64,
+        imageDataLength: imageBase64?.length || 0
+      });
+    } catch (error) {
+      console.error('Failed to parse request body:', error);
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request body',
+          details: error.message,
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     if (!imageBase64) {
-      console.error('No image data provided');
-      throw new Error('Image data is required');
-    }
-
-    if (!googleVisionApiKey) {
-      console.error('Google Vision API key not configured');
-      throw new Error('Google Vision API key not configured');
-    }
-
-    console.log('Calling Google Vision API with timeout...');
-
-    // Call Google Vision API with timeout
-    const visionResponse = await withTimeout(
-      fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
+      console.error('No image data provided in request');
+      return new Response(
+        JSON.stringify({
+          error: 'Image data is required',
+          details: 'Please provide imageBase64 in request body',
+          timestamp: new Date().toISOString()
+        }),
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            requests: [
-              {
-                image: {
-                  content: imageBase64,
-                },
-                features: [
-                  {
-                    type: 'LABEL_DETECTION',
-                    maxResults: 10,
-                  },
-                  {
-                    type: 'TEXT_DETECTION',
-                    maxResults: 10,
-                  },
-                  {
-                    type: 'OBJECT_LOCALIZATION',
-                    maxResults: 10,
-                  },
-                ],
-              },
-            ],
-          }),
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
-      ),
-      30000 // 30 second timeout
-    );
+      );
+    }
 
-    console.log('Vision API response status:', visionResponse.status);
+    console.log('Starting Google Vision API call...');
+
+    // Call Google Vision API with enhanced timeout and error handling
+    let visionResponse;
+    try {
+      visionResponse = await withTimeout(
+        fetch(
+          `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              requests: [
+                {
+                  image: {
+                    content: imageBase64,
+                  },
+                  features: [
+                    {
+                      type: 'LABEL_DETECTION',
+                      maxResults: 10,
+                    },
+                    {
+                      type: 'TEXT_DETECTION',
+                      maxResults: 10,
+                    },
+                    {
+                      type: 'OBJECT_LOCALIZATION',
+                      maxResults: 10,
+                    },
+                  ],
+                },
+              ],
+            }),
+          }
+        ),
+        20000 // 20 second timeout for Google Vision API
+      );
+
+      console.log('Google Vision API response received:', {
+        status: visionResponse.status,
+        statusText: visionResponse.statusText,
+        headers: Object.fromEntries(visionResponse.headers.entries())
+      });
+
+    } catch (error) {
+      console.error('Google Vision API call failed:', error);
+      return new Response(
+        JSON.stringify({
+          error: 'Google Vision API call failed',
+          details: error.message,
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
-      console.error('Google Vision API Error:', errorText);
-      throw new Error(`Google Vision API error: ${visionResponse.status} - ${errorText}`);
+      console.error('Google Vision API Error Response:', {
+        status: visionResponse.status,
+        statusText: visionResponse.statusText,
+        errorText
+      });
+      
+      return new Response(
+        JSON.stringify({
+          error: `Google Vision API error: ${visionResponse.status}`,
+          details: errorText,
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    const visionData = await visionResponse.json();
-    console.log('Vision API response received, processing...');
+    let visionData;
+    try {
+      visionData = await visionResponse.json();
+      console.log('Vision API JSON parsed successfully:', {
+        hasResponses: !!visionData.responses,
+        responsesLength: visionData.responses?.length || 0
+      });
+    } catch (error) {
+      console.error('Failed to parse Vision API JSON response:', error);
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to parse Vision API response',
+          details: error.message,
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     if (!visionData.responses || !visionData.responses[0]) {
-      console.error('Invalid Vision API response structure');
-      throw new Error('Invalid response from Vision API');
+      console.error('Invalid Vision API response structure:', visionData);
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid response from Vision API',
+          details: 'No responses array in API response',
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const annotations = visionData.responses[0];
@@ -148,14 +268,29 @@ serve(async (req) => {
     // Check for Vision API errors
     if (annotations.error) {
       console.error('Vision API returned error:', annotations.error);
-      throw new Error(`Vision API error: ${annotations.error.message}`);
+      return new Response(
+        JSON.stringify({
+          error: `Vision API error: ${annotations.error.message}`,
+          details: annotations.error,
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const labels = annotations.labelAnnotations || [];
     const textAnnotations = annotations.textAnnotations || [];
     const objects = annotations.localizedObjectAnnotations || [];
 
-    console.log(`Found ${labels.length} labels, ${textAnnotations.length} text annotations, ${objects.length} objects`);
+    console.log('Vision API results processed:', {
+      labelsCount: labels.length,
+      textAnnotationsCount: textAnnotations.length,
+      objectsCount: objects.length
+    });
 
     // Extract food-related labels and nutrition information
     const foodLabels = labels.filter((label: any) => 
@@ -180,9 +315,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user ID from the authorization header
-    const authHeader = req.headers.get('authorization');
     let userId = null;
     
+    const authHeader = req.headers.get('authorization');
     if (authHeader) {
       try {
         const token = authHeader.replace('Bearer ', '');
@@ -194,25 +329,27 @@ serve(async (req) => {
       }
     }
 
-    // Store the recognition result (non-blocking)
-    try {
-      const { error: dbError } = await supabase
-        .from('food_recognitions')
-        .insert({
-          user_id: userId,
-          detected_labels: labels.map((l: any) => l.description),
-          confidence_scores: labels.map((l: any) => l.score),
-          raw_response: visionData,
-        });
+    // Store the recognition result (non-blocking background task)
+    setTimeout(async () => {
+      try {
+        const { error: dbError } = await supabase
+          .from('food_recognitions')
+          .insert({
+            user_id: userId,
+            detected_labels: labels.map((l: any) => l.description),
+            confidence_scores: labels.map((l: any) => l.score),
+            raw_response: visionData,
+          });
 
-      if (dbError) {
-        console.error('Database error (non-critical):', dbError);
-      } else {
-        console.log('Recognition result stored in database');
+        if (dbError) {
+          console.error('Database error (non-critical):', dbError);
+        } else {
+          console.log('Recognition result stored in database');
+        }
+      } catch (dbError) {
+        console.error('Database operation failed (non-critical):', dbError);
       }
-    } catch (dbError) {
-      console.error('Database operation failed (non-critical):', dbError);
-    }
+    }, 0);
 
     // Prepare response
     const response = {
@@ -232,7 +369,11 @@ serve(async (req) => {
       })),
     };
 
-    console.log('Returning successful response');
+    const duration = Date.now() - startTime;
+    console.log('=== VISION FUNCTION SUCCESS ===', {
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString()
+    });
     
     // Return the processed results
     return new Response(
@@ -242,13 +383,20 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in vision-label-reader function:', error);
+    const duration = Date.now() - startTime;
+    console.error('=== VISION FUNCTION ERROR ===', {
+      error: error.message,
+      stack: error.stack,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString()
+    });
     
     // Return a proper error response
     const errorResponse = {
       error: error.message || 'Unknown error occurred',
       details: 'Check function logs for more information',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      duration
     };
     
     return new Response(
