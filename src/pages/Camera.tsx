@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
+import imageCompression from 'browser-image-compression';
 
 interface RecognizedFood {
   name: string;
@@ -84,6 +85,50 @@ const CameraPage = () => {
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
+  // Helper function to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper function to compress image if needed
+  const compressImageIfNeeded = async (file: File): Promise<string> => {
+    const fileSizeMB = file.size / (1024 * 1024);
+    
+    console.log('Original image size:', fileSizeMB.toFixed(2), 'MB');
+    
+    if (fileSizeMB <= 1) {
+      // Image is already under 1MB, convert directly to base64
+      console.log('Image is under 1MB, no compression needed');
+      return await fileToBase64(file);
+    }
+
+    console.log('Compressing image from', fileSizeMB.toFixed(2), 'MB to under 1MB...');
+    
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      const compressedSizeMB = compressedFile.size / (1024 * 1024);
+      
+      console.log('Compressed image size:', compressedSizeMB.toFixed(2), 'MB');
+      
+      return await fileToBase64(compressedFile);
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      toast.error('Failed to compress image. Using original size.');
+      return await fileToBase64(file);
+    }
+  };
+
   const processNutritionData = (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
     const foods: RecognizedFood[] = [];
     
@@ -140,7 +185,7 @@ const CameraPage = () => {
     return foods.slice(0, 3);
   };
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       console.log('Image selected:', {
@@ -149,10 +194,12 @@ const CameraPage = () => {
         type: file.type
       });
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageDataUrl = e.target?.result as string;
-        console.log('Image loaded to data URL, length:', imageDataUrl?.length);
+      try {
+        // Compress image if needed and convert to base64
+        const imageBase64 = await compressImageIfNeeded(file);
+        const imageDataUrl = `data:${file.type};base64,${imageBase64}`;
+        
+        console.log('Image processed, data URL length:', imageDataUrl.length);
         setSelectedImage(imageDataUrl);
         setShowVoiceEntry(false);
         setVoiceText('');
@@ -160,8 +207,10 @@ const CameraPage = () => {
         setVoiceResults(null);
         setInputSource('photo');
         resetErrorState();
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        toast.error('Failed to process image. Please try again.');
+      }
     }
   };
 
@@ -199,7 +248,7 @@ const CameraPage = () => {
       setProcessingStep('Sending to Vision API...');
       
       console.log('CLIENT: About to invoke vision-label-reader function...');
-      console.log('Invoking vision-label-reader function');
+      console.log('Calling Supabase function vision-label-reader now...');
       
       // Set up 25-second timeout using Promise.race
       const functionCallPromise = supabase.functions.invoke('vision-label-reader', {
@@ -222,15 +271,7 @@ const CameraPage = () => {
         timeoutPromise
       ]) as any;
 
-      console.log('CLIENT: Supabase function response received', {
-        hasData: !!data,
-        hasError: !!error,
-        timestamp: new Date().toISOString(),
-        data: data ? JSON.stringify(data).substring(0, 200) + '...' : null,
-        error: error ? JSON.stringify(error) : null
-      });
-
-      console.log('Vision result:', { data, error });
+      console.log('Function result:', data, error);
 
       // Check if the request was aborted
       if (abortControllerRef.current?.signal.aborted) {
@@ -413,7 +454,7 @@ const CameraPage = () => {
     }
 
     setIsProcessingVoice(true);
-    setProcessingStep('Processing...');
+    setProcessingStep('Processing');
 
     try {
       setProcessingStep('Analyzing...');
