@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -168,29 +169,44 @@ const CameraPage = () => {
     try {
       const imageBase64 = convertToBase64(selectedImage);
       
+      console.log('Calling vision-label-reader function...');
       const { data, error } = await supabase.functions.invoke('vision-label-reader', {
         body: { imageBase64 }
       });
 
       if (error) {
         console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Failed to analyze image');
+        toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
+        return;
+      }
+
+      if (!data) {
+        console.error('No data returned from vision API');
+        toast.error('No data returned from analysis. Please try again.');
+        return;
       }
 
       console.log('Vision API results:', data);
       setVisionResults(data);
 
       const processedFoods = processNutritionData('photo', data);
+      
+      if (processedFoods.length === 0) {
+        toast.error('No food items detected in the image. Please try a different photo.');
+        return;
+      }
+
       setRecognizedFoods(processedFoods);
       setInputSource('photo');
       setShowConfirmation(true);
       
-      toast.success(`Detected items: ${data.labels.slice(0, 3).map((l: any) => l.description).join(', ')}`);
+      toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
       
     } catch (error) {
       console.error('Error analyzing image:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to analyze image. Please try again.');
+      toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
     } finally {
+      // Always reset the analyzing state
       setIsAnalyzing(false);
       setProcessingStep('');
     }
