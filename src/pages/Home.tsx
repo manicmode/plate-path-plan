@@ -1,18 +1,41 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, Utensils, Clock, ChevronUp } from 'lucide-react';
+import { Zap, Utensils, Clock, ChevronUp, BarChart3, Droplet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast"
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 
 const Home = () => {
-  const { user } = useAuth();
-  const { addFoodLog } = useNutrition();
+  const { user, loading: authLoading } = useAuth();
+  const { addFood } = useNutrition();
   const navigate = useNavigate();
   const { toast } = useToast()
   const [showAllPredictions, setShowAllPredictions] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  // Loading timeout with recovery
+  const { hasTimedOut, showRecovery, retry } = useLoadingTimeout(authLoading, {
+    timeoutMs: 10000,
+    onTimeout: () => {
+      console.warn('Home page loading timeout - showing recovery options');
+    }
+  });
+
+  // App lifecycle awareness
+  useAppLifecycle({
+    onForeground: () => {
+      console.log('Home page: App came to foreground');
+      if (hasTimedOut) {
+        console.log('Attempting automatic retry after foreground');
+        handleRetry();
+      }
+    },
+  });
 
   // Mock data for AI predictions and saved logs
   const mockPredictions = [
@@ -29,26 +52,85 @@ const Home = () => {
   ];
 
   const handleQuickLog = useCallback((food: { name: string; calories: number }) => {
-    addFoodLog({
+    addFood({
       name: food.name,
       calories: food.calories,
       protein: 0,
       carbs: 0,
       fat: 0,
-      timestamp: new Date().toISOString(),
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
     });
     toast({
       title: "Food Logged!",
       description: `Added ${food.name} to your food log.`,
     })
     navigate('/camera');
-  }, [addFoodLog, navigate, toast]);
+  }, [addFood, navigate, toast]);
+
+  const handleRetry = useCallback(() => {
+    setIsRetrying(true);
+    retry();
+    setTimeout(() => {
+      setIsRetrying(false);
+    }, 2000);
+  }, [retry]);
 
   useEffect(() => {
     if (user) {
       console.log('User data loaded:', user);
     }
   }, [user]);
+
+  // Show recovery UI if loading has timed out
+  if (showRecovery && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="glass-card border-0 max-w-md w-full">
+          <CardContent className="card-spacing text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-red-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Loading Taking Too Long?
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              The app seems to be taking longer than usual to load. Try refreshing to get back on track.
+            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="w-full"
+              >
+                {isRetrying ? 'Retrying...' : 'Tap to Reload'}
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => window.location.reload()}
+                className="w-full"
+              >
+                Force Refresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (authLoading && !hasTimedOut) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading your nutrition dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -121,7 +203,7 @@ const Home = () => {
                   className="w-full flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-3"
                 >
                   <ChevronUp className={`h-4 w-4 transition-transform ${showAllPredictions ? 'rotate-180' : ''}`} />
-                  <span>{showAllPredictions ? 'Recent & Saved Logs' : 'Show more'}</span>
+                  <span>{showAllPredictions ? 'Recent & Saved Logs' : 'Recent & Saved Logs'}</span>
                 </Button>
 
                 {showAllPredictions && (
