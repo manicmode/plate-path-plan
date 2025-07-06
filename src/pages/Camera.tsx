@@ -656,7 +656,7 @@ const CameraPage = () => {
                   {/* Upload Photo Tab */}
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Upload className="h-6 w-6" />
@@ -667,7 +667,7 @@ const CameraPage = () => {
                   <Button
                     onClick={handleVoiceRecording}
                     disabled={isVoiceProcessing || !!processingStep}
-                    className={`h-24 w-full flex flex-col items-center justify-center space-y-2 ${isRecording 
+                    className={`h-24 w-full flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300 ${isRecording 
                       ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
                       : 'gradient-primary'
                     }`}
@@ -694,7 +694,7 @@ const CameraPage = () => {
                   {/* Scan Barcode Tab */}
                   <Button
                     onClick={() => toast.info('Barcode scanning coming soon!')}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <ScanBarcode className="h-6 w-6" />
@@ -708,7 +708,7 @@ const CameraPage = () => {
                       setInputSource('manual');
                       resetErrorState();
                     }}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Edit3 className="h-6 w-6" />
@@ -718,7 +718,7 @@ const CameraPage = () => {
                   {/* Saved Logs Tab */}
                   <Button
                     onClick={() => toast.info('Saved logs feature coming soon!')}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Save className="h-6 w-6" />
@@ -728,7 +728,7 @@ const CameraPage = () => {
                   {/* Recent Logs Tab */}
                   <Button
                     onClick={() => toast.info('Recent logs feature coming soon!')}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Clock className="h-6 w-6" />
@@ -738,7 +738,7 @@ const CameraPage = () => {
                   {/* Hydration Logs Tab */}
                   <Button
                     onClick={() => navigate('/hydration')}
-                    className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Droplets className="h-6 w-6" />
@@ -748,7 +748,7 @@ const CameraPage = () => {
                   {/* Supplement Logs Tab */}
                   <Button
                     onClick={() => navigate('/supplements')}
-                    className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2"
+                    className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
                     <Pill className="h-6 w-6" />
