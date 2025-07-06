@@ -26,11 +26,13 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// Create query client with mobile-optimized settings
+// Create query client with mobile-optimized settings and app lifecycle handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: true, // Refetch when app regains focus
+      refetchOnReconnect: true, // Refetch on network reconnection
       retry: (failureCount, error) => {
         // Reduce retries on mobile to prevent hanging
         const maxRetries = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 1 : 3;
@@ -41,6 +43,50 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  useEffect(() => {
+    // App lifecycle management for mobile devices
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('App regained focus - refreshing queries');
+        queryClient.invalidateQueries();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Window focused - refreshing queries');
+      queryClient.invalidateQueries();
+    };
+
+    const handleOnline = () => {
+      console.log('Network reconnected - refreshing queries');
+      queryClient.invalidateQueries();
+    };
+
+    // Add event listeners for app lifecycle
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+
+    // iOS Safari specific handling
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      // Handle iOS Safari page show event
+      window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+          console.log('Page restored from cache - refreshing queries');
+          queryClient.invalidateQueries();
+        }
+      });
+    }
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+
   useEffect(() => {
     // Simple app initialization
     const initializeApp = () => {

@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Trash2, Check, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 
@@ -160,16 +160,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
-              {/* Green Checkmark in top left */}
+              {/* Green Checkmark with ✅ emoji */}
               <button
                 onClick={() => setIsChecked(!isChecked)}
-                className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 ${
+                className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
                   isChecked 
                     ? 'bg-green-500 border-green-500 text-white shadow-lg transform scale-110' 
                     : 'bg-white border-gray-300 text-gray-400 hover:border-green-400'
                 }`}
               >
-                {isChecked && <Check className="h-5 w-5" />}
+                {isChecked && <span className="text-lg">✅</span>}
               </button>
               
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
