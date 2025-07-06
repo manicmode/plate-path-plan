@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -651,85 +650,69 @@ const CameraPage = () => {
         <Card className="animate-slide-up">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
-              <div className="w-24 h-24 gradient-primary rounded-full flex items-center justify-center mx-auto">
-                <Camera className="h-12 w-12 text-white" />
-              </div>
-              
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Capture Your Meal</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Our AI will analyze your food and provide nutritional information
-                </p>
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-
-              <div className="space-y-3">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full gradient-primary"
-                  size="lg"
-                >
-                  <Upload className="h-5 w-5 mr-2" />
-                  Upload Photo
-                </Button>
-                
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Button
-                    onClick={handleVoiceRecording}
-                    disabled={isVoiceProcessing || !!processingStep}
-                    className={`w-full ${isRecording 
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                      : 'gradient-primary'
-                    }`}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full gradient-primary"
                     size="lg"
                   >
-                    {isRecording ? (
-                      <>
-                        <MicOff className="h-5 w-5 mr-2" />
-                        Stop Recording ({formatRecordingTime(recordingDuration)})
-                      </>
-                    ) : (isVoiceProcessing || processingStep) ? (
-                      <>
-                        <ProcessingStatus 
-                          isProcessing={true}
-                          processingStep={processingStep || 'Processing...'}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="h-5 w-5 mr-2" />
-                        Speak to Log
-                      </>
-                    )}
+                    <Upload className="h-5 w-5 mr-2" />
+                    Upload Photo
                   </Button>
                   
-                  {isRecording && (
-                    <div className="text-center">
-                      <p className="text-sm text-red-600 font-medium animate-pulse">
-                        🔴 Recording... Click button again to stop
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleVoiceRecording}
+                      disabled={isVoiceProcessing || !!processingStep}
+                      className={`w-full ${isRecording 
+                        ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                        : 'gradient-primary'
+                      }`}
+                      size="lg"
+                    >
+                      {isRecording ? (
+                        <>
+                          <MicOff className="h-5 w-5 mr-2" />
+                          Stop Recording ({formatRecordingTime(recordingDuration)})
+                        </>
+                      ) : (isVoiceProcessing || processingStep) ? (
+                        <>
+                          <ProcessingStatus 
+                            isProcessing={true}
+                            processingStep={processingStep || 'Processing...'}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="h-5 w-5 mr-2" />
+                          Speak to Log
+                        </>
+                      )}
+                    </Button>
+                    
+                    {isRecording && (
+                      <div className="text-center">
+                        <p className="text-sm text-red-600 font-medium animate-pulse">
+                          🔴 Recording... Click button again to stop
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Supports JPG, PNG, WebP • Max size: 50MB
-                </p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                  ✨ Powered by AI - analyzes food and estimates nutrition
-                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageSelect}
+        className="hidden"
+      />
 
       {/* Voice Entry Card */}
       {showVoiceEntry && (
