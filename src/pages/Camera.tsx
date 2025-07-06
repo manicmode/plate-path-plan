@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3 } from 'lucide-react';
+import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, FileText, Save, Clock } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -627,7 +627,6 @@ const CameraPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
-        <p className="text-gray-600 dark:text-gray-300">Take a photo or speak your meal</p>
       </div>
 
       {/* Processing Status */}
@@ -651,55 +650,97 @@ const CameraPage = () => {
           <CardContent className="p-8">
             <div className="text-center space-y-6">
               <div className="space-y-4">
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Upload Photo Tab */}
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full gradient-primary"
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
                     size="lg"
                   >
-                    <Upload className="h-5 w-5 mr-2" />
-                    Upload Photo
+                    <Upload className="h-6 w-6" />
+                    <span className="text-sm font-medium">Upload Photo</span>
                   </Button>
                   
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleVoiceRecording}
-                      disabled={isVoiceProcessing || !!processingStep}
-                      className={`w-full ${isRecording 
-                        ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                        : 'gradient-primary'
-                      }`}
-                      size="lg"
-                    >
-                      {isRecording ? (
-                        <>
-                          <MicOff className="h-5 w-5 mr-2" />
-                          Stop Recording ({formatRecordingTime(recordingDuration)})
-                        </>
-                      ) : (isVoiceProcessing || processingStep) ? (
-                        <>
-                          <ProcessingStatus 
-                            isProcessing={true}
-                            processingStep={processingStep || 'Processing...'}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <Mic className="h-5 w-5 mr-2" />
-                          Speak to Log
-                        </>
-                      )}
-                    </Button>
-                    
-                    {isRecording && (
-                      <div className="text-center">
-                        <p className="text-sm text-red-600 font-medium animate-pulse">
-                          🔴 Recording... Click button again to stop
-                        </p>
-                      </div>
+                  {/* Speak to Log Tab */}
+                  <Button
+                    onClick={handleVoiceRecording}
+                    disabled={isVoiceProcessing || !!processingStep}
+                    className={`h-24 w-full flex flex-col items-center justify-center space-y-2 ${isRecording 
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                      : 'gradient-primary'
+                    }`}
+                    size="lg"
+                  >
+                    {isRecording ? (
+                      <>
+                        <MicOff className="h-6 w-6" />
+                        <span className="text-sm font-medium">Stop Recording</span>
+                      </>
+                    ) : (isVoiceProcessing || processingStep) ? (
+                      <>
+                        <Sparkles className="h-6 w-6" />
+                        <span className="text-sm font-medium">Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-6 w-6" />
+                        <span className="text-sm font-medium">Speak to Log</span>
+                      </>
                     )}
-                  </div>
+                  </Button>
+                  
+                  {/* Scan Barcode Tab */}
+                  <Button
+                    onClick={() => toast.info('Barcode scanning coming soon!')}
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    size="lg"
+                  >
+                    <ScanBarcode className="h-6 w-6" />
+                    <span className="text-sm font-medium">Scan Barcode</span>
+                  </Button>
+                  
+                  {/* Manual Entry Tab */}
+                  <Button
+                    onClick={() => {
+                      setShowManualEdit(true);
+                      setInputSource('manual');
+                      resetErrorState();
+                    }}
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    size="lg"
+                  >
+                    <Edit3 className="h-6 w-6" />
+                    <span className="text-sm font-medium">Manual Entry</span>
+                  </Button>
+                  
+                  {/* Saved Logs Tab */}
+                  <Button
+                    onClick={() => toast.info('Saved logs feature coming soon!')}
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    size="lg"
+                  >
+                    <Save className="h-6 w-6" />
+                    <span className="text-sm font-medium">Saved Logs</span>
+                  </Button>
+                  
+                  {/* Recent Logs Tab */}
+                  <Button
+                    onClick={() => toast.info('Recent logs feature coming soon!')}
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2"
+                    size="lg"
+                  >
+                    <Clock className="h-6 w-6" />
+                    <span className="text-sm font-medium">Recent Logs</span>
+                  </Button>
                 </div>
+                
+                {isRecording && (
+                  <div className="text-center">
+                    <p className="text-sm text-red-600 font-medium animate-pulse">
+                      🔴 Recording... Click button again to stop
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
