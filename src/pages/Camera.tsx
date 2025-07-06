@@ -29,6 +29,8 @@ interface VisionApiResponse {
   nutritionData: any;
   textDetected: string;
   objects: Array<{ name: string; score: number }>;
+  error?: boolean;
+  message?: string;
 }
 
 interface VoiceApiResponse {
@@ -170,6 +172,18 @@ const CameraPage = () => {
     setIsAnalyzing(true);
     setProcessingStep('Initializing...');
     
+    // Create AbortController for this request
+    abortControllerRef.current = new AbortController();
+    
+    // Set up 25-second timeout
+    const timeoutId = setTimeout(() => {
+      console.log('CLIENT: 25-second timeout reached, aborting request');
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        toast.error('Analysis timed out');
+      }
+    }, 25000);
+    
     try {
       const imageBase64 = convertToBase64(selectedImage);
       
@@ -182,22 +196,16 @@ const CameraPage = () => {
       
       console.log('CLIENT: Calling Supabase function...');
       
-      // Create a timeout promise that rejects after 22 seconds
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Request timed out after 22 seconds'));
-        }, 22000);
-      });
-
-      // Create the function call promise
+      // Create the function call promise with AbortController signal
       const functionCallPromise = supabase.functions.invoke('vision-label-reader', {
         body: { imageBase64 }
       });
 
-      // Race between the function call and timeout
-      const result = await Promise.race([functionCallPromise, timeoutPromise]);
+      // Wait for the function call to complete or be aborted
+      const { data, error } = await functionCallPromise;
       
-      const { data, error } = result as any;
+      // Clear the timeout since we got a response
+      clearTimeout(timeoutId);
 
       console.log('CLIENT: Supabase function response received', {
         hasData: !!data,
@@ -206,6 +214,12 @@ const CameraPage = () => {
         data: data ? JSON.stringify(data).substring(0, 200) + '...' : null,
         error: error ? JSON.stringify(error) : null
       });
+
+      // Check if the request was aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log('CLIENT: Request was aborted');
+        return;
+      }
 
       if (error) {
         console.error('CLIENT: Supabase function error:', error);
@@ -216,6 +230,13 @@ const CameraPage = () => {
       if (!data) {
         console.error('CLIENT: No data returned from vision API');
         toast.error('No data returned from analysis. Please try again.');
+        return;
+      }
+
+      // Check if the response indicates an error
+      if (data.error) {
+        console.error('CLIENT: Vision API returned error:', data.message);
+        toast.error(`Analysis failed: ${data.message}`);
         return;
       }
 
@@ -240,11 +261,14 @@ const CameraPage = () => {
       toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
       
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('CLIENT: Error analyzing image:', error);
       
-      if (error.message?.includes('timed out')) {
-        console.log('CLIENT: Request timed out after 22 seconds');
-        toast.error('Analysis timed out after 22 seconds. Please try again or check your internet connection.');
+      // Check if the error is due to abort
+      if (error.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
+        console.log('CLIENT: Request was aborted due to timeout');
+        // Don't show error toast here as we already showed "Analysis timed out"
+        return;
       } else {
         toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
       }
@@ -252,6 +276,7 @@ const CameraPage = () => {
       // Always reset the analyzing state
       setIsAnalyzing(false);
       setProcessingStep('');
+      abortControllerRef.current = null;
     }
   };
 
@@ -510,10 +535,12 @@ const CameraPage = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Clean up on component unmount
+  // Clean up AbortController on component unmount
   useEffect(() => {
     return () => {
-      // Cleanup if needed
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
@@ -798,7 +825,7 @@ const CameraPage = () => {
             {isAnalyzing && (
               <div className="text-center">
                 <p className="text-sm text-blue-600 font-medium">
-                  ⏱️ Analysis timeout: 22 seconds
+                  ⏱️ Analysis timeout: 25 seconds
                 </p>
               </div>
             )}
@@ -924,7 +951,7 @@ const CameraPage = () => {
                 AI-Powered Food Logging
               </h4>
               <p className="text-xs text-green-700 dark:text-green-300">
-                Enhanced with AbortController, 22s timeout, and comprehensive logging.
+                Enhanced with 25s timeout, comprehensive logging, and robust error handling.
               </p>
             </div>
           </div>

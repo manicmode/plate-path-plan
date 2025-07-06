@@ -1,58 +1,9 @@
 
-/*
-TEST PAYLOAD EXAMPLE:
-You can test this function with the following JSON payload:
-
-{
-  "imageBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-}
-
-To test with authorization header:
-Authorization: Bearer <your-jwt-token>
-
-Expected response format:
-{
-  "labels": [
-    {
-      "description": "Food",
-      "score": 0.95
-    }
-  ],
-  "foodLabels": [
-    {
-      "description": "Apple",
-      "score": 0.89
-    }
-  ],
-  "nutritionData": {
-    "calories": 95,
-    "protein": 0.5,
-    "carbs": 25
-  },
-  "textDetected": "Nutrition Facts\nCalories 95\nProtein 0.5g",
-  "objects": [
-    {
-      "name": "Fruit",
-      "score": 0.92
-    }
-  ]
-}
-
-User ID for testing: 84ecf6a4-6f75-4c4c-be78-0451c517e7b8
-*/
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 
-console.log('=== VISION FUNCTION LOADED ===', {
-  timestamp: new Date().toISOString(),
-  env: {
-    hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
-    hasSupabaseKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-    hasGoogleKey: !!Deno.env.get('GOOGLE_VISION_API_KEY')
-  }
-});
+console.log("vision-label-reader function invoked");
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,8 +31,7 @@ serve(async (req) => {
   console.log('=== VISION FUNCTION REQUEST START ===', {
     timestamp: new Date().toISOString(),
     method: req.method,
-    url: req.url,
-    headers: Object.fromEntries(req.headers.entries())
+    url: req.url
   });
 
   const startTime = Date.now();
@@ -96,17 +46,15 @@ serve(async (req) => {
     // STEP 1: Validate API key immediately
     console.log('STEP 1: API Key Validation', {
       hasGoogleVisionKey: !!googleVisionApiKey,
-      keyLength: googleVisionApiKey?.length || 0,
-      keyPreview: googleVisionApiKey ? `${googleVisionApiKey.substring(0, 10)}...` : 'NO KEY'
+      keyLength: googleVisionApiKey?.length || 0
     });
 
     if (!googleVisionApiKey) {
       console.error('CRITICAL: Google Vision API key not configured');
       return new Response(
         JSON.stringify({
-          error: 'Google Vision API key not configured',
-          details: 'Please add GOOGLE_VISION_API_KEY to Supabase Edge Function secrets',
-          timestamp: new Date().toISOString()
+          error: true,
+          message: 'Missing or invalid API key'
         }),
         {
           status: 500,
@@ -115,7 +63,7 @@ serve(async (req) => {
       );
     }
 
-    // STEP 2: Parse request body with timeout
+    // STEP 2: Parse request body
     console.log('STEP 2: Parsing request body...');
     let imageBase64;
     try {
@@ -129,9 +77,8 @@ serve(async (req) => {
       console.error('STEP 2: Failed to parse request body:', error);
       return new Response(
         JSON.stringify({
-          error: 'Invalid request body',
-          details: error.message,
-          timestamp: new Date().toISOString()
+          error: true,
+          message: `Invalid request body: ${error.message}`
         }),
         {
           status: 400,
@@ -144,9 +91,8 @@ serve(async (req) => {
       console.error('STEP 2: No image data provided in request');
       return new Response(
         JSON.stringify({
-          error: 'Image data is required',
-          details: 'Please provide imageBase64 in request body',
-          timestamp: new Date().toISOString()
+          error: true,
+          message: 'Image data is required'
         }),
         {
           status: 400,
@@ -185,10 +131,7 @@ serve(async (req) => {
         ],
       };
 
-      console.log('STEP 3: Making Vision API request', {
-        url: apiUrl.substring(0, 50) + '...',
-        payloadSize: JSON.stringify(payload).length
-      });
+      console.log('STEP 3: Making Vision API request');
 
       visionResponse = await withTimeout(
         fetch(apiUrl, {
@@ -201,7 +144,7 @@ serve(async (req) => {
         15000 // 15 second timeout for Google Vision API
       );
 
-      console.log('STEP 3: Google Vision API response received:', {
+      console.log("Received Google Vision API response", {
         status: visionResponse.status,
         statusText: visionResponse.statusText,
         ok: visionResponse.ok
@@ -211,10 +154,8 @@ serve(async (req) => {
       console.error('STEP 3: Google Vision API call failed:', error);
       return new Response(
         JSON.stringify({
-          error: 'Google Vision API call failed',
-          details: error.message,
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime
+          error: true,
+          message: `Vision API failed: ${error.message}`
         }),
         {
           status: 500,
@@ -236,10 +177,8 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({
-          error: `Google Vision API error: ${visionResponse.status}`,
-          details: errorText,
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime
+          error: true,
+          message: `Vision API failed: ${visionResponse.status} - ${errorText}`
         }),
         {
           status: 500,
@@ -259,10 +198,8 @@ serve(async (req) => {
       console.error('STEP 4: Failed to parse Vision API JSON response:', error);
       return new Response(
         JSON.stringify({
-          error: 'Failed to parse Vision API response',
-          details: error.message,
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime
+          error: true,
+          message: `Vision API failed: Failed to parse response - ${error.message}`
         }),
         {
           status: 500,
@@ -278,10 +215,8 @@ serve(async (req) => {
       console.error('STEP 5: Invalid Vision API response structure:', visionData);
       return new Response(
         JSON.stringify({
-          error: 'Invalid response from Vision API',
-          details: 'No responses array in API response',
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime
+          error: true,
+          message: 'Vision API failed: Invalid response structure'
         }),
         {
           status: 500,
@@ -297,10 +232,8 @@ serve(async (req) => {
       console.error('STEP 5: Vision API returned error:', annotations.error);
       return new Response(
         JSON.stringify({
-          error: `Vision API error: ${annotations.error.message}`,
-          details: annotations.error,
-          timestamp: new Date().toISOString(),
-          duration: Date.now() - startTime
+          error: true,
+          message: `Vision API failed: ${annotations.error.message}`
         }),
         {
           status: 500,
@@ -400,7 +333,7 @@ serve(async (req) => {
     };
 
     const duration = Date.now() - startTime;
-    console.log('=== VISION FUNCTION SUCCESS ===', {
+    console.log("Returning data to frontend", {
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),
       responseSize: JSON.stringify(response).length
@@ -423,15 +356,11 @@ serve(async (req) => {
     });
     
     // Return a proper error response
-    const errorResponse = {
-      error: error.message || 'Unknown error occurred',
-      details: 'Check function logs for more information',
-      timestamp: new Date().toISOString(),
-      duration
-    };
-    
     return new Response(
-      JSON.stringify(errorResponse),
+      JSON.stringify({
+        error: true,
+        message: `Vision API failed: ${error.message || 'Unknown error occurred'}`
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -451,7 +380,7 @@ function extractNutritionFromText(text: string) {
     fat: /fat\s*:?\s*(\d+(?:\.\d+)?)\s*g/i,
     fiber: /fiber\s*:?\s*(\d+(?:\.\d+)?)\s*g/i,
     sugar: /sugar\s*:?\s*(\d+(?:\.\d+)?)\s*g/i,
-    sodium: /sodium\s*:?\s*(\d+(?:\\.d+)?)\s*mg/i,
+    sodium: /sodium\s*:?\s*(\d+(?:\.\d+)?)\s*mg/i,
   };
 
   for (const [key, pattern] of Object.entries(patterns)) {
