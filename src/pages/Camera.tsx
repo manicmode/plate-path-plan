@@ -143,9 +143,17 @@ const CameraPage = () => {
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      console.log('Image selected:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+      
       const reader = new FileReader();
       reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
+        const imageDataUrl = e.target?.result as string;
+        console.log('Image loaded to data URL, length:', imageDataUrl?.length);
+        setSelectedImage(imageDataUrl);
         setShowVoiceEntry(false);
         setVoiceText('');
         setVisionResults(null);
@@ -162,11 +170,16 @@ const CameraPage = () => {
   };
 
   const analyzeImage = async () => {
-    if (!selectedImage) return;
+    if (!selectedImage) {
+      console.error('No selected image to analyze');
+      toast.error('No image selected');
+      return;
+    }
 
     console.log('=== CLIENT: Starting image analysis ===', {
       timestamp: new Date().toISOString(),
-      imageSize: selectedImage.length
+      imageSize: selectedImage.length,
+      hasImage: !!selectedImage
     });
 
     setIsAnalyzing(true);
@@ -174,15 +187,6 @@ const CameraPage = () => {
     
     // Create AbortController for this request
     abortControllerRef.current = new AbortController();
-    
-    // Set up 25-second timeout
-    const timeoutId = setTimeout(() => {
-      console.log('CLIENT: 25-second timeout reached, aborting request');
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        toast.error('Analysis timed out');
-      }
-    }, 25000);
     
     try {
       const imageBase64 = convertToBase64(selectedImage);
@@ -194,18 +198,29 @@ const CameraPage = () => {
       
       setProcessingStep('Sending to Vision API...');
       
-      console.log('CLIENT: Calling Supabase function...');
+      console.log('CLIENT: About to invoke vision-label-reader function...');
+      console.log('Invoking vision-label-reader function');
       
-      // Create the function call promise with AbortController signal
+      // Set up 25-second timeout using Promise.race
       const functionCallPromise = supabase.functions.invoke('vision-label-reader', {
         body: { imageBase64 }
       });
 
-      // Wait for the function call to complete or be aborted
-      const { data, error } = await functionCallPromise;
-      
-      // Clear the timeout since we got a response
-      clearTimeout(timeoutId);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          console.log('CLIENT: 25-second timeout reached, aborting request');
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+          reject(new Error('Analysis timed out after 25 seconds'));
+        }, 25000);
+      });
+
+      // Race between function call and timeout
+      const { data, error } = await Promise.race([
+        functionCallPromise,
+        timeoutPromise
+      ]) as any;
 
       console.log('CLIENT: Supabase function response received', {
         hasData: !!data,
@@ -215,15 +230,25 @@ const CameraPage = () => {
         error: error ? JSON.stringify(error) : null
       });
 
+      console.log('Vision result:', { data, error });
+
       // Check if the request was aborted
       if (abortControllerRef.current?.signal.aborted) {
         console.log('CLIENT: Request was aborted');
+        toast.error('Analysis timed out');
         return;
       }
 
       if (error) {
         console.error('CLIENT: Supabase function error:', error);
-        toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
+        console.error('Vision error:', error);
+        
+        // Check if it's a timeout or network error
+        if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
+          toast.error('Analysis timed out - please try again');
+        } else {
+          toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
+        }
         return;
       }
 
@@ -233,7 +258,7 @@ const CameraPage = () => {
         return;
       }
 
-      // Check if the response indicates an error
+      // Check if the response indicates an error from the edge function
       if (data.error) {
         console.error('CLIENT: Vision API returned error:', data.message);
         toast.error(`Analysis failed: ${data.message}`);
@@ -261,14 +286,16 @@ const CameraPage = () => {
       toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
       
     } catch (error) {
-      clearTimeout(timeoutId);
       console.error('CLIENT: Error analyzing image:', error);
+      console.error('Vision error:', error);
       
-      // Check if the error is due to abort
-      if (error.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
+      // Check if the error is due to abort or timeout
+      if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+        console.log('CLIENT: Request timed out');
+        toast.error('Analysis timed out - please try again');
+      } else if (error.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
         console.log('CLIENT: Request was aborted due to timeout');
-        // Don't show error toast here as we already showed "Analysis timed out"
-        return;
+        toast.error('Analysis timed out');
       } else {
         toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
       }
@@ -576,7 +603,10 @@ const CameraPage = () => {
 
               <div className="space-y-3">
                 <Button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    console.log('Upload Photo button clicked');
+                    fileInputRef.current?.click();
+                  }}
                   className="w-full gradient-primary"
                   size="lg"
                 >
@@ -794,7 +824,10 @@ const CameraPage = () => {
             
             <div className="flex space-x-3">
               <Button
-                onClick={analyzeImage}
+                onClick={() => {
+                  console.log('Analyze Food button clicked');
+                  analyzeImage();
+                }}
                 disabled={isAnalyzing}
                 className="flex-1 gradient-primary min-w-[120px]"
               >
