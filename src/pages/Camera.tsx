@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,6 +78,7 @@ const CameraPage = () => {
   const [manualEditText, setManualEditText] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
@@ -161,60 +162,78 @@ const CameraPage = () => {
   const analyzeImage = async () => {
     if (!selectedImage) return;
 
+    console.log('=== CLIENT: Starting image analysis ===', {
+      timestamp: new Date().toISOString(),
+      imageSize: selectedImage.length
+    });
+
     setIsAnalyzing(true);
-    setProcessingStep('Analyzing image...');
+    setProcessingStep('Initializing...');
     
-    // Client-side timeout protection
+    // Create AbortController for this request
+    abortControllerRef.current = new AbortController();
     const timeoutId = setTimeout(() => {
-      if (isAnalyzing) {
-        console.error('Client-side timeout: Analysis took too long');
-        setIsAnalyzing(false);
-        setProcessingStep('');
-        toast.error('Analysis timed out. Please try again or check your internet connection.');
+      console.log('CLIENT: Timeout reached, aborting request');
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-    }, 25000); // 25 second client-side timeout
+    }, 22000); // 22 second timeout (slightly less than edge function timeout)
     
     try {
       const imageBase64 = convertToBase64(selectedImage);
       
-      console.log('=== CLIENT: Starting image analysis ===', {
-        timestamp: new Date().toISOString(),
-        imageSize: imageBase64.length
-      });
-      
-      setProcessingStep('Sending to AI...');
-      
-      const { data, error } = await supabase.functions.invoke('vision-label-reader', {
-        body: { imageBase64 }
-      });
-
-      console.log('=== CLIENT: Supabase function response ===', {
-        hasData: !!data,
-        hasError: !!error,
+      console.log('CLIENT: Prepared image data', {
+        imageBase64Length: imageBase64.length,
         timestamp: new Date().toISOString()
       });
+      
+      setProcessingStep('Sending to Vision API...');
+      
+      console.log('CLIENT: Calling Supabase function...');
+      
+      const { data, error } = await supabase.functions.invoke('vision-label-reader', {
+        body: { imageBase64 },
+        signal: abortControllerRef.current.signal
+      });
+
+      console.log('CLIENT: Supabase function response received', {
+        hasData: !!data,
+        hasError: !!error,
+        timestamp: new Date().toISOString(),
+        data: data ? JSON.stringify(data).substring(0, 200) + '...' : null,
+        error: error ? JSON.stringify(error) : null
+      });
+
+      clearTimeout(timeoutId);
 
       if (error) {
-        console.error('Supabase function error:', error);
-        clearTimeout(timeoutId);
+        console.error('CLIENT: Supabase function error:', error);
+        
+        if (error.name === 'AbortError') {
+          toast.error('Analysis timed out. Please try again with a smaller image.');
+          return;
+        }
+        
         toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
         return;
       }
 
       if (!data) {
-        console.error('No data returned from vision API');
-        clearTimeout(timeoutId);
+        console.error('CLIENT: No data returned from vision API');
         toast.error('No data returned from analysis. Please try again.');
         return;
       }
 
-      console.log('Vision API results:', data);
+      console.log('CLIENT: Processing Vision API results...', {
+        labelsCount: data.labels?.length || 0,
+        foodLabelsCount: data.foodLabels?.length || 0
+      });
+      
       setVisionResults(data);
 
       const processedFoods = processNutritionData('photo', data);
       
       if (processedFoods.length === 0) {
-        clearTimeout(timeoutId);
         toast.error('No food items detected in the image. Please try a different photo.');
         return;
       }
@@ -224,16 +243,22 @@ const CameraPage = () => {
       setShowConfirmation(true);
       
       toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
-      clearTimeout(timeoutId);
       
     } catch (error) {
-      console.error('Error analyzing image:', error);
+      console.error('CLIENT: Error analyzing image:', error);
       clearTimeout(timeoutId);
-      toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
+      
+      if (error.name === 'AbortError') {
+        console.log('CLIENT: Request was aborted due to timeout');
+        toast.error('Analysis timed out after 22 seconds. Please try again or check your internet connection.');
+      } else {
+        toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
+      }
     } finally {
       // Always reset the analyzing state
       setIsAnalyzing(false);
       setProcessingStep('');
+      abortControllerRef.current = null;
       clearTimeout(timeoutId);
     }
   };
@@ -492,6 +517,15 @@ const CameraPage = () => {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Clean up AbortController on component unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -760,11 +794,24 @@ const CameraPage = () => {
                 )}
               </Button>
               
-              <Button variant="outline" onClick={resetState} className="flex-1 min-w-[80px]">
+              <Button 
+                variant="outline" 
+                onClick={resetState} 
+                className="flex-1 min-w-[80px]"
+                disabled={isAnalyzing}
+              >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
             </div>
+            
+            {isAnalyzing && (
+              <div className="text-center">
+                <p className="text-sm text-blue-600 font-medium">
+                  ⏱️ Analysis timeout: 22 seconds
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -877,7 +924,7 @@ const CameraPage = () => {
         </div>
       )}
 
-      {/* API Status Card */}
+      {/* Enhanced API Status Card */}
       <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
@@ -887,7 +934,7 @@ const CameraPage = () => {
                 AI-Powered Food Logging
               </h4>
               <p className="text-xs text-green-700 dark:text-green-300">
-                Enhanced with timeout protection and error diagnostics.
+                Enhanced with AbortController, 22s timeout, and comprehensive logging.
               </p>
             </div>
           </div>

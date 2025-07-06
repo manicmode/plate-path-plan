@@ -45,6 +45,15 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 
+console.log('=== VISION FUNCTION LOADED ===', {
+  timestamp: new Date().toISOString(),
+  env: {
+    hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
+    hasSupabaseKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    hasGoogleKey: !!Deno.env.get('GOOGLE_VISION_API_KEY')
+  }
+});
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -68,12 +77,14 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
 };
 
 serve(async (req) => {
-  const startTime = Date.now();
-  console.log('=== VISION FUNCTION START ===', {
+  console.log('=== VISION FUNCTION REQUEST START ===', {
     timestamp: new Date().toISOString(),
     method: req.method,
-    url: req.url
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
   });
+
+  const startTime = Date.now();
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -82,7 +93,13 @@ serve(async (req) => {
   }
 
   try {
-    // Validate API key immediately
+    // STEP 1: Validate API key immediately
+    console.log('STEP 1: API Key Validation', {
+      hasGoogleVisionKey: !!googleVisionApiKey,
+      keyLength: googleVisionApiKey?.length || 0,
+      keyPreview: googleVisionApiKey ? `${googleVisionApiKey.substring(0, 10)}...` : 'NO KEY'
+    });
+
     if (!googleVisionApiKey) {
       console.error('CRITICAL: Google Vision API key not configured');
       return new Response(
@@ -98,19 +115,18 @@ serve(async (req) => {
       );
     }
 
-    console.log('API key validation: OK');
-    
-    // Parse request body with timeout
+    // STEP 2: Parse request body with timeout
+    console.log('STEP 2: Parsing request body...');
     let imageBase64;
     try {
       const body = await withTimeout(req.json(), 5000);
       imageBase64 = body.imageBase64;
-      console.log('Request body parsed:', {
+      console.log('STEP 2: Request body parsed:', {
         hasImageData: !!imageBase64,
         imageDataLength: imageBase64?.length || 0
       });
     } catch (error) {
-      console.error('Failed to parse request body:', error);
+      console.error('STEP 2: Failed to parse request body:', error);
       return new Response(
         JSON.stringify({
           error: 'Invalid request body',
@@ -125,7 +141,7 @@ serve(async (req) => {
     }
 
     if (!imageBase64) {
-      console.error('No image data provided in request');
+      console.error('STEP 2: No image data provided in request');
       return new Response(
         JSON.stringify({
           error: 'Image data is required',
@@ -139,55 +155,60 @@ serve(async (req) => {
       );
     }
 
-    console.log('Starting Google Vision API call...');
+    // STEP 3: Call Google Vision API
+    console.log('STEP 3: Starting Google Vision API call...');
 
-    // Call Google Vision API with enhanced timeout and error handling
     let visionResponse;
     try {
-      visionResponse = await withTimeout(
-        fetch(
-          `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`,
+      const apiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`;
+      const payload = {
+        requests: [
           {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+            image: {
+              content: imageBase64,
             },
-            body: JSON.stringify({
-              requests: [
-                {
-                  image: {
-                    content: imageBase64,
-                  },
-                  features: [
-                    {
-                      type: 'LABEL_DETECTION',
-                      maxResults: 10,
-                    },
-                    {
-                      type: 'TEXT_DETECTION',
-                      maxResults: 10,
-                    },
-                    {
-                      type: 'OBJECT_LOCALIZATION',
-                      maxResults: 10,
-                    },
-                  ],
-                },
-              ],
-            }),
-          }
-        ),
-        20000 // 20 second timeout for Google Vision API
+            features: [
+              {
+                type: 'LABEL_DETECTION',
+                maxResults: 10,
+              },
+              {
+                type: 'TEXT_DETECTION',
+                maxResults: 10,
+              },
+              {
+                type: 'OBJECT_LOCALIZATION',
+                maxResults: 10,
+              },
+            ],
+          },
+        ],
+      };
+
+      console.log('STEP 3: Making Vision API request', {
+        url: apiUrl.substring(0, 50) + '...',
+        payloadSize: JSON.stringify(payload).length
+      });
+
+      visionResponse = await withTimeout(
+        fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }),
+        15000 // 15 second timeout for Google Vision API
       );
 
-      console.log('Google Vision API response received:', {
+      console.log('STEP 3: Google Vision API response received:', {
         status: visionResponse.status,
         statusText: visionResponse.statusText,
-        headers: Object.fromEntries(visionResponse.headers.entries())
+        ok: visionResponse.ok
       });
 
     } catch (error) {
-      console.error('Google Vision API call failed:', error);
+      console.error('STEP 3: Google Vision API call failed:', error);
       return new Response(
         JSON.stringify({
           error: 'Google Vision API call failed',
@@ -202,9 +223,12 @@ serve(async (req) => {
       );
     }
 
+    // STEP 4: Handle API response
+    console.log('STEP 4: Processing Vision API response...');
+    
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
-      console.error('Google Vision API Error Response:', {
+      console.error('STEP 4: Google Vision API Error Response:', {
         status: visionResponse.status,
         statusText: visionResponse.statusText,
         errorText
@@ -227,12 +251,12 @@ serve(async (req) => {
     let visionData;
     try {
       visionData = await visionResponse.json();
-      console.log('Vision API JSON parsed successfully:', {
+      console.log('STEP 4: Vision API JSON parsed successfully:', {
         hasResponses: !!visionData.responses,
         responsesLength: visionData.responses?.length || 0
       });
     } catch (error) {
-      console.error('Failed to parse Vision API JSON response:', error);
+      console.error('STEP 4: Failed to parse Vision API JSON response:', error);
       return new Response(
         JSON.stringify({
           error: 'Failed to parse Vision API response',
@@ -247,8 +271,11 @@ serve(async (req) => {
       );
     }
 
+    // STEP 5: Process results
+    console.log('STEP 5: Processing results...');
+    
     if (!visionData.responses || !visionData.responses[0]) {
-      console.error('Invalid Vision API response structure:', visionData);
+      console.error('STEP 5: Invalid Vision API response structure:', visionData);
       return new Response(
         JSON.stringify({
           error: 'Invalid response from Vision API',
@@ -267,7 +294,7 @@ serve(async (req) => {
     
     // Check for Vision API errors
     if (annotations.error) {
-      console.error('Vision API returned error:', annotations.error);
+      console.error('STEP 5: Vision API returned error:', annotations.error);
       return new Response(
         JSON.stringify({
           error: `Vision API error: ${annotations.error.message}`,
@@ -286,7 +313,7 @@ serve(async (req) => {
     const textAnnotations = annotations.textAnnotations || [];
     const objects = annotations.localizedObjectAnnotations || [];
 
-    console.log('Vision API results processed:', {
+    console.log('STEP 5: Vision API results processed:', {
       labelsCount: labels.length,
       textAnnotationsCount: textAnnotations.length,
       objectsCount: objects.length
@@ -309,7 +336,8 @@ serve(async (req) => {
     const nutritionText = textAnnotations.length > 0 ? textAnnotations[0].description : '';
     const nutritionData = extractNutritionFromText(nutritionText);
 
-    console.log('Processing database operations...');
+    // STEP 6: Database operations (non-blocking)
+    console.log('STEP 6: Starting database operations...');
 
     // Create a supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -323,9 +351,9 @@ serve(async (req) => {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user } } = await supabase.auth.getUser(token);
         userId = user?.id;
-        console.log('User ID extracted:', userId);
+        console.log('STEP 6: User ID extracted:', userId);
       } catch (authError) {
-        console.warn('Could not extract user ID:', authError);
+        console.warn('STEP 6: Could not extract user ID:', authError);
       }
     }
 
@@ -351,7 +379,9 @@ serve(async (req) => {
       }
     }, 0);
 
-    // Prepare response
+    // STEP 7: Prepare and return response
+    console.log('STEP 7: Preparing response...');
+    
     const response = {
       labels: labels.map((label: any) => ({
         description: label.description,
@@ -372,7 +402,8 @@ serve(async (req) => {
     const duration = Date.now() - startTime;
     console.log('=== VISION FUNCTION SUCCESS ===', {
       duration: `${duration}ms`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      responseSize: JSON.stringify(response).length
     });
     
     // Return the processed results
@@ -384,7 +415,7 @@ serve(async (req) => {
     );
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error('=== VISION FUNCTION ERROR ===', {
+    console.error('=== VISION FUNCTION CRITICAL ERROR ===', {
       error: error.message,
       stack: error.stack,
       duration: `${duration}ms`,
@@ -420,7 +451,7 @@ function extractNutritionFromText(text: string) {
     fat: /fat\s*:?\s*(\d+(?:\.\d+)?)\s*g/i,
     fiber: /fiber\s*:?\s*(\d+(?:\.\d+)?)\s*g/i,
     sugar: /sugar\s*:?\s*(\d+(?:\.\d+)?)\s*g/i,
-    sodium: /sodium\s*:?\s*(\d+(?:\.\d+)?)\s*mg/i,
+    sodium: /sodium\s*:?\s*(\d+(?:\\.d+)?)\s*mg/i,
   };
 
   for (const [key, pattern] of Object.entries(patterns)) {
