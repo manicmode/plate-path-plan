@@ -11,7 +11,6 @@ import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Camera from "./pages/Camera";
-import Log from "./pages/Log";
 import Analytics from "./pages/Analytics";
 import Coach from "./pages/Coach";
 import Profile from "./pages/Profile";
@@ -27,54 +26,87 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// Optimized query client for mobile
+// Create query client with mobile-optimized settings and app lifecycle handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 10, // 10 minutes
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchOnMount: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: true, // Refetch when app regains focus
+      refetchOnReconnect: true, // Refetch on network reconnection
       retry: (failureCount, error) => {
-        // Only retry on network errors, max 2 times
-        return failureCount < 2 && error?.message?.includes('fetch');
+        // Reduce retries on mobile to prevent hanging
+        const maxRetries = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 1 : 3;
+        return failureCount < maxRetries;
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-    mutations: {
-      retry: 1,
     },
   },
 });
 
 function App() {
   useEffect(() => {
-    console.log('App mounted successfully');
-    
-    // Mobile-specific optimizations
+    // App lifecycle management for mobile devices
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('App regained focus - refreshing queries');
+        queryClient.invalidateQueries();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Window focused - refreshing queries');
+      queryClient.invalidateQueries();
+    };
+
+    const handleOnline = () => {
+      console.log('Network reconnected - refreshing queries');
+      queryClient.invalidateQueries();
+    };
+
+    // Add event listeners for app lifecycle
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+
+    // iOS Safari specific handling
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
-      console.log('Mobile device detected, applying optimizations');
-      
-      // Prevent zoom on input focus (iOS Safari)
-      const viewport = document.querySelector('meta[name=viewport]');
-      if (viewport) {
-        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-      }
+      // Handle iOS Safari page show event
+      window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+          console.log('Page restored from cache - refreshing queries');
+          queryClient.invalidateQueries();
+        }
+      });
     }
 
+    // Cleanup function
     return () => {
-      console.log('App unmounting');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
     };
+  }, []);
+
+  useEffect(() => {
+    // Simple app initialization
+    const initializeApp = () => {
+      try {
+        console.log('App initialized successfully');
+      } catch (error) {
+        console.error('App initialization error:', error);
+      }
+    };
+
+    setTimeout(initializeApp, 100);
   }, []);
 
   return (
     <ErrorBoundary fallback={
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
-          <h2 className="text-2xl font-bold text-foreground">App Error</h2>
+          <h2 className="text-2xl font-bold text-foreground">App Loading Error</h2>
           <p className="text-muted-foreground">
-            Something went wrong. Please refresh the page.
+            There was an issue loading the app. Please refresh the page.
           </p>
           <button 
             onClick={() => window.location.reload()} 
@@ -97,7 +129,6 @@ function App() {
                       <Route path="/" element={<Index />} />
                       <Route path="/home" element={<Layout><Home /></Layout>} />
                       <Route path="/camera" element={<Layout><Camera /></Layout>} />
-                      <Route path="/log" element={<Layout><Log /></Layout>} />
                       <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
                       <Route path="/coach" element={<Layout><Coach /></Layout>} />
                       <Route path="/profile" element={<Layout><Profile /></Layout>} />

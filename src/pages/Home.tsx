@@ -117,7 +117,7 @@ const Home = () => {
       textColorSecondary: 'text-orange-800 dark:text-orange-100',
       percentage: progressPercentage,
       shadow: 'shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]',
-      onClick: () => navigate('/log'),
+      onClick: () => navigate('/camera'),
     },
     protein: {
       name: 'Protein',
@@ -131,7 +131,7 @@ const Home = () => {
       textColorSecondary: 'text-blue-800 dark:text-blue-100',
       percentage: Math.min((progress.protein / (user?.targetProtein || 150)) * 100, 100),
       shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)]',
-      onClick: () => navigate('/log'),
+      onClick: () => navigate('/camera'),
     },
     carbs: {
       name: 'Carbs',
@@ -145,7 +145,7 @@ const Home = () => {
       textColorSecondary: 'text-yellow-800 dark:text-yellow-100',
       percentage: Math.min((progress.carbs / (user?.targetCarbs || 200)) * 100, 100),
       shadow: 'shadow-[0_0_20px_rgba(251,191,36,0.4)] hover:shadow-[0_0_30px_rgba(251,191,36,0.6)]',
-      onClick: () => navigate('/log'),
+      onClick: () => navigate('/camera'),
     },
     fat: {
       name: 'Fat',
@@ -159,7 +159,7 @@ const Home = () => {
       textColorSecondary: 'text-green-800 dark:text-green-100',
       percentage: Math.min((progress.fat / (user?.targetFat || 65)) * 100, 100),
       shadow: 'shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]',
-      onClick: () => navigate('/log'),
+      onClick: () => navigate('/camera'),
     },
     hydration: {
       name: 'Hydration',
@@ -433,7 +433,7 @@ const Home = () => {
         {/* Primary Action: Log Food - Full Width */}
         <Card 
           className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
-          onClick={() => navigate('/log')}
+          onClick={() => navigate('/camera')}
         >
           <CardContent className={`${isMobile ? 'p-6' : 'p-8'} text-center`}>
             <div className="flex flex-col items-center space-y-4">
