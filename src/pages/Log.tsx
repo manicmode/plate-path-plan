@@ -21,9 +21,7 @@ const Log = () => {
     setAnalysisType('photo');
     setIsAnalyzing(true);
     
-    // Simulate analysis delay
     setTimeout(() => {
-      // Mock successful recognition
       const mockFood = {
         name: 'Grilled Chicken Breast',
         calories: 280,
@@ -133,14 +131,15 @@ const Log = () => {
     });
   };
 
+  // Define the 6 logging options in 2x3 grid format
   const logOptions = [
-    // Top Row
+    // Row 1
     {
       id: 'photo',
-      title: 'Take Photo',
+      title: 'Upload Photo',
       icon: Camera,
       color: 'from-blue-500 to-cyan-500',
-      description: 'Capture your meal',
+      description: 'Take a photo of your meal',
       onClick: handlePhotoCapture,
     },
     {
@@ -152,33 +151,33 @@ const Log = () => {
       onClick: handleVoiceLog,
     },
     {
-      id: 'barcode',
-      title: 'Scan Barcode',
-      icon: ScanLine,
-      color: 'from-green-500 to-emerald-500',
-      description: 'Scan product code',
-      onClick: handleBarcodeScan,
-    },
-    // Bottom Row
-    {
       id: 'manual',
       title: 'Manual Entry',
       icon: Edit,
       color: 'from-orange-500 to-yellow-500',
-      description: 'Enter food details',
+      description: 'Enter food details manually',
       onClick: handleManualEntry,
+    },
+    // Row 2
+    {
+      id: 'barcode',
+      title: 'Scan Barcode',
+      icon: ScanLine,
+      color: 'from-green-500 to-emerald-500',
+      description: 'Scan product barcode',
+      onClick: handleBarcodeScan,
     },
     {
       id: 'recent',
-      title: 'Recent Logs',
+      title: 'Recent',
       icon: Clock,
       color: 'from-indigo-500 to-blue-500',
-      description: 'Previously logged',
+      description: 'Previously logged foods',
       onClick: handleRecent,
     },
     {
       id: 'saved',
-      title: 'Saved Logs',
+      title: 'Saved',
       icon: Save,
       color: 'from-purple-500 to-violet-500',
       description: 'Your saved foods',
@@ -232,65 +231,35 @@ const Log = () => {
             Log Your Food
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            Choose your preferred logging method
+            Take a photo or speak your meal
           </p>
         </div>
 
-        {/* 2+2+2 Grid Layout (3 buttons per row, 2 rows) */}
-        <div className="space-y-6">
-          {/* Top Row - 3 buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {logOptions.slice(0, 3).map((option) => {
-              const Icon = option.icon;
-              return (
-                <Card
-                  key={option.id}
-                  className="group cursor-pointer border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 overflow-hidden h-48"
-                  onClick={option.onClick}
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${option.color} opacity-90`} />
-                  <CardContent className="relative h-full flex flex-col items-center justify-center text-center p-6 text-white">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <Icon className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">
-                      {option.title}
-                    </h3>
-                    <p className="text-sm opacity-90">
-                      {option.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          {/* Bottom Row - 3 buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {logOptions.slice(3, 6).map((option) => {
-              const Icon = option.icon;
-              return (
-                <Card
-                  key={option.id}
-                  className="group cursor-pointer border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 overflow-hidden h-48"
-                  onClick={option.onClick}
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${option.color} opacity-90`} />
-                  <CardContent className="relative h-full flex flex-col items-center justify-center text-center p-6 text-white">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <Icon className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">
-                      {option.title}
-                    </h3>
-                    <p className="text-sm opacity-90">
-                      {option.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+        {/* 2x3 Grid Layout */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 max-w-2xl mx-auto">
+          {logOptions.map((option) => {
+            const Icon = option.icon;
+            return (
+              <Card
+                key={option.id}
+                className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden aspect-square"
+                onClick={option.onClick}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${option.color} opacity-90`} />
+                <CardContent className="relative h-full flex flex-col items-center justify-center text-center p-4 text-white">
+                  <div className="w-12 h-12 lg:w-16 lg:h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-3 lg:mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Icon className="h-6 w-6 lg:h-8 lg:w-8" />
+                  </div>
+                  <h3 className="text-base lg:text-lg font-bold mb-1 lg:mb-2">
+                    {option.title}
+                  </h3>
+                  <p className="text-xs lg:text-sm opacity-90 leading-tight">
+                    {option.description}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
