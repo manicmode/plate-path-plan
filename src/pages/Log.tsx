@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, Edit, Clock, ScanLine, Save, Droplets, Pill } from 'lucide-react';
+import { Camera, Mic, Edit, Clock, ScanLine, Save, Droplets, Pill, Upload } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
@@ -138,105 +139,90 @@ const Log = () => {
     });
   };
 
-  // Define the 8 logging options in 2x4 grid format
-  const logOptions = [
-    // Top row - Primary options
+  // Define the 8 logging options - top row (primary) and bottom row (secondary)
+  const topRowOptions = [
     {
       id: 'photo',
       title: 'Upload Photo',
-      icon: Camera,
-      description: 'Take a photo of your meal',
+      icon: Upload,
       onClick: handlePhotoCapture,
-      primary: true,
     },
     {
       id: 'voice',
       title: 'Speak to Log',
       icon: Mic,
-      description: 'Say what you ate',
       onClick: handleVoiceLog,
-      primary: true,
     },
     {
       id: 'manual',
       title: 'Manual Entry',
       icon: Edit,
-      description: 'Enter food details manually',
       onClick: handleManualEntry,
-      primary: true,
     },
     {
       id: 'barcode',
       title: 'Scan Barcode',
       icon: ScanLine,
-      description: 'Scan product barcode',
       onClick: handleBarcodeScan,
-      primary: true,
     },
-    // Bottom row - Secondary options
+  ];
+
+  const bottomRowOptions = [
     {
       id: 'saved',
       title: 'Saved Logs',
       icon: Save,
-      description: 'Your frequently saved foods',
       onClick: handleSaved,
-      primary: false,
     },
     {
       id: 'recent',
       title: 'Recent Logs',
       icon: Clock,
-      description: 'Previously logged foods',
       onClick: handleRecent,
-      primary: false,
     },
     {
       id: 'hydration',
       title: 'Hydration Log',
       icon: Droplets,
-      description: 'Track your water intake',
       onClick: handleHydration,
-      primary: false,
     },
     {
       id: 'supplements',
       title: 'Supplement Log',
       icon: Pill,
-      description: 'Log your supplements',
       onClick: handleSupplements,
-      primary: false,
     },
   ];
 
   if (isAnalyzing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
         <div className="text-center space-y-6 max-w-sm">
           <div className="relative">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-teal-400 to-blue-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
               {analysisType === 'photo' ? (
                 <Camera className="h-10 w-10 text-white" />
               ) : (
                 <Mic className="h-10 w-10 text-white" />
               )}
             </div>
-            <div className="absolute inset-0 w-24 h-24 mx-auto rounded-full border-4 border-blue-200 dark:border-blue-400 border-t-blue-500 dark:border-t-blue-300 animate-spin"></div>
+            <div className="absolute inset-0 w-24 h-24 mx-auto rounded-full border-4 border-teal-200 border-t-teal-500 animate-spin"></div>
           </div>
           <div className="space-y-3">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h3 className="text-2xl font-bold text-white">
               Analyzing your food...
             </h3>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-gray-300">
               {analysisType === 'photo' ? 'Processing image' : 'Processing audio'}
             </p>
-            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+            <div className="text-sm text-teal-400 font-medium">
               ~3 seconds left
             </div>
           </div>
           <Button 
             variant="outline" 
             onClick={handleUnrecognizedInput}
-            className="mt-6 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/50"
+            className="mt-6 border-teal-400 text-teal-400 hover:bg-teal-500/10"
           >
             Having trouble? Enter manually
           </Button>
@@ -246,54 +232,64 @@ const Log = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900 p-4 pb-32">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-900 p-4 pb-32">
+      <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <div className="text-center space-y-3 pt-6">
-          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
+        <div className="text-center space-y-2 pt-6">
+          <h1 className="text-3xl font-bold text-white">
             Log Your Food
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
+          <p className="text-slate-400">
             Choose how you'd like to log today
           </p>
         </div>
 
-        {/* 2x4 Grid Layout */}
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            {logOptions.map((option, index) => {
+        {/* Main Container - Gray Background */}
+        <div className="bg-slate-800 rounded-3xl p-6 shadow-2xl">
+          {/* Top Row - Primary Actions (Larger) */}
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            {topRowOptions.map((option) => {
               const Icon = option.icon;
-              const isPrimary = option.primary;
               
               return (
-                <Card
+                <div
                   key={option.id}
-                  className={`group cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden bg-white/70 dark:bg-white/10 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-white/15 ${
-                    isPrimary ? 'aspect-square' : 'aspect-square'
-                  } animate-fade-in`}
-                  style={{ animationDelay: `${index * 80}ms` }}
+                  className="group cursor-pointer bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-4 transition-all duration-200 hover:scale-105 hover:shadow-lg"
                   onClick={option.onClick}
                 >
-                  <CardContent className="h-full flex flex-col items-center justify-center text-center p-4">
-                    <div className={`${
-                      isPrimary ? 'w-16 h-16 lg:w-18 lg:h-18' : 'w-14 h-14 lg:w-16 lg:h-16'
-                    } bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-3 lg:mb-4 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/30 transition-all duration-300 shadow-md`}>
-                      <Icon className={`${
-                        isPrimary ? 'h-8 w-8 lg:h-9 lg:w-9' : 'h-7 w-7 lg:h-8 lg:w-8'
-                      } text-white`} />
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-blue-500 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-all duration-200">
+                      <Icon className="h-6 w-6 text-white" />
                     </div>
-                    <h3 className={`${
-                      isPrimary ? 'text-base lg:text-lg' : 'text-sm lg:text-base'
-                    } font-bold mb-2 text-gray-900 dark:text-white`}>
+                    <span className="text-sm font-medium text-white leading-tight">
                       {option.title}
-                    </h3>
-                    <p className={`${
-                      isPrimary ? 'text-sm lg:text-base' : 'text-xs lg:text-sm'
-                    } text-gray-600 dark:text-gray-300 leading-tight`}>
-                      {option.description}
-                    </p>
-                  </CardContent>
-                </Card>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Row - Secondary Actions (Slightly Smaller) */}
+          <div className="grid grid-cols-4 gap-4">
+            {bottomRowOptions.map((option) => {
+              const Icon = option.icon;
+              
+              return (
+                <div
+                  key={option.id}
+                  className="group cursor-pointer bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-3 transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                  onClick={option.onClick}
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-blue-500 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-all duration-200">
+                      <Icon className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="text-xs font-medium text-white leading-tight">
+                      {option.title}
+                    </span>
+                  </div>
+                </div>
               );
             })}
           </div>
