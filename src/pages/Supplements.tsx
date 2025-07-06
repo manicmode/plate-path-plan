@@ -134,17 +134,17 @@ const Supplements = () => {
         <CardHeader className={`${isMobile ? 'pb-2' : 'pb-4'}`}>
           <CardTitle className={`text-center text-gray-900 dark:text-white ${isMobile ? 'text-base' : 'text-lg'}`}>Quick Add</CardTitle>
         </CardHeader>
-        <CardContent className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-2 gap-3'} ${isMobile ? 'p-3' : 'p-6'} pt-0`}>
+        <CardContent className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 gap-4'} ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           {quickSupplements.map((supplement) => (
             <Button
               key={supplement.name}
               onClick={() => handleQuickAdd(supplement)}
-              className={`glass-button ${isMobile ? 'h-14' : 'h-16'} flex flex-col items-center ${isMobile ? 'space-y-1' : 'space-y-1'} micro-bounce rounded-2xl`}
+              className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 micro-bounce rounded-2xl`}
             >
-              <Pill className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-purple-600`} />
+              <Pill className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
               <div className="text-center">
-                <p className={`${isMobile ? 'text-xs' : 'text-xs'} font-semibold text-gray-700 dark:text-gray-200`}>{supplement.name}</p>
-                <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400`}>{supplement.dosage}{supplement.unit}</p>
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100 leading-tight`}>{supplement.name}</p>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-300 leading-tight`}>{supplement.dosage}{supplement.unit}</p>
               </div>
             </Button>
           ))}
@@ -155,18 +155,18 @@ const Supplements = () => {
       <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className={`glass-button ${isMobile ? 'h-16' : 'h-20'} flex flex-col items-center space-y-2 rounded-2xl`}
+          className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 rounded-2xl`}
         >
-          <Camera className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-purple-600`} />
-          <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-700 dark:text-gray-200`}>Capture Supplement</span>
+          <Camera className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>Capture Supplement</span>
         </Button>
         
         <Button
           onClick={() => setShowManualEntry(!showManualEntry)}
-          className={`glass-button ${isMobile ? 'h-16' : 'h-20'} flex flex-col items-center space-y-2 rounded-2xl`}
+          className={`glass-button ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-center space-y-2 rounded-2xl`}
         >
-          <Plus className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-purple-600`} />
-          <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-700 dark:text-gray-200`}>Manual Entry</span>
+          <Plus className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-purple-500 dark:text-purple-400`} />
+          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-100`}>>Manual Entry</span>
         </Button>
       </div>
 
