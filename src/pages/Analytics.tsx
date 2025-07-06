@@ -6,17 +6,22 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area } from 'recharts';
 import { TrendingUp, Target, Calendar, Award, Droplets, Flame, Zap, Activity, Brain, Trophy, ChevronRight, Star } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Analytics = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month'>('week');
+  const [animationDelay, setAnimationDelay] = useState(0);
   
   useScrollToTop();
+
+  useEffect(() => {
+    setAnimationDelay(100);
+  }, []);
 
   const progress = getTodaysProgress();
   
@@ -81,7 +86,7 @@ const Analytics = () => {
   const weeklyExerciseMinutes = 180; // Mock data
   const hydrationCompliance = Math.round((hydrationWeeklyData.reduce((sum, day) => sum + (day.amount >= day.target ? 1 : 0), 0) / hydrationWeeklyData.length) * 100);
 
-  const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 8 }: any) => {
+  const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 10 }: any) => {
     const percentage = Math.min((value / max) * 100, 100);
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -95,7 +100,7 @@ const Analytics = () => {
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="rgb(148 163 184 / 0.3)"
+            stroke="rgb(148 163 184 / 0.2)"
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -108,14 +113,17 @@ const Analytics = () => {
             fill="none"
             strokeDasharray={strokeDasharray}
             strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-1000 ease-out"
+            className="transition-all duration-[2s] ease-out"
             strokeLinecap="round"
+            style={{
+              filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.3))'
+            }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <div className="text-xl font-bold text-gray-900 dark:text-white">{Math.round(percentage)}%</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400">{value}/{max}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-300">{value}/{max}</div>
           </div>
         </div>
       </div>
@@ -127,13 +135,13 @@ const Analytics = () => {
       <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
         {Math.round(value).toLocaleString()}{suffix}
       </div>
-      <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
+      <div className="text-sm text-gray-600 dark:text-gray-300">{label}</div>
     </div>
   );
 
   const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: any, title: string, subtitle?: string }) => (
     <div className="flex items-center gap-3 mb-6">
-      <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl">
+      <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
         <Icon className="h-6 w-6 text-white" />
       </div>
       <div>
@@ -143,49 +151,68 @@ const Analytics = () => {
     </div>
   );
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600">
+          <p className="text-gray-900 dark:text-white font-medium">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-blue-900/20 dark:to-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
-      <div className="space-y-8 p-4 animate-fade-in">
-        {/* Header */}
-        <div className="text-center space-y-2 pt-4">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-transparent dark:bg-gradient-to-r dark:from-blue-400 dark:to-cyan-400 dark:bg-clip-text">
-            Your Progress Journey
-          </h1>
-          <p className="text-gray-600 dark:text-blue-300 font-medium">
-            Track your transformation with smart insights
-          </p>
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
+      <div className="space-y-6 p-4 animate-fade-in">
+        {/* Header with Animation */}
+        <div className="text-center space-y-3 pt-4 relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-2xl blur-3xl"></div>
+          <div className="relative">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              🏆 Your Progress Journey
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 font-medium">
+              Track your transformation with smart insights ✨
+            </p>
+          </div>
         </div>
 
-        {/* Weekly Summary Card */}
-        <Card className="bg-white/80 dark:bg-gradient-to-br dark:from-blue-900/40 dark:to-blue-800/20 border-gray-200/50 dark:border-blue-500/20 backdrop-blur-sm shadow-lg">
-          <CardHeader>
+        {/* Weekly Summary Card - Enhanced */}
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-t-lg">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl shadow-lg">
                 <Star className="h-6 w-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-gray-900 dark:text-white">Weekly Summary</CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400">🔥 Great work this week! You're 80% on track.</p>
+                <CardTitle className="text-gray-900 dark:text-white">Weekly Summary 🔥</CardTitle>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Great work this week! You're 80% on track.</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
                 <div className="text-lg font-bold text-gray-900 dark:text-white">{Math.round(weeklyAverage.calories * 7).toLocaleString()}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Total Calories</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Total Calories</div>
               </div>
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
                 <div className="text-lg font-bold text-gray-900 dark:text-white">{weeklySteps.toLocaleString()}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Steps Walked</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Steps Walked</div>
               </div>
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
                 <div className="text-lg font-bold text-gray-900 dark:text-white">{weeklyExerciseMinutes}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Exercise Minutes</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Exercise Minutes</div>
               </div>
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
                 <div className="text-lg font-bold text-gray-900 dark:text-white">{hydrationCompliance}%</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Hydration Goals</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Hydration Goals</div>
               </div>
             </div>
           </CardContent>
@@ -195,8 +222,8 @@ const Analytics = () => {
         <div>
           <SectionHeader icon={TrendingUp} title="Daily Averages" subtitle="Your weekly performance overview" />
           <div className="grid grid-cols-3 gap-4">
-            <Card className="bg-white/80 dark:bg-gradient-to-br dark:from-blue-900/40 dark:to-blue-800/20 border-gray-200/50 dark:border-blue-500/20 backdrop-blur-sm shadow-lg">
-              <CardContent className="p-4">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
                 <AnimatedCounter 
                   value={weeklyAverage.calories} 
                   label="Avg Daily Calories"
@@ -204,8 +231,8 @@ const Analytics = () => {
                 />
               </CardContent>
             </Card>
-            <Card className="bg-white/80 dark:bg-gradient-to-br dark:from-emerald-900/40 dark:to-emerald-800/20 border-gray-200/50 dark:border-emerald-500/20 backdrop-blur-sm shadow-lg">
-              <CardContent className="p-4">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
                 <AnimatedCounter 
                   value={weeklyAverage.protein} 
                   label="Avg Daily Protein"
@@ -213,8 +240,8 @@ const Analytics = () => {
                 />
               </CardContent>
             </Card>
-            <Card className="bg-white/80 dark:bg-gradient-to-br dark:from-purple-900/40 dark:to-purple-800/20 border-gray-200/50 dark:border-purple-500/20 backdrop-blur-sm shadow-lg">
-              <CardContent className="p-4">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
                 <AnimatedCounter 
                   value={weeklyAverage.steps} 
                   label="Avg Daily Steps"
@@ -224,10 +251,10 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Weekly Overview Chart */}
+        {/* Weekly Overview Chart - Enhanced */}
         <div>
           <SectionHeader icon={Calendar} title="Weekly Overview" subtitle="Track your nutrition trends" />
-          <Card className="bg-white/80 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gray-900 dark:text-white">Nutrition Trends</CardTitle>
@@ -254,36 +281,60 @@ const Analytics = () => {
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(148 163 184 / 0.3)" />
-                    <XAxis dataKey="day" tick={{ fill: 'rgb(107 114 128)', fontSize: 12 }} />
-                    <YAxis tick={{ fill: 'rgb(107 114 128)', fontSize: 12 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        border: '1px solid rgba(148, 163, 184, 0.3)',
-                        borderRadius: '8px',
-                        color: 'rgb(17, 24, 39)',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                      }}
+                  <AreaChart data={weeklyChartData}>
+                    <defs>
+                      <linearGradient id="caloriesGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="proteinGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(148 163 184 / 0.2)" />
+                    <XAxis 
+                      dataKey="day" 
+                      tick={{ fill: 'currentColor', fontSize: 12 }} 
+                      className="text-gray-600 dark:text-gray-300"
                     />
+                    <YAxis 
+                      tick={{ fill: 'currentColor', fontSize: 12 }} 
+                      className="text-gray-600 dark:text-gray-300"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Bar dataKey="calories" fill="#3B82F6" name="Calories" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="protein" fill="#10B981" name="Protein" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="carbs" fill="#F59E0B" name="Carbs" radius={[2, 2, 0, 0]} />
-                  </BarChart>
+                    <Area 
+                      type="monotone" 
+                      dataKey="calories" 
+                      stroke="#3B82F6" 
+                      fillOpacity={1} 
+                      fill="url(#caloriesGradient)"
+                      name="Calories"
+                      strokeWidth={3}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="protein" 
+                      stroke="#10B981" 
+                      fillOpacity={1}
+                      fill="url(#proteinGradient)"
+                      name="Protein"
+                      strokeWidth={3}
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Macros and Hydration */}
+        {/* Macros and Hydration - Enhanced */}
         <div>
           <SectionHeader icon={Zap} title="Today's Breakdown" subtitle="Macros and hydration status" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Macronutrient Distribution */}
-            <Card className="bg-white/80 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                   <Zap className="h-5 w-5 text-yellow-500" />
@@ -309,14 +360,7 @@ const Analytics = () => {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            border: '1px solid rgba(148, 163, 184, 0.3)',
-                            borderRadius: '8px',
-                            color: 'rgb(17, 24, 39)'
-                          }}
-                        />
+                        <Tooltip content={<CustomTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -324,7 +368,7 @@ const Analytics = () => {
                         <div className="text-lg font-bold text-gray-900 dark:text-white">
                           {Math.round(progress.calories)}
                         </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">kcal today</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">kcal today</div>
                       </div>
                     </div>
                   </div>
@@ -332,9 +376,9 @@ const Analytics = () => {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   {macroData.map((macro, index) => (
                     <div key={index}>
-                      <div className="w-3 h-3 rounded-full mx-auto mb-1" style={{ backgroundColor: macro.color }}></div>
+                      <div className="w-4 h-4 rounded-full mx-auto mb-2 shadow-sm" style={{ backgroundColor: macro.color }}></div>
                       <div className="text-sm text-gray-900 dark:text-white font-semibold">{macro.value}g</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">{macro.name}</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300">{macro.name}</div>
                     </div>
                   ))}
                 </div>
@@ -342,7 +386,7 @@ const Analytics = () => {
             </Card>
 
             {/* Hydration Progress */}
-            <Card className="bg-white/80 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                   <Droplets className="h-5 w-5 text-cyan-500" />
@@ -359,7 +403,7 @@ const Analytics = () => {
                   />
                 </div>
                 <div className="text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Weekly Trend</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">Weekly Trend</div>
                   <div className="h-16">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={hydrationWeeklyData}>
@@ -367,18 +411,16 @@ const Analytics = () => {
                           type="monotone"
                           dataKey="amount"
                           stroke="#06B6D4"
-                          strokeWidth={2}
-                          dot={{ fill: '#06B6D4', r: 3 }}
+                          strokeWidth={3}
+                          dot={{ fill: '#06B6D4', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                          activeDot={{ r: 6, stroke: '#06B6D4', strokeWidth: 2 }}
                         />
-                        <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'rgb(107 114 128)' }} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            border: '1px solid rgba(148, 163, 184, 0.3)',
-                            borderRadius: '8px',
-                            color: 'rgb(17, 24, 39)'
-                          }}
+                        <XAxis 
+                          dataKey="day" 
+                          tick={{ fontSize: 10 }} 
+                          className="text-gray-600 dark:text-gray-300"
                         />
+                        <Tooltip content={<CustomTooltip />} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -388,11 +430,11 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Activity Tracking */}
+        {/* Activity Tracking - Enhanced */}
         <div>
           <SectionHeader icon={Activity} title="Activity & Exercise" subtitle="Steps and calories burned" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-white/80 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                   <Activity className="h-5 w-5 text-green-500" />
@@ -402,29 +444,31 @@ const Analytics = () => {
               <CardContent>
                 <div className="text-center mb-4">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">8,500</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">steps today</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">steps today</div>
                 </div>
                 <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={stepsData}>
-                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'rgb(107 114 128)' }} />
-                      <YAxis hide />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          border: '1px solid rgba(148, 163, 184, 0.3)',
-                          borderRadius: '8px',
-                          color: 'rgb(17, 24, 39)'
-                        }}
+                      <XAxis 
+                        dataKey="day" 
+                        tick={{ fontSize: 10 }} 
+                        className="text-gray-600 dark:text-gray-300"
                       />
-                      <Bar dataKey="steps" fill="#22C55E" radius={[4, 4, 0, 0]} />
+                      <YAxis hide />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar 
+                        dataKey="steps" 
+                        fill="#22C55E" 
+                        radius={[6, 6, 0, 0]}
+                        className="drop-shadow-sm"
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/80 dark:bg-gray-900/50 border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
@@ -441,7 +485,7 @@ const Analytics = () => {
                   />
                 </div>
                 <div className="text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Weekly Progress</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">Weekly Progress</div>
                   <div className="h-16">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={exerciseCaloriesData}>
@@ -449,18 +493,16 @@ const Analytics = () => {
                           type="monotone"
                           dataKey="calories"
                           stroke="#F97316"
-                          strokeWidth={2}
-                          dot={{ fill: '#F97316', r: 3 }}
+                          strokeWidth={3}
+                          dot={{ fill: '#F97316', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                          activeDot={{ r: 6, stroke: '#F97316', strokeWidth: 2 }}
                         />
-                        <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'rgb(107 114 128)' }} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            border: '1px solid rgba(148, 163, 184, 0.3)',
-                            borderRadius: '8px',
-                            color: 'rgb(17, 24, 39)'
-                          }}
+                        <XAxis 
+                          dataKey="day" 
+                          tick={{ fontSize: 10 }} 
+                          className="text-gray-600 dark:text-gray-300"
                         />
+                        <Tooltip content={<CustomTooltip />} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -470,14 +512,14 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Achievements & Streaks */}
+        {/* Achievements & Streaks - Enhanced */}
         <div>
           <SectionHeader icon={Trophy} title="Milestones & Streaks" subtitle="Your achievements and consistency" />
-          <Card className="bg-white/80 dark:bg-gradient-to-r dark:from-yellow-900/30 dark:to-orange-900/30 border-gray-200/50 dark:border-yellow-500/20 backdrop-blur-sm shadow-lg">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 rounded-xl border border-emerald-200 dark:border-emerald-500/20">
-                  <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center">
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-700/50 shadow-sm">
+                  <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
                     <Flame className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -487,8 +529,8 @@ const Analytics = () => {
                   <ChevronRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400 ml-auto" />
                 </div>
                 
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl border border-blue-200 dark:border-blue-500/20">
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700/50 shadow-sm">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
                     <Target className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -502,35 +544,35 @@ const Analytics = () => {
           </Card>
         </div>
 
-        {/* Smart Insights */}
+        {/* Smart Insights - Enhanced */}
         <div>
           <SectionHeader icon={Brain} title="Smart Insights" subtitle="Personalized recommendations" />
-          <Card className="bg-white/80 dark:bg-gradient-to-r dark:from-purple-900/30 dark:to-pink-900/30 border-gray-200/50 dark:border-purple-500/20 backdrop-blur-sm shadow-lg">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
             <CardContent className="p-6">
               <div className="space-y-3">
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border-l-4 border-green-500">
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border-l-4 border-green-500 shadow-sm">
                   <div className="text-sm text-green-700 dark:text-green-300 font-semibold">🎯 Excellent Progress!</div>
-                  <div className="text-gray-900 dark:text-white text-sm mt-1">You hit your protein target 5 days in a row. Amazing consistency!</div>
+                  <div className="text-gray-900 dark:text-gray-100 text-sm mt-1">You hit your protein target 5 days in a row. Amazing consistency!</div>
                 </div>
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border-l-4 border-yellow-500">
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border-l-4 border-yellow-500 shadow-sm">
                   <div className="text-sm text-yellow-700 dark:text-yellow-300 font-semibold">💡 Optimization Tip</div>
-                  <div className="text-gray-900 dark:text-white text-sm mt-1">Consider lowering sugar intake — 3 days this week exceeded 50g.</div>
+                  <div className="text-gray-900 dark:text-gray-100 text-sm mt-1">Consider lowering sugar intake — 3 days this week exceeded 50g.</div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Future Gamification */}
-        <Card className="bg-white/80 dark:bg-gradient-to-r dark:from-indigo-900/30 dark:to-blue-900/30 border-gray-200/50 dark:border-indigo-500/20 backdrop-blur-sm shadow-lg">
+        {/* Future Gamification - Enhanced */}
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
           <CardContent className="p-6">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Trophy className="h-8 w-8 text-white" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Join Weekly Challenges</h3>
-              <p className="text-gray-600 dark:text-blue-300 mb-4">Compete with others and earn rewards for healthy habits</p>
-              <Button className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white border-0">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">Compete with others and earn rewards for healthy habits</p>
+              <Button className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white border-0 shadow-lg">
                 Coming Soon
               </Button>
             </div>
