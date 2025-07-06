@@ -705,22 +705,22 @@ const Home = () => {
               return (
                 <Card
                   key={macro.name}
-                  className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                  className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-44' : 'h-48'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <CardContent className="flex flex-col justify-between h-full p-0">
                     <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
                       <div className="flex-shrink-0">
-                        <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-lg`}>
-                          <Icon className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-white`} />
+                        <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                          <Icon className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
                         </div>
-                        <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-xs' : 'text-sm'} leading-tight`}>{macro.name}</h4>
+                        <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>{macro.name}</h4>
                       </div>
                       <div className="flex-grow flex flex-col justify-center space-y-1">
-                        <p className={`${isMobile ? 'text-base' : 'text-lg'} font-bold neon-text leading-tight`}>
+                        <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold neon-text leading-tight`}>
                           {macro.current.toFixed(0)}{macro.unit}
                         </p>
-                        <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                        <p className={`${isMobile ? 'text-sm' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
                           of {macro.target}{macro.unit}
                         </p>
                       </div>
