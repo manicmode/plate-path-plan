@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import CelebrationPopup from '@/components/CelebrationPopup';
+import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,10 @@ const Home = () => {
   const [celebrationType, setCelebrationType] = useState('');
   const [preferences, setPreferences] = useState(loadUserPreferences());
   const [isQuickLogExpanded, setIsQuickLogExpanded] = useState(false);
+  
+  // Add confirmation card state
+  const [showConfirmationCard, setShowConfirmationCard] = useState(false);
+  const [selectedFood, setSelectedFood] = useState(null);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -268,8 +273,8 @@ const Home = () => {
   const handleQuickLog = (foodItem: typeof quickLogSuggestions[0]) => {
     console.log('Quick logging:', foodItem);
     
-    // Add the food item to nutrition context
-    addFood({
+    // Instead of directly adding food, show confirmation card
+    setSelectedFood({
       name: foodItem.name,
       calories: foodItem.calories,
       protein: foodItem.protein,
@@ -279,13 +284,24 @@ const Home = () => {
       sugar: foodItem.sugar,
       sodium: foodItem.sodium,
     });
+    setShowConfirmationCard(true);
+  };
 
-    // Show success toast with animation
-    toast({
-      title: "Food Logged! ✨",
-      description: `${foodItem.name} (${foodItem.calories} cal) added to your daily log.`,
-      duration: 3000,
+  const handleConfirmFood = (confirmedFood) => {
+    // Add the confirmed food to nutrition context
+    addFood({
+      name: confirmedFood.name,
+      calories: confirmedFood.calories,
+      protein: confirmedFood.protein,
+      carbs: confirmedFood.carbs,
+      fat: confirmedFood.fat,
+      fiber: confirmedFood.fiber,
+      sugar: confirmedFood.sugar,
+      sodium: confirmedFood.sodium,
     });
+
+    // Reset selected food
+    setSelectedFood(null);
   };
 
   const handleQuickActionMenu = (action: string, foodItem: any) => {
@@ -338,6 +354,17 @@ const Home = () => {
         show={showCelebration} 
         message={celebrationType}
         onClose={() => setShowCelebration(false)}
+      />
+
+      {/* Food Confirmation Card */}
+      <FoodConfirmationCard
+        isOpen={showConfirmationCard}
+        onClose={() => {
+          setShowConfirmationCard(false);
+          setSelectedFood(null);
+        }}
+        onConfirm={handleConfirmFood}
+        foodItem={selectedFood}
       />
 
       {/* Enhanced Greeting Section */}
