@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, FileText, Save, Clock } from 'lucide-react';
+import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, FileText, Save, Clock, Droplets, Pill } from 'lucide-react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +12,7 @@ import imageCompression from 'browser-image-compression';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { RetryActions } from '@/components/camera/RetryActions';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
+import { useNavigate } from 'react-router-dom';
 
 interface RecognizedFood {
   name: string;
@@ -62,6 +63,7 @@ interface VoiceApiResponse {
 }
 
 const CameraPage = () => {
+  const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
@@ -731,6 +733,26 @@ const CameraPage = () => {
                   >
                     <Clock className="h-6 w-6" />
                     <span className="text-sm font-medium">Recent Logs</span>
+                  </Button>
+                  
+                  {/* Hydration Logs Tab */}
+                  <Button
+                    onClick={() => navigate('/hydration')}
+                    className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2"
+                    size="lg"
+                  >
+                    <Droplets className="h-6 w-6" />
+                    <span className="text-sm font-medium">Hydration Logs</span>
+                  </Button>
+                  
+                  {/* Supplement Logs Tab */}
+                  <Button
+                    onClick={() => navigate('/supplements')}
+                    className="h-24 w-full bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white flex flex-col items-center justify-center space-y-2"
+                    size="lg"
+                  >
+                    <Pill className="h-6 w-6" />
+                    <span className="text-sm font-medium">Supplement Logs</span>
                   </Button>
                 </div>
                 
