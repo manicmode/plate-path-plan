@@ -170,15 +170,6 @@ const CameraPage = () => {
     setIsAnalyzing(true);
     setProcessingStep('Initializing...');
     
-    // Create AbortController for this request
-    abortControllerRef.current = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('CLIENT: Timeout reached, aborting request');
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    }, 22000); // 22 second timeout (slightly less than edge function timeout)
-    
     try {
       const imageBase64 = convertToBase64(selectedImage);
       
@@ -191,10 +182,22 @@ const CameraPage = () => {
       
       console.log('CLIENT: Calling Supabase function...');
       
-      const { data, error } = await supabase.functions.invoke('vision-label-reader', {
-        body: { imageBase64 },
-        signal: abortControllerRef.current.signal
+      // Create a timeout promise that rejects after 22 seconds
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Request timed out after 22 seconds'));
+        }, 22000);
       });
+
+      // Create the function call promise
+      const functionCallPromise = supabase.functions.invoke('vision-label-reader', {
+        body: { imageBase64 }
+      });
+
+      // Race between the function call and timeout
+      const result = await Promise.race([functionCallPromise, timeoutPromise]);
+      
+      const { data, error } = result as any;
 
       console.log('CLIENT: Supabase function response received', {
         hasData: !!data,
@@ -204,16 +207,8 @@ const CameraPage = () => {
         error: error ? JSON.stringify(error) : null
       });
 
-      clearTimeout(timeoutId);
-
       if (error) {
         console.error('CLIENT: Supabase function error:', error);
-        
-        if (error.name === 'AbortError') {
-          toast.error('Analysis timed out. Please try again with a smaller image.');
-          return;
-        }
-        
         toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
         return;
       }
@@ -246,10 +241,9 @@ const CameraPage = () => {
       
     } catch (error) {
       console.error('CLIENT: Error analyzing image:', error);
-      clearTimeout(timeoutId);
       
-      if (error.name === 'AbortError') {
-        console.log('CLIENT: Request was aborted due to timeout');
+      if (error.message?.includes('timed out')) {
+        console.log('CLIENT: Request timed out after 22 seconds');
         toast.error('Analysis timed out after 22 seconds. Please try again or check your internet connection.');
       } else {
         toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
@@ -258,8 +252,6 @@ const CameraPage = () => {
       // Always reset the analyzing state
       setIsAnalyzing(false);
       setProcessingStep('');
-      abortControllerRef.current = null;
-      clearTimeout(timeoutId);
     }
   };
 
@@ -518,12 +510,10 @@ const CameraPage = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Clean up AbortController on component unmount
+  // Clean up on component unmount
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      // Cleanup if needed
     };
   }, []);
 
