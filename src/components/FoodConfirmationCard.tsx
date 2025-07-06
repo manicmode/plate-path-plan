@@ -102,15 +102,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const handleConfirm = async () => {
-    if (!isChecked) {
-      toast({
-        title: "Please confirm",
-        description: "Check the green ✅ to confirm this food log.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsConfirming(true);
     
     // Success animation delay
@@ -160,7 +151,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
-              {/* Green Checkmark with ✅ emoji */}
+              {/* Green Checkmark with ✅ emoji - for saved logs indication only */}
               <button
                 onClick={() => setIsChecked(!isChecked)}
                 className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
@@ -313,7 +304,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsContent>
             </Tabs>
 
-            {/* Action Buttons - Improved with Icons */}
+            {/* Action Buttons - Confirm button styling independent of checkmark */}
             <div className="flex space-x-3">
               <Button
                 variant="outline"
@@ -333,9 +324,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </Button>
               <Button
                 onClick={handleConfirm}
-                disabled={isConfirming || portionPercentage[0] === 0 || !isChecked}
+                disabled={isConfirming || portionPercentage[0] === 0}
                 className={`flex-1 transition-all duration-300 ${
-                  isChecked && !isConfirming
+                  !isConfirming && portionPercentage[0] > 0
                     ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 } ${isConfirming ? 'animate-pulse' : ''}`}
