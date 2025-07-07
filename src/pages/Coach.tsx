@@ -7,8 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap } from 'lucide-react';
+import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
 import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 
@@ -33,6 +34,12 @@ const Coach = () => {
   const { getTodaysProgress, currentDay } = useNutrition();
   const { recordCoachInteraction } = useNotification();
   const isMobile = useIsMobile();
+  const { isLowMemory, storageAvailable, optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
+    enableLazyLoading: true,
+    memoryThreshold: 0.7,
+    storageQuotaCheck: true
+  });
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -44,17 +51,38 @@ const Coach = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
 
-  // Load saved recipes from storage
-  useEffect(() => {
-    if (user) {
-      const recipes = safeGetJSON(`saved_recipes_${user.id}`, []);
-      setSavedRecipes(recipes);
+  // Enhanced error handling for mobile
+  const handleError = (error: Error, context: string) => {
+    console.error(`Error in ${context}:`, error);
+    setLoadingError(`${context}: ${error.message}`);
+    
+    if (isMobile && error.message.includes('storage')) {
+      toast.error('Storage issue detected. Some features may be limited.');
     }
-  }, [user]);
+  };
+
+  // Load saved recipes with error handling
+  useEffect(() => {
+    if (user && storageAvailable) {
+      try {
+        const recipes = safeGetJSON(`saved_recipes_${user.id}`, []);
+        const optimizedRecipes = optimizeForMobile(recipes);
+        setSavedRecipes(optimizedRecipes);
+        
+        if (recipes.length > optimizedRecipes.length) {
+          console.log(`Optimized recipes for mobile: ${recipes.length} -> ${optimizedRecipes.length}`);
+        }
+      } catch (error) {
+        handleError(error as Error, 'Loading saved recipes');
+        setSavedRecipes([]);
+      }
+    }
+  }, [user, storageAvailable, optimizeForMobile]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -114,6 +142,9 @@ const Coach = () => {
   const sendMessage = async (messageText?: string, isRecipeRequest = false) => {
     const messageToSend = messageText || input.trim();
     if (!messageToSend || isLoading) return;
+
+    // Clear any previous errors
+    setLoadingError(null);
 
     // Check if message is wellness-related (skip check for recipe requests)
     if (!isRecipeRequest && !isWellnessRelated(messageToSend)) {
@@ -192,7 +223,7 @@ const Coach = () => {
 
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      handleError(error as Error, 'Sending message');
       toast.error('Failed to send message. Please try again.');
       
       const errorMessage: Message = {
@@ -224,27 +255,35 @@ const Coach = () => {
   };
 
   const saveRecipe = (message: Message) => {
-    if (!user) return;
-    
-    // Extract title from recipe content (first line or create one)
-    const lines = message.content.split('\n');
-    let title = lines.find(line => line.includes('Recipe') || line.includes('Meal') || line.includes('Dish'));
-    if (!title) {
-      title = lines[0]?.substring(0, 50) + '...';
+    if (!user || !storageAvailable) {
+      toast.error('Cannot save recipe: Storage not available');
+      return;
     }
-    title = title.replace(/[#*]/g, '').trim();
+    
+    try {
+      const lines = message.content.split('\n');
+      let title = lines.find(line => line.includes('Recipe') || line.includes('Meal') || line.includes('Dish'));
+      if (!title) {
+        title = lines[0]?.substring(0, 50) + '...';
+      }
+      title = title.replace(/[#*]/g, '').trim();
 
-    const newRecipe: SavedRecipe = {
-      id: Date.now().toString(),
-      title,
-      content: message.content,
-      timestamp: new Date(),
-    };
+      const newRecipe: SavedRecipe = {
+        id: Date.now().toString(),
+        title,
+        content: message.content,
+        timestamp: new Date(),
+      };
 
-    const updatedRecipes = [...savedRecipes, newRecipe];
-    setSavedRecipes(updatedRecipes);
-    safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
-    toast.success('Recipe saved!');
+      const updatedRecipes = [...savedRecipes, newRecipe];
+      const optimizedRecipes = optimizeForMobile(updatedRecipes);
+      setSavedRecipes(optimizedRecipes);
+      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+      toast.success('Recipe saved!');
+    } catch (error) {
+      handleError(error as Error, 'Saving recipe');
+      toast.error('Failed to save recipe');
+    }
   };
 
   const deleteRecipe = (recipeId: string) => {
@@ -295,6 +334,37 @@ const Coach = () => {
 
   return (
     <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
+      {/* Loading Error Alert */}
+      {loadingError && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center space-x-2">
+          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-destructive font-medium">Error</p>
+            <p className="text-xs text-destructive/80">{loadingError}</p>
+          </div>
+          <Button
+            onClick={() => setLoadingError(null)}
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive/80"
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
+
+      {/* Mobile Performance Warning */}
+      {isMobile && isLowMemory && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <p className="text-xs text-amber-800 dark:text-amber-200">
+              Low memory detected. Some features may be limited for better performance.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Animated Robot Head Header */}
       <div className="text-center py-6">
         <div className="flex justify-center mb-4">
@@ -310,7 +380,7 @@ const Coach = () => {
         </p>
       </div>
 
-      {/* Chat Interface */}
+      {/* Chat Interface with enhanced mobile optimization */}
       <Card className="glass-card border-0 rounded-3xl">
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
           <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
@@ -319,8 +389,8 @@ const Coach = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          {/* Messages Container with improved height */}
-          <div className={`${isMobile ? 'h-[500px]' : 'h-[600px]'} flex flex-col`}>
+          {/* Messages Container with optimized height for mobile */}
+          <div className={`${isMobile ? (isLowMemory ? 'h-[400px]' : 'h-[500px]') : 'h-[600px]'} flex flex-col`}>
             <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
               <div className="space-y-4 py-2">
                 {messages.map((message) => (

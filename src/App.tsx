@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,30 +25,62 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// Create query client with mobile-optimized settings and app lifecycle handling
+// Create query client with enhanced mobile-optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: true, // Refetch when app regains focus
-      refetchOnReconnect: true, // Refetch on network reconnection
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
       retry: (failureCount, error) => {
-        // Reduce retries on mobile to prevent hanging
-        const maxRetries = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 1 : 3;
+        // More conservative retries on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const maxRetries = isMobile ? 1 : 3;
         return failureCount < maxRetries;
       },
+      // Add mobile-specific timeout
+      networkMode: 'online',
     },
   },
 });
 
 function App() {
   useEffect(() => {
-    // Enhanced mobile app lifecycle management
+    // Enhanced mobile app lifecycle management with better error handling
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    console.log('App initializing with device info:', { isMobile, isIOS, isSafari });
+    console.log('App initializing with enhanced mobile support:', { 
+      isMobile, 
+      isIOS, 
+      isSafari,
+      userAgent: navigator.userAgent.substring(0, 100)
+    });
+
+    // Mobile-specific initialization
+    if (isMobile) {
+      // Check for critical mobile issues
+      try {
+        // Test localStorage availability
+        localStorage.setItem('__mobile_test__', 'test');
+        localStorage.removeItem('__mobile_test__');
+        
+        // Log mobile-specific info
+        console.log('Mobile initialization successful:', {
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          screen: { width: window.screen.width, height: window.screen.height },
+          pixelRatio: window.devicePixelRatio,
+          memory: (performance as any).memory ? {
+            used: Math.round((performance as any).memory.usedJSHeapSize / 1048576) + ' MB',
+            limit: Math.round((performance as any).memory.jsHeapSizeLimit / 1048576) + ' MB'
+          } : 'unavailable'
+        });
+      } catch (error) {
+        console.error('Mobile initialization failed:', error);
+        // Don't block app loading, but log the issue
+      }
+    }
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -75,29 +106,55 @@ function App() {
       }
     };
 
-    // Add event listeners for app lifecycle
+    // Enhanced error handling for mobile
+    const handleError = (event: ErrorEvent) => {
+      console.error('Global error caught:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error,
+        isMobile,
+        timestamp: new Date().toISOString()
+      });
+
+      // Mobile-specific error recovery
+      if (isMobile && event.error?.message?.includes('memory')) {
+        console.log('Memory error detected on mobile, triggering cleanup');
+        // Force garbage collection if available
+        if ((window as any).gc) {
+          try {
+            (window as any).gc();
+          } catch (e) {
+            console.warn('Manual GC failed:', e);
+          }
+        }
+      }
+    };
+
+    // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleOnline);
+    window.addEventListener('error', handleError);
 
-    // iOS Safari specific handling
     if (isIOS && isSafari) {
       window.addEventListener('pageshow', handlePageShow);
     }
 
-    // Emergency recovery mechanism - force refresh if app seems stuck
+    // Mobile-specific: reduce emergency refresh timeout
     const emergencyRefresh = setTimeout(() => {
-      if (document.hidden) {
-        console.log('Emergency refresh - app may be stuck');
+      if (document.hidden && isMobile) {
+        console.log('Emergency refresh - mobile app may be stuck');
         queryClient.invalidateQueries();
       }
-    }, 30000); // 30 seconds
+    }, isMobile ? 15000 : 30000); // 15s for mobile, 30s for desktop
 
-    // Cleanup function
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleOnline);
+      window.removeEventListener('error', handleError);
       
       if (isIOS && isSafari) {
         window.removeEventListener('pageshow', handlePageShow);
@@ -124,16 +181,33 @@ function App() {
     <ErrorBoundary fallback={
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
-          <h2 className="text-2xl font-bold text-foreground">App Loading Error</h2>
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-foreground">App Initialization Error</h2>
           <p className="text-muted-foreground">
-            There was an issue loading the app. Please refresh the page.
+            There was an issue starting the app. This might be due to network connectivity or device limitations.
           </p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-          >
-            Refresh Page
-          </button>
+          <div className="space-y-2">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 w-full"
+            >
+              Restart App
+            </button>
+            <button 
+              onClick={() => {
+                try {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.reload();
+                } catch (e) {
+                  window.location.reload();
+                }
+              }}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 w-full text-sm"
+            >
+              Clear Data & Restart
+            </button>
+          </div>
         </div>
       </div>
     }>
