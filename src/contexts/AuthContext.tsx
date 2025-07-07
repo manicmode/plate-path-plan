@@ -16,6 +16,11 @@ interface ExtendedUser extends User {
   allergies?: string[];
   dietaryGoals?: string[];
   selectedTrackers?: string[];
+  main_health_goal?: string;
+  diet_styles?: string[];
+  foods_to_avoid?: string;
+  activity_level?: string;
+  health_conditions?: string[];
 }
 
 interface AuthContextType {
@@ -85,6 +90,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       allergies: [],
       dietaryGoals: [],
       selectedTrackers: profile?.selected_trackers || ['calories', 'hydration', 'supplements'],
+      main_health_goal: profile?.main_health_goal || undefined,
+      diet_styles: profile?.diet_styles || [],
+      foods_to_avoid: profile?.foods_to_avoid || undefined,
+      activity_level: profile?.activity_level || undefined,
+      health_conditions: profile?.health_conditions || [],
     };
     setUser(extendedUser);
   };
