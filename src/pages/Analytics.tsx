@@ -290,7 +290,7 @@ const Analytics = () => {
             </div>
 
             <CollapsibleContent className="overflow-hidden">
-              <div className="flex flex-col gap-2 pt-2">
+              <div className="flex flex-col gap-2">
                 <EnhancedDailyAverageCard
                   title="Avg Daily Protein"
                   value={weeklyAverage.protein}
