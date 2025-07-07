@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,15 +8,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Brain } from 'lucide-react';
+import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 
 interface Message {
   id: string;
   content: string;
   isUser: boolean;
   timestamp: Date;
+  isRecipe?: boolean;
+}
+
+interface SavedRecipe {
+  id: string;
+  title: string;
+  content: string;
+  timestamp: Date;
+  isFavorite?: boolean;
 }
 
 const Coach = () => {
@@ -33,9 +44,18 @@ const Coach = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
+
+  // Load saved recipes from storage
+  useEffect(() => {
+    if (user) {
+      const recipes = safeGetJSON(`saved_recipes_${user.id}`, []);
+      setSavedRecipes(recipes);
+    }
+  }, [user]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -48,9 +68,74 @@ const Coach = () => {
     }
   }, [messages]);
 
-  const sendMessage = async (messageText?: string) => {
+  // Topic filter function
+  const isWellnessRelated = (message: string) => {
+    const lowerMessage = message.toLowerCase();
+    
+    // Wellness, nutrition, and fitness keywords
+    const wellnessKeywords = [
+      // Nutrition
+      'nutrition', 'calories', 'protein', 'carbs', 'carbohydrates', 'fat', 'macro', 'micro', 'vitamin', 'mineral',
+      'diet', 'food', 'eat', 'eating', 'meal', 'recipe', 'cook', 'ingredient', 'supplement', 'fiber',
+      'sugar', 'sodium', 'healthy', 'weight', 'lose', 'gain', 'portion', 'serving', 'snack',
+      
+      // Fitness
+      'exercise', 'workout', 'fitness', 'training', 'muscle', 'strength', 'cardio', 'run', 'walk',
+      'gym', 'sport', 'activity', 'movement', 'burn', 'calories', 'rep', 'set', 'squat', 'push',
+      
+      // Wellness
+      'wellness', 'health', 'energy', 'tired', 'sleep', 'rest', 'hydration', 'water', 'stress',
+      'inflammation', 'recovery', 'fatigue', 'mood', 'feel', 'body', 'digestion', 'immune',
+      'balance', 'lifestyle', 'habit'
+    ];
+
+    // Common question patterns
+    const questionPatterns = [
+      'what should i eat', 'how much', 'why am i', 'how can i', 'help me',
+      'i want to', 'i need to', 'should i', 'can you help', 'advice'
+    ];
+
+    // Check for wellness keywords
+    const hasWellnessKeywords = wellnessKeywords.some(keyword => 
+      lowerMessage.includes(keyword)
+    );
+
+    // Check for question patterns combined with context
+    const hasRelevantQuestions = questionPatterns.some(pattern => 
+      lowerMessage.includes(pattern)
+    ) && (
+      lowerMessage.includes('eat') || lowerMessage.includes('food') || 
+      lowerMessage.includes('weight') || lowerMessage.includes('energy') ||
+      lowerMessage.includes('exercise') || lowerMessage.includes('health')
+    );
+
+    return hasWellnessKeywords || hasRelevantQuestions;
+  };
+
+  const sendMessage = async (messageText?: string, isRecipeRequest = false) => {
     const messageToSend = messageText || input.trim();
     if (!messageToSend || isLoading) return;
+
+    // Check if message is wellness-related (skip check for recipe requests)
+    if (!isRecipeRequest && !isWellnessRelated(messageToSend)) {
+      const offTopicMessage: Message = {
+        id: Date.now().toString(),
+        content: "🧘‍♂️ I'm your personal wellness coach, so I can only help with topics related to nutrition, fitness, and wellness. Try asking me something like how to eat better, stay fit, or feel more energized!",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      
+      const userMessage: Message = {
+        id: (Date.now() - 1).toString(),
+        content: messageToSend,
+        isUser: true,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, userMessage, offTopicMessage]);
+      setInput('');
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -103,6 +188,7 @@ const Coach = () => {
         content: data.response,
         isUser: false,
         timestamp: new Date(),
+        isRecipe: isRecipeRequest,
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -134,11 +220,78 @@ const Coach = () => {
     sendMessage(question);
   };
 
+  const handleRecipeRequest = (prompt: string) => {
+    sendMessage(prompt, true);
+  };
+
+  const saveRecipe = (message: Message) => {
+    if (!user) return;
+    
+    // Extract title from recipe content (first line or create one)
+    const lines = message.content.split('\n');
+    let title = lines.find(line => line.includes('Recipe') || line.includes('Meal') || line.includes('Dish'));
+    if (!title) {
+      title = lines[0]?.substring(0, 50) + '...';
+    }
+    title = title.replace(/[#*]/g, '').trim();
+
+    const newRecipe: SavedRecipe = {
+      id: Date.now().toString(),
+      title,
+      content: message.content,
+      timestamp: new Date(),
+    };
+
+    const updatedRecipes = [...savedRecipes, newRecipe];
+    setSavedRecipes(updatedRecipes);
+    safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+    toast.success('Recipe saved!');
+  };
+
+  const deleteRecipe = (recipeId: string) => {
+    const updatedRecipes = savedRecipes.filter(r => r.id !== recipeId);
+    setSavedRecipes(updatedRecipes);
+    if (user) {
+      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+    }
+    toast.success('Recipe deleted');
+  };
+
+  const copyRecipe = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success('Recipe copied to clipboard!');
+  };
+
+  const toggleFavorite = (recipeId: string) => {
+    const updatedRecipes = savedRecipes.map(recipe => 
+      recipe.id === recipeId 
+        ? { ...recipe, isFavorite: !recipe.isFavorite }
+        : recipe
+    );
+    setSavedRecipes(updatedRecipes);
+    if (user) {
+      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+    }
+  };
+
   const quickQuestions = [
     "Analyze my progress",
     "Meal suggestions?",
     "Boost my protein",
     "Stay motivated",
+  ];
+
+  const recipePrompts = [
+    { label: "🥗 Low Carb Recipe", prompt: "Give me a delicious low-carb recipe that's easy to make" },
+    { label: "🥑 Keto Meal Plan", prompt: "Create a keto-friendly meal plan for today" },
+    { label: "🌱 Vegan Recipe", prompt: "Share a nutritious vegan recipe with high protein" },
+    { label: "🍗 High Protein Dish", prompt: "I need a high-protein recipe to hit my daily goals" },
+    { label: "🧁 Healthy Dessert", prompt: "Give me a healthy dessert recipe that satisfies cravings" },
+    { label: "🌾 Gluten-Free Snack", prompt: "Create a gluten-free snack recipe for between meals" },
+    { label: "🐟 Pescatarian Dinner", prompt: "I want a pescatarian dinner recipe with fish" },
+    { label: "🔥 Fat-Burning Meal", prompt: "Share a fat-burning meal recipe that boosts metabolism" },
+    { label: "⏱️ 10-Minute Meals", prompt: "Give me a quick 10-minute meal recipe for busy days" },
+    { label: "🌈 Anti-Inflammatory Dish", prompt: "Create an anti-inflammatory recipe with superfoods" },
   ];
 
   return (
@@ -172,41 +325,57 @@ const Coach = () => {
             <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
               <div className="space-y-4 py-2">
                 {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex items-start space-x-3 w-full ${
-                      message.isUser ? 'flex-row-reverse space-x-reverse' : ''
-                    }`}
-                  >
+                  <div key={message.id}>
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        message.isUser
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-purple-600 text-white'
+                      className={`flex items-start space-x-3 w-full ${
+                        message.isUser ? 'flex-row-reverse space-x-reverse' : ''
                       }`}
                     >
-                      {message.isUser ? (
-                        <User className="h-4 w-4" />
-                      ) : (
-                        <Bot className="h-4 w-4" />
-                      )}
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          message.isUser
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-purple-600 text-white'
+                        }`}
+                      >
+                        {message.isUser ? (
+                          <User className="h-4 w-4" />
+                        ) : (
+                          <Bot className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div
+                        className={`flex-1 p-3 rounded-2xl break-words ${
+                          message.isUser
+                            ? 'bg-emerald-600 text-white max-w-[80%] ml-auto'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
+                        }`}
+                        style={{ 
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed whitespace-pre-wrap`}>
+                          {message.content}
+                        </p>
+                      </div>
                     </div>
-                    <div
-                      className={`flex-1 p-3 rounded-2xl break-words ${
-                        message.isUser
-                          ? 'bg-emerald-600 text-white max-w-[80%] ml-auto'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
-                      }`}
-                      style={{ 
-                        wordWrap: 'break-word',
-                        overflowWrap: 'break-word',
-                        wordBreak: 'break-word'
-                      }}
-                    >
-                      <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed whitespace-pre-wrap`}>
-                        {message.content}
-                      </p>
-                    </div>
+                    
+                    {/* Save Recipe Button for AI recipe responses */}
+                    {message.isRecipe && !message.isUser && (
+                      <div className="flex justify-end mt-2 mr-11">
+                        <Button
+                          onClick={() => saveRecipe(message)}
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          <Save className="h-3 w-3 mr-1" />
+                          Save Recipe
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isLoading && (
@@ -274,6 +443,91 @@ const Coach = () => {
               </Button>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Personalized Recipes Section */}
+      <Card className="glass-card border-0 rounded-3xl">
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <ChefHat className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
+            <span>🍽️ Personalized Recipes</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {recipePrompts.map((recipe, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => handleRecipeRequest(recipe.prompt)}
+                className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-emerald-50 to-orange-50 dark:from-emerald-900/20 dark:to-orange-900/20 border-emerald-200 dark:border-emerald-700 hover:from-emerald-100 hover:to-orange-100 dark:hover:from-emerald-800/30 dark:hover:to-orange-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
+                disabled={isLoading}
+              >
+                {recipe.label}
+              </Button>
+            ))}
+          </div>
+
+          {/* Saved Recipes Section */}
+          {savedRecipes.length > 0 && (
+            <div>
+              <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center`}>
+                🗂️ Saved Recipes ({savedRecipes.length})
+              </h3>
+              <ScrollArea className="h-48">
+                <div className="space-y-3">
+                  {savedRecipes
+                    .sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0))
+                    .map((recipe) => (
+                    <div
+                      key={recipe.id}
+                      className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-gray-900 dark:text-white mb-1 flex items-center`}>
+                            {recipe.isFavorite && <Heart className="h-4 w-4 text-red-500 mr-1 fill-current" />}
+                            {recipe.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {recipe.timestamp.toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex space-x-1 ml-2">
+                          <Button
+                            onClick={() => toggleFavorite(recipe.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Heart className={`h-3 w-3 ${recipe.isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+                          </Button>
+                          <Button
+                            onClick={() => copyRecipe(recipe.content)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                          </Button>
+                          <Button
+                            onClick={() => deleteRecipe(recipe.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
