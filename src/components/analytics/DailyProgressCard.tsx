@@ -29,7 +29,7 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
   const shouldShowConfetti = percentage >= 100;
 
   return (
-    <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden min-h-[200px]">
+    <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden h-[200px]">
       <CardContent className="p-6 h-full flex flex-col justify-between">
         <div className="flex items-center justify-between mb-4">
           <div className={`p-3 rounded-xl shadow-lg`} style={{ backgroundColor: `${color}20` }}>
@@ -41,7 +41,7 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
         </div>
         
         <div className="space-y-3 flex-1">
-          <div className="flex items-end justify-between">
+          <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {Math.round(value).toLocaleString()}

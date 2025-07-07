@@ -24,28 +24,28 @@ export const EnhancedDailyAverageCard = ({
   target 
 }: EnhancedDailyAverageCardProps) => {
   const CircularProgress = ({ percentage }: { percentage: number }) => {
-    const radius = 40;
+    const radius = 30;
     const circumference = radius * 2 * Math.PI;
     const strokeDasharray = circumference;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
     return (
-      <div className="relative w-20 h-20">
-        <svg width="80" height="80" className="transform -rotate-90">
+      <div className="relative w-16 h-16">
+        <svg width="64" height="64" className="transform -rotate-90">
           <circle
-            cx="40"
-            cy="40"
+            cx="32"
+            cy="32"
             r={radius}
             stroke="rgb(148 163 184 / 0.2)"
-            strokeWidth="6"
+            strokeWidth="4"
             fill="none"
           />
           <circle
-            cx="40"
-            cy="40"
+            cx="32"
+            cy="32"
             r={radius}
             stroke={`url(#gradient-${title})`}
-            strokeWidth="6"
+            strokeWidth="4"
             fill="none"
             strokeDasharray={strokeDasharray}
             strokeDashoffset={strokeDashoffset}
@@ -55,7 +55,7 @@ export const EnhancedDailyAverageCard = ({
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-sm font-bold text-gray-900 dark:text-white">
+            <div className="text-xs font-bold text-gray-900 dark:text-white">
               {Math.round(percentage)}%
             </div>
           </div>
@@ -72,10 +72,10 @@ export const EnhancedDailyAverageCard = ({
 
   return (
     <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 group">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
           <div 
-            className="p-3 rounded-xl shadow-lg"
+            className="p-2 rounded-xl shadow-lg"
             style={{ 
               background: `linear-gradient(135deg, ${gradientFrom}20, ${gradientTo}20)`,
               border: `1px solid ${gradientFrom}30`
@@ -88,11 +88,11 @@ export const EnhancedDailyAverageCard = ({
           )}
         </div>
         
-        <div className="space-y-2">
-          <div className="text-2xl font-bold text-gray-900 dark:text-white group-hover:scale-105 transition-transform duration-200">
+        <div className="space-y-1">
+          <div className="text-xl font-bold text-gray-900 dark:text-white group-hover:scale-105 transition-transform duration-200">
             {Math.round(value).toLocaleString()}{suffix}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">{title}</div>
+          <div className="text-xs text-gray-600 dark:text-gray-300">{title}</div>
           {target && (
             <div className="text-xs text-gray-500 dark:text-gray-400">
               Target: {target.toLocaleString()}{suffix}

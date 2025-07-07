@@ -234,7 +234,7 @@ const Analytics = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <EnhancedDailyAverageCard
               title="Avg Daily Calories"
               value={weeklyAverage.calories}
