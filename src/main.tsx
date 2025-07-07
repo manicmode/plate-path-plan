@@ -1,10 +1,10 @@
-
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
+import { NutritionProvider } from "./contexts/NutritionContext";
 
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -127,7 +127,9 @@ console.log('Rendering app...', { strictMode: !isMobile });
 root.render(
   <ErrorBoundary>
     <AuthProvider>
-      <AppWrapper />
+      <NutritionProvider>
+        <AppWrapper />
+      </NutritionProvider>
     </AuthProvider>
   </ErrorBoundary>
 );
