@@ -49,21 +49,21 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-300">{title}</div>
             </div>
-            <div className={`text-lg font-semibold ${getStatusColor()}`}>
-              {percentage}%
-            </div>
           </div>
           
-          {/* Animated progress bar */}
+          {/* Progress bar with centered percentage */}
           <div className="space-y-2">
-            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
                 className={`h-full ${getProgressBarColor()} transition-all duration-1000 ease-out rounded-full`}
                 style={{ width: `${percentage}%` }}
               />
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
-              Target: {target.toLocaleString()} {unit}
+              {/* Centered percentage on progress bar */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className={`text-sm font-bold ${getStatusColor()}`}>
+                  {percentage}%
+                </div>
+              </div>
             </div>
           </div>
         </div>
