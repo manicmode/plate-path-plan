@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -275,7 +276,7 @@ const Analytics = () => {
             </CollapsibleTrigger>
             
             <CollapsibleContent className="overflow-hidden">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-0.5">
                 <EnhancedDailyAverageCard
                   title="Avg Daily Calories"
                   value={weeklyAverage.calories}
