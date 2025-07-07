@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Edit, Trash2, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
+import { ReminderToggle } from './reminder/ReminderToggle';
 
 interface FoodItem {
   id?: string;
@@ -303,6 +304,22 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </div>
               </TabsContent>
             </Tabs>
+
+            {/* Reminder Toggle */}
+            <ReminderToggle
+              foodName={currentFoodItem.name}
+              foodData={{
+                food_name: currentFoodItem.name,
+                calories: adjustedFood.calories,
+                protein: adjustedFood.protein,
+                carbs: adjustedFood.carbs,
+                fat: adjustedFood.fat,
+                fiber: adjustedFood.fiber,
+                sugar: adjustedFood.sugar,
+                sodium: adjustedFood.sodium,
+              }}
+              className="mb-4"
+            />
 
             {/* Action Buttons - Confirm button styling independent of checkmark */}
             <div className="flex space-x-3">

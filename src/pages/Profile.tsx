@@ -16,6 +16,7 @@ import { AllergiesSection } from '@/components/profile/AllergiesSection';
 import { NotificationSettings } from '@/components/profile/NotificationSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
+import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 
 // Helper function to save preferences
 const saveUserPreferences = (preferences: any) => {
@@ -220,6 +221,9 @@ const Profile = () => {
 
       {/* Notification Settings */}
       <NotificationSettings />
+
+      {/* Reminder Management */}
+      <ReminderManagement />
 
       {/* Allergies & Restrictions */}
       <AllergiesSection 
