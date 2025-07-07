@@ -32,93 +32,70 @@ const Analytics = () => {
 
   const progress = getTodaysProgress();
   
-  // Calculate real weekly averages from current data (since weeklyData is often empty)
-  const calculateWeeklyAverages = () => {
-    // If we have weekly data, use it; otherwise simulate from current day
-    const dataToUse = weeklyData.length > 0 ? weeklyData.slice(-7) : [currentDay];
-    
-    const avgCalories = dataToUse.reduce((sum, day) => sum + day.totalCalories, 0) / dataToUse.length;
-    const avgProtein = dataToUse.reduce((sum, day) => sum + day.totalProtein, 0) / dataToUse.length;
-    const avgCarbs = dataToUse.reduce((sum, day) => sum + day.totalCarbs, 0) / dataToUse.length;
-    const avgFat = dataToUse.reduce((sum, day) => sum + day.totalFat, 0) / dataToUse.length;
-    const avgHydration = dataToUse.reduce((sum, day) => sum + day.totalHydration, 0) / dataToUse.length;
-    const avgSupplements = dataToUse.reduce((sum, day) => sum + day.supplements.length, 0) / dataToUse.length;
-    
-    return {
-      calories: avgCalories,
-      protein: avgProtein,
-      carbs: avgCarbs,
-      fat: avgFat,
-      hydration: avgHydration,
-      steps: progress.hydration > 0 ? 7500 + (progress.hydration / 100) : 6000, // Basic calculation based on activity
-      exerciseMinutes: progress.calories > 1000 ? 25 + Math.round(progress.calories / 100) : 15, // Based on calorie intake
-      supplements: avgSupplements,
-    };
+  // Calculate dynamic data
+  const weeklyChartData = weeklyData.slice(-7).map((day, index) => ({
+    day: `Day ${index + 1}`,
+    calories: day.totalCalories,
+    protein: day.totalProtein,
+    carbs: day.totalCarbs,
+    fat: day.totalFat,
+    target: user?.targetCalories || 2000
+  }));
+
+  const weeklyAverage = {
+    calories: weeklyChartData.reduce((sum, day) => sum + day.calories, 0) / (weeklyChartData.length || 1),
+    protein: weeklyChartData.reduce((sum, day) => sum + day.protein, 0) / (weeklyChartData.length || 1),
+    carbs: weeklyChartData.reduce((sum, day) => sum + day.carbs, 0) / (weeklyChartData.length || 1),
+    fat: weeklyChartData.reduce((sum, day) => sum + day.fat, 0) / (weeklyChartData.length || 1),
+    hydration: 1800, // Mock data
+    steps: 8500, // Mock data
+    exerciseMinutes: 35, // Mock data
+    supplements: 3, // Mock data
   };
 
-  const weeklyAverage = calculateWeeklyAverages();
+  // Hydration weekly data
+  const hydrationWeeklyData = [
+    { day: 'Mon', amount: 1800, target: 2000 },
+    { day: 'Tue', amount: 2200, target: 2000 },
+    { day: 'Wed', amount: 1900, target: 2000 },
+    { day: 'Thu', amount: 2100, target: 2000 },
+    { day: 'Fri', amount: 1700, target: 2000 },
+    { day: 'Sat', amount: 2000, target: 2000 },
+    { day: 'Today', amount: progress.hydration, target: 2000 },
+  ];
 
-  // Dynamic chart data based on real or simulated weekly data
-  const weeklyChartData = weeklyData.length > 0 ? 
-    weeklyData.slice(-7).map((day, index) => ({
-      day: `Day ${index + 1}`,
-      calories: day.totalCalories,
-      protein: day.totalProtein,
-      carbs: day.totalCarbs,
-      fat: day.totalFat,
-      target: user?.targetCalories || 2000
-    })) :
-    // Generate realistic data based on current progress
-    Array.from({ length: 7 }, (_, index) => ({
-      day: `Day ${index + 1}`,
-      calories: Math.max(0, progress.calories + (Math.random() - 0.5) * 400),
-      protein: Math.max(0, progress.protein + (Math.random() - 0.5) * 20),
-      carbs: Math.max(0, progress.carbs + (Math.random() - 0.5) * 50),
-      fat: Math.max(0, progress.fat + (Math.random() - 0.5) * 15),
-      target: user?.targetCalories || 2000
-    }));
+  // Steps data (mock)
+  const stepsData = [
+    { day: 'Mon', steps: 8200 },
+    { day: 'Tue', steps: 9500 },
+    { day: 'Wed', steps: 7800 },
+    { day: 'Thu', steps: 10200 },
+    { day: 'Fri', steps: 6900 },
+    { day: 'Sat', steps: 8700 },
+    { day: 'Today', steps: 8500 },
+  ];
 
-  // Real hydration data based on current progress
-  const hydrationWeeklyData = Array.from({ length: 7 }, (_, index) => {
-    const baseHydration = progress.hydration || 0;
-    const variation = (Math.random() - 0.5) * 600;
-    return {
-      day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-      amount: Math.max(0, index === 6 ? baseHydration : baseHydration + variation),
-      target: user?.targetHydration || 2000,
-    };
-  });
+  // Exercise calories data (mock)
+  const exerciseCaloriesData = [
+    { day: 'Mon', calories: 250 },
+    { day: 'Tue', calories: 320 },
+    { day: 'Wed', calories: 180 },
+    { day: 'Thu', calories: 410 },
+    { day: 'Fri', calories: 200 },
+    { day: 'Sat', calories: 350 },
+    { day: 'Today', calories: 320 },
+  ];
 
-  // Real steps data based on activity
-  const stepsData = Array.from({ length: 7 }, (_, index) => {
-    const baseSteps = weeklyAverage.steps;
-    const variation = (Math.random() - 0.5) * 2000;
-    return {
-      day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-      steps: Math.max(0, Math.round(index === 6 ? baseSteps : baseSteps + variation)),
-    };
-  });
-
-  // Real exercise data based on calorie burn
-  const exerciseCaloriesData = Array.from({ length: 7 }, (_, index) => {
-    const baseCalories = weeklyAverage.exerciseMinutes * 8; // ~8 calories per minute
-    const variation = (Math.random() - 0.5) * 100;
-    return {
-      day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-      calories: Math.max(0, Math.round(index === 6 ? baseCalories : baseCalories + variation)),
-    };
-  });
-
-  // Macronutrient data from real progress
+  // Macronutrient data
   const macroData = [
     { name: 'Protein', value: progress.protein, color: '#10B981', percentage: 30 },
     { name: 'Carbs', value: progress.carbs, color: '#F59E0B', percentage: 45 },
     { name: 'Fat', value: progress.fat, color: '#8B5CF6', percentage: 25 },
   ];
 
-  // Real weekly summary
+  // Weekly summary calculation
   const weeklySteps = stepsData.reduce((sum, day) => sum + day.steps, 0);
-  const weeklyExerciseMinutes = Math.round(weeklyAverage.exerciseMinutes * 7);
+  const weeklyExerciseMinutes = 180; // Mock data
   const hydrationCompliance = Math.round((hydrationWeeklyData.reduce((sum, day) => sum + (day.amount >= day.target ? 1 : 0), 0) / hydrationWeeklyData.length) * 100);
 
   const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 10 }: any) => {
@@ -217,7 +194,7 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Daily Progress Cards - Enhanced with Real Data */}
+        {/* Daily Progress Cards - Enhanced with Visual Indicators */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <DailyProgressCard
             title="Calories"
@@ -245,7 +222,7 @@ const Analytics = () => {
           />
           <DailyProgressCard
             title="Steps"
-            value={Math.round(weeklyAverage.steps)}
+            value={8500}
             target={10000}
             unit="steps"
             icon={<Activity className="h-6 w-6" />}
@@ -253,8 +230,8 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Enhanced Daily Averages with Fixed Spacing */}
-        <div className="mb-16">
+        {/* Enhanced Daily Averages with Improved Dropdown */}
+        <div>
           <Collapsible open={isDailyAveragesOpen} onOpenChange={setIsDailyAveragesOpen}>
             <CollapsibleTrigger asChild>
               <div className="flex items-center gap-3 mb-6 cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl p-3 -m-3 transition-all duration-200">
@@ -290,7 +267,7 @@ const Analytics = () => {
             </div>
 
             <CollapsibleContent className="overflow-hidden">
-              <div className="flex flex-col gap-2 pt-2">
+              <div className="space-y-2 pt-0">
                 <EnhancedDailyAverageCard
                   title="Avg Daily Protein"
                   value={weeklyAverage.protein}
@@ -373,12 +350,12 @@ const Analytics = () => {
           </Collapsible>
         </div>
 
-        {/* Logging Consistency Tracker - Increased separation with visual distinction */}
-        <div className="mt-20 pt-8 border-t border-gray-200 dark:border-gray-700">
+        {/* Logging Consistency Tracker - Increased spacing from daily averages */}
+        <div className="mt-10">
           <LoggingStreakTracker />
         </div>
 
-        {/* Weekly Overview Chart - Enhanced */}
+        {/* Weekly Overview Chart - Enhanced with Dropdown */}
         <div>
           <WeeklyOverviewChart />
         </div>
@@ -510,7 +487,7 @@ const Analytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-center mb-4">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(weeklyAverage.steps).toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">8,500</div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">steps today</div>
                 </div>
                 <div className="h-32">
@@ -545,7 +522,7 @@ const Analytics = () => {
               <CardContent>
                 <div className="flex justify-center mb-4">
                   <CircularProgress
-                    value={Math.round(weeklyAverage.exerciseMinutes * 8)}
+                    value={320}
                     max={500}
                     color="#F97316"
                     size={120}
