@@ -230,11 +230,11 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Enhanced Daily Averages with Dropdown - Improved Spacing */}
+        {/* Enhanced Daily Averages with Improved Dropdown */}
         <div>
           <Collapsible open={isDailyAveragesOpen} onOpenChange={setIsDailyAveragesOpen}>
             <CollapsibleTrigger asChild>
-              <div className="flex items-center gap-3 mb-6 cursor-pointer group">
+              <div className="flex items-center gap-3 mb-6 cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl p-3 -m-3 transition-all duration-200">
                 <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
                   <TrendingUp className="h-6 w-6 text-white" />
                 </div>
@@ -242,12 +242,17 @@ const Analytics = () => {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Daily Averages</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
                 </div>
-                <ChevronDown className={`h-5 w-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isDailyAveragesOpen ? 'rotate-180' : ''}`} />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {isDailyAveragesOpen ? 'Collapse' : 'Expand'}
+                  </span>
+                  <ChevronDown className={`h-5 w-5 text-gray-600 dark:text-gray-400 transition-all duration-300 group-hover:text-blue-500 ${isDailyAveragesOpen ? 'rotate-180' : ''}`} />
+                </div>
               </div>
             </CollapsibleTrigger>
             
             {/* Always visible: Calories card */}
-            <div className="mb-3">
+            <div className="mb-2">
               <EnhancedDailyAverageCard
                 title="Avg Daily Calories"
                 value={weeklyAverage.calories}
@@ -257,6 +262,7 @@ const Analytics = () => {
                 gradientTo="#FB923C"
                 progress={Math.round((weeklyAverage.calories / (user?.targetCalories || 2000)) * 100)}
                 target={user?.targetCalories || 2000}
+                isCompact={true}
               />
             </div>
 
@@ -296,12 +302,12 @@ const Analytics = () => {
               />
               <EnhancedDailyAverageCard
                 title="Avg Daily Hydration"
-                value={weeklyAverage.hydration}
+                value={progress.hydration / 7}
                 suffix="ml"
                 icon={<Droplets className="h-6 w-6" />}
                 gradientFrom="#06B6D4"
                 gradientTo="#22D3EE"
-                progress={Math.round((weeklyAverage.hydration / (user?.targetHydration || 2000)) * 100)}
+                progress={Math.round((progress.hydration / 7 / (user?.targetHydration || 2000)) * 100)}
                 target={user?.targetHydration || 2000}
                 isCompact={true}
               />
