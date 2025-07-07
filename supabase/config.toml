@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
+
+[functions.parse-food-items]
+verify_jwt = false

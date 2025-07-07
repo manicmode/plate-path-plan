@@ -13,6 +13,8 @@ import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { RetryActions } from '@/components/camera/RetryActions';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useNavigate } from 'react-router-dom';
+import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 
 interface RecognizedFood {
   name: string;
@@ -75,6 +77,11 @@ const CameraPage = () => {
   const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
   const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual'>('photo');
+  
+  // Review Items Screen states
+  const [showReviewScreen, setShowReviewScreen] = useState(false);
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+  const [selectedFoodItem, setSelectedFoodItem] = useState<any>(null);
   
   // Error handling states
   const [showError, setShowError] = useState(false);
@@ -315,18 +322,59 @@ const CameraPage = () => {
       console.log('Processing Vision API results...');
       setVisionResults(data);
 
-      const processedFoods = processNutritionData('photo', data);
+      // Step 2: Parse food items with OpenAI
+      setProcessingStep('Extracting food items...');
       
-      if (processedFoods.length === 0) {
-        toast.error('No food items detected in the image. Please try a different photo.');
-        return;
-      }
+      try {
+        const parseResponse = await supabase.functions.invoke('parse-food-items', {
+          body: { visionResults: data }
+        });
 
-      setRecognizedFoods(processedFoods);
-      setInputSource('photo');
-      setShowConfirmation(true);
-      
-      toast.success(`Detected ${processedFoods.length} food item(s): ${processedFoods.map(f => f.name).join(', ')}`);
+        if (parseResponse.error || parseResponse.data?.error) {
+          console.error('Food parsing error:', parseResponse.error || parseResponse.data?.message);
+          // Fallback to original logic
+          const processedFoods = processNutritionData('photo', data);
+          if (processedFoods.length > 0) {
+            setRecognizedFoods(processedFoods);
+            setInputSource('photo');
+            setShowConfirmation(true);
+            toast.success(`Detected ${processedFoods.length} food item(s)!`);
+          } else {
+            toast.error('No food items detected in the image. Please try a different photo.');
+          }
+          return;
+        }
+
+        const parsedItems = parseResponse.data as Array<{name: string, portion: string}>;
+        console.log('Parsed food items:', parsedItems);
+
+        // Step 3: Show Review Items Screen
+        const reviewItems: ReviewItem[] = parsedItems.map((item, index) => ({
+          id: `item-${index}`,
+          name: item.name,
+          portion: item.portion,
+          selected: true
+        }));
+
+        setReviewItems(reviewItems);
+        setShowReviewScreen(true);
+        setInputSource('photo');
+        
+        toast.success(`Found ${parsedItems.length} food item(s) - please review and confirm!`);
+
+      } catch (parseError) {
+        console.error('Food parsing failed:', parseError);
+        // Fallback to original logic
+        const processedFoods = processNutritionData('photo', data);
+        if (processedFoods.length > 0) {
+          setRecognizedFoods(processedFoods);
+          setInputSource('photo');
+          setShowConfirmation(true);
+          toast.success(`Detected ${processedFoods.length} food item(s)!`);
+        } else {
+          toast.error('No food items detected in the image. Please try a different photo.');
+        }
+      }
       
     } catch (error) {
       console.error('Error analyzing image:', error);
@@ -576,6 +624,47 @@ const CameraPage = () => {
     }
   };
 
+  const handleReviewNext = async (selectedItems: ReviewItem[]) => {
+    setShowReviewScreen(false);
+    
+    if (selectedItems.length > 0) {
+      const firstItem = selectedItems[0];
+      
+      try {
+        setIsProcessingVoice(true);
+        setProcessingStep('Getting nutrition data...');
+        
+        const result = await sendToLogVoice(`${firstItem.portion} ${firstItem.name}`);
+        
+        if (result.success) {
+          const voiceApiResponse = JSON.parse(result.message);
+          const processedFoods = processNutritionData('voice', voiceApiResponse);
+          
+          if (processedFoods.length > 0) {
+            setRecognizedFoods(processedFoods);
+            setShowConfirmation(true);
+          } else {
+            toast.error('Could not get nutrition data for this item');
+          }
+        } else {
+          toast.error('Failed to get nutrition data');
+        }
+      } catch (error) {
+        console.error('Error getting nutrition data:', error);
+        toast.error('Failed to get nutrition data');
+      } finally {
+        setIsProcessingVoice(false);
+        setProcessingStep('');
+      }
+    }
+  };
+
+  const handleConfirmFood = (foodItem: any) => {
+    addFood(foodItem);
+    resetState();
+    navigate('/home');
+  };
+
   const resetState = () => {
     setSelectedImage(null);
     setRecognizedFoods([]);
@@ -589,6 +678,9 @@ const CameraPage = () => {
     setVoiceResults(null);
     setInputSource('photo');
     setProcessingStep('');
+    setShowReviewScreen(false);
+    setReviewItems([]);
+    setSelectedFoodItem(null);
     resetErrorState();
     setValidationWarning(null);
     if (fileInputRef.current) {
@@ -977,113 +1069,21 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Unified Confirmation Modal for all input types */}
-      {showConfirmation && (
-        <div className="space-y-6 animate-slide-up">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="h-5 w-5 text-green-600" />
-                Food Recognition Results
-                <span className="text-sm font-normal text-gray-500">
-                  ({inputSource === 'voice' ? 'Voice Input' : inputSource === 'manual' ? 'Manual Input' : 'Photo Analysis'})
-                </span>
-              </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                Review the recognized foods and their nutritional information
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Show image for photo input */}
-              {selectedImage && inputSource === 'photo' && (
-                <div className="relative mb-4">
-                  <img
-                    src={selectedImage}
-                    alt="Analyzed meal"
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                </div>
-              )}
+      {/* Food Confirmation Card */}
+      <FoodConfirmationCard
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleConfirmFood}
+        foodItem={recognizedFoods[0] || null}
+      />
 
-              {/* Show transcribed text for voice/manual input */}
-              {(inputSource === 'voice' || inputSource === 'manual') && (voiceText || manualEditText) && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    {inputSource === 'voice' ? (
-                      <>
-                        <Mic className="h-4 w-4 inline mr-2" />
-                        Voice Input: "{voiceText}"
-                      </>
-                    ) : (
-                      <>
-                        <Edit3 className="h-4 w-4 inline mr-2" />
-                        Manual Input: "{manualEditText}"
-                      </>
-                    )}
-                  </h4>
-                  {voiceResults?.data?.analysis && (
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      {voiceResults.data.analysis}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Show vision results for photo input */}
-              {visionResults && inputSource === 'photo' && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    Detected items: {visionResults.labels.slice(0, 5).map(l => l.description).join(', ')}
-                  </h4>
-                  {visionResults.textDetected && (
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Package text detected - nutrition info extracted automatically
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {recognizedFoods.map((food, index) => (
-                  <div key={index} className="p-4 border rounded-lg space-y-2 bg-gray-50 dark:bg-gray-800">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">{food.name}</h4>
-                      <span className="text-sm bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded">
-                        {food.confidence}% confident
-                      </span>
-                    </div>
-                    
-                    {food.serving && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300">Serving: {food.serving}</p>
-                    )}
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <div>Calories: {food.calories}</div>
-                      <div>Protein: {food.protein}g</div>
-                      <div>Carbs: {food.carbs}g</div>
-                      <div>Fat: {food.fat}g</div>
-                      <div>Fiber: {food.fiber}g</div>
-                      <div>Sodium: {food.sodium}mg</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button onClick={confirmFoods} className="flex-1 gradient-primary">
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirm & Add to Log
-                </Button>
-                
-                <Button variant="outline" onClick={resetState} className="flex-1">
-                  <X className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Review Items Screen */}
+      <ReviewItemsScreen
+        isOpen={showReviewScreen}
+        onClose={() => setShowReviewScreen(false)}
+        onNext={handleReviewNext}
+        items={reviewItems}
+      />
 
       {/* Enhanced Status Card */}
       <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
