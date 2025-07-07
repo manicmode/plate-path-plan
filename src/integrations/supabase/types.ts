@@ -95,48 +95,69 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          activity_level: string | null
           age: number | null
           created_at: string
+          diet_styles: string[] | null
+          foods_to_avoid: string | null
           gender: string | null
+          health_conditions: string[] | null
           height_cm: number | null
           height_feet: number | null
           height_inches: number | null
           height_unit: string | null
           id: string
+          main_health_goal: string | null
           onboarding_completed: boolean | null
+          onboarding_skipped: boolean | null
           selected_trackers: string[] | null
+          show_onboarding_reminder: boolean | null
           updated_at: string
           user_id: string
           weight: number | null
           weight_unit: string | null
         }
         Insert: {
+          activity_level?: string | null
           age?: number | null
           created_at?: string
+          diet_styles?: string[] | null
+          foods_to_avoid?: string | null
           gender?: string | null
+          health_conditions?: string[] | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          main_health_goal?: string | null
           onboarding_completed?: boolean | null
+          onboarding_skipped?: boolean | null
           selected_trackers?: string[] | null
+          show_onboarding_reminder?: boolean | null
           updated_at?: string
           user_id: string
           weight?: number | null
           weight_unit?: string | null
         }
         Update: {
+          activity_level?: string | null
           age?: number | null
           created_at?: string
+          diet_styles?: string[] | null
+          foods_to_avoid?: string | null
           gender?: string | null
+          health_conditions?: string[] | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          main_health_goal?: string | null
           onboarding_completed?: boolean | null
+          onboarding_skipped?: boolean | null
           selected_trackers?: string[] | null
+          show_onboarding_reminder?: boolean | null
           updated_at?: string
           user_id?: string
           weight?: number | null
