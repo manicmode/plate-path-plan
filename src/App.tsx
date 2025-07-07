@@ -5,11 +5,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
 import Index from './pages/Index';
+import Home from './pages/Home';
 import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
 import { OnboardingScreen } from './components/onboarding/OnboardingScreen';
 import { OnboardingReminder } from '@/components/onboarding/OnboardingReminder';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+
+// Import existing pages
+import Camera from './pages/Camera';
+import Analytics from './pages/Analytics';
+import Coach from './pages/Coach';
+import Profile from './pages/Profile';
+import Hydration from './pages/Hydration';
+import Supplements from './pages/Supplements';
 
 const queryClient = new QueryClient();
 
@@ -40,7 +49,7 @@ function AppContent() {
     return (
       <Router>
         <Routes>
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<Index />} />
         </Routes>
       </Router>
     );
@@ -57,16 +66,22 @@ function AppContent() {
     <Router>
       <div className="min-h-screen bg-background">
         <Routes>
+          <Route path="/" element={<Index />} />
           <Route path="/" element={<Layout><Outlet /></Layout>}>
-            <Route index element={
+            <Route path="home" element={
               <div>
                 {showReminder && (
                   <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
                 )}
-                <Index />
+                <Home />
               </div>
             } />
-            <Route path="*" element={<NotFound />} />
+            <Route path="camera" element={<Camera />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="coach" element={<Coach />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="hydration" element={<Hydration />} />
+            <Route path="supplements" element={<Supplements />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
