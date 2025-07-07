@@ -13,7 +13,7 @@ import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 
 const queryClient = new QueryClient();
 
-function App() {
+function AppContent() {
   const { isAuthenticated, loading } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -56,26 +56,32 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-background">
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <Routes>
-              <Route path="/" element={<Layout><Outlet /></Layout>}>
-                <Route index element={
-                  <div>
-                    {showReminder && (
-                      <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
-                    )}
-                    <Index />
-                  </div>
-                } />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ThemeProvider>
-        </QueryClientProvider>
+        <Routes>
+          <Route path="/" element={<Layout><Outlet /></Layout>}>
+            <Route index element={
+              <div>
+                {showReminder && (
+                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
+                )}
+                <Index />
+              </div>
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </div>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
