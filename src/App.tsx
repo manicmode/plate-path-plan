@@ -1,11 +1,12 @@
+
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
-import { Index } from './pages/Index';
-import { NotFound } from './pages/NotFound';
-import { Layout } from './components/Layout';
+import Index from './pages/Index';
+import NotFound from './pages/NotFound';
+import Layout from './components/Layout';
 import { OnboardingScreen } from './components/onboarding/OnboardingScreen';
 import { OnboardingReminder } from '@/components/onboarding/OnboardingReminder';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
@@ -13,7 +14,7 @@ import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 const queryClient = new QueryClient();
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const { 
@@ -27,7 +28,7 @@ function App() {
     setShowOnboarding(true);
   };
 
-  if (isLoading || onboardingLoading) {
+  if (loading || onboardingLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <span className="loading loading-ring loading-lg"></span>
@@ -55,7 +56,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-background">
-        <QueryClient client={queryClient}>
+        <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <Routes>
               <Route path="/" element={<Layout />}>
@@ -72,7 +73,7 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ThemeProvider>
-        </QueryClient>
+        </QueryClientProvider>
       </div>
     </Router>
   );
