@@ -5,6 +5,7 @@ import "./index.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NutritionProvider } from "./contexts/NutritionContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -128,7 +129,9 @@ root.render(
   <ErrorBoundary>
     <AuthProvider>
       <NutritionProvider>
-        <AppWrapper />
+        <NotificationProvider>
+          <AppWrapper />
+        </NotificationProvider>
       </NutritionProvider>
     </AuthProvider>
   </ErrorBoundary>
