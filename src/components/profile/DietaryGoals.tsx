@@ -1,13 +1,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Heart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Heart, Edit } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DietaryGoalsProps {
   dietaryGoals: string[];
   isEditing: boolean;
   onToggleGoal: (goalId: string) => void;
+  onEditToggle: () => void;
 }
 
 const dietaryGoalOptions = [
@@ -18,16 +20,26 @@ const dietaryGoalOptions = [
   { id: 'general_health', label: 'General Health' },
 ];
 
-export const DietaryGoals = ({ dietaryGoals, isEditing, onToggleGoal }: DietaryGoalsProps) => {
+export const DietaryGoals = ({ dietaryGoals, isEditing, onToggleGoal, onEditToggle }: DietaryGoalsProps) => {
   const isMobile = useIsMobile();
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '300ms' }}>
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Heart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-red-600`} />
           <span>Dietary Goals</span>
         </CardTitle>
+        {!isEditing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEditToggle}
+            className="opacity-70 hover:opacity-100"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className={`flex flex-wrap ${isMobile ? 'gap-1' : 'gap-2'}`}>

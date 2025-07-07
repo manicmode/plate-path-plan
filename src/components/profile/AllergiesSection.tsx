@@ -2,25 +2,37 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Shield, Edit } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AllergiesSectionProps {
   allergies: string;
   isEditing: boolean;
   onAllergiesChange: (allergies: string) => void;
+  onEditToggle: () => void;
 }
 
-export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange }: AllergiesSectionProps) => {
+export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEditToggle }: AllergiesSectionProps) => {
   const isMobile = useIsMobile();
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '400ms' }}>
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Shield className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-600`} />
           <span>Allergies & Restrictions</span>
         </CardTitle>
+        {!isEditing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEditToggle}
+            className="opacity-70 hover:opacity-100"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="space-y-2">

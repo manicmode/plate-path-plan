@@ -191,6 +191,7 @@ const Profile = () => {
         formData={formData}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
+        onEditToggle={() => setIsEditing(!isEditing)}
       />
 
       {/* Nutrition Goals */}
@@ -198,6 +199,7 @@ const Profile = () => {
         formData={formData}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
+        onEditToggle={() => setIsEditing(!isEditing)}
       />
 
       {/* Dietary Goals */}
@@ -205,6 +207,7 @@ const Profile = () => {
         dietaryGoals={formData.dietaryGoals}
         isEditing={isEditing}
         onToggleGoal={toggleDietaryGoal}
+        onEditToggle={() => setIsEditing(!isEditing)}
       />
 
       {/* Tracker Selection */}
@@ -212,6 +215,7 @@ const Profile = () => {
         selectedTrackers={formData.selectedTrackers}
         isEditing={isEditing}
         onToggleTracker={toggleTracker}
+        onEditToggle={() => setIsEditing(!isEditing)}
       />
 
       {/* Notification Settings */}
@@ -222,6 +226,7 @@ const Profile = () => {
         allergies={formData.allergies}
         isEditing={isEditing}
         onAllergiesChange={(allergies) => updateFormData({ allergies })}
+        onEditToggle={() => setIsEditing(!isEditing)}
       />
 
       {/* Action Buttons */}

@@ -1,7 +1,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Monitor } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Monitor, Edit } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
@@ -9,6 +10,7 @@ interface TrackerSelectionProps {
   selectedTrackers: string[];
   isEditing: boolean;
   onToggleTracker: (trackerId: string) => void;
+  onEditToggle: () => void;
 }
 
 const trackerOptions = [
@@ -20,7 +22,7 @@ const trackerOptions = [
   { id: 'supplements', label: 'Supplements' },
 ];
 
-export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker }: TrackerSelectionProps) => {
+export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker, onEditToggle }: TrackerSelectionProps) => {
   const isMobile = useIsMobile();
 
   const handleToggleTracker = (trackerId: string) => {
@@ -50,11 +52,21 @@ export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker 
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '350ms' }}>
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Monitor className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
           <span>Home Page Display</span>
         </CardTitle>
+        {!isEditing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEditToggle}
+            className="opacity-70 hover:opacity-100"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="space-y-3">
