@@ -28,6 +28,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 }) => {
   const [items, setItems] = useState<ReviewItem[]>(initialItems);
 
+  // Update items when props change
+  React.useEffect(() => {
+    console.log('ReviewItemsScreen received items:', initialItems);
+    setItems(initialItems);
+  }, [initialItems]);
+
   const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected', value: string | boolean) => {
     setItems(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
@@ -57,6 +63,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const selectedCount = items.filter(item => item.selected && item.name.trim() && item.portion.trim()).length;
+
+  // Debug logging
+  console.log('ReviewItemsScreen render - isOpen:', isOpen, 'items count:', items.length, 'selectedCount:', selectedCount);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

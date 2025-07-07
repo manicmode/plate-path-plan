@@ -49,6 +49,21 @@ serve(async (req) => {
     ].filter(Boolean).join(', ');
 
     console.log('Combined vision results for parsing:', combinedResults);
+    
+    // If no meaningful input, return error early
+    if (!combinedResults || combinedResults.trim().length < 3) {
+      console.log('No meaningful vision results to parse');
+      return new Response(
+        JSON.stringify({ 
+          error: true,
+          message: "No meaningful food data detected in image"
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     // Call OpenAI with the exact prompt specified
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -95,7 +110,11 @@ Input: ${combinedResults}`
     // Parse the JSON response
     let parsedItems;
     try {
-      parsedItems = JSON.parse(aiResponse);
+      // Clean the response to remove any markdown formatting
+      const cleanResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      console.log('Cleaned AI response for parsing:', cleanResponse);
+      
+      parsedItems = JSON.parse(cleanResponse);
       
       // Validate array structure
       if (!Array.isArray(parsedItems)) {
@@ -107,15 +126,26 @@ Input: ${combinedResults}`
         item && typeof item === 'object' && item.name && item.portion
       );
       
+      console.log('Successfully parsed items:', parsedItems);
+      
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       console.error('AI response was:', aiResponse);
       
-      // Fallback: create basic items from food labels
-      parsedItems = visionResults.foodLabels.slice(0, 3).map(label => ({
-        name: label.description,
-        portion: "1 serving"
-      }));
+      // Fallback: create basic items from food labels and labels
+      const fallbackItems = [
+        ...visionResults.foodLabels.slice(0, 2).map(label => ({
+          name: label.description,
+          portion: "1 serving"
+        })),
+        ...visionResults.labels.slice(0, 1).map(label => ({
+          name: label.description,
+          portion: "1 serving"
+        }))
+      ];
+      
+      console.log('Using fallback items:', fallbackItems);
+      parsedItems = fallbackItems;
     }
 
     // Ensure we don't return empty results

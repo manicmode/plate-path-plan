@@ -348,14 +348,30 @@ const CameraPage = () => {
         const parsedItems = parseResponse.data as Array<{name: string, portion: string}>;
         console.log('Parsed food items:', parsedItems);
 
+        // Validate parsed items
+        if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+          console.log('No valid food items parsed, falling back to original logic');
+          const processedFoods = processNutritionData('photo', data);
+          if (processedFoods.length > 0) {
+            setRecognizedFoods(processedFoods);
+            setInputSource('photo');
+            setShowConfirmation(true);
+            toast.success(`Detected ${processedFoods.length} food item(s)!`);
+          } else {
+            toast.error('No food items detected in the image. Please try a different photo.');
+          }
+          return;
+        }
+
         // Step 3: Show Review Items Screen
         const reviewItems: ReviewItem[] = parsedItems.map((item, index) => ({
           id: `item-${index}`,
-          name: item.name,
-          portion: item.portion,
+          name: item.name || 'Unknown Food',
+          portion: item.portion || '1 serving',
           selected: true
         }));
 
+        console.log('Created review items:', reviewItems);
         setReviewItems(reviewItems);
         setShowReviewScreen(true);
         setInputSource('photo');
