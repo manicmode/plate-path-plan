@@ -274,23 +274,19 @@ const Analytics = () => {
               </div>
             </CollapsibleTrigger>
             
-            {/* Always visible: Calories card */}
-            <div className="mb-0.5">
-              <EnhancedDailyAverageCard
-                title="Avg Daily Calories"
-                value={weeklyAverage.calories}
-                suffix=" kcal"
-                icon={<Flame className="h-6 w-6" />}
-                gradientFrom="#F97316"
-                gradientTo="#FB923C"
-                progress={Math.round((weeklyAverage.calories / (user?.targetCalories || 2000)) * 100)}
-                target={user?.targetCalories || 2000}
-                isCompact={true}
-              />
-            </div>
-
             <CollapsibleContent className="overflow-hidden">
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
+                <EnhancedDailyAverageCard
+                  title="Avg Daily Calories"
+                  value={weeklyAverage.calories}
+                  suffix=" kcal"
+                  icon={<Flame className="h-6 w-6" />}
+                  gradientFrom="#F97316"
+                  gradientTo="#FB923C"
+                  progress={Math.round((weeklyAverage.calories / (user?.targetCalories || 2000)) * 100)}
+                  target={user?.targetCalories || 2000}
+                  isCompact={true}
+                />
                 <EnhancedDailyAverageCard
                   title="Avg Daily Protein"
                   value={weeklyAverage.protein}
