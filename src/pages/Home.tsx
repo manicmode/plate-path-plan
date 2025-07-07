@@ -13,6 +13,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import HomeAIInsights from '@/components/HomeAIInsights';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -693,6 +694,9 @@ const Home = () => {
         </div>
       </div>
 
+      {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
+      <HomeAIInsights />
+
       {/* Today's Nutrients Section with improved card alignment and positioned sliders */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>Today's Nutrients</h3>
@@ -759,34 +763,6 @@ const Home = () => {
           </div>
         </div>
       </div>
-
-      {/* Compact AI Insights Card */}
-      <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl mx-2 sm:mx-4`} style={{ animationDelay: '600ms' }}>
-        <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
-          <div className={`flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'} mb-4 sm:mb-6`}>
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} gradient-primary rounded-full flex items-center justify-center shadow-lg ai-glow`}>
-              <Zap className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
-            </div>
-            <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>AI Insights</h3>
-          </div>
-          <div className="space-y-4 sm:space-y-5">
-            <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-700 dark:text-gray-300 font-medium`}>
-              🎯 You're {progressPercentage >= 80 ? 'crushing' : 'building toward'} your daily goals!
-            </p>
-            {progressPercentage < 80 && (
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
-                💡 Consider a nutrient-dense snack to optimize your intake.
-              </p>
-            )}
-            <Button
-              onClick={() => navigate('/coach')}
-              className={`bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white ${isMobile ? 'px-6 py-4 text-base' : 'px-8 py-5 text-lg'} rounded-3xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 coach-button-glow`}
-            >
-              Ask your AI coach ✨ →
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Extra bottom padding to ensure menu is always visible */}
       <div className={`${isMobile ? 'pb-24' : 'pb-32'}`}></div>
