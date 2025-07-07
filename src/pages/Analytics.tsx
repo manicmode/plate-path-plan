@@ -275,7 +275,7 @@ const Analytics = () => {
             </CollapsibleTrigger>
             
             {/* Always visible: Calories card */}
-            <div className="mb-2">
+            <div className="mb-0.5">
               <EnhancedDailyAverageCard
                 title="Avg Daily Calories"
                 value={weeklyAverage.calories}
@@ -290,7 +290,7 @@ const Analytics = () => {
             </div>
 
             <CollapsibleContent className="overflow-hidden">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-0.5">
                 <EnhancedDailyAverageCard
                   title="Avg Daily Protein"
                   value={weeklyAverage.protein}

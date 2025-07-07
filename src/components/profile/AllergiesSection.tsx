@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Shield, Edit } from 'lucide-react';
+import { Shield, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AllergiesSectionProps {
@@ -23,16 +23,14 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
           <Shield className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-600`} />
           <span>Allergies & Restrictions</span>
         </CardTitle>
-        {!isEditing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEditToggle}
-            className="opacity-70 hover:opacity-100"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant={isEditing ? "default" : "outline"}
+          size="sm"
+          onClick={onEditToggle}
+          className="opacity-70 hover:opacity-100"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="space-y-2">

@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Monitor, Edit } from 'lucide-react';
+import { Monitor, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
@@ -57,16 +57,14 @@ export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker,
           <Monitor className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
           <span>Home Page Display</span>
         </CardTitle>
-        {!isEditing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEditToggle}
-            className="opacity-70 hover:opacity-100"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant={isEditing ? "default" : "outline"}
+          size="sm"
+          onClick={onEditToggle}
+          className="opacity-70 hover:opacity-100"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="space-y-3">

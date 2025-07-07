@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { User, Edit } from 'lucide-react';
+import { User, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PersonalInformationProps {
@@ -26,16 +26,14 @@ export const PersonalInformation = ({ formData, isEditing, onFormDataChange, onE
           <User className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
           <span>Personal Information</span>
         </CardTitle>
-        {!isEditing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEditToggle}
-            className="opacity-70 hover:opacity-100"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant={isEditing ? "default" : "outline"}
+          size="sm"
+          onClick={onEditToggle}
+          className="opacity-70 hover:opacity-100"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </CardHeader>
       <CardContent className={`space-y-3 sm:space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
