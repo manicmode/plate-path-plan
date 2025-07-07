@@ -15,9 +15,9 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
   const percentage = Math.min(100, Math.round((value / target) * 100));
   
   const getStatusColor = () => {
-    if (percentage >= 100) return 'text-emerald-600 dark:text-emerald-400';
-    if (percentage >= 50) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (percentage >= 100) return 'text-white drop-shadow-sm';
+    if (percentage >= 50) return 'text-gray-900 drop-shadow-sm';
+    return 'text-white drop-shadow-sm';
   };
 
   const getProgressBarColor = () => {
@@ -58,9 +58,9 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
                 className={`h-full ${getProgressBarColor()} transition-all duration-1000 ease-out rounded-full`}
                 style={{ width: `${percentage}%` }}
               />
-              {/* Centered percentage on progress bar */}
+              {/* Centered percentage on progress bar with improved contrast */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className={`text-sm font-bold ${getStatusColor()}`}>
+                <div className={`text-sm font-bold ${getStatusColor()}`} style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                   {percentage}%
                 </div>
               </div>

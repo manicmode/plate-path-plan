@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
-import { TrendingUp, Target, Calendar, Award, Droplets, Flame, Zap, Activity, Brain, Trophy, ChevronRight, Star } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Award, Droplets, Flame, Zap, Activity, Brain, Trophy, ChevronRight, Star, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 // Import new components
@@ -21,6 +22,7 @@ const Analytics = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [animationDelay, setAnimationDelay] = useState(0);
+  const [isDailyAveragesOpen, setIsDailyAveragesOpen] = useState(false);
   
   useScrollToTop();
 
@@ -43,7 +45,12 @@ const Analytics = () => {
   const weeklyAverage = {
     calories: weeklyChartData.reduce((sum, day) => sum + day.calories, 0) / (weeklyChartData.length || 1),
     protein: weeklyChartData.reduce((sum, day) => sum + day.protein, 0) / (weeklyChartData.length || 1),
-    steps: 8500, // Mock data - will be replaced with real data
+    carbs: weeklyChartData.reduce((sum, day) => sum + day.carbs, 0) / (weeklyChartData.length || 1),
+    fat: weeklyChartData.reduce((sum, day) => sum + day.fat, 0) / (weeklyChartData.length || 1),
+    hydration: 1800, // Mock data
+    steps: 8500, // Mock data
+    exerciseMinutes: 35, // Mock data
+    supplements: 3, // Mock data
   };
 
   // Hydration weekly data
@@ -223,49 +230,116 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Enhanced Daily Averages */}
+        {/* Enhanced Daily Averages with Dropdown */}
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-              <TrendingUp className="h-6 w-6 text-white" />
+          <Collapsible open={isDailyAveragesOpen} onOpenChange={setIsDailyAveragesOpen}>
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center gap-3 mb-6 cursor-pointer group">
+                <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Daily Averages</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
+                </div>
+                <ChevronDown className={`h-5 w-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isDailyAveragesOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </CollapsibleTrigger>
+            
+            {/* Always visible: Calories card */}
+            <div className="mb-4">
+              <EnhancedDailyAverageCard
+                title="Avg Daily Calories"
+                value={weeklyAverage.calories}
+                suffix=" kcal"
+                icon={<Flame className="h-6 w-6" />}
+                gradientFrom="#F97316"
+                gradientTo="#FB923C"
+                progress={Math.round((weeklyAverage.calories / (user?.targetCalories || 2000)) * 100)}
+                target={user?.targetCalories || 2000}
+              />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Daily Averages</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <EnhancedDailyAverageCard
-              title="Avg Daily Calories"
-              value={weeklyAverage.calories}
-              suffix=" kcal"
-              icon={<Flame className="h-6 w-6" />}
-              gradientFrom="#F97316"
-              gradientTo="#FB923C"
-              progress={Math.round((weeklyAverage.calories / (user?.targetCalories || 2000)) * 100)}
-              target={user?.targetCalories || 2000}
-            />
-            <EnhancedDailyAverageCard
-              title="Avg Daily Protein"
-              value={weeklyAverage.protein}
-              suffix="g"
-              icon={<Zap className="h-6 w-6" />}
-              gradientFrom="#10B981"
-              gradientTo="#34D399"
-              progress={Math.round((weeklyAverage.protein / (user?.targetProtein || 120)) * 100)}
-              target={user?.targetProtein || 120}
-            />
-            <EnhancedDailyAverageCard
-              title="Avg Daily Steps"
-              value={weeklyAverage.steps}
-              suffix=""
-              icon={<Activity className="h-6 w-6" />}
-              gradientFrom="#3B82F6"
-              gradientTo="#60A5FA"
-              progress={Math.round((weeklyAverage.steps / 10000) * 100)}
-              target={10000}
-            />
-          </div>
+
+            <CollapsibleContent className="space-y-2">
+              <EnhancedDailyAverageCard
+                title="Avg Daily Protein"
+                value={weeklyAverage.protein}
+                suffix="g"
+                icon={<Zap className="h-6 w-6" />}
+                gradientFrom="#10B981"
+                gradientTo="#34D399"
+                progress={Math.round((weeklyAverage.protein / (user?.targetProtein || 120)) * 100)}
+                target={user?.targetProtein || 120}
+                isCompact={true}
+              />
+              <EnhancedDailyAverageCard
+                title="Avg Daily Carbs"
+                value={weeklyAverage.carbs}
+                suffix="g"
+                icon={<Activity className="h-6 w-6" />}
+                gradientFrom="#F59E0B"
+                gradientTo="#FBBF24"
+                progress={Math.round((weeklyAverage.carbs / (user?.targetCarbs || 250)) * 100)}
+                target={user?.targetCarbs || 250}
+                isCompact={true}
+              />
+              <EnhancedDailyAverageCard
+                title="Avg Daily Fat"
+                value={weeklyAverage.fat}
+                suffix="g"
+                icon={<Droplets className="h-6 w-6" />}
+                gradientFrom="#8B5CF6"
+                gradientTo="#A78BFA"
+                progress={Math.round((weeklyAverage.fat / (user?.targetFat || 70)) * 100)}
+                target={user?.targetFat || 70}
+                isCompact={true}
+              />
+              <EnhancedDailyAverageCard
+                title="Avg Daily Hydration"
+                value={weeklyAverage.hydration}
+                suffix="ml"
+                icon={<Droplets className="h-6 w-6" />}
+                gradientFrom="#06B6D4"
+                gradientTo="#22D3EE"
+                progress={Math.round((weeklyAverage.hydration / (user?.targetHydration || 2000)) * 100)}
+                target={user?.targetHydration || 2000}
+                isCompact={true}
+              />
+              <EnhancedDailyAverageCard
+                title="Avg Daily Steps"
+                value={weeklyAverage.steps}
+                suffix=""
+                icon={<Activity className="h-6 w-6" />}
+                gradientFrom="#3B82F6"
+                gradientTo="#60A5FA"
+                progress={Math.round((weeklyAverage.steps / 10000) * 100)}
+                target={10000}
+                isCompact={true}
+              />
+              <EnhancedDailyAverageCard
+                title="Avg Exercise Minutes"
+                value={weeklyAverage.exerciseMinutes}
+                suffix=" min"
+                icon={<Flame className="h-6 w-6" />}
+                gradientFrom="#EF4444"
+                gradientTo="#F87171"
+                progress={Math.round((weeklyAverage.exerciseMinutes / 60) * 100)}
+                target={60}
+                isCompact={true}
+              />
+              <EnhancedDailyAverageCard
+                title="Avg Daily Supplements"
+                value={weeklyAverage.supplements}
+                suffix=""
+                icon={<Star className="h-6 w-6" />}
+                gradientFrom="#EC4899"
+                gradientTo="#F472B6"
+                progress={Math.round((weeklyAverage.supplements / 5) * 100)}
+                target={5}
+                isCompact={true}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* Logging Consistency Tracker */}
