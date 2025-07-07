@@ -643,36 +643,45 @@ const CameraPage = () => {
   const handleReviewNext = async (selectedItems: ReviewItem[]) => {
     setShowReviewScreen(false);
     
-    if (selectedItems.length > 0) {
-      const firstItem = selectedItems[0];
-      
-      try {
-        setIsProcessingVoice(true);
-        setProcessingStep('Getting nutrition data...');
-        
-        const result = await sendToLogVoice(`${firstItem.portion} ${firstItem.name}`);
-        
-        if (result.success) {
-          const voiceApiResponse = JSON.parse(result.message);
-          const processedFoods = processNutritionData('voice', voiceApiResponse);
-          
-          if (processedFoods.length > 0) {
-            setRecognizedFoods(processedFoods);
-            setShowConfirmation(true);
-          } else {
-            toast.error('Could not get nutrition data for this item');
-          }
-        } else {
-          toast.error('Failed to get nutrition data');
-        }
-      } catch (error) {
-        console.error('Error getting nutrition data:', error);
-        toast.error('Failed to get nutrition data');
-      } finally {
-        setIsProcessingVoice(false);
-        setProcessingStep('');
-      }
+    if (selectedItems.length === 0) {
+      toast.error('No items selected to confirm');
+      return;
     }
+
+    console.log('Processing selected items for confirmation:', selectedItems);
+    
+    // Convert first selected item to FoodItem format for FoodConfirmationCard
+    const firstItem = selectedItems[0];
+    const nutrition = estimateNutritionFromLabel(firstItem.name);
+    
+    const foodItem = {
+      id: firstItem.id,
+      name: firstItem.name,
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      carbs: nutrition.carbs,
+      fat: nutrition.fat,
+      fiber: nutrition.fiber,
+      sugar: nutrition.sugar,
+      sodium: nutrition.sodium,
+      confidence: 85, // Estimated confidence for detected items
+      image: selectedImage // Use the original photo as reference
+    };
+
+    console.log('Created food item for confirmation:', foodItem);
+    
+    // Store remaining items for sequential processing if needed
+    if (selectedItems.length > 1) {
+      // For now, just process the first item. Could enhance later for multiple items
+      console.log(`Note: ${selectedItems.length - 1} additional items will need separate confirmation`);
+    }
+    
+    // Use the existing FoodConfirmationCard flow
+    setRecognizedFoods([foodItem]);
+    setShowConfirmation(true);
+    setInputSource('photo');
+    
+    toast.success('Food item ready for confirmation!');
   };
 
   const handleConfirmFood = (foodItem: any) => {
@@ -1054,12 +1063,17 @@ const CameraPage = () => {
                 disabled={isAnalyzing}
                 className="flex-1 gradient-primary min-w-[120px]"
               >
-                {!isAnalyzing ? (
+                {isAnalyzing ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    {processingStep || 'Analyzing...'}
+                  </>
+                ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
                     Analyze Food
                   </>
-                ) : null}
+                )}
               </Button>
               
               <Button 

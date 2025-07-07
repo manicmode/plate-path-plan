@@ -26,12 +26,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onNext,
   items: initialItems
 }) => {
-  const [items, setItems] = useState<ReviewItem[]>(initialItems);
+  const [items, setItems] = useState<ReviewItem[]>([]);
 
-  // Update items when props change
+  // Update items when props change - improved state management
   React.useEffect(() => {
     console.log('ReviewItemsScreen received items:', initialItems);
-    setItems(initialItems);
+    if (Array.isArray(initialItems) && initialItems.length > 0) {
+      setItems(initialItems);
+    }
   }, [initialItems]);
 
   const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected', value: string | boolean) => {
