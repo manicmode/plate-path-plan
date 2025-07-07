@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat } from 'lucide-react';
+import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
@@ -276,9 +275,9 @@ const Coach = () => {
 
   const quickQuestions = [
     "Analyze my progress",
-    "Meal suggestions?",
-    "Boost my protein",
-    "Stay motivated",
+    "Weekly focus tips",
+    "Build daily routine",
+    "Personalized advice",
   ];
 
   const recipePrompts = [
@@ -425,10 +424,13 @@ const Coach = () => {
 
       {/* Quick Questions - Separate Card */}
       <Card className="glass-card border-0 rounded-3xl">
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300 mb-4 font-medium text-center`}>
-            Quick start questions:
-          </p>
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+            <span>⚡ Quick Start Questions</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           <div className="grid grid-cols-2 gap-3">
             {quickQuestions.map((question, index) => (
               <Button
