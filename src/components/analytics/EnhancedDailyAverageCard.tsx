@@ -73,10 +73,44 @@ export const EnhancedDailyAverageCard = ({
     );
   };
 
+  const getProgressGuidance = () => {
+    if (!target) return null;
+    
+    const difference = target - value;
+    const percentDifference = Math.abs(difference / target) * 100;
+    
+    // Within ±5% is considered on track
+    if (percentDifference <= 5) {
+      return {
+        icon: "✅",
+        text: "You're on track. Keep going!",
+        color: "text-green-600 dark:text-green-400"
+      };
+    }
+    
+    if (difference > 0) {
+      // Need to increase
+      return {
+        icon: "➕",
+        text: `Increase by ${Math.round(difference)}${suffix}/day to hit your target.`,
+        color: "text-blue-600 dark:text-blue-400"
+      };
+    } else {
+      // Need to reduce
+      return {
+        icon: "➖",
+        text: `Reduce by ${Math.round(Math.abs(difference))}${suffix}/day to reach your goal.`,
+        color: "text-orange-600 dark:text-orange-400"
+      };
+    }
+  };
+
+  const guidance = getProgressGuidance();
+
   return (
     <Card className={`bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 group ${isCompact ? 'h-auto' : ''}`}>
-      <CardContent className={isCompact ? "p-3" : "p-4"}>
-        <div className="flex items-center justify-between mb-3">
+      <CardContent className={isCompact ? "p-2.5" : "p-4"}>
+        <div className="flex items-center justify-between mb-2">
           <div 
             className={`${isCompact ? 'p-1.5' : 'p-2'} rounded-xl shadow-lg`}
             style={{ 
@@ -99,10 +133,18 @@ export const EnhancedDailyAverageCard = ({
           <div className={`${isCompact ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white group-hover:scale-105 transition-transform duration-200`}>
             {Math.round(value).toLocaleString()}{suffix}
           </div>
-          <div className={`${isCompact ? 'text-xs' : 'text-xs'} text-gray-600 dark:text-gray-300`}>{title}</div>
+          <div className={`${isCompact ? 'text-xs' : 'text-xs'} text-gray-600 dark:text-gray-300 font-medium`}>{title}</div>
           {target && (
             <div className={`${isCompact ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400`}>
               Target: {target.toLocaleString()}{suffix}
+            </div>
+          )}
+          
+          {/* Progress Guidance */}
+          {guidance && (
+            <div className={`${isCompact ? 'text-xs' : 'text-xs'} ${guidance.color} flex items-start gap-1 mt-1.5 font-medium`}>
+              <span className="text-xs">{guidance.icon}</span>
+              <span className="leading-tight">{guidance.text}</span>
             </div>
           )}
         </div>

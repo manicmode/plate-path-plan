@@ -230,7 +230,7 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Enhanced Daily Averages with Dropdown */}
+        {/* Enhanced Daily Averages with Dropdown - Improved Spacing */}
         <div>
           <Collapsible open={isDailyAveragesOpen} onOpenChange={setIsDailyAveragesOpen}>
             <CollapsibleTrigger asChild>
@@ -247,7 +247,7 @@ const Analytics = () => {
             </CollapsibleTrigger>
             
             {/* Always visible: Calories card */}
-            <div className="mb-4">
+            <div className="mb-3">
               <EnhancedDailyAverageCard
                 title="Avg Daily Calories"
                 value={weeklyAverage.calories}
