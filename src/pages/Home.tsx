@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import HomeAIInsights from '@/components/HomeAIInsights';
+import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -102,19 +103,39 @@ const Home = () => {
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
 
-  // Check for goal completion and trigger celebration
+  // Helper function to check if celebration was already shown today
+  const getCelebrationKey = (type: string) => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const userId = user?.id || 'guest';
+    return `celebration_${type}_${userId}_${today}`;
+  };
+
+  const hasShownCelebrationToday = (type: string) => {
+    const key = getCelebrationKey(type);
+    return safeGetJSON(key, false);
+  };
+
+  const markCelebrationShown = (type: string) => {
+    const key = getCelebrationKey(type);
+    safeSetJSON(key, true);
+  };
+
+  // Check for goal completion and trigger celebration (only once per day per goal)
   useEffect(() => {
-    if (progressPercentage >= 100 && progressPercentage < 105) {
+    if (progressPercentage >= 100 && progressPercentage < 105 && !hasShownCelebrationToday('calories')) {
       setCelebrationType('Calories Goal Smashed! 🔥');
       setShowCelebration(true);
-    } else if (hydrationPercentage >= 100 && hydrationPercentage < 105) {
+      markCelebrationShown('calories');
+    } else if (hydrationPercentage >= 100 && hydrationPercentage < 105 && !hasShownCelebrationToday('hydration')) {
       setCelebrationType('Hydration Goal Achieved! 💧');
       setShowCelebration(true);
-    } else if (supplementPercentage >= 100 && supplementPercentage < 105) {
+      markCelebrationShown('hydration');
+    } else if (supplementPercentage >= 100 && supplementPercentage < 105 && !hasShownCelebrationToday('supplements')) {
       setCelebrationType('Supplements Complete! 💊');
       setShowCelebration(true);
+      markCelebrationShown('supplements');
     }
-  }, [progressPercentage, hydrationPercentage, supplementPercentage]);
+  }, [progressPercentage, hydrationPercentage, supplementPercentage, user?.id]);
 
   // Use preferences from localStorage/state instead of user object
   const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
