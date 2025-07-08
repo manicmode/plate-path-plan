@@ -442,12 +442,38 @@ const CameraPage = () => {
     }
   };
 
-  // Enhanced nutrition estimation with branded product matching
+  // Enhanced nutrition estimation with comprehensive debug logging
   const estimateNutritionFromLabel = async (foodName: string, ocrText?: string, barcode?: string) => {
-    console.log('🍎 Estimating nutrition for:', foodName);
+    const debugLog = {
+      step: 'nutrition_estimation',
+      foodName,
+      hasOcrText: !!ocrText,
+      hasBarcode: !!barcode,
+      barcode,
+      barcodeDetected: false,
+      brandedProductMatched: false,
+      brandedMatchConfidence: 0,
+      brandedSource: null,
+      fallbackUsed: false,
+      finalConfidence: 0,
+      errors: [] as string[],
+      success: false
+    };
+
+    console.log('🍎 === NUTRITION ESTIMATION DEBUG START ===');
+    console.log('📊 Initial parameters:', { foodName, hasOcrText: !!ocrText, hasBarcode: !!barcode, barcode });
     
     // Try branded product matching first
     try {
+      console.log('🏷️ STEP 1: Attempting branded product matching...');
+      
+      if (barcode) {
+        debugLog.barcodeDetected = true;
+        console.log(`✅ BARCODE DETECTED: ${barcode}`);
+      } else {
+        console.log('❌ NO BARCODE DETECTED');
+      }
+      
       const brandedResponse = await supabase.functions.invoke('match-branded-product', {
         body: {
           productName: foodName,
@@ -458,18 +484,28 @@ const CameraPage = () => {
 
       if (brandedResponse.data && !brandedResponse.error) {
         const brandedResult = brandedResponse.data;
+        debugLog.brandedMatchConfidence = brandedResult.confidence;
+        debugLog.brandedSource = brandedResult.source;
         
-        console.log('🏷️ Branded product match result:', {
-          found: brandedResult.found,
-          confidence: brandedResult.confidence,
-          source: brandedResult.source,
-          productName: brandedResult.productName,
-          debugInfo: brandedResult.debugInfo
-        });
+        console.log('🏷️ BRANDED PRODUCT MATCH RESULT:');
+        console.log('  ✅ Response received successfully');
+        console.log(`  📊 Found: ${brandedResult.found}`);
+        console.log(`  🎯 Confidence: ${brandedResult.confidence}%`);
+        console.log(`  📍 Source: ${brandedResult.source}`);
+        console.log(`  🏪 Product: ${brandedResult.productName || 'N/A'}`);
+        console.log(`  🏢 Brand: ${brandedResult.brandName || 'N/A'}`);
+        console.log(`  🔍 Debug Info:`, brandedResult.debugInfo);
 
         // Use branded nutrition if confidence is high enough (≥90%)
         if (brandedResult.found && brandedResult.confidence >= 90) {
-          console.log(`✅ Using branded nutrition data: ${brandedResult.productName} (${brandedResult.confidence}% confidence)`);
+          debugLog.brandedProductMatched = true;
+          debugLog.finalConfidence = brandedResult.confidence;
+          debugLog.success = true;
+          
+          console.log('✅ BRANDED MATCH SUCCESS - Using branded nutrition data');
+          console.log(`🎯 Final confidence: ${brandedResult.confidence}%`);
+          console.log('🏆 BRANDED NUTRITION DATA:', brandedResult.nutrition);
+          
           return {
             ...brandedResult.nutrition,
             isBranded: true,
@@ -479,18 +515,28 @@ const CameraPage = () => {
               productId: brandedResult.productId,
               confidence: brandedResult.confidence,
               source: brandedResult.source
-            }
+            },
+            debugLog
           };
         } else {
-          console.log(`⚠️ Branded match confidence ${brandedResult.confidence}% below threshold, using generic fallback`);
+          debugLog.fallbackUsed = true;
+          debugLog.errors.push(`Branded confidence ${brandedResult.confidence}% below 90% threshold`);
+          console.log(`⚠️ BRANDED MATCH INSUFFICIENT - Confidence ${brandedResult.confidence}% below 90% threshold`);
+          console.log('🔄 Proceeding to generic fallback...');
         }
+      } else {
+        debugLog.errors.push(`Branded API error: ${brandedResponse.error?.message || 'Unknown error'}`);
+        console.log('❌ BRANDED PRODUCT API ERROR:', brandedResponse.error);
       }
     } catch (error) {
-      console.error('❌ Branded product matching failed:', error);
+      debugLog.errors.push(`Branded matching exception: ${error.message}`);
+      console.error('❌ BRANDED PRODUCT MATCHING EXCEPTION:', error);
     }
 
     // Fallback to existing generic nutrition database
-    console.log('🔄 Using generic nutrition estimation for:', foodName);
+    debugLog.fallbackUsed = true;
+    console.log('🔄 STEP 2: Using generic nutrition estimation');
+    console.log(`📝 Food name for lookup: "${foodName}"`);
     
     const foodDatabase: { [key: string]: any } = {
       'apple': { calories: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4, sugar: 19, sodium: 2 },
@@ -502,13 +548,38 @@ const CameraPage = () => {
     };
 
     const lowerName = foodName.toLowerCase();
+    let nutritionData = null;
+    let matchedKey = '';
+    
     for (const [key, nutrition] of Object.entries(foodDatabase)) {
       if (lowerName.includes(key)) {
-        return { ...nutrition, isBranded: false };
+        nutritionData = nutrition;
+        matchedKey = key;
+        debugLog.finalConfidence = 70; // Generic database confidence
+        debugLog.success = true;
+        console.log(`✅ GENERIC MATCH FOUND: "${key}" in "${foodName}"`);
+        console.log('🏆 GENERIC NUTRITION DATA:', nutrition);
+        break;
       }
     }
 
-    return { calories: 100, protein: 2, carbs: 15, fat: 2, fiber: 1, sugar: 5, sodium: 50, isBranded: false };
+    if (!nutritionData) {
+      debugLog.finalConfidence = 50; // Default estimation confidence
+      debugLog.success = true;
+      nutritionData = { calories: 100, protein: 2, carbs: 15, fat: 2, fiber: 1, sugar: 5, sodium: 50 };
+      console.log('⚠️ NO GENERIC MATCH - Using default nutrition estimation');
+      console.log('🏆 DEFAULT NUTRITION DATA:', nutritionData);
+    }
+
+    console.log('🍎 === NUTRITION ESTIMATION DEBUG SUMMARY ===');
+    console.log('📊 Final Debug Log:', debugLog);
+    console.log('✅ Process completed successfully');
+
+    return { 
+      ...nutritionData, 
+      isBranded: false, 
+      debugLog 
+    };
   };
 
   const handleVoiceRecording = async () => {
@@ -805,11 +876,35 @@ const CameraPage = () => {
   };
 
   const handleConfirmFood = async (foodItem: any) => {
-    // Add the current food item to nutrition context and database
-    addFood(foodItem);
+    console.log('🍽️ === FOOD CONFIRMATION DEBUG START ===');
+    console.log('📊 Food item being confirmed:', foodItem);
+    console.log('🏷️ Branded info:', foodItem.brandInfo || 'N/A');
+    console.log('🔍 Debug log:', foodItem.debugLog || 'N/A');
     
-    // Save to Supabase
+    const confirmationDebug = {
+      step: 'food_confirmation',
+      foodName: foodItem.name,
+      hasBrandedInfo: !!foodItem.brandInfo,
+      hasDebugLog: !!foodItem.debugLog,
+      nutritionValues: {
+        calories: foodItem.calories,
+        protein: foodItem.protein,
+        carbs: foodItem.carbs,
+        fat: foodItem.fat
+      },
+      saveToDatabase: false,
+      saveToContext: false,
+      errors: [] as string[]
+    };
+
     try {
+      // Add the current food item to nutrition context
+      addFood(foodItem);
+      confirmationDebug.saveToContext = true;
+      console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
+      
+      // Save to Supabase
+      console.log('💾 STEP 1: Saving to Supabase database...');
       const { error } = await supabase
         .from('nutrition_logs')
         .insert({
@@ -828,21 +923,33 @@ const CameraPage = () => {
         });
 
       if (error) {
-        console.error('Error saving to Supabase:', error);
+        confirmationDebug.errors.push(`Database save error: ${error.message}`);
+        console.error('❌ DATABASE SAVE FAILED:', error);
         toast.error('Failed to save food item');
         return;
       }
+      
+      confirmationDebug.saveToDatabase = true;
+      console.log('✅ DATABASE SAVE SUCCESS - Food logged to nutrition_logs table');
+      
     } catch (error) {
-      console.error('Error saving food item:', error);
+      confirmationDebug.errors.push(`Save exception: ${error.message}`);
+      console.error('❌ SAVE EXCEPTION:', error);
       toast.error('Failed to save food item');
       return;
     }
+
+    console.log('🍽️ === FOOD CONFIRMATION DEBUG SUMMARY ===');
+    console.log('📊 Confirmation Debug Log:', confirmationDebug);
+    console.log('✅ Food item successfully confirmed and logged');
 
     // Check if there are more pending items to process
     if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
       const nextIndex = currentItemIndex + 1;
       setCurrentItemIndex(nextIndex);
       setShowConfirmation(false);
+      
+      console.log(`🔄 PROCEEDING TO NEXT ITEM: ${nextIndex + 1} of ${pendingItems.length}`);
       
       // Small delay for better UX
       setTimeout(() => {
@@ -851,10 +958,35 @@ const CameraPage = () => {
     } else {
       // All items processed, reset state and navigate
       const totalItems = pendingItems.length || 1;
+      console.log(`🎉 ALL ITEMS PROCESSED - Total logged: ${totalItems}`);
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
       resetState();
       navigate('/home');
     }
+  };
+
+  // Test mode debug summary - shows comprehensive validation results
+  const showDebugSummary = () => {
+    console.log('🧪 === TEST MODE DEBUG SUMMARY ===');
+    console.log('🔍 Full Pipeline Analysis Report:');
+    
+    if (visionResults) {
+      console.log('👁️ VISION RESULTS:');
+      console.log('  📸 Food Labels Found:', visionResults.foodLabels?.length || 0);
+      console.log('  🏷️ OCR Text Detected:', !!visionResults.textDetected);
+      console.log('  📦 Objects Detected:', visionResults.objects?.length || 0);
+      console.log('  🔤 Full OCR Text:', visionResults.textDetected || 'None');
+    }
+    
+    if (reviewItems && reviewItems.length > 0) {
+      console.log('📋 PARSED ITEMS:');
+      reviewItems.forEach((item, index) => {
+        console.log(`  ${index + 1}. ${item.name} (${item.portion}) - Selected: ${item.selected}`);
+      });
+    }
+    
+    console.log('🧪 Test mode validation complete - check individual debug logs above for detailed pipeline analysis');
+    toast.success('Debug summary generated - check console for detailed logs');
   };
 
   const resetState = () => {
