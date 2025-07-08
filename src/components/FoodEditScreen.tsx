@@ -61,6 +61,17 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
     }
   }, [foodItem]);
 
+  // Prevent auto-focus when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      // Blur any focused input elements
+      const focusedElement = document.activeElement as HTMLElement;
+      if (focusedElement && focusedElement.tagName === 'INPUT') {
+        focusedElement.blur();
+      }
+    }
+  }, [isOpen]);
+
   const handleSave = () => {
     // Create date object from time input
     const today = new Date();

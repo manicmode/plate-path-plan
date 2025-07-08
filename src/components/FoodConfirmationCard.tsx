@@ -127,7 +127,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
     
     setIsConfirming(false);
-    onClose();
+    // Don't call onClose() for multi-item flows to prevent jumping to home
+    if (!totalItems || totalItems <= 1) {
+      onClose();
+    }
   };
 
   const handleEdit = () => {
@@ -157,7 +160,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
         <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
@@ -400,11 +403,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               ) : (
                 // Single-Item Layout
                 <>
-                  {/* Cancel - Full Width Gray */}
+                  {/* Cancel - Full Width Red Text */}
                   <Button
                     variant="outline"
                     onClick={onClose}
-                    className="w-full border-gray-300 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="w-full border-gray-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     Cancel
                   </Button>

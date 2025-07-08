@@ -994,7 +994,7 @@ const CameraPage = () => {
     if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
       const nextIndex = currentItemIndex + 1;
       setCurrentItemIndex(nextIndex);
-      // Keep showConfirmation true to prevent jumping to home
+      setShowConfirmation(false); // Close current confirmation
       
       console.log(`🔄 PROCEEDING TO NEXT ITEM: ${nextIndex + 1} of ${pendingItems.length}`);
       
@@ -1011,6 +1011,7 @@ const CameraPage = () => {
       const totalItems = pendingItems.length || 1;
       console.log(`🎉 ALL ITEMS PROCESSED - Total logged: ${totalItems}`);
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
+      setShowConfirmation(false);
       resetState();
       navigate('/home');
     }
@@ -1460,10 +1461,16 @@ const CameraPage = () => {
             setCurrentItemIndex(0);
           }
           setShowTransition(false);
-          // Return to camera view instead of empty screen
-          if (selectedImage) {
-            setShowSummaryPanel(false);
+          // Return to the appropriate previous screen
+          if (selectedImage && !showSummaryPanel) {
+            // Return to camera analysis view
             setIsAnalyzing(false);
+          } else if (summaryItems.length > 0) {
+            // Return to summary panel if it was the previous screen
+            setShowSummaryPanel(true);
+          } else {
+            // Reset to camera home
+            resetState();
           }
         }}
         onConfirm={handleConfirmFood}
