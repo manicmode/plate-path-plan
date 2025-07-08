@@ -38,7 +38,7 @@ interface BrandedProductMatch {
   };
 }
 
-// Simple fuzzy matching function
+// Enhanced fuzzy matching with multi-term analysis
 function calculateSimilarity(str1: string, str2: string): number {
   const longer = str1.length > str2.length ? str1 : str2;
   const shorter = str1.length > str2.length ? str2 : str1;
@@ -68,6 +68,119 @@ function levenshteinDistance(str1: string, str2: string): number {
     }
   }
   return matrix[str2.length][str1.length];
+}
+
+// Enhanced multi-term fuzzy matching for complex product names
+function calculateEnhancedSimilarity(queryName: string, productName: string, ocrText: string = '', brandName: string = ''): {
+  score: number;
+  matchType: 'exact' | 'fuzzy_high' | 'fuzzy_medium' | 'fuzzy_low';
+  details: string[];
+} {
+  const normalizeText = (text: string) => text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  const queryNorm = normalizeText(queryName);
+  const productNorm = normalizeText(productName);
+  const ocrNorm = normalizeText(ocrText);
+  const brandNorm = normalizeText(brandName);
+  
+  const details: string[] = [];
+  let totalScore = 0;
+  let weights = 0;
+  
+  // 1. Exact match check
+  if (queryNorm === productNorm) {
+    return { score: 1.0, matchType: 'exact', details: ['exact_name_match'] };
+  }
+  
+  // 2. Word-by-word matching for complex names like "Nutrail Honey Nut Granola"
+  const queryWords = queryNorm.split(' ').filter(w => w.length > 2);
+  const productWords = productNorm.split(' ').filter(w => w.length > 2);
+  const ocrWords = ocrNorm.split(' ').filter(w => w.length > 2);
+  
+  let wordMatchScore = 0;
+  let wordMatches = 0;
+  
+  for (const queryWord of queryWords) {
+    let bestWordMatch = 0;
+    let matchedWord = '';
+    
+    // Check against product words
+    for (const productWord of productWords) {
+      const similarity = calculateSimilarity(queryWord, productWord);
+      if (similarity > bestWordMatch) {
+        bestWordMatch = similarity;
+        matchedWord = productWord;
+      }
+    }
+    
+    // Also check against OCR words for package text
+    for (const ocrWord of ocrWords) {
+      const similarity = calculateSimilarity(queryWord, ocrWord);
+      if (similarity > bestWordMatch) {
+        bestWordMatch = similarity;
+        matchedWord = ocrWord;
+      }
+    }
+    
+    if (bestWordMatch > 0.7) {
+      wordMatches++;
+      wordMatchScore += bestWordMatch;
+      details.push(`word_match: ${queryWord} -> ${matchedWord} (${Math.round(bestWordMatch * 100)}%)`);
+    }
+  }
+  
+  if (queryWords.length > 0) {
+    const avgWordScore = wordMatchScore / queryWords.length;
+    const wordCoverage = wordMatches / queryWords.length;
+    const wordScore = avgWordScore * wordCoverage;
+    totalScore += wordScore * 0.6; // 60% weight for word matching
+    weights += 0.6;
+    details.push(`word_coverage: ${wordMatches}/${queryWords.length} (${Math.round(wordCoverage * 100)}%)`);
+  }
+  
+  // 3. Overall string similarity
+  const overallSimilarity = calculateSimilarity(queryNorm, productNorm);
+  totalScore += overallSimilarity * 0.3; // 30% weight
+  weights += 0.3;
+  details.push(`overall_similarity: ${Math.round(overallSimilarity * 100)}%`);
+  
+  // 4. Brand matching boost
+  if (brandNorm && (queryNorm.includes(brandNorm) || ocrNorm.includes(brandNorm))) {
+    const brandBoost = 0.15;
+    totalScore += brandBoost;
+    weights += 0.1;
+    details.push(`brand_boost: +${Math.round(brandBoost * 100)}%`);
+  }
+  
+  // 5. OCR context matching for package patterns
+  if (ocrText) {
+    // Look for common package terms that indicate food products
+    const packageTerms = ['net wt', 'weight', 'oz', 'lb', 'gram', 'serving', 'calories', 'nutrition', 'ingredients'];
+    const ocrLower = ocrText.toLowerCase();
+    const packageTermFound = packageTerms.some(term => ocrLower.includes(term));
+    
+    if (packageTermFound) {
+      totalScore += 0.05; // Small boost for package context
+      details.push('package_context_boost: +5%');
+    }
+    
+    // Check if query appears in OCR text
+    const ocrContainsQuery = ocrLower.includes(queryNorm) || queryWords.some(word => ocrLower.includes(word));
+    if (ocrContainsQuery) {
+      totalScore += 0.1;
+      details.push('ocr_contains_query: +10%');
+    }
+  }
+  
+  const finalScore = Math.min(totalScore / Math.max(weights, 1), 1.0);
+  
+  // Determine match type based on score
+  let matchType: 'exact' | 'fuzzy_high' | 'fuzzy_medium' | 'fuzzy_low';
+  if (finalScore >= 0.9) matchType = 'fuzzy_high';
+  else if (finalScore >= 0.75) matchType = 'fuzzy_medium';
+  else matchType = 'fuzzy_low';
+  
+  return { score: finalScore, matchType, details };
 }
 
 // Extract nutrition data from Open Food Facts product
@@ -189,36 +302,35 @@ serve(async (req) => {
         if (searchData.products && searchData.products.length > 0) {
           let bestMatch = null;
           let bestScore = 0;
+          let bestMatchDetails: string[] = [];
 
-          // Find best matching product
+          console.log('🧩 Enhanced fuzzy matching analysis:');
+          
+          // Enhanced fuzzy matching for each candidate
           for (const product of searchData.products) {
             if (!product.product_name) continue;
 
-            const nameScore = calculateSimilarity(
-              productName.toLowerCase().trim(),
-              product.product_name.toLowerCase().trim()
+            const matchResult = calculateEnhancedSimilarity(
+              productName, 
+              product.product_name, 
+              ocrText || '', 
+              product.brands || ''
             );
+            
+            console.log(`📊 Enhanced analysis for "${product.product_name}":`);
+            console.log(`   🎯 Score: ${Math.round(matchResult.score * 100)}% (${matchResult.matchType})`);
+            console.log(`   📝 Details: ${matchResult.details.join(', ')}`);
 
-            // Boost score if brand matches or OCR text contains product info
-            let boostedScore = nameScore;
-            if (ocrText && product.brands) {
-              const brandScore = calculateSimilarity(
-                ocrText.toLowerCase(),
-                product.brands.toLowerCase()
-              );
-              boostedScore = Math.max(nameScore, brandScore * 0.8);
-            }
-
-            console.log(`📊 Product "${product.product_name}" score: ${Math.round(boostedScore * 100)}%`);
-
-            if (boostedScore > bestScore && boostedScore > 0.6) { // Minimum 60% similarity
-              bestScore = boostedScore;
+            if (matchResult.score > bestScore && matchResult.score > 0.6) {
+              bestScore = matchResult.score;
               bestMatch = product;
+              bestMatchDetails = matchResult.details;
+              console.log(`   ⭐ NEW BEST MATCH!`);
             }
           }
 
-          // If we found a good match, extract nutrition
-          if (bestMatch && bestScore > 0.75) { // 75% threshold for branded products
+          // Enhanced confidence scoring and decision making
+          if (bestMatch && bestScore > 0.7) { // Lowered threshold to 70% for enhanced matching
             const nutrition = extractNutrition(bestMatch);
             if (nutrition) {
               const confidence = Math.round(bestScore * 100);
@@ -234,23 +346,35 @@ serve(async (req) => {
                 debugInfo: {
                   searchQuery,
                   candidatesFound: result.debugInfo.candidatesFound,
-                  matchMethod: `fuzzy_match_${confidence}%`
+                  matchMethod: `enhanced_fuzzy_${confidence}%`,
+                  fallbackReason: `match_details: ${bestMatchDetails.join('; ')}`
                 }
               };
 
-              console.log(`✅ Fuzzy match found: "${result.productName}" (${confidence}% confidence)`);
+              console.log(`✅ Enhanced fuzzy match found: "${result.productName}"`);
+              console.log(`🎯 Confidence: ${confidence}% with details: ${bestMatchDetails.join(', ')}`);
 
-              // Only return branded data if confidence is >90%
-              if (confidence >= 90) {
+              // Return branded data if confidence is >85% (lowered from 90% for enhanced matching)
+              if (confidence >= 85) {
+                console.log(`🚀 HIGH CONFIDENCE MATCH - Returning branded nutrition data`);
                 return new Response(JSON.stringify(result), {
                   headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                 });
               } else {
-                console.log(`⚠️ Confidence ${confidence}% below 90% threshold, will fallback to generic`);
-                result.debugInfo.fallbackReason = `confidence_${confidence}%_below_90%`;
+                console.log(`⚠️ Confidence ${confidence}% below 85% threshold, will fallback to generic`);
+                result.debugInfo.fallbackReason = `enhanced_confidence_${confidence}%_below_85%_threshold`;
               }
+            } else {
+              console.log('❌ Enhanced match found but nutrition extraction failed');
+              result.debugInfo.fallbackReason = 'enhanced_match_no_nutrition';
             }
+          } else {
+            console.log(`❌ No suitable enhanced matches found (best score: ${Math.round(bestScore * 100)}%)`);
+            result.debugInfo.fallbackReason = `best_enhanced_score_${Math.round(bestScore * 100)}%_below_70%`;
           }
+        } else {
+          console.log('❌ No product candidates found in search results');
+          result.debugInfo.fallbackReason = 'no_candidates_from_search';
         }
       }
     } catch (error) {
