@@ -111,19 +111,27 @@ serve(async (req) => {
       }
     };
 
-    // Method 1: Exact barcode match (highest confidence)
-    if (barcode) {
-      console.log('🏷️ Attempting barcode lookup:', barcode);
+    // Method 1: PRIORITY - Exact barcode match (overrides all other logic)
+    if (barcode && barcode.trim().length > 0) {
+      console.log('🏷️ BARCODE DETECTED - Attempting immediate Open Food Facts lookup:', barcode);
+      console.log('📊 Barcode detection status: ACTIVE - Will override all other matching logic if found');
+      
       try {
         const barcodeResponse = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+        console.log('🌐 Open Food Facts API response status:', barcodeResponse.status);
+        
         if (barcodeResponse.ok) {
           const barcodeData = await barcodeResponse.json();
+          console.log('📋 API response status code:', barcodeData.status);
+          
           if (barcodeData.status === 1 && barcodeData.product) {
             const nutrition = extractNutrition(barcodeData.product);
+            console.log('🥗 Nutrition extraction result:', nutrition ? 'SUCCESS' : 'FAILED');
+            
             if (nutrition) {
               result = {
                 found: true,
-                confidence: 99, // Very high confidence for barcode matches
+                confidence: 99, // Maximum confidence for exact barcode matches
                 productId: barcode,
                 productName: barcodeData.product.product_name || productName,
                 brandName: barcodeData.product.brands,
@@ -132,19 +140,36 @@ serve(async (req) => {
                 debugInfo: {
                   searchQuery: barcode,
                   candidatesFound: 1,
-                  matchMethod: 'barcode_exact'
+                  matchMethod: 'barcode_exact_match',
+                  fallbackReason: 'none_barcode_success'
                 }
               };
-              console.log('✅ Barcode match found:', result.productName);
+              console.log('✅ BARCODE SUCCESS - Exact branded match found:', result.productName);
+              console.log('🎯 OVERRIDING all other logic - returning branded nutrition immediately');
               return new Response(JSON.stringify(result), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
+            } else {
+              console.log('⚠️ BARCODE FOUND but nutrition data incomplete - will fallback to fuzzy matching');
+              result.debugInfo.fallbackReason = 'barcode_found_incomplete_nutrition';
             }
+          } else {
+            console.log('❌ BARCODE NOT FOUND in Open Food Facts database - will fallback to fuzzy matching');
+            result.debugInfo.fallbackReason = 'barcode_not_in_database';
           }
+        } else {
+          console.log('❌ BARCODE API call failed with status:', barcodeResponse.status);
+          result.debugInfo.fallbackReason = `barcode_api_error_${barcodeResponse.status}`;
         }
       } catch (error) {
-        console.log('❌ Barcode lookup failed:', error.message);
+        console.log('❌ BARCODE lookup exception:', error.message);
+        result.debugInfo.fallbackReason = `barcode_exception: ${error.message}`;
       }
+      
+      console.log('🔄 Barcode path completed - proceeding to fuzzy matching fallback');
+    } else {
+      console.log('📊 Barcode detection status: NOT DETECTED - proceeding with fuzzy matching');
+      result.debugInfo.fallbackReason = 'no_barcode_detected';
     }
 
     // Method 2: Fuzzy text matching with Open Food Facts search
