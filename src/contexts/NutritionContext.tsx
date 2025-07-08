@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import { useNutritionLoader } from '@/hooks/useNutritionLoader';
+import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 
 interface FoodItem {
   id: string;
@@ -89,6 +91,8 @@ interface NutritionProviderProps {
 
 export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const today = new Date().toISOString().split('T')[0];
+  const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
+  const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();
   
   const [currentDay, setCurrentDay] = useState<DailyNutrition>({
     date: today,
@@ -104,6 +108,20 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     totalSodium: 0,
     totalHydration: 0,
   });
+
+  // Initialize with loaded data
+  useEffect(() => {
+    if (!isLoading && loadedData) {
+      const totals = calculateTotals(loadedData.foods, loadedData.hydration);
+      setCurrentDay({
+        date: today,
+        foods: loadedData.foods,
+        hydration: loadedData.hydration,
+        supplements: loadedData.supplements,
+        ...totals,
+      });
+    }
+  }, [isLoading, loadedData, today]);
 
   // Generate realistic weekly data based on current day progress for analytics
   const generateWeeklyData = (currentDayData: DailyNutrition): DailyNutrition[] => {
@@ -156,21 +174,8 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       // Check if date has changed while app was in background
       const newToday = new Date().toISOString().split('T')[0];
       if (currentDay.date !== newToday) {
-        console.log('Date changed while app was in background, resetting nutrition data');
-        setCurrentDay({
-          date: newToday,
-          foods: [],
-          hydration: [],
-          supplements: [],
-          totalCalories: 0,
-          totalProtein: 0,
-          totalCarbs: 0,
-          totalFat: 0,
-          totalFiber: 0,
-          totalSugar: 0,
-          totalSodium: 0,
-          totalHydration: 0,
-        });
+        console.log('Date changed while app was in background, loading new day data');
+        loadTodaysData(newToday);
       }
     },
   });
@@ -219,6 +224,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       ...totals,
     });
 
+    // Save to database
+    saveFood(newFood);
+
     console.log('Food added to context:', newFood);
     console.log('Updated totals:', totals);
   };
@@ -238,6 +246,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       hydration: updatedHydration,
       ...totals,
     });
+
+    // Save to database
+    saveHydration(newHydration);
   };
 
   const addSupplement = (supplement: Omit<SupplementItem, 'id' | 'timestamp'>) => {
@@ -251,6 +262,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       ...currentDay,
       supplements: [...currentDay.supplements, newSupplement],
     });
+
+    // Save to database
+    saveSupplement(newSupplement);
   };
 
   const confirmFood = (foodId: string) => {
@@ -276,6 +290,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       foods: updatedFoods,
       ...totals,
     });
+
+    // Remove from database
+    removeFromDB(foodId);
   };
 
   const updateFood = (foodId: string, updates: Partial<FoodItem>) => {

@@ -1,0 +1,160 @@
+import { useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { safeSetJSON } from '@/lib/safeStorage';
+
+interface FoodItem {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  image?: string;
+  confidence?: number;
+  timestamp: Date;
+  confirmed: boolean;
+}
+
+interface HydrationItem {
+  id: string;
+  name: string;
+  volume: number;
+  type: 'water' | 'other';
+  image?: string;
+  timestamp: Date;
+}
+
+interface SupplementItem {
+  id: string;
+  name: string;
+  dosage: number;
+  unit: string;
+  frequency?: string;
+  image?: string;
+  timestamp: Date;
+}
+
+export const useNutritionPersistence = () => {
+  const { user } = useAuth();
+
+  const saveFood = useCallback(async (food: FoodItem) => {
+    if (!user || !food.confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('nutrition_logs')
+        .insert({
+          user_id: user.id,
+          food_name: food.name,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          fiber: food.fiber,
+          sugar: food.sugar,
+          sodium: food.sodium,
+          confidence: food.confidence,
+          image_url: food.image,
+          created_at: food.timestamp.toISOString()
+        });
+
+      if (error) throw error;
+      console.log('Food saved to database:', food.name);
+    } catch (error) {
+      console.error('Error saving food:', error);
+      // Save to localStorage as fallback
+      const date = food.timestamp.toISOString().split('T')[0];
+      const localKey = `nutrition_${user.id}_${date}_backup`;
+      const existing = JSON.parse(localStorage.getItem(localKey) || '{"foods":[]}');
+      existing.foods.push(food);
+      safeSetJSON(localKey, existing);
+    }
+  }, [user]);
+
+  const saveHydration = useCallback(async (hydration: HydrationItem) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('hydration_logs')
+        .insert({
+          user_id: user.id,
+          name: hydration.name,
+          volume: hydration.volume,
+          type: hydration.type,
+          image_url: hydration.image,
+          created_at: hydration.timestamp.toISOString()
+        });
+
+      if (error) throw error;
+      console.log('Hydration saved to database:', hydration.name);
+    } catch (error) {
+      console.error('Error saving hydration:', error);
+      // Save to localStorage as fallback
+      const date = hydration.timestamp.toISOString().split('T')[0];
+      const localKey = `nutrition_${user.id}_${date}_backup`;
+      const existing = JSON.parse(localStorage.getItem(localKey) || '{"hydration":[]}');
+      existing.hydration = existing.hydration || [];
+      existing.hydration.push(hydration);
+      safeSetJSON(localKey, existing);
+    }
+  }, [user]);
+
+  const saveSupplement = useCallback(async (supplement: SupplementItem) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('supplement_logs')
+        .insert({
+          user_id: user.id,
+          name: supplement.name,
+          dosage: supplement.dosage,
+          unit: supplement.unit,
+          frequency: supplement.frequency,
+          image_url: supplement.image,
+          created_at: supplement.timestamp.toISOString()
+        });
+
+      if (error) throw error;
+      console.log('Supplement saved to database:', supplement.name);
+    } catch (error) {
+      console.error('Error saving supplement:', error);
+      // Save to localStorage as fallback
+      const date = supplement.timestamp.toISOString().split('T')[0];
+      const localKey = `nutrition_${user.id}_${date}_backup`;
+      const existing = JSON.parse(localStorage.getItem(localKey) || '{"supplements":[]}');
+      existing.supplements = existing.supplements || [];
+      existing.supplements.push(supplement);
+      safeSetJSON(localKey, existing);
+    }
+  }, [user]);
+
+  const removeFood = useCallback(async (foodId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('nutrition_logs')
+        .delete()
+        .eq('id', foodId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      console.log('Food removed from database:', foodId);
+    } catch (error) {
+      console.error('Error removing food:', error);
+    }
+  }, [user]);
+
+  return {
+    saveFood,
+    saveHydration,
+    saveSupplement,
+    removeFood
+  };
+};

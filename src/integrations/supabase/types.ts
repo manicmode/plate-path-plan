@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      hydration_logs: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          type: string
+          user_id: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          type?: string
+          user_id: string
+          volume: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          type?: string
+          user_id?: string
+          volume?: number
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
@@ -180,6 +210,39 @@ export type Database = {
           reminder_time?: string
           type?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      supplement_logs: {
+        Row: {
+          created_at: string
+          dosage: number
+          frequency: string | null
+          id: string
+          image_url: string | null
+          name: string
+          unit: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dosage: number
+          frequency?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          unit: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: number
+          frequency?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          unit?: string
           user_id?: string
         }
         Relationships: []
