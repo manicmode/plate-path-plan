@@ -141,7 +141,7 @@ const CameraPage = () => {
     }
   };
 
-  const processNutritionData = (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): RecognizedFood[] => {
+  const processNutritionData = async (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): Promise<RecognizedFood[]> => {
     const foods: RecognizedFood[] = [];
     
     if (source === 'voice' && 'data' in data) {
@@ -182,15 +182,27 @@ const CameraPage = () => {
           serving: 'As labeled',
         });
       } else {
-        visionData.foodLabels.forEach(label => {
-          const estimatedNutrition = estimateNutritionFromLabel(label.description);
+        // For each food label, use async nutrition estimation
+        for (const label of visionData.foodLabels) {
+          const estimatedNutrition = await estimateNutritionFromLabel(
+            label.description, 
+            visionData.textDetected, 
+            // Extract potential barcode from objects if any
+            visionData.objects.find(obj => obj.name.match(/\d{8,}/))?.name
+          );
           foods.push({
             name: label.description,
-            ...estimatedNutrition,
+            calories: estimatedNutrition.calories,
+            protein: estimatedNutrition.protein,
+            carbs: estimatedNutrition.carbs,
+            fat: estimatedNutrition.fat,
+            fiber: estimatedNutrition.fiber,
+            sugar: estimatedNutrition.sugar,
+            sodium: estimatedNutrition.sodium,
             confidence: Math.round(label.score * 100),
             serving: 'Estimated portion',
           });
-        });
+        }
       }
     }
 
@@ -333,7 +345,7 @@ const CameraPage = () => {
         if (parseResponse.error || parseResponse.data?.error) {
           console.error('Food parsing error:', parseResponse.error || parseResponse.data?.message);
           // Fallback to original logic
-          const processedFoods = processNutritionData('photo', data);
+          const processedFoods = await processNutritionData('photo', data);
           if (processedFoods.length > 0) {
             setRecognizedFoods(processedFoods);
             setInputSource('photo');
@@ -351,7 +363,7 @@ const CameraPage = () => {
         // Validate parsed items
         if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
           console.log('No valid food items parsed, falling back to original logic');
-          const processedFoods = processNutritionData('photo', data);
+          const processedFoods = await processNutritionData('photo', data);
           if (processedFoods.length > 0) {
             setRecognizedFoods(processedFoods);
             setInputSource('photo');
@@ -381,7 +393,7 @@ const CameraPage = () => {
       } catch (parseError) {
         console.error('Food parsing failed:', parseError);
         // Fallback to original logic
-        const processedFoods = processNutritionData('photo', data);
+        const processedFoods = await processNutritionData('photo', data);
         if (processedFoods.length > 0) {
           setRecognizedFoods(processedFoods);
           setInputSource('photo');
@@ -411,7 +423,56 @@ const CameraPage = () => {
     }
   };
 
-  const estimateNutritionFromLabel = (foodName: string) => {
+  // Enhanced nutrition estimation with branded product matching
+  const estimateNutritionFromLabel = async (foodName: string, ocrText?: string, barcode?: string) => {
+    console.log('🍎 Estimating nutrition for:', foodName);
+    
+    // Try branded product matching first
+    try {
+      const brandedResponse = await supabase.functions.invoke('match-branded-product', {
+        body: {
+          productName: foodName,
+          ocrText: ocrText,
+          barcode: barcode
+        }
+      });
+
+      if (brandedResponse.data && !brandedResponse.error) {
+        const brandedResult = brandedResponse.data;
+        
+        console.log('🏷️ Branded product match result:', {
+          found: brandedResult.found,
+          confidence: brandedResult.confidence,
+          source: brandedResult.source,
+          productName: brandedResult.productName,
+          debugInfo: brandedResult.debugInfo
+        });
+
+        // Use branded nutrition if confidence is high enough (≥90%)
+        if (brandedResult.found && brandedResult.confidence >= 90) {
+          console.log(`✅ Using branded nutrition data: ${brandedResult.productName} (${brandedResult.confidence}% confidence)`);
+          return {
+            ...brandedResult.nutrition,
+            isBranded: true,
+            brandInfo: {
+              productName: brandedResult.productName,
+              brandName: brandedResult.brandName,
+              productId: brandedResult.productId,
+              confidence: brandedResult.confidence,
+              source: brandedResult.source
+            }
+          };
+        } else {
+          console.log(`⚠️ Branded match confidence ${brandedResult.confidence}% below threshold, using generic fallback`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Branded product matching failed:', error);
+    }
+
+    // Fallback to existing generic nutrition database
+    console.log('🔄 Using generic nutrition estimation for:', foodName);
+    
     const foodDatabase: { [key: string]: any } = {
       'apple': { calories: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4, sugar: 19, sodium: 2 },
       'banana': { calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1, sugar: 14, sodium: 1 },
@@ -424,11 +485,11 @@ const CameraPage = () => {
     const lowerName = foodName.toLowerCase();
     for (const [key, nutrition] of Object.entries(foodDatabase)) {
       if (lowerName.includes(key)) {
-        return nutrition;
+        return { ...nutrition, isBranded: false };
       }
     }
 
-    return { calories: 100, protein: 2, carbs: 15, fat: 2, fiber: 1, sugar: 5, sodium: 50 };
+    return { calories: 100, protein: 2, carbs: 15, fat: 2, fiber: 1, sugar: 5, sodium: 50, isBranded: false };
   };
 
   const handleVoiceRecording = async () => {
@@ -483,7 +544,7 @@ const CameraPage = () => {
       setVoiceResults(voiceApiResponse);
 
       // Use unified processing function
-      const processedFoods = processNutritionData('voice', voiceApiResponse);
+      const processedFoods = await processNutritionData('voice', voiceApiResponse);
       
       if (processedFoods.length > 0) {
         setRecognizedFoods(processedFoods);
@@ -537,7 +598,7 @@ const CameraPage = () => {
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
       setVoiceResults(voiceApiResponse);
 
-      const processedFoods = processNutritionData('manual', voiceApiResponse);
+      const processedFoods = await processNutritionData('manual', voiceApiResponse);
       
       if (processedFoods.length > 0) {
         setRecognizedFoods(processedFoods);
@@ -661,7 +722,7 @@ const CameraPage = () => {
     processCurrentItem(selectedItems, 0);
   };
 
-  const processCurrentItem = (items: ReviewItem[], index: number) => {
+  const processCurrentItem = async (items: ReviewItem[], index: number) => {
     if (index >= items.length) {
       // All items processed
       setPendingItems([]);
@@ -671,7 +732,7 @@ const CameraPage = () => {
     }
 
     const currentItem = items[index];
-    const nutrition = estimateNutritionFromLabel(currentItem.name);
+    const nutrition = await estimateNutritionFromLabel(currentItem.name);
     
     const foodItem = {
       id: currentItem.id,
