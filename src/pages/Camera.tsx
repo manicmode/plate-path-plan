@@ -892,6 +892,8 @@ const CameraPage = () => {
 
   const handleTransitionComplete = () => {
     setShowTransition(false);
+    // Immediately show the confirmation dialog to eliminate any gap
+    setShowConfirmation(true);
     processCurrentItem(pendingItems, currentItemIndex);
   };
 
