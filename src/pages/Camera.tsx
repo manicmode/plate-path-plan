@@ -158,6 +158,7 @@ const CameraPage = () => {
 
   const processNutritionData = async (source: 'photo' | 'voice' | 'manual', data: VisionApiResponse | VoiceApiResponse): Promise<RecognizedFood[]> => {
     const foods: RecognizedFood[] = [];
+    const CONFIDENCE_THRESHOLD = 40; // 40% confidence threshold
     
     if (source === 'voice' && 'data' in data) {
       // Process voice API response
@@ -179,26 +180,44 @@ const CameraPage = () => {
         });
       }
     } else if (source === 'photo' && 'labels' in data) {
-      // Process vision API response (existing logic)
+      // Process vision API response with confidence filtering
       const visionData = data as VisionApiResponse;
       
+      // Check if we have any high-confidence food labels
+      const highConfidenceFoodLabels = visionData.foodLabels.filter(label => 
+        (label.score * 100) >= CONFIDENCE_THRESHOLD
+      );
+      
+      // If no high-confidence food labels found, don't process any results
+      if (highConfidenceFoodLabels.length === 0) {
+        console.log('No high-confidence food detection found. Highest confidence:', 
+          Math.max(...visionData.foodLabels.map(l => l.score * 100), 0).toFixed(1) + '%'
+        );
+        return []; // Return empty array to trigger warning message
+      }
+      
       if (visionData.nutritionData && Object.keys(visionData.nutritionData).length > 0) {
-        const mainLabel = visionData.foodLabels[0]?.description || visionData.labels[0]?.description || 'Unknown Food';
-        foods.push({
-          name: mainLabel,
-          calories: visionData.nutritionData.calories || 0,
-          protein: visionData.nutritionData.protein || 0,
-          carbs: visionData.nutritionData.carbs || 0,
-          fat: visionData.nutritionData.fat || 0,
-          fiber: visionData.nutritionData.fiber || 0,
-          sugar: visionData.nutritionData.sugar || 0,
-          sodium: visionData.nutritionData.sodium || 0,
-          confidence: Math.round((visionData.foodLabels[0]?.score || 0.5) * 100),
-          serving: 'As labeled',
-        });
+        const mainLabel = visionData.foodLabels[0];
+        const confidence = Math.round((mainLabel?.score || 0.5) * 100);
+        
+        // Only add if confidence meets threshold
+        if (confidence >= CONFIDENCE_THRESHOLD) {
+          foods.push({
+            name: mainLabel.description,
+            calories: visionData.nutritionData.calories || 0,
+            protein: visionData.nutritionData.protein || 0,
+            carbs: visionData.nutritionData.carbs || 0,
+            fat: visionData.nutritionData.fat || 0,
+            fiber: visionData.nutritionData.fiber || 0,
+            sugar: visionData.nutritionData.sugar || 0,
+            sodium: visionData.nutritionData.sodium || 0,
+            confidence: confidence,
+            serving: 'As labeled',
+          });
+        }
       } else {
-        // For each food label, use async nutrition estimation
-        for (const label of visionData.foodLabels) {
+        // For each high-confidence food label, use async nutrition estimation
+        for (const label of highConfidenceFoodLabels) {
           const estimatedNutrition = await estimateNutritionFromLabel(
             label.description, 
             visionData.textDetected, 
@@ -476,7 +495,7 @@ const CameraPage = () => {
             setShowConfirmation(true);
             toast.success(`Detected ${processedFoods.length} food item(s)!`);
           } else {
-            toast.error('No food items detected in the image. Please try a different photo.');
+            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
           }
           return;
         }
@@ -513,7 +532,7 @@ const CameraPage = () => {
             setShowConfirmation(true);
             toast.success(`Detected ${processedFoods.length} food item(s)!`);
           } else {
-            toast.error('No food items detected in the image. Please try a different photo.');
+            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
           }
           return;
         }
@@ -543,7 +562,7 @@ const CameraPage = () => {
           setShowConfirmation(true);
           toast.success(`Detected ${processedFoods.length} food item(s)!`);
         } else {
-          toast.error('No food items detected in the image. Please try a different photo.');
+          toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
         }
       }
       
