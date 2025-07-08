@@ -994,7 +994,7 @@ const CameraPage = () => {
     if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
       const nextIndex = currentItemIndex + 1;
       setCurrentItemIndex(nextIndex);
-      setShowConfirmation(false);
+      // Keep showConfirmation true to prevent jumping to home
       
       console.log(`🔄 PROCEEDING TO NEXT ITEM: ${nextIndex + 1} of ${pendingItems.length}`);
       
@@ -1459,6 +1459,7 @@ const CameraPage = () => {
             setPendingItems([]);
             setCurrentItemIndex(0);
           }
+          setShowTransition(false);
           // Return to camera view instead of empty screen
           if (selectedImage) {
             setShowSummaryPanel(false);

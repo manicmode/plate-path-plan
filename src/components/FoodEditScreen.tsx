@@ -82,19 +82,10 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <DialogHeader className="text-center mb-6 relative">
+          <DialogHeader className="text-center mb-6">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               Edit Food Item
             </DialogTitle>
-            {/* Clean close button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="absolute -top-2 -right-2 h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
 
           <div className="space-y-4">

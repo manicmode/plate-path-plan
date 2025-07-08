@@ -161,22 +161,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
-              {/* Cancel All Button - Top Row to Avoid Overlap */}
-              {totalItems && totalItems > 1 && (
-                <div className="absolute -top-6 right-0 z-10">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onClose}
-                    className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 hover:text-red-700"
-                    title="Cancel All"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              
-              {/* Edit Button - Under Title */}
+              {/* Edit Button - Top Right Only */}
               <div className="absolute -top-2 -right-2">
                 <Button
                   variant="outline"
@@ -363,50 +348,88 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               className="mb-4"
             />
 
-            {/* Bottom Action Buttons - Restructured Layout */}
-            <div className="flex space-x-3">
-              {/* Left: Don't Log (Secondary/Destructive) */}
-              {showSkip && onSkip && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+            {/* Bottom Action Buttons - New Clean Layout */}
+            <div className="space-y-3">
+              {totalItems && totalItems > 1 ? (
+                // Multi-Item Layout
+                <>
+                  <div className="flex space-x-3">
+                    {/* Don't Log - Left Half */}
+                    {showSkip && onSkip && (
                       <Button
                         variant="outline"
                         onClick={onSkip}
-                        className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-400"
+                        className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                       >
                         <MinusCircle className="h-4 w-4 mr-2" />
                         Don't Log
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Removes this item from your food log</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                    )}
+                    
+                    {/* Cancel All - Right Half */}
+                    <Button
+                      variant="outline"
+                      onClick={onClose}
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel All
+                    </Button>
+                  </div>
+                  
+                  {/* Log Item - Full Width Primary */}
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={isConfirming || portionPercentage[0] === 0}
+                    className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
+                      !isConfirming && portionPercentage[0] > 0
+                        ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    } ${isConfirming ? 'animate-pulse' : ''}`}
+                  >
+                    {isConfirming ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                        Logging...
+                      </>
+                    ) : (
+                      `Log Item ${(currentIndex || 0) + 1} of ${totalItems}`
+                    )}
+                  </Button>
+                </>
+              ) : (
+                // Single-Item Layout
+                <>
+                  {/* Cancel - Full Width Gray */}
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    className="w-full border-gray-300 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </Button>
+                  
+                  {/* Log Food - Full Width Primary */}
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={isConfirming || portionPercentage[0] === 0}
+                    className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
+                      !isConfirming && portionPercentage[0] > 0
+                        ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    } ${isConfirming ? 'animate-pulse' : ''}`}
+                  >
+                    {isConfirming ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                        Logging...
+                      </>
+                    ) : (
+                      'Log Food'
+                    )}
+                  </Button>
+                </>
               )}
-              
-              {/* Right: Log Food (Primary) */}
-              <Button
-                onClick={handleConfirm}
-                disabled={isConfirming || portionPercentage[0] === 0}
-                className={`${showSkip && onSkip ? 'flex-1' : 'w-full'} transition-all duration-300 ${
-                  !isConfirming && portionPercentage[0] > 0
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                } ${isConfirming ? 'animate-pulse' : ''}`}
-              >
-                {isConfirming ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    Logging...
-                  </>
-                ) : totalItems && totalItems > 1 ? (
-                  `Log Item ${(currentIndex || 0) + 1} of ${totalItems}`
-                ) : (
-                  'Log Food'
-                )}
-              </Button>
             </div>
           </div>
         </DialogContent>
