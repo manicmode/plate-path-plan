@@ -44,9 +44,11 @@ serve(async (req) => {
     const visualFoodItems = [
       ...visionResults.foodLabels.map(l => ({ type: 'food_label', description: l.description, score: l.score })),
       ...visionResults.objects.filter(o => 
-        // Enhanced filter for cooked food items including dish components
-        ['food', 'fruit', 'vegetable', 'meat', 'bread', 'cheese', 'pasta', 'rice', 'fish', 'chicken', 'beef', 'pork', 'salad', 'soup', 'pizza', 'sandwich', 'burger', 'cake', 'cookie', 'apple', 'banana', 'orange', 'potato', 'tomato', 'carrot', 'broccoli', 'lettuce', 'onion', 'garlic', 'egg', 'milk', 'yogurt', 'cereal', 'nuts', 'berries', 'beans', 'lentils', 'peppers', 'mushrooms', 'stew', 'curry', 'sauce', 'grain', 'chunks', 'pieces', 'bowl', 'plate', 'dish'].some(foodWord => 
+        // Enhanced filter for edible food items only, excluding utensils and containers
+        ['food', 'fruit', 'vegetable', 'meat', 'bread', 'cheese', 'pasta', 'rice', 'fish', 'chicken', 'beef', 'pork', 'salad', 'soup', 'pizza', 'sandwich', 'burger', 'cake', 'cookie', 'apple', 'banana', 'orange', 'potato', 'tomato', 'carrot', 'broccoli', 'lettuce', 'onion', 'garlic', 'egg', 'milk', 'yogurt', 'cereal', 'nuts', 'berries', 'beans', 'lentils', 'peppers', 'mushrooms', 'stew', 'curry', 'sauce', 'grain', 'chunks', 'pieces'].some(foodWord => 
           o.name.toLowerCase().includes(foodWord)
+        ) && !['plate', 'bowl', 'fork', 'knife', 'spoon', 'dish', 'cup', 'glass', 'napkin', 'table', 'tray'].some(nonFood => 
+          o.name.toLowerCase().includes(nonFood)
         )
       ).map(o => ({ type: 'object', description: o.name, score: o.score })),
       ...visionResults.labels.filter(l => 
@@ -129,6 +131,11 @@ serve(async (req) => {
     if (useComplexDishFallback) {
       // Complex dish analysis prompt
       prompt = `Analyze this cooked meal/complex dish using visual segmentation principles. The image appears to contain multiple food components in bowls, plates, or mixed together. Use color, texture, and shape analysis to identify distinct food items such as beans, beef chunks, peppers, vegetables, grains, sauces, etc.
+
+IMPORTANT FILTERING RULES:
+1. EXCLUDE non-food objects (plates, bowls, forks, knives, spoons, utensils, containers, napkins, tables)
+2. MERGE similar or duplicate items (e.g., "Bean", "Legume", "Soup beans" → "Beans")
+3. Use the most specific, clear food name for merged items
 
 FALLBACK ANALYSIS: If individual components are unclear, describe this dish and estimate the top 3 most likely ingredients based on visual appearance, colors, textures, and typical cooking patterns.
 

@@ -75,7 +75,7 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
             
             <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
               <p>Preparing <span className="font-semibold text-emerald-600 dark:text-emerald-400">{itemName}</span></p>
-              <p>Item {currentIndex + 1} of {totalItems}</p>
+              {totalItems > 1 && <p>Item {currentIndex + 1} of {totalItems}</p>}
             </div>
           </div>
 

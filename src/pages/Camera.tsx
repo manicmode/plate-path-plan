@@ -403,12 +403,12 @@ const CameraPage = () => {
           return;
         }
 
-        // Step 3: Show Summary Review Panel (New Flow)
+        // Step 3: Show Summary Review Panel (New Flow) - items not selected by default
         const summaryItems: SummaryItem[] = parsedItems.map((item, index) => ({
           id: `item-${index}`,
           name: item.name || 'Unknown Food',
           portion: item.portion || '1 serving',
-          selected: true
+          selected: false
         }));
 
         console.log('Created summary items:', summaryItems);
@@ -818,12 +818,8 @@ const CameraPage = () => {
     setPendingItems(selectedItems);
     setCurrentItemIndex(0);
     
-    // Process the first item (with transition if multiple items)
-    if (selectedItems.length > 1) {
-      setShowTransition(true);
-    } else {
-      processCurrentItem(selectedItems, 0);
-    }
+    // Always show transition before starting confirmation flow
+    setShowTransition(true);
   };
 
   // Legacy handler for backward compatibility

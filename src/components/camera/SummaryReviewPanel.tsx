@@ -64,7 +64,7 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
               Review Detected Items
             </DialogTitle>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Select which items you'd like to confirm for your food log
+              Tap the items you'd like to confirm for your food log
             </p>
           </DialogHeader>
 
