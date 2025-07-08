@@ -607,54 +607,6 @@ const CameraPage = () => {
     } finally {
       setIsLoadingBarcode(false);
     }
-
-    // Fallback to existing generic nutrition database
-    debugLog.fallbackUsed = true;
-    console.log('🔄 STEP 2: Using generic nutrition estimation');
-    console.log(`📝 Food name for lookup: "${foodName}"`);
-    
-    const foodDatabase: { [key: string]: any } = {
-      'apple': { calories: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4, sugar: 19, sodium: 2 },
-      'banana': { calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1, sugar: 14, sodium: 1 },
-      'orange': { calories: 62, protein: 1.2, carbs: 15.4, fat: 0.2, fiber: 3.1, sugar: 12.2, sodium: 0 },
-      'bread': { calories: 80, protein: 3, carbs: 15, fat: 1, fiber: 2, sugar: 2, sodium: 160 },
-      'cheese': { calories: 113, protein: 7, carbs: 1, fat: 9, fiber: 0, sugar: 0.5, sodium: 174 },
-      'chicken': { calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74 },
-    };
-
-    const lowerName = foodName.toLowerCase();
-    let nutritionData = null;
-    let matchedKey = '';
-    
-    for (const [key, nutrition] of Object.entries(foodDatabase)) {
-      if (lowerName.includes(key)) {
-        nutritionData = nutrition;
-        matchedKey = key;
-        debugLog.finalConfidence = 70; // Generic database confidence
-        debugLog.success = true;
-        console.log(`✅ GENERIC MATCH FOUND: "${key}" in "${foodName}"`);
-        console.log('🏆 GENERIC NUTRITION DATA:', nutrition);
-        break;
-      }
-    }
-
-    if (!nutritionData) {
-      debugLog.finalConfidence = 50; // Default estimation confidence
-      debugLog.success = true;
-      nutritionData = { calories: 100, protein: 2, carbs: 15, fat: 2, fiber: 1, sugar: 5, sodium: 50 };
-      console.log('⚠️ NO GENERIC MATCH - Using default nutrition estimation');
-      console.log('🏆 DEFAULT NUTRITION DATA:', nutritionData);
-    }
-
-    console.log('🍎 === NUTRITION ESTIMATION DEBUG SUMMARY ===');
-    console.log('📊 Final Debug Log:', debugLog);
-    console.log('✅ Process completed successfully');
-
-    return { 
-      ...nutritionData, 
-      isBranded: false, 
-      debugLog 
-    };
   };
 
   const handleVoiceRecording = async () => {
