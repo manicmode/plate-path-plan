@@ -1393,7 +1393,7 @@ const CameraPage = () => {
       )}
 
       {/* Photo Analysis Card - Updated to remove overlay and improve loading */}
-      {selectedImage && !showConfirmation && (
+      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && (
         <Card className="animate-slide-up">
           <CardHeader>
             <CardTitle>Analyze Your Meal</CardTitle>
