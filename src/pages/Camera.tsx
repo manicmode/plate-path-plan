@@ -1393,7 +1393,7 @@ const CameraPage = () => {
       )}
 
       {/* Photo Analysis Card - Updated to remove overlay and improve loading */}
-      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && (
+      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && (
         <Card className="animate-slide-up">
           <CardHeader>
             <CardTitle>Analyze Your Meal</CardTitle>
@@ -1476,7 +1476,7 @@ const CameraPage = () => {
         totalItems={pendingItems.length}
         itemName={pendingItems[currentItemIndex]?.name || ''}
         onComplete={handleTransitionComplete}
-        duration={2500}
+        duration={3500}
       />
 
       {/* Review Items Screen - Legacy Support */}

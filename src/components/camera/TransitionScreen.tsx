@@ -17,7 +17,7 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
   totalItems,
   itemName,
   onComplete,
-  duration = 2500
+  duration = 3500
 }) => {
   const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState(Math.ceil(duration / 1000));

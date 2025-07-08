@@ -163,6 +163,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             <DialogHeader className="text-center mb-4 relative">
               {/* Top Right Actions */}
               <div className="absolute -top-2 -right-2 flex items-center gap-2">
+                {totalItems && totalItems > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onClose}
+                    className="h-8 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-400"
+                  >
+                    Cancel All
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -394,6 +404,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
                     Logging...
                   </>
+                ) : totalItems && totalItems > 1 ? (
+                  `Log Item ${(currentIndex || 0) + 1} of ${totalItems}`
                 ) : (
                   'Log Food'
                 )}

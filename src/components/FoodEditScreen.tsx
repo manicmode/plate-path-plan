@@ -100,6 +100,7 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 className="mt-1"
                 placeholder="Enter food name"
+                autoFocus={false}
               />
             </div>
 
