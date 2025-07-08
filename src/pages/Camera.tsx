@@ -10,7 +10,7 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
-import { RetryActions } from '@/components/camera/RetryActions';
+
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useNavigate } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
@@ -1408,25 +1408,8 @@ const CameraPage = () => {
               />
             </div>
             
+            {/* Top row: Cancel and Try Photo Again */}
             <div className="flex space-x-3">
-              <Button
-                onClick={analyzeImage}
-                disabled={isAnalyzing}
-                className="flex-1 gradient-primary min-w-[120px]"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    {processingStep || 'Analyzing...'}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Analyze Food
-                  </>
-                )}
-              </Button>
-              
               <Button 
                 variant="outline" 
                 onClick={resetState} 
@@ -1436,16 +1419,36 @@ const CameraPage = () => {
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={handleRetryPhoto} 
+                className="flex-1 min-w-[80px]"
+                disabled={isAnalyzing}
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Try Photo Again
+              </Button>
             </div>
 
-            {/* Retry Actions for Failed Analysis */}
-            {!isAnalyzing && !showConfirmation && (
-              <RetryActions
-                onRetryPhoto={handleRetryPhoto}
-                onStartOver={resetState}
-                disabled={isAnalyzing}
-              />
-            )}
+            {/* Bottom row: Analyze Food (full width) */}
+            <Button
+              onClick={analyzeImage}
+              disabled={isAnalyzing}
+              className="w-full gradient-primary"
+            >
+              {isAnalyzing ? (
+                <>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                  {processingStep || 'Analyzing...'}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Analyze Food
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       )}
