@@ -79,8 +79,9 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           BarcodeFormat.DataMatrix,
           BarcodeFormat.Pdf417,
           BarcodeFormat.QrCode,
+          BarcodeFormat.Itf,
+          BarcodeFormat.Aztec,
         ],
-        // Default to rear-facing camera
         lensFacing: LensFacing.Back
       });
 
@@ -173,13 +174,29 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               <p className="text-red-600 dark:text-red-400 text-center mb-4">
                 {error}
               </p>
-              <Button
-                variant="outline"
-                onClick={() => setError(null)}
-                className="border-red-300 text-red-600"
-              >
-                Try Again
-              </Button>
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setError(null)}
+                  className="w-full border-red-300 text-red-600"
+                >
+                  Try Scanning Again
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    // Trigger manual entry
+                    const manualInput = prompt('Enter barcode number manually:');
+                    if (manualInput && manualInput.trim()) {
+                      onBarcodeDetected(manualInput.trim());
+                      onClose();
+                    }
+                  }}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                >
+                  Enter Code Manually
+                </Button>
+              </div>
             </div>
           ) : !isSupported ? (
             <UnsupportedDeviceFallback />
@@ -187,35 +204,45 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             <>
               {/* Scanner Instructions */}
               <div className="text-center mb-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4">
-                  <p className="text-blue-800 dark:text-blue-200 text-sm">
-                    {isScanning 
-                      ? "Align the barcode within the camera view to scan automatically"
-                      : "Tap 'Start Scanning' to open the camera and scan a product barcode"
-                    }
-                  </p>
-                </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4">
+              <p className="text-blue-800 dark:text-blue-200 text-sm">
+                {isScanning 
+                  ? "Hold steady and align the barcode within the scanning frame. Keep the camera 4-6 inches away for best results."
+                  : "Tap 'Start Scanning' to open the camera and scan a product barcode"
+                }
+              </p>
+            </div>
 
                 {/* Scanner Visualization */}
                 <div className="relative bg-gray-900 rounded-xl overflow-hidden h-64 flex items-center justify-center">
                   {isScanning ? (
                     <>
-                      {/* Scanning Frame */}
-                      <div className="absolute inset-0 bg-black bg-opacity-50" />
-                      <div className="relative w-48 h-32 border-2 border-white rounded-lg">
-                        <div className="absolute inset-0 border border-dashed border-white border-opacity-50 rounded-lg animate-pulse" />
-                        <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 transform -translate-y-1/2 animate-pulse" />
+                      {/* Scanning Frame with improved UI */}
+                      <div className="absolute inset-0 bg-black bg-opacity-60" />
+                      <div className="relative w-56 h-36 border-2 border-emerald-400 rounded-lg shadow-lg">
+                        {/* Corner indicators */}
+                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-emerald-400"></div>
+                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-emerald-400"></div>
+                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-emerald-400"></div>
+                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-emerald-400"></div>
+                        
+                        {/* Scanning line */}
+                        <div className="absolute top-1/2 left-2 right-2 h-0.5 bg-red-500 transform -translate-y-1/2 animate-pulse shadow-lg" />
+                        
+                        {/* Pulsing border effect */}
+                        <div className="absolute inset-0 border border-emerald-300 border-opacity-50 rounded-lg animate-pulse" />
                       </div>
                       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                        <div className="bg-white bg-opacity-90 rounded-lg px-3 py-1">
-                          <span className="text-xs text-gray-900 font-medium">Scanning...</span>
+                        <div className="bg-emerald-600 bg-opacity-90 rounded-lg px-4 py-2">
+                          <span className="text-sm text-white font-medium">Scanning for barcode...</span>
                         </div>
                       </div>
                     </>
                   ) : (
                     <div className="text-center">
                       <ScanBarcode className="h-16 w-16 text-gray-500 mx-auto mb-4" />
-                      <p className="text-gray-400 text-sm">Camera will open here</p>
+                      <p className="text-gray-400 text-sm">High-resolution camera scanner</p>
+                      <p className="text-gray-500 text-xs mt-1">Supports UPC, EAN, QR codes</p>
                     </div>
                   )}
                 </div>

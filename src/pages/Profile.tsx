@@ -17,6 +17,7 @@ import { NotificationSettings } from '@/components/profile/NotificationSettings'
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { ReminderManagement } from '@/components/reminder/ReminderManagement';
+import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 
 // Helper function to save preferences
 const saveUserPreferences = (preferences: any) => {
@@ -221,6 +222,12 @@ const Profile = () => {
 
       {/* Notification Settings */}
       <NotificationSettings />
+
+      {/* Global Barcode Settings */}
+      <GlobalBarcodeSettings 
+        isEditing={isEditing}
+        onEditToggle={() => setIsEditing(!isEditing)}
+      />
 
       {/* Reminder Management */}
       <ReminderManagement />
