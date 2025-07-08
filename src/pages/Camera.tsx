@@ -1452,7 +1452,19 @@ const CameraPage = () => {
       {/* Food Confirmation Card */}
       <FoodConfirmationCard
         isOpen={showConfirmation}
-        onClose={() => setShowConfirmation(false)}
+        onClose={() => {
+          setShowConfirmation(false);
+          // Reset multi-item flow if needed
+          if (pendingItems.length > 0) {
+            setPendingItems([]);
+            setCurrentItemIndex(0);
+          }
+          // Return to camera view instead of empty screen
+          if (selectedImage) {
+            setShowSummaryPanel(false);
+            setIsAnalyzing(false);
+          }
+        }}
         onConfirm={handleConfirmFood}
         onSkip={handleSkipFood}
         foodItem={recognizedFoods[0] || null}

@@ -121,8 +121,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     
     // Show success toast with animation
     toast({
-      title: "Food Logged! ✨",
-      description: `${adjustedFood.name} (${adjustedFood.calories} cal) added successfully.`,
+      title: `✅ ${adjustedFood.name} logged successfully`,
+      description: `${adjustedFood.calories} calories added to your nutrition log.`,
       duration: 3000,
     });
     
@@ -161,18 +161,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
-              {/* Top Right Actions */}
-              <div className="absolute -top-2 -right-2 flex items-center gap-2">
-                {totalItems && totalItems > 1 && (
+              {/* Cancel All Button - Top Row to Avoid Overlap */}
+              {totalItems && totalItems > 1 && (
+                <div className="absolute -top-6 right-0 z-10">
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon"
                     onClick={onClose}
-                    className="h-8 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-400"
+                    className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 hover:text-red-700"
+                    title="Cancel All"
                   >
-                    Cancel All
+                    <X className="h-4 w-4" />
                   </Button>
-                )}
+                </div>
+              )}
+              
+              {/* Edit Button - Under Title */}
+              <div className="absolute -top-2 -right-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -181,14 +186,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 >
                   <Edit className="h-3 w-3 mr-1" />
                   Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <X className="h-4 w-4" />
                 </Button>
               </div>
 
@@ -206,7 +203,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
                 {totalItems && totalItems > 1 && (
-                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
                     Item {(currentIndex || 0) + 1} of {totalItems}
                   </div>
                 )}
