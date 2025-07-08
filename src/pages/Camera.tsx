@@ -19,6 +19,7 @@ import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsSc
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+import jsQR from 'jsqr';
 
 interface RecognizedFood {
   name: string;
@@ -269,6 +270,85 @@ const CameraPage = () => {
     return imageDataUrl.split(',')[1];
   };
 
+  // Barcode detection utilities
+  const detectBarcode = async (imageDataUrl: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        resolve(code ? code.data : null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = imageDataUrl;
+    });
+  };
+
+  const isLikelyBarcode = (imageDataUrl: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(false);
+          return;
+        }
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        // Analyze image characteristics
+        let blackWhitePixels = 0;
+        let totalPixels = data.length / 4;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const brightness = (r + g + b) / 3;
+          
+          // Count pixels that are distinctly black or white
+          if (brightness < 50 || brightness > 200) {
+            blackWhitePixels++;
+          }
+        }
+        
+        const blackWhiteRatio = blackWhitePixels / totalPixels;
+        
+        // If more than 60% of pixels are black or white, likely a barcode
+        resolve(blackWhiteRatio > 0.6);
+      };
+      img.onerror = () => resolve(false);
+      img.src = imageDataUrl;
+    });
+  };
+
+  const processBarcodeData = async (barcodeData: string) => {
+    try {
+      await handleBarcodeDetected(barcodeData);
+    } catch (error) {
+      console.error('Error processing barcode:', error);
+      toast.error("We couldn't read the barcode. Please try a clearer image or enter the code manually.");
+    }
+  };
+
   const analyzeImage = async () => {
     if (!selectedImage) {
       console.error('No selected image to analyze');
@@ -284,6 +364,36 @@ const CameraPage = () => {
     abortControllerRef.current = new AbortController();
     
     try {
+      // First check if this looks like a barcode
+      setProcessingStep('Analyzing image type...');
+      const isBarcode = await isLikelyBarcode(selectedImage);
+      
+      if (isBarcode) {
+        console.log('Image appears to be a barcode, attempting to decode...');
+        setProcessingStep('Detecting barcode...');
+        
+        const barcodeData = await detectBarcode(selectedImage);
+        
+        if (barcodeData) {
+          console.log('Barcode detected:', barcodeData);
+          setProcessingStep('Processing barcode...');
+          
+          // Process the barcode using existing barcode lookup logic
+          await processBarcodeData(barcodeData);
+          setIsAnalyzing(false);
+          setProcessingStep('');
+          return;
+        } else {
+          // Barcode detection failed, show fallback message
+          console.log('Barcode detection failed');
+          setIsAnalyzing(false);
+          setProcessingStep('');
+          toast.error("We couldn't read the barcode. Please try a clearer image or enter the code manually.");
+          return;
+        }
+      }
+      
+      // If not a barcode, proceed with normal food recognition
       const imageBase64 = convertToBase64(selectedImage);
       
       setProcessingStep('Compressing image...');
