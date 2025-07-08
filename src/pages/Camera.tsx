@@ -10,6 +10,8 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
+import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
+import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useNavigate } from 'react-router-dom';
@@ -78,7 +80,10 @@ const CameraPage = () => {
   const [processingStep, setProcessingStep] = useState('');
   const [visionResults, setVisionResults] = useState<VisionApiResponse | null>(null);
   const [voiceResults, setVoiceResults] = useState<VoiceApiResponse | null>(null);
-  const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual'>('photo');
+  const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual' | 'barcode'>('photo');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
+  const { addRecentBarcode } = useRecentBarcodes();
   
   // Review Items Screen states
   const [showReviewScreen, setShowReviewScreen] = useState(false);
@@ -540,6 +545,67 @@ const CameraPage = () => {
     } catch (error) {
       debugLog.errors.push(`Branded matching exception: ${error.message}`);
       console.error('❌ BRANDED PRODUCT MATCHING EXCEPTION:', error);
+    }
+  };
+
+  // Barcode lookup function
+  const handleBarcodeDetected = async (barcode: string) => {
+    try {
+      setIsLoadingBarcode(true);
+      setInputSource('barcode');
+      console.log('Barcode detected:', barcode);
+
+      const response = await supabase.functions.invoke('lookup-barcode', {
+        body: { barcode }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to lookup barcode');
+      }
+
+      if (!response.data?.success) {
+        toast.error(response.data?.message || 'Product not found. Try entering manually or rescan.');
+        return;
+      }
+
+      const product = response.data.product;
+      console.log('Product found:', product);
+
+      // Create food item from barcode data
+      const foodItem = {
+        id: Date.now().toString(),
+        name: product.brand ? `${product.brand} ${product.name}` : product.name,
+        calories: product.nutrition.calories,
+        protein: product.nutrition.protein,
+        carbs: product.nutrition.carbs,
+        fat: product.nutrition.fat,
+        fiber: product.nutrition.fiber,
+        sugar: product.nutrition.sugar,
+        sodium: product.nutrition.sodium,
+        image: product.image,
+        confidence: 95, // High confidence for barcode scans
+        timestamp: new Date(),
+        confirmed: false
+      };
+
+      // Add to recent barcodes
+      addRecentBarcode({
+        barcode,
+        productName: foodItem.name,
+        nutrition: product.nutrition
+      });
+
+      // Set up for confirmation
+      setSelectedFoodItem(foodItem);
+      setShowConfirmation(true);
+
+      toast.success(`Found: ${foodItem.name}`);
+
+    } catch (error) {
+      console.error('Barcode lookup error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to lookup product');
+    } finally {
+      setIsLoadingBarcode(false);
     }
 
     // Fallback to existing generic nutrition database
@@ -1163,12 +1229,26 @@ const CameraPage = () => {
                   
                   {/* Scan Barcode Tab */}
                   <Button
-                    onClick={() => toast.info('Barcode scanning coming soon!')}
+                    onClick={() => {
+                      setShowBarcodeScanner(true);
+                      setInputSource('barcode');
+                      resetErrorState();
+                    }}
+                    disabled={isLoadingBarcode}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
-                    <ScanBarcode className="h-6 w-6" />
-                    <span className="text-sm font-medium">Scan Barcode</span>
+                    {isLoadingBarcode ? (
+                      <>
+                        <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full" />
+                        <span className="text-sm font-medium">Looking up...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ScanBarcode className="h-6 w-6" />
+                        <span className="text-sm font-medium">Scan Barcode</span>
+                      </>
+                    )}
                   </Button>
                   
                   {/* Manual Entry Tab */}
@@ -1528,6 +1608,13 @@ const CameraPage = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onBarcodeDetected={handleBarcodeDetected}
+      />
     </div>
   );
 };
