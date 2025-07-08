@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ScanBarcode, AlertCircle } from 'lucide-react';
-import { BarcodeScanner as CapBarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeScanner as CapBarcodeScanner, BarcodeFormat, LensFacing } from '@capacitor-mlkit/barcode-scanning';
 import { toast } from 'sonner';
 
 interface BarcodeScannerProps {
@@ -45,10 +45,12 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       setIsScanning(true);
       setError(null);
 
-      // Request camera permissions
+      // Check and request camera permissions
       const permissions = await CapBarcodeScanner.requestPermissions();
       if (permissions.camera !== 'granted') {
-        throw new Error('Camera permission denied');
+        setError('Camera access is required to scan barcodes. Please enable it in Settings > Plate Path Plan.');
+        setIsScanning(false);
+        return;
       }
 
       // Start scanning
@@ -77,12 +79,22 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           BarcodeFormat.DataMatrix,
           BarcodeFormat.Pdf417,
           BarcodeFormat.QrCode,
-        ]
+        ],
+        // Default to rear-facing camera
+        lensFacing: LensFacing.Back
       });
+
+      toast.success('Scanner ready - align barcode within frame');
 
     } catch (err) {
       console.error('Barcode scanning error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start scanner');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start scanner';
+      
+      if (errorMessage.includes('permission')) {
+        setError('Camera access is required to scan barcodes. Please enable it in Settings > Plate Path Plan.');
+      } else {
+        setError(errorMessage);
+      }
       setIsScanning(false);
     }
   };
@@ -104,24 +116,34 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     onClose();
   };
 
-  // Web fallback scanner (basic implementation)
-  const WebFallbackScanner = () => (
-    <div className="flex flex-col items-center justify-center h-64 bg-gray-100 dark:bg-gray-800 rounded-xl">
-      <ScanBarcode className="h-16 w-16 text-gray-400 mb-4" />
-      <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
-        Barcode scanning requires a native mobile app or device with camera access
+  // Enhanced fallback for unsupported devices
+  const UnsupportedDeviceFallback = () => (
+    <div className="flex flex-col items-center justify-center space-y-4 p-6">
+      <ScanBarcode className="h-16 w-16 text-gray-400 mb-2" />
+      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 text-center">
+        Barcode Scanning Not Available
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400 text-center text-sm mb-4">
+        Your device doesn't support barcode scanning. Try these alternatives:
       </p>
-      <input
-        type="text"
-        placeholder="Enter barcode manually"
-        className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-center"
-        onKeyPress={(e) => {
-          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-            onBarcodeDetected(e.currentTarget.value.trim());
-            onClose();
-          }
-        }}
-      />
+      
+      <div className="w-full space-y-3">
+        <input
+          type="text"
+          placeholder="Enter barcode number manually"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          onKeyPress={(e) => {
+            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+              onBarcodeDetected(e.currentTarget.value.trim());
+              onClose();
+            }
+          }}
+        />
+        
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+          Look for the barcode number on the product packaging
+        </p>
+      </div>
     </div>
   );
 
@@ -160,7 +182,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               </Button>
             </div>
           ) : !isSupported ? (
-            <WebFallbackScanner />
+            <UnsupportedDeviceFallback />
           ) : (
             <>
               {/* Scanner Instructions */}
