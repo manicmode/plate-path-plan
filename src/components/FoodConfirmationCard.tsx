@@ -5,7 +5,8 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Trash2, AlertTriangle, Info, CheckCircle, SkipForward } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Edit, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
@@ -27,9 +28,9 @@ interface FoodConfirmationCardProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (foodItem: FoodItem) => void;
-  onSkip?: () => void; // New prop for skip functionality
+  onSkip?: () => void; // Skip functionality (now "Don't Log")
   foodItem: FoodItem | null;
-  showSkip?: boolean; // Whether to show skip button
+  showSkip?: boolean; // Whether to show "Don't Log" button
   currentIndex?: number; // Current item index for multi-item flow
   totalItems?: number; // Total items for multi-item flow
 }
@@ -173,12 +174,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </button>
               
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
-                Confirm Food Log
                 {totalItems && totalItems > 1 && (
-                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400 block">
+                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
                     Item {(currentIndex || 0) + 1} of {totalItems}
-                  </span>
+                  </div>
                 )}
+                Confirm Food Log
               </DialogTitle>
             </DialogHeader>
 
@@ -334,55 +335,73 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               className="mb-4"
             />
 
-            {/* Action Buttons - Now includes Skip for multi-item flows */}
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                onClick={handleEdit}
-                className="flex-1 border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              
-              {showSkip && onSkip && (
+            {/* Action Buttons - Improved Layout with Visual Separation */}
+            <div className="space-y-3">
+              {/* Primary Actions Row */}
+              <div className="flex space-x-2">
                 <Button
                   variant="outline"
-                  onClick={onSkip}
-                  className="flex-1 border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  onClick={handleEdit}
+                  className="flex-1 border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
-                  <SkipForward className="h-4 w-4 mr-2" />
-                  Skip
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
                 </Button>
-              )}
-              
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="flex-1 border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-              
-              <Button
-                onClick={handleConfirm}
-                disabled={isConfirming || portionPercentage[0] === 0}
-                className={`flex-1 transition-all duration-300 ${
-                  !isConfirming && portionPercentage[0] > 0
-                    ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                } ${isConfirming ? 'animate-pulse' : ''}`}
-              >
-                {isConfirming ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    Logging...
-                  </>
-                ) : (
-                  'Confirm'
-                )}
-              </Button>
+                
+                <Button
+                  onClick={handleConfirm}
+                  disabled={isConfirming || portionPercentage[0] === 0}
+                  className={`flex-2 transition-all duration-300 ${
+                    !isConfirming && portionPercentage[0] > 0
+                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  } ${isConfirming ? 'animate-pulse' : ''}`}
+                  style={{ flexGrow: 2 }}
+                >
+                  {isConfirming ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                      Logging...
+                    </>
+                  ) : (
+                    'Log Food'
+                  )}
+                </Button>
+              </div>
+
+              {/* Secondary Actions Row - Visually Separated */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                <div className="flex space-x-2">
+                  {showSkip && onSkip && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            onClick={onSkip}
+                            className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-400"
+                          >
+                            <MinusCircle className="h-4 w-4 mr-2" />
+                            Don't Log
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Removes this item from your food log</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    className="flex-1 border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel All
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </DialogContent>

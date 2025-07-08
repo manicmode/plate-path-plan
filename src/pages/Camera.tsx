@@ -14,6 +14,8 @@ import { RetryActions } from '@/components/camera/RetryActions';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useNavigate } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
+import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
+import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 
 interface RecognizedFood {
@@ -82,6 +84,13 @@ const CameraPage = () => {
   const [showReviewScreen, setShowReviewScreen] = useState(false);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [selectedFoodItem, setSelectedFoodItem] = useState<any>(null);
+  
+  // Summary Review Panel states
+  const [showSummaryPanel, setShowSummaryPanel] = useState(false);
+  const [summaryItems, setSummaryItems] = useState<SummaryItem[]>([]);
+  
+  // Transition states
+  const [showTransition, setShowTransition] = useState(false);
   
   // Error handling states
   const [showError, setShowError] = useState(false);
@@ -394,17 +403,17 @@ const CameraPage = () => {
           return;
         }
 
-        // Step 3: Show Review Items Screen
-        const reviewItems: ReviewItem[] = parsedItems.map((item, index) => ({
+        // Step 3: Show Summary Review Panel (New Flow)
+        const summaryItems: SummaryItem[] = parsedItems.map((item, index) => ({
           id: `item-${index}`,
           name: item.name || 'Unknown Food',
           portion: item.portion || '1 serving',
           selected: true
         }));
 
-        console.log('Created review items:', reviewItems);
-        setReviewItems(reviewItems);
-        setShowReviewScreen(true);
+        console.log('Created summary items:', summaryItems);
+        setSummaryItems(summaryItems);
+        setShowSummaryPanel(true);
         setInputSource('photo');
         
         toast.success(`Found ${parsedItems.length} food item(s) - please review and confirm!`);
@@ -791,11 +800,12 @@ const CameraPage = () => {
     }
   };
 
-  const [pendingItems, setPendingItems] = useState<ReviewItem[]>([]);
+  const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
-  const handleReviewNext = async (selectedItems: ReviewItem[]) => {
-    setShowReviewScreen(false);
+  // New handler for Summary Review Panel
+  const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
+    setShowSummaryPanel(false);
     
     if (selectedItems.length === 0) {
       toast.error('No items selected to confirm');
@@ -808,16 +818,48 @@ const CameraPage = () => {
     setPendingItems(selectedItems);
     setCurrentItemIndex(0);
     
-    // Process the first item
-    processCurrentItem(selectedItems, 0);
+    // Process the first item (with transition if multiple items)
+    if (selectedItems.length > 1) {
+      setShowTransition(true);
+    } else {
+      processCurrentItem(selectedItems, 0);
+    }
   };
 
-  const processCurrentItem = async (items: ReviewItem[], index: number) => {
+  // Legacy handler for backward compatibility
+  const handleReviewNext = async (selectedItems: ReviewItem[]) => {
+    setShowReviewScreen(false);
+    
+    if (selectedItems.length === 0) {
+      toast.error('No items selected to confirm');
+      return;
+    }
+
+    console.log('Processing selected items for sequential confirmation:', selectedItems);
+    
+    // Convert ReviewItem to SummaryItem
+    const summaryItems: SummaryItem[] = selectedItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      portion: item.portion,
+      selected: true
+    }));
+    
+    // Store all selected items for sequential processing
+    setPendingItems(summaryItems);
+    setCurrentItemIndex(0);
+    
+    // Process the first item
+    processCurrentItem(summaryItems, 0);
+  };
+
+  const processCurrentItem = async (items: SummaryItem[], index: number) => {
     if (index >= items.length) {
       // All items processed
       setPendingItems([]);
       setCurrentItemIndex(0);
       toast.success(`All ${items.length} food items logged successfully!`);
+      navigate('/home');
       return;
     }
 
@@ -852,6 +894,11 @@ const CameraPage = () => {
     }
   };
 
+  const handleTransitionComplete = () => {
+    setShowTransition(false);
+    processCurrentItem(pendingItems, currentItemIndex);
+  };
+
   const handleSkipFood = () => {
     console.log(`Skipping item ${currentItemIndex + 1} of ${pendingItems.length}`);
     
@@ -861,10 +908,14 @@ const CameraPage = () => {
       setCurrentItemIndex(nextIndex);
       setShowConfirmation(false);
       
-      // Small delay for better UX
-      setTimeout(() => {
-        processCurrentItem(pendingItems, nextIndex);
-      }, 300);
+      // Show transition screen between items if multiple items
+      if (pendingItems.length > 1) {
+        setShowTransition(true);
+      } else {
+        setTimeout(() => {
+          processCurrentItem(pendingItems, nextIndex);
+        }, 300);
+      }
     } else {
       // All items processed, reset state and navigate
       const totalItems = pendingItems.length || 1;
@@ -951,10 +1002,14 @@ const CameraPage = () => {
       
       console.log(`🔄 PROCEEDING TO NEXT ITEM: ${nextIndex + 1} of ${pendingItems.length}`);
       
-      // Small delay for better UX
-      setTimeout(() => {
-        processCurrentItem(pendingItems, nextIndex);
-      }, 300);
+      // Show transition screen between items if multiple items
+      if (pendingItems.length > 1) {
+        setShowTransition(true);
+      } else {
+        setTimeout(() => {
+          processCurrentItem(pendingItems, nextIndex);
+        }, 300);
+      }
     } else {
       // All items processed, reset state and navigate
       const totalItems = pendingItems.length || 1;
@@ -1410,7 +1465,25 @@ const CameraPage = () => {
         totalItems={pendingItems.length}
       />
 
-      {/* Review Items Screen */}
+      {/* Summary Review Panel - New Multi-Item Flow */}
+      <SummaryReviewPanel
+        isOpen={showSummaryPanel}
+        onClose={() => setShowSummaryPanel(false)}
+        onNext={handleSummaryNext}
+        items={summaryItems}
+      />
+
+      {/* Transition Screen */}
+      <TransitionScreen
+        isOpen={showTransition}
+        currentIndex={currentItemIndex}
+        totalItems={pendingItems.length}
+        itemName={pendingItems[currentItemIndex]?.name || ''}
+        onComplete={handleTransitionComplete}
+        duration={2500}
+      />
+
+      {/* Review Items Screen - Legacy Support */}
       <ReviewItemsScreen
         isOpen={showReviewScreen}
         onClose={() => setShowReviewScreen(false)}
