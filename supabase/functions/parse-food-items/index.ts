@@ -40,19 +40,51 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Combine all vision detection results into a single input string
-    const combinedResults = [
-      ...visionResults.labels.map(l => l.description),
-      ...visionResults.foodLabels.map(l => l.description),
-      ...visionResults.objects.map(o => o.name),
-      visionResults.textDetected
-    ].filter(Boolean).join(', ');
+    // Prioritize visual food detection over OCR text
+    const visualFoodItems = [
+      ...visionResults.foodLabels.map(l => ({ type: 'food_label', description: l.description, score: l.score })),
+      ...visionResults.objects.filter(o => 
+        // Filter objects that are likely food items
+        ['food', 'fruit', 'vegetable', 'meat', 'bread', 'cheese', 'pasta', 'rice', 'fish', 'chicken', 'beef', 'pork', 'salad', 'soup', 'pizza', 'sandwich', 'burger', 'cake', 'cookie', 'apple', 'banana', 'orange', 'potato', 'tomato', 'carrot', 'broccoli', 'lettuce', 'onion', 'garlic', 'egg', 'milk', 'yogurt', 'cereal', 'nuts', 'berries'].some(foodWord => 
+          o.name.toLowerCase().includes(foodWord)
+        )
+      ).map(o => ({ type: 'object', description: o.name, score: o.score })),
+      ...visionResults.labels.filter(l => 
+        // Filter general labels that are food-related with high confidence
+        l.score > 0.7 && ['food', 'cuisine', 'dish', 'meal', 'snack', 'breakfast', 'lunch', 'dinner', 'dessert', 'beverage', 'drink'].some(foodWord =>
+          l.description.toLowerCase().includes(foodWord)
+        )
+      ).map(l => ({ type: 'label', description: l.description, score: l.score }))
+    ];
 
-    console.log('Combined vision results for parsing:', combinedResults);
+    // Only use OCR text if no strong visual food items are detected
+    const hasStrongVisualDetection = visualFoodItems.some(item => item.score > 0.8);
+    
+    let inputText = '';
+    if (visualFoodItems.length > 0) {
+      // Prioritize visual detection
+      const sortedVisualItems = visualFoodItems.sort((a, b) => b.score - a.score);
+      inputText = sortedVisualItems.map(item => `${item.description} (${item.type}, confidence: ${item.score.toFixed(2)})`).join(', ');
+      
+      // Only add OCR text if visual detection is weak or if it might contain portion information
+      if (!hasStrongVisualDetection && visionResults.textDetected) {
+        inputText += `, OCR_TEXT: ${visionResults.textDetected}`;
+      }
+      
+      console.log('Using visual-prioritized detection:', inputText);
+    } else {
+      // Fallback to all detection methods
+      inputText = [
+        ...visionResults.labels.map(l => l.description),
+        visionResults.textDetected
+      ].filter(Boolean).join(', ');
+      
+      console.log('Using fallback detection (no visual food items):', inputText);
+    }
     
     // If no meaningful input, return error early
-    if (!combinedResults || combinedResults.trim().length < 3) {
-      console.log('No meaningful vision results to parse');
+    if (!inputText || inputText.trim().length < 3) {
+      console.log('No meaningful food data detected in image');
       return new Response(
         JSON.stringify({ 
           error: true,
@@ -77,9 +109,9 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `The following list contains raw food label data and OCR results from an image. Extract a clean list of food items with estimated portion sizes. Return JSON array with \`name\` and \`portion\`, no other details. Be concise and accurate. If portion is unknown, guess based on common sense.
+            content: `The following contains visual food detection results and/or OCR text from an image. PRIORITIZE visually detected food items over text from packaging. Extract actual food items with estimated portion sizes. Return JSON array with \`name\` and \`portion\`, no other details. Focus on real food visible in the image, not marketing text.
 
-Input: ${combinedResults}`
+Input: ${inputText}`
           }
         ],
         max_tokens: 500,
