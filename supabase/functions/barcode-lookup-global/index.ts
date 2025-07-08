@@ -85,14 +85,14 @@ serve(async (req) => {
     if (!product) {
       try {
         console.log('Trying USDA database...')
-        const usdaResponse = await fetch(
-          `https://api.nal.usda.gov/fdc/v1/foods/search?query=${barcode}&dataType=Branded&pageSize=1&api_key=${Deno.env.get('USDA_API_KEY')}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            }
+        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?gtinUpc=${barcode}&dataType=Branded&pageSize=1&api_key=${Deno.env.get('USDA_API_KEY')}`;
+        console.log('USDA API URL:', usdaUrl);
+        
+        const usdaResponse = await fetch(usdaUrl, {
+          headers: {
+            'Content-Type': 'application/json',
           }
-        );
+        });
 
         if (usdaResponse.ok) {
           const usdaData = await usdaResponse.json();
