@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Trash2, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, AlertTriangle, Info, CheckCircle, SkipForward } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
@@ -27,14 +27,22 @@ interface FoodConfirmationCardProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (foodItem: FoodItem) => void;
+  onSkip?: () => void; // New prop for skip functionality
   foodItem: FoodItem | null;
+  showSkip?: boolean; // Whether to show skip button
+  currentIndex?: number; // Current item index for multi-item flow
+  totalItems?: number; // Total items for multi-item flow
 }
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  foodItem
+  onSkip,
+  foodItem,
+  showSkip = false,
+  currentIndex,
+  totalItems
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -166,6 +174,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
                 Confirm Food Log
+                {totalItems && totalItems > 1 && (
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400 block">
+                    Item {(currentIndex || 0) + 1} of {totalItems}
+                  </span>
+                )}
               </DialogTitle>
             </DialogHeader>
 
@@ -321,8 +334,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               className="mb-4"
             />
 
-            {/* Action Buttons - Confirm button styling independent of checkmark */}
-            <div className="flex space-x-3">
+            {/* Action Buttons - Now includes Skip for multi-item flows */}
+            <div className="flex space-x-2">
               <Button
                 variant="outline"
                 onClick={handleEdit}
@@ -331,6 +344,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
+              
+              {showSkip && onSkip && (
+                <Button
+                  variant="outline"
+                  onClick={onSkip}
+                  className="flex-1 border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  <SkipForward className="h-4 w-4 mr-2" />
+                  Skip
+                </Button>
+              )}
+              
               <Button
                 variant="outline"
                 onClick={onClose}
@@ -339,6 +364,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 <Trash2 className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
+              
               <Button
                 onClick={handleConfirm}
                 disabled={isConfirming || portionPercentage[0] === 0}

@@ -109,7 +109,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `The following contains visual food detection results and/or OCR text from an image. PRIORITIZE visually detected food items over text from packaging. Extract actual food items with estimated portion sizes. Return JSON array with \`name\` and \`portion\`, no other details. Focus on real food visible in the image, not marketing text.
+            content: `The following contains visual food detection results and/or OCR text from an image. PRIORITIZE visually detected food items over text from packaging. Extract INDIVIDUAL food items as separate entries - if multiple foods are visible (like "bread and shrimp" or "salad with chicken"), split them into separate items. Return JSON array with \`name\` and \`portion\`, no other details. Focus on real food visible in the image, not marketing text. Each detected food should be its own item.
 
 Input: ${inputText}`
           }

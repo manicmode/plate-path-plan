@@ -640,6 +640,9 @@ const CameraPage = () => {
     }
   };
 
+  const [pendingItems, setPendingItems] = useState<ReviewItem[]>([]);
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
+
   const handleReviewNext = async (selectedItems: ReviewItem[]) => {
     setShowReviewScreen(false);
     
@@ -648,15 +651,31 @@ const CameraPage = () => {
       return;
     }
 
-    console.log('Processing selected items for confirmation:', selectedItems);
+    console.log('Processing selected items for sequential confirmation:', selectedItems);
     
-    // Convert first selected item to FoodItem format for FoodConfirmationCard
-    const firstItem = selectedItems[0];
-    const nutrition = estimateNutritionFromLabel(firstItem.name);
+    // Store all selected items for sequential processing
+    setPendingItems(selectedItems);
+    setCurrentItemIndex(0);
+    
+    // Process the first item
+    processCurrentItem(selectedItems, 0);
+  };
+
+  const processCurrentItem = (items: ReviewItem[], index: number) => {
+    if (index >= items.length) {
+      // All items processed
+      setPendingItems([]);
+      setCurrentItemIndex(0);
+      toast.success(`All ${items.length} food items logged successfully!`);
+      return;
+    }
+
+    const currentItem = items[index];
+    const nutrition = estimateNutritionFromLabel(currentItem.name);
     
     const foodItem = {
-      id: firstItem.id,
-      name: firstItem.name,
+      id: currentItem.id,
+      name: currentItem.name,
       calories: nutrition.calories,
       protein: nutrition.protein,
       carbs: nutrition.carbs,
@@ -668,26 +687,94 @@ const CameraPage = () => {
       image: selectedImage // Use the original photo as reference
     };
 
-    console.log('Created food item for confirmation:', foodItem);
-    
-    // Store remaining items for sequential processing if needed
-    if (selectedItems.length > 1) {
-      // For now, just process the first item. Could enhance later for multiple items
-      console.log(`Note: ${selectedItems.length - 1} additional items will need separate confirmation`);
-    }
+    console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
     
     // Use the existing FoodConfirmationCard flow
     setRecognizedFoods([foodItem]);
     setShowConfirmation(true);
     setInputSource('photo');
     
-    toast.success('Food item ready for confirmation!');
+    if (items.length > 1) {
+      toast.success(`Confirming item ${index + 1} of ${items.length}: ${currentItem.name}`);
+    } else {
+      toast.success('Food item ready for confirmation!');
+    }
   };
 
-  const handleConfirmFood = (foodItem: any) => {
+  const handleSkipFood = () => {
+    console.log(`Skipping item ${currentItemIndex + 1} of ${pendingItems.length}`);
+    
+    // Check if there are more pending items to process
+    if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
+      const nextIndex = currentItemIndex + 1;
+      setCurrentItemIndex(nextIndex);
+      setShowConfirmation(false);
+      
+      // Small delay for better UX
+      setTimeout(() => {
+        processCurrentItem(pendingItems, nextIndex);
+      }, 300);
+    } else {
+      // All items processed, reset state and navigate
+      const totalItems = pendingItems.length || 1;
+      const skippedCount = currentItemIndex + 1;
+      toast.success(`Completed review: ${totalItems - skippedCount} logged, ${skippedCount} skipped`);
+      resetState();
+      navigate('/home');
+    }
+  };
+
+  const handleConfirmFood = async (foodItem: any) => {
+    // Add the current food item to nutrition context and database
     addFood(foodItem);
-    resetState();
-    navigate('/home');
+    
+    // Save to Supabase
+    try {
+      const { error } = await supabase
+        .from('nutrition_logs')
+        .insert({
+          food_name: foodItem.name,
+          calories: foodItem.calories,
+          protein: foodItem.protein,
+          carbs: foodItem.carbs,
+          fat: foodItem.fat,
+          fiber: foodItem.fiber,
+          sugar: foodItem.sugar,
+          sodium: foodItem.sodium,
+          confidence: foodItem.confidence,
+          serving_size: foodItem.serving || 'Estimated portion',
+          source: 'vision_api',
+          image_url: selectedImage || null,
+        });
+
+      if (error) {
+        console.error('Error saving to Supabase:', error);
+        toast.error('Failed to save food item');
+        return;
+      }
+    } catch (error) {
+      console.error('Error saving food item:', error);
+      toast.error('Failed to save food item');
+      return;
+    }
+
+    // Check if there are more pending items to process
+    if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
+      const nextIndex = currentItemIndex + 1;
+      setCurrentItemIndex(nextIndex);
+      setShowConfirmation(false);
+      
+      // Small delay for better UX
+      setTimeout(() => {
+        processCurrentItem(pendingItems, nextIndex);
+      }, 300);
+    } else {
+      // All items processed, reset state and navigate
+      const totalItems = pendingItems.length || 1;
+      toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
+      resetState();
+      navigate('/home');
+    }
   };
 
   const resetState = () => {
@@ -1104,7 +1191,11 @@ const CameraPage = () => {
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         onConfirm={handleConfirmFood}
+        onSkip={handleSkipFood}
         foodItem={recognizedFoods[0] || null}
+        showSkip={pendingItems.length > 1}
+        currentIndex={currentItemIndex}
+        totalItems={pendingItems.length}
       />
 
       {/* Review Items Screen */}
