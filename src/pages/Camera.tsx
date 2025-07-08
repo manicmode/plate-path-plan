@@ -357,8 +357,27 @@ const CameraPage = () => {
           return;
         }
 
-        const parsedItems = parseResponse.data as Array<{name: string, portion: string}>;
-        console.log('Parsed food items:', parsedItems);
+        // Handle new response format with metadata
+        const responseData = parseResponse.data;
+        let parsedItems: Array<{name: string, portion: string, confidence?: string, method?: string}>;
+        let analysisMetadata: any = {};
+        
+        if (responseData.items && responseData.analysis) {
+          // New format with metadata
+          parsedItems = responseData.items;
+          analysisMetadata = responseData.analysis;
+          console.log('🍲 Cooked meal analysis result:', analysisMetadata);
+          console.log('📊 Detection method:', analysisMetadata.detectionMethod);
+          console.log('🔄 Complex dish fallback used:', analysisMetadata.useComplexDishFallback);
+        } else if (Array.isArray(responseData)) {
+          // Legacy format (array only)
+          parsedItems = responseData;
+          console.log('📋 Using legacy response format');
+        } else {
+          throw new Error('Invalid response format');
+        }
+        
+        console.log('✅ Parsed food items:', parsedItems);
 
         // Validate parsed items
         if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
