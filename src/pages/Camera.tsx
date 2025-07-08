@@ -361,10 +361,16 @@ const CameraPage = () => {
 
   const processBarcodeData = async (barcodeData: string) => {
     try {
+      console.log('=== PROCESSING BARCODE DATA ===');
       await handleBarcodeDetected(barcodeData);
+      console.log('=== BARCODE PROCESSING COMPLETE ===');
     } catch (error) {
-      console.error('Error processing barcode:', error);
+      console.error('=== BARCODE PROCESSING ERROR ===', error);
       toast.error("We couldn't read the barcode. Please try a clearer image or enter the code manually.");
+      throw error; // Re-throw to ensure calling function handles it properly
+    } finally {
+      setIsAnalyzing(false);
+      setProcessingStep('');
     }
   };
 
@@ -383,34 +389,41 @@ const CameraPage = () => {
     abortControllerRef.current = new AbortController();
     
     try {
-      // First check if this looks like a barcode
+      // STEP 1: Check if this looks like a barcode FIRST
       setProcessingStep('Analyzing image type...');
       const isBarcode = await isLikelyBarcode(selectedImage);
       
       if (isBarcode) {
+        console.log('=== BARCODE DETECTION PATH ===');
         console.log('Image appears to be a barcode, attempting to decode...');
         setProcessingStep('Detecting barcode...');
+        setInputSource('barcode');
         
         const barcodeData = await detectBarcode(selectedImage);
         
         if (barcodeData) {
-          console.log('Barcode detected:', barcodeData);
+          console.log('Barcode successfully decoded:', barcodeData);
           setProcessingStep('Processing barcode...');
           
           // Process the barcode using existing barcode lookup logic
           await processBarcodeData(barcodeData);
-          setIsAnalyzing(false);
-          setProcessingStep('');
+          
+          // CRITICAL: Hard return here - no food detection allowed
+          console.log('=== BARCODE PATH COMPLETE - STOPPING HERE ===');
           return;
         } else {
-          // Barcode detection failed, show fallback message
-          console.log('Barcode detection failed');
-          setIsAnalyzing(false);
-          setProcessingStep('');
+          // Barcode detection failed, show fallback message and STOP
+          console.log('=== BARCODE DECODING FAILED - STOPPING HERE ===');
           toast.error("We couldn't read the barcode. Please try a clearer image or enter the code manually.");
+          
+          // CRITICAL: Hard return here - no food detection fallback
           return;
         }
       }
+      
+      // STEP 2: Only reach here if NOT a barcode - proceed with food detection
+      console.log('=== FOOD DETECTION PATH ===');
+      console.log('Image does not appear to be a barcode, proceeding with food detection...');
       
       // If not a barcode, proceed with normal food recognition
       const imageBase64 = convertToBase64(selectedImage);
@@ -675,6 +688,25 @@ const CameraPage = () => {
       debugLog.errors.push(`Branded matching exception: ${error.message}`);
       console.error('❌ BRANDED PRODUCT MATCHING EXCEPTION:', error);
     }
+
+    // Fallback to generic nutrition estimation
+    debugLog.fallbackUsed = true;
+    debugLog.finalConfidence = 50; // Lower confidence for generic estimates
+    
+    console.log('🔄 Using generic nutrition fallback...');
+    
+    // Return generic nutrition estimates
+    return {
+      calories: 200,
+      protein: 10,
+      carbs: 30,
+      fat: 8,
+      fiber: 3,
+      sugar: 5,
+      sodium: 300,
+      isBranded: false,
+      debugLog
+    };
   };
 
   // Barcode lookup function
@@ -682,22 +714,35 @@ const CameraPage = () => {
     try {
       setIsLoadingBarcode(true);
       setInputSource('barcode');
+      console.log('=== BARCODE LOOKUP START ===');
       console.log('Barcode detected:', barcode);
+
+      // Clear any previous food detection results to ensure clean separation
+      setRecognizedFoods([]);
+      setVisionResults(null);
+      setVoiceResults(null);
+      setShowSummaryPanel(false);
+      setSummaryItems([]);
+      setReviewItems([]);
+      setShowReviewScreen(false);
 
       const response = await supabase.functions.invoke('lookup-barcode', {
         body: { barcode }
       });
 
       if (response.error) {
+        console.error('=== BARCODE LOOKUP API ERROR ===', response.error);
         throw new Error(response.error.message || 'Failed to lookup barcode');
       }
 
       if (!response.data?.success) {
+        console.log('=== BARCODE LOOKUP FAILED ===', response.data?.message);
         toast.error(response.data?.message || 'Product not found. Try entering manually or rescan.');
         return;
       }
 
       const product = response.data.product;
+      console.log('=== BARCODE LOOKUP SUCCESS ===');
       console.log('Product found:', product);
 
       // Create food item from barcode data
@@ -724,15 +769,20 @@ const CameraPage = () => {
         nutrition: product.nutrition
       });
 
-      // Set up for confirmation
+      // Set up for confirmation - ONLY barcode confirmation, no food detection UI
       setSelectedFoodItem(foodItem);
       setShowConfirmation(true);
+      
+      // Ensure we're in barcode mode to prevent food UI from showing
+      setInputSource('barcode');
 
       toast.success(`Found: ${foodItem.name}`);
+      console.log('=== BARCODE CONFIRMATION READY ===');
 
     } catch (error) {
-      console.error('Barcode lookup error:', error);
+      console.error('=== BARCODE LOOKUP ERROR ===', error);
       toast.error(error instanceof Error ? error.message : 'Failed to lookup product');
+      throw error; // Re-throw so calling function can handle appropriately
     } finally {
       setIsLoadingBarcode(false);
     }
@@ -1201,16 +1251,28 @@ const CameraPage = () => {
     setManualEditText('');
     setVisionResults(null);
     setVoiceResults(null);
-    setInputSource('photo');
+    setInputSource('photo'); // Always reset to photo mode
     setProcessingStep('');
     setShowReviewScreen(false);
     setReviewItems([]);
     setSelectedFoodItem(null);
+    
+    // Reset barcode-related state
+    setIsLoadingBarcode(false);
+    setShowBarcodeScanner(false);
+    
+    // Reset summary panel state
+    setShowSummaryPanel(false);
+    setSummaryItems([]);
+    setShowTransition(false);
+    
     resetErrorState();
     setValidationWarning(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    
+    console.log('=== STATE RESET COMPLETE ===');
   };
 
   // Format recording duration for display
@@ -1556,8 +1618,8 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {/* Photo Analysis Card - Updated to remove overlay and improve loading */}
-      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && (
+      {/* Photo Analysis Card - Only show for food images, not barcodes */}
+      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && (
         <Card className="animate-slide-up">
           <CardHeader>
             <CardTitle>Analyze Your Meal</CardTitle>
@@ -1647,31 +1709,37 @@ const CameraPage = () => {
         totalItems={pendingItems.length}
       />
 
-      {/* Summary Review Panel - New Multi-Item Flow */}
-      <SummaryReviewPanel
-        isOpen={showSummaryPanel}
-        onClose={() => setShowSummaryPanel(false)}
-        onNext={handleSummaryNext}
-        items={summaryItems}
-      />
+      {/* Summary Review Panel - Only for food detection, never for barcodes */}
+      {inputSource !== 'barcode' && (
+        <SummaryReviewPanel
+          isOpen={showSummaryPanel}
+          onClose={() => setShowSummaryPanel(false)}
+          onNext={handleSummaryNext}
+          items={summaryItems}
+        />
+      )}
 
-      {/* Transition Screen */}
-      <TransitionScreen
-        isOpen={showTransition}
-        currentIndex={currentItemIndex}
-        totalItems={pendingItems.length}
-        itemName={pendingItems[currentItemIndex]?.name || ''}
-        onComplete={handleTransitionComplete}
-        duration={3500}
-      />
+      {/* Transition Screen - Only for food detection, never for barcodes */}
+      {inputSource !== 'barcode' && (
+        <TransitionScreen
+          isOpen={showTransition}
+          currentIndex={currentItemIndex}
+          totalItems={pendingItems.length}
+          itemName={pendingItems[currentItemIndex]?.name || ''}
+          onComplete={handleTransitionComplete}
+          duration={3500}
+        />
+      )}
 
-      {/* Review Items Screen - Legacy Support */}
-      <ReviewItemsScreen
-        isOpen={showReviewScreen}
-        onClose={() => setShowReviewScreen(false)}
-        onNext={handleReviewNext}
-        items={reviewItems}
-      />
+      {/* Review Items Screen - Only for food detection, never for barcodes */}
+      {inputSource !== 'barcode' && (
+        <ReviewItemsScreen
+          isOpen={showReviewScreen}
+          onClose={() => setShowReviewScreen(false)}
+          onNext={handleReviewNext}
+          items={reviewItems}
+        />
+      )}
 
       {/* Enhanced Status Card */}
       <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
