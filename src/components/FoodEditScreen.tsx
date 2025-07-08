@@ -91,7 +91,10 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        showCloseButton={false}
+        className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
+      >
         <div className="p-6">
           <DialogHeader className="text-center mb-6">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">

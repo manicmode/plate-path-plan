@@ -161,7 +161,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-        <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+        <DialogContent 
+          showCloseButton={false}
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+        >
           <div className="p-6">
             <DialogHeader className="text-center mb-4 relative">
               {/* Edit Button - Top Right Only */}
