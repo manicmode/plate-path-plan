@@ -40,24 +40,62 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Enhanced cooked meal detection with color, texture, shape analysis
-    const visualFoodItems = [
-      ...visionResults.foodLabels.map(l => ({ type: 'food_label', description: l.description, score: l.score })),
-      ...visionResults.objects.filter(o => 
-        // Enhanced filter for edible food items only, excluding utensils and containers
-        ['food', 'fruit', 'vegetable', 'meat', 'bread', 'cheese', 'pasta', 'rice', 'fish', 'chicken', 'beef', 'pork', 'salad', 'soup', 'pizza', 'sandwich', 'burger', 'cake', 'cookie', 'apple', 'banana', 'orange', 'potato', 'tomato', 'carrot', 'broccoli', 'lettuce', 'onion', 'garlic', 'egg', 'milk', 'yogurt', 'cereal', 'nuts', 'berries', 'beans', 'lentils', 'peppers', 'mushrooms', 'stew', 'curry', 'sauce', 'grain', 'chunks', 'pieces'].some(foodWord => 
-          o.name.toLowerCase().includes(foodWord)
-        ) && !['plate', 'bowl', 'fork', 'knife', 'spoon', 'dish', 'cup', 'glass', 'napkin', 'table', 'tray'].some(nonFood => 
-          o.name.toLowerCase().includes(nonFood)
-        )
-      ).map(o => ({ type: 'object', description: o.name, score: o.score })),
-      ...visionResults.labels.filter(l => 
-        // Enhanced filter for cooked meal labels and dish descriptions
-        l.score > 0.7 && ['food', 'cuisine', 'dish', 'meal', 'snack', 'breakfast', 'lunch', 'dinner', 'dessert', 'beverage', 'drink', 'cooked', 'prepared', 'homemade', 'stewed', 'braised', 'grilled', 'roasted', 'sauteed', 'mixed', 'colorful', 'hearty'].some(foodWord =>
-          l.description.toLowerCase().includes(foodWord)
-        )
-      ).map(l => ({ type: 'label', description: l.description, score: l.score }))
+    // 🧠 Ultimate AI Detection Filtering - Collect all detected items
+    const allDetectedItems = [
+      ...visionResults.foodLabels.map(l => ({ 
+        name: l.description, 
+        confidence: l.score, 
+        type: 'food_label' as const,
+        score: l.score 
+      })),
+      ...visionResults.objects.map(o => ({ 
+        name: o.name, 
+        confidence: o.score, 
+        type: 'object' as const,
+        score: o.score 
+      })),
+      ...visionResults.labels.map(l => ({ 
+        name: l.description, 
+        confidence: l.score, 
+        type: 'label' as const,
+        score: l.score 
+      }))
     ];
+
+    // Apply enhanced filtering via new filtering service
+    let visualFoodItems = allDetectedItems;
+    try {
+      const filterResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enhanced-food-filter`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+        },
+        body: JSON.stringify({ detectedItems: allDetectedItems })
+      });
+
+      if (filterResponse.ok) {
+        const filterData = await filterResponse.json();
+        if (filterData.filteredItems && filterData.filteredItems.length > 0) {
+          visualFoodItems = filterData.filteredItems.map((item: any) => ({
+            type: 'filtered',
+            description: item.name,
+            score: item.confidence === 'high' ? 0.9 : item.confidence === 'medium' ? 0.7 : 0.5,
+            category: item.category,
+            priority: item.priority
+          }));
+          console.log('🧠 Enhanced filtering applied:', filterData.summary);
+        }
+      }
+    } catch (filterError) {
+      console.warn('Enhanced filtering failed, using basic filtering:', filterError);
+      // Fallback to basic filtering
+      visualFoodItems = allDetectedItems.filter(item => 
+        !['plate', 'bowl', 'fork', 'knife', 'spoon', 'dish', 'cup', 'glass', 'napkin', 'table', 'tray'].some(nonFood => 
+          item.name.toLowerCase().includes(nonFood)
+        )
+      );
+    }
 
     // Determine detection confidence and method
     const hasStrongVisualDetection = visualFoodItems.some(item => item.score > 0.8);
