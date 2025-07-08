@@ -107,6 +107,40 @@ Input: ${combinedResults}`
     const aiResponse = data.choices[0]?.message?.content || '';
     console.log('OpenAI parsing response:', aiResponse);
 
+    // Marketing words/phrases blacklist
+    const marketingBlacklist = [
+      'virtually flavored', 'sweet and crunchy', 'natural', 'fresh', 'healthy',
+      'delicious', 'tasty', 'crispy', 'crunchy', 'smooth', 'creamy', 'rich',
+      'premium', 'gourmet', 'artisan', 'homestyle', 'authentic', 'traditional',
+      'organic', 'non-gmo', 'gluten-free', 'sugar-free', 'low-fat', 'reduced-sodium',
+      'all-natural', 'farm-fresh', 'hand-picked', 'locally-sourced', 'sustainably-grown',
+      'wholesome', 'nutritious', 'satisfying', 'filling', 'energizing',
+      'guilt-free', 'indulgent', 'decadent', 'luxurious', 'irresistible',
+      'mouthwatering', 'savory', 'flavorful', 'zesty', 'tangy', 'spicy',
+      'new', 'improved', 'better', 'best', 'perfect', 'ultimate', 'supreme',
+      'classic', 'original', 'signature', 'special', 'limited edition',
+      'award-winning', 'chef-inspired', 'restaurant-quality', 'cafe-style',
+      'brand name', 'trademark', 'registered', 'copyright', 'quality',
+      'since', 'established', 'founded', 'family recipe', 'secret recipe'
+    ];
+
+    const isMarketingText = (name: string): boolean => {
+      const lowerName = name.toLowerCase().trim();
+      
+      // Check if the entire name is just marketing text
+      if (marketingBlacklist.some(phrase => lowerName === phrase)) {
+        return true;
+      }
+      
+      // Check if name consists mostly of marketing words (>60% of words are marketing)
+      const words = lowerName.split(/\s+/);
+      const marketingWordCount = words.filter(word => 
+        marketingBlacklist.some(phrase => phrase.includes(word) || word.includes(phrase))
+      ).length;
+      
+      return words.length > 1 && (marketingWordCount / words.length) > 0.6;
+    };
+
     // Parse the JSON response
     let parsedItems;
     try {
@@ -121,12 +155,20 @@ Input: ${combinedResults}`
         throw new Error('Response is not an array');
       }
       
-      // Validate each item has name and portion
-      parsedItems = parsedItems.filter(item => 
-        item && typeof item === 'object' && item.name && item.portion
-      );
+      // Validate each item has name and portion, and filter out marketing text
+      const filteredItems = [];
+      for (const item of parsedItems) {
+        if (item && typeof item === 'object' && item.name && item.portion) {
+          if (isMarketingText(item.name)) {
+            console.log('Filtered out marketing text:', item.name);
+          } else {
+            filteredItems.push(item);
+          }
+        }
+      }
       
-      console.log('Successfully parsed items:', parsedItems);
+      parsedItems = filteredItems;
+      console.log('Successfully parsed and filtered items:', parsedItems);
       
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
