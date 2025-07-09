@@ -75,9 +75,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
     const { barcode, enableGlobalSearch = true } = await req.json()
+    console.log('Request body:', { barcode, enableGlobalSearch });
     
     if (!barcode) {
+      console.error('No barcode provided in request');
       throw new Error('Barcode is required')
     }
 
@@ -96,9 +99,10 @@ serve(async (req) => {
       try {
         console.log('Trying USDA database...')
         const usdaApiKey = Deno.env.get('USDA_API_KEY');
+        console.log('USDA_API_KEY status:', usdaApiKey ? 'CONFIGURED' : 'MISSING');
         if (!usdaApiKey) {
-          console.error('USDA_API_KEY not configured');
-          throw new Error('USDA API key not configured');
+          console.error('USDA_API_KEY not configured - function will fail');
+          throw new Error('USDA API key not configured - please set USDA_API_KEY in Supabase secrets');
         }
         
         const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?gtinUpc=${cleanBarcode}&dataType=Branded&pageSize=1&api_key=${usdaApiKey}`;

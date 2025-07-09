@@ -763,12 +763,20 @@ const CameraPage = () => {
       const enableGlobalSearch = safeGetJSON('global_barcode_search', true);
       console.log('Global search enabled:', enableGlobalSearch);
 
+      console.log('=== CALLING BARCODE LOOKUP FUNCTION ===');
+      console.log('Function call params:', { barcode: cleanBarcode, enableGlobalSearch });
+      
       const response = await supabase.functions.invoke('barcode-lookup-global', {
         body: { 
           barcode: cleanBarcode,
           enableGlobalSearch 
         }
       });
+      
+      console.log('=== FUNCTION RESPONSE ===');
+      console.log('Full response:', response);
+      console.log('Response data:', response.data);
+      console.log('Response error:', response.error);
 
       if (response.error) {
         console.error('=== BARCODE LOOKUP API ERROR ===', response.error);
