@@ -150,7 +150,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" showCloseButton={false}>
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
