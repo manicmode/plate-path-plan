@@ -74,6 +74,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredient_flags: {
+        Row: {
+          category: string
+          common_aliases: string[] | null
+          created_at: string
+          description: string
+          id: string
+          name: string
+          severity: string
+        }
+        Insert: {
+          category: string
+          common_aliases?: string[] | null
+          created_at?: string
+          description: string
+          id?: string
+          name: string
+          severity: string
+        }
+        Update: {
+          category?: string
+          common_aliases?: string[] | null
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          severity?: string
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
