@@ -70,9 +70,10 @@ const USDA_NUTRIENT_IDS = {
 };
 
 serve(async (req) => {
-  // Force redeploy with timestamp logging
-  const deployTimestamp = '2025-07-09T23:30:00Z';
-  console.log(`=== FUNCTION DEPLOYED AT: ${deployTimestamp} ===`);
+  // CRITICAL DEPLOYMENT CHECK - New timestamp
+  const deployTimestamp = '2025-07-09T23:45:00Z';
+  console.log(`=== FUNCTION REDEPLOY: ${deployTimestamp} ===`);
+  console.log('Function execution confirmed - no cache issues');
   
   if (req.method === 'OPTIONS') {
     console.log('CORS preflight request received');

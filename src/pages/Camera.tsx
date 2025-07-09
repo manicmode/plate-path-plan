@@ -25,9 +25,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
-import { IngredientCoachDemo } from '@/components/IngredientCoachDemo';
-import { TestBarcodeFlow } from '@/components/TestBarcodeFlow';
-import { BarcodeTestDashboard } from '@/components/BarcodeTestDashboard';
+// Debug components removed for clean production build
 import jsQR from 'jsqr';
 
 interface RecognizedFood {
@@ -1954,16 +1952,7 @@ const CameraPage = () => {
         }}
       />
 
-      {/* Demo components for testing */}
-      <div className="mt-8 pt-8 border-t border-border/20 space-y-8">
-        <BarcodeTestDashboard />
-        <IngredientCoachDemo />
-        
-        <div className="border-t border-border/20 pt-8">
-          <h3 className="text-lg font-semibold mb-4">Complete Barcode Flow Testing</h3>
-          <TestBarcodeFlow />
-        </div>
-      </div>
+      {/* Debug components removed - clean production interface */}
       
     </div>
   );
