@@ -17,7 +17,7 @@ import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { safeGetJSON } from '@/lib/safeStorage';
 
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
@@ -76,6 +76,7 @@ interface VoiceApiResponse {
 
 const CameraPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
@@ -120,6 +121,16 @@ const CameraPage = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
+
+  // Effect to handle reset from navigation
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('reset') === 'true') {
+      setActiveTab('main');
+      // Clean up the URL by removing the reset parameter
+      navigate('/camera', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   // Helper function to convert File to base64
   const fileToBase64 = (file: File): Promise<string> => {

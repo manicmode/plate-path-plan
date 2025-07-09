@@ -40,14 +40,12 @@ const Layout = ({ children }: LayoutProps) => {
     // For camera/log tab, always navigate to main camera page and reset any sub-tab state
     if (path === '/camera') {
       setIsNavigating(true);
-      // Force a full page reload to reset any component state
-      navigate(path, { replace: true });
-      // Force re-render by navigating away and back
+      // Use URL search parameter to signal camera reset, then navigate normally
+      navigate('/camera?reset=true', { replace: true });
       setTimeout(() => {
-        navigate(path, { replace: true });
         scrollToTop();
         setIsNavigating(false);
-      }, 50);
+      }, 150);
       return;
     }
     
