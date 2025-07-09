@@ -22,6 +22,8 @@ import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsSc
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
+import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import jsQR from 'jsqr';
 
 interface RecognizedFood {
@@ -111,6 +113,9 @@ const CameraPage = () => {
   const [showManualEdit, setShowManualEdit] = useState(false);
   const [manualEditText, setManualEditText] = useState('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  
+  // Tab navigation state
+  const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -962,6 +967,17 @@ const CameraPage = () => {
     setErrorSuggestions([]);
   };
 
+  const handleTabFoodSelect = (food: any) => {
+    setRecognizedFoods([food]);
+    setShowConfirmation(true);
+    setActiveTab('main');
+  };
+
+  const handleTabBarcodeSelect = (barcode: string) => {
+    handleBarcodeDetected(barcode);
+    setActiveTab('main');
+  };
+
   const handleRetryVoice = () => {
     resetErrorState();
     setShowVoiceEntry(true);
@@ -1351,7 +1367,8 @@ const CameraPage = () => {
         </Card>
       )}
 
-      {!selectedImage && !showConfirmation && !showError && !showManualEdit && (
+      {/* Main Camera UI */}
+      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && (
         <Card className="animate-slide-up">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
@@ -1459,7 +1476,7 @@ const CameraPage = () => {
                   
                   {/* Saved Logs Tab */}
                   <Button
-                    onClick={() => toast.info('Saved logs feature coming soon!')}
+                    onClick={() => setActiveTab('saved')}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
@@ -1469,7 +1486,7 @@ const CameraPage = () => {
                   
                   {/* Recent Logs Tab */}
                   <Button
-                    onClick={() => toast.info('Recent logs feature coming soon!')}
+                    onClick={() => setActiveTab('recent')}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >
@@ -1507,6 +1524,45 @@ const CameraPage = () => {
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Saved Foods Tab */}
+      {activeTab === 'saved' && (
+        <Card className="animate-slide-up">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab('main')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ← Back to Camera
+              </Button>
+            </div>
+            <SavedFoodsTab onFoodSelect={handleTabFoodSelect} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Foods Tab */}
+      {activeTab === 'recent' && (
+        <Card className="animate-slide-up">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab('main')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ← Back to Camera
+              </Button>
+            </div>
+            <RecentFoodsTab 
+              onFoodSelect={handleTabFoodSelect} 
+              onBarcodeSelect={handleTabBarcodeSelect} 
+            />
           </CardContent>
         </Card>
       )}
