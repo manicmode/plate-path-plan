@@ -1419,6 +1419,30 @@ const CameraPage = () => {
                     )}
                   </Button>
                   
+                  {/* Manual Barcode Entry Tab */}
+                  <Button
+                    onClick={() => {
+                      setShowManualBarcodeEntry(true);
+                      setInputSource('barcode');
+                      resetErrorState();
+                    }}
+                    disabled={isLoadingBarcode}
+                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
+                    size="lg"
+                  >
+                    {isLoadingBarcode ? (
+                      <>
+                        <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full" />
+                        <span className="text-sm font-medium">Looking up...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-6 w-6" />
+                        <span className="text-sm font-medium">Enter Barcode</span>
+                      </>
+                    )}
+                  </Button>
+                  
                   {/* Manual Entry Tab */}
                   <Button
                     onClick={() => {
