@@ -39,6 +39,8 @@ export const TestBarcodeFlow: React.FC = () => {
         }
       });
 
+      console.log('Test Response:', barcodeResponse);
+
       if (barcodeResponse.error) {
         addResult('Barcode Lookup', 'error', `API Error: ${barcodeResponse.error.message}`);
         return;

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Edit, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus } from 'lucide-react';
+import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
@@ -61,6 +61,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
+
+  // Check if this is an unknown product that needs manual entry
+  const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
+  const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -221,6 +225,42 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
         >
           <div className="p-6">
+            {/* Unknown Product Alert */}
+            {isUnknownProduct && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 mb-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-1">
+                      Product Not Found
+                    </h3>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                      Barcode {hasBarcode ? `${(currentFoodItem as any).barcode}` : ''} was not found in our database. Please add the product details manually.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setIsEditOpen(true)}
+                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Add Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowManualIngredientEntry(true)}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Add Ingredients
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <DialogHeader className="text-center mb-4 relative">
               {/* Edit Button - Top Right Only */}
               <div className="absolute -top-2 -right-2">

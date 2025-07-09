@@ -22,6 +22,7 @@ import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsSc
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { IngredientCoachDemo } from '@/components/IngredientCoachDemo';
@@ -92,6 +93,8 @@ const CameraPage = () => {
   const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual' | 'barcode'>('photo');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
+  const [showBarcodeNotFound, setShowBarcodeNotFound] = useState(false);
+  const [failedBarcode, setFailedBarcode] = useState('');
   const { addRecentBarcode } = useRecentBarcodes();
   const { addToHistory } = useBarcodeHistory();
   
@@ -774,7 +777,10 @@ const CameraPage = () => {
 
       if (!response.data?.success) {
         console.log('=== BARCODE LOOKUP FAILED ===', response.data?.message);
-        toast.error(response.data?.message || 'Product not found. Try entering manually or rescan.');
+        
+        // Show barcode not found modal for better UX
+        setFailedBarcode(cleanBarcode);
+        setShowBarcodeNotFound(true);
         return;
       }
 
@@ -1886,6 +1892,45 @@ const CameraPage = () => {
         isOpen={showBarcodeScanner}
         onClose={() => setShowBarcodeScanner(false)}
         onBarcodeDetected={handleBarcodeDetected}
+      />
+
+      {/* Barcode Not Found Modal */}
+      <BarcodeNotFoundModal
+        isOpen={showBarcodeNotFound}
+        onClose={() => setShowBarcodeNotFound(false)}
+        barcode={failedBarcode}
+        onManualEntry={() => {
+          // Show manual entry fallback when barcode lookup fails
+          const fallbackFood = {
+            id: `barcode-unknown-${failedBarcode}-${Date.now()}`,
+            name: 'Unknown Product', 
+            calories: 0,
+            protein: 0,
+            carbs: 0, 
+            fat: 0,
+            fiber: 0,
+            sugar: 0,
+            sodium: 0,
+            confidence: 0,
+            timestamp: new Date(),
+            confirmed: false,
+            barcode: failedBarcode,
+            ingredientsText: '',
+            ingredientsAvailable: false,
+            isUnknownProduct: true // Flag for UI handling
+          };
+          
+          setRecognizedFoods([fallbackFood]);
+          setShowConfirmation(true);
+          setInputSource('barcode');
+          setShowBarcodeNotFound(false);
+          
+          toast.success('Unknown product added - please add details manually');
+        }}
+        onTryAgain={() => {
+          setShowBarcodeNotFound(false);
+          setShowBarcodeScanner(true);
+        }}
       />
 
       {/* Demo components for testing */}

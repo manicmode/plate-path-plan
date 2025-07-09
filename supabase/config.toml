@@ -18,3 +18,9 @@ verify_jwt = false
 
 [functions.parse-food-items]
 verify_jwt = false
+
+[functions.barcode-lookup-global]
+verify_jwt = false
+
+[functions.detect-flagged-ingredients]
+verify_jwt = false

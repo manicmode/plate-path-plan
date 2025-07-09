@@ -81,7 +81,13 @@ serve(async (req) => {
       throw new Error('Barcode is required')
     }
 
-    console.log(`Looking up barcode: ${barcode}, global search: ${enableGlobalSearch}`)
+    // Validate barcode format
+    const cleanBarcode = barcode.trim().replace(/\s+/g, '');
+    if (!/^\d{8,14}$/.test(cleanBarcode)) {
+      throw new Error('Invalid barcode format. Must be 8-14 digits.');
+    }
+
+    console.log(`Looking up barcode: ${cleanBarcode}, global search: ${enableGlobalSearch}`)
 
     let product: BarcodeProduct | null = null;
 
@@ -89,8 +95,14 @@ serve(async (req) => {
     if (!product) {
       try {
         console.log('Trying USDA database...')
-        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?gtinUpc=${barcode}&dataType=Branded&pageSize=1&api_key=${Deno.env.get('USDA_API_KEY')}`;
-        console.log('USDA API URL:', usdaUrl);
+        const usdaApiKey = Deno.env.get('USDA_API_KEY');
+        if (!usdaApiKey) {
+          console.error('USDA_API_KEY not configured');
+          throw new Error('USDA API key not configured');
+        }
+        
+        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?gtinUpc=${cleanBarcode}&dataType=Branded&pageSize=1&api_key=${usdaApiKey}`;
+        console.log('USDA API URL (key redacted):', usdaUrl.replace(usdaApiKey, 'REDACTED'));
         
         const usdaResponse = await fetch(usdaUrl, {
           headers: {
@@ -112,7 +124,7 @@ serve(async (req) => {
             product = {
               name: food.description || 'Unknown Product',
               brand: food.brandOwner || '',
-              barcode: barcode,
+              barcode: cleanBarcode,
               nutrition: {
                 calories: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.ENERGY)),
                 protein: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.PROTEIN) * 10) / 10,
@@ -179,7 +191,7 @@ serve(async (req) => {
             product = {
               name: offProduct.product_name || 'Unknown Product',
               brand: offProduct.brands || '',
-              barcode: barcode,
+              barcode: cleanBarcode,
               nutrition: {
                 calories: Math.round(calories),
                 protein: Math.round(protein * 10) / 10,
