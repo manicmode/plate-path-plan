@@ -27,6 +27,7 @@ import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { IngredientCoachDemo } from '@/components/IngredientCoachDemo';
 import { TestBarcodeFlow } from '@/components/TestBarcodeFlow';
+import { BarcodeTestDashboard } from '@/components/BarcodeTestDashboard';
 import jsQR from 'jsqr';
 
 interface RecognizedFood {
@@ -764,19 +765,31 @@ const CameraPage = () => {
       console.log('Global search enabled:', enableGlobalSearch);
 
       console.log('=== CALLING BARCODE LOOKUP FUNCTION ===');
-      console.log('Function call params:', { barcode: cleanBarcode, enableGlobalSearch });
       
-      const response = await supabase.functions.invoke('barcode-lookup-global', {
+      // Generate unique request ID to prevent stale responses
+      const requestId = crypto.randomUUID();
+      console.log('Function call params:', { barcode: cleanBarcode, enableGlobalSearch, requestId });
+      
+      // Add timeout to detect silent failures
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Function call timeout after 15 seconds')), 15000)
+      );
+      
+      const functionCall = supabase.functions.invoke('barcode-lookup-global', {
         body: { 
           barcode: cleanBarcode,
-          enableGlobalSearch 
+          enableGlobalSearch,
+          requestId
         }
       });
+      
+      const response = await Promise.race([functionCall, timeoutPromise]) as any;
       
       console.log('=== FUNCTION RESPONSE ===');
       console.log('Full response:', response);
       console.log('Response data:', response.data);
       console.log('Response error:', response.error);
+      console.log('Response received for request ID:', requestId);
 
       if (response.error) {
         console.error('=== BARCODE LOOKUP API ERROR ===', response.error);
@@ -1943,6 +1956,7 @@ const CameraPage = () => {
 
       {/* Demo components for testing */}
       <div className="mt-8 pt-8 border-t border-border/20 space-y-8">
+        <BarcodeTestDashboard />
         <IngredientCoachDemo />
         
         <div className="border-t border-border/20 pt-8">

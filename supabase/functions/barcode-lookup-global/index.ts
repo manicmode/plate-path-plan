@@ -70,14 +70,26 @@ const USDA_NUTRIENT_IDS = {
 };
 
 serve(async (req) => {
+  // Force redeploy with timestamp logging
+  const deployTimestamp = '2025-07-09T23:30:00Z';
+  console.log(`=== FUNCTION DEPLOYED AT: ${deployTimestamp} ===`);
+  
   if (req.method === 'OPTIONS') {
+    console.log('CORS preflight request received');
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
-    const { barcode, enableGlobalSearch = true } = await req.json()
-    console.log('Request body:', { barcode, enableGlobalSearch });
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    
+    const requestId = crypto.randomUUID();
+    console.log('Generated request ID:', requestId);
+    
+    const body = await req.json();
+    const { barcode, enableGlobalSearch = true } = body;
+    console.log('Request body:', { barcode, enableGlobalSearch, requestId });
     
     if (!barcode) {
       console.error('No barcode provided in request');
