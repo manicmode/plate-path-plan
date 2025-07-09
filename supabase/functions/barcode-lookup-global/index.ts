@@ -24,6 +24,8 @@ interface BarcodeProduct {
   source: string;
   region?: string;
   servingSize?: string;
+  ingredients_text?: string;
+  ingredients_available: boolean;
 }
 
 interface OpenFoodFactsProduct {
@@ -43,6 +45,8 @@ interface OpenFoodFactsProduct {
   image_url?: string;
   image_front_url?: string;
   countries?: string;
+  ingredients_text?: string;
+  ingredients_text_en?: string;
 }
 
 interface USDAProduct {
@@ -119,7 +123,9 @@ serve(async (req) => {
                 sodium: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.SODIUM)),
               },
               source: 'usda',
-              region: 'US'
+              region: 'US',
+              ingredients_text: food.ingredients || '',
+              ingredients_available: !!(food.ingredients && food.ingredients.length > 0)
             };
             console.log('Found product in USDA database')
           }
@@ -167,6 +173,9 @@ serve(async (req) => {
                           countries.includes('United Kingdom') ? 'UK' :
                           'International';
 
+            // Extract ingredients text (prioritize English)
+            const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || '';
+
             product = {
               name: offProduct.product_name || 'Unknown Product',
               brand: offProduct.brands || '',
@@ -182,7 +191,9 @@ serve(async (req) => {
               },
               image: offProduct.image_front_url || offProduct.image_url,
               source: 'open_food_facts',
-              region: region
+              region: region,
+              ingredients_text: ingredientsText,
+              ingredients_available: !!(ingredientsText && ingredientsText.length > 0)
             };
             console.log('Found product in Open Food Facts database')
           }

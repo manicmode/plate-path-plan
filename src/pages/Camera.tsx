@@ -25,6 +25,7 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { IngredientCoachDemo } from '@/components/IngredientCoachDemo';
+import { TestBarcodeFlow } from '@/components/TestBarcodeFlow';
 import jsQR from 'jsqr';
 
 interface RecognizedFood {
@@ -730,7 +731,7 @@ const CameraPage = () => {
     };
   };
 
-  // Barcode lookup function
+  // Barcode lookup function - Enhanced with ingredient detection
   const handleBarcodeDetected = async (barcode: string) => {
     try {
       setIsLoadingBarcode(true);
@@ -738,7 +739,7 @@ const CameraPage = () => {
       console.log('=== BARCODE LOOKUP START ===');
       console.log('Barcode detected:', barcode);
 
-      // Clear any previous food detection results to ensure clean separation
+      // CRITICAL: Complete state reset to prevent contamination
       setRecognizedFoods([]);
       setVisionResults(null);
       setVoiceResults(null);
@@ -746,6 +747,14 @@ const CameraPage = () => {
       setSummaryItems([]);
       setReviewItems([]);
       setShowReviewScreen(false);
+      setShowError(false);
+      setErrorMessage('');
+
+      // Validate barcode format
+      const cleanBarcode = barcode.trim().replace(/\s+/g, '');
+      if (!/^\d{8,14}$/.test(cleanBarcode)) {
+        throw new Error('Invalid barcode format. Please check the barcode number.');
+      }
 
       // Get global search setting (defaults to true for best user experience)
       const enableGlobalSearch = safeGetJSON('global_barcode_search', true);
@@ -753,7 +762,7 @@ const CameraPage = () => {
 
       const response = await supabase.functions.invoke('barcode-lookup-global', {
         body: { 
-          barcode,
+          barcode: cleanBarcode,
           enableGlobalSearch 
         }
       });
@@ -774,10 +783,12 @@ const CameraPage = () => {
       console.log('Product found:', product);
       console.log('Product source:', product.source);
       console.log('Product region:', product.region);
+      console.log('Ingredients available:', product.ingredients_available);
+      console.log('Ingredients text length:', product.ingredients_text?.length || 0);
 
       // Create food item from barcode data
       const foodItem = {
-        id: Date.now().toString(),
+        id: `barcode-${cleanBarcode}-${Date.now()}`, // Unique ID with barcode
         name: product.brand ? `${product.brand} ${product.name}` : product.name,
         calories: product.nutrition.calories,
         protein: product.nutrition.protein,
@@ -789,19 +800,32 @@ const CameraPage = () => {
         image: product.image,
         confidence: 95, // High confidence for barcode scans
         timestamp: new Date(),
-        confirmed: false
+        confirmed: false,
+        barcode: cleanBarcode, // Include barcode for tracking
+        ingredientsText: product.ingredients_text,
+        ingredientsAvailable: product.ingredients_available
       };
 
-      // Add to recent barcodes
+      // STEP 1: Log ingredient availability for UI handling
+      if (product.ingredients_available && product.ingredients_text) {
+        console.log('=== INGREDIENT DETECTION AVAILABLE ===');
+        console.log('Ingredients will be checked in FoodConfirmationCard component');
+        console.log('Ingredients text length:', product.ingredients_text.length);
+      } else {
+        console.log('=== NO INGREDIENTS AVAILABLE ===');
+        console.log('Manual ingredient entry will be prompted in FoodConfirmationCard');
+      }
+
+      // Add to recent barcodes  
       addRecentBarcode({
-        barcode,
+        barcode: cleanBarcode,
         productName: foodItem.name,
         nutrition: product.nutrition
       });
 
       // Add to barcode history with enhanced metadata
       addToHistory({
-        barcode,
+        barcode: cleanBarcode,
         productName: product.name,
         brand: product.brand,
         nutrition: product.nutrition,
@@ -810,14 +834,20 @@ const CameraPage = () => {
         region: product.region
       });
 
-      // Set up for confirmation - ONLY barcode confirmation, no food detection UI
+      // Set up for confirmation with ingredient status
       setRecognizedFoods([foodItem]);
       setShowConfirmation(true);
       
       // Ensure we're in barcode mode to prevent food UI from showing
       setInputSource('barcode');
 
-      toast.success(`Found: ${foodItem.name}`);
+      // Success message with ingredient status
+      const baseMessage = `Found: ${foodItem.name}`;
+      const ingredientStatus = product.ingredients_available 
+        ? ' (ingredients detected)' 
+        : ' (add ingredients manually for safety check)';
+      
+      toast.success(baseMessage + ingredientStatus);
       console.log('=== BARCODE CONFIRMATION READY ===');
 
     } catch (error) {
@@ -1858,9 +1888,14 @@ const CameraPage = () => {
         onBarcodeDetected={handleBarcodeDetected}
       />
 
-      {/* Demo component for testing ingredient flagging + coach integration */}
-      <div className="mt-8 pt-8 border-t border-border/20">
+      {/* Demo components for testing */}
+      <div className="mt-8 pt-8 border-t border-border/20 space-y-8">
         <IngredientCoachDemo />
+        
+        <div className="border-t border-border/20 pt-8">
+          <h3 className="text-lg font-semibold mb-4">Complete Barcode Flow Testing</h3>
+          <TestBarcodeFlow />
+        </div>
       </div>
       
     </div>

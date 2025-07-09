@@ -6,10 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Edit, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle } from 'lucide-react';
+import { Edit, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
+import { ManualIngredientEntry } from './camera/ManualIngredientEntry';
+import { useIngredientAlert } from '@/hooks/useIngredientAlert';
+import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
 
 interface FoodItem {
   id?: string;
@@ -22,6 +25,9 @@ interface FoodItem {
   sugar: number;
   sodium: number;
   image?: string;
+  barcode?: string;
+  ingredientsText?: string;
+  ingredientsAvailable?: boolean;
 }
 
 interface FoodConfirmationCardProps {
@@ -50,13 +56,35 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
   const [isChecked, setIsChecked] = useState(false);
+  const [showManualIngredientEntry, setShowManualIngredientEntry] = useState(false);
+  const [manualIngredients, setManualIngredients] = useState('');
   const { toast } = useToast();
+  const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
+  const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
     setCurrentFoodItem(foodItem);
     setIsChecked(false); // Reset checkbox when new food item is loaded
-  }, [foodItem]);
+    setManualIngredients(''); // Reset manual ingredients
+    
+    // Auto-check ingredients if available
+    if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
+      checkIngredients(foodItem.ingredientsText);
+    }
+  }, [foodItem, checkIngredients]);
+
+  // Trigger coach response when flagged ingredients are detected
+  React.useEffect(() => {
+    if (flaggedIngredients.length > 0 && currentFoodItem) {
+      // Mock coach message callback for demo
+      const handleCoachMessage = (message: any) => {
+        console.log('Coach response triggered for flagged ingredients:', message);
+      };
+      
+      triggerCoachResponseForIngredients(flaggedIngredients, handleCoachMessage);
+    }
+  }, [flaggedIngredients, currentFoodItem, triggerCoachResponseForIngredients]);
 
   if (!currentFoodItem) return null;
 
@@ -144,6 +172,33 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       description: "Food details updated successfully.",
     });
   };
+
+  const handleManualIngredientSubmit = async (ingredientsText: string) => {
+    setManualIngredients(ingredientsText);
+    
+    // Update the current food item with manual ingredients
+    if (currentFoodItem) {
+      setCurrentFoodItem({
+        ...currentFoodItem,
+        ingredientsText,
+        ingredientsAvailable: true
+      });
+    }
+    
+    // Check the manually entered ingredients
+    await checkIngredients(ingredientsText);
+    
+    setShowManualIngredientEntry(false);
+    toast({
+      title: "Ingredients Added",
+      description: "Successfully checked for harmful ingredients.",
+    });
+  };
+
+  const isFromBarcode = currentFoodItem?.barcode ? true : false;
+  const hasIngredients = currentFoodItem?.ingredientsAvailable && 
+    (currentFoodItem?.ingredientsText?.length || 0) > 0;
+  const needsManualIngredients = isFromBarcode && !hasIngredients;
 
   const healthScore = getHealthScore(currentFoodItem);
   const healthBadge = getHealthBadge(healthScore);
@@ -252,11 +307,58 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             </div>
 
+            {/* Manual Ingredient Entry Alert for Barcode Items */}
+            {needsManualIngredients && (
+              <div className="mb-4">
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-medium text-orange-800 dark:text-orange-200 mb-1">
+                        No ingredients detected
+                      </h4>
+                      <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                        We found nutrition info but no ingredients list. Add ingredients manually to check for harmful additives, allergens, and other concerning ingredients.
+                      </p>
+                      <Button
+                        onClick={() => setShowManualIngredientEntry(true)}
+                        size="sm"
+                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Ingredients
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ingredient Status for Barcode Items */}
+            {isFromBarcode && hasIngredients && (
+              <div className="mb-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Ingredients detected and analyzed
+                    </span>
+                    {flaggedIngredients.length > 0 && (
+                      <Badge variant="destructive" className="text-xs ml-2">
+                        {flaggedIngredients.length} flagged
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tabs for Nutrition and Health */}
             <Tabs defaultValue="nutrition" className="mb-6">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-700 rounded-xl">
+              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
                 <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
                 <TabsTrigger value="health" className="rounded-lg">Health Check</TabsTrigger>
+                <TabsTrigger value="ingredients" className="rounded-lg">Ingredients</TabsTrigger>
               </TabsList>
               
               <TabsContent value="nutrition" className="space-y-3 mt-4">
@@ -335,6 +437,77 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     </div>
                   )}
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="ingredients" className="space-y-4 mt-4">
+                {hasIngredients ? (
+                  <div className="space-y-3">
+                    {/* Flagged Ingredients Alert */}
+                    {flaggedIngredients.length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                              ⚠️ {flaggedIngredients.length} Concerning Ingredient{flaggedIngredients.length > 1 ? 's' : ''} Found
+                            </p>
+                            <div className="space-y-1">
+                              {flaggedIngredients.slice(0, 3).map((ingredient, index) => (
+                                <div key={index} className="text-xs text-red-700 dark:text-red-300">
+                                  <span className="font-medium">{ingredient.name}</span> - {ingredient.description}
+                                </div>
+                              ))}
+                              {flaggedIngredients.length > 3 && (
+                                <p className="text-xs text-red-700 dark:text-red-300">
+                                  +{flaggedIngredients.length - 3} more flagged ingredients
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ingredients Text Display */}
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Ingredients List:
+                      </h4>
+                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {currentFoodItem?.ingredientsText || manualIngredients}
+                      </p>
+                    </div>
+
+                    {flaggedIngredients.length === 0 && (
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <span className="text-sm text-green-800 dark:text-green-200">
+                            ✅ No concerning ingredients detected
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      No ingredients information available
+                    </p>
+                    {isFromBarcode && (
+                      <Button
+                        onClick={() => setShowManualIngredientEntry(true)}
+                        size="sm"
+                        variant="outline"
+                        className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Ingredients Manually
+                      </Button>
+                    )}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
 
