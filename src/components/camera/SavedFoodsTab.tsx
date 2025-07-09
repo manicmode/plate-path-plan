@@ -18,6 +18,7 @@ interface SavedFood {
   sodium: number;
   created_at: string;
   image_url?: string;
+  log_count: number;
 }
 
 interface SavedFoodsTabProps {
@@ -34,12 +35,24 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
       if (!user?.id) return;
 
       try {
+        // Get frequency data with aggregated counts
         const { data, error } = await supabase
           .from('nutrition_logs')
-          .select('*')
+          .select(`
+            food_name,
+            calories,
+            protein,
+            carbs,
+            fat,
+            fiber,
+            sugar,
+            sodium,
+            image_url,
+            created_at,
+            id
+          `)
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching saved foods:', error);
@@ -47,14 +60,56 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
           return;
         }
 
-        // Group by food name and keep most recent
-        const uniqueFoods = data.reduce((acc: SavedFood[], food) => {
-          const existing = acc.find(f => f.food_name.toLowerCase() === food.food_name.toLowerCase());
-          if (!existing) {
-            acc.push(food);
+        // Group by food name, count frequency, and keep most recent data
+        const foodMap = new Map<string, SavedFood>();
+        
+        data.forEach(food => {
+          const normalizedName = food.food_name.toLowerCase();
+          const existing = foodMap.get(normalizedName);
+          
+          if (existing) {
+            // Increment count and keep most recent data
+            existing.log_count++;
+            if (new Date(food.created_at) > new Date(existing.created_at)) {
+              existing.id = food.id;
+              existing.calories = food.calories || 0;
+              existing.protein = food.protein || 0;
+              existing.carbs = food.carbs || 0;
+              existing.fat = food.fat || 0;
+              existing.fiber = food.fiber || 0;
+              existing.sugar = food.sugar || 0;
+              existing.sodium = food.sodium || 0;
+              existing.created_at = food.created_at;
+              existing.image_url = food.image_url;
+            }
+          } else {
+            // Add new food with initial count
+            foodMap.set(normalizedName, {
+              id: food.id,
+              food_name: food.food_name,
+              calories: food.calories || 0,
+              protein: food.protein || 0,
+              carbs: food.carbs || 0,
+              fat: food.fat || 0,
+              fiber: food.fiber || 0,
+              sugar: food.sugar || 0,
+              sodium: food.sodium || 0,
+              created_at: food.created_at,
+              image_url: food.image_url,
+              log_count: 1
+            });
           }
-          return acc;
-        }, []);
+        });
+
+        // Convert to array and sort by frequency (descending), then by recency
+        const uniqueFoods = Array.from(foodMap.values())
+          .sort((a, b) => {
+            if (b.log_count !== a.log_count) {
+              return b.log_count - a.log_count; // Higher frequency first
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); // More recent first
+          })
+          .slice(0, 20); // Limit to top 20
 
         setSavedFoods(uniqueFoods);
       } catch (error) {
@@ -119,9 +174,14 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
                   <span>{food.carbs}g carbs</span>
                   <span>{food.fat}g fat</span>
                 </div>
-                <div className="flex items-center space-x-1 text-xs text-muted-foreground mt-1">
-                  <Clock className="h-3 w-3" />
-                  <span>{new Date(food.created_at).toLocaleDateString()}</span>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{new Date(food.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <span className="text-primary font-medium">
+                    Logged {food.log_count}×
+                  </span>
                 </div>
               </div>
               <Button
