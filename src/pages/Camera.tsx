@@ -731,8 +731,15 @@ const CameraPage = () => {
       setReviewItems([]);
       setShowReviewScreen(false);
 
-      const response = await supabase.functions.invoke('lookup-barcode', {
-        body: { barcode }
+      // Get global search setting (defaults to true for best user experience)
+      const enableGlobalSearch = safeGetJSON('global_barcode_search', true);
+      console.log('Global search enabled:', enableGlobalSearch);
+
+      const response = await supabase.functions.invoke('barcode-lookup-global', {
+        body: { 
+          barcode,
+          enableGlobalSearch 
+        }
       });
 
       if (response.error) {
@@ -749,6 +756,8 @@ const CameraPage = () => {
       const product = response.data.product;
       console.log('=== BARCODE LOOKUP SUCCESS ===');
       console.log('Product found:', product);
+      console.log('Product source:', product.source);
+      console.log('Product region:', product.region);
 
       // Create food item from barcode data
       const foodItem = {
@@ -772,6 +781,17 @@ const CameraPage = () => {
         barcode,
         productName: foodItem.name,
         nutrition: product.nutrition
+      });
+
+      // Add to barcode history with enhanced metadata
+      addToHistory({
+        barcode,
+        productName: product.name,
+        brand: product.brand,
+        nutrition: product.nutrition,
+        image: product.image,
+        source: product.source,
+        region: product.region
       });
 
       // Set up for confirmation - ONLY barcode confirmation, no food detection UI
