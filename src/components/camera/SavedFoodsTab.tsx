@@ -169,7 +169,7 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
               <Button
                 onClick={() => handleRelogFood(food)}
                 size="sm"
-                className="absolute top-0 right-0 h-8 px-3"
+                className="absolute -top-2 -right-2 h-7 px-2 text-xs"
               >
                 <Repeat className="h-3 w-3 mr-1" />
                 Log Again

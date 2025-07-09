@@ -37,14 +37,17 @@ const Layout = ({ children }: LayoutProps) => {
   const handleNavigation = useCallback((path: string) => {
     if (isNavigating) return;
     
-    // For camera/log tab, always navigate to main camera page even if already on camera
+    // For camera/log tab, always navigate to main camera page and reset any sub-tab state
     if (path === '/camera') {
       setIsNavigating(true);
-      navigate(path);
+      // Force a full page reload to reset any component state
+      navigate(path, { replace: true });
+      // Force re-render by navigating away and back
       setTimeout(() => {
+        navigate(path, { replace: true });
         scrollToTop();
         setIsNavigating(false);
-      }, 150);
+      }, 50);
       return;
     }
     
