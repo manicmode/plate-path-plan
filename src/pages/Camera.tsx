@@ -13,7 +13,7 @@ import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
-import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
+
 import { safeGetJSON } from '@/lib/safeStorage';
 
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
@@ -89,7 +89,6 @@ const CameraPage = () => {
   const [inputSource, setInputSource] = useState<'photo' | 'voice' | 'manual' | 'barcode'>('photo');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [isLoadingBarcode, setIsLoadingBarcode] = useState(false);
-  const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
   const { addRecentBarcode } = useRecentBarcodes();
   const { addToHistory } = useBarcodeHistory();
   
@@ -1436,29 +1435,6 @@ const CameraPage = () => {
                     )}
                   </Button>
                   
-                  {/* Manual Barcode Entry Tab */}
-                  <Button
-                    onClick={() => {
-                      setShowManualBarcodeEntry(true);
-                      setInputSource('barcode');
-                      resetErrorState();
-                    }}
-                    disabled={isLoadingBarcode}
-                    className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-                    size="lg"
-                  >
-                    {isLoadingBarcode ? (
-                      <>
-                        <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full" />
-                        <span className="text-sm font-medium">Looking up...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-6 w-6" />
-                        <span className="text-sm font-medium">Enter Barcode</span>
-                      </>
-                    )}
-                  </Button>
                   
                   {/* Manual Entry Tab */}
                   <Button
@@ -1870,16 +1846,6 @@ const CameraPage = () => {
         onBarcodeDetected={handleBarcodeDetected}
       />
       
-      {/* Manual Barcode Entry Modal */}
-      {showManualBarcodeEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <ManualBarcodeEntry
-            onBarcodeEntered={handleBarcodeDetected}
-            onCancel={() => setShowManualBarcodeEntry(false)}
-            isProcessing={isLoadingBarcode}
-          />
-        </div>
-      )}
     </div>
   );
 };

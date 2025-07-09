@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, ScanBarcode, AlertCircle } from 'lucide-react';
+import { X, ScanBarcode, AlertCircle, FileText } from 'lucide-react';
 import { BarcodeScanner as CapBarcodeScanner, BarcodeFormat, LensFacing } from '@capacitor-mlkit/barcode-scanning';
 import { toast } from 'sonner';
 
@@ -19,6 +19,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [barcodeValue, setBarcodeValue] = useState('');
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -114,7 +116,36 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (isScanning) {
       await stopScan();
     }
+    setShowManualEntry(false);
+    setBarcodeValue('');
     onClose();
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!barcodeValue.trim()) {
+      toast.error('Please enter a barcode number');
+      return;
+    }
+
+    // Basic validation for common barcode formats
+    const cleanBarcode = barcodeValue.trim().replace(/\s+/g, '');
+    
+    // Check for valid barcode patterns (UPC, EAN, etc.)
+    if (!/^\d{8,14}$/.test(cleanBarcode)) {
+      toast.error('Please enter a valid barcode (8-14 digits)');
+      return;
+    }
+
+    onBarcodeDetected(cleanBarcode);
+    onClose();
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits and spaces
+    const value = e.target.value.replace(/[^\d\s]/g, '');
+    setBarcodeValue(value);
   };
 
   // Enhanced fallback for unsupported devices
@@ -200,6 +231,69 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             </div>
           ) : !isSupported ? (
             <UnsupportedDeviceFallback />
+          ) : showManualEntry ? (
+            /* Manual Entry Form */
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-8 w-8 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Enter Barcode Manually
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Type or paste the barcode number from the product
+                </p>
+              </div>
+
+              <form onSubmit={handleManualSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Barcode Number
+                  </label>
+                  <input
+                    type="text"
+                    value={barcodeValue}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 123456789012"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-center text-lg font-mono tracking-wider bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    maxLength={14}
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                    Look for numbers below the barcode stripes
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowManualEntry(false)}
+                    className="w-full"
+                  >
+                    Back to Scanner
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!barcodeValue.trim()}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                  >
+                    Search Product
+                  </Button>
+                </div>
+              </form>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-2">
+                  <ScanBarcode className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div className="text-xs text-blue-700 dark:text-blue-300">
+                    <p className="font-medium mb-1">Supported formats:</p>
+                    <p>UPC-A (12 digits), EAN-13 (13 digits), EAN-8 (8 digits)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               {/* Scanner Instructions */}
@@ -251,13 +345,27 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               {/* Action Buttons */}
               <div className="space-y-3">
                 {!isScanning ? (
-                  <Button
-                    onClick={startScan}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white h-12"
-                  >
-                    <ScanBarcode className="h-5 w-5 mr-2" />
-                    Start Scanning
-                  </Button>
+                  <>
+                    <Button
+                      onClick={startScan}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white h-12"
+                    >
+                      <ScanBarcode className="h-5 w-5 mr-2" />
+                      Start Scanning
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowManualEntry(true)}
+                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      🔎 Enter Barcode Manually
+                    </Button>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                      (For damaged or unscannable barcodes)
+                    </p>
+                  </>
                 ) : (
                   <Button
                     variant="outline"
