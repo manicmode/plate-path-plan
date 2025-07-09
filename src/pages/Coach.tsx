@@ -207,7 +207,7 @@ const Coach = () => {
       const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
         body: {
           message: messageToSend,
-          context: contextData,
+          userContext: contextData,
         },
       });
 

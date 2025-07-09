@@ -53,7 +53,7 @@ serve(async (req) => {
       userContext: requestBody.userContext
     }));
 
-    const { message, userContext } = requestBody;
+    const { message, userContext, flaggedIngredients } = requestBody;
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
     // Enhanced API key validation
@@ -91,7 +91,29 @@ serve(async (req) => {
       });
     }
 
-    // Create system prompt with user context
+    // Create system prompt with user context and flagged ingredients
+    let flaggedIngredientsContext = '';
+    if (flaggedIngredients && flaggedIngredients.length > 0) {
+      flaggedIngredientsContext = `
+
+FLAGGED INGREDIENTS DETECTED:
+${flaggedIngredients.map(ing => `- ${ing.name} (${ing.category}, ${ing.severity} severity): ${ing.description}`).join('\n')}
+
+IMPORTANT: The user just logged food with these concerning ingredients. Your response should:
+1. Address the flagged ingredients specifically and personally
+2. Explain why they're concerning in simple terms
+3. Suggest healthier alternatives where possible
+4. Be supportive and encouraging, not judgmental
+5. Vary your tone based on severity:
+   - High severity: Be firm but kind ("This one's worth avoiding if possible")
+   - Moderate severity: Be informative and suggest alternatives
+   - Low severity: Educate and raise awareness
+6. Batch similar flags (e.g., "2 harmful additives and 1 allergen detected...")
+7. Keep the message under 200 words but make it actionable
+
+Example tone: "Hey! I noticed your meal contains *Aspartame* (a harmful additive). It's been linked to headaches and neurological effects. If possible, try alternatives like stevia or monk fruit! Great job staying aware — you're doing amazing."`;
+    }
+
     const systemPrompt = `You are an expert AI nutrition and wellness coach. Your responses should be:
 - Encouraging and motivational
 - Evidence-based and practical
@@ -103,7 +125,7 @@ User Context:
 - Target Calories: ${userContext?.targetCalories || 'Not set'}
 - Target Protein: ${userContext?.targetProtein || 'Not set'}g
 - Today's Progress: ${userContext?.progress?.calories || 0} calories, ${userContext?.progress?.protein || 0}g protein
-- Carbs: ${userContext?.progress?.carbs || 0}g, Fat: ${userContext?.progress?.fat || 0}g
+- Carbs: ${userContext?.progress?.carbs || 0}g, Fat: ${userContext?.progress?.fat || 0}g${flaggedIngredientsContext}
 
 Always provide actionable advice and maintain a supportive, professional tone.`;
 

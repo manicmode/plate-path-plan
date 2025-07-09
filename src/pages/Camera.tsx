@@ -24,6 +24,7 @@ import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
+import { IngredientCoachDemo } from '@/components/IngredientCoachDemo';
 import jsQR from 'jsqr';
 
 interface RecognizedFood {
@@ -1856,6 +1857,11 @@ const CameraPage = () => {
         onClose={() => setShowBarcodeScanner(false)}
         onBarcodeDetected={handleBarcodeDetected}
       />
+
+      {/* Demo component for testing ingredient flagging + coach integration */}
+      <div className="mt-8 pt-8 border-t border-border/20">
+        <IngredientCoachDemo />
+      </div>
       
     </div>
   );
