@@ -1514,7 +1514,7 @@ const CameraPage = () => {
                 onClick={() => setActiveTab('main')}
                 className="text-muted-foreground hover:text-foreground"
               >
-                ← Back to Camera
+                ← Back
               </Button>
             </div>
             <SavedFoodsTab onFoodSelect={handleTabFoodSelect} />
@@ -1532,7 +1532,7 @@ const CameraPage = () => {
                 onClick={() => setActiveTab('main')}
                 className="text-muted-foreground hover:text-foreground"
               >
-                ← Back to Camera
+                ← Back
               </Button>
             </div>
             <RecentFoodsTab 

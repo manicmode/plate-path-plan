@@ -35,7 +35,21 @@ const Layout = ({ children }: LayoutProps) => {
   }, []);
 
   const handleNavigation = useCallback((path: string) => {
-    if (isNavigating || location.pathname === path) return;
+    if (isNavigating) return;
+    
+    // For camera/log tab, always navigate to main camera page even if already on camera
+    if (path === '/camera') {
+      setIsNavigating(true);
+      navigate(path);
+      setTimeout(() => {
+        scrollToTop();
+        setIsNavigating(false);
+      }, 150);
+      return;
+    }
+    
+    // For other paths, only navigate if not already there
+    if (location.pathname === path) return;
     
     setIsNavigating(true);
     

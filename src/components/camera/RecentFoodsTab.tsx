@@ -69,8 +69,17 @@ export const RecentFoodsTab = ({ onFoodSelect, onBarcodeSelect }: RecentFoodsTab
           {todaysFoods.map((food) => (
             <Card key={food.id} className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
+                <div className="relative">
+                  <Button
+                    onClick={() => handleRelogFood(food)}
+                    size="sm"
+                    className="absolute top-0 right-0 h-8 px-3"
+                  >
+                    <Repeat className="h-3 w-3 mr-1" />
+                    Log Again
+                  </Button>
+                  
+                  <div className="pr-20">
                     <h4 className="font-medium text-foreground">{food.name}</h4>
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                       <span>{food.calories} cal</span>
@@ -83,14 +92,6 @@ export const RecentFoodsTab = ({ onFoodSelect, onBarcodeSelect }: RecentFoodsTab
                       <span>{food.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => handleRelogFood(food)}
-                    size="sm"
-                    className="ml-4"
-                  >
-                    <Repeat className="h-4 w-4 mr-1" />
-                    Log Again
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -105,8 +106,17 @@ export const RecentFoodsTab = ({ onFoodSelect, onBarcodeSelect }: RecentFoodsTab
           {recentBarcodesLimited.map((barcodeItem, index) => (
             <Card key={`${barcodeItem.barcode}-${index}`} className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
+                <div className="relative">
+                  <Button
+                    onClick={() => handleRelogBarcode(barcodeItem)}
+                    size="sm"
+                    className="absolute top-0 right-0 h-8 px-3"
+                  >
+                    <Repeat className="h-3 w-3 mr-1" />
+                    Log Again
+                  </Button>
+                  
+                  <div className="pr-20">
                     <div className="flex items-center space-x-2">
                       <Barcode className="h-4 w-4 text-muted-foreground" />
                       <h4 className="font-medium text-foreground">{barcodeItem.productName}</h4>
@@ -122,14 +132,6 @@ export const RecentFoodsTab = ({ onFoodSelect, onBarcodeSelect }: RecentFoodsTab
                       <span>{barcodeItem.timestamp.toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => handleRelogBarcode(barcodeItem)}
-                    size="sm"
-                    className="ml-4"
-                  >
-                    <Repeat className="h-4 w-4 mr-1" />
-                    Log Again
-                  </Button>
                 </div>
               </CardContent>
             </Card>

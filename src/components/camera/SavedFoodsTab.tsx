@@ -165,8 +165,17 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
       {savedFoods.map((food) => (
         <Card key={food.id} className="hover:shadow-md transition-shadow cursor-pointer">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
+            <div className="relative">
+              <Button
+                onClick={() => handleRelogFood(food)}
+                size="sm"
+                className="absolute top-0 right-0 h-8 px-3"
+              >
+                <Repeat className="h-3 w-3 mr-1" />
+                Log Again
+              </Button>
+              
+              <div className="pr-20">
                 <h4 className="font-medium text-foreground">{food.food_name}</h4>
                 <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                   <span>{food.calories} cal</span>
@@ -184,14 +193,6 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
                   </span>
                 </div>
               </div>
-              <Button
-                onClick={() => handleRelogFood(food)}
-                size="sm"
-                className="ml-4"
-              >
-                <Repeat className="h-4 w-4 mr-1" />
-                Log Again
-              </Button>
             </div>
           </CardContent>
         </Card>
