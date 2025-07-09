@@ -795,7 +795,7 @@ const CameraPage = () => {
       });
 
       // Set up for confirmation - ONLY barcode confirmation, no food detection UI
-      setSelectedFoodItem(foodItem);
+      setRecognizedFoods([foodItem]);
       setShowConfirmation(true);
       
       // Ensure we're in barcode mode to prevent food UI from showing
