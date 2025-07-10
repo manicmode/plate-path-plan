@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSearchParams } from 'react-router-dom';
@@ -23,13 +23,37 @@ const Analytics = () => {
   const isMobile = useIsMobile();
   const [animationDelay, setAnimationDelay] = useState(0);
   const [searchParams] = useSearchParams();
-  const view = searchParams.get('view');
+  const section = searchParams.get('section');
+  
+  // Refs for auto-scrolling
+  const stepsRef = useRef<HTMLDivElement>(null);
+  const exerciseRef = useRef<HTMLDivElement>(null);
   
   useScrollToTop();
 
   useEffect(() => {
     setAnimationDelay(100);
   }, []);
+
+  // Auto-scroll to specific section when navigated from home page
+  useEffect(() => {
+    if (section) {
+      const scrollToSection = () => {
+        switch (section) {
+          case 'steps':
+            stepsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+          case 'exercise':
+            exerciseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+        }
+      };
+      
+      // Delay scroll to ensure content is rendered
+      const timer = setTimeout(scrollToSection, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [section]);
 
   // Get all calculated data using the custom hook
   const {
@@ -43,26 +67,6 @@ const Analytics = () => {
     user
   } = useAnalyticsCalculations();
 
-  // If a specific view is requested, show that section
-  if (view === 'steps') {
-    return (
-      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
-        <div className="space-y-6 p-4 animate-fade-in">
-          <StepsProgressSection className="mb-8" />
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'exercise') {
-    return (
-      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
-        <div className="space-y-6 p-4 animate-fade-in">
-          <ExerciseProgressSection className="mb-8" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
@@ -104,6 +108,16 @@ const Analytics = () => {
           exerciseCaloriesData={exerciseCaloriesData} 
           weeklyAverage={weeklyAverage} 
         />
+
+        {/* Detailed Steps Progress - Integrated */}
+        <div ref={stepsRef} id="steps-section">
+          <StepsProgressSection />
+        </div>
+
+        {/* Detailed Exercise Progress - Integrated */}
+        <div ref={exerciseRef} id="exercise-section">
+          <ExerciseProgressSection />
+        </div>
 
         {/* Achievements & Streaks - Enhanced */}
         <AchievementsSection />

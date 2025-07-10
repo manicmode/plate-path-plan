@@ -752,7 +752,7 @@ const Home = () => {
           {/* Steps Tracker Card */}
           <Card 
             className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-40' : 'h-44'} shadow-lg hover:shadow-xl`}
-            onClick={() => navigate('/analytics?view=steps')}
+            onClick={() => navigate('/analytics?section=steps')}
           >
             <CardContent className="flex flex-col justify-between h-full p-0">
               <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col justify-between`}>
@@ -787,7 +787,7 @@ const Home = () => {
           {/* Exercise Card */}
           <Card 
             className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-40' : 'h-44'} shadow-lg hover:shadow-xl`}
-            onClick={() => navigate('/analytics?view=exercise')}
+            onClick={() => navigate('/analytics?section=exercise')}
           >
             <CardContent className="flex flex-col justify-between h-full p-0">
               <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col justify-between`}>
