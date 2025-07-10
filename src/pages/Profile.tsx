@@ -11,7 +11,7 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
 import { NutritionGoals } from '@/components/profile/NutritionGoals';
 import { DietaryGoals } from '@/components/profile/DietaryGoals';
-import { TrackerSelection } from '@/components/profile/TrackerSelection';
+
 import { AllergiesSection } from '@/components/profile/AllergiesSection';
 import { NotificationSettings } from '@/components/profile/NotificationSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
@@ -19,18 +19,9 @@ import { LogoutSection } from '@/components/profile/LogoutSection';
 import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 
-// Helper function to save preferences
-const saveUserPreferences = (preferences: any) => {
-  try {
-    console.log('Saving preferences to localStorage:', preferences);
-    localStorage.setItem('user_preferences', JSON.stringify(preferences));
-  } catch (error) {
-    console.error('Failed to save preferences:', error);
-  }
-};
 
 const Profile = () => {
-  const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
   
@@ -49,16 +40,8 @@ const Profile = () => {
     targetSupplements: user?.targetSupplements || 3,
     allergies: user?.allergies?.join(', ') || '',
     dietaryGoals: user?.dietaryGoals || [],
-    selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
   });
 
-  // Save tracker preferences whenever selectedTrackers changes
-  useEffect(() => {
-    if (isEditing && formData.selectedTrackers) {
-      console.log('FormData selectedTrackers changed:', formData.selectedTrackers);
-      saveUserPreferences({ selectedTrackers: formData.selectedTrackers });
-    }
-  }, [formData.selectedTrackers, isEditing]);
 
   // Handle URL parameters for auto-editing
   useEffect(() => {
@@ -95,8 +78,6 @@ const Profile = () => {
   }, [location]);
 
   const handleSave = async () => {
-    console.log('Saving profile with trackers:', formData.selectedTrackers);
-    
     updateProfile({
       name: formData.name,
       targetCalories: Number(formData.targetCalories),
@@ -109,11 +90,8 @@ const Profile = () => {
       dietaryGoals: formData.dietaryGoals,
     });
     
-    // Update selected trackers - this will trigger localStorage and user state updates
-    await updateSelectedTrackers(formData.selectedTrackers);
-    
     setIsEditing(false);
-    toast.success('Profile updated successfully! Changes will appear on the home page.');
+    toast.success('Profile updated successfully!');
   };
 
   const handleCancel = () => {
@@ -129,7 +107,7 @@ const Profile = () => {
       targetSupplements: user?.targetSupplements || 3,
       allergies: user?.allergies?.join(', ') || '',
       dietaryGoals: user?.dietaryGoals || [],
-      selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
+      
     });
   };
 
@@ -142,28 +120,6 @@ const Profile = () => {
     }));
   };
 
-  const toggleTracker = (trackerId: string) => {
-    const currentTrackers = formData.selectedTrackers;
-    const isSelected = currentTrackers.includes(trackerId);
-    
-    console.log('toggleTracker called:', trackerId, 'current:', currentTrackers);
-    
-    if (isSelected) {
-      const newTrackers = currentTrackers.filter(t => t !== trackerId);
-      console.log('Removing tracker, new list:', newTrackers);
-      setFormData(prev => ({
-        ...prev,
-        selectedTrackers: newTrackers
-      }));
-    } else {
-      const newTrackers = [...currentTrackers, trackerId];
-      console.log('Adding tracker, new list:', newTrackers);
-      setFormData(prev => ({
-        ...prev,
-        selectedTrackers: newTrackers
-      }));
-    }
-  };
 
   const updateFormData = (updates: Partial<typeof formData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -212,13 +168,6 @@ const Profile = () => {
         onEditToggle={() => setIsEditing(!isEditing)}
       />
 
-      {/* Tracker Selection */}
-      <TrackerSelection 
-        selectedTrackers={formData.selectedTrackers}
-        isEditing={isEditing}
-        onToggleTracker={toggleTracker}
-        onEditToggle={() => setIsEditing(!isEditing)}
-      />
 
       {/* Notification Settings */}
       <NotificationSettings />
