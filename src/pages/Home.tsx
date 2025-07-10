@@ -451,180 +451,120 @@ const Home = () => {
           <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4`}>
             {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
           </h1>
-          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text`}>
-            {user?.name?.split(' ')[0] || 'Superstar'}! ✨
-          </h2>
+          <p className={`${isMobile ? 'text-lg' : 'text-xl'} text-gray-600 dark:text-gray-300`}>
+            {user?.name || 'Friend'} 👋
+          </p>
         </div>
-        <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Dynamic Tracker Cards based on user selection */}
-      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
-        {displayedTrackers.map((tracker, index) => (
-          <div 
-            key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
-            onClick={tracker.onClick}
-            title={getMotivationalMessage(tracker.percentage, tracker.name)}
-            style={{ 
-              background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
-              position: 'relative',
-              zIndex: 20
-            }}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
-            <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
-              <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
-                <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
-                  <circle
-                    cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
-                    strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
-                    className="transition-all duration-2000 ease-out filter drop-shadow-lg"
-                  />
-                  <defs>
-                    <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
-                      {tracker.name === 'Calories' && (
-                        <>
-                          <stop offset="0%" stopColor="#FF6B35" />
-                          <stop offset="50%" stopColor="#F7931E" />
-                          <stop offset="100%" stopColor="#FF4500" />
-                        </>
-                      )}
-                      {tracker.name === 'Protein' && (
-                        <>
-                          <stop offset="0%" stopColor="#3B82F6" />
-                          <stop offset="50%" stopColor="#1E40AF" />
-                          <stop offset="100%" stopColor="#1E3A8A" />
-                        </>
-                      )}
-                      {tracker.name === 'Carbs' && (
-                        <>
-                          <stop offset="0%" stopColor="#FBBF24" />
-                          <stop offset="50%" stopColor="#F59E0B" />
-                          <stop offset="100%" stopColor="#D97706" />
-                        </>
-                      )}
-                      {tracker.name === 'Fat' && (
-                        <>
-                          <stop offset="0%" stopColor="#10B981" />
-                          <stop offset="50%" stopColor="#059669" />
-                          <stop offset="100%" stopColor="#047857" />
-                        </>
-                      )}
-                      {tracker.name === 'Hydration' && (
-                        <>
-                          <stop offset="0%" stopColor="#00D4FF" />
-                          <stop offset="50%" stopColor="#0099CC" />
-                          <stop offset="100%" stopColor="#006699" />
-                        </>
-                      )}
-                      {tracker.name === 'Supplements' && (
-                        <>
-                          <stop offset="0%" stopColor="#DA44BB" />
-                          <stop offset="50%" stopColor="#9333EA" />
-                          <stop offset="100%" stopColor="#7C3AED" />
-                        </>
-                      )}
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
-                  <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
-                    {Math.round(tracker.percentage)}%
-                  </span>
-                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
-                </div>
-              </div>
-              <div className="text-center">
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
-                  {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Enhanced Logging Actions Section with proper spacing */}
-      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
-        {/* Primary Action: Log Food - Full Width */}
-        <Card 
-          className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
-          onClick={() => navigate('/camera')}
-        >
-          <CardContent className={`${isMobile ? 'p-6' : 'p-8'} text-center`}>
-            <div className="flex flex-col items-center space-y-4">
-              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-blue-500 to-sky-500 rounded-3xl flex items-center justify-center shadow-2xl log-food-glow`}>
-                <Camera className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
-              </div>
-              <div className="space-y-2">
-                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-800 dark:text-gray-100`}>
-                  Log Food
-                </h3>
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
-                  Take photo or speak to log
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Smart Quick-Log Dropdown Section - Same width as Log Food button */}
-        <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
-          <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
-            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-              {/* AI Quick Predictions Area - Collapsed State */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center">
-                      <Zap className="h-4 w-4 text-white" />
+      {/* Enhanced Main Tracking Action Cards */}
+      <div className="space-y-8 sm:space-y-12">
+        {/* Grid for selected trackers */}
+        <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'lg:grid-cols-3 grid-cols-2 gap-6 lg:gap-8'} items-stretch`}>
+          {displayedTrackers.map((tracker, index) => (
+            <Card
+              key={tracker.name}
+              onClick={tracker.onClick}
+              className={`tracker-card modern-action-card border-0 rounded-3xl overflow-hidden cursor-pointer transition-all duration-500 shadow-lg hover:shadow-xl ${tracker.shadow} animate-slide-up ${isMobile ? 'h-48' : 'h-52'}`}
+              style={{ animationDelay: `${index * 100}ms` }}
+            >
+              <CardContent className="flex flex-col justify-between h-full p-0">
+                <div className="bg-gradient-to-br from-background/95 to-background/80 backdrop-blur-sm flex flex-col justify-between h-full">
+                  <div className={`${isMobile ? 'p-5' : 'p-6'} text-center flex flex-col justify-between h-full`}>
+                    <div className="flex-shrink-0 text-center">
+                      <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br ${tracker.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg tracker-icon-glow`}>
+                        <span className={`${isMobile ? 'text-3xl' : 'text-4xl'}`}>{tracker.emoji}</span>
+                      </div>
+                      <h4 className={`font-bold mb-2 ${isMobile ? 'text-lg' : 'text-xl'} ${tracker.textColor} leading-tight`}>
+                        {tracker.name}
+                      </h4>
                     </div>
-                    <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-200`}>
-                      AI Quick Predictions
-                    </h4>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-1">
-                    <Clock className="h-3 w-3" />
-                    <span>Smart suggestions</span>
+                    <div className="flex-grow flex flex-col justify-center space-y-3">
+                      <p className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold neon-text leading-tight`}>
+                        {tracker.current.toFixed(0)}{tracker.unit}
+                      </p>
+                      <p className={`${isMobile ? 'text-sm' : 'text-base'} ${tracker.textColorSecondary} leading-tight`}>
+                        of {tracker.target}{tracker.unit}
+                      </p>
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} opacity-80 leading-tight`}>
+                        {getMotivationalMessage(tracker.percentage, tracker.name)}
+                      </p>
+                    </div>
+                    {/* Positioned slider with proper spacing */}
+                    <div className="w-full bg-white/20 dark:bg-gray-800/30 rounded-full h-2 mt-4 flex-shrink-0">
+                      <div
+                        className={`${tracker.gradient} h-2 rounded-full transition-all duration-1500 glow-effect`}
+                        style={{ width: `${Math.min(tracker.percentage, 100)}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-                {/* Quick Suggestions - Full width clickable blocks */}
-                <div className={`grid grid-cols-1 ${isMobile ? 'gap-2' : 'gap-3'}`}>
+        {/* Smart Quick-Log Section */}
+        <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
+          <Card className={`modern-action-card overflow-hidden border-0 rounded-3xl shadow-lg ${isMobile ? 'mx-2' : 'mx-4'}`}>
+            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg`}>
+                      <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                        Smart Quick-Log
+                      </h4>
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                        Tap to log frequent foods instantly
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/camera')}
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-0 rounded-xl px-4 py-2 shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <Camera className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
+                    {isMobile ? 'Scan' : 'Scan Food'}
+                  </Button>
+                </div>
+
+                {/* Quick suggestions grid - Always visible */}
+                <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-3 gap-4'}`}>
                   {quickLogSuggestions.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => handleQuickLog(item)}
-                      className={`${isMobile ? 'p-4' : 'p-5'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-md group w-full`}
+                      className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group w-full"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="text-3xl">🍽️</div>
-                          <div className="flex-1">
-                            <p className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors`}>
-                              {item.name}
-                            </p>
-                            <div className="flex items-center space-x-3 mt-1">
-                              <div className="flex items-center space-x-1">
-                                <span className="text-xs">🕒</span>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {item.usualTime}
-                                </p>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
-                                {item.calories} cal
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">🍽️</div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {item.name}
+                          </p>
+                          <div className="flex items-center space-x-3 mt-1">
+                            <div className="flex items-center space-x-1">
+                              <span className="text-xs">🕒</span>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {item.usualTime}
                               </p>
                             </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                              {item.calories} cal
+                            </p>
                           </div>
                         </div>
-                        <div className="text-emerald-500 group-hover:scale-110 transition-transform">
-                          <span className="text-sm font-medium">Tap to log</span>
-                        </div>
+                      </div>
+                      <div className="text-emerald-500 group-hover:scale-110 transition-transform">
+                        <span className="text-sm font-medium">Tap to log</span>
                       </div>
                     </div>
                   ))}
@@ -905,6 +845,7 @@ const Home = () => {
             </Card>
           </div>
         </div>
+      </div>
 
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
       <HomeAIInsights />
