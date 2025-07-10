@@ -70,10 +70,25 @@ const USDA_NUTRIENT_IDS = {
 };
 
 serve(async (req) => {
-  // CRITICAL DEPLOYMENT CHECK - New timestamp
-  const deployTimestamp = '2025-07-10T04:00:00Z';
-  console.log(`=== FUNCTION CREATED AND DEPLOYED: ${deployTimestamp} ===`);
-  console.log('Function file now exists - fixing 404 deployment issue');
+  // HEALTH CHECK - Function deployment verification
+  const deployTimestamp = '2025-07-10T04:15:00Z';
+  console.log(`=== FUNCTION HEALTH CHECK: ${deployTimestamp} ===`);
+  console.log('Function execution confirmed and working');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
+  // Simple health check endpoint
+  if (req.url.includes('/health')) {
+    console.log('Health check endpoint called');
+    return new Response(JSON.stringify({ 
+      status: 'healthy', 
+      timestamp: deployTimestamp,
+      message: 'Barcode function is working correctly'
+    }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
+  }
   
   if (req.method === 'OPTIONS') {
     console.log('CORS preflight request received');
@@ -89,9 +104,41 @@ serve(async (req) => {
     const requestId = crypto.randomUUID();
     console.log('Generated request ID:', requestId);
     
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid JSON in request body',
+          message: 'Please check your request format'
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    console.log('Request body received:', body);
+    
+    // Health check endpoint
+    if (body.health) {
+      console.log('Health check requested');
+      return new Response(JSON.stringify({ 
+        success: true,
+        status: 'healthy', 
+        timestamp: deployTimestamp,
+        message: 'Barcode function is working correctly'
+      }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+    
     const { barcode, enableGlobalSearch = true } = body;
-    console.log('Request body:', { barcode, enableGlobalSearch, requestId });
+    console.log('Barcode lookup params:', { barcode, enableGlobalSearch, requestId });
     
     if (!barcode) {
       console.error('No barcode provided in request');

@@ -762,15 +762,41 @@ const CameraPage = () => {
       const enableGlobalSearch = safeGetJSON('global_barcode_search', true);
       console.log('Global search enabled:', enableGlobalSearch);
 
-      console.log('=== CALLING BARCODE LOOKUP FUNCTION ===');
+      console.log('=== STEP 1: FUNCTION HEALTH CHECK ===');
+      
+      // Test function deployment with health check
+      try {
+        const healthResponse = await supabase.functions.invoke('barcode-lookup-global', {
+          body: { health: true }
+        });
+        console.log('Health check response:', healthResponse);
+      } catch (healthError) {
+        console.error('Health check failed:', healthError);
+        if (healthError.message?.includes('404') || healthError.message?.includes('not found')) {
+          toast.error("Service temporarily unavailable", {
+            description: "Please enter product manually below",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          setIsLoadingBarcode(false);
+          return;
+        }
+      }
+      
+      console.log('=== STEP 2: CALLING BARCODE LOOKUP FUNCTION ===');
       
       // Generate unique request ID to prevent stale responses
       const requestId = crypto.randomUUID();
       console.log('Function call params:', { barcode: cleanBarcode, enableGlobalSearch, requestId });
       
-      // Add timeout to detect silent failures
+      // Reduced timeout for faster fallback to manual entry
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Function call timeout after 15 seconds')), 15000)
+        setTimeout(() => reject(new Error('Function call timeout after 8 seconds')), 8000)
       );
       
       const functionCall = supabase.functions.invoke('barcode-lookup-global', {
@@ -793,15 +819,47 @@ const CameraPage = () => {
       if (response.error) {
         console.error('=== BARCODE LOOKUP API ERROR ===', response.error);
         
-        // Handle specific error types
-        if (response.error.message?.includes('404') || response.error.message?.includes('Not Found')) {
+        // Handle specific error types with immediate fallback to manual entry
+        if (response.error.message?.includes('404') || 
+            response.error.message?.includes('Not Found') ||
+            response.error.message?.includes('FunctionsError')) {
           console.error('Function deployment issue detected - 404 error');
-          throw new Error('Barcode lookup service is temporarily unavailable. Please try entering the product information manually.');
+          
+          toast.error("Service temporarily unavailable", {
+            description: "Enter product details manually",
+            action: {
+              label: "Enter Manually",
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+          return;
         }
         
-        if (response.error.message?.includes('timeout') || response.error.message?.includes('Timeout')) {
+        if (response.error.message?.includes('timeout') || 
+            response.error.message?.includes('Timeout') ||
+            response.error.message === 'Function call timeout after 8 seconds') {
           console.error('Function timeout detected');
-          throw new Error('Barcode lookup is taking too long. Please try again or enter the product manually.');
+          
+          toast.error("Request timed out", {
+            description: "Try manual entry instead",
+            action: {
+              label: "Enter Manually", 
+              onClick: () => {
+                setShowBarcodeNotFound(true);
+                setFailedBarcode(cleanBarcode);
+              }
+            }
+          });
+          
+          setShowBarcodeNotFound(true);
+          setFailedBarcode(cleanBarcode);
+          return;
         }
         
         throw new Error(response.error.message || 'Failed to lookup barcode. Please try manual entry.');
