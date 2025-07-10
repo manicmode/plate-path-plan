@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSearchParams } from 'react-router-dom';
 
 // Import new utility and components
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
@@ -15,10 +16,14 @@ import { ActivityExerciseSection } from '@/components/analytics/sections/Activit
 import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
 import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
+import { StepsProgressSection } from '@/components/analytics/sections/StepsProgressSection';
+import { ExerciseProgressSection } from '@/components/analytics/sections/ExerciseProgressSection';
 
 const Analytics = () => {
   const isMobile = useIsMobile();
   const [animationDelay, setAnimationDelay] = useState(0);
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get('view');
   
   useScrollToTop();
 
@@ -37,6 +42,27 @@ const Analytics = () => {
     macroData,
     user
   } = useAnalyticsCalculations();
+
+  // If a specific view is requested, show that section
+  if (view === 'steps') {
+    return (
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
+        <div className="space-y-6 p-4 animate-fade-in">
+          <StepsProgressSection className="mb-8" />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'exercise') {
+    return (
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
+        <div className="space-y-6 p-4 animate-fade-in">
+          <ExerciseProgressSection className="mb-8" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>

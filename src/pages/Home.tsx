@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import HomeAIInsights from '@/components/HomeAIInsights';
 import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
+import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
+import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -63,6 +65,12 @@ const Home = () => {
   // Add confirmation card state
   const [showConfirmationCard, setShowConfirmationCard] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
+  
+  // Exercise tracking state
+  const [showExerciseForm, setShowExerciseForm] = useState(false);
+  const [showExerciseReminder, setShowExerciseReminder] = useState(false);
+  const [todaysExercise, setTodaysExercise] = useState({ calories: 0, duration: 0 });
+  const [todaysSteps, setTodaysSteps] = useState(3731); // Mock data - will be replaced with real data later
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -340,6 +348,18 @@ const Home = () => {
     setSelectedFood(null);
   };
 
+  const handleExerciseLog = (exerciseData: ExerciseData) => {
+    setTodaysExercise(prev => ({
+      calories: prev.calories + exerciseData.caloriesBurned,
+      duration: prev.duration + exerciseData.duration,
+    }));
+  };
+
+  // Calculate net calories (goal - food intake + burned calories)
+  const netCalories = totalCalories - currentCalories + todaysExercise.calories;
+  const stepsGoal = 10000;
+  const stepsPercentage = Math.min((todaysSteps / stepsGoal) * 100, 100);
+
   // Emergency recovery handler
   const handleEmergencyRecovery = () => {
     console.log('Emergency recovery triggered');
@@ -410,6 +430,19 @@ const Home = () => {
         }}
         onConfirm={handleConfirmFood}
         foodItem={selectedFood}
+      />
+
+      {/* Exercise Log Form */}
+      <ExerciseLogForm
+        isOpen={showExerciseForm}
+        onClose={() => setShowExerciseForm(false)}
+        onSubmit={handleExerciseLog}
+      />
+
+      {/* Exercise Reminder Form */}
+      <ExerciseReminderForm
+        isOpen={showExerciseReminder}
+        onClose={() => setShowExerciseReminder(false)}
       />
 
       {/* Enhanced Greeting Section */}
@@ -713,6 +746,156 @@ const Home = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* NEW: Steps and Exercise Cards */}
+        <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
+          {/* Steps Tracker Card */}
+          <Card 
+            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-40' : 'h-44'} shadow-lg hover:shadow-xl`}
+            onClick={() => navigate('/analytics?view=steps')}
+          >
+            <CardContent className="flex flex-col justify-between h-full p-0">
+              <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col justify-between`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+                    <Footprints className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                      Steps
+                    </h4>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                    👟 {todaysSteps.toLocaleString()}
+                  </p>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-green-400 to-emerald-600 h-2 rounded-full transition-all duration-1500"
+                      style={{ width: `${stepsPercentage}%` }}
+                    ></div>
+                  </div>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Goal: {stepsGoal.toLocaleString()} steps
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Exercise Card */}
+          <Card 
+            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-40' : 'h-44'} shadow-lg hover:shadow-xl`}
+            onClick={() => navigate('/analytics?view=exercise')}
+          >
+            <CardContent className="flex flex-col justify-between h-full p-0">
+              <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col justify-between`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+                      <Activity className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                        Exercise
+                      </h4>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowExerciseForm(true);
+                    }}
+                    className="flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-1">
+                      <span className="text-red-500">🔥</span>
+                      <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-white`}>
+                        {todaysExercise.calories} cal
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Timer className="h-4 w-4 text-gray-500" />
+                      <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-white`}>
+                        {Math.floor(todaysExercise.duration / 60)}:{(todaysExercise.duration % 60).toString().padStart(2, '0')} hr
+                      </span>
+                    </div>
+                  </div>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Sync with Apple Health to view steps and exercise
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Net Calorie Card */}
+        <Card 
+          className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
+        >
+          <CardContent className={`${isMobile ? 'p-5' : 'p-6'} text-center`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
+                  <Target className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
+                </div>
+                <div className="text-left">
+                  <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                    Net Calories
+                  </h4>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Goal - Intake + Burned
+                  </p>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExerciseForm(true)}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Log Exercise"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExerciseReminder(true)}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Set Exercise Reminder"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold`}>
+                <span className={netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                  {netCalories > 0 ? '+' : ''}{netCalories}
+                </span>
+                <span className="text-gray-600 dark:text-gray-400 text-lg ml-1">cal</span>
+              </div>
+              <div className="text-center">
+                <div className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400 space-y-1`}>
+                  <div>{totalCalories} goal - {currentCalories} intake + {todaysExercise.calories} burned</div>
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} ${netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {netCalories >= 0 ? 'Calorie deficit achieved!' : 'Consider more exercise or less intake'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
