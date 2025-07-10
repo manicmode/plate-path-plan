@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -747,102 +747,100 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* NEW: Steps and Exercise Cards */}
+        {/* NEW: Redesigned Steps and Exercise Cards */}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
-          {/* Steps Tracker Card */}
+          {/* Steps Tracker Card - New Horizontal Design */}
           <Card 
-            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-40' : 'h-44'} shadow-lg hover:shadow-xl`}
+            className={`activity-steps-card border-0 rounded-3xl overflow-hidden cursor-pointer ${isMobile ? 'h-40' : 'h-44'}`}
             onClick={() => navigate('/analytics?section=steps')}
           >
-            <CardContent className="flex flex-col justify-between h-full p-0">
-              <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col justify-between`}>
-                <div className="flex items-center space-x-3">
-                  <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                    <Footprints className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+            <CardContent className="p-0 h-full">
+              <div className="activity-card-horizontal">
+                <div className="activity-card-left">
+                  <div className="relative">
+                    <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-white/20 rounded-2xl flex items-center justify-center backdrop-filter backdrop-blur-lg`}>
+                      <span className="text-2xl float-shoe">👟</span>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
+                  <div>
+                    <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white leading-tight`}>
                       Steps
                     </h4>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80`}>
+                      Daily Movement
+                    </p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
-                    👟 {todaysSteps.toLocaleString()}
+                <div className="activity-card-right">
+                  <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-white`}>
+                    {todaysSteps.toLocaleString()}
                   </p>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-20 bg-white/20 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-green-400 to-emerald-600 h-2 rounded-full transition-all duration-1500"
-                      style={{ width: `${stepsPercentage}%` }}
+                      className="bg-white h-2 rounded-full transition-all duration-1500"
+                      style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
                     ></div>
                   </div>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Goal: {stepsGoal.toLocaleString()} steps
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80`}>
+                    {stepsGoal.toLocaleString()} goal
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Exercise Card */}
+          {/* Exercise Card - New Horizontal Design */}
           <Card 
-            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-40' : 'h-44'} shadow-lg hover:shadow-xl`}
+            className={`activity-exercise-card border-0 rounded-3xl overflow-hidden cursor-pointer ${isMobile ? 'h-40' : 'h-44'}`}
             onClick={() => navigate('/analytics?section=exercise')}
           >
-            <CardContent className="flex flex-col justify-between h-full p-0">
-              <div className={`${isMobile ? 'p-4' : 'p-5'} h-full flex flex-col justify-between`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                      <Activity className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-800 dark:text-gray-100 leading-tight`}>
-                        Exercise
-                      </h4>
+            <CardContent className="p-0 h-full">
+              <div className="activity-card-horizontal">
+                <div className="activity-card-left">
+                  <div className="relative">
+                    <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-white/20 rounded-2xl flex items-center justify-center backdrop-filter backdrop-blur-lg`}>
+                      <span className="text-2xl pulse-flame">🔥</span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <div>
+                    <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white leading-tight`}>
+                      Exercise
+                    </h4>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80`}>
+                      Burn Calories
+                    </p>
+                  </div>
+                </div>
+                <div className="activity-card-right">
+                  <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-white`}>
+                    {todaysExercise.calories} cal
+                  </p>
+                  <div className="flex items-center space-x-1 text-white/80">
+                    <Timer className="h-4 w-4" />
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>
+                      {Math.floor(todaysExercise.duration / 60)}:{(todaysExercise.duration % 60).toString().padStart(2, '0')}h
+                    </span>
+                  </div>
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowExerciseForm(true);
                     }}
-                    className="flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg transition-all duration-200 text-white backdrop-filter backdrop-blur-lg"
                   >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-red-500">🔥</span>
-                      <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-white`}>
-                        {todaysExercise.calories} cal
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Timer className="h-4 w-4 text-gray-500" />
-                      <span className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-white`}>
-                        {Math.floor(todaysExercise.duration / 60)}:{(todaysExercise.duration % 60).toString().padStart(2, '0')} hr
-                      </span>
-                    </div>
-                  </div>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Sync with Apple Health to view steps and exercise
-                  </p>
+                    + Add
+                  </button>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Net Calorie Card */}
+        {/* Enhanced Net Calorie Card */}
         <Card 
           className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
         >
-          <CardContent className={`${isMobile ? 'p-5' : 'p-6'} text-center`}>
+          <CardContent className={`${isMobile ? 'p-5' : 'p-6'}`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
@@ -853,44 +851,77 @@ const Home = () => {
                     Net Calories
                   </h4>
                   <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Goal - Intake + Burned
+                    Daily Balance
                   </p>
                 </div>
               </div>
               <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => setShowExerciseForm(true)}
-                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title="Log Exercise"
+                  className="action-button-full log-workout-button"
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                  <Dumbbell className="h-4 w-4" />
+                  {isMobile ? 'Workout' : 'Log Workout'}
+                </button>
+                <button
                   onClick={() => setShowExerciseReminder(true)}
-                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title="Set Exercise Reminder"
+                  className="action-button-full set-reminder-button"
                 >
                   <Clock className="h-4 w-4" />
-                </Button>
+                  {isMobile ? 'Remind' : 'Set Reminder'}
+                </button>
               </div>
             </div>
-            <div className="space-y-3">
-              <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold`}>
-                <span className={netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                  {netCalories > 0 ? '+' : ''}{netCalories}
-                </span>
-                <span className="text-gray-600 dark:text-gray-400 text-lg ml-1">cal</span>
-              </div>
+            
+            <div className="space-y-4">
               <div className="text-center">
-                <div className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400 space-y-1`}>
-                  <div>{totalCalories} goal - {currentCalories} intake + {todaysExercise.calories} burned</div>
-                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} ${netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {netCalories >= 0 ? 'Calorie deficit achieved!' : 'Consider more exercise or less intake'}
+                <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold`}>
+                  <span className={netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                    {netCalories > 0 ? '+' : ''}{netCalories}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-400 text-lg ml-1">cal</span>
+                </div>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
+                  {netCalories >= 0 ? 'Deficit achieved!' : 'Need more exercise or less intake'}
+                </p>
+              </div>
+
+              {/* Enhanced Calorie Breakdown */}
+              <div className="net-calories-breakdown">
+                <div className="calorie-section consumed">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-blue-500 text-lg">🍽️</span>
                   </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                    {currentCalories}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Consumed
+                  </p>
+                </div>
+                
+                <div className="calorie-section burned">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-red-500 text-lg">🔥</span>
+                  </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                    {todaysExercise.calories}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Burned
+                  </p>
+                </div>
+                
+                <div className="calorie-section remaining">
+                  <div className="flex items-center justify-center mb-1">
+                    <span className="text-green-500 text-lg">🎯</span>
+                  </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
+                    {totalCalories - currentCalories + todaysExercise.calories}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                    Remaining
+                  </p>
                 </div>
               </div>
             </div>
