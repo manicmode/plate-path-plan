@@ -768,36 +768,36 @@ const Home = () => {
 
           {/* Steps and Exercise Cards - Below Net Calories */}
           <div className={`grid grid-cols-2 gap-4`}>
-            {/* Steps Tracker Card - Enhanced for Mobile */}
+            {/* Steps Tracker Card - Enhanced for Mobile with Larger Text */}
             <Card 
-              className="activity-steps-card border-0 rounded-2xl overflow-hidden cursor-pointer h-48"
+              className="activity-steps-card border-0 rounded-2xl overflow-hidden cursor-pointer h-56"
               onClick={() => navigate('/analytics?section=steps')}
             >
-              <CardContent className="p-4 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <Footprints className="h-5 w-5 text-white/90" />
-                    <span className="text-base font-semibold text-white/90">Steps</span>
+              <CardContent className="p-5 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <Footprints className="h-7 w-7 text-white/90" />
+                    <span className="text-xl font-bold text-white/90">Steps</span>
                   </div>
-                  <div className="floating-shoe text-2xl">👟</div>
+                  <div className="floating-shoe text-4xl">👟</div>
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-center">
-                  <div className="text-white text-2xl font-bold mb-2">
+                  <div className="text-white text-4xl font-bold mb-3">
                     {todaysSteps.toLocaleString()}
                   </div>
-                  <div className="text-white/80 text-sm mb-3">
+                  <div className="text-white/80 text-lg mb-4">
                     Goal: {stepsGoal.toLocaleString()}
                   </div>
                   
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-white/80 text-sm">
-                      <span className="font-medium">{Math.round(stepsPercentage)}%</span>
-                      <span>Complete</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-white/80 text-lg">
+                      <span className="font-semibold">{Math.round(stepsPercentage)}%</span>
+                      <span className="font-medium">Complete</span>
                     </div>
-                    <div className="w-full bg-white/20 rounded-full h-2">
+                    <div className="w-full bg-white/20 rounded-full h-3">
                       <div 
-                        className="bg-white h-2 rounded-full transition-all duration-500 ease-out"
+                        className="bg-white h-3 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
                       ></div>
                     </div>
@@ -806,36 +806,36 @@ const Home = () => {
               </CardContent>
             </Card>
 
-            {/* Exercise Card - Enhanced for Mobile */}
+            {/* Exercise Card - Enhanced for Mobile with Larger Text */}
             <Card 
-              className="activity-exercise-card border-0 rounded-2xl overflow-hidden cursor-pointer h-48"
+              className="activity-exercise-card border-0 rounded-2xl overflow-hidden cursor-pointer h-56"
               onClick={() => navigate('/analytics?section=exercise')}
             >
-              <CardContent className="p-4 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <Dumbbell className="h-5 w-5 text-white/90" />
-                    <span className="text-base font-semibold text-white/90">Exercise</span>
+              <CardContent className="p-5 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <Dumbbell className="h-7 w-7 text-white/90" />
+                    <span className="text-xl font-bold text-white/90">Exercise</span>
                   </div>
-                  <div className="pulsing-flame text-2xl">🔥</div>
+                  <div className="pulsing-flame text-4xl">🔥</div>
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-center">
-                  <div className="text-white text-2xl font-bold mb-2">
+                  <div className="text-white text-4xl font-bold mb-3">
                     {todaysExercise.calories}
                   </div>
-                  <div className="text-white/80 text-sm mb-3">
+                  <div className="text-white/80 text-lg mb-4">
                     calories burned
                   </div>
                   
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-white/80 text-sm">
-                      <span className="font-medium">{Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m</span>
-                      <span>Duration</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-white/80 text-lg">
+                      <span className="font-semibold">{Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m</span>
+                      <span className="font-medium">Duration</span>
                     </div>
-                    <div className="w-full bg-white/20 rounded-full h-2">
+                    <div className="w-full bg-white/20 rounded-full h-3">
                       <div 
-                        className="bg-white h-2 rounded-full transition-all duration-500 ease-out"
+                        className="bg-white h-3 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${Math.min((todaysExercise.duration / 60) * 100, 100)}%` }}
                       ></div>
                     </div>
