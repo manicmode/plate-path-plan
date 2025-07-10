@@ -358,7 +358,7 @@ serve(async (req) => {
           searchScope: enableGlobalSearch ? 'global' : 'local'
         }),
         { 
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
