@@ -152,6 +152,14 @@ serve(async (req) => {
     }
 
     console.log(`Looking up barcode: ${cleanBarcode}, global search: ${enableGlobalSearch}`)
+    console.log(`=== TESTING KNOWN WORKING BARCODE ===`)
+    
+    // Test with Coca-Cola barcode that should exist: 0049000028391
+    if (cleanBarcode === '0049000028391') {
+      console.log('TESTING: Using known Coca-Cola barcode for verification')
+    } else {
+      console.log(`TESTING: User barcode ${cleanBarcode} - checking if exists in databases`)
+    }
 
     let product: BarcodeProduct | null = null;
 
