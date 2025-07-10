@@ -52,6 +52,49 @@ const Profile = () => {
     selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
   });
 
+  // Ensure exactly 3 trackers are selected by migrating to paired format
+  useEffect(() => {
+    const ensureValidSelection = () => {
+      const currentTrackers = formData.selectedTrackers;
+      const trackerPairs = [
+        ['calories', 'protein'], // Energy pair
+        ['carbs', 'fat'],        // Macros pair
+        ['hydration', 'supplements'] // Wellness pair
+      ];
+      
+      const newSelection: string[] = [];
+      
+      // For each pair, ensure exactly one is selected
+      trackerPairs.forEach(([option1, option2]) => {
+        const hasOption1 = currentTrackers.includes(option1);
+        const hasOption2 = currentTrackers.includes(option2);
+        
+        if (hasOption1 && hasOption2) {
+          // If both are selected, keep the first one
+          newSelection.push(option1);
+        } else if (hasOption1) {
+          newSelection.push(option1);
+        } else if (hasOption2) {
+          newSelection.push(option2);
+        } else {
+          // If neither is selected, default to first option
+          newSelection.push(option1);
+        }
+      });
+      
+      // Update if the selection has changed
+      if (JSON.stringify(newSelection.sort()) !== JSON.stringify(currentTrackers.sort())) {
+        console.log('Migrating tracker selection:', currentTrackers, '->', newSelection);
+        setFormData(prev => ({
+          ...prev,
+          selectedTrackers: newSelection
+        }));
+      }
+    };
+
+    ensureValidSelection();
+  }, [user?.selectedTrackers]); // Only run when user data changes
+
   // Save tracker preferences whenever selectedTrackers changes
   useEffect(() => {
     if (isEditing && formData.selectedTrackers) {
@@ -149,6 +192,7 @@ const Profile = () => {
     console.log('toggleTracker called:', trackerId, 'current:', currentTrackers);
     
     if (isSelected) {
+      // Remove the tracker
       const newTrackers = currentTrackers.filter(t => t !== trackerId);
       console.log('Removing tracker, new list:', newTrackers);
       setFormData(prev => ({
@@ -156,6 +200,7 @@ const Profile = () => {
         selectedTrackers: newTrackers
       }));
     } else {
+      // Add the tracker
       const newTrackers = [...currentTrackers, trackerId];
       console.log('Adding tracker, new list:', newTrackers);
       setFormData(prev => ({
