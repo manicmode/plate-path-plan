@@ -468,7 +468,7 @@ const Home = () => {
       </div>
 
       {/* Tracker Cards Carousel */}
-      <div className="relative">
+      <div className="relative px-6 py-6">
         <Carousel
           opts={{
             align: "start",
@@ -488,7 +488,7 @@ const Home = () => {
           <CarouselContent className="overflow-visible">
             {/* Page 1: First 3 trackers */}
             <CarouselItem>
-              <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+              <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-0' : 'gap-4 mx-2'} animate-scale-in items-stretch relative z-10`}>
                 {trackersPage1.map((tracker, index) => (
                   <div 
                     key={tracker.name}
@@ -581,7 +581,7 @@ const Home = () => {
             
             {/* Page 2: Last 3 trackers */}
             <CarouselItem>
-              <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+              <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-0' : 'gap-4 mx-2'} animate-scale-in items-stretch relative z-10`}>
                 {trackersPage2.map((tracker, index) => (
                   <div 
                     key={tracker.name}
