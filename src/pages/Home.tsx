@@ -747,129 +747,135 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* NEW: Redesigned Steps and Exercise Cards */}
-        <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
-          {/* Steps Tracker Card - New Horizontal Design */}
-          <Card 
-            className={`activity-steps-card border-0 rounded-3xl overflow-hidden cursor-pointer ${isMobile ? 'h-40' : 'h-44'}`}
-            onClick={() => navigate('/analytics?section=steps')}
-          >
-            <CardContent className="p-0 h-full">
-              <div className="activity-card-horizontal">
-                <div className="activity-card-left">
-                  <div className="relative">
-                    <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-white/20 rounded-2xl flex items-center justify-center backdrop-filter backdrop-blur-lg`}>
-                      <span className="text-2xl float-shoe">👟</span>
+        {/* Activity Section - Grouped closer to Net Calories */}
+        <div className="space-y-3">
+          {/* Steps and Exercise Cards */}
+          <div className={`grid grid-cols-2 gap-3 items-stretch`}>
+            {/* Steps Tracker Card */}
+            <Card 
+              className={`activity-steps-card border-0 rounded-3xl overflow-hidden cursor-pointer h-44`}
+              onClick={() => navigate('/analytics?section=steps')}
+            >
+              <CardContent className="p-6 h-full">
+                <div className="activity-card-horizontal h-full">
+                  <div className="activity-card-left">
+                    <div className="relative mb-3">
+                      <Footprints className="h-8 w-8 text-white float-shoe" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-white leading-tight mb-1">
+                        Steps
+                      </h4>
+                      <p className="text-sm text-white/80">
+                        Daily Movement
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white leading-tight`}>
-                      Steps
-                    </h4>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80`}>
-                      Daily Movement
-                    </p>
+                  <div className="activity-card-right">
+                    <div className="text-right mb-3">
+                      <div className="text-2xl font-bold text-white mb-1">
+                        {todaysSteps.toLocaleString()}
+                      </div>
+                      <div className="text-white/90 text-sm">
+                        of {stepsGoal.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="w-20 h-2 bg-white/20 rounded-full overflow-hidden mb-2">
+                      <div 
+                        className="h-full bg-white/90 transition-all duration-500"
+                        style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-right text-white/80 text-xs">
+                      {Math.round(stepsPercentage)}% complete
+                    </div>
                   </div>
                 </div>
-                <div className="activity-card-right">
-                  <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-white`}>
-                    {todaysSteps.toLocaleString()}
-                  </p>
-                  <div className="w-20 bg-white/20 rounded-full h-2">
-                    <div
-                      className="bg-white h-2 rounded-full transition-all duration-1500"
-                      style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
-                    ></div>
-                  </div>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80`}>
-                    {stepsGoal.toLocaleString()} goal
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Exercise Card - New Horizontal Design */}
-          <Card 
-            className={`activity-exercise-card border-0 rounded-3xl overflow-hidden cursor-pointer ${isMobile ? 'h-40' : 'h-44'}`}
-            onClick={() => navigate('/analytics?section=exercise')}
-          >
-            <CardContent className="p-0 h-full">
-              <div className="activity-card-horizontal">
-                <div className="activity-card-left">
-                  <div className="relative">
-                    <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-white/20 rounded-2xl flex items-center justify-center backdrop-filter backdrop-blur-lg`}>
-                      <span className="text-2xl pulse-flame">🔥</span>
+            {/* Exercise Card */}
+            <Card 
+              className={`activity-exercise-card border-0 rounded-3xl overflow-hidden cursor-pointer h-44`}
+              onClick={() => navigate('/analytics?section=exercise')}
+            >
+              <CardContent className="p-6 h-full">
+                <div className="activity-card-horizontal h-full">
+                  <div className="activity-card-left">
+                    <div className="relative mb-3">
+                      <Activity className="h-8 w-8 text-white pulse-flame" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-white leading-tight mb-1">
+                        Exercise
+                      </h4>
+                      <p className="text-sm text-white/80">
+                        Burned Today
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white leading-tight`}>
-                      Exercise
-                    </h4>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80`}>
-                      Burn Calories
-                    </p>
+                  <div className="activity-card-right">
+                    <div className="text-right mb-2">
+                      <div className="text-2xl font-bold text-white mb-1">
+                        {todaysExercise.calories}
+                      </div>
+                      <div className="text-white/90 text-sm">
+                        calories burned
+                      </div>
+                    </div>
+                    <div className="text-right text-white/80 text-sm mb-2">
+                      {Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m active
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowExerciseForm(true);
+                      }}
+                      className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all duration-200 text-white backdrop-filter backdrop-blur-lg"
+                    >
+                      + Add Exercise
+                    </button>
                   </div>
                 </div>
-                <div className="activity-card-right">
-                  <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-white`}>
-                    {todaysExercise.calories} cal
-                  </p>
-                  <div className="flex items-center space-x-1 text-white/80">
-                    <Timer className="h-4 w-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>
-                      {Math.floor(todaysExercise.duration / 60)}:{(todaysExercise.duration % 60).toString().padStart(2, '0')}h
-                    </span>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowExerciseForm(true);
-                    }}
-                    className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg transition-all duration-200 text-white backdrop-filter backdrop-blur-lg"
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
 
         {/* Enhanced Net Calorie Card */}
         <Card 
           className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
         >
-          <CardContent className={`${isMobile ? 'p-5' : 'p-6'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
-                  <Target className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
-                </div>
-                <div className="text-left">
-                  <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
-                    Net Calories
-                  </h4>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Daily Balance
-                  </p>
-                </div>
+          <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative`}>
+            {/* Action Buttons - Upper Right Corner */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2">
+              <button
+                onClick={() => setShowExerciseForm(true)}
+                className="action-button-full log-workout-button text-xs px-3 py-2"
+              >
+                <Dumbbell className="h-3 w-3" />
+                {isMobile ? 'Workout' : 'Log Workout'}
+              </button>
+              <button
+                onClick={() => setShowExerciseReminder(true)}
+                className="action-button-full set-reminder-button text-xs px-3 py-2"
+              >
+                <Clock className="h-3 w-3" />
+                {isMobile ? 'Remind' : 'Set Reminder'}
+              </button>
+            </div>
+
+            {/* Header with icon and title */}
+            <div className="flex items-center space-x-3 mb-4 pr-24">
+              <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
+                <Target className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
               </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setShowExerciseForm(true)}
-                  className="action-button-full log-workout-button"
-                >
-                  <Dumbbell className="h-4 w-4" />
-                  {isMobile ? 'Workout' : 'Log Workout'}
-                </button>
-                <button
-                  onClick={() => setShowExerciseReminder(true)}
-                  className="action-button-full set-reminder-button"
-                >
-                  <Clock className="h-4 w-4" />
-                  {isMobile ? 'Remind' : 'Set Reminder'}
-                </button>
+              <div className="text-left">
+                <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                  Net Calories
+                </h4>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
+                  Daily Balance
+                </p>
               </div>
             </div>
             
@@ -927,6 +933,7 @@ const Home = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
