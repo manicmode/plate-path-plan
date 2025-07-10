@@ -84,6 +84,7 @@ serve(async (req) => {
     console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
     console.log('Request method:', req.method);
     console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('Function deployment confirmed - responding to requests successfully');
     
     const requestId = crypto.randomUUID();
     console.log('Generated request ID:', requestId);

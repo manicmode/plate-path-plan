@@ -789,9 +789,22 @@ const CameraPage = () => {
       console.log('Response error:', response.error);
       console.log('Response received for request ID:', requestId);
 
+      // Enhanced error handling for 404 and deployment issues
       if (response.error) {
         console.error('=== BARCODE LOOKUP API ERROR ===', response.error);
-        throw new Error(response.error.message || 'Failed to lookup barcode');
+        
+        // Handle specific error types
+        if (response.error.message?.includes('404') || response.error.message?.includes('Not Found')) {
+          console.error('Function deployment issue detected - 404 error');
+          throw new Error('Barcode lookup service is temporarily unavailable. Please try entering the product information manually.');
+        }
+        
+        if (response.error.message?.includes('timeout') || response.error.message?.includes('Timeout')) {
+          console.error('Function timeout detected');
+          throw new Error('Barcode lookup is taking too long. Please try again or enter the product manually.');
+        }
+        
+        throw new Error(response.error.message || 'Failed to lookup barcode. Please try manual entry.');
       }
 
       if (!response.data?.success) {
@@ -877,7 +890,28 @@ const CameraPage = () => {
 
     } catch (error) {
       console.error('=== BARCODE LOOKUP ERROR ===', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to lookup product');
+      
+      // Enhanced error messaging with fallback options
+      const errorMessage = error instanceof Error ? error.message : 'Failed to lookup product';
+      
+      // Show user-friendly error with manual entry option
+      toast.error(errorMessage, {
+        action: {
+          label: 'Enter Manually',
+          onClick: () => {
+            setFailedBarcode(barcode);
+            setShowBarcodeNotFound(true);
+          }
+        },
+        duration: 8000
+      });
+      
+      // Automatically show manual entry modal for service unavailable errors
+      if (errorMessage.includes('temporarily unavailable') || errorMessage.includes('404')) {
+        setFailedBarcode(barcode);
+        setShowBarcodeNotFound(true);
+      }
+      
       throw error; // Re-throw so calling function can handle appropriately
     } finally {
       setIsLoadingBarcode(false);
