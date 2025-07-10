@@ -1,7 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell } from 'lucide-react';
-import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -146,12 +145,8 @@ const Home = () => {
     }
   }, [progressPercentage, hydrationPercentage, supplementPercentage, user?.id]);
 
-  // Show all 6 trackers in carousel (no longer limited by selection)
-  const allTrackerKeys = ['calories', 'protein', 'carbs', 'fat', 'hydration', 'supplements'];
-  
-  // State for carousel navigation
-  const [currentCarouselPage, setCurrentCarouselPage] = useState(0);
-  const [carouselApi, setCarouselApi] = useState(null);
+  // Use preferences from localStorage/state instead of user object
+  const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
 
   const allTrackerConfigs = {
     calories: {
@@ -240,12 +235,8 @@ const Home = () => {
     },
   };
 
-  // Get all tracker configs for carousel
-  const allTrackers = allTrackerKeys.map(trackerId => allTrackerConfigs[trackerId]).filter(Boolean);
-  
-  // Split trackers into pages of 3
-  const trackersPage1 = allTrackers.slice(0, 3);
-  const trackersPage2 = allTrackers.slice(3, 6);
+  // Get the three selected tracker configs
+  const displayedTrackers = selectedTrackers.map(trackerId => allTrackerConfigs[trackerId]).filter(Boolean);
 
   const getMotivationalMessage = (percentage: number, type: string) => {
     if (percentage >= 100) return `${type} goal crushed! Amazing! 🎉`;
@@ -467,240 +458,95 @@ const Home = () => {
         <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
       </div>
 
-      {/* Tracker Cards Carousel */}
-      <div className="relative px-6 py-6">
-        <Carousel
-          opts={{
-            align: "start",
-            loop: false,
-            skipSnaps: false,
-          }}
-          className="w-full"
-          setApi={(api) => {
-            setCarouselApi(api);
-            if (api) {
-              api.on('select', () => {
-                setCurrentCarouselPage(api.selectedScrollSnap());
-              });
-            }
-          }}
-        >
-          <CarouselContent className="overflow-visible">
-            {/* Page 1: First 3 trackers */}
-            <CarouselItem>
-              <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-0' : 'gap-4 mx-2'} animate-scale-in items-stretch relative z-10`}>
-                {trackersPage1.map((tracker, index) => (
-                  <div 
-                    key={tracker.name}
-                    className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
-                    onClick={tracker.onClick}
-                    title={getMotivationalMessage(tracker.percentage, tracker.name)}
-                    style={{ 
-                      background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
-                      position: 'relative',
-                      zIndex: 20
-                    }}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
-                    <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
-                      <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
-                        <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
-                          <circle
-                            cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
-                            strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
-                            className="transition-all duration-2000 ease-out filter drop-shadow-lg"
-                          />
-                          <defs>
-                            <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
-                              {tracker.name === 'Calories' && (
-                                <>
-                                  <stop offset="0%" stopColor="#FF6B35" />
-                                  <stop offset="50%" stopColor="#F7931E" />
-                                  <stop offset="100%" stopColor="#FF4500" />
-                                </>
-                              )}
-                              {tracker.name === 'Protein' && (
-                                <>
-                                  <stop offset="0%" stopColor="#3B82F6" />
-                                  <stop offset="50%" stopColor="#1E40AF" />
-                                  <stop offset="100%" stopColor="#1E3A8A" />
-                                </>
-                              )}
-                              {tracker.name === 'Carbs' && (
-                                <>
-                                  <stop offset="0%" stopColor="#FBBF24" />
-                                  <stop offset="50%" stopColor="#F59E0B" />
-                                  <stop offset="100%" stopColor="#D97706" />
-                                </>
-                              )}
-                              {tracker.name === 'Fat' && (
-                                <>
-                                  <stop offset="0%" stopColor="#10B981" />
-                                  <stop offset="50%" stopColor="#059669" />
-                                  <stop offset="100%" stopColor="#047857" />
-                                </>
-                              )}
-                              {tracker.name === 'Hydration' && (
-                                <>
-                                  <stop offset="0%" stopColor="#00D4FF" />
-                                  <stop offset="50%" stopColor="#0099CC" />
-                                  <stop offset="100%" stopColor="#006699" />
-                                </>
-                              )}
-                              {tracker.name === 'Supplements' && (
-                                <>
-                                  <stop offset="0%" stopColor="#DA44BB" />
-                                  <stop offset="50%" stopColor="#9333EA" />
-                                  <stop offset="100%" stopColor="#7C3AED" />
-                                </>
-                              )}
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
-                          <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
-                            {Math.round(tracker.percentage)}%
-                          </span>
-                          {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
-                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
-                          {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CarouselItem>
-            
-            {/* Page 2: Last 3 trackers */}
-            <CarouselItem>
-              <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-0' : 'gap-4 mx-2'} animate-scale-in items-stretch relative z-10`}>
-                {trackersPage2.map((tracker, index) => (
-                  <div 
-                    key={tracker.name}
-                    className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
-                    onClick={tracker.onClick}
-                    title={getMotivationalMessage(tracker.percentage, tracker.name)}
-                    style={{ 
-                      background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
-                      position: 'relative',
-                      zIndex: 20
-                    }}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
-                    <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
-                      <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
-                        <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
-                          <circle
-                            cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
-                            strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
-                            className="transition-all duration-2000 ease-out filter drop-shadow-lg"
-                          />
-                          <defs>
-                            <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
-                              {tracker.name === 'Calories' && (
-                                <>
-                                  <stop offset="0%" stopColor="#FF6B35" />
-                                  <stop offset="50%" stopColor="#F7931E" />
-                                  <stop offset="100%" stopColor="#FF4500" />
-                                </>
-                              )}
-                              {tracker.name === 'Protein' && (
-                                <>
-                                  <stop offset="0%" stopColor="#3B82F6" />
-                                  <stop offset="50%" stopColor="#1E40AF" />
-                                  <stop offset="100%" stopColor="#1E3A8A" />
-                                </>
-                              )}
-                              {tracker.name === 'Carbs' && (
-                                <>
-                                  <stop offset="0%" stopColor="#FBBF24" />
-                                  <stop offset="50%" stopColor="#F59E0B" />
-                                  <stop offset="100%" stopColor="#D97706" />
-                                </>
-                              )}
-                              {tracker.name === 'Fat' && (
-                                <>
-                                  <stop offset="0%" stopColor="#10B981" />
-                                  <stop offset="50%" stopColor="#059669" />
-                                  <stop offset="100%" stopColor="#047857" />
-                                </>
-                              )}
-                              {tracker.name === 'Hydration' && (
-                                <>
-                                  <stop offset="0%" stopColor="#00D4FF" />
-                                  <stop offset="50%" stopColor="#0099CC" />
-                                  <stop offset="100%" stopColor="#006699" />
-                                </>
-                              )}
-                              {tracker.name === 'Supplements' && (
-                                <>
-                                  <stop offset="0%" stopColor="#DA44BB" />
-                                  <stop offset="50%" stopColor="#9333EA" />
-                                  <stop offset="100%" stopColor="#7C3AED" />
-                                </>
-                              )}
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
-                          <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
-                            {Math.round(tracker.percentage)}%
-                          </span>
-                          {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
-                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
-                          {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CarouselItem>
-          </CarouselContent>
-        </Carousel>
-
-        {/* Carousel Navigation Dots */}
-        <div className="flex justify-center mt-4 space-x-2">
-          <button
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              currentCarouselPage === 0 
-                ? 'bg-emerald-500 dark:bg-emerald-400' 
-                : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-            onClick={() => {
-              if (carouselApi) {
-                carouselApi.scrollTo(0);
-              }
+      {/* Dynamic Tracker Cards based on user selection */}
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+        {displayedTrackers.map((tracker, index) => (
+          <div 
+            key={tracker.name}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
+            onClick={tracker.onClick}
+            title={getMotivationalMessage(tracker.percentage, tracker.name)}
+            style={{ 
+              background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
+              position: 'relative',
+              zIndex: 20
             }}
-          />
-          <button
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              currentCarouselPage === 1 
-                ? 'bg-emerald-500 dark:bg-emerald-400' 
-                : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-            onClick={() => {
-              if (carouselApi) {
-                carouselApi.scrollTo(1);
-              }
-            }}
-          />
-        </div>
+          >
+            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
+            <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
+              <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
+                <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
+                  <circle
+                    cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
+                    strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
+                    className="transition-all duration-2000 ease-out filter drop-shadow-lg"
+                  />
+                  <defs>
+                    <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
+                      {tracker.name === 'Calories' && (
+                        <>
+                          <stop offset="0%" stopColor="#FF6B35" />
+                          <stop offset="50%" stopColor="#F7931E" />
+                          <stop offset="100%" stopColor="#FF4500" />
+                        </>
+                      )}
+                      {tracker.name === 'Protein' && (
+                        <>
+                          <stop offset="0%" stopColor="#3B82F6" />
+                          <stop offset="50%" stopColor="#1E40AF" />
+                          <stop offset="100%" stopColor="#1E3A8A" />
+                        </>
+                      )}
+                      {tracker.name === 'Carbs' && (
+                        <>
+                          <stop offset="0%" stopColor="#FBBF24" />
+                          <stop offset="50%" stopColor="#F59E0B" />
+                          <stop offset="100%" stopColor="#D97706" />
+                        </>
+                      )}
+                      {tracker.name === 'Fat' && (
+                        <>
+                          <stop offset="0%" stopColor="#10B981" />
+                          <stop offset="50%" stopColor="#059669" />
+                          <stop offset="100%" stopColor="#047857" />
+                        </>
+                      )}
+                      {tracker.name === 'Hydration' && (
+                        <>
+                          <stop offset="0%" stopColor="#00D4FF" />
+                          <stop offset="50%" stopColor="#0099CC" />
+                          <stop offset="100%" stopColor="#006699" />
+                        </>
+                      )}
+                      {tracker.name === 'Supplements' && (
+                        <>
+                          <stop offset="0%" stopColor="#DA44BB" />
+                          <stop offset="50%" stopColor="#9333EA" />
+                          <stop offset="100%" stopColor="#7C3AED" />
+                        </>
+                      )}
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
+                  <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
+                    {Math.round(tracker.percentage)}%
+                  </span>
+                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
+                </div>
+              </div>
+              <div className="text-center">
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
+                  {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Enhanced Logging Actions Section with proper spacing */}
