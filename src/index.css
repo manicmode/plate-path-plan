@@ -116,6 +116,12 @@
     --section-bg-hydration: rgba(6, 182, 212, 0.08);
     --section-bg-supplements: rgba(147, 51, 234, 0.08);
     --section-bg-log-food: rgba(59, 130, 246, 0.08);
+    
+    /* Activity Card Gradients - Dark Mode */
+    --activity-steps-gradient: linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(59, 130, 246, 0.9) 100%);
+    --activity-exercise-gradient: linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(251, 146, 60, 0.9) 100%);
+    --activity-steps-glow: 0 8px 32px rgba(34, 197, 94, 0.4);
+    --activity-exercise-glow: 0 8px 32px rgba(239, 68, 68, 0.4);
   }
 }
 

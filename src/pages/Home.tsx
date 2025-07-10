@@ -747,94 +747,93 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* Activity Section - Grouped closer to Net Calories */}
-        <div className="space-y-3">
+        {/* Activity Section - Mobile Optimized */}
+        <div className="space-y-3 p-3 bg-gradient-to-br from-background/50 to-background/30 rounded-2xl border border-border/20 backdrop-blur-sm">
           {/* Steps and Exercise Cards */}
           <div className={`grid grid-cols-2 gap-3 items-stretch`}>
-            {/* Steps Tracker Card */}
+            {/* Steps Tracker Card - Mobile Optimized */}
             <Card 
-              className={`activity-steps-card border-0 rounded-3xl overflow-hidden cursor-pointer h-44`}
+              className="border-0 rounded-2xl overflow-hidden cursor-pointer h-32"
               onClick={() => navigate('/analytics?section=steps')}
+              style={{
+                background: 'var(--activity-steps-gradient)',
+                boxShadow: 'var(--activity-steps-glow)'
+              }}
             >
-              <CardContent className="p-6 h-full">
-                <div className="activity-card-horizontal h-full">
-                  <div className="activity-card-left">
-                    <div className="relative mb-3">
-                      <Footprints className="h-8 w-8 text-white float-shoe" />
+              <CardContent className="p-3 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-1.5">
+                    <Footprints className="h-3.5 w-3.5 text-white/90" />
+                    <span className="text-xs font-medium text-white/80">Steps</span>
+                  </div>
+                  <div className="animate-bounce text-sm">👟</div>
+                </div>
+                
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="text-lg font-bold text-white mb-0.5">
+                      {todaysSteps.toLocaleString()}
                     </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-white leading-tight mb-1">
-                        Steps
-                      </h4>
-                      <p className="text-sm text-white/80">
-                        Daily Movement
-                      </p>
+                    <div className="text-xs text-white/70">
+                      Goal: {stepsGoal.toLocaleString()}
                     </div>
                   </div>
-                  <div className="activity-card-right">
-                    <div className="text-right mb-3">
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {todaysSteps.toLocaleString()}
-                      </div>
-                      <div className="text-white/90 text-sm">
-                        of {stepsGoal.toLocaleString()}
-                      </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-white/80">
+                      <span>{Math.round(stepsPercentage)}%</span>
+                      <span>Complete</span>
                     </div>
-                    <div className="w-20 h-2 bg-white/20 rounded-full overflow-hidden mb-2">
+                    <div className="w-full bg-white/20 rounded-full h-1">
                       <div 
-                        className="h-full bg-white/90 transition-all duration-500"
+                        className="bg-white h-1 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
-                      />
-                    </div>
-                    <div className="text-right text-white/80 text-xs">
-                      {Math.round(stepsPercentage)}% complete
+                      ></div>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Exercise Card */}
+            {/* Exercise Card - Mobile Optimized */}
             <Card 
-              className={`activity-exercise-card border-0 rounded-3xl overflow-hidden cursor-pointer h-44`}
+              className="border-0 rounded-2xl overflow-hidden cursor-pointer h-32"
               onClick={() => navigate('/analytics?section=exercise')}
+              style={{
+                background: 'var(--activity-exercise-gradient)',
+                boxShadow: 'var(--activity-exercise-glow)'
+              }}
             >
-              <CardContent className="p-6 h-full">
-                <div className="activity-card-horizontal h-full">
-                  <div className="activity-card-left">
-                    <div className="relative mb-3">
-                      <Activity className="h-8 w-8 text-white pulse-flame" />
+              <CardContent className="p-3 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-1.5">
+                    <Dumbbell className="h-3.5 w-3.5 text-white/90" />
+                    <span className="text-xs font-medium text-white/80">Exercise</span>
+                  </div>
+                  <div className="animate-pulse text-sm">🔥</div>
+                </div>
+                
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="text-lg font-bold text-white mb-0.5">
+                      {todaysExercise.calories}
                     </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-white leading-tight mb-1">
-                        Exercise
-                      </h4>
-                      <p className="text-sm text-white/80">
-                        Burned Today
-                      </p>
+                    <div className="text-xs text-white/70">
+                      calories burned
                     </div>
                   </div>
-                  <div className="activity-card-right">
-                    <div className="text-right mb-2">
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {todaysExercise.calories}
-                      </div>
-                      <div className="text-white/90 text-sm">
-                        calories burned
-                      </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-white/80">
+                      <span>{Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m</span>
+                      <span>Duration</span>
                     </div>
-                    <div className="text-right text-white/80 text-sm mb-2">
-                      {Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m active
+                    <div className="w-full bg-white/20 rounded-full h-1">
+                      <div 
+                        className="bg-white h-1 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${Math.min((todaysExercise.duration / 60) * 100, 100)}%` }}
+                      ></div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowExerciseForm(true);
-                      }}
-                      className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all duration-200 text-white backdrop-filter backdrop-blur-lg"
-                    >
-                      + Add Exercise
-                    </button>
                   </div>
                 </div>
               </CardContent>
@@ -860,7 +859,7 @@ const Home = () => {
                 className="action-button-full set-reminder-button text-xs px-3 py-2"
               >
                 <Clock className="h-3 w-3" />
-                {isMobile ? 'Remind' : 'Set Reminder'}
+                {isMobile ? 'Remind' : 'Log Exercise Reminder'}
               </button>
             </div>
 
