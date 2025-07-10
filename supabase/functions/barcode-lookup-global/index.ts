@@ -71,9 +71,9 @@ const USDA_NUTRIENT_IDS = {
 
 serve(async (req) => {
   // CRITICAL DEPLOYMENT CHECK - New timestamp
-  const deployTimestamp = '2025-07-10T03:15:00Z';
-  console.log(`=== FUNCTION REDEPLOY FIXED 404: ${deployTimestamp} ===`);
-  console.log('Function execution confirmed - fixing 404 deployment issue');
+  const deployTimestamp = '2025-07-10T04:00:00Z';
+  console.log(`=== FUNCTION CREATED AND DEPLOYED: ${deployTimestamp} ===`);
+  console.log('Function file now exists - fixing 404 deployment issue');
   
   if (req.method === 'OPTIONS') {
     console.log('CORS preflight request received');
