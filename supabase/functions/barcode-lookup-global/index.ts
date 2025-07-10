@@ -254,9 +254,9 @@ serve(async (req) => {
         const usdaApiKey = Deno.env.get('USDA_API_KEY');
         console.log('USDA_API_KEY status:', usdaApiKey ? 'CONFIGURED' : 'MISSING');
         if (!usdaApiKey) {
-          console.error('USDA_API_KEY not configured - function will fail');
-          throw new Error('USDA API key not configured - please set USDA_API_KEY in Supabase secrets');
-        }
+          console.log('USDA_API_KEY not configured - skipping USDA lookup');
+          // Don't throw error, just skip USDA lookup and continue
+        } else {
         
         const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?gtinUpc=${cleanBarcode}&dataType=Branded&pageSize=5&api_key=${usdaApiKey}`;
         console.log('USDA API URL (key redacted):', usdaUrl.replace(usdaApiKey, 'REDACTED'));
@@ -329,6 +329,7 @@ serve(async (req) => {
         } else {
           console.log('USDA API request failed:', usdaResponse.status);
         }
+        } // Close the else block for USDA API key check
       } catch (error) {
         console.log('USDA lookup failed:', error.message)
       }

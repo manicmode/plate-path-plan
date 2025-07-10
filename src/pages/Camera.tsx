@@ -2011,32 +2011,23 @@ const CameraPage = () => {
         onClose={() => setShowBarcodeNotFound(false)}
         barcode={failedBarcode}
         onManualEntry={() => {
-          // Show manual entry fallback when barcode lookup fails
-          const fallbackFood = {
-            id: `barcode-unknown-${failedBarcode}-${Date.now()}`,
-            name: 'Unknown Product', 
-            calories: 0,
-            protein: 0,
-            carbs: 0, 
-            fat: 0,
-            fiber: 0,
-            sugar: 0,
-            sodium: 0,
-            confidence: 0,
-            timestamp: new Date(),
-            confirmed: false,
-            barcode: failedBarcode,
-            ingredientsText: '',
-            ingredientsAvailable: false,
-            isUnknownProduct: true // Flag for UI handling
-          };
-          
-          setRecognizedFoods([fallbackFood]);
-          setShowConfirmation(true);
-          setInputSource('barcode');
+          // Clear all states and go to main camera screen for clean manual entry
           setShowBarcodeNotFound(false);
+          setShowBarcodeScanner(false);
+          setSelectedImage(null);
+          setRecognizedFoods([]);
+          setShowConfirmation(false);
+          setVisionResults(null);
+          setVoiceResults(null);
+          setInputSource('photo');
+          setIsAnalyzing(false);
+          setProcessingStep('');
+          setFailedBarcode('');
           
-          toast.success('Unknown product added - please add details manually');
+          // Go to main tab for manual food entry
+          setActiveTab('main');
+          
+          toast.info('Switched to manual entry - take a photo or use voice input');
         }}
         onTryAgain={() => {
           setShowBarcodeNotFound(false);
