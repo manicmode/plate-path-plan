@@ -748,45 +748,116 @@ const Home = () => {
         </div>
 
         {/* Activity Section - Mobile Optimized */}
-        <div className="space-y-3 p-3 bg-gradient-to-br from-background/50 to-background/30 rounded-2xl border border-border/20 backdrop-blur-sm">
-          {/* Steps and Exercise Cards */}
-          <div className={`grid grid-cols-2 gap-3 items-stretch`}>
-            {/* Steps Tracker Card - Mobile Optimized */}
-            <Card 
-              className="border-0 rounded-2xl overflow-hidden cursor-pointer h-32"
-              onClick={() => navigate('/analytics?section=steps')}
-              style={{
-                background: 'var(--activity-steps-gradient)',
-                boxShadow: 'var(--activity-steps-glow)'
-              }}
-            >
-              <CardContent className="p-3 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-1.5">
-                    <Footprints className="h-3.5 w-3.5 text-white/90" />
-                    <span className="text-xs font-medium text-white/80">Steps</span>
+        <div className="space-y-4">
+          {/* Enhanced Net Calorie Card - Moved to Top */}
+          <Card 
+            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl h-56`}
+          >
+            <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative h-full flex flex-col`}>
+              {/* Action Buttons - Upper Right Corner */}
+              <div className="absolute top-4 right-4 flex flex-col gap-2">
+                <button
+                  onClick={() => setShowExerciseForm(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  <Dumbbell className="w-3 h-3 mr-1 inline" />
+                  Log Workout
+                </button>
+                <button
+                  onClick={() => setShowExerciseReminder(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-xs rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  <Clock className="w-3 h-3 mr-1 inline" />
+                  Log Exercise Reminder
+                </button>
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg`}>
+                  <Target className={`${isMobile ? 'w-6 h-6' : 'w-7 h-7'} text-white`} />
+                </div>
+                <div>
+                  <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
+                    Net Calories
+                  </h3>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-400`}>
+                    Daily Balance
+                  </p>
+                </div>
+              </div>
+
+              {/* Balance Display */}
+              <div className="text-center mb-4 flex-1 flex flex-col justify-center">
+                <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold mb-2 ${netCalories >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {netCalories >= 0 ? '+' : ''}{netCalories.toLocaleString()} cal
+                </div>
+                <div className={`${isMobile ? 'text-sm' : 'text-base'} font-medium ${netCalories >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {netCalories >= 0 ? 'Deficit achieved!' : 'Over budget'}
+                </div>
+              </div>
+
+              {/* Breakdown Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-100 dark:bg-gray-800 text-center p-3 rounded-xl">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-slate-500/20 flex items-center justify-center">
+                    <span className="text-lg">🍽️</span>
                   </div>
-                  <div className="animate-bounce text-sm">👟</div>
+                  <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100 mb-1`}>{currentCalories}</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">Consumed</div>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="text-lg font-bold text-white mb-0.5">
-                      {todaysSteps.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-white/70">
-                      Goal: {stepsGoal.toLocaleString()}
-                    </div>
+                <div className="bg-orange-50 dark:bg-orange-900/30 text-center p-3 rounded-xl">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                    <span className="text-lg">🔥</span>
+                  </div>
+                  <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100 mb-1`}>{todaysExercise.calories}</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">Burned</div>
+                </div>
+                
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 text-center p-3 rounded-xl">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <span className="text-lg">🎯</span>
+                  </div>
+                  <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100 mb-1`}>{Math.abs(netCalories)}</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">{netCalories >= 0 ? 'Remaining' : 'Over'}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Steps and Exercise Cards - Below Net Calories */}
+          <div className={`grid grid-cols-2 gap-4`}>
+            {/* Steps Tracker Card - Enhanced for Mobile */}
+            <Card 
+              className="activity-steps-card border-0 rounded-2xl overflow-hidden cursor-pointer h-48"
+              onClick={() => navigate('/analytics?section=steps')}
+            >
+              <CardContent className="p-4 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <Footprints className="h-5 w-5 text-white/90" />
+                    <span className="text-base font-semibold text-white/90">Steps</span>
+                  </div>
+                  <div className="floating-shoe text-2xl">👟</div>
+                </div>
+                
+                <div className="flex-1 flex flex-col justify-center">
+                  <div className="text-white text-2xl font-bold mb-2">
+                    {todaysSteps.toLocaleString()}
+                  </div>
+                  <div className="text-white/80 text-sm mb-3">
+                    Goal: {stepsGoal.toLocaleString()}
                   </div>
                   
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-white/80">
-                      <span>{Math.round(stepsPercentage)}%</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-white/80 text-sm">
+                      <span className="font-medium">{Math.round(stepsPercentage)}%</span>
                       <span>Complete</span>
                     </div>
-                    <div className="w-full bg-white/20 rounded-full h-1">
+                    <div className="w-full bg-white/20 rounded-full h-2">
                       <div 
-                        className="bg-white h-1 rounded-full transition-all duration-500 ease-out"
+                        className="bg-white h-2 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${Math.min(stepsPercentage, 100)}%` }}
                       ></div>
                     </div>
@@ -795,42 +866,36 @@ const Home = () => {
               </CardContent>
             </Card>
 
-            {/* Exercise Card - Mobile Optimized */}
+            {/* Exercise Card - Enhanced for Mobile */}
             <Card 
-              className="border-0 rounded-2xl overflow-hidden cursor-pointer h-32"
+              className="activity-exercise-card border-0 rounded-2xl overflow-hidden cursor-pointer h-48"
               onClick={() => navigate('/analytics?section=exercise')}
-              style={{
-                background: 'var(--activity-exercise-gradient)',
-                boxShadow: 'var(--activity-exercise-glow)'
-              }}
             >
-              <CardContent className="p-3 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-1.5">
-                    <Dumbbell className="h-3.5 w-3.5 text-white/90" />
-                    <span className="text-xs font-medium text-white/80">Exercise</span>
+              <CardContent className="p-4 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <Dumbbell className="h-5 w-5 text-white/90" />
+                    <span className="text-base font-semibold text-white/90">Exercise</span>
                   </div>
-                  <div className="animate-pulse text-sm">🔥</div>
+                  <div className="pulsing-flame text-2xl">🔥</div>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="text-lg font-bold text-white mb-0.5">
-                      {todaysExercise.calories}
-                    </div>
-                    <div className="text-xs text-white/70">
-                      calories burned
-                    </div>
+                <div className="flex-1 flex flex-col justify-center">
+                  <div className="text-white text-2xl font-bold mb-2">
+                    {todaysExercise.calories}
+                  </div>
+                  <div className="text-white/80 text-sm mb-3">
+                    calories burned
                   </div>
                   
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-white/80">
-                      <span>{Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-white/80 text-sm">
+                      <span className="font-medium">{Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m</span>
                       <span>Duration</span>
                     </div>
-                    <div className="w-full bg-white/20 rounded-full h-1">
+                    <div className="w-full bg-white/20 rounded-full h-2">
                       <div 
-                        className="bg-white h-1 rounded-full transition-all duration-500 ease-out"
+                        className="bg-white h-2 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${Math.min((todaysExercise.duration / 60) * 100, 100)}%` }}
                       ></div>
                     </div>
@@ -839,101 +904,7 @@ const Home = () => {
               </CardContent>
             </Card>
           </div>
-
-        {/* Enhanced Net Calorie Card */}
-        <Card 
-          className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
-        >
-          <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative`}>
-            {/* Action Buttons - Upper Right Corner */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2">
-              <button
-                onClick={() => setShowExerciseForm(true)}
-                className="action-button-full log-workout-button text-xs px-3 py-2"
-              >
-                <Dumbbell className="h-3 w-3" />
-                {isMobile ? 'Workout' : 'Log Workout'}
-              </button>
-              <button
-                onClick={() => setShowExerciseReminder(true)}
-                className="action-button-full set-reminder-button text-xs px-3 py-2"
-              >
-                <Clock className="h-3 w-3" />
-                {isMobile ? 'Remind' : 'Log Exercise Reminder'}
-              </button>
-            </div>
-
-            {/* Header with icon and title */}
-            <div className="flex items-center space-x-3 mb-4 pr-24">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
-                <Target className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
-              </div>
-              <div className="text-left">
-                <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
-                  Net Calories
-                </h4>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                  Daily Balance
-                </p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} font-bold`}>
-                  <span className={netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                    {netCalories > 0 ? '+' : ''}{netCalories}
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400 text-lg ml-1">cal</span>
-                </div>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${netCalories >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
-                  {netCalories >= 0 ? 'Deficit achieved!' : 'Need more exercise or less intake'}
-                </p>
-              </div>
-
-              {/* Enhanced Calorie Breakdown */}
-              <div className="net-calories-breakdown">
-                <div className="calorie-section consumed">
-                  <div className="flex items-center justify-center mb-1">
-                    <span className="text-blue-500 text-lg">🍽️</span>
-                  </div>
-                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
-                    {currentCalories}
-                  </p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Consumed
-                  </p>
-                </div>
-                
-                <div className="calorie-section burned">
-                  <div className="flex items-center justify-center mb-1">
-                    <span className="text-red-500 text-lg">🔥</span>
-                  </div>
-                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
-                    {todaysExercise.calories}
-                  </p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Burned
-                  </p>
-                </div>
-                
-                <div className="calorie-section remaining">
-                  <div className="flex items-center justify-center mb-1">
-                    <span className="text-green-500 text-lg">🎯</span>
-                  </div>
-                  <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
-                    {totalCalories - currentCalories + todaysExercise.calories}
-                  </p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                    Remaining
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
         </div>
-      </div>
 
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
       <HomeAIInsights />
