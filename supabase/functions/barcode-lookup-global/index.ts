@@ -101,6 +101,8 @@ serve(async (req) => {
   console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  console.log('Function started at:', new Date().toISOString());
   
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })

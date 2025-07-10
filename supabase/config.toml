@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.detect-flagged-ingredients]
 verify_jwt = false
+
+[functions.test-function]
+verify_jwt = false
