@@ -181,12 +181,19 @@ serve(async (req) => {
           if (offData.status === 1 && offData.product) {
             const offProduct: OpenFoodFactsProduct = offData.product;
             
-            // STEP 1: STRICT BARCODE VALIDATION - Verify the product actually matches our barcode
+            // STEP 1: FLEXIBLE BARCODE VALIDATION - Normalize barcodes for comparison
             const productCode = offData.code;
             console.log('OFF returned product code:', productCode, 'vs searched:', cleanBarcode);
             
-            if (productCode !== cleanBarcode) {
-              console.log('Open Food Facts returned wrong product - barcode mismatch, rejecting');
+            // Normalize both barcodes by removing leading zeros for comparison
+            const normalizeBarcode = (code: string) => code.replace(/^0+/, '') || '0';
+            const normalizedProductCode = normalizeBarcode(productCode);
+            const normalizedSearchCode = normalizeBarcode(cleanBarcode);
+            
+            console.log('Normalized comparison:', normalizedProductCode, 'vs', normalizedSearchCode);
+            
+            if (normalizedProductCode !== normalizedSearchCode) {
+              console.log('Open Food Facts returned wrong product - barcode mismatch after normalization, rejecting');
               // Don't set product, continue to next database
             } else {
               const nutriments = offProduct.nutriments || {};
@@ -283,10 +290,14 @@ serve(async (req) => {
                 gtinUpc: food.gtinUpc
               });
               
-              // STEP 2: Verify the gtinUpc field matches our search barcode
-              if (food.gtinUpc === cleanBarcode) {
+              // STEP 2: Verify the gtinUpc field matches our search barcode (with normalization)
+              const normalizeBarcode = (code: string) => code.replace(/^0+/, '') || '0';
+              const normalizedFoodBarcode = normalizeBarcode(food.gtinUpc || '');
+              const normalizedSearchBarcode = normalizeBarcode(cleanBarcode);
+              
+              if (normalizedFoodBarcode === normalizedSearchBarcode) {
                 validFood = food;
-                console.log('FOUND EXACT BARCODE MATCH in USDA:', food.description);
+                console.log('FOUND NORMALIZED BARCODE MATCH in USDA:', food.description);
                 break;
               } else {
                 console.log('USDA food rejected - barcode mismatch:', food.gtinUpc, 'vs', cleanBarcode);
