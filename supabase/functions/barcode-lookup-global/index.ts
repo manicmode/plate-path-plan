@@ -69,6 +69,34 @@ const USDA_NUTRIENT_IDS = {
   SODIUM: 1093
 };
 
+// Generate multiple barcode variants to improve lookup success
+function generateBarcodeVariants(barcode: string): string[] {
+  const variants: string[] = [];
+  const cleanBarcode = barcode.replace(/\D/g, ''); // Remove non-digits
+  
+  // Add the original barcode
+  variants.push(cleanBarcode);
+  
+  // For UPC-A (12 digits), try adding leading zero to make EAN-13 (13 digits)
+  if (cleanBarcode.length === 12) {
+    variants.push('0' + cleanBarcode);
+  }
+  
+  // For EAN-13 (13 digits), try removing leading zero to make UPC-A (12 digits)
+  if (cleanBarcode.length === 13 && cleanBarcode.startsWith('0')) {
+    variants.push(cleanBarcode.substring(1));
+  }
+  
+  // For barcodes less than 12 digits, try padding with leading zeros
+  if (cleanBarcode.length < 12) {
+    variants.push(cleanBarcode.padStart(12, '0'));
+    variants.push(cleanBarcode.padStart(13, '0'));
+  }
+  
+  // Remove duplicates and return
+  return [...new Set(variants)];
+}
+
 serve(async (req) => {
   console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
   console.log('Request method:', req.method);
@@ -90,48 +118,101 @@ serve(async (req) => {
     const cleanBarcode = barcode.trim().replace(/\s+/g, '');
     console.log(`Looking up barcode: ${cleanBarcode}`);
     
+    // Generate multiple barcode formats to try
+    const barcodeVariants = generateBarcodeVariants(cleanBarcode);
+    console.log('Trying barcode variants:', barcodeVariants);
+    
     let product: BarcodeProduct | null = null;
+    let lastError: string | null = null;
 
-    // Try Open Food Facts
-    try {
-      console.log('Trying Open Food Facts...')
-      const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${cleanBarcode}.json`);
+    // Try each barcode variant with Open Food Facts
+    for (const variant of barcodeVariants) {
+      try {
+        console.log(`Trying Open Food Facts with variant: ${variant}`);
+        const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${variant}.json`);
 
-      if (offResponse.ok) {
-        const offData = await offResponse.json();
-        console.log('OFF Response:', offData.status, offData.product ? 'Product found' : 'No product');
-        
-        if (offData.status === 1 && offData.product) {
-          const offProduct = offData.product;
-          const nutriments = offProduct.nutriments || {};
+        if (offResponse.ok) {
+          const offData = await offResponse.json();
+          console.log(`OFF Response for ${variant}:`, offData.status, offData.product ? 'Product found' : 'No product');
           
-          product = {
-            name: offProduct.product_name || 'Unknown Product',
-            brand: offProduct.brands || '',
-            barcode: cleanBarcode,
-            nutrition: {
-              calories: Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0),
-              protein: Math.round((nutriments.protein_100g || 0) * 10) / 10,
-              fat: Math.round((nutriments.fat_100g || 0) * 10) / 10,
-              carbs: Math.round((nutriments.carbohydrates_100g || 0) * 10) / 10,
-              sugar: Math.round((nutriments.sugars_100g || 0) * 10) / 10,
-              fiber: Math.round((nutriments.fiber_100g || 0) * 10) / 10,
-              sodium: Math.round(nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : 0)),
-            },
-            image: offProduct.image_front_url || offProduct.image_url,
-            source: 'open_food_facts',
-            region: 'International',
-            ingredients_text: offProduct.ingredients_text_en || offProduct.ingredients_text || '',
-            ingredients_available: !!(offProduct.ingredients_text_en || offProduct.ingredients_text)
-          };
-          console.log('Product found:', product.name);
+          if (offData.status === 1 && offData.product) {
+            const offProduct = offData.product;
+            const nutriments = offProduct.nutriments || {};
+            
+            // Validate that this is a real product with actual data
+            if (offProduct.product_name && offProduct.product_name.trim()) {
+              product = {
+                name: offProduct.product_name || 'Unknown Product',
+                brand: offProduct.brands || '',
+                barcode: variant,
+                nutrition: {
+                  calories: Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0),
+                  protein: Math.round((nutriments.protein_100g || 0) * 10) / 10,
+                  fat: Math.round((nutriments.fat_100g || 0) * 10) / 10,
+                  carbs: Math.round((nutriments.carbohydrates_100g || 0) * 10) / 10,
+                  sugar: Math.round((nutriments.sugars_100g || 0) * 10) / 10,
+                  fiber: Math.round((nutriments.fiber_100g || 0) * 10) / 10,
+                  sodium: Math.round(nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : 0)),
+                },
+                image: offProduct.image_front_url || offProduct.image_url,
+                source: 'open_food_facts',
+                region: 'International',
+                ingredients_text: offProduct.ingredients_text_en || offProduct.ingredients_text || '',
+                ingredients_available: !!(offProduct.ingredients_text_en || offProduct.ingredients_text)
+              };
+              console.log('Product found with variant:', variant, product.name);
+              break; // Found a valid product, stop trying variants
+            }
+          }
+        } else {
+          lastError = `HTTP ${offResponse.status}`;
         }
+      } catch (error) {
+        console.log(`OFF Error for variant ${variant}:`, error.message);
+        lastError = error.message;
       }
-    } catch (error) {
-      console.log('OFF Error:', error.message)
     }
 
-    // If not found, return error
+    // Try UPC Database as fallback if Open Food Facts fails
+    if (!product) {
+      try {
+        console.log('Trying UPC Database as fallback...');
+        const upcResponse = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${cleanBarcode}`);
+        
+        if (upcResponse.ok) {
+          const upcData = await upcResponse.json();
+          console.log('UPC Database response:', upcData);
+          
+          if (upcData.code === 'OK' && upcData.items && upcData.items.length > 0) {
+            const upcProduct = upcData.items[0];
+            product = {
+              name: upcProduct.title || 'Unknown Product',
+              brand: upcProduct.brand || '',
+              barcode: cleanBarcode,
+              nutrition: {
+                calories: 0, // UPC DB doesn't have nutrition info
+                protein: 0,
+                fat: 0,
+                carbs: 0,
+                sugar: 0,
+                fiber: 0,
+                sodium: 0,
+              },
+              image: upcProduct.images && upcProduct.images.length > 0 ? upcProduct.images[0] : undefined,
+              source: 'upc_database',
+              region: 'US',
+              ingredients_text: '',
+              ingredients_available: false
+            };
+            console.log('Product found in UPC Database:', product.name);
+          }
+        }
+      } catch (error) {
+        console.log('UPC Database Error:', error.message);
+      }
+    }
+
+    // Determine appropriate error message
     if (!product) {
       console.log('Product not found in any database');
     }
@@ -145,11 +226,20 @@ serve(async (req) => {
       );
     } else {
       console.log('ERROR: Product not found');
+      
+      // Provide helpful error message based on what was attempted
+      let helpfulMessage = `Product with barcode ${cleanBarcode} was not found in our databases. `;
+      helpfulMessage += `We searched ${barcodeVariants.length} barcode formats across multiple databases. `;
+      helpfulMessage += `This could mean the product is not in our database yet, or the barcode might be incorrect. `;
+      helpfulMessage += `Please use "Add Product Manually" to enter the product details yourself.`;
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'Product not found',
-          message: 'Product not found in database'
+          message: helpfulMessage,
+          searchedVariants: barcodeVariants,
+          suggestion: 'Try manually entering the product details using the "Add Product Manually" option.'
         }),
         { 
           status: 200,
