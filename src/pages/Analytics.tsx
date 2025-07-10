@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSearchParams } from 'react-router-dom';
@@ -16,8 +16,6 @@ import { ActivityExerciseSection } from '@/components/analytics/sections/Activit
 import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
 import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
-import { StepsProgressSection } from '@/components/analytics/sections/StepsProgressSection';
-import { ExerciseProgressSection } from '@/components/analytics/sections/ExerciseProgressSection';
 
 const Analytics = () => {
   const isMobile = useIsMobile();
@@ -25,9 +23,6 @@ const Analytics = () => {
   const [searchParams] = useSearchParams();
   const section = searchParams.get('section');
   
-  // Refs for auto-scrolling
-  const stepsRef = useRef<HTMLDivElement>(null);
-  const exerciseRef = useRef<HTMLDivElement>(null);
   
   useScrollToTop();
 
@@ -35,25 +30,6 @@ const Analytics = () => {
     setAnimationDelay(100);
   }, []);
 
-  // Auto-scroll to specific section when navigated from home page
-  useEffect(() => {
-    if (section) {
-      const scrollToSection = () => {
-        switch (section) {
-          case 'steps':
-            stepsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            break;
-          case 'exercise':
-            exerciseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            break;
-        }
-      };
-      
-      // Delay scroll to ensure content is rendered
-      const timer = setTimeout(scrollToSection, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [section]);
 
   // Get all calculated data using the custom hook
   const {
@@ -109,15 +85,6 @@ const Analytics = () => {
           weeklyAverage={weeklyAverage} 
         />
 
-        {/* Detailed Steps Progress - Integrated */}
-        <div ref={stepsRef} id="steps-section">
-          <StepsProgressSection />
-        </div>
-
-        {/* Detailed Exercise Progress - Integrated */}
-        <div ref={exerciseRef} id="exercise-section">
-          <ExerciseProgressSection />
-        </div>
 
         {/* Achievements & Streaks - Enhanced */}
         <AchievementsSection />
