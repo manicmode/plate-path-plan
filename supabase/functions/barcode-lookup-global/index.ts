@@ -71,9 +71,9 @@ const USDA_NUTRIENT_IDS = {
 
 serve(async (req) => {
   // CRITICAL DEPLOYMENT CHECK - New timestamp
-  const deployTimestamp = '2025-07-10T00:15:00Z';
-  console.log(`=== FUNCTION REDEPLOY WITH VALIDATION: ${deployTimestamp} ===`);
-  console.log('Function execution confirmed - implementing strict barcode validation');
+  const deployTimestamp = '2025-07-10T03:15:00Z';
+  console.log(`=== FUNCTION REDEPLOY FIXED 404: ${deployTimestamp} ===`);
+  console.log('Function execution confirmed - fixing 404 deployment issue');
   
   if (req.method === 'OPTIONS') {
     console.log('CORS preflight request received');
