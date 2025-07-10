@@ -11,6 +11,8 @@ import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
+import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
+import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 
@@ -117,6 +119,10 @@ const CameraPage = () => {
   const [showManualEdit, setShowManualEdit] = useState(false);
   const [manualEditText, setManualEditText] = useState('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  
+  // Manual entry states
+  const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
+  const [showManualFoodEntry, setShowManualFoodEntry] = useState(false);
   
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
@@ -2011,38 +2017,35 @@ const CameraPage = () => {
         onClose={() => setShowBarcodeNotFound(false)}
         barcode={failedBarcode}
         onManualEntry={() => {
-          // Create a manual food entry with the failed barcode
-          const manualFood = {
-            id: `manual-${failedBarcode}-${Date.now()}`,
-            name: `Product ${failedBarcode}`,
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            fiber: 0,
-            sugar: 0,
-            sodium: 0,
-            confidence: 50,
-            timestamp: new Date(),
-            confirmed: false,
-            barcode: failedBarcode,
-            ingredientsText: '',
-            ingredientsAvailable: false,
-            isManualEntry: true
-          };
-          
-          // Set up for manual editing
-          setRecognizedFoods([manualFood]);
-          setShowConfirmation(true);
-          setInputSource('barcode');
           setShowBarcodeNotFound(false);
-          
-          toast.success('Product ready for manual entry - please edit the details');
+          setShowManualFoodEntry(true);
         }}
         onTryAgain={() => {
           setShowBarcodeNotFound(false);
           setShowBarcodeScanner(true);
         }}
+      />
+
+      {/* Manual Barcode Entry Modal */}
+      {showManualBarcodeEntry && (
+        <ManualBarcodeEntry
+          onBarcodeEntered={handleBarcodeDetected}
+          onCancel={() => setShowManualBarcodeEntry(false)}
+          isProcessing={isAnalyzing}
+        />
+      )}
+
+      {/* Manual Food Entry Modal */}
+      <ManualFoodEntry
+        isOpen={showManualFoodEntry}
+        onClose={() => setShowManualFoodEntry(false)}
+        onSave={(foodData) => {
+          setRecognizedFoods([foodData]);
+          setShowConfirmation(true);
+          setInputSource('manual');
+          setShowManualFoodEntry(false);
+        }}
+        initialBarcode={failedBarcode}
       />
 
       {/* Debug components removed - clean production interface */}

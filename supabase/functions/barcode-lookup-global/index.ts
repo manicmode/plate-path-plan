@@ -70,312 +70,86 @@ const USDA_NUTRIENT_IDS = {
 };
 
 serve(async (req) => {
-  // HEALTH CHECK - Function deployment verification
-  const deployTimestamp = '2025-07-10T04:15:00Z';
-  console.log(`=== FUNCTION HEALTH CHECK: ${deployTimestamp} ===`);
-  console.log('Function execution confirmed and working');
+  console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
-  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-  
-  // Simple health check endpoint
-  if (req.url.includes('/health')) {
-    console.log('Health check endpoint called');
-    return new Response(JSON.stringify({ 
-      status: 'healthy', 
-      timestamp: deployTimestamp,
-      message: 'Barcode function is working correctly'
-    }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
-  }
   
   if (req.method === 'OPTIONS') {
-    console.log('CORS preflight request received');
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('=== BARCODE LOOKUP FUNCTION CALLED ===');
-    console.log('Request method:', req.method);
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-    console.log('Function deployment confirmed - responding to requests successfully');
+    const body = await req.json();
+    console.log('Request body:', body);
     
-    const requestId = crypto.randomUUID();
-    console.log('Generated request ID:', requestId);
-    
-    let body;
-    try {
-      body = await req.json();
-    } catch (parseError) {
-      console.error('Failed to parse request body:', parseError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invalid JSON in request body',
-          message: 'Please check your request format'
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-    
-    console.log('Request body received:', body);
-    
-    // Health check endpoint
-    if (body.health) {
-      console.log('Health check requested');
-      return new Response(JSON.stringify({ 
-        success: true,
-        status: 'healthy', 
-        timestamp: deployTimestamp,
-        message: 'Barcode function is working correctly'
-      }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    const { barcode, enableGlobalSearch = true } = body;
-    console.log('Barcode lookup params:', { barcode, enableGlobalSearch, requestId });
-    
+    const { barcode } = body;
     if (!barcode) {
-      console.error('No barcode provided in request');
       throw new Error('Barcode is required')
     }
 
-    // Validate barcode format
     const cleanBarcode = barcode.trim().replace(/\s+/g, '');
-    if (!/^\d{8,14}$/.test(cleanBarcode)) {
-      throw new Error('Invalid barcode format. Must be 8-14 digits.');
-    }
-
-    console.log(`Looking up barcode: ${cleanBarcode}, global search: ${enableGlobalSearch}`)
-    console.log(`=== TESTING KNOWN WORKING BARCODE ===`)
+    console.log(`Looking up barcode: ${cleanBarcode}`);
     
-    // Test with Coca-Cola barcode that should exist: 0049000028391
-    if (cleanBarcode === '0049000028391') {
-      console.log('TESTING: Using known Coca-Cola barcode for verification')
-    } else {
-      console.log(`TESTING: User barcode ${cleanBarcode} - checking if exists in databases`)
-    }
-
     let product: BarcodeProduct | null = null;
 
-    // STEP 4: Try Open Food Facts FIRST (better accuracy for international products)
-    if (!product && enableGlobalSearch) {
-      try {
-        console.log('Trying Open Food Facts database (primary)...')
-        const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${cleanBarcode}.json`, {
-          headers: {
-            'User-Agent': 'PlatePathPlan/1.0 (nutrition tracking app)',
-          }
-        });
+    // Try Open Food Facts
+    try {
+      console.log('Trying Open Food Facts...')
+      const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${cleanBarcode}.json`);
 
-        if (offResponse.ok) {
-          const offData = await offResponse.json();
-          console.log('Open Food Facts response status:', offData.status);
-          console.log('Open Food Facts product exists:', !!offData.product);
+      if (offResponse.ok) {
+        const offData = await offResponse.json();
+        console.log('OFF Response:', offData.status, offData.product ? 'Product found' : 'No product');
+        
+        if (offData.status === 1 && offData.product) {
+          const offProduct = offData.product;
+          const nutriments = offProduct.nutriments || {};
           
-          if (offData.status === 1 && offData.product) {
-            const offProduct: OpenFoodFactsProduct = offData.product;
-            
-            // STEP 1: FLEXIBLE BARCODE VALIDATION - Normalize barcodes for comparison
-            const productCode = offData.code;
-            console.log('OFF returned product code:', productCode, 'vs searched:', cleanBarcode);
-            
-            // Normalize both barcodes by removing leading zeros for comparison
-            const normalizeBarcode = (code: string) => code.replace(/^0+/, '') || '0';
-            const normalizedProductCode = normalizeBarcode(productCode);
-            const normalizedSearchCode = normalizeBarcode(cleanBarcode);
-            
-            console.log('Normalized comparison:', normalizedProductCode, 'vs', normalizedSearchCode);
-            
-            if (normalizedProductCode !== normalizedSearchCode) {
-              console.log('Open Food Facts returned wrong product - barcode mismatch after normalization, rejecting');
-              // Don't set product, continue to next database
-            } else {
-              const nutriments = offProduct.nutriments || {};
-              
-              // Extract nutritional information per 100g
-              const calories = nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0;
-              const protein = nutriments.protein_100g || 0;
-              const fat = nutriments.fat_100g || 0;
-              const carbs = nutriments.carbohydrates_100g || 0;
-              const sugar = nutriments.sugars_100g || 0;
-              const fiber = nutriments.fiber_100g || 0;
-              
-              // Convert sodium from mg to mg (sometimes salt is provided instead)
-              let sodium = nutriments.sodium_100g || 0;
-              if (!sodium && nutriments.salt_100g) {
-                sodium = nutriments.salt_100g / 2.5;
-              }
-
-              // Determine region from countries field
-              const countries = offProduct.countries || '';
-              const region = countries.includes('United States') ? 'US' : 
-                            countries.includes('Canada') ? 'CA' :
-                            countries.includes('United Kingdom') ? 'UK' :
-                            'International';
-
-              // Extract ingredients text (prioritize English)
-              const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || '';
-
-              product = {
-                name: offProduct.product_name || 'Unknown Product',
-                brand: offProduct.brands || '',
-                barcode: cleanBarcode,
-                nutrition: {
-                  calories: Math.round(calories),
-                  protein: Math.round(protein * 10) / 10,
-                  fat: Math.round(fat * 10) / 10,
-                  carbs: Math.round(carbs * 10) / 10,
-                  sugar: Math.round(sugar * 10) / 10,
-                  fiber: Math.round(fiber * 10) / 10,
-                  sodium: Math.round(sodium),
-                },
-                image: offProduct.image_front_url || offProduct.image_url,
-                source: 'open_food_facts',
-                region: region,
-                ingredients_text: ingredientsText,
-                ingredients_available: !!(ingredientsText && ingredientsText.length > 0)
-              };
-              console.log('VALIDATED product found in Open Food Facts:', product.name);
-            }
-          } else {
-            console.log('Open Food Facts: No product found for barcode');
-          }
-        } else {
-          console.log('Open Food Facts API request failed:', offResponse.status);
+          product = {
+            name: offProduct.product_name || 'Unknown Product',
+            brand: offProduct.brands || '',
+            barcode: cleanBarcode,
+            nutrition: {
+              calories: Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0),
+              protein: Math.round((nutriments.protein_100g || 0) * 10) / 10,
+              fat: Math.round((nutriments.fat_100g || 0) * 10) / 10,
+              carbs: Math.round((nutriments.carbohydrates_100g || 0) * 10) / 10,
+              sugar: Math.round((nutriments.sugars_100g || 0) * 10) / 10,
+              fiber: Math.round((nutriments.fiber_100g || 0) * 10) / 10,
+              sodium: Math.round(nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : 0)),
+            },
+            image: offProduct.image_front_url || offProduct.image_url,
+            source: 'open_food_facts',
+            region: 'International',
+            ingredients_text: offProduct.ingredients_text_en || offProduct.ingredients_text || '',
+            ingredients_available: !!(offProduct.ingredients_text_en || offProduct.ingredients_text)
+          };
+          console.log('Product found:', product.name);
         }
-      } catch (error) {
-        console.log('Open Food Facts lookup failed:', error.message)
       }
+    } catch (error) {
+      console.log('OFF Error:', error.message)
     }
 
-    // STEP 4: Try USDA as SECONDARY (US database) only if Open Food Facts failed
+    // If not found, return error
     if (!product) {
-      try {
-        console.log('Trying USDA database (secondary)...')
-        const usdaApiKey = Deno.env.get('USDA_API_KEY');
-        console.log('USDA_API_KEY status:', usdaApiKey ? 'CONFIGURED' : 'MISSING');
-        if (!usdaApiKey) {
-          console.log('USDA_API_KEY not configured - skipping USDA lookup');
-          // Don't throw error, just skip USDA lookup and continue
-        } else {
-        
-        const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?gtinUpc=${cleanBarcode}&dataType=Branded&pageSize=5&api_key=${usdaApiKey}`;
-        console.log('USDA API URL (key redacted):', usdaUrl.replace(usdaApiKey, 'REDACTED'));
-        
-        const usdaResponse = await fetch(usdaUrl, {
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        if (usdaResponse.ok) {
-          const usdaData = await usdaResponse.json();
-          console.log('USDA response totalHits:', usdaData.totalHits);
-          console.log('USDA foods array length:', usdaData.foods?.length || 0);
-          
-          if (usdaData.foods && usdaData.foods.length > 0) {
-            // STEP 1 & 2: STRICT VALIDATION - Find a food that actually matches our barcode
-            let validFood = null;
-            
-            for (const food of usdaData.foods) {
-              console.log('Checking USDA food:', {
-                description: food.description,
-                brandOwner: food.brandOwner,
-                gtinUpc: food.gtinUpc
-              });
-              
-              // STEP 2: Verify the gtinUpc field matches our search barcode (with normalization)
-              const normalizeBarcode = (code: string) => code.replace(/^0+/, '') || '0';
-              const normalizedFoodBarcode = normalizeBarcode(food.gtinUpc || '');
-              const normalizedSearchBarcode = normalizeBarcode(cleanBarcode);
-              
-              if (normalizedFoodBarcode === normalizedSearchBarcode) {
-                validFood = food;
-                console.log('FOUND NORMALIZED BARCODE MATCH in USDA:', food.description);
-                break;
-              } else {
-                console.log('USDA food rejected - barcode mismatch:', food.gtinUpc, 'vs', cleanBarcode);
-              }
-            }
-            
-            if (validFood) {
-              const nutrients = validFood.foodNutrients || [];
-              
-              const getNutrientValue = (id: number) => {
-                const nutrient = nutrients.find((n: any) => n.nutrientId === id);
-                return nutrient ? nutrient.value : 0;
-              };
-
-              product = {
-                name: validFood.description || 'Unknown Product',
-                brand: validFood.brandOwner || '',
-                barcode: cleanBarcode,
-                nutrition: {
-                  calories: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.ENERGY)),
-                  protein: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.PROTEIN) * 10) / 10,
-                  fat: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.FAT) * 10) / 10,
-                  carbs: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.CARBS) * 10) / 10,
-                  sugar: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.SUGAR) * 10) / 10,
-                  fiber: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.FIBER) * 10) / 10,
-                  sodium: Math.round(getNutrientValue(USDA_NUTRIENT_IDS.SODIUM)),
-                },
-                source: 'usda',
-                region: 'US',
-                ingredients_text: validFood.ingredients || '',
-                ingredients_available: !!(validFood.ingredients && validFood.ingredients.length > 0)
-              };
-              console.log('VALIDATED product found in USDA database:', product.name);
-            } else {
-              console.log('USDA: No foods with matching barcode found - all results rejected');
-            }
-          } else {
-            console.log('USDA: No foods returned for barcode');
-          }
-        } else {
-          console.log('USDA API request failed:', usdaResponse.status);
-        }
-        } // Close the else block for USDA API key check
-      } catch (error) {
-        console.log('USDA lookup failed:', error.message)
-      }
+      console.log('Product not found in any database');
     }
 
     // Return results
     if (product) {
-      const result = {
-        success: true,
-        product: product,
-        searchScope: enableGlobalSearch ? 'global' : 'local'
-      };
-
-      console.log('Barcode lookup successful:', result);
+      console.log('SUCCESS: Product found');
       return new Response(
-        JSON.stringify(result),
+        JSON.stringify({ success: true, product }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      // Product not found
-      const errorMessage = enableGlobalSearch 
-        ? 'Product not found in US or international databases. This product may not be available in our nutrition database.'
-        : 'Product not found in US database. Try enabling global search in settings for international products.';
-
+      console.log('ERROR: Product not found');
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'Product not found',
-          message: errorMessage,
-          suggestions: [
-            'Check that the barcode number is correct',
-            'Try scanning the barcode again with better lighting',
-            enableGlobalSearch ? 'Contact support if this product should be available' : 'Enable global search in settings for international products'
-          ],
-          searchScope: enableGlobalSearch ? 'global' : 'local'
+          message: 'Product not found in database'
         }),
         { 
           status: 200,
