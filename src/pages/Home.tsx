@@ -1247,49 +1247,48 @@ const Home = () => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
-                    <div key={item.name} className="flex flex-col items-center gap-y-2">
-                      <Card
-                        className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
-                          isOverThreshold 
-                            ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
-                            : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
-                        }`}
-                        style={{ animationDelay: `${index * 100}ms` }}
-                      >
-                        <CardContent className="h-full p-0">
-                          <div className={`${isMobile ? 'p-4' : 'p-6'} h-full flex flex-col text-center`}>
-                            {/* Top Section: Icon and Title - Fixed Height */}
-                            <div className={`flex-shrink-0 ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-start`}>
-                              <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mb-2 shadow-lg`}>
-                                <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
-                              </div>
-                              <h4 className={`font-bold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
-                                {item.name}
-                              </h4>
+                    <Card
+                      key={item.name}
+                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
+                        isOverThreshold 
+                          ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                          : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                      }`}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <CardContent className="h-full p-0">
+                        <div className={`${isMobile ? 'p-4' : 'p-6'} h-full flex flex-col text-center`}>
+                          {/* Top Section: Icon and Title - Fixed Height */}
+                          <div className={`flex-shrink-0 ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-start`}>
+                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mb-2 shadow-lg`}>
+                              <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
                             </div>
-                            
-                            {/* Middle Section: Values - Centered */}
-                            <div className="flex-grow flex flex-col justify-center">
-                              <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight mb-1 ${
-                                isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                              }`}>
-                                {item.current}
-                              </p>
-                              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                                Limit: {item.threshold} {item.unit}
-                              </p>
-                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
+                              {item.name}
+                            </h4>
                           </div>
-                        </CardContent>
-                      </Card>
-                      
-                      {/* Alert Emojis positioned below the card with consistent spacing */}
-                      <div className="flex justify-center w-full">
-                        <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                          {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
-                        </span>
-                      </div>
-                    </div>
+                          
+                          {/* Middle Section: Values - Centered */}
+                          <div className="flex-grow flex flex-col justify-center">
+                            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight mb-1 ${
+                              isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                            }`}>
+                              {item.current}
+                            </p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              Limit: {item.threshold} {item.unit}
+                            </p>
+                          </div>
+                          
+                          {/* Alert Emojis positioned as last element inside card */}
+                          <div className="flex justify-center mt-2">
+                            <span className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>
+                              {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>
