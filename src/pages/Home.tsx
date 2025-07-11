@@ -1242,12 +1242,12 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 items-start ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
                 {toxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
-                    <div key={item.name} className="flex flex-col">
+                    <div key={item.name} className="flex flex-col items-center gap-y-2">
                       <Card
                         className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
                           isOverThreshold 
@@ -1283,8 +1283,8 @@ const Home = () => {
                         </CardContent>
                       </Card>
                       
-                      {/* Alert Emojis positioned below the card */}
-                      <div className="flex justify-center mt-2">
+                      {/* Alert Emojis positioned below the card with consistent spacing */}
+                      <div className="flex justify-center w-full">
                         <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
                           {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
                         </span>
