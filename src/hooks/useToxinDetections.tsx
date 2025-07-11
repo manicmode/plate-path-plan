@@ -8,15 +8,16 @@ interface ToxinData {
   current: number;
   threshold: number;
   unit: string;
+  bgColor: string;
 }
 
 const TOXIN_THRESHOLDS = {
-  inflammatory_foods: { name: "Inflammatory Foods", icon: "🔥", threshold: 2, unit: "servings" },
-  artificial_sweeteners: { name: "Artificial Sweeteners", icon: "🧪", threshold: 1, unit: "servings" },
-  preservatives: { name: "Preservatives", icon: "⚗️", threshold: 3, unit: "servings" },
-  dyes: { name: "Dyes", icon: "🎨", threshold: 1, unit: "servings" },
-  seed_oils: { name: "Seed Oils", icon: "🌻", threshold: 2, unit: "servings" },
-  gmos: { name: "GMOs", icon: "🧬", threshold: 2, unit: "servings" }
+  inflammatory_foods: { name: "INFLAMMATORY.F.", icon: "🔥", threshold: 2, unit: "servings", bgColor: "bg-orange-800" },
+  artificial_sweeteners: { name: "ARTIFICIAL.S.", icon: "🧪", threshold: 1, unit: "servings", bgColor: "bg-green-900" },
+  preservatives: { name: "Preservatives", icon: "⚗️", threshold: 3, unit: "servings", bgColor: "bg-blue-900" },
+  dyes: { name: "Dyes", icon: "🎨", threshold: 1, unit: "servings", bgColor: "bg-amber-800" },
+  seed_oils: { name: "Seed Oils", icon: "🌻", threshold: 2, unit: "servings", bgColor: "bg-green-800" },
+  gmos: { name: "GMOs", icon: "🧬", threshold: 2, unit: "servings", bgColor: "bg-purple-900" }
 };
 
 export const useToxinDetections = () => {
@@ -73,7 +74,8 @@ export const useToxinDetections = () => {
         icon: config.icon,
         current: aggregatedData[key] || 0,
         threshold: config.threshold,
-        unit: config.unit
+        unit: config.unit,
+        bgColor: config.bgColor
       }));
 
       setToxinData(toxinArray);

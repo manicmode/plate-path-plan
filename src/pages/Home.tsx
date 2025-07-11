@@ -1247,7 +1247,7 @@ const Home = () => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
-                    <div key={item.name} className="flex flex-col items-center space-y-2">
+                    <div key={item.name} className="flex flex-col items-center space-y-1">
                       <Card
                         className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
                           isOverThreshold 
@@ -1259,10 +1259,10 @@ const Home = () => {
                         <CardContent className="flex flex-col justify-between h-full p-0">
                           <div className={`${isMobile ? 'p-4' : 'p-6'} text-center flex flex-col justify-between h-full`}>
                             <div className="flex-shrink-0">
-                              <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                              <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
                                 <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
                               </div>
-                              <h4 className={`font-bold text-gray-900 dark:text-white mb-3 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
+                              <h4 className={`font-bold text-gray-900 dark:text-white mb-3 ${isMobile ? 'text-sm' : 'text-base'} leading-tight text-center`}>
                                 {item.name}
                               </h4>
                             </div>
@@ -1279,7 +1279,7 @@ const Home = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      <div className="flex justify-center">
+                      <div className="flex justify-center -mt-1">
                         <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
                           {isOverThreshold ? '🚨' : '✅'}
                         </span>
