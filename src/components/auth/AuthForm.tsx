@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { User, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AuthForm = () => {
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
   const isMobile = useIsMobile();
   const [formData, setFormData] = useState({
     email: '',
@@ -19,6 +19,35 @@ const AuthForm = () => {
     name: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState(0);
+
+  // Clear form when user signs out
+  useEffect(() => {
+    if (!user) {
+      setFormData({ email: '', password: '', name: '' });
+      console.log('Form cleared after sign out');
+    }
+  }, [user]);
+
+  // Handle rate limit countdown
+  useEffect(() => {
+    if (rateLimitUntil) {
+      const interval = setInterval(() => {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.ceil((rateLimitUntil - now) / 1000));
+        setCountdown(remaining);
+        
+        if (remaining <= 0) {
+          setRateLimitUntil(null);
+          setCountdown(0);
+          clearInterval(interval);
+        }
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [rateLimitUntil]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,25 +74,57 @@ const AuthForm = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Registration attempt started with:', { 
+      email: formData.email, 
+      hasPassword: !!formData.password, 
+      hasName: !!formData.name 
+    });
+    
+    // Prevent submission if rate limited
+    if (rateLimitUntil && Date.now() < rateLimitUntil) {
+      console.log('Registration blocked - rate limited until:', new Date(rateLimitUntil));
+      toast.error(`Please wait ${countdown} seconds before trying again.`);
+      return;
+    }
+
     setIsLoading(true);
     
     try {
+      console.log('Calling register function...');
       await register(formData.email, formData.password, formData.name);
+      console.log('Registration successful');
       toast.success('Account created! Please check your email for confirmation.');
+      // Clear form on successful registration
+      setFormData({ email: '', password: '', name: '' });
     } catch (error: any) {
-      console.error('Registration failed:', error);
+      console.error('Registration failed with error:', error);
+      console.error('Error status:', error.status);
+      console.error('Error message:', error.message);
       
-      // Handle specific error messages
+      // Handle rate limiting
+      if (error.message?.includes('For security purposes') || error.status === 429) {
+        const waitTime = 60; // Default to 60 seconds
+        const rateLimitEnd = Date.now() + (waitTime * 1000);
+        setRateLimitUntil(rateLimitEnd);
+        toast.error(`Too many requests. Please wait ${waitTime} seconds before trying again.`);
+        return;
+      }
+      
+      if (error.message?.includes('over_email_send_rate_limit')) {
+        const waitTime = 180; // 3 minutes for email rate limit
+        const rateLimitEnd = Date.now() + (waitTime * 1000);
+        setRateLimitUntil(rateLimitEnd);
+        toast.error(`Email rate limit reached. Please wait ${Math.ceil(waitTime / 60)} minutes before trying again.`);
+        return;
+      }
+      
+      // Handle other specific error messages
       if (error.message?.includes('User already registered')) {
         toast.error('An account with this email already exists. Please sign in instead.');
       } else if (error.message?.includes('Password should be at least')) {
         toast.error('Password should be at least 6 characters long.');
       } else if (error.message?.includes('Unable to validate email')) {
         toast.error('Please enter a valid email address.');
-      } else if (error.message?.includes('For security purposes') || error.status === 429) {
-        toast.error('Too many requests. Please wait a minute before trying again.');
-      } else if (error.message?.includes('over_email_send_rate_limit')) {
-        toast.error('Email rate limit reached. Please wait a few minutes before trying again.');
       } else {
         toast.error('Registration failed. Please try again.');
       }
@@ -193,12 +254,21 @@ const AuthForm = () => {
                     disabled={isLoading}
                   />
                 </div>
+                {rateLimitUntil && countdown > 0 && (
+                  <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <p className="text-amber-700 dark:text-amber-300 font-medium">
+                      Rate limited. Try again in {countdown} seconds.
+                    </p>
+                  </div>
+                )}
                 <Button 
                   type="submit" 
                   className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}
-                  disabled={isLoading}
+                  disabled={isLoading || (rateLimitUntil !== null && countdown > 0)}
                 >
-                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                  {isLoading ? 'Creating Account...' : 
+                   rateLimitUntil && countdown > 0 ? `Wait ${countdown}s` : 
+                   'Create Account'}
                 </Button>
               </form>
             </TabsContent>
