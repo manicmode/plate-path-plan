@@ -74,6 +74,18 @@ const AuthForm = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic form validation
+    if (!formData.email || !formData.password || !formData.name) {
+      toast.error('Please fill in all fields.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long.');
+      return;
+    }
+
     console.log('Registration attempt started with:', { 
       email: formData.email, 
       hasPassword: !!formData.password, 
@@ -98,36 +110,48 @@ const AuthForm = () => {
       setFormData({ email: '', password: '', name: '' });
     } catch (error: any) {
       console.error('Registration failed with error:', error);
-      console.error('Error status:', error.status);
-      console.error('Error message:', error.message);
+      console.error('Error details:', {
+        status: error.status,
+        message: error.message,
+        name: error.name,
+        code: error.code
+      });
+      
+      // Always show some error message to the user
+      let errorMessage = 'Registration failed. Please try again.';
       
       // Handle rate limiting
-      if (error.message?.includes('For security purposes') || error.status === 429) {
+      if (error.message?.includes('For security purposes') || 
+          error.message?.includes('rate') || 
+          error.status === 429) {
         const waitTime = 60; // Default to 60 seconds
         const rateLimitEnd = Date.now() + (waitTime * 1000);
         setRateLimitUntil(rateLimitEnd);
-        toast.error(`Too many requests. Please wait ${waitTime} seconds before trying again.`);
-        return;
+        errorMessage = `Too many requests. Please wait ${waitTime} seconds before trying again.`;
       }
-      
-      if (error.message?.includes('over_email_send_rate_limit')) {
+      // Handle email rate limiting specifically
+      else if (error.message?.includes('over_email_send_rate_limit')) {
         const waitTime = 180; // 3 minutes for email rate limit
         const rateLimitEnd = Date.now() + (waitTime * 1000);
         setRateLimitUntil(rateLimitEnd);
-        toast.error(`Email rate limit reached. Please wait ${Math.ceil(waitTime / 60)} minutes before trying again.`);
-        return;
+        errorMessage = `Email rate limit reached. Please wait ${Math.ceil(waitTime / 60)} minutes before trying again.`;
+      }
+      // Handle specific error messages
+      else if (error.message?.includes('User already registered')) {
+        errorMessage = 'An account with this email already exists. Please sign in instead.';
+      } else if (error.message?.includes('Password should be at least')) {
+        errorMessage = 'Password should be at least 6 characters long.';
+      } else if (error.message?.includes('Unable to validate email') || 
+                 error.message?.includes('invalid email')) {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (error.message?.includes('invalid_credentials')) {
+        errorMessage = 'Invalid credentials. Please check your information.';
+      } else if (error.message) {
+        // Use the actual error message if available
+        errorMessage = error.message;
       }
       
-      // Handle other specific error messages
-      if (error.message?.includes('User already registered')) {
-        toast.error('An account with this email already exists. Please sign in instead.');
-      } else if (error.message?.includes('Password should be at least')) {
-        toast.error('Password should be at least 6 characters long.');
-      } else if (error.message?.includes('Unable to validate email')) {
-        toast.error('Please enter a valid email address.');
-      } else {
-        toast.error('Registration failed. Please try again.');
-      }
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
