@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -72,6 +72,7 @@ const Home = () => {
   const [todaysExercise, setTodaysExercise] = useState({ calories: 0, duration: 0 });
   const [todaysSteps, setTodaysSteps] = useState(3731); // Mock data - will be replaced with real data later
   const [isNutrientsExpanded, setIsNutrientsExpanded] = useState(false);
+  const [isMicronutrientsExpanded, setIsMicronutrientsExpanded] = useState(false);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -311,6 +312,74 @@ const Home = () => {
       unit: '%',
       color: 'from-indigo-400 to-indigo-600',
       icon: Sparkles,
+    },
+  ];
+
+  // Micronutrients configuration
+  const micronutrientCards = [
+    {
+      name: 'Iron',
+      current: (progress as any).iron || 0,
+      target: 18,
+      unit: 'mg',
+      color: 'from-red-400 to-red-600',
+      icon: Activity,
+    },
+    {
+      name: 'Magnesium',
+      current: (progress as any).magnesium || 0,
+      target: 400,
+      unit: 'mg',
+      color: 'from-green-400 to-green-600',
+      icon: Sparkles,
+    },
+    {
+      name: 'Calcium',
+      current: (progress as any).calcium || 0,
+      target: 1000,
+      unit: 'mg',
+      color: 'from-blue-400 to-blue-600',
+      icon: Target,
+    },
+    {
+      name: 'Zinc',
+      current: (progress as any).zinc || 0,
+      target: 11,
+      unit: 'mg',
+      color: 'from-gray-400 to-gray-600',
+      icon: Atom,
+    },
+    {
+      name: 'Vitamin A',
+      current: (progress as any).vitaminA || 0,
+      target: 900,
+      unit: 'μg',
+      color: 'from-orange-400 to-orange-600',
+      icon: Sparkles,
+    },
+    {
+      name: 'Vitamin B12',
+      current: (progress as any).vitaminB12 || 0,
+      target: 2.4,
+      unit: 'μg',
+      color: 'from-purple-400 to-purple-600',
+      icon: Activity,
+    },
+    {
+      name: 'Vitamin C',
+      current: (progress as any).vitaminC || 0,
+      target: 90,
+      unit: 'mg',
+      color: 'from-yellow-400 to-yellow-600',
+      icon: Zap,
+    },
+    {
+      name: 'Vitamin D',
+      current: (progress as any).vitaminD || 0,
+      target: 20,
+      unit: 'μg',
+      color: 'from-amber-400 to-amber-600',
+      icon: Target,
     },
   ];
 
@@ -957,6 +1026,7 @@ const Home = () => {
         <Collapsible open={isNutrientsExpanded} onOpenChange={setIsNutrientsExpanded}>
           <CollapsibleTrigger asChild>
             <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <Zap className="h-6 w-6 text-orange-500" />
               <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
                 Today's Nutrients
               </h3>
@@ -1026,6 +1096,90 @@ const Home = () => {
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
                             <div
                               className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Fold Back Button - Matches Expand style */}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
+                <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+            </CollapsibleTrigger>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Micronutrients Section - Collapsible */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        <Collapsible open={isMicronutrientsExpanded} onOpenChange={setIsMicronutrientsExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <Atom className="h-6 w-6 text-indigo-500" />
+              <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
+                Micronutrients
+              </h3>
+              {!isMicronutrientsExpanded && (
+                <>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
+                </>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-6">
+            <div className="flex justify-center pt-6">
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+                {micronutrientCards.map((micro, index) => {
+                  const percentage = Math.min((micro.current / micro.target) * 100, 100);
+                  const Icon = micro.icon;
+                  
+                  return (
+                    <Card
+                      key={micro.name}
+                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <CardContent className="flex flex-col justify-between h-full p-0">
+                        <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                          <div className="flex-shrink-0">
+                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${micro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                              <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{micro.name}</h4>
+                          </div>
+                          <div className="flex-grow flex flex-col justify-center space-y-2">
+                            <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
+                              {micro.current.toFixed(0)}{micro.unit}
+                            </p>
+                            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              of {micro.target}{micro.unit}
+                            </p>
+                          </div>
+                          {/* Progress bar */}
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
+                            <div
+                              className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
                               style={{ width: `${percentage}%` }}
                             ></div>
                           </div>
