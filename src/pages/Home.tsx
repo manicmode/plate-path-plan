@@ -1242,12 +1242,12 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-8 max-w-sm' : 'gap-10 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
                 {toxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
-                    <div key={item.name} className="flex flex-col items-center space-y-1">
+                    <div key={item.name} className="flex flex-col items-center">
                       <Card
                         className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
                           isOverThreshold 
@@ -1256,17 +1256,20 @@ const Home = () => {
                         }`}
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
-                        <CardContent className="flex flex-col justify-between h-full p-0">
-                          <div className={`${isMobile ? 'p-4' : 'p-6'} text-center flex flex-col justify-between h-full`}>
+                        <CardContent className="h-full p-0">
+                          <div className={`${isMobile ? 'p-4' : 'p-6'} h-full flex flex-col justify-between text-center`}>
+                            {/* Top Section: Icon and Title */}
                             <div className="flex-shrink-0">
                               <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
                                 <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
                               </div>
-                              <h4 className={`font-bold text-gray-900 dark:text-white mb-3 ${isMobile ? 'text-sm' : 'text-base'} leading-tight text-center`}>
+                              <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
                                 {item.name}
                               </h4>
                             </div>
-                            <div className="flex-grow flex flex-col justify-center space-y-3">
+                            
+                            {/* Middle Section: Values */}
+                            <div className="flex-grow flex flex-col justify-center space-y-2">
                               <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight ${
                                 isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                               }`}>
@@ -1276,7 +1279,9 @@ const Home = () => {
                                 Limit: {item.threshold} {item.unit}
                               </p>
                             </div>
-                            <div className="flex justify-center mt-4">
+                            
+                            {/* Bottom Section: Status Emoji - Fixed Position */}
+                            <div className="flex justify-center mt-2 flex-shrink-0">
                               <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
                                 {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
                               </span>
