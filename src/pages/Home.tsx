@@ -1285,9 +1285,9 @@ const Home = () => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
-                    <Card
+                     <Card
                       key={item.name}
-                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
+                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-56' : 'h-60'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
                         isOverThreshold 
                           ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
                           : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
@@ -1295,20 +1295,16 @@ const Home = () => {
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
                       <CardContent className="flex flex-col justify-between h-full p-0">
-                        <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                        <div className={`${isMobile ? 'p-4' : 'p-6'} text-center flex flex-col justify-between h-full`}>
                           <div className="flex-shrink-0">
-                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${
-                              isOverThreshold 
-                                ? 'bg-gradient-to-br from-red-400 to-red-600' 
-                                : 'bg-gradient-to-br from-green-400 to-green-600'
-                            } rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-muted rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
                               <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
                             </div>
-                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
+                            <h4 className={`font-bold text-gray-900 dark:text-white mb-3 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
                               {item.name}
                             </h4>
                           </div>
-                          <div className="flex-grow flex flex-col justify-center space-y-2">
+                          <div className="flex-grow flex flex-col justify-center space-y-3">
                             <div className="flex items-center justify-center gap-2">
                               <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight ${
                                 isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
@@ -1319,12 +1315,11 @@ const Home = () => {
                                 {isOverThreshold ? '🚨' : '✅'}
                               </span>
                             </div>
-                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                              {item.current} {item.unit} today
-                            </p>
-                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                              Limit: {item.threshold} {item.unit}
-                            </p>
+                            <div className="space-y-1">
+                              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                                Limit: {item.threshold} {item.unit}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </CardContent>
