@@ -1242,49 +1242,53 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-8 max-w-sm' : 'gap-10 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 items-start ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
                 {toxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
-                    <div key={item.name} className="flex flex-col items-center space-y-1">
-                      <Card
-                        className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
-                          isOverThreshold 
-                            ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
-                            : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
-                        }`}
-                        style={{ animationDelay: `${index * 100}ms` }}
-                      >
-                        <CardContent className="flex flex-col justify-between h-full p-0">
-                          <div className={`${isMobile ? 'p-4' : 'p-6'} text-center flex flex-col justify-between h-full`}>
-                            <div className="flex-shrink-0">
-                              <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-                                <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
-                              </div>
-                              <h4 className={`font-bold text-gray-900 dark:text-white mb-3 ${isMobile ? 'text-sm' : 'text-base'} leading-tight text-center`}>
-                                {item.name}
-                              </h4>
+                    <Card
+                      key={item.name}
+                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
+                        isOverThreshold 
+                          ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                          : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                      }`}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <CardContent className="h-full p-0 relative">
+                        <div className={`${isMobile ? 'p-4' : 'p-6'} h-full flex flex-col text-center`}>
+                          {/* Top Section: Icon and Title - Fixed Height */}
+                          <div className={`flex-shrink-0 ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-start`}>
+                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mb-2 shadow-lg`}>
+                              <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
                             </div>
-                            <div className="flex-grow flex flex-col justify-center space-y-3">
-                              <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight ${
-                                isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                              }`}>
-                                {item.current}
-                              </p>
-                              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                                Limit: {item.threshold} {item.unit}
-                              </p>
-                            </div>
-                            <div className="flex justify-center mt-4">
-                              <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                                {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
-                              </span>
-                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
+                              {item.name}
+                            </h4>
                           </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                          
+                          {/* Middle Section: Values - Centered */}
+                          <div className="flex-grow flex flex-col justify-center">
+                            <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight mb-1 ${
+                              isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                            }`}>
+                              {item.current}
+                            </p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              Limit: {item.threshold} {item.unit}
+                            </p>
+                          </div>
+                          
+                          {/* Bottom Section: Status Emoji - Absolute Positioned for Perfect Alignment */}
+                          <div className={`absolute bottom-0 left-0 right-0 flex justify-center ${isMobile ? 'pb-4' : 'pb-6'}`}>
+                            <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
+                              {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>
