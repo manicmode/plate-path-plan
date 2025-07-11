@@ -322,70 +322,187 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
+          allergy_severity: string | null
+          body_composition_goals: string[] | null
+          calculated_bmr: number | null
+          calculated_tdee: number | null
+          communication_style: string | null
+          completed_sections: string[] | null
           created_at: string
+          cross_contamination_sensitivity: boolean | null
+          cultural_dietary_restrictions: string[] | null
+          current_supplements: Json | null
+          daily_lifestyle: string | null
+          deficiency_concerns: string[] | null
           diet_styles: string[] | null
+          eating_window: string | null
+          exercise_frequency: string | null
+          exercise_types: string[] | null
+          fasting_schedule: string | null
+          food_allergies: Json | null
           foods_to_avoid: string | null
           gender: string | null
           health_conditions: string[] | null
+          health_monitoring_preferences: string[] | null
           height_cm: number | null
           height_feet: number | null
           height_inches: number | null
           height_unit: string | null
           id: string
+          last_profile_update: string | null
           main_health_goal: string | null
+          meal_frequency: number | null
+          medications: string[] | null
           onboarding_completed: boolean | null
           onboarding_skipped: boolean | null
+          priority_micronutrients: string[] | null
+          profile_completion_percentage: number | null
+          progress_tracking_priorities: string[] | null
+          recovery_sleep_quality: string | null
+          reminder_frequency: string | null
           selected_trackers: string[] | null
           show_onboarding_reminder: boolean | null
+          snacking_patterns: string | null
+          social_eating_preferences: string | null
+          specific_health_conditions: Json | null
+          supplement_goals: string[] | null
+          supplement_preferences: string | null
+          target_calories: number | null
+          target_carbs: number | null
+          target_fat: number | null
+          target_fiber: number | null
+          target_protein: number | null
+          target_weight: number | null
+          toxin_sensitivity_level: string | null
           updated_at: string
           user_id: string
           weight: number | null
+          weight_goal_timeline: string | null
+          weight_goal_type: string | null
           weight_unit: string | null
         }
         Insert: {
           activity_level?: string | null
           age?: number | null
+          allergy_severity?: string | null
+          body_composition_goals?: string[] | null
+          calculated_bmr?: number | null
+          calculated_tdee?: number | null
+          communication_style?: string | null
+          completed_sections?: string[] | null
           created_at?: string
+          cross_contamination_sensitivity?: boolean | null
+          cultural_dietary_restrictions?: string[] | null
+          current_supplements?: Json | null
+          daily_lifestyle?: string | null
+          deficiency_concerns?: string[] | null
           diet_styles?: string[] | null
+          eating_window?: string | null
+          exercise_frequency?: string | null
+          exercise_types?: string[] | null
+          fasting_schedule?: string | null
+          food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
           health_conditions?: string[] | null
+          health_monitoring_preferences?: string[] | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_profile_update?: string | null
           main_health_goal?: string | null
+          meal_frequency?: number | null
+          medications?: string[] | null
           onboarding_completed?: boolean | null
           onboarding_skipped?: boolean | null
+          priority_micronutrients?: string[] | null
+          profile_completion_percentage?: number | null
+          progress_tracking_priorities?: string[] | null
+          recovery_sleep_quality?: string | null
+          reminder_frequency?: string | null
           selected_trackers?: string[] | null
           show_onboarding_reminder?: boolean | null
+          snacking_patterns?: string | null
+          social_eating_preferences?: string | null
+          specific_health_conditions?: Json | null
+          supplement_goals?: string[] | null
+          supplement_preferences?: string | null
+          target_calories?: number | null
+          target_carbs?: number | null
+          target_fat?: number | null
+          target_fiber?: number | null
+          target_protein?: number | null
+          target_weight?: number | null
+          toxin_sensitivity_level?: string | null
           updated_at?: string
           user_id: string
           weight?: number | null
+          weight_goal_timeline?: string | null
+          weight_goal_type?: string | null
           weight_unit?: string | null
         }
         Update: {
           activity_level?: string | null
           age?: number | null
+          allergy_severity?: string | null
+          body_composition_goals?: string[] | null
+          calculated_bmr?: number | null
+          calculated_tdee?: number | null
+          communication_style?: string | null
+          completed_sections?: string[] | null
           created_at?: string
+          cross_contamination_sensitivity?: boolean | null
+          cultural_dietary_restrictions?: string[] | null
+          current_supplements?: Json | null
+          daily_lifestyle?: string | null
+          deficiency_concerns?: string[] | null
           diet_styles?: string[] | null
+          eating_window?: string | null
+          exercise_frequency?: string | null
+          exercise_types?: string[] | null
+          fasting_schedule?: string | null
+          food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
           health_conditions?: string[] | null
+          health_monitoring_preferences?: string[] | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_profile_update?: string | null
           main_health_goal?: string | null
+          meal_frequency?: number | null
+          medications?: string[] | null
           onboarding_completed?: boolean | null
           onboarding_skipped?: boolean | null
+          priority_micronutrients?: string[] | null
+          profile_completion_percentage?: number | null
+          progress_tracking_priorities?: string[] | null
+          recovery_sleep_quality?: string | null
+          reminder_frequency?: string | null
           selected_trackers?: string[] | null
           show_onboarding_reminder?: boolean | null
+          snacking_patterns?: string | null
+          social_eating_preferences?: string | null
+          specific_health_conditions?: Json | null
+          supplement_goals?: string[] | null
+          supplement_preferences?: string | null
+          target_calories?: number | null
+          target_carbs?: number | null
+          target_fat?: number | null
+          target_fiber?: number | null
+          target_protein?: number | null
+          target_weight?: number | null
+          toxin_sensitivity_level?: string | null
           updated_at?: string
           user_id?: string
           weight?: number | null
+          weight_goal_timeline?: string | null
+          weight_goal_type?: string | null
           weight_unit?: string | null
         }
         Relationships: []
