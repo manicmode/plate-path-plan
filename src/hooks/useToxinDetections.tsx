@@ -12,12 +12,12 @@ interface ToxinData {
 }
 
 const TOXIN_THRESHOLDS = {
-  inflammatory_foods: { name: "INFLAMMATORY.F.", icon: "🔥", threshold: 2, unit: "servings", bgColor: "bg-orange-800" },
-  artificial_sweeteners: { name: "ARTIFICIAL.S.", icon: "🧪", threshold: 1, unit: "servings", bgColor: "bg-green-900" },
-  preservatives: { name: "Preservatives", icon: "⚗️", threshold: 3, unit: "servings", bgColor: "bg-blue-900" },
-  dyes: { name: "Dyes", icon: "🎨", threshold: 1, unit: "servings", bgColor: "bg-amber-800" },
-  seed_oils: { name: "Seed Oils", icon: "🌻", threshold: 2, unit: "servings", bgColor: "bg-green-800" },
-  gmos: { name: "GMOs", icon: "🧬", threshold: 2, unit: "servings", bgColor: "bg-purple-900" }
+  inflammatory_foods: { name: "INFLAMMATORY.F.", icon: "🔥", threshold: 2, unit: "servings", bgColor: "bg-orange-100" },
+  artificial_sweeteners: { name: "ARTIFICIAL.S.", icon: "🧪", threshold: 1, unit: "servings", bgColor: "bg-green-100" },
+  preservatives: { name: "Preservatives", icon: "⚗️", threshold: 3, unit: "servings", bgColor: "bg-blue-100" },
+  dyes: { name: "Dyes", icon: "🎨", threshold: 1, unit: "servings", bgColor: "bg-amber-100" },
+  seed_oils: { name: "Seed Oils", icon: "🌻", threshold: 2, unit: "servings", bgColor: "bg-green-100" },
+  gmos: { name: "GMOs", icon: "🧬", threshold: 2, unit: "servings", bgColor: "bg-purple-100" }
 };
 
 export const useToxinDetections = () => {

@@ -1242,7 +1242,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-6 max-w-sm' : 'gap-8 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
                 {toxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
@@ -1279,9 +1279,9 @@ const Home = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      <div className="flex justify-center -mt-1">
+                      <div className="flex justify-center -mt-6">
                         <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                          {isOverThreshold ? '🚨' : '✅'}
+                          {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
                         </span>
                       </div>
                     </div>
