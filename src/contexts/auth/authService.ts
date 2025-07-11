@@ -10,7 +10,20 @@ export const loginUser = async (email: string, password: string) => {
       password,
     });
     
-    if (error) throw error;
+    if (error) {
+      // Handle email not confirmed error specifically
+      if (error.message?.includes('Email not confirmed')) {
+        throw new Error('Please confirm your email address before signing in. Check your email for a confirmation link.');
+      }
+      throw error;
+    }
+
+    // Additional check for email confirmation after successful login
+    if (data.user && !data.user.email_confirmed_at) {
+      // Sign out the user immediately if email is not confirmed
+      await supabase.auth.signOut();
+      throw new Error('Please confirm your email address to complete registration. Check your email for a confirmation link.');
+    }
   } catch (error: any) {
     console.error('Login failed:', error);
     throw error;

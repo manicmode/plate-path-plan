@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { User, Lock, Mail } from 'lucide-react';
+import { User, Lock, Mail, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { validateEmail } from '@/utils/emailValidation';
 
 const AuthForm = () => {
   const { login, register, user } = useAuth();
@@ -27,6 +29,11 @@ const AuthForm = () => {
     email: string;
     message: string;
   }>({ show: false, email: '', message: '' });
+  const [emailValidation, setEmailValidation] = useState<{
+    isValid: boolean;
+    warning?: string;
+    error?: string;
+  } | null>(null);
 
   // Clear form when user signs out
   useEffect(() => {
@@ -86,6 +93,17 @@ const AuthForm = () => {
     }
   };
 
+  const handleEmailChange = (email: string, isRegister: boolean = false) => {
+    setFormData(prev => ({...prev, email}));
+    
+    if (isRegister && email) {
+      const validation = validateEmail(email);
+      setEmailValidation(validation);
+    } else {
+      setEmailValidation(null);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -104,6 +122,13 @@ const AuthForm = () => {
 
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters long.');
+      return;
+    }
+
+    // Email validation
+    const emailValidationResult = validateEmail(formData.email);
+    if (!emailValidationResult.isValid) {
+      toast.error(emailValidationResult.error || 'Please enter a valid email address.');
       return;
     }
 
@@ -276,7 +301,7 @@ const AuthForm = () => {
                     type="email"
                     placeholder="Enter your email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                    onChange={(e) => handleEmailChange(e.target.value, false)}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
                     required
                     disabled={isLoading}
@@ -336,11 +361,30 @@ const AuthForm = () => {
                     type="email"
                     placeholder="Enter your email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
-                    className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
+                    onChange={(e) => handleEmailChange(e.target.value, true)}
+                    className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'} ${
+                      emailValidation?.error ? 'border-red-500 border-2' : 
+                      emailValidation?.warning ? 'border-amber-500 border-2' : ''
+                    }`}
                     required
                     disabled={isLoading}
                   />
+                  {emailValidation?.error && (
+                    <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <AlertDescription className="text-red-700 dark:text-red-300">
+                        {emailValidation.error}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {emailValidation?.warning && !emailValidation?.error && (
+                    <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-700 dark:text-amber-300">
+                        {emailValidation.warning}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="register-password" className="flex items-center space-x-2">
@@ -393,7 +437,7 @@ const AuthForm = () => {
                 <Button 
                   type="submit" 
                   className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}
-                  disabled={isLoading || (rateLimitUntil !== null && countdown > 0)}
+                  disabled={isLoading || (rateLimitUntil !== null && countdown > 0) || !!emailValidation?.error}
                 >
                   {isLoading ? 'Creating Account...' : 
                    rateLimitUntil && countdown > 0 ? `Wait ${countdown}s` : 
