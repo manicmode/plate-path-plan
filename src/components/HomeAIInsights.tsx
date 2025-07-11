@@ -230,7 +230,7 @@ const HomeAIInsights = () => {
   const currentInsight = insights[currentInsightIndex] || insights[0];
 
   return (
-    <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl -mt-8 ${isMobile ? 'mx-2' : 'mx-4'}`}>
+    <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl ${isMobile ? 'mx-2' : 'mx-4'}`}>
       <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
         {/* Header with refresh button */}
         <div className={`flex items-center justify-between ${isMobile ? 'mb-4' : 'mb-6'}`}>
