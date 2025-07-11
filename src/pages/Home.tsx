@@ -73,6 +73,7 @@ const Home = () => {
   const [todaysSteps, setTodaysSteps] = useState(3731); // Mock data - will be replaced with real data later
   const [isNutrientsExpanded, setIsNutrientsExpanded] = useState(false);
   const [isMicronutrientsExpanded, setIsMicronutrientsExpanded] = useState(false);
+  const [isToxinsExpanded, setIsToxinsExpanded] = useState(false);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -380,6 +381,52 @@ const Home = () => {
       unit: 'μg',
       color: 'from-amber-400 to-amber-600',
       icon: Target,
+    },
+  ];
+
+  // Toxins & Flags configuration
+  const toxinItems = [
+    {
+      name: 'Inflammatory Foods',
+      current: (progress as any).inflammatoryFoods || 0,
+      threshold: 2,
+      unit: 'servings',
+      icon: '🔥',
+    },
+    {
+      name: 'Artificial Sweeteners',
+      current: (progress as any).artificialSweeteners || 0,
+      threshold: 1,
+      unit: 'servings',
+      icon: '🧪',
+    },
+    {
+      name: 'Preservatives',
+      current: (progress as any).preservatives || 0,
+      threshold: 3,
+      unit: 'servings',
+      icon: '🧫',
+    },
+    {
+      name: 'Dyes',
+      current: (progress as any).dyes || 0,
+      threshold: 1,
+      unit: 'servings',
+      icon: '🎨',
+    },
+    {
+      name: 'Seed Oils',
+      current: (progress as any).seedOils || 0,
+      threshold: 2,
+      unit: 'servings',
+      icon: '🌱',
+    },
+    {
+      name: 'GMOs',
+      current: (progress as any).gmos || 1,
+      threshold: 0,
+      unit: 'servings',
+      icon: '🧬',
     },
   ];
 
@@ -1182,6 +1229,102 @@ const Home = () => {
                               className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
                               style={{ width: `${percentage}%` }}
                             ></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Fold Back Button - Matches Expand style */}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
+                <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+            </CollapsibleTrigger>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <span className="text-lg">🚨</span>
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Toxins & Flags Section - Collapsible */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        <Collapsible open={isToxinsExpanded} onOpenChange={setIsToxinsExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <span className="text-2xl">🧪</span>
+              <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
+                Toxins & Flags
+              </h3>
+              {!isToxinsExpanded && (
+                <>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
+                </>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-6">
+            <div className="flex justify-center pt-6">
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+                {toxinItems.map((item, index) => {
+                  const isOverThreshold = item.current > item.threshold;
+                  
+                  return (
+                    <Card
+                      key={item.name}
+                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
+                        isOverThreshold 
+                          ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                          : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                      }`}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <CardContent className="flex flex-col justify-between h-full p-0">
+                        <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                          <div className="flex-shrink-0">
+                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${
+                              isOverThreshold 
+                                ? 'bg-gradient-to-br from-red-400 to-red-600' 
+                                : 'bg-gradient-to-br from-green-400 to-green-600'
+                            } rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                              <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>{item.icon}</span>
+                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-sm' : 'text-base'} leading-tight`}>
+                              {item.name}
+                            </h4>
+                          </div>
+                          <div className="flex-grow flex flex-col justify-center space-y-2">
+                            <div className="flex items-center justify-center gap-2">
+                              <p className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold leading-tight ${
+                                isOverThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                              }`}>
+                                {item.current}
+                              </p>
+                              <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
+                                {isOverThreshold ? '🚨' : '✅'}
+                              </span>
+                            </div>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              {item.current} {item.unit} today
+                            </p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              Limit: {item.threshold} {item.unit}
+                            </p>
                           </div>
                         </div>
                       </CardContent>
