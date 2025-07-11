@@ -71,6 +71,7 @@ const Home = () => {
   const [showExerciseReminder, setShowExerciseReminder] = useState(false);
   const [todaysExercise, setTodaysExercise] = useState({ calories: 0, duration: 0 });
   const [todaysSteps, setTodaysSteps] = useState(3731); // Mock data - will be replaced with real data later
+  const [isNutrientsExpanded, setIsNutrientsExpanded] = useState(false);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -294,6 +295,22 @@ const Home = () => {
       unit: '',
       color: 'from-purple-500 to-pink-600',
       icon: Pill,
+    },
+    {
+      name: 'Fiber',
+      current: (progress as any).fiber || 0,
+      target: 25,
+      unit: 'g',
+      color: 'from-green-400 to-green-600',
+      icon: Activity,
+    },
+    {
+      name: 'Micronutrients',
+      current: (progress as any).micronutrients || 0,
+      target: 100,
+      unit: '%',
+      color: 'from-indigo-400 to-indigo-600',
+      icon: Sparkles,
     },
   ];
 
@@ -935,71 +952,104 @@ const Home = () => {
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
       <HomeAIInsights />
 
-      {/* Today's Nutrients Section with improved card alignment and positioned sliders */}
+      {/* Today's Nutrients Section - Collapsible */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
-        <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>Today's Nutrients</h3>
-        <div className="flex justify-center">
-          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
-            {macroCards.map((macro, index) => {
-              const percentage = Math.min((macro.current / macro.target) * 100, 100);
-              const Icon = macro.icon;
-              
-              // Define colors that match the tracker icons
-              const getProgressColor = (name: string) => {
-                switch (name) {
-                  case 'Calories':
-                    return 'from-emerald-400 to-emerald-600';
-                  case 'Protein':
-                    return 'from-blue-400 to-blue-600';
-                  case 'Carbs':
-                    return 'from-orange-400 to-orange-600';
-                  case 'Fat':
-                    return 'from-purple-400 to-purple-600';
-                  case 'Hydration':
-                    return 'from-cyan-400 to-blue-600';
-                  case 'Supplements':
-                    return 'from-purple-500 to-pink-600';
-                  default:
-                    return macro.color;
-                }
-              };
-              
-              return (
-                <Card
-                  key={macro.name}
-                  className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <CardContent className="flex flex-col justify-between h-full p-0">
-                    <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
-                      <div className="flex-shrink-0">
-                        <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-                          <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+        <Collapsible open={isNutrientsExpanded} onOpenChange={setIsNutrientsExpanded}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
+                Today's Nutrients
+              </h3>
+              {!isNutrientsExpanded && (
+                <>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
+                </>
+              )}
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-6">
+            <div className="flex justify-center pt-6">
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+                {macroCards.map((macro, index) => {
+                  const percentage = Math.min((macro.current / macro.target) * 100, 100);
+                  const Icon = macro.icon;
+                  
+                  // Define colors that match the tracker icons
+                  const getProgressColor = (name: string) => {
+                    switch (name) {
+                      case 'Calories':
+                        return 'from-emerald-400 to-emerald-600';
+                      case 'Protein':
+                        return 'from-blue-400 to-blue-600';
+                      case 'Carbs':
+                        return 'from-orange-400 to-orange-600';
+                      case 'Fat':
+                        return 'from-purple-400 to-purple-600';
+                      case 'Hydration':
+                        return 'from-cyan-400 to-blue-600';
+                      case 'Supplements':
+                        return 'from-purple-500 to-pink-600';
+                      case 'Fiber':
+                        return 'from-green-400 to-green-600';
+                      case 'Micronutrients':
+                        return 'from-indigo-400 to-indigo-600';
+                      default:
+                        return macro.color;
+                    }
+                  };
+                  
+                  return (
+                    <Card
+                      key={macro.name}
+                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <CardContent className="flex flex-col justify-between h-full p-0">
+                        <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                          <div className="flex-shrink-0">
+                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                              <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+                            </div>
+                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{macro.name}</h4>
+                          </div>
+                          <div className="flex-grow flex flex-col justify-center space-y-2">
+                            <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
+                              {macro.current.toFixed(0)}{macro.unit}
+                            </p>
+                            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                              of {macro.target}{macro.unit}
+                            </p>
+                          </div>
+                          {/* Positioned slider with proper spacing and matching colors */}
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
+                            <div
+                              className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{macro.name}</h4>
-                      </div>
-                      <div className="flex-grow flex flex-col justify-center space-y-2">
-                        <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
-                          {macro.current.toFixed(0)}{macro.unit}
-                        </p>
-                        <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                          of {macro.target}{macro.unit}
-                        </p>
-                      </div>
-                      {/* Positioned slider with proper spacing and matching colors */}
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
-                        <div
-                          className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Fold Back Button */}
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsNutrientsExpanded(false)}
+                className="flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <ChevronUp className="h-4 w-4" />
+                Fold Back
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* Extra bottom padding to ensure menu is always visible */}
