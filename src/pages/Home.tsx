@@ -1033,7 +1033,9 @@ const Home = () => {
       </div>
 
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
-      <HomeAIInsights />
+      <div className="mt-4">
+        <HomeAIInsights />
+      </div>
 
       {/* Today's Nutrients Section - Collapsible */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4 mt-8">
