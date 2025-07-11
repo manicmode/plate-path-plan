@@ -52,6 +52,14 @@ const AuthForm = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent multiple submissions
+    if (isLoading) {
+      console.log('Login already in progress, ignoring duplicate submission');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -75,6 +83,13 @@ const AuthForm = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent multiple submissions
+    if (isLoading) {
+      console.log('Registration already in progress, ignoring duplicate submission');
+      return;
+    }
     
     // Basic form validation
     if (!formData.email || !formData.password || !formData.name) {

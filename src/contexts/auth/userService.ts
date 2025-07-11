@@ -23,7 +23,27 @@ export const loadUserProfile = async (userId: string) => {
 };
 
 export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUser> => {
-  const profile = await loadUserProfile(supabaseUser.id);
+  // For new users, profile might not exist yet due to trigger timing
+  // Try to load profile with retries for new users
+  let profile = null;
+  const userCreatedAt = new Date(supabaseUser.created_at || '');
+  const now = new Date();
+  const isNewUser = (now.getTime() - userCreatedAt.getTime()) < 10000; // Created within last 10 seconds
+
+  if (isNewUser) {
+    console.log('New user detected, attempting profile load with retries');
+    // For new users, try a few times with delays to handle trigger timing
+    for (let attempt = 0; attempt < 3; attempt++) {
+      profile = await loadUserProfile(supabaseUser.id);
+      if (profile) break;
+      
+      console.log(`Profile not found on attempt ${attempt + 1}, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Progressive delay
+    }
+  } else {
+    // For existing users, load normally
+    profile = await loadUserProfile(supabaseUser.id);
+  }
   
   return {
     ...supabaseUser,

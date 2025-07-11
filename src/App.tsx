@@ -26,6 +26,7 @@ function AppContent() {
   const { isAuthenticated, loading } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Only load onboarding status if authenticated to prevent race conditions
   const { 
     isOnboardingComplete, 
     isLoading: onboardingLoading, 
@@ -37,7 +38,8 @@ function AppContent() {
     setShowOnboarding(true);
   };
 
-  if (loading || onboardingLoading) {
+  // Show loading while auth is initializing
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <span className="loading loading-ring loading-lg"></span>
@@ -45,6 +47,7 @@ function AppContent() {
     );
   }
 
+  // Not authenticated - show auth flow
   if (!isAuthenticated) {
     return (
       <Router>
@@ -52,6 +55,15 @@ function AppContent() {
           <Route path="*" element={<Index />} />
         </Routes>
       </Router>
+    );
+  }
+
+  // Show loading while onboarding status is being checked
+  if (onboardingLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="loading loading-ring loading-lg"></span>
+      </div>
     );
   }
 
@@ -66,8 +78,15 @@ function AppContent() {
     <Router>
       <div className="min-h-screen bg-background">
         <Routes>
-          <Route path="/" element={<Index />} />
           <Route path="/" element={<Layout><Outlet /></Layout>}>
+            <Route index element={
+              <div>
+                {showReminder && (
+                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
+                )}
+                <Home />
+              </div>
+            } />
             <Route path="home" element={
               <div>
                 {showReminder && (

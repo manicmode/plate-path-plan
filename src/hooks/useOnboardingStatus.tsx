@@ -20,21 +20,54 @@ export const useOnboardingStatus = () => {
       try {
         console.log('Checking onboarding status for user:', user.id);
         
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // For new users, try multiple times with delays to handle profile creation timing
+        let data = null;
+        let error = null;
+        const userCreatedAt = new Date(user.created_at || '');
+        const now = new Date();
+        const isNewUser = (now.getTime() - userCreatedAt.getTime()) < 10000; // Created within last 10 seconds
 
-        if (error) {
+        if (isNewUser) {
+          console.log('New user detected, checking onboarding status with retries');
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const result = await supabase
+              .from('user_profiles')
+              .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            data = result.data;
+            error = result.error;
+            
+            if (data || (error && error.code !== 'PGRST116')) break;
+            
+            console.log(`Profile not found on attempt ${attempt + 1}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); // Progressive delay
+          }
+        } else {
+          const result = await supabase
+            .from('user_profiles')
+            .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          data = result.data;
+          error = result.error;
+        }
+
+        if (error && error.code !== 'PGRST116') {
           console.error('Error checking onboarding status:', error);
           // If no profile exists yet, assume onboarding is not complete
           setIsOnboardingComplete(false);
           setShowReminder(false);
+        } else if (!data) {
+          console.log('No profile found, assuming onboarding not complete');
+          setIsOnboardingComplete(false);
+          setShowReminder(false);
         } else {
-          const isComplete = data?.onboarding_completed || false;
-          const wasSkipped = data?.onboarding_skipped || false;
-          const shouldShowReminder = data?.show_onboarding_reminder || false;
+          const isComplete = data.onboarding_completed || false;
+          const wasSkipped = data.onboarding_skipped || false;
+          const shouldShowReminder = data.show_onboarding_reminder || false;
           
           console.log('Onboarding status:', { isComplete, wasSkipped, shouldShowReminder });
           
