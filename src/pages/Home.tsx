@@ -1036,19 +1036,21 @@ const Home = () => {
       <HomeAIInsights />
 
       {/* Today's Nutrients Section - Collapsible */}
-      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4 mt-8">
         <Collapsible open={isNutrientsExpanded} onOpenChange={setIsNutrientsExpanded}>
           <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-              <Zap className="h-6 w-6 text-orange-500" />
-              <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
-                Today's Nutrients
-              </h3>
+            <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <Zap className="h-6 w-6 text-orange-500" />
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                  Today's Nutrients
+                </h3>
+              </div>
               {!isNutrientsExpanded && (
-                <>
-                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <div className="flex items-center gap-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
-                </>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </div>
               )}
             </div>
           </CollapsibleTrigger>
@@ -1152,16 +1154,18 @@ const Home = () => {
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         <Collapsible open={isMicronutrientsExpanded} onOpenChange={setIsMicronutrientsExpanded}>
           <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-              <Atom className="h-6 w-6 text-indigo-500" />
-              <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
-                Micronutrients
-              </h3>
+            <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <Atom className="h-6 w-6 text-indigo-500" />
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                  Micronutrients
+                </h3>
+              </div>
               {!isMicronutrientsExpanded && (
-                <>
-                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <div className="flex items-center gap-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
-                </>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </div>
               )}
             </div>
           </CollapsibleTrigger>
@@ -1241,16 +1245,18 @@ const Home = () => {
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         <Collapsible open={isToxinsExpanded} onOpenChange={setIsToxinsExpanded}>
           <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-              <span className="text-2xl">🧪</span>
-              <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white text-center`}>
-                Toxins & Flags
-              </h3>
+            <div className="flex justify-between items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🧪</span>
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                  Toxins & Flags
+                </h3>
+              </div>
               {!isToxinsExpanded && (
-                <>
-                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <div className="flex items-center gap-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Expand</span>
-                </>
+                  <ChevronDown className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </div>
               )}
             </div>
           </CollapsibleTrigger>
