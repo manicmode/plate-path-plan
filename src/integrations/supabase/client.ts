@@ -7,11 +7,29 @@ import { safeStorage } from '@/lib/safeStorage';
 const SUPABASE_URL = "https://uzoiiijqtahohfafqirm.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw";
 
-// Custom storage adapter that uses our safe storage
+// Use standard localStorage for better compatibility
 const customStorageAdapter = {
-  getItem: (key: string) => safeStorage.getItem(key),
-  setItem: (key: string, value: string) => safeStorage.setItem(key, value),
-  removeItem: (key: string) => safeStorage.removeItem(key),
+  getItem: (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Ignore storage errors
+    }
+  },
+  removeItem: (key: string) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors
+    }
+  },
 };
 
 // Import the supabase client like this:

@@ -21,6 +21,7 @@ const AuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const [debugMode, setDebugMode] = useState(false);
 
   // Clear form when user signs out
   useEffect(() => {
@@ -106,8 +107,11 @@ const AuthForm = () => {
       await register(formData.email, formData.password, formData.name);
       console.log('🎉 Registration successful - showing success message');
       toast.success('Account created! Please check your email for confirmation.');
-      // Clear form on successful registration
+      
+      // Clear form and rate limit state on successful registration
       setFormData({ email: '', password: '', name: '' });
+      setRateLimitUntil(null);
+      setCountdown(0);
     } catch (error: any) {
       console.error('Registration failed with error:', error);
       console.error('Error details:', {
@@ -120,9 +124,10 @@ const AuthForm = () => {
       // Always show some error message to the user
       let errorMessage = 'Registration failed. Please try again.';
       
-      // Handle rate limiting
+      // Handle rate limiting with improved detection
       if (error.message?.includes('For security purposes') || 
           error.message?.includes('rate') || 
+          error.message?.includes('Too many requests') ||
           error.status === 429) {
         const waitTime = 60; // Default to 60 seconds
         const rateLimitEnd = Date.now() + (waitTime * 1000);
@@ -130,7 +135,8 @@ const AuthForm = () => {
         errorMessage = `Too many requests. Please wait ${waitTime} seconds before trying again.`;
       }
       // Handle email rate limiting specifically
-      else if (error.message?.includes('over_email_send_rate_limit')) {
+      else if (error.message?.includes('over_email_send_rate_limit') || 
+               error.message?.includes('Too many emails')) {
         const waitTime = 180; // 3 minutes for email rate limit
         const rateLimitEnd = Date.now() + (waitTime * 1000);
         setRateLimitUntil(rateLimitEnd);
@@ -283,6 +289,30 @@ const AuthForm = () => {
                     <p className="text-amber-700 dark:text-amber-300 font-medium">
                       Rate limited. Try again in {countdown} seconds.
                     </p>
+                  </div>
+                )}
+                
+                {debugMode && (
+                  <div className="text-center">
+                    <button 
+                      type="button"
+                      onClick={() => setDebugMode(false)}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      Hide Debug Info
+                    </button>
+                  </div>
+                )}
+                
+                {!debugMode && (
+                  <div className="text-center">
+                    <button 
+                      type="button"
+                      onClick={() => setDebugMode(true)}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      Show Debug Info
+                    </button>
                   </div>
                 )}
                 <Button 
