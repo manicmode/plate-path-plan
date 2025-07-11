@@ -102,9 +102,9 @@ const AuthForm = () => {
     setIsLoading(true);
     
     try {
-      console.log('Calling register function...');
+      console.log('🎯 Calling register function...');
       await register(formData.email, formData.password, formData.name);
-      console.log('Registration successful');
+      console.log('🎉 Registration successful - showing success message');
       toast.success('Account created! Please check your email for confirmation.');
       // Clear form on successful registration
       setFormData({ email: '', password: '', name: '' });
