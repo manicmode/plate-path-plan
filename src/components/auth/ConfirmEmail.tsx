@@ -21,24 +21,34 @@ export const ConfirmEmail: React.FC = () => {
     const confirmEmail = async () => {
       try {
         console.log('Email confirmation URL:', window.location.href);
+        console.log('PWA mode detected:', (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches);
         
-        // Get URL parameters - Supabase can send different formats
-        const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
-        const type = searchParams.get('type');
-        const tokenHash = searchParams.get('token_hash');
-        const code = searchParams.get('code');
+        // Get URL parameters - handle multiple Supabase formats
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        
+        // Check both query and hash for parameters (Supabase uses different methods)
+        const getParam = (key: string) => urlParams.get(key) || hashParams.get(key) || searchParams.get(key);
+        
+        const accessToken = getParam('access_token');
+        const refreshToken = getParam('refresh_token');
+        const type = getParam('type');
+        const tokenHash = getParam('token_hash');
+        const code = getParam('code');
+        const token = getParam('token'); // Some flows use 'token' instead of 'access_token'
 
         console.log('Email confirmation params:', { 
-          hasAccessToken: !!accessToken, 
+          hasAccessToken: !!(accessToken || token), 
           hasRefreshToken: !!refreshToken, 
           hasTokenHash: !!tokenHash,
           hasCode: !!code,
           type,
-          fullParams: Object.fromEntries(searchParams.entries())
+          url: window.location.href,
+          search: window.location.search,
+          hash: window.location.hash
         });
 
-        // Modern Supabase uses PKCE flow with code
+        // Priority 1: Modern PKCE flow with code
         if (code) {
           console.log('Using PKCE flow with code');
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -64,11 +74,40 @@ export const ConfirmEmail: React.FC = () => {
           return;
         }
 
-        // Legacy token-based flow fallback
-        if (accessToken && refreshToken) {
+        // Priority 2: Token hash flow (newer Supabase format)
+        if (tokenHash && type) {
+          console.log('Using token hash flow');
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any,
+          });
+          
+          if (error) {
+            console.error('Error verifying token hash:', error);
+            setState('error');
+            return;
+          }
+          
+          if (data.user?.email) {
+            setUserEmail(data.user.email);
+          }
+          
+          console.log('Token hash confirmation successful:', { 
+            userId: data.user?.id, 
+            email: data.user?.email,
+            emailConfirmed: data.user?.email_confirmed_at 
+          });
+          
+          setState('success');
+          handleSuccessfulConfirmation(data.user);
+          return;
+        }
+
+        // Priority 3: Legacy token-based flow fallback
+        if ((accessToken || token) && refreshToken) {
           console.log('Using legacy token flow');
           const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
+            access_token: accessToken || token,
             refresh_token: refreshToken,
           });
 
@@ -95,6 +134,7 @@ export const ConfirmEmail: React.FC = () => {
 
         // No valid confirmation method found
         console.error('No valid confirmation parameters found');
+        console.error('Available params:', Object.fromEntries(searchParams.entries()));
         setState('invalid');
 
       } catch (error) {
@@ -104,7 +144,7 @@ export const ConfirmEmail: React.FC = () => {
     };
 
     confirmEmail();
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   // Handle successful confirmation with smart redirect
   const handleSuccessfulConfirmation = async (user: any) => {
