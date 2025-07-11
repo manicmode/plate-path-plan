@@ -62,7 +62,11 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
 
       <div className="space-y-3">
         {dietStyles.map((style) => (
-          <div key={style.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+          <div key={style.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+            formData.dietStyles.includes(style.value)
+              ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+              : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+          }`}>
             <Checkbox
               id={style.value}
               checked={formData.dietStyles.includes(style.value)}

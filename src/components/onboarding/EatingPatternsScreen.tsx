@@ -56,7 +56,11 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
             className="space-y-3"
           >
             {mealFrequencies.map((freq) => (
-              <div key={freq.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+              <div key={freq.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+                formData.mealFrequency === freq.value 
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              }`}>
                 <RadioGroupItem value={freq.value} id={freq.value} />
                 <Label htmlFor={freq.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
                   <span className="text-xl">{freq.emoji}</span>
@@ -76,7 +80,11 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
             className="space-y-3"
           >
             {fastingSchedules.map((schedule) => (
-              <div key={schedule.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+              <div key={schedule.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+                formData.fastingSchedule === schedule.value 
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              }`}>
                 <RadioGroupItem value={schedule.value} id={schedule.value} />
                 <Label htmlFor={schedule.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
                   <span className="text-xl">{schedule.emoji}</span>

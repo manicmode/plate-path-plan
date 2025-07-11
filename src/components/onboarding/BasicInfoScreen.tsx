@@ -53,19 +53,35 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
             onValueChange={(value: 'male' | 'female' | 'non_binary' | 'prefer_not_to_say') => updateFormData({ gender: value })}
             className="grid grid-cols-2 gap-4"
           >
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
+              formData.gender === 'male' 
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+            }`}>
               <RadioGroupItem value="male" id="male" />
               <Label htmlFor="male">Male</Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
+              formData.gender === 'female' 
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+            }`}>
               <RadioGroupItem value="female" id="female" />
               <Label htmlFor="female">Female</Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
+              formData.gender === 'non_binary' 
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+            }`}>
               <RadioGroupItem value="non_binary" id="non_binary" />
               <Label htmlFor="non_binary">Non-binary</Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
+              formData.gender === 'prefer_not_to_say' 
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+            }`}>
               <RadioGroupItem value="prefer_not_to_say" id="prefer_not_to_say" />
               <Label htmlFor="prefer_not_to_say">Prefer not to say</Label>
             </div>
@@ -84,11 +100,19 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
             onValueChange={(value: 'ft' | 'cm') => updateFormData({ heightUnit: value })}
             className="flex space-x-6"
           >
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
+              formData.heightUnit === 'ft' 
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+            }`}>
               <RadioGroupItem value="ft" id="ft" />
               <Label htmlFor="ft">Feet & Inches</Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-colors ${
+              formData.heightUnit === 'cm' 
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+            }`}>
               <RadioGroupItem value="cm" id="cm" />
               <Label htmlFor="cm">Centimeters</Label>
             </div>

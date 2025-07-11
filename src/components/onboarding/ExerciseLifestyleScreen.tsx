@@ -75,7 +75,11 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             className="space-y-3"
           >
             {lifestyleOptions.map((option) => (
-              <div key={option.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+              <div key={option.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+                formData.dailyLifestyle === option.value 
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              }`}>
                 <RadioGroupItem value={option.value} id={option.value} />
                 <Label htmlFor={option.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
                   <span className="text-xl">{option.emoji}</span>
@@ -95,7 +99,11 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             className="space-y-3"
           >
             {exerciseFrequencies.map((freq) => (
-              <div key={freq.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+              <div key={freq.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+                formData.exerciseFrequency === freq.value 
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              }`}>
                 <RadioGroupItem value={freq.value} id={freq.value} />
                 <Label htmlFor={freq.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
                   <span className="text-xl">{freq.emoji}</span>
@@ -112,7 +120,11 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             <Label className="text-base font-medium mb-4 block">What types of exercise do you do?</Label>
             <div className="space-y-3">
               {exerciseTypes.map((type) => (
-                <div key={type.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+                <div key={type.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+                  formData.exerciseTypes.includes(type.value)
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
+                    : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                }`}>
                   <Checkbox
                     id={type.value}
                     checked={formData.exerciseTypes.includes(type.value)}

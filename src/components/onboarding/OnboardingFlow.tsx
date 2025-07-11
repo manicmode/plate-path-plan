@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -111,6 +111,15 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   const updateFormData = (updates: Partial<OnboardingData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
+
+  // Scroll to top when screen changes
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }, [currentScreen]);
 
   const nextScreen = () => {
     if (currentScreen < TOTAL_SCREENS - 1) {
