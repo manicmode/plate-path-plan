@@ -19,6 +19,8 @@ import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
 import { useToxinDetections } from '@/hooks/useToxinDetections';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
+import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
+import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -80,6 +82,9 @@ const Home = () => {
   const [isNutrientsExpanded, setIsNutrientsExpanded] = useState(false);
   const [isMicronutrientsExpanded, setIsMicronutrientsExpanded] = useState(false);
   const [isToxinsExpanded, setIsToxinsExpanded] = useState(false);
+
+  // Tracker Insights state
+  const { isOpen: isInsightsOpen, selectedTracker, openInsights, closeInsights } = useTrackerInsights();
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -1082,8 +1087,13 @@ const Home = () => {
                   return (
                     <Card
                       key={macro.name}
-                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
                       style={{ animationDelay: `${index * 100}ms` }}
+                      onClick={() => openInsights({ 
+                        type: macro.name.toLowerCase(), 
+                        name: macro.name, 
+                        color: getProgressColor(macro.name) 
+                      })}
                     >
                       <CardContent className="flex flex-col justify-between h-full p-0">
                         <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
@@ -1166,8 +1176,13 @@ const Home = () => {
                   return (
                     <Card
                       key={micro.name}
-                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full`}
+                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
                       style={{ animationDelay: `${index * 100}ms` }}
+                      onClick={() => openInsights({ 
+                        type: micro.name.toLowerCase(), 
+                        name: micro.name, 
+                        color: micro.color 
+                      })}
                     >
                       <CardContent className="flex flex-col justify-between h-full p-0">
                         <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
@@ -1249,12 +1264,17 @@ const Home = () => {
                   return (
                     <Card
                       key={item.name}
-                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full ${
+                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer ${
                         isOverThreshold 
                           ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
                           : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
                       }`}
                       style={{ animationDelay: `${index * 100}ms` }}
+                      onClick={() => openInsights({ 
+                        type: item.name, 
+                        name: item.name, 
+                        color: isOverThreshold ? '#ef4444' : '#22c55e' 
+                      })}
                     >
                       <CardContent className="h-full p-0">
                         <div className={`${isMobile ? 'p-4' : 'p-6'} h-full flex flex-col text-center`}>
@@ -1307,6 +1327,17 @@ const Home = () => {
 
       {/* Extra bottom padding to ensure menu is always visible */}
       <div className={`${isMobile ? 'pb-24' : 'pb-32'}`}></div>
+
+      {/* Tracker Insights Popup */}
+      {selectedTracker && (
+        <TrackerInsightsPopup
+          isOpen={isInsightsOpen}
+          onClose={closeInsights}
+          trackerType={selectedTracker.type}
+          trackerName={selectedTracker.name}
+          trackerColor={selectedTracker.color}
+        />
+      )}
     </div>
   );
 };
