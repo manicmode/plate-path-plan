@@ -9,13 +9,19 @@ export interface EmailValidationResult {
 // Common fake email patterns to detect
 const FAKE_EMAIL_PATTERNS = [
   /^(test|fake|dummy|example|temp|temporary)@/i,
-  /^[a-z]+@[a-z]+\.[a-z]+$/i, // Simple patterns like abc@def.ghi
   /^.+@(test|fake|dummy|example|temp|temporary)\./i,
   /^.+@.+\.(test|fake|dummy|example|temp|temporary)$/i,
   /^\d+@\d+\.\d+$/, // Numbers only like 123@123.123
-  /^[a-z]{1,4}@[a-z]{1,4}\.[a-z]{1,4}$/i, // Very short domains
+  /^[a-z]{1,3}@[a-z]{1,3}\.[a-z]{1,3}$/i, // Very short patterns like a@b.c
   /^.+@localhost$/i,
   /^.+@\d+\.\d+\.\d+\.\d+$/i, // IP addresses
+];
+
+// Legitimate email domains that should never be flagged
+const LEGITIMATE_DOMAINS = [
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
+  'aol.com', 'protonmail.com', 'mail.com', 'zoho.com', 'yandex.com',
+  'live.com', 'msn.com', 'att.net', 'verizon.net', 'comcast.net'
 ];
 
 // Suspicious patterns that should get warnings
@@ -50,8 +56,21 @@ export function validateEmail(email: string): EmailValidationResult {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  const domain = normalizedEmail.split('@')[1];
 
-  // Check for obviously fake patterns
+  // Skip most validation for legitimate major email providers
+  if (LEGITIMATE_DOMAINS.includes(domain)) {
+    // Only check for repeated characters for legitimate domains
+    if (/^(.)\1{4,}@/.test(normalizedEmail)) {
+      return { 
+        isValid: false, 
+        error: 'This email appears to be fake. Please use a real email address.' 
+      };
+    }
+    return { isValid: true };
+  }
+
+  // Check for obviously fake patterns (only for non-legitimate domains)
   for (const pattern of FAKE_EMAIL_PATTERNS) {
     if (pattern.test(normalizedEmail)) {
       return { 
@@ -62,7 +81,6 @@ export function validateEmail(email: string): EmailValidationResult {
   }
 
   // Check for disposable email services
-  const domain = normalizedEmail.split('@')[1];
   if (DISPOSABLE_DOMAINS.includes(domain)) {
     return { 
       isValid: false, 
