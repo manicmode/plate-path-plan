@@ -1276,14 +1276,14 @@ const Home = () => {
                                 Limit: {item.threshold} {item.unit}
                               </p>
                             </div>
+                            <div className="flex justify-center mt-4">
+                              <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
+                                {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
+                              </span>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
-                      <div className="flex justify-center -mt-2">
-                        <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-                          {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
-                        </span>
-                      </div>
                     </div>
                   );
                 })}
