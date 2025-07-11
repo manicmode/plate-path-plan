@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import { cleanupAuthState } from '@/lib/authUtils';
 
 // Extended user type with profile data
 interface ExtendedUser extends User {
@@ -200,6 +201,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (email: string, password: string, name?: string) => {
     try {
+      // Clean up any existing auth state before registration
+      cleanupAuthState();
+      
+      // Attempt global sign out to clear any lingering sessions
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+        console.log('Global signout failed during registration cleanup:', err);
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -218,11 +230,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      // Clean up auth state first
+      cleanupAuthState();
+      
+      // Attempt global sign out
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) throw error;
+      
+      // Force page refresh for completely clean state
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
       toast.error('Error signing out');
+      // Force refresh even if signout fails
+      window.location.href = '/';
     }
   };
 

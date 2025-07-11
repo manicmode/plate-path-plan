@@ -60,6 +60,10 @@ const AuthForm = () => {
         toast.error('Password should be at least 6 characters long.');
       } else if (error.message?.includes('Unable to validate email')) {
         toast.error('Please enter a valid email address.');
+      } else if (error.message?.includes('For security purposes') || error.status === 429) {
+        toast.error('Too many requests. Please wait a minute before trying again.');
+      } else if (error.message?.includes('over_email_send_rate_limit')) {
+        toast.error('Email rate limit reached. Please wait a few minutes before trying again.');
       } else {
         toast.error('Registration failed. Please try again.');
       }
