@@ -11,6 +11,7 @@ import Layout from './components/Layout';
 import { OnboardingScreen } from './components/onboarding/OnboardingScreen';
 import { OnboardingReminder } from '@/components/onboarding/OnboardingReminder';
 import EmailVerificationRequired from '@/components/auth/EmailVerificationRequired';
+import { ConfirmEmail } from '@/components/auth/ConfirmEmail';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 
 // Import existing pages
@@ -63,12 +64,13 @@ function AppContent() {
     );
   }
 
-  // Not authenticated - show auth flow
+  // Not authenticated - show auth flow or email confirmation
   if (!isAuthenticated) {
     console.log('AppContent: User not authenticated, showing auth flow');
     return (
       <Router>
         <Routes>
+          <Route path="/confirm" element={<ConfirmEmail />} />
           <Route path="*" element={<Index />} />
         </Routes>
       </Router>
