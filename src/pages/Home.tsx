@@ -1242,7 +1242,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-8 max-w-sm' : 'gap-10 max-w-4xl'} w-full`}>
                 {toxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
