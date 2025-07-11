@@ -2,7 +2,7 @@ import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
-import { loginUser, registerUser, signOutUser } from './authService';
+import { loginUser, registerUser, signOutUser, resendEmailConfirmation } from './authService';
 import { createExtendedUser, updateUserTrackers } from './userService';
 import { Session } from '@supabase/supabase-js';
 
@@ -137,6 +137,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,
+    resendEmailConfirmation,
     signOut: signOutUser,
     logout: signOutUser,
     updateProfile,

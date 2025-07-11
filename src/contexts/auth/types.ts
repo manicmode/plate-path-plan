@@ -21,6 +21,7 @@ export interface ExtendedUser extends User {
 
 export interface RegistrationResult {
   requiresEmailConfirmation: boolean;
+  isExistingUnverified?: boolean;
   message: string;
 }
 
@@ -32,6 +33,7 @@ export interface AuthContextType {
   isEmailConfirmed: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<RegistrationResult>;
+  resendEmailConfirmation: (email: string) => Promise<{ success: boolean }>;
   signOut: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (profileData: Partial<ExtendedUser>) => void;
