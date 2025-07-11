@@ -10,6 +10,7 @@ import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
 import { OnboardingScreen } from './components/onboarding/OnboardingScreen';
 import { OnboardingReminder } from '@/components/onboarding/OnboardingReminder';
+import EmailVerificationRequired from '@/components/auth/EmailVerificationRequired';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 
 // Import existing pages
@@ -19,11 +20,12 @@ import Coach from './pages/Coach';
 import Profile from './pages/Profile';
 import Hydration from './pages/Hydration';
 import Supplements from './pages/Supplements';
+import AdminDashboard from './components/admin/AdminDashboard';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, isEmailConfirmed } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Only load onboarding status if authenticated to prevent race conditions
@@ -41,6 +43,7 @@ function AppContent() {
   console.log('AppContent state:', { 
     loading, 
     isAuthenticated, 
+    isEmailConfirmed,
     onboardingLoading, 
     isOnboardingComplete, 
     showOnboarding, 
@@ -70,6 +73,12 @@ function AppContent() {
         </Routes>
       </Router>
     );
+  }
+
+  // Check email confirmation first if authenticated
+  if (isAuthenticated && !isEmailConfirmed) {
+    console.log('AppContent: User authenticated but email not confirmed, showing verification screen');
+    return <EmailVerificationRequired />;
   }
 
   // Show loading while onboarding status is being checked
@@ -121,6 +130,7 @@ function AppContent() {
             <Route path="profile" element={<Profile />} />
             <Route path="hydration" element={<Hydration />} />
             <Route path="supplements" element={<Supplements />} />
+            <Route path="admin" element={<AdminDashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
