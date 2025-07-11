@@ -147,12 +147,8 @@ const AuthForm = () => {
   const handleEmailChange = (email: string, isRegister: boolean = false) => {
     setFormData(prev => ({...prev, email}));
     
-    if (isRegister && email) {
-      const validation = validateEmail(email);
-      setEmailValidation(validation);
-    } else {
-      setEmailValidation(null);
-    }
+    // Only clear previous validation errors, don't validate on input
+    setEmailValidation(null);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -485,29 +481,6 @@ const AuthForm = () => {
                   </div>
                 )}
                 
-                {debugMode && (
-                  <div className="text-center">
-                    <button 
-                      type="button"
-                      onClick={() => setDebugMode(false)}
-                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    >
-                      Hide Debug Info
-                    </button>
-                  </div>
-                )}
-                
-                {!debugMode && (
-                  <div className="text-center">
-                    <button 
-                      type="button"
-                      onClick={() => setDebugMode(true)}
-                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    >
-                      Show Debug Info
-                    </button>
-                  </div>
-                )}
                 <Button 
                   type="submit" 
                   className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-12'}`}
