@@ -1,5 +1,5 @@
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import AuthForm from '@/components/auth/AuthForm';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';

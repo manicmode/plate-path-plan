@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 interface WeeklyProgressRingProps {
   size?: number;

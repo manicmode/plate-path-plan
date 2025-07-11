@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { FlaggedIngredient } from "@/components/IngredientAlert";
 import { useCoachFlaggedResponse } from "@/hooks/useCoachFlaggedResponse";
 import { useNutrition } from "@/contexts/NutritionContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 
 export function useSmartCoachIntegration() {
   const { generateFlaggedIngredientsResponse, isGeneratingResponse } = useCoachFlaggedResponse();

@@ -2,7 +2,7 @@
 import React from 'react';
 import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 import { Flame, Zap, Droplets, Activity } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 interface DailyProgressSectionProps {
   progress: any;

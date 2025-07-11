@@ -5,7 +5,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Zap, Droplets } from 'lucide-react';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { CustomTooltip } from '@/components/analytics/ui/CustomTooltip';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 interface MacrosHydrationSectionProps {
   macroData: any[];

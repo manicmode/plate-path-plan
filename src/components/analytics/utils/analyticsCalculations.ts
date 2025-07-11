@@ -1,6 +1,6 @@
 
 import { useNutrition } from '@/contexts/NutritionContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 export const useAnalyticsCalculations = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { safeSetJSON } from '@/lib/safeStorage';
 
 interface FoodItem {

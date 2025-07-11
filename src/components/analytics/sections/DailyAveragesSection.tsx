@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { EnhancedDailyAverageCard } from '@/components/analytics/EnhancedDailyAverageCard';
 import { TrendingUp, ChevronDown, Flame, Zap, Activity, Droplets, Star } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 interface DailyAveragesSectionProps {
   weeklyAverage: any;
