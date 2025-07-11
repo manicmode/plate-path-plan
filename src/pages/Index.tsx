@@ -1,10 +1,6 @@
 
 import { useAuth } from '@/contexts/auth';
 import AuthForm from '@/components/auth/AuthForm';
-import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
-import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -30,11 +26,7 @@ const Index = () => {
 
   // Only show auth form for unauthenticated users
   console.log('User not authenticated, showing AuthForm');
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <AuthForm />
-    </div>
-  );
+  return <AuthForm />;
 };
 
 export default Index;

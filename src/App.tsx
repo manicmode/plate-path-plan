@@ -38,17 +38,31 @@ function AppContent() {
     setShowOnboarding(true);
   };
 
+  console.log('AppContent state:', { 
+    loading, 
+    isAuthenticated, 
+    onboardingLoading, 
+    isOnboardingComplete, 
+    showOnboarding, 
+    showReminder 
+  });
+
   // Show loading while auth is initializing
   if (loading) {
+    console.log('AppContent: Showing auth loading state');
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <span className="loading loading-ring loading-lg"></span>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Initializing...</p>
+        </div>
       </div>
     );
   }
 
   // Not authenticated - show auth flow
   if (!isAuthenticated) {
+    console.log('AppContent: User not authenticated, showing auth flow');
     return (
       <Router>
         <Routes>
@@ -60,14 +74,20 @@ function AppContent() {
 
   // Show loading while onboarding status is being checked
   if (onboardingLoading) {
+    console.log('AppContent: Showing onboarding loading state');
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <span className="loading loading-ring loading-lg"></span>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
       </div>
     );
   }
 
-  if (showOnboarding) {
+  // Show onboarding if needed
+  if (showOnboarding || (isOnboardingComplete === false)) {
+    console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={() => {
       setShowOnboarding(false);
       markOnboardingComplete();

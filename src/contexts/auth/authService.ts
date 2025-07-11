@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/lib/authUtils';
 import { toast } from 'sonner';
+import type { RegistrationResult } from './types';
 
 export const loginUser = async (email: string, password: string) => {
   try {
@@ -16,7 +17,7 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
-export const registerUser = async (email: string, password: string, name?: string) => {
+export const registerUser = async (email: string, password: string, name?: string): Promise<RegistrationResult> => {
   try {
     console.log('🚀 Starting registration process for:', email);
     
@@ -65,9 +66,6 @@ export const registerUser = async (email: string, password: string, name?: strin
       console.error('❌ Supabase returned error:', error);
       
       // Handle specific Supabase errors
-      if (error.message?.includes('User already registered')) {
-        throw new Error('An account with this email already exists. Please sign in instead.');
-      }
       if (error.message?.includes('over_email_send_rate_limit')) {
         throw new Error('Too many emails sent. Please wait a few minutes before trying again.');
       }
@@ -80,9 +78,8 @@ export const registerUser = async (email: string, password: string, name?: strin
     
     // Check if user was actually created
     if (!data?.user) {
-      console.error('❌ No user object in response - signup may have been silently rejected');
-      console.log('🔍 Full response data:', data);
-      throw new Error('Account creation failed. This email may already be registered. Please try signing in instead.');
+      console.error('❌ No user object in response');
+      throw new Error('Account creation failed. Please try again.');
     }
     
     // Check if this is actually a new user vs existing user
@@ -94,21 +91,36 @@ export const registerUser = async (email: string, password: string, name?: strin
     console.log('👤 User creation timing:', {
       createdAt: data.user.created_at,
       timeDifference,
-      isNewUser
+      isNewUser,
+      emailConfirmed: !!data.user.email_confirmed_at,
+      hasSession: !!data.session
     });
     
+    // Handle existing user with unconfirmed email
     if (!isNewUser && !data.session) {
-      console.log('🚫 User already exists - this is not a new registration');
-      throw new Error('An account with this email already exists. Please sign in instead.');
+      console.log('📧 Existing user with unconfirmed email - guiding to email confirmation');
+      // This is an existing user who hasn't confirmed their email yet
+      // Don't throw an error, instead guide them to confirm their email
+      return {
+        requiresEmailConfirmation: true,
+        message: 'Please check your email and click the confirmation link to complete your account setup.'
+      };
     }
     
-    // Check if user needs email confirmation
+    // Check if user needs email confirmation (new user)
     if (data.user && !data.user.email_confirmed_at && !data.session) {
-      console.log('📬 User created but needs email confirmation');
-      return; // This is actually success - user needs to confirm email
+      console.log('📬 New user created - needs email confirmation');
+      return {
+        requiresEmailConfirmation: true,
+        message: 'Account created! Please check your email for a confirmation link.'
+      };
     }
     
-    console.log('✅ Registration successful!');
+    console.log('✅ Registration successful with immediate login!');
+    return {
+      requiresEmailConfirmation: false,
+      message: 'Account created and logged in successfully!'
+    };
     
   } catch (error: any) {
     console.error('💥 Registration failed:', error);

@@ -15,8 +15,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   const updateUserWithProfile = async (supabaseUser: any) => {
-    const extendedUser = await createExtendedUser(supabaseUser);
-    setUser(extendedUser);
+    try {
+      const extendedUser = await createExtendedUser(supabaseUser);
+      setUser(extendedUser);
+    } catch (error) {
+      console.error('Error creating extended user:', error);
+      // Set basic user info even if profile creation fails
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        created_at: supabaseUser.created_at,
+        selectedTrackers: ['calories', 'hydration', 'supplements']
+      } as ExtendedUser);
+    }
   };
 
   const initializeAuth = async (retryCount = 0) => {

@@ -14,6 +14,7 @@ export const useOnboardingStatus = () => {
       if (!isAuthenticated || !user) {
         setIsOnboardingComplete(null);
         setIsLoading(false);
+        setShowReminder(false);
         return;
       }
 

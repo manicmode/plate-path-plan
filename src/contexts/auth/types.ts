@@ -19,13 +19,18 @@ export interface ExtendedUser extends User {
   health_conditions?: string[];
 }
 
+export interface RegistrationResult {
+  requiresEmailConfirmation: boolean;
+  message: string;
+}
+
 export interface AuthContextType {
   user: ExtendedUser | null;
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<RegistrationResult>;
   signOut: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (profileData: Partial<ExtendedUser>) => void;

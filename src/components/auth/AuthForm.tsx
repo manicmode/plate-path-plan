@@ -22,6 +22,11 @@ const AuthForm = () => {
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [debugMode, setDebugMode] = useState(false);
+  const [emailConfirmationState, setEmailConfirmationState] = useState<{
+    show: boolean;
+    email: string;
+    message: string;
+  }>({ show: false, email: '', message: '' });
 
   // Clear form when user signs out
   useEffect(() => {
@@ -119,9 +124,21 @@ const AuthForm = () => {
     
     try {
       console.log('🎯 Calling register function...');
-      await register(formData.email, formData.password, formData.name);
-      console.log('🎉 Registration successful - showing success message');
-      toast.success('Account created! Please check your email for confirmation.');
+      const result = await register(formData.email, formData.password, formData.name);
+      console.log('🎉 Registration result:', result);
+      
+      if (result.requiresEmailConfirmation) {
+        // Show email confirmation state
+        setEmailConfirmationState({
+          show: true,
+          email: formData.email,
+          message: result.message
+        });
+        toast.success(result.message);
+      } else {
+        // Immediate login success
+        toast.success(result.message);
+      }
       
       // Clear form and rate limit state on successful registration
       setFormData({ email: '', password: '', name: '' });
@@ -177,6 +194,49 @@ const AuthForm = () => {
       setIsLoading(false);
     }
   };
+
+  // Show email confirmation screen if needed
+  if (emailConfirmationState.show) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <Card className={`w-full max-w-md glass-card border-0 rounded-3xl ${isMobile ? 'mx-4' : ''}`}>
+          <CardHeader className="text-center space-y-4 pb-4">
+            <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} gradient-primary rounded-3xl flex items-center justify-center mx-auto neon-glow`}>
+              <Mail className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
+            </div>
+            <div>
+              <CardTitle className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent`}>
+                Check Your Email
+              </CardTitle>
+              <p className="text-gray-600 dark:text-gray-300 font-medium">We've sent you a confirmation link</p>
+            </div>
+          </CardHeader>
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-4`}>
+            <div className="text-center space-y-4">
+              <p className="text-gray-700 dark:text-gray-300">
+                {emailConfirmationState.message}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                We sent a confirmation link to:
+              </p>
+              <p className="font-medium text-emerald-600 dark:text-emerald-400">
+                {emailConfirmationState.email}
+              </p>
+              <div className="pt-4">
+                <Button 
+                  onClick={() => setEmailConfirmationState({ show: false, email: '', message: '' })}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
