@@ -19,5 +19,18 @@
     }
   ],
   "categories": ["health", "lifestyle", "nutrition"],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+nutricoach",
+      "url": "/?confirm=%s"
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "url": "url"
+    }
+  }
 }

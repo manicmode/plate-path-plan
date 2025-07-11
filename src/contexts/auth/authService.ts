@@ -85,7 +85,9 @@ export const registerUser = async (email: string, password: string, name?: strin
       password,
       options: {
         data: name ? { name } : undefined,
-        emailRedirectTo: `${window.location.origin}/confirm`,
+        emailRedirectTo: window.location.hostname.includes('lovable') 
+          ? `https://preview--plate-path-plan.lovable.app/confirm`
+          : `${window.location.origin}/confirm`,
       },
     });
     
@@ -196,7 +198,9 @@ export const resendEmailConfirmation = async (email: string) => {
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: `${window.location.origin}/confirm`,
+        emailRedirectTo: window.location.hostname.includes('lovable') 
+          ? `https://preview--plate-path-plan.lovable.app/confirm`
+          : `${window.location.origin}/confirm`,
       }
     });
     

@@ -21,7 +21,10 @@ export const ConfirmEmail: React.FC = () => {
     const confirmEmail = async () => {
       try {
         console.log('Email confirmation URL:', window.location.href);
-        console.log('PWA mode detected:', (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches);
+        const isPWA = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches;
+        console.log('PWA mode detected:', isPWA);
+        console.log('User-Agent:', navigator.userAgent);
+        console.log('Referrer:', document.referrer);
         
         // Get URL parameters - handle multiple Supabase formats
         const urlParams = new URLSearchParams(window.location.search);
@@ -103,9 +106,9 @@ export const ConfirmEmail: React.FC = () => {
           return;
         }
 
-        // Priority 3: Legacy token-based flow fallback
+        // Priority 3: Legacy token-based flow fallback (deprecated but needed for compatibility)
         if ((accessToken || token) && refreshToken) {
-          console.log('Using legacy token flow');
+          console.log('Using legacy token flow - this method is deprecated');
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken || token,
             refresh_token: refreshToken,
@@ -164,20 +167,34 @@ export const ConfirmEmail: React.FC = () => {
           console.error('Error checking onboarding status:', profileError);
         }
 
-        // Redirect based on onboarding status
-        if (profile?.onboarding_completed) {
-          console.log('User completed onboarding - redirecting to home');
-          // Force full page reload to ensure clean state in PWA
-          window.location.href = '/';
+        // PWA-optimized redirect
+        const isPWA = (window.navigator as any).standalone || 
+                      window.matchMedia('(display-mode: standalone)').matches;
+        
+        console.log('PWA context detected:', isPWA);
+
+        // Redirect based on onboarding status with PWA compatibility
+        const targetUrl = profile?.onboarding_completed ? '/' : '/';
+        
+        if (isPWA) {
+          // For PWA, use window.location.replace to stay within app context
+          console.log('PWA redirect using location.replace to:', targetUrl);
+          window.location.replace(targetUrl);
         } else {
-          console.log('New user needs onboarding - redirecting to onboarding');
-          // Force full page reload to trigger onboarding flow
-          window.location.href = '/';
+          // For browser, use href for clean state
+          console.log('Browser redirect using location.href to:', targetUrl);
+          window.location.href = targetUrl;
         }
       } catch (redirectError) {
         console.error('Error during redirect:', redirectError);
-        // Fallback - force reload
-        window.location.href = '/';
+        // Fallback - force reload with PWA compatibility
+        const isPWA = (window.navigator as any).standalone || 
+                      window.matchMedia('(display-mode: standalone)').matches;
+        if (isPWA) {
+          window.location.replace('/');
+        } else {
+          window.location.href = '/';
+        }
       }
     }, 2000);
   };
