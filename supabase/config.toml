@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.test-function]
 verify_jwt = false
+
+[functions.detect-toxins]
+verify_jwt = false

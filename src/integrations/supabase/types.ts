@@ -277,6 +277,47 @@ export type Database = {
         }
         Relationships: []
       }
+      toxin_detections: {
+        Row: {
+          created_at: string
+          detected_ingredients: string[]
+          id: string
+          nutrition_log_id: string | null
+          serving_count: number
+          toxin_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detected_ingredients?: string[]
+          id?: string
+          nutrition_log_id?: string | null
+          serving_count?: number
+          toxin_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detected_ingredients?: string[]
+          id?: string
+          nutrition_log_id?: string | null
+          serving_count?: number
+          toxin_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toxin_detections_nutrition_log_id_fkey"
+            columns: ["nutrition_log_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           activity_level: string | null

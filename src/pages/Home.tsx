@@ -17,6 +17,8 @@ import HomeAIInsights from '@/components/HomeAIInsights';
 import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
+import { useToxinDetections } from '@/hooks/useToxinDetections';
+import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -40,6 +42,10 @@ const Home = () => {
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
   const { toast } = useToast();
+  const { toxinData, loading: toxinLoading, detectToxinsForFood } = useToxinDetections();
+  
+  // Enable automatic toxin detection for new food logs
+  useAutomaticToxinDetection();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -384,51 +390,7 @@ const Home = () => {
     },
   ];
 
-  // Toxins & Flags configuration
-  const toxinItems = [
-    {
-      name: 'Inflammatory Foods',
-      current: (progress as any).inflammatoryFoods || 0,
-      threshold: 2,
-      unit: 'servings',
-      icon: '🔥',
-    },
-    {
-      name: 'Artificial Sweeteners',
-      current: (progress as any).artificialSweeteners || 0,
-      threshold: 1,
-      unit: 'servings',
-      icon: '🧪',
-    },
-    {
-      name: 'Preservatives',
-      current: (progress as any).preservatives || 0,
-      threshold: 3,
-      unit: 'servings',
-      icon: '🧫',
-    },
-    {
-      name: 'Dyes',
-      current: (progress as any).dyes || 0,
-      threshold: 1,
-      unit: 'servings',
-      icon: '🎨',
-    },
-    {
-      name: 'Seed Oils',
-      current: (progress as any).seedOils || 0,
-      threshold: 2,
-      unit: 'servings',
-      icon: '🌱',
-    },
-    {
-      name: 'GMOs',
-      current: (progress as any).gmos || 1,
-      threshold: 0,
-      unit: 'servings',
-      icon: '🧬',
-    },
-  ];
+  // Use real toxin detection data
 
   // Mock data for Smart Quick-Log (placeholder for future AI integration)
   const quickLogSuggestions = [
@@ -1281,7 +1243,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-6 max-w-sm' : 'gap-8 max-w-4xl'} w-full`}>
-                {toxinItems.map((item, index) => {
+                {toxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
