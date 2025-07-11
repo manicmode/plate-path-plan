@@ -20,78 +20,82 @@ export const ConfirmEmail: React.FC = () => {
   useEffect(() => {
     const confirmEmail = async () => {
       try {
-        // Get URL parameters
+        console.log('Email confirmation URL:', window.location.href);
+        
+        // Get URL parameters - Supabase can send different formats
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
+        const tokenHash = searchParams.get('token_hash');
+        const code = searchParams.get('code');
 
         console.log('Email confirmation params:', { 
           hasAccessToken: !!accessToken, 
           hasRefreshToken: !!refreshToken, 
-          type 
+          hasTokenHash: !!tokenHash,
+          hasCode: !!code,
+          type,
+          fullParams: Object.fromEntries(searchParams.entries())
         });
 
-        // Check if we have the required parameters
-        if (!accessToken || !refreshToken || type !== 'signup') {
-          console.error('Missing or invalid confirmation parameters');
-          setState('invalid');
-          return;
-        }
-
-        // Exchange the tokens for a session
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (error) {
-          console.error('Error confirming email:', error);
-          setState('error');
-          return;
-        }
-
-        if (data.user?.email) {
-          setUserEmail(data.user.email);
-        }
-
-        console.log('Email confirmation successful:', { 
-          userId: data.user?.id, 
-          email: data.user?.email,
-          emailConfirmed: data.user?.email_confirmed_at 
-        });
-
-        setState('success');
-
-        // Redirect after a short delay to let the user see the success message
-        setTimeout(async () => {
-          try {
-            // Check if user has completed onboarding
-            const { data: profile, error: profileError } = await supabase
-              .from('user_profiles')
-              .select('onboarding_completed')
-              .eq('user_id', data.user?.id)
-              .single();
-
-            if (profileError) {
-              console.error('Error checking onboarding status:', profileError);
-              // Default to showing onboarding if we can't check
-              navigate('/', { replace: true });
-              return;
-            }
-
-            // Redirect based on onboarding status
-            if (profile?.onboarding_completed) {
-              // User already completed onboarding, go to main app
-              navigate('/', { replace: true });
-            } else {
-              // New user needs onboarding
-              navigate('/', { replace: true });
-            }
-          } catch (redirectError) {
-            console.error('Error during redirect:', redirectError);
-            navigate('/', { replace: true });
+        // Modern Supabase uses PKCE flow with code
+        if (code) {
+          console.log('Using PKCE flow with code');
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error('Error exchanging code for session:', error);
+            setState('error');
+            return;
           }
-        }, 2000);
+          
+          if (data.user?.email) {
+            setUserEmail(data.user.email);
+          }
+          
+          console.log('PKCE email confirmation successful:', { 
+            userId: data.user?.id, 
+            email: data.user?.email,
+            emailConfirmed: data.user?.email_confirmed_at 
+          });
+          
+          setState('success');
+          handleSuccessfulConfirmation(data.user);
+          return;
+        }
+
+        // Legacy token-based flow fallback
+        if (accessToken && refreshToken) {
+          console.log('Using legacy token flow');
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            console.error('Error confirming email with tokens:', error);
+            setState('error');
+            return;
+          }
+
+          if (data.user?.email) {
+            setUserEmail(data.user.email);
+          }
+
+          console.log('Legacy token confirmation successful:', { 
+            userId: data.user?.id, 
+            email: data.user?.email,
+            emailConfirmed: data.user?.email_confirmed_at 
+          });
+
+          setState('success');
+          handleSuccessfulConfirmation(data.user);
+          return;
+        }
+
+        // No valid confirmation method found
+        console.error('No valid confirmation parameters found');
+        setState('invalid');
 
       } catch (error) {
         console.error('Unexpected error during email confirmation:', error);
@@ -101,6 +105,42 @@ export const ConfirmEmail: React.FC = () => {
 
     confirmEmail();
   }, [searchParams, navigate]);
+
+  // Handle successful confirmation with smart redirect
+  const handleSuccessfulConfirmation = async (user: any) => {
+    // Use setTimeout to allow UI to show success state briefly
+    setTimeout(async () => {
+      try {
+        // Check if user has completed onboarding
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', user?.id)
+          .maybeSingle();
+
+        console.log('Onboarding status check:', { profile, profileError });
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error checking onboarding status:', profileError);
+        }
+
+        // Redirect based on onboarding status
+        if (profile?.onboarding_completed) {
+          console.log('User completed onboarding - redirecting to home');
+          // Force full page reload to ensure clean state in PWA
+          window.location.href = '/';
+        } else {
+          console.log('New user needs onboarding - redirecting to onboarding');
+          // Force full page reload to trigger onboarding flow
+          window.location.href = '/';
+        }
+      } catch (redirectError) {
+        console.error('Error during redirect:', redirectError);
+        // Fallback - force reload
+        window.location.href = '/';
+      }
+    }, 2000);
+  };
 
   const handleResendConfirmation = async () => {
     if (!userEmail) {
