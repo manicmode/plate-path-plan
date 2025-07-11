@@ -1037,17 +1037,13 @@ const Home = () => {
               </div>
             </div>
             
-            {/* Fold Back Button */}
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setIsNutrientsExpanded(false)}
-                className="flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                <ChevronUp className="h-4 w-4" />
-                Fold Back
-              </Button>
-            </div>
+            {/* Fold Back Button - Matches Expand style */}
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pt-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fold Back</span>
+                <ChevronUp className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+            </CollapsibleTrigger>
           </CollapsibleContent>
         </Collapsible>
       </div>
