@@ -1279,7 +1279,7 @@ const Home = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      <div className="flex justify-center -mt-6">
+                      <div className="flex justify-center -mt-2">
                         <span className={`${isMobile ? 'text-2xl' : 'text-3xl'}`}>
                           {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
                         </span>
