@@ -127,10 +127,12 @@ console.log('Rendering app...', { strictMode: !isMobile });
 
 root.render(
   <ErrorBoundary>
-    <NutritionProvider>
-      <NotificationProvider>
-        <AppWrapper />
-      </NotificationProvider>
-    </NutritionProvider>
+    <AuthProvider>
+      <NutritionProvider>
+        <NotificationProvider>
+          <AppWrapper />
+        </NotificationProvider>
+      </NutritionProvider>
+    </AuthProvider>
   </ErrorBoundary>
 );
