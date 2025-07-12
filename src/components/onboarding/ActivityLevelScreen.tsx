@@ -62,17 +62,17 @@ export const ActivityLevelScreen = ({ formData, updateFormData, onNext, onSkip }
         className="space-y-3"
       >
         {activityLevels.map((level) => (
-          <div key={level.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button border-0 transition-colors ${
+          <div key={level.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
             formData.activityLevel === level.value 
-              ? 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500' 
-              : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+              ? 'border-2 border-primary bg-primary/5' 
+              : 'border border-border hover:border-primary/50 hover:bg-muted/50'
           }`}>
             <RadioGroupItem value={level.value} id={level.value} />
             <Label htmlFor={level.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
               <span className="text-2xl">{level.emoji}</span>
               <div>
                 <div className="text-base font-medium">{level.label}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">{level.description}</div>
+                <div className="text-sm text-muted-foreground">{level.description}</div>
               </div>
             </Label>
           </div>
