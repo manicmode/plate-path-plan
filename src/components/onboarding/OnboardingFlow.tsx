@@ -70,7 +70,7 @@ interface OnboardingFlowProps {
   onSkip: () => void;
 }
 
-const TOTAL_SCREENS = 12;
+const TOTAL_SCREENS = 13;
 
 export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   const { user } = useAuth();
@@ -376,7 +376,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         );
       case 8:
         return (
-          <AllergiesScreen 
+          <FoodsToAvoidScreen 
             formData={formData} 
             updateFormData={updateFormData}
             onNext={nextScreen}
@@ -385,7 +385,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         );
       case 9:
         return (
-          <EatingPatternsScreen 
+          <AllergiesScreen 
             formData={formData} 
             updateFormData={updateFormData}
             onNext={nextScreen}
@@ -394,7 +394,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         );
       case 10:
         return (
-          <SupplementsScreen 
+          <EatingPatternsScreen 
             formData={formData} 
             updateFormData={updateFormData}
             onNext={nextScreen}
@@ -402,6 +402,15 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
           />
         );
       case 11:
+        return (
+          <SupplementsScreen 
+            formData={formData} 
+            updateFormData={updateFormData}
+            onNext={nextScreen}
+            onSkip={skipScreen}
+          />
+        );
+      case 12:
         return <OnboardingComplete onComplete={handleComplete} isSubmitting={isSubmitting} />;
       default:
         return null;
