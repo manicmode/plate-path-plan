@@ -181,7 +181,11 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
           <Label className="text-base font-medium mb-4 block">What are your supplement goals?</Label>
           <div className="space-y-3">
             {supplementGoals.map((goal) => (
-              <div key={goal.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+              <div key={goal.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
+                formData.supplementGoals.includes(goal.value)
+                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
+              }`}>
                 <Checkbox
                   id={goal.value}
                   checked={formData.supplementGoals.includes(goal.value)}
@@ -201,7 +205,11 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
           <Label className="text-base font-medium mb-4 block">Do you have any known or suspected deficiencies?</Label>
           <div className="space-y-3">
             {deficiencyConcerns.map((concern) => (
-              <div key={concern.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+              <div key={concern.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
+                formData.deficiencyConcerns.includes(concern.value)
+                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
+              }`}>
                 <Checkbox
                   id={concern.value}
                   checked={formData.deficiencyConcerns.includes(concern.value)}

@@ -77,8 +77,8 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             {lifestyleOptions.map((option) => (
               <div key={option.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
                 formData.dailyLifestyle === option.value 
-                  ? 'border-2 border-primary bg-primary/5' 
-                  : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
               }`}>
                 <RadioGroupItem value={option.value} id={option.value} />
                 <Label htmlFor={option.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
@@ -101,8 +101,8 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             {exerciseFrequencies.map((freq) => (
               <div key={freq.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
                 formData.exerciseFrequency === freq.value 
-                  ? 'border-2 border-primary bg-primary/5' 
-                  : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
               }`}>
                 <RadioGroupItem value={freq.value} id={freq.value} />
                 <Label htmlFor={freq.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
@@ -122,8 +122,8 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
               {exerciseTypes.map((type) => (
                 <div key={type.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
                   formData.exerciseTypes.includes(type.value)
-                    ? 'border-2 border-primary bg-primary/5' 
-                    : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                    ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                    : 'border border-border hover:border-green-400 hover:bg-muted/50'
                 }`}>
                   <Checkbox
                     id={type.value}

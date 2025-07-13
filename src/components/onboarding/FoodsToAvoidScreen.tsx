@@ -62,7 +62,7 @@ export const FoodsToAvoidScreen = ({ formData, updateFormData, onNext, onSkip }:
               <Badge
                 key={food}
                 variant="outline"
-                className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                className="cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-400 transition-all duration-200 hover:scale-105"
                 onClick={() => addFood(food)}
               >
                 + {food}

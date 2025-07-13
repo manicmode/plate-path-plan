@@ -62,7 +62,11 @@ export const HealthConditionsScreen = ({ formData, updateFormData, onNext, onSki
 
       <div className="space-y-3">
         {healthConditions.map((condition) => (
-          <div key={condition.value} className="flex items-center space-x-3 p-4 rounded-lg glass-button border-0 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+          <div key={condition.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
+            formData.healthConditions.includes(condition.value)
+              ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+              : 'border border-border hover:border-green-400 hover:bg-muted/50'
+          }`}>
             <Checkbox
               id={condition.value}
               checked={formData.healthConditions.includes(condition.value)}

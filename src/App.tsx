@@ -100,8 +100,10 @@ function AppContent() {
   if (showOnboarding || (isOnboardingComplete === false)) {
     console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={() => {
+      console.log('Onboarding completed, transitioning to main app');
       setShowOnboarding(false);
-      markOnboardingComplete();
+      // Remove markOnboardingComplete() call to prevent race condition
+      // The database is already updated in OnboardingFlow.tsx
     }} />;
   }
 

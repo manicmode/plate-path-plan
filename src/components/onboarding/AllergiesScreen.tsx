@@ -58,7 +58,11 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
           <Label className="text-base font-medium mb-4 block">Common allergens & intolerances:</Label>
           <div className="space-y-3">
             {commonAllergens.map((allergen) => (
-              <div key={allergen} className="flex items-center space-x-4 p-4 rounded-lg glass-button border-0">
+              <div key={allergen} className={`flex items-center space-x-4 p-4 rounded-lg glass-button transition-all duration-200 ${
+                formData.foodAllergies[allergen] 
+                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
+              }`}>
                 <div className="flex-1">
                   <Label className="text-base capitalize">{allergen.replace('_', ' ')}</Label>
                 </div>
@@ -87,7 +91,11 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
 
         {/* Cross-contamination sensitivity */}
         {hasAllergies && (
-          <div className="p-4 rounded-lg glass-button border-0">
+          <div className={`p-4 rounded-lg glass-button transition-all duration-200 ${
+            formData.crossContaminationSensitive
+              ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+              : 'border border-border hover:border-green-400 hover:bg-muted/50'
+          }`}>
             <div className="flex items-center space-x-3">
               <Checkbox
                 id="crossContamination"

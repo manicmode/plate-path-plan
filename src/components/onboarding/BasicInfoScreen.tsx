@@ -55,32 +55,32 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
           >
             <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
               formData.gender === 'male' 
-                ? 'border-2 border-primary bg-primary/5' 
-                : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}>
               <RadioGroupItem value="male" id="male" />
               <Label htmlFor="male">Male</Label>
             </div>
             <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
               formData.gender === 'female' 
-                ? 'border-2 border-primary bg-primary/5' 
-                : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}>
               <RadioGroupItem value="female" id="female" />
               <Label htmlFor="female">Female</Label>
             </div>
             <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
               formData.gender === 'non_binary' 
-                ? 'border-2 border-primary bg-primary/5' 
-                : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}>
               <RadioGroupItem value="non_binary" id="non_binary" />
               <Label htmlFor="non_binary">Non-binary</Label>
             </div>
             <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
               formData.gender === 'prefer_not_to_say' 
-                ? 'border-2 border-primary bg-primary/5' 
-                : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}>
               <RadioGroupItem value="prefer_not_to_say" id="prefer_not_to_say" />
               <Label htmlFor="prefer_not_to_say">Prefer not to say</Label>
@@ -102,16 +102,16 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
           >
             <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
               formData.heightUnit === 'ft' 
-                ? 'border-2 border-primary bg-primary/5' 
-                : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}>
               <RadioGroupItem value="ft" id="ft" />
               <Label htmlFor="ft">Feet & Inches</Label>
             </div>
             <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
               formData.heightUnit === 'cm' 
-                ? 'border-2 border-primary bg-primary/5' 
-                : 'border border-border hover:border-primary/50 hover:bg-muted/50'
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}>
               <RadioGroupItem value="cm" id="cm" />
               <Label htmlFor="cm">Centimeters</Label>
