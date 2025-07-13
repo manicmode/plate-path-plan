@@ -93,12 +93,24 @@ function AppContent() {
   // Show onboarding if needed
   if (showOnboarding || (isOnboardingComplete === false)) {
     console.log('AppContent: Showing onboarding screen');
-    return <OnboardingScreen onComplete={() => {
+    return <OnboardingScreen onComplete={async () => {
       console.log('🧩 App.tsx: Onboarding completed callback triggered');
-      console.log('onboarding complete');
-      setShowOnboarding(false);
+      console.log('🧩 App.tsx: Updating onboarding status in hook');
+      
+      // Update the hook state immediately so we don't get stuck
+      try {
+        await markOnboardingComplete();
+        console.log('🧩 App.tsx: Database update complete, navigating to home route');
+        console.log('onboarding complete');
+        setShowOnboarding(false);
+        console.log('🧩 App.tsx: Should now navigate to route: /');
+      } catch (error) {
+        console.error('🧩 App.tsx: Error completing onboarding:', error);
+      }
     }} />;
   }
+
+  console.log('🧩 App.tsx: Rendering main app router - user should see home page now');
 
   return (
     <Router>
