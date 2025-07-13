@@ -239,6 +239,8 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       };
 
       console.log('Saving profile data to database...');
+      
+      // Await the Supabase update and handle it properly
       const { data, error } = await supabase
         .from('user_profiles')
         .upsert(profileData, {
@@ -250,19 +252,21 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       if (error) {
         console.error('Database error saving profile:', error);
         toast.error('Failed to save your information. Please try again.');
-        return;
+        throw error;
       }
 
       console.log('🧩 OnboardingFlow: Profile saved successfully:', data);
+      console.log('onboarding complete');
       
       toast.success('Welcome to NutriCoach! Your personalized profile is ready with custom nutrition targets.');
       
-      console.log('🧩 OnboardingFlow: Calling onComplete callback...');
+      // Only call onComplete after successful database update
       onComplete();
       
     } catch (error: any) {
       console.error('Error during onboarding completion:', error);
       toast.error('Something went wrong during setup. Please try again.');
+      throw error;
     } finally {
       setIsSubmitting(false);
     }

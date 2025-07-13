@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SavingScreen } from '@/components/SavingScreen';
 
 interface OnboardingCompleteProps {
   onComplete: () => void;
@@ -10,6 +11,10 @@ interface OnboardingCompleteProps {
 
 export const OnboardingComplete = ({ onComplete, isSubmitting }: OnboardingCompleteProps) => {
   const isMobile = useIsMobile();
+
+  if (isSubmitting) {
+    return <SavingScreen />;
+  }
 
   return (
     <div className="text-center py-8">
@@ -32,7 +37,7 @@ export const OnboardingComplete = ({ onComplete, isSubmitting }: OnboardingCompl
         disabled={isSubmitting}
         className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-14'} text-lg font-semibold`}
       >
-        {isSubmitting ? 'Setting up your profile...' : "Let's go!"}
+        "Let's go!"
       </Button>
     </div>
   );
