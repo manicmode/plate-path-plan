@@ -34,7 +34,8 @@ function AppContent() {
   const { 
     isOnboardingComplete, 
     isLoading: onboardingLoading, 
-    showReminder
+    showReminder,
+    markOnboardingComplete
   } = useOnboardingStatus();
 
   const handleStartOnboarding = () => {
@@ -92,9 +93,16 @@ function AppContent() {
   // Show onboarding if needed
   if (showOnboarding || (isOnboardingComplete === false)) {
     console.log('AppContent: Showing onboarding screen');
-    return <OnboardingScreen onComplete={() => {
-      console.log('Onboarding completed, transitioning to main app');
-      setShowOnboarding(false);
+    return <OnboardingScreen onComplete={async () => {
+      console.log('🧩 App.tsx: Onboarding completed callback triggered');
+      try {
+        console.log('🧩 App.tsx: Waiting for database confirmation...');
+        await markOnboardingComplete();
+        console.log('🧩 App.tsx: Database confirmed, transitioning to main app');
+        setShowOnboarding(false);
+      } catch (error) {
+        console.error('🧩 App.tsx: Error during completion:', error);
+      }
     }} />;
   }
 

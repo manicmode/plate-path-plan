@@ -75,10 +75,43 @@ export const useOnboardingStatus = () => {
     }
   };
 
+  const markOnboardingComplete = async () => {
+    console.log('🧩 markOnboardingComplete: Starting database update...');
+    if (!user) {
+      console.log('🧩 markOnboardingComplete: No user found');
+      return;
+    }
+    
+    try {
+      console.log('🧩 markOnboardingComplete: Updating database for user:', user.id);
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ 
+          onboarding_completed: true,
+          onboarding_skipped: false,
+          show_onboarding_reminder: false 
+        })
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('🧩 markOnboardingComplete: Database error:', error);
+        throw error;
+      }
+      
+      console.log('🧩 markOnboardingComplete: Database update successful');
+      setIsOnboardingComplete(true);
+      setShowReminder(false);
+    } catch (error) {
+      console.error('🧩 markOnboardingComplete: Error updating completion status:', error);
+      throw error;
+    }
+  };
+
   return {
     isOnboardingComplete,
     isLoading,
     showReminder,
     dismissReminder,
+    markOnboardingComplete,
   };
 };

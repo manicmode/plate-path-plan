@@ -253,18 +253,12 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         return;
       }
 
-      console.log('Profile saved successfully:', data);
-      
-      // Wait a moment to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('🧩 OnboardingFlow: Profile saved successfully:', data);
       
       toast.success('Welcome to NutriCoach! Your personalized profile is ready with custom nutrition targets.');
       
-      // Call completion callback with a slight delay to ensure state stabilization
-      setTimeout(() => {
-        console.log('Calling onComplete callback...');
-        onComplete();
-      }, 100);
+      console.log('🧩 OnboardingFlow: Calling onComplete callback...');
+      onComplete();
       
     } catch (error: any) {
       console.error('Error during onboarding completion:', error);
