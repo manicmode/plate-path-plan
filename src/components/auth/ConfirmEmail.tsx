@@ -181,9 +181,9 @@ export const ConfirmEmail: React.FC = () => {
           console.log('PWA redirect using location.replace to:', targetUrl);
           window.location.replace(targetUrl);
         } else {
-          // For browser, use href for clean state
-          console.log('Browser redirect using location.href to:', targetUrl);
-          window.location.href = targetUrl;
+          // For browser, use navigate with replace to avoid 404 flash
+          console.log('Browser redirect using navigate to:', targetUrl);
+          navigate(targetUrl, { replace: true });
         }
       } catch (redirectError) {
         console.error('Error during redirect:', redirectError);
@@ -193,7 +193,7 @@ export const ConfirmEmail: React.FC = () => {
         if (isPWA) {
           window.location.replace('/');
         } else {
-          window.location.href = '/';
+          navigate('/', { replace: true });
         }
       }
     }, 2000);
