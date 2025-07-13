@@ -41,6 +41,7 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
       }
     }
     
+    // Force immediate re-render by updating state synchronously
     updateFormData({ dietStyles: newStyles });
   };
 
@@ -62,11 +63,15 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
 
       <div className="space-y-3">
         {dietStyles.map((style) => (
-          <div key={style.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-            formData.dietStyles.includes(style.value)
-              ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-              : 'border border-border hover:border-green-400 hover:bg-muted/50'
-          }`}>
+          <div 
+            key={`${style.value}-${formData.dietStyles.includes(style.value)}`}
+            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-300 cursor-pointer ${
+              formData.dietStyles.includes(style.value)
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02] shadow-green-100 dark:shadow-green-900/20' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50 hover:scale-[1.01]'
+            }`}
+            onClick={() => toggleDietStyle(style.value)}
+          >
             <Checkbox
               id={style.value}
               checked={formData.dietStyles.includes(style.value)}

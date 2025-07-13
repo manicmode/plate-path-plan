@@ -45,11 +45,15 @@ export const HealthGoalScreen = ({ formData, updateFormData, onNext, onSkip }: H
         className="space-y-3"
       >
         {healthGoals.map((goal) => (
-          <div key={goal.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-            formData.mainHealthGoal === goal.value 
-              ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-              : 'border border-border hover:border-green-400 hover:bg-muted/50'
-          }`}>
+          <div 
+            key={`${goal.value}-${formData.mainHealthGoal === goal.value}`}
+            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-300 cursor-pointer ${
+              formData.mainHealthGoal === goal.value 
+                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02] shadow-green-100 dark:shadow-green-900/20' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50 hover:scale-[1.01]'
+            }`}
+            onClick={() => updateFormData({ mainHealthGoal: goal.value as any })}
+          >
             <RadioGroupItem value={goal.value} id={goal.value} />
             <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
               <span className="text-xl">{goal.emoji}</span>

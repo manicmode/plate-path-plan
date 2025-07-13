@@ -8,12 +8,12 @@ export const useOnboardingStatus = () => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showReminder, setShowReminder] = useState(false);
-  const [completionLocked, setCompletionLocked] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    // Don't re-check if completion is already locked
-    if (completionLocked) {
-      console.log('Onboarding completion is locked, skipping status check');
+    // Skip check during transition to prevent race conditions
+    if (isTransitioning) {
+      console.log('Onboarding in transition state, skipping status check');
       return;
     }
 
@@ -64,36 +64,21 @@ export const useOnboardingStatus = () => {
     };
 
     checkOnboardingStatus();
-  }, [user, isAuthenticated, completionLocked]);
+  }, [user, isAuthenticated, isTransitioning]);
 
   const markOnboardingComplete = async () => {
-    console.log('Marking onboarding as complete');
+    console.log('Marking onboarding as complete - starting transition');
     
-    // Lock completion to prevent state override
-    setCompletionLocked(true);
+    // Set transition state to prevent race conditions
+    setIsTransitioning(true);
     setIsOnboardingComplete(true);
     setShowReminder(false);
     
-    // Verify the database state after a short delay
-    setTimeout(async () => {
-      if (!user) return;
-      
-      try {
-        const { data } = await supabase
-          .from('user_profiles')
-          .select('onboarding_completed')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (data?.onboarding_completed) {
-          console.log('Database confirmation: Onboarding completion verified');
-        } else {
-          console.warn('Database verification failed - onboarding may not be saved properly');
-        }
-      } catch (error) {
-        console.error('Error verifying onboarding completion:', error);
-      }
-    }, 1000);
+    // Brief delay to ensure UI transition is smooth
+    setTimeout(() => {
+      setIsTransitioning(false);
+      console.log('Onboarding transition completed');
+    }, 500);
   };
 
   const dismissReminder = async () => {
@@ -113,10 +98,10 @@ export const useOnboardingStatus = () => {
 
   return {
     isOnboardingComplete,
-    isLoading,
+    isLoading: isLoading || isTransitioning,
     showReminder,
     markOnboardingComplete,
     dismissReminder,
-    completionLocked,
+    isTransitioning,
   };
 };

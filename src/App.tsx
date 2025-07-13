@@ -34,7 +34,8 @@ function AppContent() {
     isOnboardingComplete, 
     isLoading: onboardingLoading, 
     showReminder,
-    markOnboardingComplete 
+    markOnboardingComplete,
+    isTransitioning
   } = useOnboardingStatus();
 
   const handleStartOnboarding = () => {
@@ -83,14 +84,16 @@ function AppContent() {
     return <EmailVerificationRequired />;
   }
 
-  // Show loading while onboarding status is being checked
+  // Show loading while onboarding status is being checked or transitioning
   if (onboardingLoading) {
     console.log('AppContent: Showing onboarding loading state');
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading profile...</p>
+          <p className="text-muted-foreground">
+            {isTransitioning ? 'Completing onboarding...' : 'Loading profile...'}
+          </p>
         </div>
       </div>
     );
@@ -102,8 +105,7 @@ function AppContent() {
     return <OnboardingScreen onComplete={() => {
       console.log('Onboarding completed, transitioning to main app');
       setShowOnboarding(false);
-      // Remove markOnboardingComplete() call to prevent race condition
-      // The database is already updated in OnboardingFlow.tsx
+      markOnboardingComplete();
     }} />;
   }
 
