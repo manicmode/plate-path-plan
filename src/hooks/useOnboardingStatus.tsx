@@ -8,15 +8,8 @@ export const useOnboardingStatus = () => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showReminder, setShowReminder] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    // Skip check during transition to prevent race conditions
-    if (isTransitioning) {
-      console.log('Onboarding in transition state, skipping status check');
-      return;
-    }
-
     const checkOnboardingStatus = async () => {
       if (!isAuthenticated || !user) {
         setIsOnboardingComplete(null);
@@ -64,22 +57,8 @@ export const useOnboardingStatus = () => {
     };
 
     checkOnboardingStatus();
-  }, [user, isAuthenticated, isTransitioning]);
+  }, [user, isAuthenticated]);
 
-  const markOnboardingComplete = async () => {
-    console.log('Marking onboarding as complete - starting transition');
-    
-    // Set transition state to prevent race conditions
-    setIsTransitioning(true);
-    setIsOnboardingComplete(true);
-    setShowReminder(false);
-    
-    // Brief delay to ensure UI transition is smooth
-    setTimeout(() => {
-      setIsTransitioning(false);
-      console.log('Onboarding transition completed');
-    }, 500);
-  };
 
   const dismissReminder = async () => {
     if (!user) return;
@@ -98,10 +77,8 @@ export const useOnboardingStatus = () => {
 
   return {
     isOnboardingComplete,
-    isLoading: isLoading || isTransitioning,
+    isLoading,
     showReminder,
-    markOnboardingComplete,
     dismissReminder,
-    isTransitioning,
   };
 };

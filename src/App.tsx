@@ -13,6 +13,7 @@ import { OnboardingReminder } from '@/components/onboarding/OnboardingReminder';
 import EmailVerificationRequired from '@/components/auth/EmailVerificationRequired';
 import { ConfirmEmail } from '@/components/auth/ConfirmEmail';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { SavingScreen } from './components/SavingScreen';
 
 // Import existing pages
 import Camera from './pages/Camera';
@@ -33,9 +34,7 @@ function AppContent() {
   const { 
     isOnboardingComplete, 
     isLoading: onboardingLoading, 
-    showReminder,
-    markOnboardingComplete,
-    isTransitioning
+    showReminder
   } = useOnboardingStatus();
 
   const handleStartOnboarding = () => {
@@ -84,19 +83,10 @@ function AppContent() {
     return <EmailVerificationRequired />;
   }
 
-  // Show loading while onboarding status is being checked or transitioning
+  // Show loading while onboarding status is being checked
   if (onboardingLoading) {
     console.log('AppContent: Showing onboarding loading state');
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">
-            {isTransitioning ? 'Completing onboarding...' : 'Loading profile...'}
-          </p>
-        </div>
-      </div>
-    );
+    return <SavingScreen />;
   }
 
   // Show onboarding if needed
@@ -105,7 +95,6 @@ function AppContent() {
     return <OnboardingScreen onComplete={() => {
       console.log('Onboarding completed, transitioning to main app');
       setShowOnboarding(false);
-      markOnboardingComplete();
     }} />;
   }
 
