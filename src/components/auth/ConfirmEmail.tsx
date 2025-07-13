@@ -151,52 +151,30 @@ export const ConfirmEmail: React.FC = () => {
 
   // Handle successful confirmation with smart redirect
   const handleSuccessfulConfirmation = async (user: any) => {
-    // Use setTimeout to allow UI to show success state briefly
-    setTimeout(async () => {
-      try {
-        // Check if user has completed onboarding
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('onboarding_completed')
-          .eq('user_id', user?.id)
-          .maybeSingle();
+    // Use immediate navigation to prevent flash
+    try {
+      // Check if user has completed onboarding
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('onboarding_completed')
+        .eq('user_id', user?.id)
+        .maybeSingle();
 
-        console.log('Onboarding status check:', { profile, profileError });
+      console.log('Onboarding status check:', { profile, profileError });
 
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error checking onboarding status:', profileError);
-        }
-
-        // PWA-optimized redirect
-        const isPWA = (window.navigator as any).standalone || 
-                      window.matchMedia('(display-mode: standalone)').matches;
-        
-        console.log('PWA context detected:', isPWA);
-
-        // Redirect based on onboarding status with PWA compatibility
-        const targetUrl = profile?.onboarding_completed ? '/' : '/';
-        
-        if (isPWA) {
-          // For PWA, use window.location.replace to stay within app context
-          console.log('PWA redirect using location.replace to:', targetUrl);
-          window.location.replace(targetUrl);
-        } else {
-          // For browser, use navigate with replace to avoid 404 flash
-          console.log('Browser redirect using navigate to:', targetUrl);
-          navigate(targetUrl, { replace: true });
-        }
-      } catch (redirectError) {
-        console.error('Error during redirect:', redirectError);
-        // Fallback - force reload with PWA compatibility
-        const isPWA = (window.navigator as any).standalone || 
-                      window.matchMedia('(display-mode: standalone)').matches;
-        if (isPWA) {
-          window.location.replace('/');
-        } else {
-          navigate('/', { replace: true });
-        }
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error checking onboarding status:', profileError);
       }
-    }, 2000);
+
+      // Always redirect to home - let AppContent handle onboarding logic
+      console.log('Redirecting to home after email confirmation');
+      navigate('/', { replace: true });
+      
+    } catch (redirectError) {
+      console.error('Error during redirect:', redirectError);
+      // Fallback redirect
+      navigate('/', { replace: true });
+    }
   };
 
   const handleResendConfirmation = async () => {

@@ -109,7 +109,17 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   });
 
   const updateFormData = (updates: Partial<OnboardingData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    try {
+      console.log('UpdateFormData called with:', updates);
+      setFormData(prev => {
+        const newData = { ...prev, ...updates };
+        console.log('Form data updated:', newData);
+        return newData;
+      });
+    } catch (error) {
+      console.error('Error updating form data:', error);
+      toast.error('Failed to update form data');
+    }
   };
 
   // Scroll to top when screen changes
@@ -122,19 +132,52 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   }, [currentScreen]);
 
   const nextScreen = () => {
-    if (currentScreen < TOTAL_SCREENS - 1) {
-      setCurrentScreen(currentScreen + 1);
+    try {
+      console.log(`Navigating from screen ${currentScreen} to ${currentScreen + 1}. Total screens: ${TOTAL_SCREENS}`);
+      
+      if (currentScreen < TOTAL_SCREENS - 1) {
+        setCurrentScreen(prev => {
+          const newScreen = prev + 1;
+          console.log(`Screen updated from ${prev} to ${newScreen}`);
+          return newScreen;
+        });
+      } else {
+        console.warn(`Cannot navigate beyond screen ${currentScreen}. Max screen: ${TOTAL_SCREENS - 1}`);
+        toast.error('Navigation error: Cannot proceed beyond last screen');
+      }
+    } catch (error) {
+      console.error('Error in nextScreen:', error);
+      toast.error('Navigation error occurred');
     }
   };
 
   const prevScreen = () => {
-    if (currentScreen > 0) {
-      setCurrentScreen(currentScreen - 1);
+    try {
+      console.log(`Navigating from screen ${currentScreen} to ${currentScreen - 1}`);
+      
+      if (currentScreen > 0) {
+        setCurrentScreen(prev => {
+          const newScreen = prev - 1;
+          console.log(`Screen updated from ${prev} to ${newScreen}`);
+          return newScreen;
+        });
+      } else {
+        console.warn(`Cannot navigate below screen 0. Current screen: ${currentScreen}`);
+      }
+    } catch (error) {
+      console.error('Error in prevScreen:', error);
+      toast.error('Navigation error occurred');
     }
   };
 
   const skipScreen = () => {
-    nextScreen();
+    try {
+      console.log(`Skipping screen ${currentScreen}`);
+      nextScreen();
+    } catch (error) {
+      console.error('Error in skipScreen:', error);
+      toast.error('Skip navigation error occurred');
+    }
   };
 
   const handleComplete = async () => {
@@ -308,112 +351,147 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   const progress = ((currentScreen + 1) / TOTAL_SCREENS) * 100;
 
   const renderScreen = () => {
-    switch (currentScreen) {
-      case 0:
-        return <OnboardingIntro onStart={nextScreen} onSkip={handleSkipAll} />;
-      case 1:
+    try {
+      console.log(`Rendering screen ${currentScreen}/${TOTAL_SCREENS - 1}`);
+      console.log('Current form data state:', formData);
+
+      // Add bounds checking
+      if (currentScreen < 0 || currentScreen >= TOTAL_SCREENS) {
+        console.error(`Invalid screen index: ${currentScreen}. Valid range: 0-${TOTAL_SCREENS - 1}`);
+        toast.error('Navigation error: Invalid screen');
         return (
-          <BasicInfoScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
+          <div className="text-center p-8">
+            <h3 className="text-lg font-semibold text-red-600 mb-2">Navigation Error</h3>
+            <p className="text-gray-600 mb-4">Screen {currentScreen} is out of range.</p>
+            <Button onClick={() => setCurrentScreen(0)}>Return to Start</Button>
+          </div>
         );
-      case 2:
-        return (
-          <WeightGoalsScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 3:
-        return (
-          <HealthGoalScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 4:
-        return (
-          <ActivityLevelScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 5:
-        return (
-          <ExerciseLifestyleScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 6:
-        return (
-          <HealthConditionsScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 7:
-        return (
-          <DietStyleScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 8:
-        return (
-          <FoodsToAvoidScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 9:
-        return (
-          <AllergiesScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 10:
-        return (
-          <EatingPatternsScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 11:
-        return (
-          <SupplementsScreen 
-            formData={formData} 
-            updateFormData={updateFormData}
-            onNext={nextScreen}
-            onSkip={skipScreen}
-          />
-        );
-      case 12:
-        return <OnboardingComplete onComplete={handleComplete} isSubmitting={isSubmitting} />;
-      default:
-        return null;
+      }
+
+      switch (currentScreen) {
+        case 0:
+          return <OnboardingIntro onStart={nextScreen} onSkip={handleSkipAll} />;
+        case 1:
+          return (
+            <BasicInfoScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 2:
+          return (
+            <WeightGoalsScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 3:
+          return (
+            <HealthGoalScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 4:
+          return (
+            <ActivityLevelScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 5:
+          return (
+            <ExerciseLifestyleScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 6:
+          return (
+            <HealthConditionsScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 7:
+          return (
+            <DietStyleScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 8:
+          return (
+            <FoodsToAvoidScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 9:
+          return (
+            <AllergiesScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 10:
+          return (
+            <EatingPatternsScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 11:
+          return (
+            <SupplementsScreen 
+              formData={formData} 
+              updateFormData={updateFormData}
+              onNext={nextScreen}
+              onSkip={skipScreen}
+            />
+          );
+        case 12:
+          return <OnboardingComplete onComplete={handleComplete} isSubmitting={isSubmitting} />;
+        default:
+          console.error(`Unhandled screen case: ${currentScreen}`);
+          return (
+            <div className="text-center p-8">
+              <h3 className="text-lg font-semibold text-red-600 mb-2">Screen Not Found</h3>
+              <p className="text-gray-600 mb-4">Screen {currentScreen} is not implemented.</p>
+              <Button onClick={() => setCurrentScreen(0)}>Return to Start</Button>
+            </div>
+          );
+      }
+    } catch (error) {
+      console.error('Error rendering screen:', error);
+      toast.error('Failed to render screen');
+      return (
+        <div className="text-center p-8">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Rendering Error</h3>
+          <p className="text-gray-600 mb-4">An error occurred while loading this screen.</p>
+          <Button onClick={() => setCurrentScreen(0)}>Return to Start</Button>
+        </div>
+      );
     }
   };
 

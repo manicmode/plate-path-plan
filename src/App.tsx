@@ -74,6 +74,7 @@ function AppContent() {
           <Route path="/confirm" element={<ConfirmEmail />} />
           <Route path="/confirm-email" element={<ConfirmEmail />} />
           <Route path="/auth/confirm" element={<ConfirmEmail />} />
+          <Route path="/onboarding" element={<Index />} />
           <Route path="*" element={<Index />} />
         </Routes>
       </Router>
