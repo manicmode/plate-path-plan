@@ -30,6 +30,16 @@ const fastingSchedules = [
 ];
 
 export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip }: EatingPatternsScreenProps) => {
+  console.log('EatingPatternsScreen rendered with props:', { formData, updateFormData, onNext, onSkip });
+  
+  // Ensure eating pattern fields are properly initialized
+  const safeFormData = {
+    ...formData,
+    mealFrequency: formData.mealFrequency || '',
+    fastingSchedule: formData.fastingSchedule || 'none',
+    eatingWindow: formData.eatingWindow || ''
+  };
+  
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
@@ -51,13 +61,13 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
         <div>
           <Label className="text-base font-medium mb-4 block">How many meals do you typically eat per day?</Label>
           <RadioGroup
-            value={formData.mealFrequency}
+            value={safeFormData.mealFrequency}
             onValueChange={(value: any) => updateFormData({ mealFrequency: value })}
             className="space-y-3"
           >
             {mealFrequencies.map((freq) => (
               <div key={freq.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-                formData.mealFrequency === freq.value 
+                safeFormData.mealFrequency === freq.value 
                   ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
                   : 'border border-border hover:border-green-400 hover:bg-muted/50'
               }`}>
@@ -75,13 +85,13 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
         <div>
           <Label className="text-base font-medium mb-4 block">Do you follow intermittent fasting or have specific eating windows?</Label>
           <RadioGroup
-            value={formData.fastingSchedule}
+            value={safeFormData.fastingSchedule}
             onValueChange={(value: any) => updateFormData({ fastingSchedule: value })}
             className="space-y-3"
           >
             {fastingSchedules.map((schedule) => (
               <div key={schedule.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-                formData.fastingSchedule === schedule.value 
+                safeFormData.fastingSchedule === schedule.value 
                   ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
                   : 'border border-border hover:border-green-400 hover:bg-muted/50'
               }`}>
@@ -103,7 +113,7 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
         </div>
 
         {/* Eating Window */}
-        {formData.fastingSchedule && formData.fastingSchedule !== 'none' && formData.fastingSchedule !== 'alternate_day' && (
+        {safeFormData.fastingSchedule && safeFormData.fastingSchedule !== 'none' && safeFormData.fastingSchedule !== 'alternate_day' && (
           <div>
             <Label htmlFor="eatingWindow" className="text-base font-medium">
               What time do you typically eat? (e.g., "12pm - 8pm" or "6am - 2pm")
@@ -111,7 +121,7 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
             <Input
               id="eatingWindow"
               placeholder="e.g., 12pm - 8pm"
-              value={formData.eatingWindow}
+              value={safeFormData.eatingWindow}
               onChange={(e) => updateFormData({ eatingWindow: e.target.value })}
               className="glass-button border-0 mt-2"
             />

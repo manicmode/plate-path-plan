@@ -444,23 +444,62 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             />
           );
         case 9:
-          return (
-            <AllergiesScreen 
-              formData={formData} 
-              updateFormData={updateFormData}
-              onNext={nextScreen}
-              onSkip={skipScreen}
-            />
-          );
+          console.log('Rendering AllergiesScreen with formData:', JSON.stringify(formData, null, 2));
+          console.log('foodAllergies specifically:', formData.foodAllergies);
+          console.log('crossContaminationSensitive:', formData.crossContaminationSensitive);
+          
+          try {
+            return (
+              <AllergiesScreen 
+                formData={formData} 
+                updateFormData={updateFormData}
+                onNext={nextScreen}
+                onSkip={skipScreen}
+              />
+            );
+          } catch (error) {
+            console.error('Error rendering AllergiesScreen:', error);
+            toast.error('Failed to load allergies screen');
+            return (
+              <div className="text-center p-8">
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Screen Loading Error</h3>
+                <p className="text-gray-600 mb-4">Failed to load allergies screen: {error?.message || 'Unknown error'}</p>
+                <div className="space-x-2">
+                  <Button onClick={prevScreen} variant="outline">Go Back</Button>
+                  <Button onClick={skipScreen}>Skip This Screen</Button>
+                </div>
+              </div>
+            );
+          }
         case 10:
-          return (
-            <EatingPatternsScreen 
-              formData={formData} 
-              updateFormData={updateFormData}
-              onNext={nextScreen}
-              onSkip={skipScreen}
-            />
-          );
+          console.log('Rendering EatingPatternsScreen with formData:', JSON.stringify(formData, null, 2));
+          console.log('mealFrequency:', formData.mealFrequency);
+          console.log('fastingSchedule:', formData.fastingSchedule);
+          console.log('eatingWindow:', formData.eatingWindow);
+          
+          try {
+            return (
+              <EatingPatternsScreen 
+                formData={formData} 
+                updateFormData={updateFormData}
+                onNext={nextScreen}
+                onSkip={skipScreen}
+              />
+            );
+          } catch (error) {
+            console.error('Error rendering EatingPatternsScreen:', error);
+            toast.error('Failed to load eating patterns screen');
+            return (
+              <div className="text-center p-8">
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Screen Loading Error</h3>
+                <p className="text-gray-600 mb-4">Failed to load eating patterns screen: {error?.message || 'Unknown error'}</p>
+                <div className="space-x-2">
+                  <Button onClick={prevScreen} variant="outline">Go Back</Button>
+                  <Button onClick={skipScreen}>Skip This Screen</Button>
+                </div>
+              </div>
+            );
+          }
         case 11:
           return (
             <SupplementsScreen 

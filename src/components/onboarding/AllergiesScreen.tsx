@@ -24,17 +24,32 @@ const severityLevels = [
 ];
 
 export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: AllergiesScreenProps) => {
+  console.log('AllergiesScreen rendered with props:', { formData, updateFormData, onNext, onSkip });
+  
+  // Ensure foodAllergies is always an object
+  const safeFormData = {
+    ...formData,
+    foodAllergies: formData.foodAllergies || {},
+    crossContaminationSensitive: formData.crossContaminationSensitive ?? false
+  };
+  
   const updateAllergy = (allergen: string, severity: string) => {
-    const newAllergies = { ...formData.foodAllergies };
-    if (severity) {
-      newAllergies[allergen] = severity;
-    } else {
-      delete newAllergies[allergen];
+    try {
+      console.log(`Updating allergy: ${allergen} = ${severity}`);
+      const newAllergies = { ...safeFormData.foodAllergies };
+      if (severity) {
+        newAllergies[allergen] = severity;
+      } else {
+        delete newAllergies[allergen];
+      }
+      console.log('New allergies object:', newAllergies);
+      updateFormData({ foodAllergies: newAllergies });
+    } catch (error) {
+      console.error('Error updating allergy:', error);
     }
-    updateFormData({ foodAllergies: newAllergies });
   };
 
-  const hasAllergies = Object.keys(formData.foodAllergies).length > 0;
+  const hasAllergies = Object.keys(safeFormData.foodAllergies).length > 0;
 
   return (
     <div className="space-y-6">
@@ -58,8 +73,8 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
           <Label className="text-base font-medium mb-4 block">Common allergens & intolerances:</Label>
           <div className="space-y-3">
             {commonAllergens.map((allergen) => (
-              <div key={allergen} className={`flex items-center space-x-4 p-4 rounded-lg glass-button transition-all duration-200 ${
-                formData.foodAllergies[allergen] 
+                <div key={allergen} className={`flex items-center space-x-4 p-4 rounded-lg glass-button transition-all duration-200 ${
+                safeFormData.foodAllergies[allergen] 
                   ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
                   : 'border border-border hover:border-green-400 hover:bg-muted/50'
               }`}>
@@ -68,7 +83,7 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
                 </div>
                 <div className="w-48">
                   <Select
-                    value={formData.foodAllergies[allergen] || ''}
+                    value={safeFormData.foodAllergies[allergen] || ''}
                     onValueChange={(value) => updateAllergy(allergen, value)}
                   >
                     <SelectTrigger className="glass-button border-0">
@@ -92,14 +107,14 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
         {/* Cross-contamination sensitivity */}
         {hasAllergies && (
           <div className={`p-4 rounded-lg glass-button transition-all duration-200 ${
-            formData.crossContaminationSensitive
+            safeFormData.crossContaminationSensitive
               ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
               : 'border border-border hover:border-green-400 hover:bg-muted/50'
           }`}>
             <div className="flex items-center space-x-3">
               <Checkbox
                 id="crossContamination"
-                checked={formData.crossContaminationSensitive}
+                checked={safeFormData.crossContaminationSensitive}
                 onCheckedChange={(checked) => updateFormData({ crossContaminationSensitive: !!checked })}
               />
               <Label htmlFor="crossContamination" className="text-base cursor-pointer">
