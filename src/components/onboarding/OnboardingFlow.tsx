@@ -144,6 +144,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
     }
 
     setIsSubmitting(true);
+    console.log('Starting onboarding completion process...');
 
     try {
       // Calculate nutrition targets if we have enough data
@@ -169,6 +170,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             dailyLifestyle: formData.dailyLifestyle,
             exerciseFrequency: formData.exerciseFrequency,
           });
+          console.log('Calculated nutrition targets:', nutritionTargets);
         }
       }
 
@@ -236,23 +238,37 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      console.log('Saving profile data to database...');
+      const { data, error } = await supabase
         .from('user_profiles')
         .upsert(profileData, {
           onConflict: 'user_id'
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
-        console.error('Error saving profile:', error);
+        console.error('Database error saving profile:', error);
         toast.error('Failed to save your information. Please try again.');
         return;
       }
 
+      console.log('Profile saved successfully:', data);
+      
+      // Wait a moment to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       toast.success('Welcome to NutriCoach! Your personalized profile is ready with custom nutrition targets.');
-      onComplete();
+      
+      // Call completion callback with a slight delay to ensure state stabilization
+      setTimeout(() => {
+        console.log('Calling onComplete callback...');
+        onComplete();
+      }, 100);
+      
     } catch (error: any) {
-      console.error('Error during onboarding:', error);
-      toast.error('Something went wrong. Please try again.');
+      console.error('Error during onboarding completion:', error);
+      toast.error('Something went wrong during setup. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

@@ -8,8 +8,15 @@ export const useOnboardingStatus = () => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showReminder, setShowReminder] = useState(false);
+  const [completionLocked, setCompletionLocked] = useState(false);
 
   useEffect(() => {
+    // Don't re-check if completion is already locked
+    if (completionLocked) {
+      console.log('Onboarding completion is locked, skipping status check');
+      return;
+    }
+
     const checkOnboardingStatus = async () => {
       if (!isAuthenticated || !user) {
         setIsOnboardingComplete(null);
@@ -21,44 +28,16 @@ export const useOnboardingStatus = () => {
       try {
         console.log('Checking onboarding status for user:', user.id);
         
-        // For new users, try multiple times with delays to handle profile creation timing
-        let data = null;
-        let error = null;
-        const userCreatedAt = new Date(user.created_at || '');
-        const now = new Date();
-        const isNewUser = (now.getTime() - userCreatedAt.getTime()) < 10000; // Created within last 10 seconds
+        const result = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        if (isNewUser) {
-          console.log('New user detected, checking onboarding status with retries');
-          for (let attempt = 0; attempt < 3; attempt++) {
-            const result = await supabase
-              .from('user_profiles')
-              .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            data = result.data;
-            error = result.error;
-            
-            if (data || (error && error.code !== 'PGRST116')) break;
-            
-            console.log(`Profile not found on attempt ${attempt + 1}, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); // Progressive delay
-          }
-        } else {
-          const result = await supabase
-            .from('user_profiles')
-            .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          data = result.data;
-          error = result.error;
-        }
+        const { data, error } = result;
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error checking onboarding status:', error);
-          // If no profile exists yet, assume onboarding is not complete
           setIsOnboardingComplete(false);
           setShowReminder(false);
         } else if (!data) {
@@ -85,12 +64,36 @@ export const useOnboardingStatus = () => {
     };
 
     checkOnboardingStatus();
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, completionLocked]);
 
-  const markOnboardingComplete = () => {
+  const markOnboardingComplete = async () => {
     console.log('Marking onboarding as complete');
+    
+    // Lock completion to prevent state override
+    setCompletionLocked(true);
     setIsOnboardingComplete(true);
     setShowReminder(false);
+    
+    // Verify the database state after a short delay
+    setTimeout(async () => {
+      if (!user) return;
+      
+      try {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (data?.onboarding_completed) {
+          console.log('Database confirmation: Onboarding completion verified');
+        } else {
+          console.warn('Database verification failed - onboarding may not be saved properly');
+        }
+      } catch (error) {
+        console.error('Error verifying onboarding completion:', error);
+      }
+    }, 1000);
   };
 
   const dismissReminder = async () => {
@@ -114,5 +117,6 @@ export const useOnboardingStatus = () => {
     showReminder,
     markOnboardingComplete,
     dismissReminder,
+    completionLocked,
   };
 };
