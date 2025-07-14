@@ -107,6 +107,10 @@ function AppContent() {
         console.log('onboarding complete');
         setShowOnboarding(false);
         console.log('🧩 App.tsx: Should now navigate to route: /');
+        
+        // Force navigation to home to prevent any redirect loops
+        window.history.replaceState(null, '', '/');
+        
       } catch (error) {
         console.error('🧩 App.tsx: Error completing onboarding:', error);
       }
