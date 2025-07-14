@@ -25,10 +25,29 @@ const severityLevels = [
 
 export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: AllergiesScreenProps) => {
   console.log('🎬 AllergiesScreen component mounted');
+  
+  // Super defensive null checks
+  if (!formData) {
+    console.error('❌ AllergiesScreen: formData is null/undefined');
+    return <div>Loading allergies screen...</div>;
+  }
+  
+  if (!updateFormData || typeof updateFormData !== 'function') {
+    console.error('❌ AllergiesScreen: updateFormData is not a function');
+    return <div>Error: Missing update function</div>;
+  }
+  
+  if (!onNext || typeof onNext !== 'function') {
+    console.error('❌ AllergiesScreen: onNext is not a function');
+    return <div>Error: Missing navigation function</div>;
+  }
+  
+  if (!onSkip || typeof onSkip !== 'function') {
+    console.error('❌ AllergiesScreen: onSkip is not a function');
+    return <div>Error: Missing skip function</div>;
+  }
+  
   console.log('📊 AllergiesScreen received formData:', JSON.stringify(formData, null, 2));
-  console.log('📊 AllergiesScreen received updateFormData type:', typeof updateFormData);
-  console.log('📊 AllergiesScreen received onNext type:', typeof onNext);
-  console.log('📊 AllergiesScreen received onSkip type:', typeof onSkip);
   
   // Ensure foodAllergies is always an object - extra defensive
   const safeFormData = {
@@ -42,8 +61,12 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
   const updateAllergy = (allergen: string, severity: string) => {
     try {
       console.log(`📝 Updating allergy: ${allergen} = ${severity}`);
-      const newAllergies = { ...safeFormData.foodAllergies };
-      if (severity) {
+      if (!allergen || typeof allergen !== 'string') {
+        console.error('❌ Invalid allergen:', allergen);
+        return;
+      }
+      const newAllergies = { ...(safeFormData.foodAllergies || {}) };
+      if (severity && severity.trim()) {
         newAllergies[allergen] = severity;
       } else {
         delete newAllergies[allergen];

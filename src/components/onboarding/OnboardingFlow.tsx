@@ -480,7 +480,31 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             onSkip: typeof skipScreen
           });
           
+          // Extra validation before rendering
+          if (!safeFormData) {
+            console.error('❌ safeFormData is null in case 9');
+            return (
+              <div className="text-center p-8">
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Data Error</h3>
+                <p className="text-gray-600 mb-4">Form data is missing</p>
+                <Button onClick={prevScreen} variant="outline">Go Back</Button>
+              </div>
+            );
+          }
+          
+          if (!updateFormData || typeof updateFormData !== 'function') {
+            console.error('❌ updateFormData is not a function in case 9');
+            return (
+              <div className="text-center p-8">
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Function Error</h3>
+                <p className="text-gray-600 mb-4">Update function is missing</p>
+                <Button onClick={prevScreen} variant="outline">Go Back</Button>
+              </div>
+            );
+          }
+          
           try {
+            console.log('🔄 Creating AllergiesScreen component...');
             const allergiesScreenComponent = (
               <AllergiesScreen 
                 formData={safeFormData} 
@@ -493,7 +517,9 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             return allergiesScreenComponent;
           } catch (error) {
             console.error('❌ CRITICAL ERROR rendering AllergiesScreen:', error);
-            console.error('❌ Error stack:', error.stack);
+            console.error('❌ Error stack:', error?.stack);
+            console.error('❌ Error name:', error?.name);
+            console.error('❌ Error message:', error?.message);
             toast.error('Failed to load allergies screen');
             return (
               <div className="text-center p-8">
