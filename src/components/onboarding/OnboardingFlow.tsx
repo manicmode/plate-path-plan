@@ -383,7 +383,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         ...formData,
         foodAllergies: formData.foodAllergies || {},
         crossContaminationSensitive: formData.crossContaminationSensitive ?? false,
-        mealFrequency: (formData.mealFrequency || '') as OnboardingData['mealFrequency'],
+        mealFrequency: (formData.mealFrequency || '3') as OnboardingData['mealFrequency'], // ✅ Default to '3' instead of empty string
         fastingSchedule: formData.fastingSchedule || 'none',
         eatingWindow: formData.eatingWindow || '',
         currentSupplements: formData.currentSupplements || {},

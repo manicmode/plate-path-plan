@@ -31,15 +31,34 @@ const fastingSchedules = [
 
 export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip }: EatingPatternsScreenProps) => {
   console.log('🎬 EatingPatternsScreen component mounted');
+  
+  // Super defensive null checks
+  if (!formData) {
+    console.error('❌ EatingPatternsScreen: formData is null/undefined');
+    return <div>Loading eating patterns screen...</div>;
+  }
+  
+  if (!updateFormData || typeof updateFormData !== 'function') {
+    console.error('❌ EatingPatternsScreen: updateFormData is not a function');
+    return <div>Error: Missing update function</div>;
+  }
+  
+  if (!onNext || typeof onNext !== 'function') {
+    console.error('❌ EatingPatternsScreen: onNext is not a function');
+    return <div>Error: Missing navigation function</div>;
+  }
+  
+  if (!onSkip || typeof onSkip !== 'function') {
+    console.error('❌ EatingPatternsScreen: onSkip is not a function');
+    return <div>Error: Missing skip function</div>;
+  }
+  
   console.log('📊 EatingPatternsScreen received formData:', JSON.stringify(formData, null, 2));
-  console.log('📊 EatingPatternsScreen received updateFormData type:', typeof updateFormData);
-  console.log('📊 EatingPatternsScreen received onNext type:', typeof onNext);
-  console.log('📊 EatingPatternsScreen received onSkip type:', typeof onSkip);
   
   // Ensure eating pattern fields are properly initialized - extra defensive
   const safeFormData = {
     ...formData,
-    mealFrequency: (formData?.mealFrequency || '') as OnboardingData['mealFrequency'],
+    mealFrequency: (formData?.mealFrequency || '3') as OnboardingData['mealFrequency'], // ✅ Default to '3' instead of empty string
     fastingSchedule: formData?.fastingSchedule || 'none',
     eatingWindow: formData?.eatingWindow || ''
   };
