@@ -57,10 +57,10 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
             {weightGoalTypes.map((goal) => (
               <div 
                 key={goal.value} 
-                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
                   formData.weightGoalType === goal.value 
-                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                    : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                    : 'border border-border'
                 }`}
                 onClick={() => updateFormData({ weightGoalType: goal.value as any })}
               >

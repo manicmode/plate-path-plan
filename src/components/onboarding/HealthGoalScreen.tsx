@@ -48,10 +48,10 @@ export const HealthGoalScreen = ({ formData, updateFormData, onNext, onSkip }: H
         {healthGoals.map((goal) => (
           <div 
             key={goal.value}
-            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
               formData.mainHealthGoal === goal.value 
-                ? 'bg-emerald-100 border-emerald-500 border-2 scale-[1.02] dark:bg-emerald-900/20' 
-                : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                ? 'bg-emerald-100 border-emerald-500 border-2 dark:bg-emerald-900/20' 
+                : 'border border-border'
             }`}
             onClick={() => updateFormData({ mainHealthGoal: goal.value as any })}
           >

@@ -79,10 +79,10 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             {lifestyleOptions.map((option) => (
               <div 
                 key={option.value} 
-                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
                   formData.dailyLifestyle === option.value 
-                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                    : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                    : 'border border-border'
                 }`}
                 onClick={() => {
                   console.log('🔧 ExerciseLifestyleScreen: Lifestyle option clicked:', option.value);
@@ -110,10 +110,10 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
             {exerciseFrequencies.map((freq) => (
               <div 
                 key={freq.value} 
-                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
                   formData.exerciseFrequency === freq.value 
-                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                    : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                    : 'border border-border'
                 }`}
                 onClick={() => {
                   console.log('🔧 ExerciseLifestyleScreen: Exercise frequency clicked:', freq.value);
@@ -138,10 +138,10 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
               {exerciseTypes.map((type) => (
                 <div 
                   key={type.value} 
-                  className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
                     formData.exerciseTypes.includes(type.value)
-                      ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                      : 'border border-border hover:border-emerald-400 hover:bg-muted/50'
+                      ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                      : 'border border-border'
                   }`}
                   onClick={() => toggleExerciseType(type.value)}
                 >

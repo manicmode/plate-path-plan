@@ -55,10 +55,10 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
             className="grid grid-cols-2 gap-4"
           >
             <div 
-              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-colors cursor-pointer ${
                 formData.gender === 'male' 
-                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                  : 'border border-border'
               }`}
               onClick={() => updateFormData({ gender: 'male' })}
             >
@@ -66,10 +66,10 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
               <Label htmlFor="male" className="pointer-events-none">Male</Label>
             </div>
             <div 
-              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-colors cursor-pointer ${
                 formData.gender === 'female' 
-                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                  : 'border border-border'
               }`}
               onClick={() => updateFormData({ gender: 'female' })}
             >
@@ -77,10 +77,10 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
               <Label htmlFor="female" className="pointer-events-none">Female</Label>
             </div>
             <div 
-              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-colors cursor-pointer ${
                 formData.gender === 'non_binary' 
-                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                  : 'border border-border'
               }`}
               onClick={() => updateFormData({ gender: 'non_binary' })}
             >
@@ -88,10 +88,10 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
               <Label htmlFor="non_binary" className="pointer-events-none">Non-binary</Label>
             </div>
             <div 
-              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-colors cursor-pointer ${
                 formData.gender === 'prefer_not_to_say' 
-                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                  : 'border border-border'
               }`}
               onClick={() => updateFormData({ gender: 'prefer_not_to_say' })}
             >
@@ -114,10 +114,10 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
             className="flex space-x-6"
           >
             <div 
-              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-colors cursor-pointer ${
                 formData.heightUnit === 'ft' 
-                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                  : 'border border-border'
               }`}
               onClick={() => updateFormData({ heightUnit: 'ft' })}
             >
@@ -125,10 +125,10 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
               <Label htmlFor="ft" className="pointer-events-none">Feet & Inches</Label>
             </div>
             <div 
-              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-colors cursor-pointer ${
                 formData.heightUnit === 'cm' 
-                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
+                  : 'border border-border'
               }`}
               onClick={() => updateFormData({ heightUnit: 'cm' })}
             >
@@ -229,32 +229,8 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
         </Button>
         <Button
           onClick={() => {
-            // Validation: Check required fields
-            if (!formData.age || parseInt(formData.age) < 10 || parseInt(formData.age) > 120) {
-              toast.error("Please enter a valid age (10-120 years)");
-              return;
-            }
-            if (!formData.gender) {
-              toast.error("Please select your gender before continuing");
-              return;
-            }
-            if (!formData.weight || parseFloat(formData.weight) <= 0) {
-              toast.error("Please enter your current weight");
-              return;
-            }
-            // Height validation
-            if (formData.heightUnit === 'ft') {
-              if (!formData.heightFeet || parseInt(formData.heightFeet) < 3 || parseInt(formData.heightFeet) > 8) {
-                toast.error("Please enter a valid height");
-                return;
-              }
-            } else {
-              if (!formData.heightCm || parseInt(formData.heightCm) < 100 || parseInt(formData.heightCm) > 250) {
-                toast.error("Please enter a valid height");
-                return;
-              }
-            }
-            console.log('✅ BasicInfoScreen validation passed');
+            // This screen is optional, so just proceed
+            console.log('✅ BasicInfoScreen - proceeding (optional fields)');
             onNext();
           }}
           className="flex-1 gradient-primary"

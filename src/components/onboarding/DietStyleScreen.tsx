@@ -65,10 +65,10 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
         {dietStyles.map((style) => (
           <div 
             key={style.value}
-            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
               formData.dietStyles.includes(style.value)
-                ? 'bg-emerald-100 border-emerald-500 border-2 scale-[1.02] dark:bg-emerald-900/20' 
-                : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                ? 'bg-emerald-100 border-emerald-500 border-2 dark:bg-emerald-900/20' 
+                : 'border border-border'
             }`}
             onClick={() => toggleDietStyle(style.value)}
           >
