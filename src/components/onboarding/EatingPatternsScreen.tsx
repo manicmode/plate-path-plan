@@ -32,6 +32,12 @@ const fastingSchedules = [
 export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip }: EatingPatternsScreenProps) => {
   console.log('🎬 EatingPatternsScreen component mounted');
   
+  // FAIL-FAST LOGGING & GUARD CLAUSE
+  if (!formData.mealFrequency || formData.mealFrequency === undefined) {
+    console.error('[EP-DEBUG] mealFrequency still empty! Raw formData:', formData);
+    throw new Error('mealFrequency is empty before rendering RadioGroup');
+  }
+  
   // Super defensive null checks
   if (!formData) {
     console.error('❌ EatingPatternsScreen: formData is null/undefined');
@@ -55,19 +61,18 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
   
   console.log('📊 EatingPatternsScreen received formData:', JSON.stringify(formData, null, 2));
   
+  // HARD FALLBACK (temporary) - Force-set valid default
+  const safeMealFrequency = formData.mealFrequency
+    ? formData.mealFrequency
+    : '3';   // valid default
+
   // Ensure eating pattern fields are properly initialized - extra defensive
   const safeFormData = {
     ...formData,
-    mealFrequency: (formData?.mealFrequency || '3') as OnboardingData['mealFrequency'], // ✅ Default to '3'
+    mealFrequency: safeMealFrequency as OnboardingData['mealFrequency'],
     fastingSchedule: formData?.fastingSchedule || 'none',
     eatingWindow: formData?.eatingWindow || ''
   };
-  
-  // Additional safety check - ensure mealFrequency is never empty or invalid
-  if (!safeFormData.mealFrequency || !['2', '3', '4', '5', '6+'].includes(safeFormData.mealFrequency)) {
-    console.warn('⚠️ EatingPatternsScreen: mealFrequency was invalid, forcing to "3"');
-    safeFormData.mealFrequency = '3' as OnboardingData['mealFrequency'];
-  }
   
   console.log('🔧 EatingPatternsScreen safeFormData:', JSON.stringify(safeFormData, null, 2));
   
@@ -102,6 +107,8 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
             className="space-y-3"
           >
             {mealFrequencies.map((freq) => {
+              // INSTRUMENT EVERY RADIOGROUP ITEM
+              console.log('[EP-DEBUG] Rendering meal frequency item', freq.value);
               // ✅ Ensure freq.value is never empty
               const freqValue = freq.value || '3';
               return (
@@ -130,6 +137,8 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
             className="space-y-3"
           >
             {fastingSchedules.map((schedule) => {
+              // INSTRUMENT EVERY RADIOGROUP ITEM
+              console.log('[EP-DEBUG] Rendering fasting schedule item', schedule.value);
               // ✅ Ensure schedule.value is never empty
               const scheduleValue = schedule.value || 'none';
               return (
