@@ -114,14 +114,14 @@ export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: Al
                 </div>
                 <div className="w-48">
                   <Select
-                    value={safeFormData.foodAllergies[allergen] || ''}
-                    onValueChange={(value) => updateAllergy(allergen, value)}
+                    value={safeFormData.foodAllergies[allergen] || 'none'}
+                    onValueChange={(value) => updateAllergy(allergen, value === 'none' ? '' : value)}
                   >
                     <SelectTrigger className="glass-button border-0">
                       <SelectValue placeholder="Not allergic" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Not allergic</SelectItem>
+                      <SelectItem value="none">Not allergic</SelectItem>
                       {severityLevels.map((level) => (
                         <SelectItem key={level.value} value={level.value}>
                           {level.label}
