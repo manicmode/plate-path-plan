@@ -80,6 +80,9 @@ serve(async (req) => {
 
     console.log('OpenAI API key found, length:', openAIApiKey.length);
     console.log('API key starts with:', openAIApiKey.substring(0, 10) + '...');
+    
+    // Log userContext for debugging data consumption
+    console.log('📊 AI Coach receiving user context:', JSON.stringify(userContext, null, 2));
 
     if (!message || message.trim().length === 0) {
       console.error('Invalid message received:', message);

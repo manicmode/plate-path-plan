@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { User, Ruler, Scale } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
+import { toast } from 'sonner';
 
 interface BasicInfoScreenProps {
   formData: OnboardingData;
@@ -209,7 +210,35 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
           Skip for now
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            // Validation: Check required fields
+            if (!formData.age || parseInt(formData.age) < 10 || parseInt(formData.age) > 120) {
+              toast.error("Please enter a valid age (10-120 years)");
+              return;
+            }
+            if (!formData.gender) {
+              toast.error("Please select your gender before continuing");
+              return;
+            }
+            if (!formData.weight || parseFloat(formData.weight) <= 0) {
+              toast.error("Please enter your current weight");
+              return;
+            }
+            // Height validation
+            if (formData.heightUnit === 'ft') {
+              if (!formData.heightFeet || parseInt(formData.heightFeet) < 3 || parseInt(formData.heightFeet) > 8) {
+                toast.error("Please enter a valid height");
+                return;
+              }
+            } else {
+              if (!formData.heightCm || parseInt(formData.heightCm) < 100 || parseInt(formData.heightCm) > 250) {
+                toast.error("Please enter a valid height");
+                return;
+              }
+            }
+            console.log('✅ BasicInfoScreen validation passed');
+            onNext();
+          }}
           className="flex-1 gradient-primary"
         >
           Next

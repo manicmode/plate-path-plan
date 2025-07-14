@@ -144,7 +144,8 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
               <Button
                 onClick={addSupplement}
                 disabled={!newSupplement || !newDosage || !newFrequency}
-                className="w-full h-full gradient-primary p-0"
+                className="w-11 h-11 gradient-primary p-3 min-w-[44px] min-h-[44px]"
+                aria-label="Add supplement"
               >
                 <Plus className="w-4 h-4" />
               </Button>

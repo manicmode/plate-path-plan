@@ -18,6 +18,8 @@ import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
+import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
+import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
 
 // Helper function to save preferences
 const saveUserPreferences = (preferences: any) => {
@@ -38,6 +40,7 @@ const Profile = () => {
   useScrollToTop();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -169,6 +172,21 @@ const Profile = () => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
+  const handleStartOnboarding = () => {
+    setShowOnboarding(true);
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    toast.success('Onboarding completed! Your profile has been updated.');
+    // Force refresh of user data
+    window.location.reload();
+  };
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+  }
+
   return (
     <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''}`}>
       {/* Page Title - Properly spaced from header */}
@@ -176,6 +194,9 @@ const Profile = () => {
         <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
         <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>Manage your account and nutrition goals</p>
       </div>
+
+      {/* Onboarding Completion Card - Show if onboarding not completed */}
+      <OnboardingCompletionCard onStartOnboarding={handleStartOnboarding} />
 
       {/* Profile Header */}
       <Card className="animate-slide-up glass-card border-0 rounded-3xl">

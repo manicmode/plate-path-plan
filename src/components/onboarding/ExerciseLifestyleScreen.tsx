@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dumbbell } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
+import { toast } from 'sonner';
 
 interface ExerciseLifestyleScreenProps {
   formData: OnboardingData;
@@ -81,7 +82,7 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
                 className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
                   formData.dailyLifestyle === option.value 
                     ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                    : 'border border-border hover:border-emerald-400 hover:bg-muted/50'
+                    : 'border border-border active:border-emerald-500 active:bg-emerald-100'
                 }`}
                 onClick={() => {
                   console.log('🔧 ExerciseLifestyleScreen: Lifestyle option clicked:', option.value);
@@ -112,7 +113,7 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
                 className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
                   formData.exerciseFrequency === freq.value 
                     ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
-                    : 'border border-border hover:border-emerald-400 hover:bg-muted/50'
+                    : 'border border-border active:border-emerald-500 active:bg-emerald-100'
                 }`}
                 onClick={() => {
                   console.log('🔧 ExerciseLifestyleScreen: Exercise frequency clicked:', freq.value);
@@ -168,7 +169,19 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
           Skip for now
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            // Validation: Check required fields
+            if (!formData.dailyLifestyle) {
+              toast.error("Please select your daily lifestyle before continuing");
+              return;
+            }
+            if (!formData.exerciseFrequency) {
+              toast.error("Please select your exercise frequency before continuing");
+              return;
+            }
+            console.log('✅ ExerciseLifestyleScreen validation passed');
+            onNext();
+          }}
           className="flex-1 gradient-primary"
         >
           Next

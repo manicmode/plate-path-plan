@@ -17,6 +17,7 @@ export interface ExtendedUser extends User {
   foods_to_avoid?: string;
   activity_level?: string;
   health_conditions?: string[];
+  onboardingCompleted?: boolean;
 }
 
 export interface RegistrationResult {

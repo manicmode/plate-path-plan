@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Target } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
+import { toast } from 'sonner';
 
 interface HealthGoalScreenProps {
   formData: OnboardingData;
@@ -72,7 +73,15 @@ export const HealthGoalScreen = ({ formData, updateFormData, onNext, onSkip }: H
           Skip for now
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            // Validation: Check required field
+            if (!formData.mainHealthGoal) {
+              toast.error("Please select your main health goal before continuing");
+              return;
+            }
+            console.log('✅ HealthGoalScreen validation passed');
+            onNext();
+          }}
           className="flex-1 gradient-primary"
         >
           Next
