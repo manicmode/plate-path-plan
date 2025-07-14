@@ -62,16 +62,14 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
         </p>
       </div>
 
-      <div className="space-y-3">
-        {dietStyles.map((style, index) => (
+      <div className={`space-y-3 ${formData.dietStyles.length === 0 ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
+        {dietStyles.map((style) => (
           <div 
             key={style.value}
             className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
               formData.dietStyles.includes(style.value)
                 ? 'bg-emerald-100 border-emerald-500 border-2 dark:bg-emerald-900/20' 
-                : formData.dietStyles.length === 0 && index === dietStyles.length - 1 
-                  ? 'ring-2 ring-red-500 ring-opacity-50 border border-border'
-                  : 'border border-border'
+                : 'border border-border'
             }`}
             onClick={() => toggleDietStyle(style.value)}
           >

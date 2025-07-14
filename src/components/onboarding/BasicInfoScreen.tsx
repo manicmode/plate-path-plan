@@ -189,7 +189,7 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
         <div className="space-y-4">
           <Label className="flex items-center space-x-2">
             <Scale className="w-4 h-4 text-emerald-600" />
-            <span>Weight *</span>
+            <span>Weight</span>
           </Label>
           
           <div className="flex space-x-4">
@@ -198,7 +198,7 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
               placeholder={`Weight in ${formData.weightUnit}`}
               value={formData.weight}
               onChange={(e) => updateFormData({ weight: e.target.value })}
-              className={`glass-button border-0 flex-1 ${!formData.weight ? 'ring-2 ring-red-500 ring-opacity-50' : ''}`}
+              className="glass-button border-0 flex-1"
               min="50"
               max="500"
               step="0.1"
@@ -229,12 +229,8 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
         </Button>
         <Button
           onClick={() => {
-            // Validation: Weight is required
-            if (!formData.weight || !formData.weight.trim()) {
-              toast.error("Please enter your weight before continuing");
-              return;
-            }
-            console.log('✅ BasicInfoScreen validation passed');
+            // This screen is optional, so just proceed
+            console.log('✅ BasicInfoScreen - proceeding (optional fields)');
             onNext();
           }}
           className="flex-1 gradient-primary"
