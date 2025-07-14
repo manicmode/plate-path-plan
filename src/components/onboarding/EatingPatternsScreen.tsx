@@ -58,10 +58,16 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
   // Ensure eating pattern fields are properly initialized - extra defensive
   const safeFormData = {
     ...formData,
-    mealFrequency: (formData?.mealFrequency || '3') as OnboardingData['mealFrequency'], // ✅ Default to '3' instead of empty string
+    mealFrequency: (formData?.mealFrequency || '3') as OnboardingData['mealFrequency'], // ✅ Default to '3'
     fastingSchedule: formData?.fastingSchedule || 'none',
     eatingWindow: formData?.eatingWindow || ''
   };
+  
+  // Additional safety check - ensure mealFrequency is never empty or invalid
+  if (!safeFormData.mealFrequency || !['2', '3', '4', '5', '6+'].includes(safeFormData.mealFrequency)) {
+    console.warn('⚠️ EatingPatternsScreen: mealFrequency was invalid, forcing to "3"');
+    safeFormData.mealFrequency = '3' as OnboardingData['mealFrequency'];
+  }
   
   console.log('🔧 EatingPatternsScreen safeFormData:', JSON.stringify(safeFormData, null, 2));
   
@@ -86,23 +92,32 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
         <div>
           <Label className="text-base font-medium mb-4 block">How many meals do you typically eat per day?</Label>
           <RadioGroup
-            value={safeFormData.mealFrequency}
-            onValueChange={(value: any) => updateFormData({ mealFrequency: value })}
+            value={safeFormData.mealFrequency || '3'} // ✅ Additional safety check
+            onValueChange={(value: any) => {
+              console.log('🔄 EatingPatternsScreen: mealFrequency changing to:', value);
+              if (value && value !== '') {
+                updateFormData({ mealFrequency: value });
+              }
+            }}
             className="space-y-3"
           >
-            {mealFrequencies.map((freq) => (
-              <div key={freq.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-                safeFormData.mealFrequency === freq.value 
-                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
-              }`}>
-                <RadioGroupItem value={freq.value} id={freq.value} />
-                <Label htmlFor={freq.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
-                  <span className="text-xl">{freq.emoji}</span>
-                  <span className="text-base">{freq.label}</span>
-                </Label>
-              </div>
-            ))}
+            {mealFrequencies.map((freq) => {
+              // ✅ Ensure freq.value is never empty
+              const freqValue = freq.value || '3';
+              return (
+                <div key={freqValue} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
+                  safeFormData.mealFrequency === freqValue 
+                    ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                    : 'border border-border hover:border-green-400 hover:bg-muted/50'
+                }`}>
+                  <RadioGroupItem value={freqValue} id={freqValue} />
+                  <Label htmlFor={freqValue} className="flex items-center space-x-3 flex-1 cursor-pointer">
+                    <span className="text-xl">{freq.emoji}</span>
+                    <span className="text-base">{freq.label}</span>
+                  </Label>
+                </div>
+              );
+            })}
           </RadioGroup>
         </div>
 
@@ -114,26 +129,30 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
             onValueChange={(value: any) => updateFormData({ fastingSchedule: value })}
             className="space-y-3"
           >
-            {fastingSchedules.map((schedule) => (
-              <div key={schedule.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-                safeFormData.fastingSchedule === schedule.value 
-                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
-              }`}>
-                <RadioGroupItem value={schedule.value} id={schedule.value} />
-                <Label htmlFor={schedule.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
-                  <span className="text-xl">{schedule.emoji}</span>
-                  <div>
-                    <div className="text-base font-medium">{schedule.label.split(' (')[0]}</div>
-                    {schedule.label.includes('(') && (
-                      <div className="text-sm text-muted-foreground">
-                        {schedule.label.split(' (')[1]?.replace(')', '')}
-                      </div>
-                    )}
-                  </div>
-                </Label>
-              </div>
-            ))}
+            {fastingSchedules.map((schedule) => {
+              // ✅ Ensure schedule.value is never empty
+              const scheduleValue = schedule.value || 'none';
+              return (
+                <div key={scheduleValue} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
+                  safeFormData.fastingSchedule === scheduleValue 
+                    ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
+                    : 'border border-border hover:border-green-400 hover:bg-muted/50'
+                }`}>
+                  <RadioGroupItem value={scheduleValue} id={scheduleValue} />
+                  <Label htmlFor={scheduleValue} className="flex items-center space-x-3 flex-1 cursor-pointer">
+                    <span className="text-xl">{schedule.emoji}</span>
+                    <div>
+                      <div className="text-base font-medium">{schedule.label.split(' (')[0]}</div>
+                      {schedule.label.includes('(') && (
+                        <div className="text-sm text-muted-foreground">
+                          {schedule.label.split(' (')[1]?.replace(')', '')}
+                        </div>
+                      )}
+                    </div>
+                  </Label>
+                </div>
+              );
+            })}
           </RadioGroup>
         </div>
 
