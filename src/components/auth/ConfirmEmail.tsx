@@ -149,9 +149,8 @@ export const ConfirmEmail: React.FC = () => {
     confirmEmail();
   }, [searchParams]);
 
-  // Handle successful confirmation with smart redirect
+  // Handle successful confirmation with delayed redirect to prevent flash
   const handleSuccessfulConfirmation = async (user: any) => {
-    // Use immediate navigation to prevent flash
     try {
       // Check if user has completed onboarding
       const { data: profile, error: profileError } = await supabase
@@ -166,14 +165,19 @@ export const ConfirmEmail: React.FC = () => {
         console.error('Error checking onboarding status:', profileError);
       }
 
-      // Always redirect to home - let AppContent handle onboarding logic
-      console.log('Redirecting to home after email confirmation');
-      navigate('/', { replace: true });
+      // Add a delay to allow auth state to fully sync before navigation
+      console.log('Email confirmed successfully, redirecting in 500ms...');
+      setTimeout(() => {
+        console.log('Redirecting to home after email confirmation');
+        navigate('/', { replace: true });
+      }, 500);
       
     } catch (redirectError) {
       console.error('Error during redirect:', redirectError);
-      // Fallback redirect
-      navigate('/', { replace: true });
+      // Fallback redirect with delay
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 500);
     }
   };
 
@@ -232,13 +236,17 @@ export const ConfirmEmail: React.FC = () => {
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-muted-foreground mb-4">
-                Your email has been successfully confirmed. You'll be redirected to the app shortly.
+                Your email has been successfully confirmed. Redirecting you to the app...
               </p>
               {userEmail && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   Welcome, {userEmail}!
                 </p>
               )}
+              <div className="flex items-center justify-center">
+                <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
+                <span className="text-sm text-muted-foreground">Setting up your account...</span>
+              </div>
             </CardContent>
           </>
         );

@@ -29,6 +29,7 @@ const queryClient = new QueryClient();
 function AppContent() {
   const { isAuthenticated, loading, isEmailConfirmed } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [authTransitioning, setAuthTransitioning] = useState(false);
 
   // Only load onboarding status if authenticated to prevent race conditions
   const { 
@@ -49,11 +50,21 @@ function AppContent() {
     onboardingLoading, 
     isOnboardingComplete, 
     showOnboarding, 
-    showReminder 
+    showReminder,
+    authTransitioning
   });
 
-  // Show loading while auth is initializing
-  if (loading) {
+  // Handle auth transitions to prevent 404 flash
+  useState(() => {
+    if (!loading && !isAuthenticated) {
+      setAuthTransitioning(true);
+      // Reset transition state after a brief delay
+      setTimeout(() => setAuthTransitioning(false), 100);
+    }
+  });
+
+  // Show loading while auth is initializing or transitioning
+  if (loading || authTransitioning) {
     console.log('AppContent: Showing auth loading state');
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
