@@ -49,12 +49,11 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
         {/* Weight Goal Type */}
         <div>
           <Label className="text-base font-medium mb-4 block">What's your primary goal?</Label>
-      <div className={`${!formData.weightGoalType ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
-        <RadioGroup
-          value={formData.weightGoalType}
-          onValueChange={(value: any) => updateFormData({ weightGoalType: value })}
-          className="space-y-3"
-        >
+          <RadioGroup
+            value={formData.weightGoalType}
+            onValueChange={(value: any) => updateFormData({ weightGoalType: value })}
+            className="space-y-3"
+          >
             {weightGoalTypes.map((goal) => (
               <div 
                 key={goal.value} 
@@ -72,8 +71,7 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
                 </Label>
               </div>
             ))}
-        </RadioGroup>
-      </div>
+          </RadioGroup>
         </div>
 
         {/* Target Weight */}
