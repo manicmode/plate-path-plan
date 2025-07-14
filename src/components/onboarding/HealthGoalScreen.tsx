@@ -51,12 +51,12 @@ export const HealthGoalScreen = ({ formData, updateFormData, onNext, onSkip }: H
             className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
               formData.mainHealthGoal === goal.value 
                 ? 'bg-emerald-100 border-emerald-500 border-2 scale-[1.02] dark:bg-emerald-900/20' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50 hover:scale-[1.01]'
+                : 'border border-border active:border-emerald-500 active:bg-emerald-100'
             }`}
             onClick={() => updateFormData({ mainHealthGoal: goal.value as any })}
           >
             <RadioGroupItem value={goal.value} id={goal.value} />
-            <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
+            <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer pointer-events-none">
               <span className="text-xl">{goal.emoji}</span>
               <span className="text-base">{goal.label}</span>
             </Label>

@@ -54,37 +54,49 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
             onValueChange={(value: 'male' | 'female' | 'non_binary' | 'prefer_not_to_say') => updateFormData({ gender: value })}
             className="grid grid-cols-2 gap-4"
           >
-            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
-              formData.gender === 'male' 
-                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50'
-            }`}>
+            <div 
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                formData.gender === 'male' 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+              }`}
+              onClick={() => updateFormData({ gender: 'male' })}
+            >
               <RadioGroupItem value="male" id="male" />
-              <Label htmlFor="male">Male</Label>
+              <Label htmlFor="male" className="pointer-events-none">Male</Label>
             </div>
-            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
-              formData.gender === 'female' 
-                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50'
-            }`}>
+            <div 
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                formData.gender === 'female' 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+              }`}
+              onClick={() => updateFormData({ gender: 'female' })}
+            >
               <RadioGroupItem value="female" id="female" />
-              <Label htmlFor="female">Female</Label>
+              <Label htmlFor="female" className="pointer-events-none">Female</Label>
             </div>
-            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
-              formData.gender === 'non_binary' 
-                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50'
-            }`}>
+            <div 
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                formData.gender === 'non_binary' 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+              }`}
+              onClick={() => updateFormData({ gender: 'non_binary' })}
+            >
               <RadioGroupItem value="non_binary" id="non_binary" />
-              <Label htmlFor="non_binary">Non-binary</Label>
+              <Label htmlFor="non_binary" className="pointer-events-none">Non-binary</Label>
             </div>
-            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
-              formData.gender === 'prefer_not_to_say' 
-                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50'
-            }`}>
+            <div 
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                formData.gender === 'prefer_not_to_say' 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+              }`}
+              onClick={() => updateFormData({ gender: 'prefer_not_to_say' })}
+            >
               <RadioGroupItem value="prefer_not_to_say" id="prefer_not_to_say" />
-              <Label htmlFor="prefer_not_to_say">Prefer not to say</Label>
+              <Label htmlFor="prefer_not_to_say" className="pointer-events-none">Prefer not to say</Label>
             </div>
           </RadioGroup>
         </div>
@@ -101,21 +113,27 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
             onValueChange={(value: 'ft' | 'cm') => updateFormData({ heightUnit: value })}
             className="flex space-x-6"
           >
-            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
-              formData.heightUnit === 'ft' 
-                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50'
-            }`}>
+            <div 
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                formData.heightUnit === 'ft' 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+              }`}
+              onClick={() => updateFormData({ heightUnit: 'ft' })}
+            >
               <RadioGroupItem value="ft" id="ft" />
-              <Label htmlFor="ft">Feet & Inches</Label>
+              <Label htmlFor="ft" className="pointer-events-none">Feet & Inches</Label>
             </div>
-            <div className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 ${
-              formData.heightUnit === 'cm' 
-                ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                : 'border border-border hover:border-green-400 hover:bg-muted/50'
-            }`}>
+            <div 
+              className={`flex items-center space-x-2 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                formData.heightUnit === 'cm' 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                  : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+              }`}
+              onClick={() => updateFormData({ heightUnit: 'cm' })}
+            >
               <RadioGroupItem value="cm" id="cm" />
-              <Label htmlFor="cm">Centimeters</Label>
+              <Label htmlFor="cm" className="pointer-events-none">Centimeters</Label>
             </div>
           </RadioGroup>
 

@@ -55,13 +55,17 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
             className="space-y-3"
           >
             {weightGoalTypes.map((goal) => (
-              <div key={goal.value} className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 ${
-                formData.weightGoalType === goal.value 
-                  ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20 scale-[1.02]' 
-                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
-              }`}>
+              <div 
+                key={goal.value} 
+                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+                  formData.weightGoalType === goal.value 
+                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20 scale-[1.02]' 
+                    : 'border border-border active:border-emerald-500 active:bg-emerald-100'
+                }`}
+                onClick={() => updateFormData({ weightGoalType: goal.value as any })}
+              >
                 <RadioGroupItem value={goal.value} id={goal.value} />
-                <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
+                <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer pointer-events-none">
                   <span className="text-xl">{goal.emoji}</span>
                   <span className="text-base">{goal.label}</span>
                 </Label>
