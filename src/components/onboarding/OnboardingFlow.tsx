@@ -55,7 +55,7 @@ export interface OnboardingData {
   crossContaminationSensitive: boolean;
   
   // Eating patterns
-  mealFrequency: '2' | '3' | '4' | '5' | '6+' | '';
+  mealFrequency: '2' | '3' | '4' | '5' | '6+';
   fastingSchedule: 'none' | '16_8' | '18_6' | '20_4' | 'omad' | 'alternate_day' | '';
   eatingWindow: string;
   
@@ -100,7 +100,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
     foodsToAvoid: '',
     foodAllergies: {},
     crossContaminationSensitive: false,
-    mealFrequency: '',
+    mealFrequency: '3', // ✅ Default to '3' to prevent empty string error
     fastingSchedule: 'none',
     eatingWindow: '',
     currentSupplements: {},
@@ -118,7 +118,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
           // Ensure critical fields always have defaults
           foodAllergies: { ...(prev.foodAllergies || {}), ...(updates.foodAllergies || {}) },
           crossContaminationSensitive: updates.crossContaminationSensitive ?? prev.crossContaminationSensitive ?? false,
-          mealFrequency: (updates.mealFrequency ?? prev.mealFrequency ?? '') as OnboardingData['mealFrequency'],
+          mealFrequency: (updates.mealFrequency ?? prev.mealFrequency ?? '3') as OnboardingData['mealFrequency'],
           fastingSchedule: updates.fastingSchedule ?? prev.fastingSchedule ?? 'none',
           eatingWindow: updates.eatingWindow ?? prev.eatingWindow ?? ''
         };

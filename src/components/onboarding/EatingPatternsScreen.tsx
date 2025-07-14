@@ -34,7 +34,7 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
   
   // FAIL-FAST LOGGING & GUARD CLAUSE
   if (!formData.mealFrequency || formData.mealFrequency === undefined) {
-    console.error('[EP-DEBUG] mealFrequency still empty! Raw formData:', formData);
+    console.error('[EP-DEBUG] mealFrequency is empty! Raw formData:', formData);
     throw new Error('mealFrequency is empty before rendering RadioGroup');
   }
   
