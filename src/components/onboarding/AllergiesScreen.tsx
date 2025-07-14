@@ -24,32 +24,40 @@ const severityLevels = [
 ];
 
 export const AllergiesScreen = ({ formData, updateFormData, onNext, onSkip }: AllergiesScreenProps) => {
-  console.log('AllergiesScreen rendered with props:', { formData, updateFormData, onNext, onSkip });
+  console.log('🎬 AllergiesScreen component mounted');
+  console.log('📊 AllergiesScreen received formData:', JSON.stringify(formData, null, 2));
+  console.log('📊 AllergiesScreen received updateFormData type:', typeof updateFormData);
+  console.log('📊 AllergiesScreen received onNext type:', typeof onNext);
+  console.log('📊 AllergiesScreen received onSkip type:', typeof onSkip);
   
-  // Ensure foodAllergies is always an object
+  // Ensure foodAllergies is always an object - extra defensive
   const safeFormData = {
     ...formData,
-    foodAllergies: formData.foodAllergies || {},
-    crossContaminationSensitive: formData.crossContaminationSensitive ?? false
+    foodAllergies: formData?.foodAllergies || {},
+    crossContaminationSensitive: formData?.crossContaminationSensitive ?? false
   };
+  
+  console.log('🔧 AllergiesScreen safeFormData:', JSON.stringify(safeFormData, null, 2));
   
   const updateAllergy = (allergen: string, severity: string) => {
     try {
-      console.log(`Updating allergy: ${allergen} = ${severity}`);
+      console.log(`📝 Updating allergy: ${allergen} = ${severity}`);
       const newAllergies = { ...safeFormData.foodAllergies };
       if (severity) {
         newAllergies[allergen] = severity;
       } else {
         delete newAllergies[allergen];
       }
-      console.log('New allergies object:', newAllergies);
+      console.log('📝 New allergies object:', newAllergies);
       updateFormData({ foodAllergies: newAllergies });
+      console.log('✅ Allergy update completed');
     } catch (error) {
-      console.error('Error updating allergy:', error);
+      console.error('❌ Error updating allergy:', error);
     }
   };
 
-  const hasAllergies = Object.keys(safeFormData.foodAllergies).length > 0;
+  const hasAllergies = Object.keys(safeFormData.foodAllergies || {}).length > 0;
+  console.log('🔍 hasAllergies:', hasAllergies);
 
   return (
     <div className="space-y-6">

@@ -30,15 +30,21 @@ const fastingSchedules = [
 ];
 
 export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip }: EatingPatternsScreenProps) => {
-  console.log('EatingPatternsScreen rendered with props:', { formData, updateFormData, onNext, onSkip });
+  console.log('🎬 EatingPatternsScreen component mounted');
+  console.log('📊 EatingPatternsScreen received formData:', JSON.stringify(formData, null, 2));
+  console.log('📊 EatingPatternsScreen received updateFormData type:', typeof updateFormData);
+  console.log('📊 EatingPatternsScreen received onNext type:', typeof onNext);
+  console.log('📊 EatingPatternsScreen received onSkip type:', typeof onSkip);
   
-  // Ensure eating pattern fields are properly initialized
+  // Ensure eating pattern fields are properly initialized - extra defensive
   const safeFormData = {
     ...formData,
-    mealFrequency: formData.mealFrequency || '',
-    fastingSchedule: formData.fastingSchedule || 'none',
-    eatingWindow: formData.eatingWindow || ''
+    mealFrequency: (formData?.mealFrequency || '') as OnboardingData['mealFrequency'],
+    fastingSchedule: formData?.fastingSchedule || 'none',
+    eatingWindow: formData?.eatingWindow || ''
   };
+  
+  console.log('🔧 EatingPatternsScreen safeFormData:', JSON.stringify(safeFormData, null, 2));
   
   return (
     <div className="space-y-6">

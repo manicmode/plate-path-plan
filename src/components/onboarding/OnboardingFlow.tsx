@@ -110,14 +110,23 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
 
   const updateFormData = (updates: Partial<OnboardingData>) => {
     try {
-      console.log('UpdateFormData called with:', updates);
+      console.log('📝 UpdateFormData called with:', updates);
       setFormData(prev => {
-        const newData = { ...prev, ...updates };
-        console.log('Form data updated:', newData);
+        const newData = { 
+          ...prev, 
+          ...updates,
+          // Ensure critical fields always have defaults
+          foodAllergies: { ...(prev.foodAllergies || {}), ...(updates.foodAllergies || {}) },
+          crossContaminationSensitive: updates.crossContaminationSensitive ?? prev.crossContaminationSensitive ?? false,
+          mealFrequency: (updates.mealFrequency ?? prev.mealFrequency ?? '') as OnboardingData['mealFrequency'],
+          fastingSchedule: updates.fastingSchedule ?? prev.fastingSchedule ?? 'none',
+          eatingWindow: updates.eatingWindow ?? prev.eatingWindow ?? ''
+        };
+        console.log('📝 Form data updated:', newData);
         return newData;
       });
     } catch (error) {
-      console.error('Error updating form data:', error);
+      console.error('❌ Error updating form data:', error);
       toast.error('Failed to update form data');
     }
   };
@@ -133,20 +142,21 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
 
   const nextScreen = () => {
     try {
-      console.log(`Navigating from screen ${currentScreen} to ${currentScreen + 1}. Total screens: ${TOTAL_SCREENS}`);
+      console.log(`🚀 NAVIGATION: Moving from screen ${currentScreen} to ${currentScreen + 1}`);
+      console.log(`📊 FORM DATA AT TRANSITION:`, JSON.stringify(formData, null, 2));
+      console.log(`🎯 TOTAL_SCREENS: ${TOTAL_SCREENS}`);
       
       if (currentScreen < TOTAL_SCREENS - 1) {
-        setCurrentScreen(prev => {
-          const newScreen = prev + 1;
-          console.log(`Screen updated from ${prev} to ${newScreen}`);
-          return newScreen;
-        });
+        const newScreen = currentScreen + 1;
+        console.log(`✅ SETTING SCREEN: ${newScreen}`);
+        setCurrentScreen(newScreen);
+        console.log(`✅ SCREEN SET SUCCESSFULLY: ${newScreen}`);
       } else {
-        console.warn(`Cannot navigate beyond screen ${currentScreen}. Max screen: ${TOTAL_SCREENS - 1}`);
+        console.warn(`❌ Cannot navigate beyond screen ${currentScreen}. Max screen: ${TOTAL_SCREENS - 1}`);
         toast.error('Navigation error: Cannot proceed beyond last screen');
       }
     } catch (error) {
-      console.error('Error in nextScreen:', error);
+      console.error('❌ CRITICAL ERROR in nextScreen:', error);
       toast.error('Navigation error occurred');
     }
   };
@@ -352,12 +362,12 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
 
   const renderScreen = () => {
     try {
-      console.log(`Rendering screen ${currentScreen}/${TOTAL_SCREENS - 1}`);
-      console.log('Current form data state:', formData);
+      console.log(`🎬 RENDERING SCREEN ${currentScreen}/${TOTAL_SCREENS - 1}`);
+      console.log(`📊 CURRENT FORM DATA:`, JSON.stringify(formData, null, 2));
 
       // Add bounds checking
       if (currentScreen < 0 || currentScreen >= TOTAL_SCREENS) {
-        console.error(`Invalid screen index: ${currentScreen}. Valid range: 0-${TOTAL_SCREENS - 1}`);
+        console.error(`❌ INVALID SCREEN INDEX: ${currentScreen}. Valid range: 0-${TOTAL_SCREENS - 1}`);
         toast.error('Navigation error: Invalid screen');
         return (
           <div className="text-center p-8">
@@ -367,14 +377,30 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
           </div>
         );
       }
+      
+      // Ensure formData is properly structured before rendering any screen
+      const safeFormData = {
+        ...formData,
+        foodAllergies: formData.foodAllergies || {},
+        crossContaminationSensitive: formData.crossContaminationSensitive ?? false,
+        mealFrequency: (formData.mealFrequency || '') as OnboardingData['mealFrequency'],
+        fastingSchedule: formData.fastingSchedule || 'none',
+        eatingWindow: formData.eatingWindow || '',
+        currentSupplements: formData.currentSupplements || {},
+        supplementGoals: formData.supplementGoals || [],
+        deficiencyConcerns: formData.deficiencyConcerns || []
+      };
+      
+      console.log(`🔧 SAFE FORM DATA:`, JSON.stringify(safeFormData, null, 2));
 
       switch (currentScreen) {
         case 0:
           return <OnboardingIntro onStart={nextScreen} onSkip={handleSkipAll} />;
         case 1:
+          console.log('🎬 Rendering BasicInfoScreen');
           return (
             <BasicInfoScreen 
-              formData={formData} 
+              formData={safeFormData} 
               updateFormData={updateFormData}
               onNext={nextScreen}
               onSkip={skipScreen}
@@ -444,21 +470,30 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             />
           );
         case 9:
-          console.log('Rendering AllergiesScreen with formData:', JSON.stringify(formData, null, 2));
-          console.log('foodAllergies specifically:', formData.foodAllergies);
-          console.log('crossContaminationSensitive:', formData.crossContaminationSensitive);
+          console.log('🎬 ABOUT TO RENDER AllergiesScreen');
+          console.log('🔍 AllergiesScreen props check:', {
+            formData: safeFormData,
+            foodAllergies: safeFormData.foodAllergies,
+            crossContaminationSensitive: safeFormData.crossContaminationSensitive,
+            updateFormData: typeof updateFormData,
+            onNext: typeof nextScreen,
+            onSkip: typeof skipScreen
+          });
           
           try {
-            return (
+            const allergiesScreenComponent = (
               <AllergiesScreen 
-                formData={formData} 
+                formData={safeFormData} 
                 updateFormData={updateFormData}
                 onNext={nextScreen}
                 onSkip={skipScreen}
               />
             );
+            console.log('✅ AllergiesScreen component created successfully');
+            return allergiesScreenComponent;
           } catch (error) {
-            console.error('Error rendering AllergiesScreen:', error);
+            console.error('❌ CRITICAL ERROR rendering AllergiesScreen:', error);
+            console.error('❌ Error stack:', error.stack);
             toast.error('Failed to load allergies screen');
             return (
               <div className="text-center p-8">
@@ -472,22 +507,31 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             );
           }
         case 10:
-          console.log('Rendering EatingPatternsScreen with formData:', JSON.stringify(formData, null, 2));
-          console.log('mealFrequency:', formData.mealFrequency);
-          console.log('fastingSchedule:', formData.fastingSchedule);
-          console.log('eatingWindow:', formData.eatingWindow);
+          console.log('🎬 ABOUT TO RENDER EatingPatternsScreen');
+          console.log('🔍 EatingPatternsScreen props check:', {
+            formData: safeFormData,
+            mealFrequency: safeFormData.mealFrequency,
+            fastingSchedule: safeFormData.fastingSchedule,
+            eatingWindow: safeFormData.eatingWindow,
+            updateFormData: typeof updateFormData,
+            onNext: typeof nextScreen,
+            onSkip: typeof skipScreen
+          });
           
           try {
-            return (
+            const eatingPatternsComponent = (
               <EatingPatternsScreen 
-                formData={formData} 
+                formData={safeFormData} 
                 updateFormData={updateFormData}
                 onNext={nextScreen}
                 onSkip={skipScreen}
               />
             );
+            console.log('✅ EatingPatternsScreen component created successfully');
+            return eatingPatternsComponent;
           } catch (error) {
-            console.error('Error rendering EatingPatternsScreen:', error);
+            console.error('❌ CRITICAL ERROR rendering EatingPatternsScreen:', error);
+            console.error('❌ Error stack:', error.stack);
             toast.error('Failed to load eating patterns screen');
             return (
               <div className="text-center p-8">
@@ -501,9 +545,10 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             );
           }
         case 11:
+          console.log('🎬 Rendering SupplementsScreen');
           return (
             <SupplementsScreen 
-              formData={formData} 
+              formData={safeFormData} 
               updateFormData={updateFormData}
               onNext={nextScreen}
               onSkip={skipScreen}
