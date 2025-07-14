@@ -49,11 +49,12 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
         {/* Weight Goal Type */}
         <div>
           <Label className="text-base font-medium mb-4 block">What's your primary goal?</Label>
-          <RadioGroup
-            value={formData.weightGoalType}
-            onValueChange={(value: any) => updateFormData({ weightGoalType: value })}
-            className="space-y-3"
-          >
+      <div className={`${!formData.weightGoalType ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
+        <RadioGroup
+          value={formData.weightGoalType}
+          onValueChange={(value: any) => updateFormData({ weightGoalType: value })}
+          className="space-y-3"
+        >
             {weightGoalTypes.map((goal) => (
               <div 
                 key={goal.value} 
@@ -71,7 +72,8 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
                 </Label>
               </div>
             ))}
-          </RadioGroup>
+        </RadioGroup>
+      </div>
         </div>
 
         {/* Target Weight */}
@@ -86,7 +88,11 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
               placeholder={`Enter target weight in ${formData.weightUnit}`}
               value={formData.targetWeight}
               onChange={(e) => updateFormData({ targetWeight: e.target.value })}
-              className="glass-button border-0 mt-2"
+              className={`glass-button border-0 mt-2 ${
+                (!formData.targetWeight || parseFloat(formData.targetWeight) <= 0)
+                  ? 'ring-2 ring-red-500 ring-opacity-50' 
+                  : ''
+              }`}
               min="50"
               max="500"
               step="0.1"
@@ -102,7 +108,11 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
               value={formData.weightGoalTimeline} 
               onValueChange={(value: any) => updateFormData({ weightGoalTimeline: value })}
             >
-              <SelectTrigger className="glass-button border-0 mt-2">
+              <SelectTrigger className={`glass-button border-0 mt-2 ${
+                !formData.weightGoalTimeline
+                  ? 'ring-2 ring-red-500 ring-opacity-50' 
+                  : ''
+              }`}>
                 <SelectValue placeholder="Select timeline" />
               </SelectTrigger>
               <SelectContent>

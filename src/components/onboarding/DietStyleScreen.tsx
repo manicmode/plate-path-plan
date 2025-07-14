@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Utensils } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
+import { toast } from 'sonner';
 
 interface DietStyleScreenProps {
   formData: OnboardingData;
@@ -61,7 +62,7 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className={`space-y-3 ${formData.dietStyles.length === 0 ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
         {dietStyles.map((style) => (
           <div 
             key={style.value}
@@ -94,7 +95,15 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
           Skip for now
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            // Validation: Check if at least one diet style is selected
+            if (formData.dietStyles.length === 0) {
+              toast.error("Please select at least one eating style or 'None / Just eating balanced' before continuing");
+              return;
+            }
+            console.log('✅ DietStyleScreen validation passed');
+            onNext();
+          }}
           className="flex-1 gradient-primary"
         >
           Next
