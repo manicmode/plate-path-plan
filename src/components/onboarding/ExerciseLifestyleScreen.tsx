@@ -138,10 +138,10 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
               {exerciseTypes.map((type) => (
                 <div 
                   key={type.value} 
-                  className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
+                  className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer min-h-[44px] ${
                     formData.exerciseTypes.includes(type.value)
-                      ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
-                      : 'border border-border'
+                      ? 'border-2 border-emerald-500 bg-emerald-100 transform scale-[1.02] dark:bg-emerald-900/20' 
+                      : 'border border-border hover:border-green-400 hover:bg-muted/50'
                   }`}
                   onClick={() => toggleExerciseType(type.value)}
                 >
@@ -150,7 +150,7 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
                     checked={formData.exerciseTypes.includes(type.value)}
                     onCheckedChange={() => toggleExerciseType(type.value)}
                   />
-                  <Label htmlFor={type.value} className="flex-1 cursor-pointer text-base">
+                  <Label htmlFor={type.value} className="flex-1 cursor-pointer text-base pointer-events-none">
                     {type.label}
                   </Label>
                 </div>
