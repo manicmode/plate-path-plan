@@ -21,6 +21,17 @@ export const useOnboardingStatus = () => {
       try {
         console.log('Checking onboarding status for user:', user.id);
         
+        // Check localStorage first for immediate state restoration
+        const cacheKey = `onboarding_complete_${user.id}`;
+        const cachedStatus = localStorage.getItem(cacheKey);
+        if (cachedStatus === 'true') {
+          console.log('Found cached onboarding completion status');
+          setIsOnboardingComplete(true);
+          setShowReminder(false);
+          setIsLoading(false);
+          return;
+        }
+        
         const result = await supabase
           .from('user_profiles')
           .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
@@ -46,6 +57,13 @@ export const useOnboardingStatus = () => {
           
           setIsOnboardingComplete(isComplete);
           setShowReminder(wasSkipped && shouldShowReminder);
+          
+          // Update localStorage cache
+          if (isComplete) {
+            localStorage.setItem(cacheKey, 'true');
+          } else {
+            localStorage.removeItem(cacheKey);
+          }
         }
       } catch (error) {
         console.error('Error in onboarding status check:', error);
@@ -83,6 +101,15 @@ export const useOnboardingStatus = () => {
     }
     
     try {
+      // Update local state immediately to prevent re-rendering
+      console.log('[DEBUG] markOnboardingComplete: Updating local state immediately');
+      setIsOnboardingComplete(true);
+      setShowReminder(false);
+      
+      // Also update localStorage as backup
+      const cacheKey = `onboarding_complete_${user.id}`;
+      localStorage.setItem(cacheKey, 'true');
+      
       console.log('[DEBUG] markOnboardingComplete: Updating database for user:', user.id);
       const { error } = await supabase
         .from('user_profiles')
@@ -95,12 +122,13 @@ export const useOnboardingStatus = () => {
       
       if (error) {
         console.error('[DEBUG] markOnboardingComplete: Database error:', error);
+        // Revert local state on error
+        setIsOnboardingComplete(null);
+        localStorage.removeItem(cacheKey);
         throw error;
       }
       
       console.log('[DEBUG] markOnboardingComplete: Database update successful');
-      setIsOnboardingComplete(true);
-      setShowReminder(false);
     } catch (error) {
       console.error('[DEBUG] markOnboardingComplete: Error updating completion status:', error);
       throw error;

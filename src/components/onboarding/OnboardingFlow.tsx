@@ -311,6 +311,11 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       console.log('[DEBUG] OnboardingFlow: Profile saved successfully:', data);
       console.log('[DEBUG] OnboardingFlow: Refreshing user profile...');
       
+      // Update localStorage immediately to prevent re-rendering onboarding
+      const cacheKey = `onboarding_complete_${user.id}`;
+      localStorage.setItem(cacheKey, 'true');
+      console.log('[DEBUG] OnboardingFlow: Updated localStorage cache');
+      
       // Refresh the user profile to get the latest data
       await refreshUser();
       console.log('[DEBUG] OnboardingFlow: User profile refreshed, calling onComplete...');
@@ -322,6 +327,9 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       
     } catch (error: any) {
       console.error('Error during onboarding completion:', error);
+      // Remove localStorage cache on error
+      const cacheKey = `onboarding_complete_${user.id}`;
+      localStorage.removeItem(cacheKey);
       toast.error('Something went wrong during setup. Please try again.');
       throw error;
     } finally {
