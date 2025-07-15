@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/auth';
@@ -27,9 +27,6 @@ import AdminDashboard from './components/admin/AdminDashboard';
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const location = useLocation();
-  console.log('[DEBUG] route', location.pathname);
-  
   const { isAuthenticated, loading, isEmailConfirmed } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authTransitioning, setAuthTransitioning] = useState(false);
@@ -83,14 +80,15 @@ function AppContent() {
   if (!isAuthenticated) {
     console.log('AppContent: User not authenticated, showing auth flow');
     return (
-      <Routes>
-        <Route path="/confirm" element={<ConfirmEmail />} />
-        <Route path="/confirm-email" element={<ConfirmEmail />} />
-        <Route path="/auth/confirm" element={<ConfirmEmail />} />
-        <Route path="/onboarding/*" element={<Index />} />
-        <Route path="/" element={<Index />} />
-        <Route path="*" element={<Index />} />
-      </Routes>
+      <Router>
+        <Routes>
+          <Route path="/confirm" element={<ConfirmEmail />} />
+          <Route path="/confirm-email" element={<ConfirmEmail />} />
+          <Route path="/auth/confirm" element={<ConfirmEmail />} />
+          <Route path="/onboarding" element={<Index />} />
+          <Route path="*" element={<Index />} />
+        </Routes>
+      </Router>
     );
   }
 
@@ -106,31 +104,26 @@ function AppContent() {
     return <SavingScreen />;
   }
 
-  // Show onboarding if needed (only if explicitly required and not completed)
-  if (showOnboarding && isOnboardingComplete !== true) {
+  // Show onboarding if needed
+  if (showOnboarding || (isOnboardingComplete === false)) {
     console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={async () => {
       console.log('🧩 App.tsx: Onboarding completed callback triggered');
+      console.log('🧩 App.tsx: Updating onboarding status in hook');
       
-      // Prevent double execution
-      if (authTransitioning) {
-        console.log('🧩 App.tsx: Already transitioning, ignoring duplicate call');
-        return;
-      }
-      
+      // Update the hook state immediately so we don't get stuck
       try {
-        setAuthTransitioning(true);
-        console.log('🧩 App.tsx: Calling markOnboardingComplete...');
+        setAuthTransitioning(true); // Show loading during transition
         await markOnboardingComplete();
-        console.log('🧩 App.tsx: Database update complete, clearing onboarding state');
+        console.log('🧩 App.tsx: Database update complete, transitioning to home');
         
-        // Clear both states to prevent double display
-        setShowOnboarding(false);
-        
-        // Force a small delay to ensure state propagation
+        // Give time for database update to propagate
         setTimeout(() => {
+          setShowOnboarding(false);
           setAuthTransitioning(false);
-        }, 100);
+          console.log('🧩 App.tsx: Onboarding state cleared, should navigate to home');
+        }, 500);
+        
       } catch (error) {
         console.error('🧩 App.tsx: Error completing onboarding:', error);
         setAuthTransitioning(false);
@@ -141,36 +134,38 @@ function AppContent() {
   console.log('🧩 App.tsx: Rendering main app router - user should see home page now');
 
   return (
-    <div className="min-h-screen bg-background">
-      <Routes>
-        <Route path="/" element={<Layout><Outlet /></Layout>}>
-          <Route index element={
-            <div>
-              {showReminder && (
-                <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
-              )}
-              <Home />
-            </div>
-          } />
-          <Route path="home" element={
-            <div>
-              {showReminder && (
-                <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
-              )}
-              <Home />
-            </div>
-          } />
-          <Route path="camera" element={<Camera />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="coach" element={<Coach />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="hydration" element={<Hydration />} />
-          <Route path="supplements" element={<Supplements />} />
-          <Route path="admin" element={<AdminDashboard />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </div>
+    <Router>
+      <div className="min-h-screen bg-background">
+        <Routes>
+          <Route path="/" element={<Layout><Outlet /></Layout>}>
+            <Route index element={
+              <div>
+                {showReminder && (
+                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
+                )}
+                <Home />
+              </div>
+            } />
+            <Route path="home" element={
+              <div>
+                {showReminder && (
+                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
+                )}
+                <Home />
+              </div>
+            } />
+            <Route path="camera" element={<Camera />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="coach" element={<Coach />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="hydration" element={<Hydration />} />
+            <Route path="supplements" element={<Supplements />} />
+            <Route path="admin" element={<AdminDashboard />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
@@ -178,9 +173,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <AppContent />
       </ThemeProvider>
     </QueryClientProvider>
   );

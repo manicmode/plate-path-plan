@@ -39,7 +39,6 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   updateProfile: (profileData: Partial<ExtendedUser>) => void;
   updateSelectedTrackers: (trackers: string[]) => Promise<void>;
-  refreshUser: () => Promise<void>;
 }
 
 export interface AuthProviderProps {

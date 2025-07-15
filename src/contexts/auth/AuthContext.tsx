@@ -129,19 +129,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile({ selectedTrackers: trackers });
   };
 
-  const refreshUser = async () => {
-    if (!session?.user) return;
-    
-    try {
-      console.log('Refreshing user data from database...');
-      const updatedUser = await createExtendedUser(session.user);
-      setUser(updatedUser);
-      console.log('User data refreshed successfully');
-    } catch (error) {
-      console.error('Error refreshing user data:', error);
-    }
-  };
-
   const contextValue: AuthContextType = {
     user,
     session,
@@ -155,7 +142,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout: signOutUser,
     updateProfile,
     updateSelectedTrackers,
-    refreshUser,
   };
 
   return (
