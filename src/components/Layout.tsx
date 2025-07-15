@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Toaster } from '@/components/ui/sonner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -143,6 +144,9 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </div>
       </nav>
+      
+      {/* Sonner Toast Container */}
+      <Toaster />
     </div>
   );
 };
