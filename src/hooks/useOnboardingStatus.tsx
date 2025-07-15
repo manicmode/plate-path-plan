@@ -138,19 +138,20 @@ export const useOnboardingStatus = () => {
   const forceRefresh = async () => {
     if (!user) return;
     setIsLoading(true);
-    await checkOnboardingStatus();
-  };
-
-  const checkOnboardingStatus = async () => {
-    if (!isAuthenticated || !user) {
-      setIsOnboardingComplete(null);
-      setIsLoading(false);
-      setShowReminder(false);
-      return;
-    }
-
+    
     try {
-      console.log('Checking onboarding status for user:', user.id);
+      console.log('Force refreshing onboarding status for user:', user.id);
+      
+      // Check localStorage first for immediate state restoration
+      const cacheKey = `onboarding_complete_${user.id}`;
+      const cachedStatus = localStorage.getItem(cacheKey);
+      if (cachedStatus === 'true') {
+        console.log('Found cached onboarding completion status during refresh');
+        setIsOnboardingComplete(true);
+        setShowReminder(false);
+        setIsLoading(false);
+        return;
+      }
       
       const result = await supabase
         .from('user_profiles')
@@ -177,6 +178,13 @@ export const useOnboardingStatus = () => {
         
         setIsOnboardingComplete(isComplete);
         setShowReminder(wasSkipped && shouldShowReminder);
+        
+        // Update localStorage cache
+        if (isComplete) {
+          localStorage.setItem(cacheKey, 'true');
+        } else {
+          localStorage.removeItem(cacheKey);
+        }
       }
     } catch (error) {
       console.error('Error in onboarding status check:', error);

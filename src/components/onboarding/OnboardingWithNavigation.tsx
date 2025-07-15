@@ -9,9 +9,16 @@ export function OnboardingWithNavigation({ onComplete }: OnboardingWithNavigatio
   const navigate = useNavigate();
 
   const handleComplete = async () => {
-    await onComplete();
-    // Navigate to home after completion
-    navigate('/home');
+    console.log('[DEBUG] OnboardingWithNavigation: Starting completion process...');
+    try {
+      await onComplete();
+      console.log('[DEBUG] OnboardingWithNavigation: onComplete finished, navigating to /home...');
+      // Force navigation with replace to prevent back navigation to onboarding
+      navigate('/home', { replace: true });
+      console.log('[DEBUG] OnboardingWithNavigation: Navigation to /home completed');
+    } catch (error) {
+      console.error('[DEBUG] OnboardingWithNavigation: Error during completion:', error);
+    }
   };
 
   return <OnboardingScreen onComplete={handleComplete} />;

@@ -29,7 +29,7 @@ import AdminDashboard from './components/admin/AdminDashboard';
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { isAuthenticated, loading, isEmailConfirmed, refreshUser } = useAuth();
+  const { isAuthenticated, loading, isEmailConfirmed, refreshUser, user } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authTransitioning, setAuthTransitioning] = useState(false);
 
@@ -40,6 +40,9 @@ function AppContent() {
     showReminder,
     markOnboardingComplete
   } = useOnboardingStatus();
+
+  // Check if onboarding was just completed by checking localStorage
+  const onboardingJustCompleted = user && localStorage.getItem(`onboarding_complete_${user.id}`) === 'true';
 
   // Bootstrap loading state - combines auth and onboarding initialization
   const isBootstrapping = loading || (isAuthenticated && isEmailConfirmed && onboardingLoading);
@@ -100,7 +103,8 @@ function AppContent() {
   }
 
   // Show onboarding only when explicitly needed, not loading, and not already complete
-  if ((showOnboarding || (isOnboardingComplete === false && !onboardingLoading)) && isOnboardingComplete !== true) {
+  // But NEVER show onboarding if it was just completed (defensive check)
+  if ((showOnboarding || (isOnboardingComplete === false && !onboardingLoading)) && isOnboardingComplete !== true && !onboardingJustCompleted) {
     console.log('AppContent: Showing onboarding screen');
     return (
       <Router>
@@ -111,9 +115,17 @@ function AppContent() {
             try {
               setAuthTransitioning(true);
               
+              // Mark onboarding complete first
+              await markOnboardingComplete();
+              console.log('[DEBUG] App.tsx: Onboarding marked complete');
+              
               // Immediately set states to prevent flashing
               setShowOnboarding(false);
-              markOnboardingComplete();
+              
+              // Force immediate state update to prevent re-rendering onboarding
+              if (user) {
+                localStorage.setItem(`onboarding_complete_${user.id}`, 'true');
+              }
               
               // Refresh user profile after onboarding completion
               await refreshUser();
