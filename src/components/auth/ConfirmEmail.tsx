@@ -152,6 +152,17 @@ export const ConfirmEmail: React.FC = () => {
   // Handle successful confirmation with delayed redirect to prevent flash
   const handleSuccessfulConfirmation = async (user: any) => {
     try {
+      console.log('Email confirmation successful, refreshing session...');
+      
+      // Refresh the session to ensure it's properly established
+      const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+      
+      if (sessionError) {
+        console.warn('Session refresh warning (non-critical):', sessionError);
+      } else {
+        console.log('Session refreshed successfully');
+      }
+
       // Check if user has completed onboarding
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
@@ -165,19 +176,19 @@ export const ConfirmEmail: React.FC = () => {
         console.error('Error checking onboarding status:', profileError);
       }
 
-      // Add a delay to allow auth state to fully sync before navigation
-      console.log('Email confirmed successfully, redirecting in 500ms...');
+      // Add a longer delay to allow auth state to fully sync and prevent cleanup race condition
+      console.log('Email confirmed successfully, redirecting in 1000ms to ensure auth state sync...');
       setTimeout(() => {
         console.log('Redirecting to home after email confirmation');
         navigate('/', { replace: true });
-      }, 500);
+      }, 1000);
       
     } catch (redirectError) {
       console.error('Error during redirect:', redirectError);
       // Fallback redirect with delay
       setTimeout(() => {
         navigate('/', { replace: true });
-      }, 500);
+      }, 1000);
     }
   };
 

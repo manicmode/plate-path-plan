@@ -37,14 +37,20 @@ const handler = async (req: Request): Promise<Response> => {
       errors: []
     };
 
-    // Calculate 24 hours ago
-    const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-    const cutoffTime = twentyFourHoursAgo.toISOString();
+    // Calculate 48 hours ago (increased from 24 hours for safety)
+    const fortyEightHoursAgo = new Date();
+    fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
+    const cutoffTime = fortyEightHoursAgo.toISOString();
+
+    // Calculate 30 minutes ago for recently confirmed users safety buffer
+    const thirtyMinutesAgo = new Date();
+    thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30);
+    const recentConfirmationCutoff = thirtyMinutesAgo.toISOString();
 
     console.log(`🕐 Looking for unverified accounts created before: ${cutoffTime}`);
+    console.log(`🛡️ Safety buffer: Won't delete recently confirmed users (confirmed after ${recentConfirmationCutoff})`);
 
-    // Get unverified users older than 24 hours using the admin API
+    // Get unverified users older than 48 hours using the admin API
     const { data: users, error: fetchError } = await supabase.auth.admin.listUsers({
       page: 1,
       perPage: 1000, // Process in batches if needed
@@ -61,16 +67,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`📊 Total users found: ${users.users.length}`);
 
-    // Filter users that need to be deleted
+    // Filter users that need to be deleted with enhanced safety checks
     const usersToDelete = users.users.filter(user => {
       const isUnverified = !user.email_confirmed_at;
-      const isOld = new Date(user.created_at) < twentyFourHoursAgo;
+      const isOld = new Date(user.created_at) < fortyEightHoursAgo;
       
-      if (isUnverified && isOld) {
-        console.log(`🎯 Marking for deletion - User: ${user.email}, Created: ${user.created_at}`);
+      // Additional safety check: if user was recently confirmed, don't delete
+      const wasRecentlyConfirmed = user.email_confirmed_at && new Date(user.email_confirmed_at) > thirtyMinutesAgo;
+      
+      // Only delete if unverified AND old AND not recently confirmed
+      const shouldDelete = isUnverified && isOld && !wasRecentlyConfirmed;
+      
+      if (shouldDelete) {
+        console.log(`🎯 Marking for deletion - User: ${user.email}, Created: ${user.created_at}, Confirmed: ${user.email_confirmed_at || 'Never'}`);
+      } else if (wasRecentlyConfirmed) {
+        console.log(`🛡️ Skipping recently confirmed user: ${user.email}, Confirmed: ${user.email_confirmed_at}`);
       }
       
-      return isUnverified && isOld;
+      return shouldDelete;
     });
 
     console.log(`🗑️ Found ${usersToDelete.length} users to delete`);
