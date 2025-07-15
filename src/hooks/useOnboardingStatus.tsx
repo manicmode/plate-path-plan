@@ -81,6 +81,11 @@ export const useOnboardingStatus = () => {
       console.log('🧩 markOnboardingComplete: No user found');
       return;
     }
+
+    // Immediately update local state to prevent race conditions
+    console.log('🧩 markOnboardingComplete: Setting local state to complete immediately');
+    setIsOnboardingComplete(true);
+    setShowReminder(false);
     
     try {
       console.log('🧩 markOnboardingComplete: Updating database for user:', user.id);
@@ -95,12 +100,12 @@ export const useOnboardingStatus = () => {
       
       if (error) {
         console.error('🧩 markOnboardingComplete: Database error:', error);
+        // Revert local state on error
+        setIsOnboardingComplete(false);
         throw error;
       }
       
       console.log('🧩 markOnboardingComplete: Database update successful');
-      setIsOnboardingComplete(true);
-      setShowReminder(false);
     } catch (error) {
       console.error('🧩 markOnboardingComplete: Error updating completion status:', error);
       throw error;

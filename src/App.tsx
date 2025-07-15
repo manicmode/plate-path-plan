@@ -109,23 +109,22 @@ function AppContent() {
     console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={async () => {
       console.log('🧩 App.tsx: Onboarding completed callback triggered');
-      console.log('🧩 App.tsx: Updating onboarding status in hook');
       
-      // Update the hook state immediately so we don't get stuck
+      // Prevent double execution
+      if (authTransitioning) {
+        console.log('🧩 App.tsx: Already transitioning, ignoring duplicate call');
+        return;
+      }
+      
       try {
-        setAuthTransitioning(true); // Show loading during transition
+        setAuthTransitioning(true);
+        console.log('🧩 App.tsx: Calling markOnboardingComplete...');
         await markOnboardingComplete();
-        console.log('🧩 App.tsx: Database update complete, transitioning to home');
-        
-        // Give time for database update to propagate
-        setTimeout(() => {
-          setShowOnboarding(false);
-          setAuthTransitioning(false);
-          console.log('🧩 App.tsx: Onboarding state cleared, should navigate to home');
-        }, 500);
-        
+        console.log('🧩 App.tsx: Database update complete, clearing onboarding state');
+        setShowOnboarding(false);
       } catch (error) {
         console.error('🧩 App.tsx: Error completing onboarding:', error);
+      } finally {
         setAuthTransitioning(false);
       }
     }} />;
