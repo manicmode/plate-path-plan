@@ -15,6 +15,7 @@ import { ConfirmEmail } from '@/components/auth/ConfirmEmail';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { SavingScreen } from './components/SavingScreen';
 import { OnboardingWithNavigation } from './components/onboarding/OnboardingWithNavigation';
+import { LoadingScreen } from './components/LoadingScreen';
 
 // Import existing pages
 import Camera from './pages/Camera';
@@ -39,6 +40,9 @@ function AppContent() {
     showReminder,
     markOnboardingComplete
   } = useOnboardingStatus();
+
+  // Bootstrap loading state - combines auth and onboarding initialization
+  const isBootstrapping = loading || (isAuthenticated && isEmailConfirmed && onboardingLoading);
 
   // Add debug logging at the top
   console.log('[DEBUG] route', window.location.pathname);
@@ -67,17 +71,10 @@ function AppContent() {
     }
   });
 
-  // Show loading while auth is initializing or transitioning
-  if (loading || authTransitioning) {
-    console.log('AppContent: Showing auth loading state');
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Initializing...</p>
-        </div>
-      </div>
-    );
+  // Show bootstrap loading screen while initializing
+  if (isBootstrapping || authTransitioning) {
+    console.log('AppContent: Showing bootstrap loading state');
+    return <LoadingScreen />;
   }
 
   // Not authenticated - show auth flow or email confirmation
@@ -100,12 +97,6 @@ function AppContent() {
   if (isAuthenticated && !isEmailConfirmed) {
     console.log('AppContent: User authenticated but email not confirmed, showing verification screen');
     return <EmailVerificationRequired />;
-  }
-
-  // Show loading while onboarding status is being checked
-  if (onboardingLoading) {
-    console.log('AppContent: Showing onboarding loading state');
-    return <SavingScreen />;
   }
 
   // Show onboarding only when explicitly needed, not loading, and not already complete
