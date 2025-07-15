@@ -107,8 +107,8 @@ function AppContent() {
     return <SavingScreen />;
   }
 
-  // Show onboarding if needed
-  if (showOnboarding || (isOnboardingComplete === false)) {
+  // Show onboarding only when explicitly needed, not loading, and not already complete
+  if ((showOnboarding || (isOnboardingComplete === false && !onboardingLoading)) && isOnboardingComplete !== true) {
     console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={async () => {
       console.log('[DEBUG] App.tsx: Onboarding completed callback triggered');
