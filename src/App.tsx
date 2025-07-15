@@ -147,14 +147,7 @@ function AppContent() {
                 <Home />
               </div>
             } />
-            <Route path="home" element={
-              <div>
-                {showReminder && (
-                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
-                )}
-                <Home />
-              </div>
-            } />
+            <Route path="/home" element={<Home />} />
             <Route path="camera" element={<Camera />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="coach" element={<Coach />} />
