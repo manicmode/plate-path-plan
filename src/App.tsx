@@ -121,9 +121,10 @@ function AppContent() {
         await refreshUser();
         console.log('[DEBUG] App.tsx: User profile refreshed');
         
-        // Clear onboarding state immediately 
+        // Clear onboarding state and navigate to home
         setShowOnboarding(false);
         setAuthTransitioning(false);
+        window.location.href = '/home';
         console.log('[DEBUG] App.tsx: Navigation to home should happen now');
         
       } catch (error) {
