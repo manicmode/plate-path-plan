@@ -26,7 +26,7 @@ export const BarcodeTestDashboard: React.FC = () => {
     setIsRunning(true);
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    
+    const [scannedIngredients, setScannedIngredients] = useState<string>('');    
     const newResult: TestResult = {
       id: requestId,
       timestamp: new Date().toISOString(),
@@ -67,11 +67,36 @@ export const BarcodeTestDashboard: React.FC = () => {
         newResult.status = 'error';
         newResult.error = response.error.message || 'Unknown error';
         toast.error(`Test failed: ${newResult.error}`);
-      } else if (response.data?.success) {
-        newResult.status = 'success';
-        newResult.result = response.data.product;
-        toast.success(`Test passed! Found: ${response.data.product?.name || 'Unknown product'}`);
-      } else {
+     } else if (response.data?.success && response.data.product) {
+  const product = response.data.product;
+  newResult.status = 'success';
+  newResult.result = {
+    name: product.product_name || 'Unnamed product',
+    brand: product.brands || '',
+    source: 'Open Food Facts'
+  };
+
+  // Save ingredients text for flagging
+  setScannedIngredients(product.ingredients_text || '');
+
+  toast.success(
+    `Found: ${product.product_name || 'Unnamed product'}`
+  );
+const flagged = ['aspartame', 'high fructose corn syrup', 'monosodium glutamate', 'red 40'];
+const lowerCaseIngredients = product.ingredients_text?.toLowerCase() || '';
+
+const warnings = flagged.filter(flag =>
+  lowerCaseIngredients.includes(flag)
+);
+
+if (warnings.length > 0) {
+  toast.error(`⚠️ Contains: ${warnings.join(', ')}`);
+} else {
+  toast.success('✅ No flagged ingredients found');
+}
+        
+} else {
+
         newResult.status = 'error';
         newResult.error = response.data?.message || 'Product not found';
         toast.warning(`Product not found: ${newResult.error}`);
