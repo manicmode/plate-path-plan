@@ -196,11 +196,11 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
                   <ScrollArea className="h-48 border rounded-lg p-2">
                     <div className="space-y-2">
                       {filteredSupplements.map((supplement) => (
-                        <div
+                         <div
                           key={supplement}
                           className={`p-2 rounded cursor-pointer transition-colors ${
                             selectedSupplement === supplement && !showCustomInput
-                              ? 'bg-emerald-100 border-emerald-500 border'
+                              ? 'bg-emerald-50 border-2 border-emerald-500 text-emerald-800 font-medium'
                               : 'hover:bg-muted/50'
                           }`}
                           onClick={() => {

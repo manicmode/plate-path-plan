@@ -114,13 +114,9 @@ function AppContent() {
       // Update the hook state immediately so we don't get stuck
       try {
         await markOnboardingComplete();
-        console.log('🧩 App.tsx: Database update complete, navigating to home route');
-        console.log('onboarding complete');
+        console.log('🧩 App.tsx: Database update complete, transitioning to home');
         setShowOnboarding(false);
-        console.log('🧩 App.tsx: Should now navigate to route: /');
-        
-        // Force navigation to home to prevent any redirect loops
-        window.history.replaceState(null, '', '/');
+        console.log('🧩 App.tsx: Onboarding state cleared, should navigate to home');
         
       } catch (error) {
         console.error('🧩 App.tsx: Error completing onboarding:', error);

@@ -318,8 +318,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           console.log('Refreshing user profile after onboarding completion');
-          // Force auth context to reload user data
-          window.location.reload();
+          // Force auth context to reload user data without full page reload
         }
       } catch (error) {
         console.error('Error refreshing session:', error);
