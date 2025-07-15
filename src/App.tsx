@@ -14,6 +14,7 @@ import EmailVerificationRequired from '@/components/auth/EmailVerificationRequir
 import { ConfirmEmail } from '@/components/auth/ConfirmEmail';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { SavingScreen } from './components/SavingScreen';
+import { OnboardingWithNavigation } from './components/onboarding/OnboardingWithNavigation';
 
 // Import existing pages
 import Camera from './pages/Camera';
@@ -30,7 +31,6 @@ function AppContent() {
   const { isAuthenticated, loading, isEmailConfirmed, refreshUser } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authTransitioning, setAuthTransitioning] = useState(false);
-  const navigate = useNavigate();
 
   // Only load onboarding status if authenticated to prevent race conditions
   const { 
@@ -111,28 +111,34 @@ function AppContent() {
   // Show onboarding only when explicitly needed, not loading, and not already complete
   if ((showOnboarding || (isOnboardingComplete === false && !onboardingLoading)) && isOnboardingComplete !== true) {
     console.log('AppContent: Showing onboarding screen');
-    return <OnboardingScreen onComplete={async () => {
-      console.log('[DEBUG] App.tsx: Onboarding completed callback triggered');
-      console.log('[DEBUG] App.tsx: Calling refreshUser and markOnboardingComplete');
-      
-      try {
-        setAuthTransitioning(true);
-        
-        // Refresh user profile after onboarding completion
-        await refreshUser();
-        console.log('[DEBUG] App.tsx: User profile refreshed');
-        
-        // Clear onboarding state and navigate to home
-        setShowOnboarding(false);
-        setAuthTransitioning(false);
-        navigate('/home');
-        console.log('[DEBUG] App.tsx: Navigation to home should happen now');
-        
-      } catch (error) {
-        console.error('[DEBUG] App.tsx: Error completing onboarding:', error);
-        setAuthTransitioning(false);
-      }
-    }} />;
+    return (
+      <Router>
+        <OnboardingWithNavigation 
+          onComplete={async () => {
+            console.log('[DEBUG] App.tsx: Onboarding completed callback triggered');
+            
+            try {
+              setAuthTransitioning(true);
+              
+              // Immediately set states to prevent flashing
+              setShowOnboarding(false);
+              markOnboardingComplete();
+              
+              // Refresh user profile after onboarding completion
+              await refreshUser();
+              console.log('[DEBUG] App.tsx: User profile refreshed');
+              
+              setAuthTransitioning(false);
+              console.log('[DEBUG] App.tsx: Navigation to home should happen now');
+              
+            } catch (error) {
+              console.error('[DEBUG] App.tsx: Error completing onboarding:', error);
+              setAuthTransitioning(false);
+            }
+          }} 
+        />
+      </Router>
+    );
   }
 
   console.log('🧩 App.tsx: Rendering main app router - user should see home page now');
