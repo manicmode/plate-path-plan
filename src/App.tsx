@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/auth';
@@ -165,7 +165,7 @@ function AppContent() {
             <Route path="supplements" element={<Supplements />} />
             <Route path="admin" element={<AdminDashboard />} />
           </Route>
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
