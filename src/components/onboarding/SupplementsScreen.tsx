@@ -3,9 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Pill, Plus, X, Search } from 'lucide-react';
+import { Pill, Plus, X } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
 import { useState } from 'react';
 
@@ -16,55 +14,9 @@ interface SupplementsScreenProps {
   onSkip: () => void;
 }
 
-const comprehensiveSupplements = [
-  // Vitamins
-  'Vitamin A', 'Vitamin B1 (Thiamine)', 'Vitamin B2 (Riboflavin)', 'Vitamin B3 (Niacin)', 
-  'Vitamin B5 (Pantothenic Acid)', 'Vitamin B6', 'Vitamin B7 (Biotin)', 'Vitamin B9 (Folate)', 
-  'Vitamin B12', 'Vitamin C', 'Vitamin D3', 'Vitamin E', 'Vitamin K2',
-  
-  // Minerals
-  'Calcium', 'Magnesium', 'Iron', 'Zinc', 'Potassium', 'Selenium', 'Copper', 'Manganese', 
-  'Chromium', 'Iodine', 'Molybdenum', 'Boron',
-  
-  // Omega Fatty Acids
-  'Omega-3 (Fish Oil)', 'Omega-3 (Algae)', 'Omega-6', 'Omega-9', 'Krill Oil', 'Cod Liver Oil',
-  
-  // Amino Acids
-  'L-Lysine', 'L-Arginine', 'L-Carnitine', 'L-Glutamine', 'L-Tryptophan', 'L-Tyrosine', 
-  'L-Theanine', 'L-Cysteine', 'Taurine', 'Glycine',
-  
-  // Adaptogens & Herbs
-  'Ashwagandha', 'Rhodiola', 'Ginseng', 'Turmeric', 'Ginkgo Biloba', 'Gotu Kola', 
-  'Holy Basil', 'Schisandra', 'Maca Root', 'Cordyceps', 'Reishi Mushroom', 
-  'Lions Mane Mushroom', 'Chaga Mushroom', 'Turkey Tail Mushroom',
-  
-  // Performance & Recovery
-  'Creatine', 'Protein Powder', 'BCAA', 'Beta-Alanine', 'HMB', 'Glutamine', 
-  'Citrulline', 'Pre-Workout', 'Post-Workout',
-  
-  // Digestive Health
-  'Probiotics', 'Digestive Enzymes', 'Fiber Supplement', 'Psyllium Husk', 
-  'Apple Cider Vinegar', 'Betaine HCl', 'Pepsin',
-  
-  // Joint & Bone Health
-  'Collagen', 'Glucosamine', 'Chondroitin', 'MSM', 'Hyaluronic Acid', 
-  'Calcium with D3', 'Boswellia',
-  
-  // Brain & Cognitive
-  'Alpha-GPC', 'Phosphatidylserine', 'Bacopa Monnieri', 'Nootropic Blends', 
-  'Acetyl-L-Carnitine', 'PQQ', 'NAD+',
-  
-  // Sleep & Relaxation
-  'Melatonin', 'Magnesium Glycinate', 'Valerian Root', 'Passionflower', 
-  'Chamomile', 'GABA', '5-HTP',
-  
-  // Antioxidants
-  'CoQ10', 'Resveratrol', 'Quercetin', 'Green Tea Extract', 'Grape Seed Extract', 
-  'Alpha Lipoic Acid', 'Astaxanthin', 'Lutein', 'Zeaxanthin',
-  
-  // Specialized
-  'Multivitamin', 'Prenatal Vitamins', 'Hair, Skin & Nails', 'Eye Health Formula', 
-  'Heart Health Formula', 'Immune Support', 'Energy Formula', 'Stress Formula'
+const commonSupplements = [
+  'vitamin_d', 'vitamin_b12', 'omega_3', 'magnesium', 'iron', 'calcium',
+  'zinc', 'vitamin_c', 'multivitamin', 'probiotics', 'protein_powder', 'creatine'
 ];
 
 const supplementGoals = [
@@ -88,34 +40,20 @@ const deficiencyConcerns = [
 ];
 
 export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: SupplementsScreenProps) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [customSupplement, setCustomSupplement] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const [selectedSupplement, setSelectedSupplement] = useState('');
-  const [dosage, setDosage] = useState('');
-  const [frequency, setFrequency] = useState('daily');
+  const [newSupplement, setNewSupplement] = useState('');
+  const [newDosage, setNewDosage] = useState('');
+  const [newFrequency, setNewFrequency] = useState('');
 
-  const filteredSupplements = comprehensiveSupplements.filter(supplement =>
-    supplement.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const addSelectedSupplement = () => {
-    const supplementToAdd = showCustomInput ? customSupplement : selectedSupplement;
-    if (supplementToAdd && dosage && frequency) {
+  const addSupplement = () => {
+    if (newSupplement && newDosage && newFrequency) {
       const newSupplements = {
         ...formData.currentSupplements,
-        [supplementToAdd]: { dosage, frequency }
+        [newSupplement]: { dosage: newDosage, frequency: newFrequency }
       };
       updateFormData({ currentSupplements: newSupplements });
-      
-      // Reset form
-      setSelectedSupplement('');
-      setCustomSupplement('');
-      setDosage('');
-      setFrequency('daily');
-      setShowCustomInput(false);
-      setIsModalOpen(false);
+      setNewSupplement('');
+      setNewDosage('');
+      setNewFrequency('');
     }
   };
 
@@ -158,143 +96,69 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
           We'll avoid redundant recommendations and identify gaps in your current regimen
         </p>
       </div>
+
       <div className="space-y-6">
         {/* Current Supplements */}
         <div>
           <Label className="text-base font-medium mb-4 block">What supplements do you currently take?</Label>
           
-          {/* Large Select Supplements Button */}
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full gradient-primary min-h-[48px] text-lg font-medium mb-4">
-                <Plus className="w-5 h-5 mr-2" />
-                Select Supplements
+          {/* Add new supplement */}
+          <div className="grid grid-cols-12 gap-3 mb-4">
+            <div className="col-span-5">
+              <Select value={newSupplement} onValueChange={setNewSupplement}>
+                <SelectTrigger className="glass-button border-0">
+                  <SelectValue placeholder="Select supplement" />
+                </SelectTrigger>
+                <SelectContent>
+                  {commonSupplements.map((supplement) => (
+                    <SelectItem key={supplement} value={supplement}>
+                      {supplement.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-3">
+              <Input
+                placeholder="Dosage"
+                value={newDosage}
+                onChange={(e) => setNewDosage(e.target.value)}
+                className="glass-button border-0"
+              />
+            </div>
+            <div className="col-span-3">
+              <Select value={newFrequency} onValueChange={setNewFrequency}>
+                <SelectTrigger className="glass-button border-0">
+                  <SelectValue placeholder="Frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="every_other_day">Every other day</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="as_needed">As needed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-1">
+              <Button
+                onClick={addSupplement}
+                disabled={!newSupplement || !newDosage || !newFrequency}
+                className="w-11 h-11 gradient-primary p-3 min-w-[44px] min-h-[44px]"
+                aria-label="Add supplement"
+              >
+                <Plus className="w-4 h-4" />
               </Button>
-            </DialogTrigger>
-            
-            <DialogContent className="max-w-lg max-h-[80vh] bg-background border border-border">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold">Choose Supplements</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search supplements..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Supplement Selection */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Select a supplement:</Label>
-                  
-                  <ScrollArea className="h-48 border rounded-lg p-2">
-                    <div className="space-y-2">
-                      {filteredSupplements.map((supplement) => (
-                        <div
-                          key={supplement}
-                          className={`p-2 rounded cursor-pointer transition-colors ${
-                            selectedSupplement === supplement && !showCustomInput
-                              ? 'bg-emerald-100 border-emerald-500 border'
-                              : 'hover:bg-muted/50'
-                          }`}
-                          onClick={() => {
-                            setSelectedSupplement(supplement);
-                            setShowCustomInput(false);
-                          }}
-                        >
-                          {supplement}
-                        </div>
-                      ))}
-                      
-                      {/* Add Custom Supplement Option */}
-                      <div
-                        className={`p-2 rounded cursor-pointer border-2 border-dashed transition-colors ${
-                          showCustomInput
-                            ? 'bg-blue-50 border-blue-500'
-                            : 'border-muted-foreground/30 hover:border-blue-400 hover:bg-blue-50/50'
-                        }`}
-                        onClick={() => {
-                          setShowCustomInput(true);
-                          setSelectedSupplement('');
-                        }}
-                      >
-                        <div className="flex items-center text-blue-600 font-medium">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add a custom supplement
-                        </div>
-                      </div>
-                    </div>
-                  </ScrollArea>
-
-                  {/* Custom Supplement Input */}
-                  {showCustomInput && (
-                    <div className="space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <Label className="text-sm font-medium text-blue-800">Custom supplement name:</Label>
-                      <Input
-                        placeholder="Enter supplement name..."
-                        value={customSupplement}
-                        onChange={(e) => setCustomSupplement(e.target.value)}
-                        className="bg-white"
-                      />
-                    </div>
-                  )}
-
-                  {/* Dosage and Frequency */}
-                  {(selectedSupplement || customSupplement) && (
-                    <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-sm font-medium">Dosage:</Label>
-                          <Input
-                            placeholder="e.g., 1000mg"
-                            value={dosage}
-                            onChange={(e) => setDosage(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium">Frequency:</Label>
-                          <Select value={frequency} onValueChange={setFrequency}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="every_other_day">Every other day</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="as_needed">As needed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        onClick={addSelectedSupplement}
-                        disabled={!dosage || (!selectedSupplement && !customSupplement)}
-                        className="w-full gradient-primary"
-                      >
-                        Add Supplement
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </div>
 
           {/* Current supplements list */}
           {Object.keys(formData.currentSupplements).length > 0 && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-muted-foreground">Current supplements:</Label>
               {Object.entries(formData.currentSupplements).map(([supplement, details]) => (
                 <div key={supplement} className="flex items-center justify-between p-3 rounded-lg glass-button border-0">
                   <div>
-                    <span className="font-medium">{supplement}</span>
+                    <span className="font-medium capitalize">{supplement.replace('_', ' ')}</span>
                     <span className="text-gray-600 dark:text-gray-400 ml-2">
                       {details.dosage} • {details.frequency}
                     </span>
@@ -303,7 +167,7 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
                     variant="ghost"
                     size="sm"
                     onClick={() => removeSupplement(supplement)}
-                    className="p-1 h-auto text-red-500 hover:text-red-700"
+                    className="p-1 h-auto"
                   >
                     <X className="w-4 h-4" />
                   </Button>
