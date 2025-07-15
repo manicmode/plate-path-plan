@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/auth';
@@ -27,6 +27,9 @@ import AdminDashboard from './components/admin/AdminDashboard';
 const queryClient = new QueryClient();
 
 function AppContent() {
+  const location = useLocation();
+  console.log('[DEBUG] route', location.pathname);
+  
   const { isAuthenticated, loading, isEmailConfirmed } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authTransitioning, setAuthTransitioning] = useState(false);
@@ -80,15 +83,14 @@ function AppContent() {
   if (!isAuthenticated) {
     console.log('AppContent: User not authenticated, showing auth flow');
     return (
-      <Router>
-        <Routes>
-          <Route path="/confirm" element={<ConfirmEmail />} />
-          <Route path="/confirm-email" element={<ConfirmEmail />} />
-          <Route path="/auth/confirm" element={<ConfirmEmail />} />
-          <Route path="/onboarding" element={<Index />} />
-          <Route path="*" element={<Index />} />
-        </Routes>
-      </Router>
+      <Routes>
+        <Route path="/confirm" element={<ConfirmEmail />} />
+        <Route path="/confirm-email" element={<ConfirmEmail />} />
+        <Route path="/auth/confirm" element={<ConfirmEmail />} />
+        <Route path="/onboarding/*" element={<Index />} />
+        <Route path="/" element={<Index />} />
+        <Route path="*" element={<Index />} />
+      </Routes>
     );
   }
 
@@ -139,38 +141,36 @@ function AppContent() {
   console.log('🧩 App.tsx: Rendering main app router - user should see home page now');
 
   return (
-    <Router>
-      <div className="min-h-screen bg-background">
-        <Routes>
-          <Route path="/" element={<Layout><Outlet /></Layout>}>
-            <Route index element={
-              <div>
-                {showReminder && (
-                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
-                )}
-                <Home />
-              </div>
-            } />
-            <Route path="home" element={
-              <div>
-                {showReminder && (
-                  <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
-                )}
-                <Home />
-              </div>
-            } />
-            <Route path="camera" element={<Camera />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="coach" element={<Coach />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="hydration" element={<Hydration />} />
-            <Route path="supplements" element={<Supplements />} />
-            <Route path="admin" element={<AdminDashboard />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
-    </Router>
+    <div className="min-h-screen bg-background">
+      <Routes>
+        <Route path="/" element={<Layout><Outlet /></Layout>}>
+          <Route index element={
+            <div>
+              {showReminder && (
+                <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
+              )}
+              <Home />
+            </div>
+          } />
+          <Route path="home" element={
+            <div>
+              {showReminder && (
+                <OnboardingReminder onStartOnboarding={handleStartOnboarding} />
+              )}
+              <Home />
+            </div>
+          } />
+          <Route path="camera" element={<Camera />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="coach" element={<Coach />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="hydration" element={<Hydration />} />
+          <Route path="supplements" element={<Supplements />} />
+          <Route path="admin" element={<AdminDashboard />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
   );
 }
 
@@ -178,7 +178,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AppContent />
+        <Router>
+          <AppContent />
+        </Router>
       </ThemeProvider>
     </QueryClientProvider>
   );

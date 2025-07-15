@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +12,12 @@ type ConfirmationState = 'processing' | 'success' | 'error' | 'invalid';
 export const ConfirmEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { resendEmailConfirmation } = useAuth();
+  const location = useLocation();
+  const { resendEmailConfirmation, refreshUser } = useAuth();
   const [state, setState] = useState<ConfirmationState>('processing');
   const [userEmail, setUserEmail] = useState<string>('');
   const [isResending, setIsResending] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     const confirmEmail = async () => {
@@ -222,17 +224,19 @@ export const ConfirmEmail: React.FC = () => {
       }
     };
 
-    // Add a small delay to ensure URL parsing is complete
-    const timer = setTimeout(confirmEmail, 100);
-    return () => clearTimeout(timer);
+    // Start confirmation immediately
+    confirmEmail();
   }, [searchParams]);
 
-  // Handle successful confirmation with delayed redirect to prevent flash
+  // Handle successful confirmation with proper auth refresh
   const handleSuccessfulConfirmation = async (user: any) => {
     try {
-      console.log('Email confirmation successful, refreshing session...');
+      console.log('[DEBUG] navigating from', location.pathname, 'to /');
+      console.log('Email confirmation successful, refreshing auth state...');
       
-      // Refresh the session to ensure it's properly established
+      setIsRefreshing(true);
+      
+      // First refresh session
       const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
       
       if (sessionError) {
@@ -241,32 +245,23 @@ export const ConfirmEmail: React.FC = () => {
         console.log('Session refreshed successfully');
       }
 
-      // Check if user has completed onboarding
-      const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('onboarding_completed')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      console.log('Onboarding status check:', { profile, profileError });
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error checking onboarding status:', profileError);
+      // Then refresh user data through AuthContext
+      if (refreshUser) {
+        console.log('Refreshing user data through AuthContext...');
+        await refreshUser();
       }
 
-      // Add a longer delay to allow auth state to fully sync and prevent cleanup race condition
-      console.log('Email confirmed successfully, redirecting in 1000ms to ensure auth state sync...');
-      setTimeout(() => {
-        console.log('Redirecting to home after email confirmation');
-        navigate('/', { replace: true });
-      }, 1000);
+      // Ensure auth state is fully propagated before navigating
+      await supabase.auth.getUser();
+      
+      console.log('Auth state fully refreshed, navigating to home...');
+      navigate('/', { replace: true });
       
     } catch (redirectError) {
       console.error('Error during redirect:', redirectError);
-      // Fallback redirect with delay
-      setTimeout(() => {
-        navigate('/', { replace: true });
-      }, 1000);
+      navigate('/', { replace: true });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -325,7 +320,7 @@ export const ConfirmEmail: React.FC = () => {
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-muted-foreground mb-4">
-                Your email has been successfully confirmed. Redirecting you to the app...
+                Your email has been successfully confirmed. {isRefreshing ? 'Setting up your account...' : 'Redirecting you to the app...'}
               </p>
               {userEmail && (
                 <p className="text-sm text-muted-foreground mb-4">
@@ -334,7 +329,9 @@ export const ConfirmEmail: React.FC = () => {
               )}
               <div className="flex items-center justify-center">
                 <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
-                <span className="text-sm text-muted-foreground">Setting up your account...</span>
+                <span className="text-sm text-muted-foreground">
+                  {isRefreshing ? 'Refreshing auth state...' : 'Redirecting...'}
+                </span>
               </div>
             </CardContent>
           </>

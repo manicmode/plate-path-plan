@@ -1,8 +1,11 @@
 
 import { Button } from '@/components/ui/button';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SavingScreen } from '@/components/SavingScreen';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/auth';
+import { useState } from 'react';
 
 interface OnboardingCompleteProps {
   onComplete: () => void;
@@ -11,6 +14,31 @@ interface OnboardingCompleteProps {
 
 export const OnboardingComplete = ({ onComplete, isSubmitting }: OnboardingCompleteProps) => {
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const { refreshUser } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleComplete = async () => {
+    console.log('[DEBUG] navigating from', location.pathname, 'to /profile');
+    
+    try {
+      setIsRefreshing(true);
+      
+      // Refresh user data to ensure onboarding_completed is loaded
+      if (refreshUser) {
+        console.log('Refreshing user data after onboarding completion...');
+        await refreshUser();
+      }
+      
+      // Call parent completion handler
+      onComplete();
+    } catch (error) {
+      console.error('Error during onboarding completion:', error);
+      onComplete(); // Continue anyway
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isSubmitting) {
     return <SavingScreen />;
@@ -33,11 +61,18 @@ export const OnboardingComplete = ({ onComplete, isSubmitting }: OnboardingCompl
       </p>
       
       <Button
-        onClick={onComplete}
-        disabled={isSubmitting}
+        onClick={handleComplete}
+        disabled={isSubmitting || isRefreshing}
         className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-14'} text-lg font-semibold`}
       >
-        "Let's go!"
+        {isRefreshing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Setting up...
+          </>
+        ) : (
+          "Let's go!"
+        )}
       </Button>
     </div>
   );
