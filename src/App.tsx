@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/auth';
@@ -30,6 +30,7 @@ function AppContent() {
   const { isAuthenticated, loading, isEmailConfirmed, refreshUser } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authTransitioning, setAuthTransitioning] = useState(false);
+  const navigate = useNavigate();
 
   // Only load onboarding status if authenticated to prevent race conditions
   const { 
@@ -124,7 +125,7 @@ function AppContent() {
         // Clear onboarding state and navigate to home
         setShowOnboarding(false);
         setAuthTransitioning(false);
-        window.location.href = '/home';
+        navigate('/home');
         console.log('[DEBUG] App.tsx: Navigation to home should happen now');
         
       } catch (error) {
