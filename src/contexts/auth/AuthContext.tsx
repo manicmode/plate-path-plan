@@ -129,6 +129,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile({ selectedTrackers: trackers });
   };
 
+  const refreshUser = async () => {
+    if (!session?.user) return;
+    
+    console.log('[DEBUG] AuthContext: Refreshing user profile...');
+    await updateUserWithProfile(session.user);
+    console.log('[DEBUG] AuthContext: User profile refresh complete');
+  };
+
   const contextValue: AuthContextType = {
     user,
     session,
@@ -142,6 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout: signOutUser,
     updateProfile,
     updateSelectedTrackers,
+    refreshUser,
   };
 
   return (

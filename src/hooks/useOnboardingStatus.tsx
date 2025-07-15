@@ -76,14 +76,14 @@ export const useOnboardingStatus = () => {
   };
 
   const markOnboardingComplete = async () => {
-    console.log('🧩 markOnboardingComplete: Starting database update...');
+    console.log('[DEBUG] markOnboardingComplete: Starting database update...');
     if (!user) {
-      console.log('🧩 markOnboardingComplete: No user found');
+      console.log('[DEBUG] markOnboardingComplete: No user found');
       return;
     }
     
     try {
-      console.log('🧩 markOnboardingComplete: Updating database for user:', user.id);
+      console.log('[DEBUG] markOnboardingComplete: Updating database for user:', user.id);
       const { error } = await supabase
         .from('user_profiles')
         .update({ 
@@ -94,16 +94,68 @@ export const useOnboardingStatus = () => {
         .eq('user_id', user.id);
       
       if (error) {
-        console.error('🧩 markOnboardingComplete: Database error:', error);
+        console.error('[DEBUG] markOnboardingComplete: Database error:', error);
         throw error;
       }
       
-      console.log('🧩 markOnboardingComplete: Database update successful');
+      console.log('[DEBUG] markOnboardingComplete: Database update successful');
       setIsOnboardingComplete(true);
       setShowReminder(false);
     } catch (error) {
-      console.error('🧩 markOnboardingComplete: Error updating completion status:', error);
+      console.error('[DEBUG] markOnboardingComplete: Error updating completion status:', error);
       throw error;
+    }
+  };
+
+  const forceRefresh = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    await checkOnboardingStatus();
+  };
+
+  const checkOnboardingStatus = async () => {
+    if (!isAuthenticated || !user) {
+      setIsOnboardingComplete(null);
+      setIsLoading(false);
+      setShowReminder(false);
+      return;
+    }
+
+    try {
+      console.log('Checking onboarding status for user:', user.id);
+      
+      const result = await supabase
+        .from('user_profiles')
+        .select('onboarding_completed, onboarding_skipped, show_onboarding_reminder')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const { data, error } = result;
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking onboarding status:', error);
+        setIsOnboardingComplete(false);
+        setShowReminder(false);
+      } else if (!data) {
+        console.log('No profile found, assuming onboarding not complete');
+        setIsOnboardingComplete(false);
+        setShowReminder(false);
+      } else {
+        const isComplete = data.onboarding_completed || false;
+        const wasSkipped = data.onboarding_skipped || false;
+        const shouldShowReminder = data.show_onboarding_reminder || false;
+        
+        console.log('Onboarding status:', { isComplete, wasSkipped, shouldShowReminder });
+        
+        setIsOnboardingComplete(isComplete);
+        setShowReminder(wasSkipped && shouldShowReminder);
+      }
+    } catch (error) {
+      console.error('Error in onboarding status check:', error);
+      setIsOnboardingComplete(false);
+      setShowReminder(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -113,5 +165,6 @@ export const useOnboardingStatus = () => {
     showReminder,
     dismissReminder,
     markOnboardingComplete,
+    forceRefresh,
   };
 };

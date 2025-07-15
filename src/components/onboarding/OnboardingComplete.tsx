@@ -33,7 +33,10 @@ export const OnboardingComplete = ({ onComplete, isSubmitting }: OnboardingCompl
       </p>
       
       <Button
-        onClick={onComplete}
+        onClick={() => {
+          console.log('[DEBUG] OnboardingComplete: Let\'s go button clicked');
+          onComplete();
+        }}
         disabled={isSubmitting}
         className={`w-full gradient-primary ${isMobile ? 'h-12' : 'h-14'} text-lg font-semibold`}
       >

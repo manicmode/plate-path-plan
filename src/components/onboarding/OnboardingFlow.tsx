@@ -73,7 +73,7 @@ interface OnboardingFlowProps {
 const TOTAL_SCREENS = 13;
 
 export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isMobile = useIsMobile();
   const [currentScreen, setCurrentScreen] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -308,14 +308,16 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         throw error;
       }
 
-      console.log('🧩 OnboardingFlow: Profile saved successfully:', data);
-      console.log('onboarding complete');
+      console.log('[DEBUG] OnboardingFlow: Profile saved successfully:', data);
+      console.log('[DEBUG] OnboardingFlow: Refreshing user profile...');
+      
+      // Refresh the user profile to get the latest data
+      await refreshUser();
+      console.log('[DEBUG] OnboardingFlow: User profile refreshed, calling onComplete...');
       
       toast.success('Welcome to NutriCoach! Your personalized profile is ready with custom nutrition targets.');
       
-      console.log('🧩 OnboardingFlow: Calling onComplete callback...');
-      
-      // Only call onComplete after successful database update
+      // Only call onComplete after successful database update and user refresh
       onComplete();
       
     } catch (error: any) {

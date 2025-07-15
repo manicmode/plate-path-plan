@@ -27,7 +27,7 @@ import AdminDashboard from './components/admin/AdminDashboard';
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { isAuthenticated, loading, isEmailConfirmed } = useAuth();
+  const { isAuthenticated, loading, isEmailConfirmed, refreshUser } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authTransitioning, setAuthTransitioning] = useState(false);
 
@@ -38,6 +38,9 @@ function AppContent() {
     showReminder,
     markOnboardingComplete
   } = useOnboardingStatus();
+
+  // Add debug logging at the top
+  console.log('[DEBUG] route', window.location.pathname);
 
   const handleStartOnboarding = () => {
     setShowOnboarding(true);
@@ -108,24 +111,23 @@ function AppContent() {
   if (showOnboarding || (isOnboardingComplete === false)) {
     console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={async () => {
-      console.log('🧩 App.tsx: Onboarding completed callback triggered');
-      console.log('🧩 App.tsx: Updating onboarding status in hook');
+      console.log('[DEBUG] App.tsx: Onboarding completed callback triggered');
+      console.log('[DEBUG] App.tsx: Calling refreshUser and markOnboardingComplete');
       
-      // Update the hook state immediately so we don't get stuck
       try {
-        setAuthTransitioning(true); // Show loading during transition
-        await markOnboardingComplete();
-        console.log('🧩 App.tsx: Database update complete, transitioning to home');
+        setAuthTransitioning(true);
         
-        // Give time for database update to propagate
-        setTimeout(() => {
-          setShowOnboarding(false);
-          setAuthTransitioning(false);
-          console.log('🧩 App.tsx: Onboarding state cleared, should navigate to home');
-        }, 500);
+        // Refresh user profile after onboarding completion
+        await refreshUser();
+        console.log('[DEBUG] App.tsx: User profile refreshed');
+        
+        // Clear onboarding state immediately 
+        setShowOnboarding(false);
+        setAuthTransitioning(false);
+        console.log('[DEBUG] App.tsx: Navigation to home should happen now');
         
       } catch (error) {
-        console.error('🧩 App.tsx: Error completing onboarding:', error);
+        console.error('[DEBUG] App.tsx: Error completing onboarding:', error);
         setAuthTransitioning(false);
       }
     }} />;
