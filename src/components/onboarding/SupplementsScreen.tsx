@@ -116,6 +116,9 @@ export const SupplementsScreen = ({ formData, updateFormData, onNext, onSkip }: 
       setFrequency('daily');
       setShowCustomInput(false);
       setIsModalOpen(false);
+      
+      // Scroll to top so user can easily add more supplements
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 

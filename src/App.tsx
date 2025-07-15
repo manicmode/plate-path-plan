@@ -113,13 +113,20 @@ function AppContent() {
       
       // Update the hook state immediately so we don't get stuck
       try {
+        setAuthTransitioning(true); // Show loading during transition
         await markOnboardingComplete();
         console.log('🧩 App.tsx: Database update complete, transitioning to home');
-        setShowOnboarding(false);
-        console.log('🧩 App.tsx: Onboarding state cleared, should navigate to home');
+        
+        // Give time for database update to propagate
+        setTimeout(() => {
+          setShowOnboarding(false);
+          setAuthTransitioning(false);
+          console.log('🧩 App.tsx: Onboarding state cleared, should navigate to home');
+        }, 500);
         
       } catch (error) {
         console.error('🧩 App.tsx: Error completing onboarding:', error);
+        setAuthTransitioning(false);
       }
     }} />;
   }
