@@ -39,31 +39,29 @@ export const HealthGoalScreen = ({ formData, updateFormData, onNext, onSkip }: H
         </p>
       </div>
 
-      <div className={`${!formData.mainHealthGoal ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
-        <RadioGroup
-          value={formData.mainHealthGoal}
-          onValueChange={(value: any) => updateFormData({ mainHealthGoal: value })}
-          className="space-y-3"
-        >
-          {healthGoals.map((goal) => (
-            <div 
-              key={goal.value}
-              className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
-                formData.mainHealthGoal === goal.value 
-                  ? 'bg-emerald-100 border-emerald-500 border-2 dark:bg-emerald-900/20' 
-                  : 'border border-border'
-              }`}
-              onClick={() => updateFormData({ mainHealthGoal: goal.value as any })}
-            >
-              <RadioGroupItem value={goal.value} id={goal.value} />
-              <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer pointer-events-none">
-                <span className="text-xl">{goal.emoji}</span>
-                <span className="text-base">{goal.label}</span>
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-      </div>
+      <RadioGroup
+        value={formData.mainHealthGoal}
+        onValueChange={(value: any) => updateFormData({ mainHealthGoal: value })}
+        className="space-y-3"
+      >
+        {healthGoals.map((goal) => (
+          <div 
+            key={goal.value}
+            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer min-h-[44px] ${
+              formData.mainHealthGoal === goal.value 
+                ? 'bg-emerald-100 border-emerald-500 border-2 transform scale-[1.02] dark:bg-emerald-900/20' 
+                : 'border border-border hover:border-green-400 hover:bg-muted/50'
+            } ${!formData.mainHealthGoal ? 'ring-2 ring-red-500 ring-opacity-50' : ''}`}
+            onClick={() => updateFormData({ mainHealthGoal: goal.value as any })}
+          >
+            <RadioGroupItem value={goal.value} id={goal.value} />
+            <Label htmlFor={goal.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
+              <span className="text-xl">{goal.emoji}</span>
+              <span className="text-base">{goal.label}</span>
+            </Label>
+          </div>
+        ))}
+      </RadioGroup>
 
       <div className="flex space-x-4 pt-6">
         <Button

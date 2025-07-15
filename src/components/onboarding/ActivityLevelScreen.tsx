@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Activity } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
+import { toast } from 'sonner';
 
 interface ActivityLevelScreenProps {
   formData: OnboardingData;
@@ -64,9 +65,9 @@ export const ActivityLevelScreen = ({ formData, updateFormData, onNext, onSkip }
         {activityLevels.map((level) => (
           <div 
             key={level.value} 
-            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer ${
+            className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer min-h-[44px] ${
               formData.activityLevel === level.value 
-                ? 'bg-emerald-100 border-emerald-500 border-2 scale-[1.02] dark:bg-emerald-900/20' 
+                ? 'bg-emerald-100 border-emerald-500 border-2 transform scale-[1.02] dark:bg-emerald-900/20' 
                 : 'border border-border hover:border-green-400 hover:bg-muted/50'
             }`}
             onClick={() => updateFormData({ activityLevel: level.value as any })}
@@ -92,7 +93,15 @@ export const ActivityLevelScreen = ({ formData, updateFormData, onNext, onSkip }
           Skip for now
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            // Validation: Check required field
+            if (!formData.activityLevel) {
+              toast.error("Please select your activity level before continuing");
+              return;
+            }
+            console.log('✅ ActivityLevelScreen validation passed');
+            onNext();
+          }}
           className="flex-1 gradient-primary"
         >
           Next

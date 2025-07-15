@@ -71,67 +71,63 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
         {/* Daily Lifestyle */}
         <div>
           <Label className="text-base font-medium mb-4 block">What's your daily lifestyle like?</Label>
-          <div className={`${!formData.dailyLifestyle ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
-            <RadioGroup
-              value={formData.dailyLifestyle}
-              onValueChange={(value: any) => updateFormData({ dailyLifestyle: value })}
-              className="space-y-3"
-            >
-              {lifestyleOptions.map((option) => (
-                <div 
-                  key={option.value} 
-                  className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
-                    formData.dailyLifestyle === option.value 
-                      ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
-                      : 'border border-border'
-                  }`}
-                  onClick={() => {
-                    console.log('🔧 ExerciseLifestyleScreen: Lifestyle option clicked:', option.value);
-                    updateFormData({ dailyLifestyle: option.value as OnboardingData['dailyLifestyle'] });
-                  }}
-                >
-                  <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value} className="flex items-center space-x-3 flex-1 cursor-pointer pointer-events-none">
-                    <span className="text-xl">{option.emoji}</span>
-                    <span className="text-base">{option.label}</span>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
+          <RadioGroup
+            value={formData.dailyLifestyle}
+            onValueChange={(value: any) => updateFormData({ dailyLifestyle: value })}
+            className="space-y-3"
+          >
+            {lifestyleOptions.map((option) => (
+              <div 
+                key={option.value} 
+                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer min-h-[44px] ${
+                  formData.dailyLifestyle === option.value 
+                    ? 'border-2 border-emerald-500 bg-emerald-100 transform scale-[1.02] dark:bg-emerald-900/20' 
+                    : 'border border-border hover:border-green-400 hover:bg-muted/50'
+                } ${!formData.dailyLifestyle ? 'ring-2 ring-red-500 ring-opacity-50' : ''}`}
+                onClick={() => {
+                  console.log('🔧 ExerciseLifestyleScreen: Lifestyle option clicked:', option.value);
+                  updateFormData({ dailyLifestyle: option.value as OnboardingData['dailyLifestyle'] });
+                }}
+              >
+                <RadioGroupItem value={option.value} id={option.value} />
+                <Label htmlFor={option.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
+                  <span className="text-xl">{option.emoji}</span>
+                  <span className="text-base">{option.label}</span>
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
         </div>
 
         {/* Exercise Frequency */}
         <div>
           <Label className="text-base font-medium mb-4 block">How often do you exercise?</Label>
-          <div className={`${!formData.exerciseFrequency ? 'ring-2 ring-red-500 ring-opacity-50 rounded-lg p-2' : ''}`}>
-            <RadioGroup
-              value={formData.exerciseFrequency}
-              onValueChange={(value: any) => updateFormData({ exerciseFrequency: value })}
-              className="space-y-3"
+          <RadioGroup
+            value={formData.exerciseFrequency}
+            onValueChange={(value: any) => updateFormData({ exerciseFrequency: value })}
+            className="space-y-3"
+          >
+          {exerciseFrequencies.map((freq) => (
+            <div 
+              key={freq.value} 
+              className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-all duration-200 cursor-pointer min-h-[44px] ${
+                formData.exerciseFrequency === freq.value 
+                  ? 'border-2 border-emerald-500 bg-emerald-100 transform scale-[1.02] dark:bg-emerald-900/20' 
+                  : 'border border-border hover:border-green-400 hover:bg-muted/50'
+              } ${!formData.exerciseFrequency ? 'ring-2 ring-red-500 ring-opacity-50' : ''}`}
+              onClick={() => {
+                console.log('🔧 ExerciseLifestyleScreen: Exercise frequency clicked:', freq.value);
+                updateFormData({ exerciseFrequency: freq.value as OnboardingData['exerciseFrequency'] });
+              }}
             >
-            {exerciseFrequencies.map((freq) => (
-              <div 
-                key={freq.value} 
-                className={`flex items-center space-x-3 p-4 rounded-lg glass-button transition-colors cursor-pointer ${
-                  formData.exerciseFrequency === freq.value 
-                    ? 'border-2 border-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' 
-                    : 'border border-border'
-                }`}
-                onClick={() => {
-                  console.log('🔧 ExerciseLifestyleScreen: Exercise frequency clicked:', freq.value);
-                  updateFormData({ exerciseFrequency: freq.value as OnboardingData['exerciseFrequency'] });
-                }}
-              >
-                <RadioGroupItem value={freq.value} id={freq.value} />
-                <Label htmlFor={freq.value} className="flex items-center space-x-3 flex-1 cursor-pointer pointer-events-none">
-                  <span className="text-xl">{freq.emoji}</span>
-                  <span className="text-base">{freq.label}</span>
-                </Label>
-              </div>
-              ))}
-            </RadioGroup>
-          </div>
+              <RadioGroupItem value={freq.value} id={freq.value} />
+              <Label htmlFor={freq.value} className="flex items-center space-x-3 flex-1 cursor-pointer">
+                <span className="text-xl">{freq.emoji}</span>
+                <span className="text-base">{freq.label}</span>
+              </Label>
+            </div>
+            ))}
+          </RadioGroup>
         </div>
 
         {/* Exercise Types */}
@@ -154,7 +150,7 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
                     checked={formData.exerciseTypes.includes(type.value)}
                     onCheckedChange={() => toggleExerciseType(type.value)}
                   />
-                  <Label htmlFor={type.value} className="flex-1 cursor-pointer text-base pointer-events-none">
+                  <Label htmlFor={type.value} className="flex-1 cursor-pointer text-base">
                     {type.label}
                   </Label>
                 </div>

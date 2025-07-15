@@ -62,6 +62,7 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
     foods_to_avoid: profile?.foods_to_avoid || undefined,
     activity_level: profile?.activity_level || undefined,
     health_conditions: profile?.health_conditions || [],
+    onboardingCompleted: profile?.onboarding_completed || false,
   };
 };
 

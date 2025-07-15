@@ -313,6 +313,18 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       
       toast.success('Welcome to NutriCoach! Your personalized profile is ready with custom nutrition targets.');
       
+      // Refresh auth context to update user profile with onboarding completion status
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          console.log('Refreshing user profile after onboarding completion');
+          // Force auth context to reload user data
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error refreshing session:', error);
+      }
+      
       // Only call onComplete after successful database update
       onComplete();
       
