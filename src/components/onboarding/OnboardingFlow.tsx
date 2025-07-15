@@ -585,7 +585,17 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             />
           );
         case 12:
-          return <OnboardingComplete onComplete={handleComplete} isSubmitting={isSubmitting} />;
+          return <OnboardingComplete 
+            onComplete={handleComplete} 
+            isSubmitting={isSubmitting} 
+            formData={{
+              age: formData.age,
+              gender: formData.gender,
+              weight: formData.weight,
+              mainHealthGoal: formData.mainHealthGoal,
+              activityLevel: formData.activityLevel
+            }}
+          />;
         default:
           console.error(`Unhandled screen case: ${currentScreen}`);
           return (
