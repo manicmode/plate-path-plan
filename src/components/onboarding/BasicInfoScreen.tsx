@@ -231,7 +231,7 @@ export const BasicInfoScreen = ({ formData, updateFormData, onNext, onSkip }: Ba
           onClick={() => {
             // Validate required weight field
             if (!formData.weight) {
-              toast.error("Please enter your weight before continuing");
+              toast.error("Please complete all required fields before continuing.");
               return;
             }
             console.log('✅ BasicInfoScreen validation passed');

@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Clock } from 'lucide-react';
 import { OnboardingData } from './OnboardingFlow';
+import { toast } from 'sonner';
 
 interface EatingPatternsScreenProps {
   formData: OnboardingData;
@@ -191,7 +192,15 @@ export const EatingPatternsScreen = ({ formData, updateFormData, onNext, onSkip 
           Skip for now
         </Button>
         <Button
-          onClick={onNext}
+          onClick={() => {
+            // Validation: Check required field
+            if (!safeFormData.mealFrequency) {
+              toast.error("Please complete all required fields before continuing.");
+              return;
+            }
+            console.log('✅ EatingPatternsScreen validation passed');
+            onNext();
+          }}
           className="flex-1 gradient-primary"
         >
           Next

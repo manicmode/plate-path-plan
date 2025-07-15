@@ -171,12 +171,8 @@ export const ExerciseLifestyleScreen = ({ formData, updateFormData, onNext, onSk
         <Button
           onClick={() => {
             // Validation: Check required fields
-            if (!formData.dailyLifestyle) {
-              toast.error("Please select your daily lifestyle before continuing");
-              return;
-            }
-            if (!formData.exerciseFrequency) {
-              toast.error("Please select your exercise frequency before continuing");
+            if (!formData.dailyLifestyle || !formData.exerciseFrequency) {
+              toast.error("Please complete all required fields before continuing.");
               return;
             }
             console.log('✅ ExerciseLifestyleScreen validation passed');

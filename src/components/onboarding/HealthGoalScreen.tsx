@@ -75,7 +75,7 @@ export const HealthGoalScreen = ({ formData, updateFormData, onNext, onSkip }: H
           onClick={() => {
             // Validation: Check required field
             if (!formData.mainHealthGoal) {
-              toast.error("Please select your main health goal before continuing");
+              toast.error("Please complete all required fields before continuing.");
               return;
             }
             console.log('✅ HealthGoalScreen validation passed');

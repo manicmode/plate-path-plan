@@ -98,7 +98,7 @@ export const DietStyleScreen = ({ formData, updateFormData, onNext, onSkip }: Di
           onClick={() => {
             // Validation: Check if at least one diet style is selected
             if (formData.dietStyles.length === 0) {
-              toast.error("Please select at least one eating style or 'None / Just eating balanced' before continuing");
+              toast.error("Please complete all required fields before continuing.");
               return;
             }
             console.log('✅ DietStyleScreen validation passed');

@@ -96,7 +96,7 @@ export const ActivityLevelScreen = ({ formData, updateFormData, onNext, onSkip }
           onClick={() => {
             // Validation: Check required field
             if (!formData.activityLevel) {
-              toast.error("Please select your activity level before continuing");
+              toast.error("Please complete all required fields before continuing.");
               return;
             }
             console.log('✅ ActivityLevelScreen validation passed');

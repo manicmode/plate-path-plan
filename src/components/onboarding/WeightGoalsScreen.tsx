@@ -137,17 +137,13 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
           onClick={() => {
             // Validation: Check required fields
             if (!formData.weightGoalType) {
-              toast.error("Please select your weight goal before continuing");
+              toast.error("Please complete all required fields before continuing.");
               return;
             }
             // Only validate target weight and timeline if not maintaining weight
             if (formData.weightGoalType !== 'maintain_weight') {
-              if (!formData.targetWeight || parseFloat(formData.targetWeight) <= 0) {
-                toast.error("Please enter your target weight");
-                return;
-              }
-              if (!formData.weightGoalTimeline) {
-                toast.error("Please select your timeline before continuing");
+              if (!formData.targetWeight || parseFloat(formData.targetWeight) <= 0 || !formData.weightGoalTimeline) {
+                toast.error("Please complete all required fields before continuing.");
                 return;
               }
             }
