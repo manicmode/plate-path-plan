@@ -104,8 +104,8 @@ function AppContent() {
     return <SavingScreen />;
   }
 
-  // Show onboarding if needed
-  if (showOnboarding || (isOnboardingComplete === false)) {
+  // Show onboarding if needed (only if explicitly required and not completed)
+  if (showOnboarding && isOnboardingComplete !== true) {
     console.log('AppContent: Showing onboarding screen');
     return <OnboardingScreen onComplete={async () => {
       console.log('🧩 App.tsx: Onboarding completed callback triggered');
@@ -121,10 +121,16 @@ function AppContent() {
         console.log('🧩 App.tsx: Calling markOnboardingComplete...');
         await markOnboardingComplete();
         console.log('🧩 App.tsx: Database update complete, clearing onboarding state');
+        
+        // Clear both states to prevent double display
         setShowOnboarding(false);
+        
+        // Force a small delay to ensure state propagation
+        setTimeout(() => {
+          setAuthTransitioning(false);
+        }, 100);
       } catch (error) {
         console.error('🧩 App.tsx: Error completing onboarding:', error);
-      } finally {
         setAuthTransitioning(false);
       }
     }} />;
