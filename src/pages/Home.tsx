@@ -1333,6 +1333,101 @@ const Home = () => {
         </Collapsible>
       </div>
 
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+      </div>
+
+      {/* Explore Tiles Section */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
+        <div className="grid grid-cols-2 gap-4">
+          {(() => {
+            const exploreTiles = [
+              {
+                id: 'supplement-hub',
+                title: 'Supplement Hub',
+                emoji: '🧪',
+                color: 'from-purple-500 via-purple-400 to-pink-500',
+                shadowColor: 'shadow-purple-500/30',
+                glowColor: 'hover:shadow-purple-400/50',
+                animatedGradient: 'bg-gradient-to-br from-purple-400 via-purple-500 to-pink-500',
+              },
+              {
+                id: 'game-challenge',
+                title: 'Game & Challenge',
+                emoji: '🏆',
+                color: 'from-yellow-500 via-orange-400 to-orange-500',
+                shadowColor: 'shadow-yellow-500/30',
+                glowColor: 'hover:shadow-yellow-400/50',
+                animatedGradient: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-orange-600',
+              },
+              {
+                id: 'health-check',
+                title: 'Health Check',
+                emoji: '❤️',
+                color: 'from-red-500 via-rose-400 to-rose-500',
+                shadowColor: 'shadow-red-500/30',
+                glowColor: 'hover:shadow-red-400/50',
+                animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
+              },
+              {
+                id: 'influencers',
+                title: 'Influencers',
+                emoji: '⭐️',
+                color: 'from-blue-500 via-cyan-400 to-cyan-500',
+                shadowColor: 'shadow-blue-500/30',
+                glowColor: 'hover:shadow-cyan-400/50',
+                animatedGradient: 'bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-500',
+              },
+            ];
+
+            return exploreTiles.map((tile) => (
+              <Button
+                key={tile.id}
+                variant="ghost"
+                className={`
+                  group relative h-full min-h-[180px] p-6 rounded-3xl 
+                  transition-all duration-500 ease-out
+                  bg-gradient-to-br ${tile.color} 
+                  hover:scale-105 active:scale-95 active:rotate-1
+                  shadow-2xl ${tile.shadowColor} ${tile.glowColor} hover:shadow-3xl
+                  border-0 text-white hover:text-white
+                  flex flex-col items-center justify-center space-y-3
+                  backdrop-blur-sm overflow-hidden
+                  before:absolute before:inset-0 before:bg-gradient-to-br 
+                  before:from-white/20 before:to-transparent before:opacity-0 
+                  hover:before:opacity-100 before:transition-opacity before:duration-300
+                  after:absolute after:inset-0 after:bg-gradient-to-t
+                  after:from-black/5 after:to-transparent after:opacity-100
+                `}
+              >
+                {/* Large Emoji Icon */}
+                <div className={`${isMobile ? 'text-5xl' : 'text-6xl'} 
+                  group-hover:animate-bounce group-hover:scale-110 
+                  transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
+                  {tile.emoji}
+                </div>
+                {/* Clean Label */}
+                <span className={`${isMobile ? 'text-sm' : 'text-base'} 
+                  font-black text-center leading-tight text-white z-10 relative
+                  drop-shadow-2xl tracking-wide`}
+                  style={{ 
+                    textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)' 
+                  }}>
+                  {tile.title}
+                </span>
+              </Button>
+            ));
+          })()}
+        </div>
+      </div>
+
       {/* Extra bottom padding to ensure menu is always visible */}
       <div className={`${isMobile ? 'pb-24' : 'pb-32'}`}></div>
 
