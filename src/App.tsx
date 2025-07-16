@@ -22,6 +22,7 @@ import Camera from './pages/Camera';
 import Analytics from './pages/Analytics';
 import Coach from './pages/Coach';
 import Profile from './pages/Profile';
+import Explore from './pages/Explore';
 import Hydration from './pages/Hydration';
 import Supplements from './pages/Supplements';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -164,6 +165,7 @@ function AppContent() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="coach" element={<Coach />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="explore" element={<Explore />} />
             <Route path="hydration" element={<Hydration />} />
             <Route path="supplements" element={<Supplements />} />
             <Route path="admin" element={<AdminDashboard />} />
