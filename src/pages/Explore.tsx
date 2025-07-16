@@ -112,14 +112,14 @@ const Explore = () => {
             border-2 border-slate-600/40 hover:border-slate-500/50
             dark:border-slate-400/40 dark:hover:border-slate-300/50
             text-slate-100 dark:text-slate-800 hover:text-white dark:hover:text-slate-900
-            flex items-center justify-center space-x-4
+            flex items-center justify-center
             backdrop-blur-md relative overflow-hidden
             before:absolute before:inset-0 before:bg-gradient-to-r 
             before:from-white/10 before:via-transparent before:to-white/10
             before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300
           "
         >
-          <div className="text-2xl">👤</div>
+          <div className="absolute left-8 text-2xl">👤</div>
           <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-black tracking-wide drop-shadow-sm`}>
             Profile
           </span>
