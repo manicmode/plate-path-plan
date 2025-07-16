@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -133,27 +134,35 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
         >
           Skip for now
         </Button>
-        <Button
-          onClick={() => {
-            // Validation: Check required fields
-            if (!formData.weightGoalType) {
-              toast.error("Please complete all required fields before continuing.");
-              return;
-            }
-            // Only validate target weight and timeline if not maintaining weight
-            if (formData.weightGoalType !== 'maintain_weight') {
-              if (!formData.targetWeight || parseFloat(formData.targetWeight) <= 0 || !formData.weightGoalTimeline) {
-                toast.error("Please complete all required fields before continuing.");
-                return;
-              }
-            }
-            console.log('✅ WeightGoalsScreen validation passed');
-            onNext();
-          }}
-          className="flex-1 gradient-primary"
-        >
-          Next
-        </Button>
+       /* ───── helper added just above return( … ) ─────
+function handleNext() {
+  // 1 Must choose a primary goal
+  if (!formData.weightGoalType) {
+    toast.error("Please select a weight‑goal type before continuing.");
+    return;
+  }
+
+  // 2 If NOT “maintain weight”, validate extra fields
+  if (formData.weightGoalType !== "maintain_weight") {
+    if (
+      !formData.targetWeight ||
+      parseFloat(formData.targetWeight) <= 0 ||
+      !formData.weightGoalTimeline
+    ) {
+      toast.error("Please complete target‑weight and timeline fields.");
+      return;
+    }
+  }
+
+  // ✅ All good
+  onNext();
+}
+────────────────────────────────────────────── */
+
+<Button onClick={handleNext} className="flex-1 gradient-primary">
+  Next
+</Button>
+
       </div>
     </div>
   );
