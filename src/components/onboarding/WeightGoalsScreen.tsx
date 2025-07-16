@@ -133,7 +133,7 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
         >
           Skip for now
         </Button>
-   <Button
+<Button
   onClick={() => {
     // Validation: Check required fields
     if (!formData.weightGoalType) {
@@ -142,19 +142,24 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
     }
 
     if (formData.weightGoalType !== 'maintain_weight') {
-      if (!formData.targetWeight || parseFloat(formData.targetWeight) <= 0 || !formData.weightGoalTimeline) {
+      if (
+        !formData.targetWeight ||
+        parseFloat(formData.targetWeight) <= 0 ||
+        !formData.weightGoalTimeline
+      ) {
         toast.error("Please complete all required fields before continuing.");
         return;
       }
     }
 
-    console.log('✅ WeightGoalsScreen validation passed');
+    console.log("✅ WeightGoalsScreen validation passed");
     onNext();
   }}
   className="flex-1 gradient-primary"
 >
   Next
 </Button>
+
 
       </div>
     </div>
