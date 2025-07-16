@@ -1,4 +1,4 @@
-
+import { Toaster } from 'sonner';
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -180,9 +180,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AppContent />
+
+        {/* Toast notifications */}
+        <Toaster position="top-center" richColors />
+        
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
+
 
 export default App;
