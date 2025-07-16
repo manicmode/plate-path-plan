@@ -147,7 +147,7 @@ export const WeightGoalsScreen = ({ formData, updateFormData, onNext, onSkip }: 
                 return;
               }
             }
-console.log("✅ WeightGoalsScreen validation passed");
+toast("✅ WeightGoalsScreen validation passed");
             onNext();
           }}
           className="flex-1 gradient-primary"
