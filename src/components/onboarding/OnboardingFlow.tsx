@@ -310,7 +310,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
 
       console.log('[DEBUG] OnboardingFlow: Profile saved successfully:', data);
       console.log('[DEBUG] OnboardingFlow: Refreshing user profile...');
-      
+      window.location.href = '/';
       // Update localStorage immediately to prevent re-rendering onboarding
       const cacheKey = `onboarding_complete_${user.id}`;
       localStorage.setItem(cacheKey, 'true');
