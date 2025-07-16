@@ -81,34 +81,37 @@ const Explore = () => {
                 transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
                 {tile.emoji}
               </div>
-              {/* Glassmorphism Label */}
-              <div className="z-10 relative bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-2 border border-white/20">
-                <span className={`${isMobile ? 'text-sm' : 'text-base'} 
-                  font-black text-center leading-tight text-white
-                  drop-shadow-lg tracking-wide text-shadow-lg`}>
-                  {tile.title}
-                </span>
-              </div>
+              {/* Clean Label */}
+              <span className={`${isMobile ? 'text-sm' : 'text-base'} 
+                font-black text-center leading-tight text-white z-10 relative
+                drop-shadow-2xl tracking-wide`}
+                style={{ 
+                  textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)' 
+                }}>
+                {tile.title}
+              </span>
             </Button>
           );
         })}
       </div>
 
-      {/* Profile Tile - Full Width at Bottom with better spacing */}
-      <div className="mt-auto mb-8">
+      {/* Profile Tile - Full Width at Bottom with theme-adaptive colors and proper spacing */}
+      <div className="mt-auto mb-24">
         <Button
           onClick={handleProfileClick}
           variant="ghost"
           className="
             w-full h-20 px-8 rounded-3xl transition-all duration-300
-            bg-gradient-to-r from-slate-200/80 via-gray-200/80 to-slate-300/80 
-            dark:from-slate-600/80 dark:via-gray-600/80 dark:to-slate-700/80
-            hover:from-slate-300/90 hover:via-gray-300/90 hover:to-slate-400/90 
-            dark:hover:from-slate-500/90 dark:hover:via-gray-500/90 dark:hover:to-slate-600/90
+            bg-gradient-to-r from-slate-700/90 via-slate-800/90 to-slate-900/90 
+            dark:from-slate-200/90 dark:via-slate-300/90 dark:to-slate-400/90
+            hover:from-slate-600/95 hover:via-slate-700/95 hover:to-slate-800/95 
+            dark:hover:from-slate-100/95 dark:hover:via-slate-200/95 dark:hover:to-slate-300/95
             hover:scale-[1.02] active:scale-[0.98]
-            shadow-2xl shadow-slate-400/40 hover:shadow-3xl hover:shadow-slate-400/50
-            border-2 border-slate-300/30 hover:border-slate-400/40
-            text-slate-700 dark:text-slate-200 hover:text-slate-800 dark:hover:text-white
+            shadow-2xl shadow-slate-900/30 hover:shadow-3xl hover:shadow-slate-900/40
+            dark:shadow-slate-300/30 dark:hover:shadow-slate-300/40
+            border-2 border-slate-600/40 hover:border-slate-500/50
+            dark:border-slate-400/40 dark:hover:border-slate-300/50
+            text-slate-100 dark:text-slate-800 hover:text-white dark:hover:text-slate-900
             flex items-center justify-center space-x-4
             backdrop-blur-md relative overflow-hidden
             before:absolute before:inset-0 before:bg-gradient-to-r 
