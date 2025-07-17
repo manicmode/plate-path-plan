@@ -100,7 +100,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
     
     setTimeout(() => {
-      console.log('📷 Image captured, sending to health check processor...');
+      console.log("📸 Captured Image Data: ", imageData);
       onCapture(imageData);
     }, 1500);
   };
