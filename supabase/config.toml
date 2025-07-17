@@ -1,6 +1,9 @@
 
 project_id = "uzoiiijqtahohfafqirm"
 
+[functions.health-check-processor]
+verify_jwt = false
+
 [functions.vision-label-reader]
 verify_jwt = false
 
