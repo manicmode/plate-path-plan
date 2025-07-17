@@ -16,6 +16,67 @@ import {
 } from 'lucide-react';
 import { HealthAnalysisResult } from './HealthCheckModal';
 
+// Circular Progress Component with Animation
+const CircularProgress: React.FC<{ 
+  percentage: number; 
+  size?: number; 
+  strokeWidth?: number;
+}> = ({ percentage, size = 120, strokeWidth = 8 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDasharray = `${circumference} ${circumference}`;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  
+  // Color based on percentage ranges
+  const getColor = (pct: number) => {
+    if (pct >= 80) return '#10B981'; // Green
+    if (pct >= 40) return '#F59E0B'; // Yellow  
+    return '#EF4444'; // Red
+  };
+
+  const color = getColor(percentage);
+
+  return (
+    <div className="relative flex items-center justify-center">
+      <svg
+        className="transform -rotate-90"
+        width={size}
+        height={size}
+      >
+        {/* Background circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          className="text-gray-200"
+        />
+        {/* Progress circle with animation */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={strokeDasharray}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out animate-pulse"
+          style={{
+            filter: `drop-shadow(0 0 8px ${color}60)`
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-2xl font-bold text-foreground">{percentage}%</span>
+      </div>
+    </div>
+  );
+};
+
 interface HealthReportPopupProps {
   result: HealthAnalysisResult;
   onScanAnother: () => void;
@@ -37,8 +98,8 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
 
   const getScoreMessage = (score: number) => {
     if (score >= 8) return 'Looking good! Healthy choice.';
-    if (score >= 4) return 'Moderate choice - consider alternatives.';
-    return 'Consider avoiding this product.';
+    if (score >= 4) return 'Some concerns to keep in mind.';
+    return 'We recommend avoiding this product.';
   };
 
   const getStarRating = (score: number) => {
@@ -76,35 +137,39 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         </div>
         
         {/* 🔬 1. TOP SECTION — Summary Card */}
-        <Card className={`${scoreLabel.bgColor} border-2 backdrop-blur-sm transition-all duration-300`}>
+        <Card className={`${scoreLabel.bgColor} border-2 backdrop-blur-sm transition-all duration-300 shadow-xl`}>
           <CardContent className="p-8 text-center">
             {/* Product Name */}
-            <h1 className="text-2xl font-bold text-foreground mb-4">{result.itemName}</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-6">{result.itemName}</h1>
             
-            {/* Health Score Circle */}
-            <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 mb-6">
-              <span className="text-2xl font-bold text-foreground">{result.healthScore * 10}%</span>
+            {/* Health Score Circular Progress */}
+            <div className="mb-4">
+              <CircularProgress percentage={result.healthScore * 10} size={140} strokeWidth={10} />
             </div>
-            <div className="text-sm text-muted-foreground mb-4">Health Score</div>
+            <div className="text-sm text-muted-foreground mb-6">Health Score</div>
             
             {/* Star Rating */}
             <div className="flex justify-center space-x-1 mb-6">
               {[...Array(5)].map((_, i) => (
                 <Star 
                   key={i} 
-                  className={`w-6 h-6 ${i < starCount ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} 
+                  className={`w-7 h-7 transition-all duration-200 ${
+                    i < starCount 
+                      ? 'text-yellow-400 fill-yellow-400 drop-shadow-lg' 
+                      : 'text-gray-300'
+                  }`} 
                 />
               ))}
             </div>
             
             {/* Large Status Label */}
-            <div className={`inline-flex items-center space-x-3 px-6 py-3 rounded-2xl ${scoreLabel.bgColor} border-2 mb-4`}>
-              <span className="text-2xl">{scoreLabel.icon}</span>
-              <span className={`text-xl font-bold ${scoreLabel.color}`}>{scoreLabel.label}</span>
+            <div className={`inline-flex items-center space-x-3 px-8 py-4 rounded-2xl ${scoreLabel.bgColor} border-2 mb-6 shadow-lg`}>
+              <span className="text-3xl">{scoreLabel.icon}</span>
+              <span className={`text-2xl font-bold ${scoreLabel.color}`}>{scoreLabel.label}</span>
             </div>
             
-            {/* Optional Message */}
-            <p className={`text-lg ${scoreLabel.color} font-medium`}>
+            {/* Friendly Message */}
+            <p className={`text-lg ${scoreLabel.color} font-medium leading-relaxed`}>
               {getScoreMessage(result.healthScore)}
             </p>
           </CardContent>
@@ -279,17 +344,39 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                 </div>
               )}
               
-              {/* Default commentary when no specific warnings/suggestions */}
+              {/* Enhanced Default commentary */}
               {result.personalizedWarnings.length === 0 && result.suggestions.length === 0 && (
                 <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                  <p className="text-purple-800 font-medium">
-                    {result.healthScore >= 8 
-                      ? "This is a great option if you're looking for a healthier choice. Keep up the good work with mindful food selection!"
-                      : result.healthScore >= 4
-                      ? "This product is okay in moderation. Consider looking for alternatives with fewer additives for optimal health."
-                      : "Consider avoiding this product regularly. Look for simpler alternatives with fewer processed ingredients."
-                    }
-                  </p>
+                  <div className="space-y-3">
+                    {result.healthScore >= 8 ? (
+                      <>
+                        <p className="text-purple-800 font-medium">
+                          "This is a great option if you're avoiding added sugars and processed ingredients."
+                        </p>
+                        <p className="text-purple-700">
+                          "Keep up the excellent work with mindful food choices - your body will thank you!"
+                        </p>
+                      </>
+                    ) : result.healthScore >= 4 ? (
+                      <>
+                        <p className="text-purple-800 font-medium">
+                          "This product is okay in moderation, but consider alternatives with cleaner ingredients."
+                        </p>
+                        <p className="text-purple-700">
+                          "Some users prefer products without artificial additives for optimal health benefits."
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-purple-800 font-medium">
+                          "Consider avoiding this product regularly - it contains several concerning ingredients."
+                        </p>
+                        <p className="text-purple-700">
+                          "Look for simpler alternatives with whole food ingredients and fewer additives."
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -326,8 +413,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
 
           <Button
             onClick={onClose}
-            variant="outline"
-            className="border-2 border-red-500 text-red-600 hover:bg-red-50 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-red-500 hover:bg-red-600 text-white py-4 px-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
           >
             <X className="w-5 h-5 mr-2" />
             Cancel
