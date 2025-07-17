@@ -7,6 +7,8 @@ import { HealthAnalysisLoading } from './HealthAnalysisLoading';
 import { HealthReportPopup } from './HealthReportPopup';
 import { ManualEntryFallback } from './ManualEntryFallback';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 interface HealthCheckModalProps {
   isOpen: boolean;
@@ -53,6 +55,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const [loadingMessage, setLoadingMessage] = useState('');
   const [analysisType, setAnalysisType] = useState<'barcode' | 'image' | 'manual'>('image');
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -66,37 +69,77 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   const handleImageCapture = async (imageData: string) => {
     try {
       setCurrentState('loading');
-      setLoadingMessage('Scanning for barcodes...');
+      setLoadingMessage('Analyzing image...');
+      setAnalysisType('image');
       
-      // Simulate scanning process
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('🖼️ Processing image capture, sending to health-check-processor...');
       
-      // First try to detect barcode
-      const hasBarcodeResult = await detectBarcode(imageData);
-      
-      if (hasBarcodeResult.hasBarcode) {
-        setAnalysisType('barcode');
-        setLoadingMessage('Barcode detected! Analyzing product...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const result = await analyzeBarcode(hasBarcodeResult.barcode);
-        setAnalysisResult(result);
-        setCurrentState('report');
-      } else {
-        setAnalysisType('image');
-        setLoadingMessage('No barcode found. Analyzing food image...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const result = await analyzeFood(imageData);
-        if (result) {
-          setAnalysisResult(result);
-          setCurrentState('report');
-        } else {
-          setCurrentState('fallback');
+      const { data, error } = await supabase.functions.invoke('health-check-processor', {
+        body: {
+          inputType: 'image',
+          data: imageData,
+          userId: user?.id
         }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to analyze image');
       }
+
+      console.log('✅ Health check processor response:', data);
+      console.log('🏥 Health Score:', data.healthScore);
+      console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
+      
+      // Log whether barcode was detected or Google Vision/GPT was used
+      if (data.barcode) {
+        console.log('📊 Barcode detected:', data.barcode);
+        setAnalysisType('barcode');
+      } else {
+        console.log('🔍 No barcode found - using Google Vision + GPT analysis');
+      }
+      
+      // Transform the backend response to match frontend interface
+      const result: HealthAnalysisResult = {
+        itemName: data.productName || 'Unknown Item',
+        healthScore: data.healthScore || 0,
+        ingredientFlags: (data.healthFlags || []).map((flag: any) => ({
+          ingredient: flag.title,
+          flag: flag.description,
+          severity: flag.type === 'danger' ? 'high' : flag.type === 'warning' ? 'medium' : 'low'
+        })),
+        nutritionData: data.nutritionSummary || {},
+        healthProfile: {
+          isOrganic: data.ingredients?.includes('organic') || false,
+          isGMO: data.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
+          allergens: data.ingredients?.filter((ing: string) => 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].some(allergen => 
+              ing.toLowerCase().includes(allergen)
+            )
+          ) || [],
+          preservatives: data.ingredients?.filter((ing: string) => 
+            ing.toLowerCase().includes('preservative') || 
+            ing.toLowerCase().includes('sodium benzoate') ||
+            ing.toLowerCase().includes('potassium sorbate')
+          ) || [],
+          additives: data.ingredients?.filter((ing: string) => 
+            ing.toLowerCase().includes('artificial') || 
+            ing.toLowerCase().includes('flavor') ||
+            ing.toLowerCase().includes('color')
+          ) || []
+        },
+        personalizedWarnings: Array.isArray(data.recommendations) ? 
+          data.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
+        suggestions: Array.isArray(data.recommendations) ? data.recommendations : [data.generalSummary || 'No specific recommendations available.'],
+        overallRating: data.healthScore >= 80 ? 'excellent' : 
+                      data.healthScore >= 60 ? 'good' : 
+                      data.healthScore >= 40 ? 'fair' : 
+                      data.healthScore >= 20 ? 'poor' : 'avoid'
+      };
+
+      setAnalysisResult(result);
+      setCurrentState('report');
     } catch (error) {
-      console.error('Analysis failed:', error);
+      console.error('❌ Analysis failed:', error);
       toast({
         title: "Analysis Failed",
         description: "Unable to analyze the image. Please try again or use manual entry.",
@@ -112,25 +155,69 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       setAnalysisType('manual');
       setLoadingMessage(type === 'voice' ? 'Processing voice input...' : 'Searching food database...');
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`📝 Processing ${type} input:`, query);
       
-      const result = await searchFoodDatabase(query);
-      if (result) {
-        setAnalysisResult(result);
-        setCurrentState('report');
-      } else {
-        toast({
-          title: "Food Not Found",
-          description: "Unable to find nutritional information for this item.",
-          variant: "destructive",
-        });
-        setCurrentState('fallback');
+      const { data, error } = await supabase.functions.invoke('health-check-processor', {
+        body: {
+          inputType: type,
+          data: query,
+          userId: user?.id
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || `Failed to process ${type} input`);
       }
+
+      console.log('✅ Manual entry processor response:', data);
+      console.log('🏥 Health Score:', data.healthScore);
+      console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
+      
+      // Transform the backend response to match frontend interface
+      const result: HealthAnalysisResult = {
+        itemName: data.productName || query,
+        healthScore: data.healthScore || 0,
+        ingredientFlags: (data.healthFlags || []).map((flag: any) => ({
+          ingredient: flag.title,
+          flag: flag.description,
+          severity: flag.type === 'danger' ? 'high' : flag.type === 'warning' ? 'medium' : 'low'
+        })),
+        nutritionData: data.nutritionSummary || {},
+        healthProfile: {
+          isOrganic: data.ingredients?.includes('organic') || false,
+          isGMO: data.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
+          allergens: data.ingredients?.filter((ing: string) => 
+            ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].some(allergen => 
+              ing.toLowerCase().includes(allergen)
+            )
+          ) || [],
+          preservatives: data.ingredients?.filter((ing: string) => 
+            ing.toLowerCase().includes('preservative') || 
+            ing.toLowerCase().includes('sodium benzoate') ||
+            ing.toLowerCase().includes('potassium sorbate')
+          ) || [],
+          additives: data.ingredients?.filter((ing: string) => 
+            ing.toLowerCase().includes('artificial') || 
+            ing.toLowerCase().includes('flavor') ||
+            ing.toLowerCase().includes('color')
+          ) || []
+        },
+        personalizedWarnings: Array.isArray(data.recommendations) ? 
+          data.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
+        suggestions: Array.isArray(data.recommendations) ? data.recommendations : [data.generalSummary || 'No specific recommendations available.'],
+        overallRating: data.healthScore >= 80 ? 'excellent' : 
+                      data.healthScore >= 60 ? 'good' : 
+                      data.healthScore >= 40 ? 'fair' : 
+                      data.healthScore >= 20 ? 'poor' : 'avoid'
+      };
+
+      setAnalysisResult(result);
+      setCurrentState('report');
     } catch (error) {
-      console.error('Manual analysis failed:', error);
+      console.error(`❌ ${type} analysis failed:`, error);
       toast({
-        title: "Search Failed",
-        description: "Unable to search the food database. Please try again.",
+        title: "Analysis Failed",
+        description: `Unable to process ${type} input. Please try again.`,
         variant: "destructive",
       });
       setCurrentState('fallback');
@@ -188,104 +275,25 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   );
 };
 
-// Simulated API functions - these would be replaced with real API calls
-async function detectBarcode(imageData: string): Promise<{ hasBarcode: boolean; barcode?: string }> {
-  // Simulate barcode detection
-  const random = Math.random();
-  if (random > 0.7) {
-    return { hasBarcode: true, barcode: '123456789012' };
+// Helper function to handle barcode input specifically
+export const handleBarcodeInput = async (barcode: string, userId?: string) => {
+  console.log('📊 Processing barcode input:', barcode);
+  
+  const { data, error } = await supabase.functions.invoke('health-check-processor', {
+    body: {
+      inputType: 'barcode',
+      data: barcode,
+      userId: userId
+    }
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to analyze barcode');
   }
-  return { hasBarcode: false };
-}
 
-async function analyzeBarcode(barcode: string): Promise<HealthAnalysisResult> {
-  // Simulate barcode analysis
-  return {
-    itemName: 'Organic Quinoa Chips',
-    healthScore: 85,
-    ingredientFlags: [
-      { ingredient: 'Natural Flavors', flag: 'Synthetic additive', severity: 'low' }
-    ],
-    nutritionData: {
-      calories: 140,
-      protein: 3,
-      carbs: 18,
-      fat: 7,
-      fiber: 3,
-      sugar: 1,
-      sodium: 180
-    },
-    healthProfile: {
-      isOrganic: true,
-      isGMO: false,
-      allergens: [],
-      preservatives: [],
-      additives: ['Natural Flavors']
-    },
-    personalizedWarnings: [],
-    suggestions: ['Great choice! This snack aligns with your health goals.'],
-    overallRating: 'good'
-  };
-}
-
-async function analyzeFood(imageData: string): Promise<HealthAnalysisResult | null> {
-  // Simulate food image analysis
-  const random = Math.random();
-  if (random > 0.3) {
-    return {
-      itemName: 'Grilled Chicken Salad',
-      healthScore: 92,
-      ingredientFlags: [],
-      nutritionData: {
-        calories: 320,
-        protein: 35,
-        carbs: 12,
-        fat: 15,
-        fiber: 6,
-        sugar: 8,
-        sodium: 480
-      },
-      healthProfile: {
-        isOrganic: false,
-        isGMO: false,
-        allergens: [],
-        preservatives: [],
-        additives: []
-      },
-      personalizedWarnings: [],
-      suggestions: ['Excellent choice! High in protein and nutrients.'],
-      overallRating: 'excellent'
-    };
-  }
-  return null;
-}
-
-async function searchFoodDatabase(query: string): Promise<HealthAnalysisResult | null> {
-  // Simulate database search
-  return {
-    itemName: query,
-    healthScore: 75,
-    ingredientFlags: [
-      { ingredient: 'High Sodium', flag: 'Exceeds daily recommended intake', severity: 'medium' }
-    ],
-    nutritionData: {
-      calories: 250,
-      protein: 12,
-      carbs: 35,
-      fat: 8,
-      fiber: 4,
-      sugar: 6,
-      sodium: 890
-    },
-    healthProfile: {
-      isOrganic: false,
-      isGMO: true,
-      allergens: ['Gluten'],
-      preservatives: ['Sodium Benzoate'],
-      additives: []
-    },
-    personalizedWarnings: ['High sodium content may affect blood pressure'],
-    suggestions: ['Consider low-sodium alternatives'],
-    overallRating: 'fair'
-  };
-}
+  console.log('✅ Barcode processor response:', data);
+  console.log('🏥 Health Score:', data.healthScore);
+  console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
+  
+  return data;
+};
