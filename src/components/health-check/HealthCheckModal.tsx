@@ -114,6 +114,43 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       console.log('🏥 Health Score:', data.healthScore);
       console.log('🚩 Health Flags:', data.healthFlags?.length || 0, 'flags detected');
       
+      // Check if image recognition failed based on various criteria
+      const isImageRecognitionFailure = (
+        // No meaningful product name detected
+        !data.productName || 
+        data.productName === 'Unknown Product' || 
+        data.productName === 'Unknown Item' || 
+        data.productName === 'Error' ||
+        data.productName === 'Detected Food' ||
+        // Very low confidence or health score indicating poor recognition
+        data.healthScore === 0 ||
+        // Specific failure indicators in health flags
+        data.healthFlags?.some((flag: any) => 
+          flag.title === 'Processing Error' || 
+          flag.title === 'Product Not Found' ||
+          flag.description?.includes('Unable to parse') ||
+          flag.description?.includes('couldn\'t identify')
+        ) ||
+        // Empty or minimal ingredients suggesting failed recognition
+        (!data.ingredients || data.ingredients.length === 0 || 
+         (data.ingredients.length === 1 && data.ingredients[0] === 'Unable to parse ingredients'))
+      );
+
+      if (isImageRecognitionFailure) {
+        console.log('🚨 Image recognition failed - redirecting to manual entry');
+        console.log('💡 Failure criteria met:', {
+          productName: data.productName,
+          healthScore: data.healthScore,
+          ingredientsCount: data.ingredients?.length || 0,
+          hasErrorFlags: data.healthFlags?.some((flag: any) => 
+            flag.title === 'Processing Error' || 
+            flag.title === 'Product Not Found'
+          )
+        });
+        setCurrentState('fallback');
+        return;
+      }
+      
       // Log whether barcode was detected or Google Vision/GPT was used
       if (data.barcode) {
         console.log('📊 Barcode detected:', data.barcode);
