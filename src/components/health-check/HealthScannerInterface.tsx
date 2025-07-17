@@ -83,7 +83,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const captureImage = () => {
+  const captureImage = async () => {
     console.log("📸 HealthScannerInterface.captureImage called!");
     
     if (!videoRef.current || !canvasRef.current) {
@@ -122,11 +122,41 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
       dataPrefix: imageData.substring(0, 50)
     });
     
-    setTimeout(() => {
-      console.log("⏰ Timeout complete, calling onCapture...");
-      console.log("📤 About to send image data to handleImageCapture");
-      onCapture(imageData);
-    }, 1500);
+    // Try to detect barcodes in the image first
+    try {
+      console.log("🔍 Checking for barcodes in image...");
+      const { data: barcodeData, error } = await supabase.functions.invoke('barcode-image-detector', {
+        body: { imageBase64: imageData.split(',')[1] }
+      });
+      
+      if (error) {
+        console.error("❌ Barcode detection error:", error);
+      } else {
+        console.log("✅ Barcode detection result:", barcodeData);
+        
+        // If barcode was found, proceed with it
+        if (barcodeData.barcode) {
+          console.log("📊 Barcode found:", barcodeData.barcode);
+          
+          // If we have valid product data from OpenFoodFacts API
+          if (barcodeData.productData) {
+            console.log("🛒 OpenFoodFacts product found:", barcodeData.productData.product_name);
+          }
+          
+          // Send the full image but include the barcode info for processing
+          onCapture(imageData + `&barcode=${barcodeData.barcode}`);
+          return;
+        } else {
+          console.log("⚠️ No barcode found in image, proceeding with image analysis");
+        }
+      }
+    } catch (barcodeError) {
+      console.error("❌ Error during barcode detection:", barcodeError);
+    }
+    
+    // No barcode found, proceed with standard image capture
+    console.log("⏰ Proceeding with standard image analysis...");
+    onCapture(imageData);
   };
 
   const handleManualEntry = () => {

@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.detect-toxins]
 verify_jwt = false
+
+[functions.barcode-image-detector]
+verify_jwt = false

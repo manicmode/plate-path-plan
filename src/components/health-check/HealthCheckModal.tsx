@@ -74,17 +74,102 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     try {
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
+      
+      // Check if image contains a barcode (appended from HealthScannerInterface)
+      const barcodeMatch = imageData.match(/&barcode=(\d+)$/);
+      const detectedBarcode = barcodeMatch ? barcodeMatch[1] : null;
+      
+      if (detectedBarcode) {
+        console.log('📊 Barcode detected in image:', detectedBarcode);
+        setAnalysisType('barcode');
+        setLoadingMessage('Processing barcode...');
+        
+        // Remove the barcode part from the image data
+        const cleanImageData = imageData.replace(/&barcode=\d+$/, '');
+        
+        // Use the dedicated barcode processor
+        try {
+          console.log('🔄 Processing barcode:', detectedBarcode);
+          const result = await handleBarcodeInput(detectedBarcode, user?.id);
+          
+          if (!result) {
+            console.log('⚠️ No results from barcode lookup, falling back to image analysis');
+            // If barcode lookup fails, continue with regular image analysis
+            return handleImageCapture(cleanImageData);
+          }
+          
+          // Log successful barcode analysis
+          console.log('✅ Barcode analysis complete:', {
+            productName: result.productName,
+            healthScore: result.healthScore
+          });
+          
+          // Transform the backend response to match frontend interface
+          const analysisResult: HealthAnalysisResult = {
+            itemName: result.productName || 'Unknown Item',
+            healthScore: result.healthScore || 0,
+            ingredientFlags: (result.healthFlags || []).map((flag: any) => ({
+              ingredient: flag.title,
+              flag: flag.description,
+              severity: flag.type === 'danger' ? 'high' : flag.type === 'warning' ? 'medium' : 'low'
+            })),
+            nutritionData: result.nutritionSummary || {},
+            healthProfile: {
+              isOrganic: result.ingredients?.includes('organic') || false,
+              isGMO: result.ingredients?.some((ing: string) => ing.toLowerCase().includes('gmo')) || false,
+              allergens: result.ingredients?.filter((ing: string) => 
+                ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy'].some(allergen => 
+                  ing.toLowerCase().includes(allergen)
+                )
+              ) || [],
+              preservatives: result.ingredients?.filter((ing: string) => 
+                ing.toLowerCase().includes('preservative') || 
+                ing.toLowerCase().includes('sodium benzoate') ||
+                ing.toLowerCase().includes('potassium sorbate')
+              ) || [],
+              additives: result.ingredients?.filter((ing: string) => 
+                ing.toLowerCase().includes('artificial') || 
+                ing.toLowerCase().includes('flavor') ||
+                ing.toLowerCase().includes('color')
+              ) || []
+            },
+            personalizedWarnings: Array.isArray(result.recommendations) ? 
+              result.recommendations.filter((rec: string) => rec.toLowerCase().includes('warning') || rec.toLowerCase().includes('avoid')) : [],
+            suggestions: Array.isArray(result.recommendations) ? result.recommendations : [result.summary || 'No specific recommendations available.'],
+            overallRating: result.healthScore >= 80 ? 'excellent' : 
+                          result.healthScore >= 60 ? 'good' : 
+                          result.healthScore >= 40 ? 'fair' : 
+                          result.healthScore >= 20 ? 'poor' : 'avoid'
+          };
+          
+          setAnalysisResult(analysisResult);
+          setCurrentState('report');
+          return;
+        } catch (barcodeError) {
+          console.error('❌ Barcode analysis failed:', barcodeError);
+          // Continue with image analysis as fallback
+          console.log('🔄 Falling back to image analysis...');
+        }
+      }
+      
+      // If no barcode or barcode processing failed, proceed with image analysis
       setAnalysisType('image');
       
       console.log('🖼️ About to call health-check-processor function...');
       console.log('📡 Function URL should be: https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/health-check-processor');
       
+      // Clean image data if it contains a barcode parameter
+      const cleanImageData = detectedBarcode ? 
+        imageData.replace(/&barcode=\d+$/, '') : 
+        imageData;
+        
       // Log the exact payload being sent
       const payload = {
         inputType: 'image',
-        data: imageData,
+        data: cleanImageData,
         userId: user?.id
       };
+      
       console.log('📦 Payload being sent:', {
         inputType: payload.inputType,
         dataLength: payload.data?.length || 0,
@@ -153,7 +238,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       // Log whether barcode was detected or Google Vision/GPT was used
       if (data.barcode) {
-        console.log('📊 Barcode detected:', data.barcode);
+        console.log('📊 Barcode detected in response:', data.barcode);
         setAnalysisType('barcode');
       } else {
         console.log('🔍 No barcode found - using Google Vision + GPT analysis');
