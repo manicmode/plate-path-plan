@@ -47,7 +47,7 @@ export const SupplementDetailModal = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto max-h-[75vh] p-6">
+        <div className="overflow-y-auto max-h-[75vh] p-6 pb-24">
           {/* Large Image and Name */}
           <div className="text-center space-y-4">
             <div className="text-6xl">{supplement.image}</div>
