@@ -1345,8 +1345,8 @@ const Home = () => {
       </div>
 
       {/* Explore Tiles Section */}
-      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="flex-1 flex flex-col px-2 sm:px-4">
+        <div className="flex-1 grid grid-cols-2 gap-4">
           {(() => {
             const exploreTiles = [
               {
@@ -1427,9 +1427,6 @@ const Home = () => {
           })()}
         </div>
       </div>
-
-      {/* Extra bottom padding to ensure menu is always visible */}
-      <div className={`${isMobile ? 'pb-24' : 'pb-32'}`}></div>
 
       {/* Tracker Insights Popup */}
       {selectedTracker && (
