@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -21,6 +23,10 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [currentView, setCurrentView] = useState<'scanner' | 'manual' | 'notRecognized'>('scanner');
   const [barcodeInput, setBarcodeInput] = useState('');
+  const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (currentView === 'scanner') {
@@ -109,20 +115,61 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     setCurrentView('manual');
   };
 
-  const handleSearchDatabase = () => {
+  const handleSearchDatabase = async () => {
     if (barcodeInput.trim()) {
-      // Simulate database search
-      onManualEntry();
+      // Trigger smart suggestions based on failed search
+      await generateSmartSuggestions(barcodeInput);
+      setShowSuggestions(true);
+      // Simulate database search failure to show suggestions
+      setTimeout(() => {
+        console.log('Search failed - showing suggestions');
+      }, 1000);
     }
   };
 
-  const quickSuggestions = [
-    "Coca Cola 12oz",
-    "Apple iPhone",
-    "Organic Bananas",
-    "Lay's Potato Chips",
-    "Vitamin D3"
-  ];
+  const generateSmartSuggestions = async (userInput: string = '') => {
+    setIsLoadingSuggestions(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-smart-suggestions', {
+        body: { 
+          userInput: userInput.trim(),
+          userId: user?.id 
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data && data.suggestions) {
+        setSmartSuggestions(data.suggestions);
+      }
+    } catch (error) {
+      console.error('Error generating smart suggestions:', error);
+      // Fallback to default suggestions
+      setSmartSuggestions([
+        "Coca Cola 12oz Can",
+        "Lay's Classic Potato Chips", 
+        "Organic Bananas",
+        "Vitamin D3 1000 IU",
+        "Greek Yogurt - Plain"
+      ]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    // Auto-run health check for the suggestion
+    setBarcodeInput(suggestion);
+    onManualEntry(); // This will trigger the health check
+  };
+
+  // Load suggestions when view changes to notRecognized (scan failed)
+  useEffect(() => {
+    if (currentView === 'notRecognized') {
+      generateSmartSuggestions();
+      setShowSuggestions(true);
+    }
+  }, [currentView]);
 
   // Scanner View
   if (currentView === 'scanner') {
@@ -298,25 +345,31 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             </Button>
           </div>
 
-          {/* Quick Suggestions */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Lightbulb className="w-5 h-5 text-yellow-500" />
-              <span className="font-medium">Quick Suggestions</span>
+          {/* Quick Suggestions - Only show after failed search/voice input */}
+          {showSuggestions && smartSuggestions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Lightbulb className="w-5 h-5 text-yellow-500" />
+                <span className="font-medium">Quick Suggestions</span>
+                {isLoadingSuggestions && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {smartSuggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="justify-start text-left hover:bg-muted hover:bg-green-50 hover:border-green-300 transition-colors"
+                  >
+                    <span className="text-green-600 mr-2">🔍</span>
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {quickSuggestions.map((suggestion, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  onClick={() => setBarcodeInput(suggestion)}
-                  className="justify-start text-left hover:bg-muted"
-                >
-                  {suggestion}
-                </Button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -387,25 +440,31 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
             </Button>
           </div>
 
-          {/* Quick Suggestions */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Lightbulb className="w-5 h-5 text-yellow-500" />
-              <span className="font-medium">Quick Suggestions</span>
+          {/* Quick Suggestions - AI-powered and context-aware */}
+          {smartSuggestions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Lightbulb className="w-5 h-5 text-yellow-500" />
+                <span className="font-medium">Quick Suggestions</span>
+                {isLoadingSuggestions && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {smartSuggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="justify-start text-left hover:bg-muted hover:bg-green-50 hover:border-green-300 transition-colors"
+                  >
+                    <span className="text-green-600 mr-2">🔍</span>
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {quickSuggestions.map((suggestion, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  onClick={() => setBarcodeInput(suggestion)}
-                  className="justify-start text-left hover:bg-muted"
-                >
-                  {suggestion}
-                </Button>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Try Again Button */}
           <Button

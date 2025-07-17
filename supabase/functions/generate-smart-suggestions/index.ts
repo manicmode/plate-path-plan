@@ -1,0 +1,126 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { userInput, userId } = await req.json();
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    let suggestions: string[] = [];
+
+    // Priority 1: User Context - Generate suggestions based on user input
+    if (userInput && userInput.trim()) {
+      try {
+        const contextPrompt = `Generate 4-5 specific, realistic food/beverage product suggestions related to "${userInput}". 
+        Include brand names when possible. Format as a simple JSON array of strings. 
+        Examples: ["Quest Protein Bar - Chocolate", "KIND Bar - Almond", "RXBar - Peanut Butter"]`;
+
+        const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant that generates food product suggestions. Return only valid JSON arrays.' },
+              { role: 'user', content: contextPrompt }
+            ],
+            max_tokens: 200,
+            temperature: 0.7,
+          }),
+        });
+
+        if (openAIResponse.ok) {
+          const data = await openAIResponse.json();
+          const aiSuggestions = JSON.parse(data.choices[0].message.content);
+          if (Array.isArray(aiSuggestions) && aiSuggestions.length > 0) {
+            suggestions = aiSuggestions.slice(0, 5);
+          }
+        }
+      } catch (error) {
+        console.error('Error generating AI suggestions:', error);
+      }
+    }
+
+    // Priority 2: Platform Trends - Get most commonly checked items
+    if (suggestions.length === 0) {
+      try {
+        const { data: trendingItems } = await supabase
+          .from('nutrition_logs')
+          .select('food_name')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
+          .limit(100);
+
+        if (trendingItems && trendingItems.length > 0) {
+          // Count frequency and get top items
+          const foodCounts = trendingItems.reduce((acc: Record<string, number>, item) => {
+            acc[item.food_name] = (acc[item.food_name] || 0) + 1;
+            return acc;
+          }, {});
+
+          suggestions = Object.entries(foodCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5)
+            .map(([foodName]) => foodName);
+        }
+      } catch (error) {
+        console.error('Error fetching trending items:', error);
+      }
+    }
+
+    // Priority 3: Fallback Examples - Default rotating list
+    if (suggestions.length === 0) {
+      const fallbackSuggestions = [
+        "Coca Cola 12oz Can",
+        "Lay's Classic Potato Chips",
+        "Organic Bananas",
+        "Vitamin D3 1000 IU",
+        "DiGiorno Frozen Pizza",
+        "Gatorade Sports Drink",
+        "KIND Dark Chocolate Nuts Bar",
+        "Cheerios Cereal",
+        "Greek Yogurt - Plain",
+        "Red Bull Energy Drink"
+      ];
+
+      // Rotate based on time of day for variety
+      const hour = new Date().getHours();
+      const startIndex = hour % fallbackSuggestions.length;
+      suggestions = [
+        ...fallbackSuggestions.slice(startIndex, startIndex + 5),
+        ...fallbackSuggestions.slice(0, Math.max(0, 5 - (fallbackSuggestions.length - startIndex)))
+      ].slice(0, 5);
+    }
+
+    return new Response(
+      JSON.stringify({ suggestions }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in generate-smart-suggestions:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+});
