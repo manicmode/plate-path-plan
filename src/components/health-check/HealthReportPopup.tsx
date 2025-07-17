@@ -74,10 +74,10 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <h1 className="text-2xl font-bold text-foreground mb-4">{result.itemName}</h1>
             
             {/* Health Score Circle */}
-            <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 mb-4">
-              <span className="text-3xl font-bold text-foreground">{result.healthScore}</span>
-              <span className="absolute -bottom-8 text-sm text-muted-foreground">Health Score</span>
+            <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 mb-6">
+              <span className="text-2xl font-bold text-foreground">{result.healthScore * 10}%</span>
             </div>
+            <div className="text-sm text-muted-foreground mb-4">Health Score</div>
             
             {/* Star Rating */}
             <div className="flex justify-center space-x-1 mb-6">
@@ -113,18 +113,39 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           <CardContent>
             {result.ingredientFlags.length > 0 ? (
               <div className="space-y-3">
-                {result.ingredientFlags.map((flag, index) => (
-                  <div key={index} className="flex items-center space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                    <div className="flex-1">
-                      <span className="font-semibold text-red-800">{flag.flag}: </span>
-                      <span className="text-red-700">{flag.ingredient}</span>
+                {result.ingredientFlags.map((flag, index) => {
+                  const isLowSeverity = flag.severity.toLowerCase() === 'low';
+                  return (
+                    <div 
+                      key={index} 
+                      className={`flex items-center space-x-3 p-3 rounded-lg ${
+                        isLowSeverity 
+                          ? 'bg-green-50 border border-green-200' 
+                          : 'bg-red-50 border border-red-200'
+                      }`}
+                    >
+                      {isLowSeverity ? (
+                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <span className={`font-semibold ${isLowSeverity ? 'text-green-800' : 'text-red-800'}`}>
+                          {flag.flag}: 
+                        </span>
+                        <span className={`${isLowSeverity ? 'text-green-700' : 'text-red-700'}`}>
+                          {flag.ingredient}
+                        </span>
+                      </div>
+                      <Badge 
+                        variant={isLowSeverity ? "secondary" : "destructive"} 
+                        className="text-xs"
+                      >
+                        {flag.severity}
+                      </Badge>
                     </div>
-                    <Badge variant="destructive" className="text-xs">
-                      {flag.severity}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -136,15 +157,15 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         </Card>
 
         {/* 📊 3. NUTRITION FACTS */}
-        {hasValidNutrition(result.nutritionData) && (
-          <Card className="bg-card border-border backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <h3 className="text-xl font-bold text-foreground flex items-center">
-                <div className="text-2xl mr-3">📊</div>
-                NUTRITION FACTS
-              </h3>
-            </CardHeader>
-            <CardContent>
+        <Card className="bg-card border-border backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <h3 className="text-xl font-bold text-foreground flex items-center">
+              <div className="text-2xl mr-3">📊</div>
+              NUTRITION FACTS
+            </h3>
+          </CardHeader>
+          <CardContent>
+            {hasValidNutrition(result.nutritionData) ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Object.entries(result.nutritionData).map(([key, value]) => {
                   if (value === undefined || value === null || value === 0) return null;
@@ -174,9 +195,13 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="p-4 text-center text-muted-foreground">
+                Nutrition facts not available from scan data
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 🧪 4. INGREDIENT LIST */}
         <Card className="bg-card border-border backdrop-blur-sm">
