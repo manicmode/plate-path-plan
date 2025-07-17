@@ -56,6 +56,69 @@ const INGREDIENT_FLAGS = {
   ]
 };
 
+// Product name extraction function
+function extractProductNamesFromText(text: string): string[] {
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  const candidates: string[] = [];
+  
+  // Common brand patterns (case insensitive)
+  const knownBrands = [
+    'kirkland', 'oatly', 'ben & jerry\'s', 'coca cola', 'pepsi', 'heinz', 'kellogg\'s',
+    'general mills', 'nabisco', 'kraft', 'nestle', 'unilever', 'procter & gamble',
+    'johnson & johnson', 'tide', 'dove', 'axe', 'degree', 'suave', 'tresemme',
+    'pantene', 'head & shoulders', 'oral-b', 'crest', 'gillette', 'venus',
+    'always', 'tampax', 'pampers', 'huggies', 'bounty', 'charmin', 'cottonelle',
+    'scott', 'viva', 'brawny', 'sparkle', 'angel soft', 'quilted northern'
+  ];
+  
+  // Product type keywords
+  const productTypes = [
+    'milk', 'almond milk', 'oat milk', 'yogurt', 'cheese', 'butter', 'cream',
+    'ice cream', 'frozen', 'organic', 'natural', 'whole', 'low fat', 'fat free',
+    'unsweetened', 'vanilla', 'chocolate', 'strawberry', 'blueberry'
+  ];
+  
+  // Look for brand names in text
+  lines.forEach(line => {
+    const lowerLine = line.toLowerCase();
+    
+    // Check for known brands
+    knownBrands.forEach(brand => {
+      if (lowerLine.includes(brand)) {
+        candidates.push(line);
+      }
+    });
+    
+    // Look for lines with product types
+    if (productTypes.some(type => lowerLine.includes(type))) {
+      candidates.push(line);
+    }
+    
+    // Look for lines that appear to be product names (capitalized words, reasonable length)
+    if (line.length > 3 && line.length < 50 && /^[A-Z]/.test(line) && !/^\d/.test(line)) {
+      candidates.push(line);
+    }
+  });
+  
+  // Remove duplicates and sort by relevance
+  const uniqueCandidates = [...new Set(candidates)];
+  
+  // Prioritize shorter, cleaner names that look like product names
+  return uniqueCandidates
+    .filter(candidate => candidate.length > 3 && candidate.length < 50)
+    .sort((a, b) => {
+      // Prefer lines with brand names
+      const aHasBrand = knownBrands.some(brand => a.toLowerCase().includes(brand));
+      const bHasBrand = knownBrands.some(brand => b.toLowerCase().includes(brand));
+      if (aHasBrand && !bHasBrand) return -1;
+      if (!aHasBrand && bHasBrand) return 1;
+      
+      // Prefer shorter, cleaner names
+      return a.length - b.length;
+    })
+    .slice(0, 3); // Return top 3 candidates
+}
+
 function analyzeIngredients(ingredients: string[]): HealthFlag[] {
   const flags: HealthFlag[] = [];
   const ingredientText = ingredients.join(' ').toLowerCase();
@@ -176,11 +239,25 @@ async function analyzeImageWithGoogleVision(imageData: string): Promise<{ labels
       hasText: !!result.responses?.[0]?.textAnnotations
     });
 
-    const labels = result.responses[0]?.labelAnnotations?.map((label: any) => label.description) || [];
-    const text = result.responses[0]?.textAnnotations?.[0]?.description || '';
+    // Extract results from Vision API
+    const labelAnnotations = result.responses[0]?.labelAnnotations || [];
+    const logoAnnotations = result.responses[0]?.logoAnnotations || [];
+    const textAnnotations = result.responses[0]?.textAnnotations || [];
+    
+    const labels = labelAnnotations.map((label: any) => label.description);
+    const logos = logoAnnotations.map((logo: any) => ({ 
+      description: logo.description, 
+      score: logo.score 
+    }));
+    const text = textAnnotations[0]?.description || '';
 
-    console.log('🏷️ Extracted labels:', labels.slice(0, 3));
-    console.log('📝 Extracted text length:', text.length);
+    console.log('🏷️ Extracted labels:', labels.slice(0, 5));
+    console.log('📱 Detected logos:', logos);
+    console.log('📝 Extracted text preview:', text.substring(0, 200));
+    
+    // Extract potential product names from text
+    const productNameCandidates = extractProductNamesFromText(text);
+    console.log('🎯 Product name candidates:', productNameCandidates);
 
     return { labels, text };
   } catch (error) {
@@ -356,6 +433,10 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
   if (input.type === 'image' && input.imageData) {
     const { labels, text } = await analyzeImageWithGoogleVision(input.imageData);
     
+    // Extract product name candidates from text using our specialized function
+    const productNameCandidates = extractProductNamesFromText(text);
+    console.log(`Found ${productNameCandidates.length} potential product names from text:`, productNameCandidates);
+    
     // Check if barcode was found in image text
     const imageBarcodeMatch = text.match(/\b\d{8,13}\b/);
     if (imageBarcodeMatch) {
@@ -371,24 +452,38 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
       !['text', 'font', 'number', 'brand'].includes(label.toLowerCase())
     );
     
-    const gptPrompt = `Analyze this food product based on image detection results: ${foodLabels.join(', ')}. 
+    // Use extracted product name candidates in the GPT prompt if available
+    const productNameHint = productNameCandidates.length > 0 
+      ? `Product name candidates: ${productNameCandidates.join(', ')}. ` 
+      : '';
+    
+    const gptPrompt = `${productNameHint}Analyze this food product based on image detection results: ${foodLabels.join(', ')}. 
     Return a JSON object with:
     {
-      "productName": "detected food name",
+      "productName": "detected food name - be specific with brand if possible",
       "ingredients": ["list of likely ingredients"],
       "nutritionSummary": "brief nutritional overview"
     }`;
+    
+    console.log('Sending GPT prompt with product name candidates:', productNameHint);
     
     const gptResult = await analyzeWithGPT(gptPrompt);
     const healthFlags = analyzeIngredients(gptResult.ingredients || []);
     const healthScore = calculateHealthScore(healthFlags);
     
+    // If GPT couldn't detect a product name but we have candidates from text, use the best candidate
+    let finalProductName = gptResult.productName || "Detected Food";
+    if ((finalProductName === "Detected Food" || finalProductName === "Unknown Product") && productNameCandidates.length > 0) {
+      finalProductName = productNameCandidates[0]; // Use the best candidate
+      console.log(`Using extracted product name from text: ${finalProductName}`);
+    }
+    
     return {
-      productName: gptResult.productName || "Detected Food",
+      productName: finalProductName,
       ingredients: gptResult.ingredients || [],
       healthFlags,
       healthScore,
-      nutritionData: null, // Image analysis doesn't provide structured nutrition data
+      nutritionData: gptResult.nutritionSummary || null,
       summary: generateHealthSummary(healthFlags, healthScore),
       recommendations: generateRecommendations(healthFlags)
     };

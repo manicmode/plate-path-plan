@@ -142,15 +142,19 @@ serve(async (req) => {
             features: [
               {
                 type: 'LABEL_DETECTION',
+                maxResults: 20, // Increased from 10 to get more potential product labels
+              },
+              {
+                type: 'LOGO_DETECTION', // Added logo detection for better brand identification
                 maxResults: 10,
               },
               {
                 type: 'TEXT_DETECTION',
-                maxResults: 5, // Reduced from 10
+                maxResults: 10, // Increased to get more text that might include product names
               },
               {
                 type: 'OBJECT_LOCALIZATION',
-                maxResults: 5, // Reduced from 10
+                maxResults: 5,
               },
             ],
           },
