@@ -36,9 +36,10 @@ export const SupplementListModal = ({
       <DialogContent 
         className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0 relative"
         showCloseButton={false}
-        onEscapeKeyDown={onClose}
-        onPointerDownOutside={onClose}
       >
+        {/* Debug message to confirm modal renders */}
+        <div className="absolute top-2 left-2 text-xs text-primary z-50">Modal loaded!</div>
+        
         {/* Custom Close Button */}
         <button
           onClick={onClose}
