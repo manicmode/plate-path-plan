@@ -408,7 +408,7 @@ const SupplementHub = () => {
         
         {/* Scrolling Ticker */}
         <div className="overflow-hidden whitespace-nowrap bg-gradient-to-r from-transparent via-muted/20 to-transparent py-3 mb-4">
-          <div className="animate-[marquee_8s_linear_infinite] text-3xl text-muted-foreground font-medium">
+          <div className="animate-[marquee_15s_linear_infinite] text-xl text-muted-foreground font-medium">
             Smart AI-powered supplement recommendations based on your health, goals, and nutrition profile.
           </div>
         </div>
