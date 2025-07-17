@@ -53,8 +53,16 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
   const starCount = getStarRating(result.healthScore);
 
   return (
-    <div className="w-full h-full bg-background overflow-auto">
+    <div className="w-full min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-6 space-y-6">
+        
+        {/* 🧬 Health Report Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground flex items-center justify-center">
+            <span className="text-4xl mr-3">🧬</span>
+            Health Report
+          </h1>
+        </div>
         
         {/* 🔬 1. TOP SECTION — Summary Card */}
         <Card className={`${scoreLabel.bgColor} border-2 backdrop-blur-sm transition-all duration-300`}>

@@ -261,7 +261,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-full max-h-full w-full h-full p-0 border-0 bg-black overflow-hidden">
+      <DialogContent 
+        className={`max-w-full max-h-full w-full h-full p-0 border-0 ${
+          currentState === 'report' ? 'bg-background overflow-auto' : 'bg-black overflow-hidden'
+        }`}
+        showCloseButton={false}
+      >
         <div className="relative w-full h-full">
           {/* Main Content */}
           {currentState === 'scanner' && (
