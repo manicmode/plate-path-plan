@@ -21,6 +21,7 @@ import { useToxinDetections } from '@/hooks/useToxinDetections';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
+import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1402,6 +1403,7 @@ const Home = () => {
               return (
               <Button
                 key={tile.id}
+                onClick={() => handleTileClick(tile.id)}
                 variant="ghost"
                 className={`
                   group relative h-full min-h-[180px] p-6 rounded-3xl 
@@ -1436,6 +1438,7 @@ const Home = () => {
                 </span>
               </Button>
             );
+            });
           })()}
         </div>
       </div>
