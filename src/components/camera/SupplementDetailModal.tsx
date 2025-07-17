@@ -32,7 +32,7 @@ export const SupplementDetailModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 mx-6 shadow-2xl">
+      <DialogContent className="max-w-sm max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 mx-6 shadow-2xl flex flex-col justify-center">
         {/* Header with Back Button */}
         <div className="flex items-center space-x-4 p-6 pb-4">
           <Button
