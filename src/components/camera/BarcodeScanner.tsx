@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, ScanBarcode, AlertCircle, FileText, Smartphone, Globe } from 'lucide-react';
+import { X, ScanBarcode, AlertCircle, FileText } from 'lucide-react';
 import { BarcodeScanner as CapBarcodeScanner, BarcodeFormat, LensFacing } from '@capacitor-mlkit/barcode-scanning';
-import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
-import { WebBarcodeScanner } from './WebBarcodeScanner';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -22,58 +20,25 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [showWebScanner, setShowWebScanner] = useState(false);
   const [barcodeValue, setBarcodeValue] = useState('');
-  const [platformInfo, setPlatformInfo] = useState({
-    isNative: false,
-    isWeb: false,
-    platform: 'unknown'
-  });
 
   useEffect(() => {
-    const checkPlatformAndSupport = async () => {
-      // Detect platform
-      const isNative = Capacitor.isNativePlatform();
-      const platform = Capacitor.getPlatform();
-      const isWeb = platform === 'web';
-
-      setPlatformInfo({
-        isNative,
-        isWeb,
-        platform
-      });
-
-      if (isNative) {
-        // Native app - check ML Kit support
-        try {
-          const result = await CapBarcodeScanner.isSupported();
-          setIsSupported(result.supported);
-          if (!result.supported) {
-            setError('ML Kit barcode scanning is not available on this device');
-          }
-        } catch (err) {
-          console.error('Error checking ML Kit support:', err);
-          setIsSupported(false);
-          setError('Unable to access native barcode scanner');
+    const checkSupport = async () => {
+      try {
+        const result = await CapBarcodeScanner.isSupported();
+        setIsSupported(result.supported);
+        if (!result.supported) {
+          setError('Barcode scanning is not supported on this device');
         }
-      } else {
-        // Web browser - check camera access
-        try {
-          const hasCamera = 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
-          setIsSupported(hasCamera);
-          if (!hasCamera) {
-            setError('Camera access is not available in this browser');
-          }
-        } catch (err) {
-          console.error('Error checking camera support:', err);
-          setIsSupported(false);
-          setError('Unable to access camera');
-        }
+      } catch (err) {
+        console.error('Error checking barcode scanner support:', err);
+        setIsSupported(false);
+        setError('Unable to access barcode scanner');
       }
     };
 
     if (isOpen) {
-      checkPlatformAndSupport();
+      checkSupport();
     }
   }, [isOpen]);
 
@@ -152,7 +117,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       await stopScan();
     }
     setShowManualEntry(false);
-    setShowWebScanner(false);
     setBarcodeValue('');
     onClose();
   };
@@ -184,52 +148,18 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     setBarcodeValue(value);
   };
 
-  // Enhanced platform-specific information
-  const PlatformInfoDisplay = () => (
-    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800 mb-4">
-      <div className="flex items-center gap-2 mb-2">
-        {platformInfo.isNative ? (
-          <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        ) : (
-          <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        )}
-        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-          {platformInfo.isNative ? 'Native App' : 'Web Browser'}
-        </span>
-      </div>
-      <p className="text-xs text-blue-600 dark:text-blue-400">
-        {platformInfo.isNative 
-          ? 'Full ML Kit barcode scanning with advanced features'
-          : 'Browser-based camera scanning with basic barcode support'
-        }
-      </p>
-    </div>
-  );
-
   // Enhanced fallback for unsupported devices
   const UnsupportedDeviceFallback = () => (
     <div className="flex flex-col items-center justify-center space-y-4 p-6">
-      <AlertCircle className="h-16 w-16 text-red-400 mb-2" />
+      <ScanBarcode className="h-16 w-16 text-gray-400 mb-2" />
       <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 text-center">
-        {platformInfo.isNative ? 'ML Kit Not Available' : 'Camera Access Denied'}
+        Barcode Scanning Not Available
       </h3>
       <p className="text-gray-600 dark:text-gray-400 text-center text-sm mb-4">
-        {platformInfo.isNative 
-          ? 'This device doesn\'t support ML Kit barcode scanning.'
-          : 'Camera permissions are required for barcode scanning.'
-        }
+        Your device doesn't support barcode scanning. Try these alternatives:
       </p>
       
       <div className="w-full space-y-3">
-        {!platformInfo.isNative && (
-          <Button
-            onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Retry Camera Access
-          </Button>
-        )}
-        
         <input
           type="text"
           placeholder="Enter barcode number manually"
@@ -268,9 +198,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             </Button>
           </div>
 
-          {/* Platform Information */}
-          <PlatformInfoDisplay />
-
           {/* Scanner Content */}
           {error ? (
             <div className="flex flex-col items-center justify-center h-64 bg-red-50 dark:bg-red-900/20 rounded-xl">
@@ -279,28 +206,23 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 {error}
               </p>
               <div className="space-y-3">
-                {platformInfo.isWeb && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setError(null);
-                      setShowWebScanner(true);
-                    }}
-                    className="w-full border-blue-300 text-blue-600"
-                  >
-                    Try Web Scanner
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   onClick={() => setError(null)}
                   className="w-full border-red-300 text-red-600"
                 >
-                  Try Again
+                  Try Scanning Again
                 </Button>
                 <Button
                   variant="default"
-                  onClick={() => setShowManualEntry(true)}
+                  onClick={() => {
+                    // Trigger manual entry
+                    const manualInput = prompt('Enter barcode number manually:');
+                    if (manualInput && manualInput.trim()) {
+                      onBarcodeDetected(manualInput.trim());
+                      onClose();
+                    }
+                  }}
                   className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
                 >
                   Enter Code Manually
@@ -309,14 +231,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             </div>
           ) : !isSupported ? (
             <UnsupportedDeviceFallback />
-          ) : showWebScanner ? (
-            <WebBarcodeScanner
-              onBarcodeDetected={(barcode) => {
-                onBarcodeDetected(barcode);
-                onClose();
-              }}
-              onClose={() => setShowWebScanner(false)}
-            />
           ) : showManualEntry ? (
             /* Manual Entry Form */
             <div className="space-y-6">
@@ -433,20 +347,12 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 {!isScanning ? (
                   <>
                     <Button
-                      onClick={platformInfo.isNative ? startScan : () => setShowWebScanner(true)}
+                      onClick={startScan}
                       className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white h-12"
                     >
                       <ScanBarcode className="h-5 w-5 mr-2" />
-                      {platformInfo.isNative ? 'Start ML Kit Scanner' : 'Start Camera Scanner'}
+                      Start Scanning
                     </Button>
-                    
-                    {platformInfo.isWeb && (
-                      <div className="text-center">
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">
-                          Browser camera scanning - basic barcode support
-                        </p>
-                      </div>
-                    )}
                     
                     <Button
                       variant="outline"
