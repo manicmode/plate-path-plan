@@ -333,7 +333,7 @@ const SupplementHub = () => {
           {supplementCategories.map((category) => (
             <div key={category.id} className="space-y-3">
               <h2 className="text-lg font-bold">{category.title}</h2>
-              <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+              <div className="flex space-x-3 overflow-x-auto py-4 scrollbar-hide">
                 {category.goals.map((goal) => (
                   <Button
                     key={goal}
