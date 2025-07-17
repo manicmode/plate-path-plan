@@ -274,7 +274,15 @@ async function analyzeWithGPT(prompt: string): Promise<any> {
     }
     
     try {
-      const parsedContent = JSON.parse(content);
+      // Strip markdown code block formatting if present
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsedContent = JSON.parse(cleanContent);
       console.log('✅ Successfully parsed JSON response');
       return parsedContent;
     } catch (parseError) {
