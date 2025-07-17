@@ -100,14 +100,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
     
     setTimeout(() => {
-      // Simulate image recognition failure for demo
-      const recognitionSuccess = Math.random() > 0.3; // 70% failure rate for demo
-      if (recognitionSuccess) {
-        onCapture(imageData);
-      } else {
-        setCurrentView('notRecognized');
-        setIsScanning(false);
-      }
+      console.log('📷 Image captured, sending to health check processor...');
+      onCapture(imageData);
     }, 1500);
   };
 
