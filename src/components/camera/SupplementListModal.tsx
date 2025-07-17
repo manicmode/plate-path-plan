@@ -77,7 +77,7 @@ export const SupplementListModal = ({
             </DialogHeader>
 
             {/* Scrollable Supplement List */}
-            <div className="space-y-3 overflow-y-auto max-h-[50vh]">
+            <div className="space-y-4 overflow-y-auto max-h-[50vh] p-3">
               {supplements.map((supplement) => (
                 <Card 
                   key={supplement.id}
