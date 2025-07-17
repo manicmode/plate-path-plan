@@ -106,10 +106,6 @@ export default {
 				float: {
 					'0%, 100%': { transform: 'translateY(0px)' },
 					'50%': { transform: 'translateY(-10px)' }
-				},
-				scroll: {
-					'0%': { transform: 'translateX(100%)' },
-					'100%': { transform: 'translateX(-100%)' }
 				}
 			},
 			animation: {
@@ -117,8 +113,7 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fadeIn 0.5s ease-in-out',
 				'slide-up': 'slideUp 0.3s ease-out',
-				'float': 'float 6s ease-in-out infinite',
-				'scroll': 'scroll 20s linear infinite'
+				'float': 'float 6s ease-in-out infinite'
 			}
 		}
 	},

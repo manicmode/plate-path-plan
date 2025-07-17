@@ -51,9 +51,9 @@ const Explore = () => {
   ];
 
   return (
-    <div className="min-h-screen p-4">
-      {/* Main 2x2 Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+    <div className="h-screen flex flex-col p-4 overflow-hidden">
+      {/* Main 2x2 Grid - Takes most of the screen */}
+      <div className="flex-1 grid grid-cols-2 gap-4 mb-6">
         {tiles.map((tile) => {
           return (
             <Button
@@ -95,8 +95,8 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tile - Full Width at Bottom */}
-      <div className="mb-6">
+      {/* Profile Tile - Full Width at Bottom with theme-adaptive colors and proper spacing */}
+      <div className="mt-auto mb-4">
         <Button
           onClick={handleProfileClick}
           variant="ghost"
