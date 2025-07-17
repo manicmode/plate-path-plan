@@ -387,10 +387,10 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6">
           <Button
             onClick={() => {/* Handle save to log */}}
-            className="bg-green-600 hover:bg-green-700 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-5 h-5 mr-2" />
-            Save to Log
+            <span className="text-xl mr-2">💾</span>
+            Save
           </Button>
           
           <Button

@@ -115,16 +115,16 @@ const Explore = () => {
           variant="ghost"
           className="
             w-full h-20 px-8 rounded-3xl transition-all duration-300
-            bg-gradient-to-r from-slate-700/90 via-slate-800/90 to-slate-900/90 
-            dark:from-slate-200/90 dark:via-slate-300/90 dark:to-slate-400/90
-            hover:from-slate-600/95 hover:via-slate-700/95 hover:to-slate-800/95 
-            dark:hover:from-slate-100/95 dark:hover:via-slate-200/95 dark:hover:to-slate-300/95
+            bg-gradient-to-r from-slate-200/90 via-slate-300/90 to-slate-400/90 
+            dark:from-slate-400/90 dark:via-slate-500/90 dark:to-slate-600/90
+            hover:from-slate-100/95 hover:via-slate-200/95 hover:to-slate-300/95 
+            dark:hover:from-slate-300/95 dark:hover:via-slate-400/95 dark:hover:to-slate-500/95
             hover:scale-[1.02] active:scale-[0.98]
             shadow-2xl shadow-slate-900/30 hover:shadow-3xl hover:shadow-slate-900/40
-            dark:shadow-slate-300/30 dark:hover:shadow-slate-300/40
-            border-2 border-slate-600/40 hover:border-slate-500/50
-            dark:border-slate-400/40 dark:hover:border-slate-300/50
-            text-slate-100 dark:text-slate-800 hover:text-white dark:hover:text-slate-900
+            dark:shadow-slate-900/30 dark:hover:shadow-slate-900/40
+            border-2 border-slate-400/40 hover:border-slate-300/50
+            dark:border-slate-400/50 dark:hover:border-slate-300/60
+            text-slate-800 dark:text-slate-100 hover:text-slate-900 dark:hover:text-white
             flex items-center justify-center
             backdrop-blur-md relative overflow-hidden
             before:absolute before:inset-0 before:bg-gradient-to-r 

@@ -210,10 +210,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               </Button>
               <Button
                 type="submit"
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save Food
+                <span className="text-lg mr-2">💾</span>
+                Save
               </Button>
             </div>
           </form>

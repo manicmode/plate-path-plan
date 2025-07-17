@@ -275,22 +275,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </Button>
               </div>
 
-              {/* Green Checkmark with ✅ emoji - for saved logs indication only */}
+              {/* Save/Confirm button with visual feedback */}
               <button
                 onClick={() => setIsChecked(!isChecked)}
-                className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center ${
+                className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center hover:scale-105 ${
                   isChecked 
                     ? 'bg-green-500 border-green-500 text-white shadow-lg transform scale-110' 
-                    : 'bg-white border-gray-300 text-gray-400 hover:border-green-400'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-800/30'
                 }`}
               >
-                {isChecked && <span className="text-lg">✅</span>}
+                <span className="text-lg">
+                  {isChecked ? '✅' : '💾'}
+                </span>
               </button>
               
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
-                {totalItems && totalItems > 1 && (
+                {totalItems > 1 && (
                   <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                    Item {(currentIndex || 0) + 1} of {totalItems}
+                    Item {((currentIndex ?? 0) + 1)} of {totalItems}
                   </div>
                 )}
                 Confirm Food Log
