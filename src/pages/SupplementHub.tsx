@@ -39,22 +39,65 @@ const SupplementHub = () => {
   // Scroll container ref for horizontal tabs
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const categories = [
-    { id: 'heart-health', name: 'Heart Health', emoji: '❤️', icon: Heart },
-    { id: 'energy-boost', name: 'Energy Boost', emoji: '⚡', icon: Zap },
-    { id: 'brain-function', name: 'Brain Function', emoji: '🧠', icon: Brain },
-    { id: 'muscle-build', name: 'Muscle Build', emoji: '💪', icon: Dumbbell },
-    { id: 'immune-support', name: 'Immune Support', emoji: '🧬', icon: Shield },
-    { id: 'gut-health', name: 'Gut Health', emoji: '🦠', icon: Utensils },
-    { id: 'weight-loss', name: 'Weight Loss', emoji: '🔥', icon: Flame },
-    { id: 'sleep-recovery', name: 'Sleep & Recovery', emoji: '😴', icon: Moon },
-    { id: 'hormonal-balance', name: 'Hormonal Balance', emoji: '👩‍⚕️', icon: User },
-    { id: 'mood-stress', name: 'Mood & Stress Relief', emoji: '🧘', icon: Smile },
+  // Netflix-style categories with horizontal scrollable goals
+  const supplementCategories = [
+    {
+      id: 'energy-performance',
+      title: '🔥 Energy & Performance',
+      goals: [
+        'Energy Boost', 'Muscle Build', 'Athletic Recovery', 'Endurance', 
+        'Stamina', 'Workout Focus', 'Pre-Workout Support', 'Post-Workout Recovery'
+      ]
+    },
+    {
+      id: 'heart-longevity', 
+      title: '❤️ Heart & Longevity',
+      goals: [
+        'Heart Health', 'Cholesterol Control', 'Blood Pressure Balance',
+        'Circulation Support', 'Anti-Aging', 'Cellular Repair'
+      ]
+    },
+    {
+      id: 'brain-mood',
+      title: '🧠 Brain & Mood', 
+      goals: [
+        'Brain Function', 'Focus & Memory', 'Mental Clarity',
+        'Stress Relief', 'Anxiety Balance', 'Sleep Support', 'Mood Boost'
+      ]
+    },
+    {
+      id: 'gut-immunity',
+      title: '🦠 Gut & Immunity',
+      goals: [
+        'Gut Health', 'Probiotics & Digestion', 'Immune Support',
+        'Detox & Cleanse', 'Anti-Inflammatory', 'Liver Health'
+      ]
+    },
+    {
+      id: 'hormones-metabolism',
+      title: '🌸 Hormones & Metabolism',
+      goals: [
+        'Hormonal Balance', 'Men\'s Health', 'Women\'s Health',
+        'Weight Loss', 'Blood Sugar Support', 'Metabolism Boost'
+      ]
+    }
   ];
 
-  // Mock supplement database - in real app this would come from AI/backend
+  // Mock supplement database - updated for new goal system
   const supplementDatabase: Record<string, Supplement[]> = {
-    'heart-health': [
+    'Energy Boost': [
+      {
+        id: 'b-complex-1',
+        name: 'B-Complex Vitamins',
+        image: '⚡',
+        description: 'Complete B vitamin complex for natural energy production',
+        benefits: ['Natural energy boost', 'Supports metabolism', 'Reduces fatigue'],
+        personalReason: 'Great for your busy schedule and workout routine',
+        healthFlags: ['Vegan', 'Non-GMO', 'Third-party tested'],
+        price: '$19.99'
+      }
+    ],
+    'Heart Health': [
       {
         id: 'omega-3-1',
         name: 'Omega-3 Fish Oil',
@@ -77,30 +120,30 @@ const SupplementHub = () => {
         price: '$34.99'
       }
     ],
-    'energy-boost': [
+    'Brain Function': [
       {
-        id: 'b-complex-1',
-        name: 'B-Complex Vitamins',
-        image: '⚡',
-        description: 'Complete B vitamin complex for natural energy production',
-        benefits: ['Natural energy boost', 'Supports metabolism', 'Reduces fatigue'],
-        personalReason: 'Great for your busy schedule and workout routine',
-        healthFlags: ['Vegan', 'Non-GMO', 'Third-party tested'],
-        price: '$19.99'
+        id: 'omega-3-brain',
+        name: 'Brain Omega-3',
+        image: '🧠',
+        description: 'Specialized omega-3 formula for cognitive support',
+        benefits: ['Enhances memory', 'Improves focus', 'Supports brain health'],
+        personalReason: 'Perfect for your mental performance goals',
+        healthFlags: ['DHA concentrated', 'Third-party tested', 'Non-GMO'],
+        price: '$29.99'
       }
     ]
   };
 
-  const handleCategorySelect = async (categoryId: string) => {
-    setSelectedCategory(categoryId);
+  const handleGoalSelect = async (goalName: string) => {
+    setSelectedCategory(goalName);
     setIsAnalyzing(true);
     setRecommendations([]);
     
     // Simulate AI analysis
     setTimeout(() => {
-      const categorySupplements = supplementDatabase[categoryId] || [];
-      const topRecommendations = categorySupplements.slice(0, 3);
-      setRecommendations(categorySupplements);
+      const goalSupplements = supplementDatabase[goalName] || [];
+      const topRecommendations = goalSupplements.slice(0, 3);
+      setRecommendations(goalSupplements);
       setIsAnalyzing(false);
       
       if (topRecommendations.length > 0) {
@@ -263,48 +306,47 @@ const SupplementHub = () => {
           </Button>
         </div>
 
-        {/* Title - matching Home page styling */}
+        {/* Title - matching Home page styling exactly */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-primary via-primary to-emerald-600 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-primary to-emerald-600 bg-clip-text text-transparent leading-tight">
             🌟 Your Personalized Supplement Hub
           </h1>
           
           {/* Scrolling Ticker Subtitle */}
-          <div className="overflow-hidden bg-muted/30 rounded-full py-2 relative">
-            <div className="animate-marquee whitespace-nowrap text-sm text-muted-foreground font-medium">
+          <div className="overflow-hidden py-2 relative">
+            <div className="animate-marquee whitespace-nowrap text-base text-muted-foreground font-medium">
               Smart AI-powered supplement recommendations based on your health, goals, and nutrition profile.
             </div>
           </div>
         </div>
 
-        {/* Command Tabs */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Choose Your Goal</h2>
-          <div 
-            ref={scrollRef}
-            className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {categories.map((category) => (
-              <Button
-                key={category.id}
-                onClick={() => handleCategorySelect(category.id)}
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                className={`
-                  flex-shrink-0 h-12 px-4 rounded-full transition-all duration-300
-                  ${selectedCategory === category.id 
-                    ? 'gradient-primary text-white shadow-lg' 
-                    : 'glass-button hover:shadow-md'
-                  }
-                `}
-              >
-                <span className="mr-2">{category.emoji}</span>
-                <span className="whitespace-nowrap text-sm font-medium">
-                  {category.name}
-                </span>
-              </Button>
-            ))}
-          </div>
+        {/* Netflix-style Category System */}
+        <div className="space-y-6">
+          {supplementCategories.map((category) => (
+            <div key={category.id} className="space-y-3">
+              <h2 className="text-lg font-bold">{category.title}</h2>
+              <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+                {category.goals.map((goal) => (
+                  <Button
+                    key={goal}
+                    onClick={() => handleGoalSelect(goal)}
+                    variant={selectedCategory === goal ? "default" : "outline"}
+                    className={`
+                      flex-shrink-0 h-10 px-4 rounded-full transition-all duration-300
+                      ${selectedCategory === goal 
+                        ? 'gradient-primary text-white shadow-lg' 
+                        : 'glass-button hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <span className="whitespace-nowrap text-sm font-medium">
+                      {goal}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Analysis State */}
@@ -328,7 +370,7 @@ const SupplementHub = () => {
             <div className="space-y-2">
               <h2 className="text-lg font-bold flex items-center space-x-2">
                 <span>🧠</span>
-                <span>Suggested for You: {categories.find(c => c.id === selectedCategory)?.name}</span>
+                <span>Suggested for You: {selectedCategory}</span>
               </h2>
               <p className="text-sm text-muted-foreground">
                 These supplements were selected based on your profile analysis and health goals.
