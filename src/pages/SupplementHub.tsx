@@ -388,8 +388,8 @@ const SupplementHub = () => {
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
       <div className="max-w-md mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-4">
+        {/* Compact Header with Back Button and Title */}
+        <div className="flex items-center justify-between py-4">
           <Button
             variant="ghost"
             size="icon"
@@ -398,21 +398,18 @@ const SupplementHub = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-        </div>
-
-        {/* Header Section - matching Home page exactly */}
-        <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
-          <div className="inline-block">
-            <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4`}>
-              🌟 Your Personalized Supplement Hub
-            </h1>
-          </div>
           
-          {/* Scrolling Ticker */}
-          <div className="overflow-hidden whitespace-nowrap bg-gradient-to-r from-transparent via-muted/20 to-transparent py-3">
-            <div className="animate-marquee text-lg text-muted-foreground font-medium">
-              Smart AI-powered supplement recommendations based on your health, goals, and nutrition profile.
-            </div>
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent text-center flex-1`}>
+            <span className="text-yellow-400 drop-shadow-lg animate-pulse">🌟</span> Your Personalized Supplement Hub
+          </h1>
+          
+          <div className="w-10"></div> {/* Spacer for balance */}
+        </div>
+        
+        {/* Scrolling Ticker */}
+        <div className="overflow-hidden whitespace-nowrap bg-gradient-to-r from-transparent via-muted/20 to-transparent py-3 mb-4">
+          <div className="animate-[marquee_8s_linear_infinite] text-3xl text-muted-foreground font-medium">
+            Smart AI-powered supplement recommendations based on your health, goals, and nutrition profile.
           </div>
         </div>
 
