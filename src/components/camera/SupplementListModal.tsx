@@ -35,17 +35,7 @@ export const SupplementListModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0">
         <DialogHeader className="p-6 pb-2 space-y-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold">AI Recommendations</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="rounded-full h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-xl font-bold">AI Recommendations</DialogTitle>
           
           {/* Personalized Header Message */}
           <div className="pt-3">
