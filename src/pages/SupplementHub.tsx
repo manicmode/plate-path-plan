@@ -1,0 +1,447 @@
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Plus, Trash2, Heart, Zap, Brain, Dumbbell, Shield, Utensils, Flame, Moon, User, Smile } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/auth';
+import { useNutrition } from '@/contexts/NutritionContext';
+import { useToast } from '@/hooks/use-toast';
+
+interface Supplement {
+  id: string;
+  name: string;
+  image: string;
+  description: string;
+  benefits: string[];
+  personalReason: string;
+  healthFlags: string[];
+  studyLinks?: string[];
+  price?: string;
+}
+
+const SupplementHub = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const { currentDay, addSupplement } = useNutrition();
+  const { toast } = useToast();
+  
+  const userSupplements = currentDay.supplements;
+  
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [recommendations, setRecommendations] = useState<Supplement[]>([]);
+  const [showMore, setShowMore] = useState(false);
+  const [selectedSupplement, setSelectedSupplement] = useState<Supplement | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Scroll container ref for horizontal tabs
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const categories = [
+    { id: 'heart-health', name: 'Heart Health', emoji: '❤️', icon: Heart },
+    { id: 'energy-boost', name: 'Energy Boost', emoji: '⚡', icon: Zap },
+    { id: 'brain-function', name: 'Brain Function', emoji: '🧠', icon: Brain },
+    { id: 'muscle-build', name: 'Muscle Build', emoji: '💪', icon: Dumbbell },
+    { id: 'immune-support', name: 'Immune Support', emoji: '🧬', icon: Shield },
+    { id: 'gut-health', name: 'Gut Health', emoji: '🦠', icon: Utensils },
+    { id: 'weight-loss', name: 'Weight Loss', emoji: '🔥', icon: Flame },
+    { id: 'sleep-recovery', name: 'Sleep & Recovery', emoji: '😴', icon: Moon },
+    { id: 'hormonal-balance', name: 'Hormonal Balance', emoji: '👩‍⚕️', icon: User },
+    { id: 'mood-stress', name: 'Mood & Stress Relief', emoji: '🧘', icon: Smile },
+  ];
+
+  // Mock supplement database - in real app this would come from AI/backend
+  const supplementDatabase: Record<string, Supplement[]> = {
+    'heart-health': [
+      {
+        id: 'omega-3-1',
+        name: 'Omega-3 Fish Oil',
+        image: '🐟',
+        description: 'High-quality fish oil rich in EPA and DHA for cardiovascular support',
+        benefits: ['Supports heart health', 'Reduces inflammation', 'Improves brain function'],
+        personalReason: 'Perfect for your cardiovascular goals and active lifestyle',
+        healthFlags: ['Third-party tested', 'Mercury-free', 'Sustainable sourcing'],
+        studyLinks: ['pubmed.ncbi.nlm.nih.gov/heart-omega3'],
+        price: '$24.99'
+      },
+      {
+        id: 'coq10-1',
+        name: 'CoQ10 Ubiquinol',
+        image: '❤️',
+        description: 'Advanced CoQ10 for cellular energy and heart muscle support',
+        benefits: ['Supports heart muscle function', 'Cellular energy production', 'Antioxidant protection'],
+        personalReason: 'Ideal for your age group and fitness routine',
+        healthFlags: ['Bioavailable form', 'Non-GMO', 'Gluten-free'],
+        price: '$34.99'
+      }
+    ],
+    'energy-boost': [
+      {
+        id: 'b-complex-1',
+        name: 'B-Complex Vitamins',
+        image: '⚡',
+        description: 'Complete B vitamin complex for natural energy production',
+        benefits: ['Natural energy boost', 'Supports metabolism', 'Reduces fatigue'],
+        personalReason: 'Great for your busy schedule and workout routine',
+        healthFlags: ['Vegan', 'Non-GMO', 'Third-party tested'],
+        price: '$19.99'
+      }
+    ]
+  };
+
+  const handleCategorySelect = async (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setIsAnalyzing(true);
+    setRecommendations([]);
+    
+    // Simulate AI analysis
+    setTimeout(() => {
+      const categorySupplements = supplementDatabase[categoryId] || [];
+      const topRecommendations = categorySupplements.slice(0, 3);
+      setRecommendations(categorySupplements);
+      setIsAnalyzing(false);
+      
+      if (topRecommendations.length > 0) {
+        toast({
+          title: "Recommendations Ready!",
+          description: `Found ${topRecommendations.length} personalized supplements for you.`,
+        });
+      }
+    }, 2000);
+  };
+
+  const handleSupplementSelect = (supplement: Supplement) => {
+    setSelectedSupplement(supplement);
+  };
+
+  const handleBuyNow = (supplement: Supplement) => {
+    // Add to user's supplements
+    addSupplement({
+      name: supplement.name,
+      dosage: 1,
+      unit: 'serving',
+      notifications: [],
+    });
+
+    toast({
+      title: "Added to My Supplements!",
+      description: `${supplement.name} has been added to your supplement tracking.`,
+    });
+
+    setSelectedSupplement(null);
+  };
+
+  const handleRemoveSupplement = (supplementId: string) => {
+    // In real app, implement remove functionality in context
+    toast({
+      title: "Supplement Removed",
+      description: "Supplement has been removed from your list.",
+    });
+  };
+
+  const handleAddManually = () => {
+    navigate('/supplements');
+  };
+
+  const displayedRecommendations = showMore ? recommendations : recommendations.slice(0, 3);
+  const hasMoreRecommendations = recommendations.length > 3;
+
+  if (selectedSupplement) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 pb-32">
+        <div className="max-w-md mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSelectedSupplement(null)}
+              className="rounded-full glass-button"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold">Supplement Details</h1>
+          </div>
+
+          {/* Supplement Detail Card */}
+          <Card className="glass-card border-0 rounded-3xl overflow-hidden">
+            <CardContent className="p-6 space-y-6">
+              {/* Image and Name */}
+              <div className="text-center space-y-4">
+                <div className="text-6xl">{selectedSupplement.image}</div>
+                <h2 className="text-2xl font-bold">{selectedSupplement.name}</h2>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Description</h3>
+                <p className="text-muted-foreground">{selectedSupplement.description}</p>
+              </div>
+
+              {/* Key Benefits */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Key Benefits</h3>
+                <ul className="space-y-1">
+                  {selectedSupplement.benefits.map((benefit, index) => (
+                    <li key={index} className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-primary rounded-full" />
+                      <span className="text-sm">{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Personal Reason */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg flex items-center space-x-2">
+                  <span>🧠</span>
+                  <span>Why this is uniquely good for you</span>
+                </h3>
+                <p className="text-sm bg-primary/10 p-3 rounded-2xl">
+                  {selectedSupplement.personalReason}
+                </p>
+              </div>
+
+              {/* Health Flags */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Verified Health Flags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSupplement.healthFlags.map((flag, index) => (
+                    <Badge key={index} variant="secondary" className="rounded-full">
+                      ✅ {flag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Study Links */}
+              {selectedSupplement.studyLinks && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg">Scientific Sources</h3>
+                  {selectedSupplement.studyLinks.map((link, index) => (
+                    <a
+                      key={index}
+                      href={`https://${link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-sm text-primary hover:underline"
+                    >
+                      📚 Study {index + 1}
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {/* Buy Now Button */}
+              <Button
+                onClick={() => handleBuyNow(selectedSupplement)}
+                className="w-full h-14 text-lg font-bold gradient-primary text-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
+              >
+                💚 Buy Now {selectedSupplement.price && `- ${selectedSupplement.price}`}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 pb-32">
+      <div className="max-w-md mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/explore')}
+            className="rounded-full glass-button"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Title - matching Home page styling */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-primary via-primary to-emerald-600 bg-clip-text text-transparent leading-tight">
+            🌟 Your Personalized Supplement Hub
+          </h1>
+          
+          {/* Scrolling Ticker Subtitle */}
+          <div className="overflow-hidden bg-muted/30 rounded-full py-2 relative">
+            <div className="animate-marquee whitespace-nowrap text-sm text-muted-foreground font-medium">
+              Smart AI-powered supplement recommendations based on your health, goals, and nutrition profile.
+            </div>
+          </div>
+        </div>
+
+        {/* Command Tabs */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Choose Your Goal</h2>
+          <div 
+            ref={scrollRef}
+            className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {categories.map((category) => (
+              <Button
+                key={category.id}
+                onClick={() => handleCategorySelect(category.id)}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                className={`
+                  flex-shrink-0 h-12 px-4 rounded-full transition-all duration-300
+                  ${selectedCategory === category.id 
+                    ? 'gradient-primary text-white shadow-lg' 
+                    : 'glass-button hover:shadow-md'
+                  }
+                `}
+              >
+                <span className="mr-2">{category.emoji}</span>
+                <span className="whitespace-nowrap text-sm font-medium">
+                  {category.name}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Analysis State */}
+        {isAnalyzing && (
+          <Card className="glass-card border-0 rounded-3xl">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+              <div className="space-y-2">
+                <h3 className="font-semibold">🧠 Analyzing Your Profile</h3>
+                <p className="text-sm text-muted-foreground">
+                  Finding the perfect supplements based on your health data, goals, and preferences...
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recommendations */}
+        {recommendations.length > 0 && !isAnalyzing && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h2 className="text-lg font-bold flex items-center space-x-2">
+                <span>🧠</span>
+                <span>Suggested for You: {categories.find(c => c.id === selectedCategory)?.name}</span>
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                These supplements were selected based on your profile analysis and health goals.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {displayedRecommendations.map((supplement) => (
+                <Card 
+                  key={supplement.id}
+                  className="glass-card border-0 rounded-3xl cursor-pointer hover:shadow-lg transition-all"
+                  onClick={() => handleSupplementSelect(supplement)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-4">
+                      <div className="text-4xl">{supplement.image}</div>
+                      <div className="flex-1 space-y-2">
+                        <h3 className="font-semibold">{supplement.name}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {supplement.description}
+                        </p>
+                        <div className="bg-primary/10 p-2 rounded-xl">
+                          <p className="text-xs font-medium">
+                            🧠 {supplement.personalReason}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {supplement.healthFlags.slice(0, 2).map((flag, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              ✅ {flag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {hasMoreRecommendations && (
+              <Button
+                onClick={() => setShowMore(!showMore)}
+                variant="outline"
+                className="w-full glass-button rounded-2xl"
+              >
+                {showMore ? 'Show Less' : `+ Show ${recommendations.length - 3} More`}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* My Supplements Section */}
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <span>📂</span>
+              <span>My Supplements</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Track the supplements you're taking.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {userSupplements.length > 0 ? (
+              <div className="space-y-3">
+                {userSupplements.map((supplement, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-2xl"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">💊</span>
+                      <div>
+                        <p className="font-medium">{supplement.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {supplement.dosage}{supplement.unit}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => handleRemoveSupplement(supplement.name)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 space-y-3">
+                <div className="text-4xl">📦</div>
+                <p className="text-sm text-muted-foreground">
+                  No supplements tracked yet. Add one manually or get personalized recommendations above.
+                </p>
+              </div>
+            )}
+            
+            <Button
+              onClick={handleAddManually}
+              variant="outline"
+              className="w-full glass-button rounded-2xl"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manually
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default SupplementHub;

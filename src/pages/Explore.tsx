@@ -11,6 +11,13 @@ const Explore = () => {
     navigate('/profile');
   };
 
+  const handleTileClick = (tileId: string) => {
+    if (tileId === 'supplement-hub') {
+      navigate('/supplement-hub');
+    }
+    // Add other tile navigation here as needed
+  };
+
   const tiles = [
     {
       id: 'supplement-hub',
@@ -58,6 +65,7 @@ const Explore = () => {
           return (
             <Button
               key={tile.id}
+              onClick={() => handleTileClick(tile.id)}
               variant="ghost"
               className={`
                 group relative h-full min-h-[180px] p-6 rounded-3xl 
