@@ -88,7 +88,7 @@ export const HealthAnalysisLoading: React.FC<HealthAnalysisLoadingProps> = ({
               
               {/* Radar sweep line */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-48 h-0.5 bg-gradient-to-r from-transparent via-green-400 to-transparent origin-left animate-spin"></div>
+                <div className="w-48 h-0.5 bg-gradient-to-r from-transparent via-green-400 to-transparent origin-center animate-spin"></div>
               </div>
             </div>
           </div>
