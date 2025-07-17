@@ -36,7 +36,7 @@ export const SupplementListModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="max-w-sm max-h-[85vh] bg-background border border-border rounded-lg p-6 z-[60] mx-4"
+        className="max-w-xs max-h-[85vh] bg-background border border-border rounded-lg p-4 z-[60] mx-6"
         showCloseButton={true}
       >
         {isLoading ? (

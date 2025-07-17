@@ -32,7 +32,7 @@ export const SupplementDetailModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm max-h-[90vh] glass-card border-0 rounded-3xl overflow-hidden p-0 mx-4">
+      <DialogContent className="max-w-xs max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 mx-6 shadow-2xl">
         {/* Header with Back Button */}
         <div className="flex items-center space-x-4 p-6 pb-4">
           <Button
@@ -57,7 +57,7 @@ export const SupplementDetailModal = ({
           {/* Description */}
           <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg text-foreground">Description</h3>
-            <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50">
+            <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
               <p className="text-foreground">{supplement.description}</p>
             </div>
           </div>
@@ -65,7 +65,7 @@ export const SupplementDetailModal = ({
           {/* Key Benefits */}
           <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg text-foreground">Key Benefits</h3>
-            <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50">
+            <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
               <ul className="space-y-2">
                 {supplement.benefits.map((benefit, index) => (
                   <li key={index} className="flex items-center space-x-2">
@@ -83,7 +83,7 @@ export const SupplementDetailModal = ({
               <span className="text-2xl">🧠</span>
               <span>Why this is recommended for you</span>
             </h3>
-            <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50">
+            <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
               <p className="text-sm text-foreground bg-primary/20 p-3 rounded-lg">
                 {supplement.personalReason}
               </p>
@@ -93,10 +93,10 @@ export const SupplementDetailModal = ({
           {/* Health Flags */}
           <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg text-foreground">Health Flags</h3>
-            <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50">
+            <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
               <div className="flex flex-wrap gap-2">
                 {supplement.healthFlags.map((flag, index) => (
-                  <Badge key={index} variant="secondary" className="rounded-full bg-background/80 text-foreground border border-border">
+                  <Badge key={index} variant="secondary" className="rounded-full bg-background text-foreground border border-border">
                     <span className="mr-1">✅</span> {flag}
                   </Badge>
                 ))}
@@ -106,7 +106,7 @@ export const SupplementDetailModal = ({
 
           {/* Reviews Section */}
           <div className="mt-6">
-            <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50">
+            <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
               <div className="flex items-center gap-2">
                 {/* Stars */}
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -125,7 +125,7 @@ export const SupplementDetailModal = ({
           {supplement.studyLinks && (
             <div className="space-y-2 mt-6">
               <h3 className="font-semibold text-lg text-foreground">Scientific Sources</h3>
-              <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 border border-border/50 space-y-2">
+              <div className="bg-background rounded-lg p-3 border border-border shadow-sm space-y-2">
                 {supplement.studyLinks.map((link, index) => (
                   <a
                     key={index}
