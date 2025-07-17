@@ -33,7 +33,15 @@ export const SupplementListModal = ({
 }: SupplementListModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0 [&_button.absolute.right-4.top-4]:!bg-transparent [&_button.absolute.right-4.top-4:hover]:!bg-transparent [&_button.absolute.right-4.top-4[data-state=open]]:!bg-transparent">
+      <DialogContent className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0 relative" showCloseButton={false}>
+        {/* Custom close button without problematic styling */}
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </button>
         <DialogHeader className="p-6 pb-2 space-y-0">
           <DialogTitle className="text-xl font-bold">AI Recommendations</DialogTitle>
           
