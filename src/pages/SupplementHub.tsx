@@ -105,9 +105,9 @@ const SupplementHub = () => {
     }
   ];
 
-  // Mock supplement database - updated for new goal system
+  // Comprehensive supplement database with all categories covered
   const supplementDatabase: Record<string, Supplement[]> = {
-    // Muscle Growth & Weight Gain supplements
+    // === MUSCLE GROWTH & WEIGHT GAIN ===
     'Protein Powder': [
       {
         id: 'whey-protein-1',
@@ -118,6 +118,16 @@ const SupplementHub = () => {
         personalReason: 'Perfect for your muscle building goals and workout routine',
         healthFlags: ['Grass-fed', 'No artificial flavors', 'Third-party tested'],
         price: '$49.99'
+      },
+      {
+        id: 'plant-protein-1',
+        name: 'Plant-Based Protein Blend',
+        image: '🌱',
+        description: 'Complete plant protein from pea, rice, and hemp sources',
+        benefits: ['Vegan-friendly', 'Easy digestion', 'Sustainable sourcing'],
+        personalReason: 'Ideal for plant-based nutrition and muscle development',
+        healthFlags: ['Organic', 'Allergen-free', 'No artificial additives'],
+        price: '$44.99'
       }
     ],
     'Creatine Supplements': [
@@ -130,6 +140,16 @@ const SupplementHub = () => {
         personalReason: 'Ideal for your strength training and athletic performance',
         healthFlags: ['Micronized', 'Unflavored', 'Research-backed'],
         price: '$24.99'
+      },
+      {
+        id: 'creatine-hcl-1',
+        name: 'Creatine HCL',
+        image: '💥',
+        description: 'Enhanced absorption creatine hydrochloride formula',
+        benefits: ['Better solubility', 'No loading phase', 'Reduced bloating'],
+        personalReason: 'Perfect for sensitive stomachs and consistent performance',
+        healthFlags: ['Ultra-pure', 'No fillers', 'Lab-tested'],
+        price: '$29.99'
       }
     ],
     'Mass Gainers': [
@@ -142,10 +162,130 @@ const SupplementHub = () => {
         personalReason: 'Great for your weight gain goals and busy lifestyle',
         healthFlags: ['No banned substances', 'Quality tested', 'Added vitamins'],
         price: '$59.99'
+      },
+      {
+        id: 'lean-mass-1',
+        name: 'Lean Mass Complex',
+        image: '🏗️',
+        description: 'Clean mass gainer with quality carbs and protein',
+        benefits: ['Quality calories', 'Minimal sugar', 'Digestive enzymes'],
+        personalReason: 'Perfect for lean muscle gain without excess fat',
+        healthFlags: ['Natural ingredients', 'No artificial colors', 'Gluten-free'],
+        price: '$54.99'
       }
     ],
-    
-    // Weight Loss & Fat Burn supplements
+    'BCAAs': [
+      {
+        id: 'bcaa-powder-1',
+        name: 'BCAA 2:1:1 Formula',
+        image: '🔗',
+        description: 'Branched-chain amino acids for muscle recovery and growth',
+        benefits: ['Prevents muscle breakdown', 'Faster recovery', 'Reduces fatigue'],
+        personalReason: 'Essential for your intense training sessions',
+        healthFlags: ['Instantized', 'Natural flavors', 'Zero sugar'],
+        price: '$27.99'
+      },
+      {
+        id: 'eaa-blend-1',
+        name: 'Essential Amino Acids',
+        image: '🧬',
+        description: 'Complete essential amino acid profile for muscle protein synthesis',
+        benefits: ['All 9 EAAs', 'Maximum absorption', 'Muscle building support'],
+        personalReason: 'Comprehensive amino support for your fitness goals',
+        healthFlags: ['Pharmaceutical grade', 'Third-party tested', 'Vegan'],
+        price: '$32.99'
+      }
+    ],
+    'Weight Gain Support': [
+      {
+        id: 'appetite-boost-1',
+        name: 'Natural Appetite Enhancer',
+        image: '🍽️',
+        description: 'Herbal blend to naturally increase appetite and calorie intake',
+        benefits: ['Stimulates appetite', 'Improves digestion', 'Natural herbs'],
+        personalReason: 'Helps you eat more for healthy weight gain',
+        healthFlags: ['All-natural', 'No stimulants', 'Traditional herbs'],
+        price: '$21.99'
+      },
+      {
+        id: 'digestive-enzyme-1',
+        name: 'Digestive Enzyme Complex',
+        image: '⚙️',
+        description: 'Advanced enzyme blend for better nutrient absorption',
+        benefits: ['Improves digestion', 'Better nutrient uptake', 'Reduces bloating'],
+        personalReason: 'Maximizes nutrition from your increased food intake',
+        healthFlags: ['Plant-based enzymes', 'Broad spectrum', 'Delayed release'],
+        price: '$18.99'
+      }
+    ],
+    'Muscle Recovery': [
+      {
+        id: 'glutamine-1',
+        name: 'L-Glutamine Powder',
+        image: '🔄',
+        description: 'Pure L-glutamine for muscle recovery and immune support',
+        benefits: ['Faster muscle recovery', 'Immune system support', 'Prevents breakdown'],
+        personalReason: 'Accelerates recovery between your training sessions',
+        healthFlags: ['Pharmaceutical grade', 'Unflavored', 'Easy mixing'],
+        price: '$23.99'
+      },
+      {
+        id: 'recovery-complex-1',
+        name: 'Advanced Recovery Matrix',
+        image: '🏥',
+        description: 'Multi-ingredient recovery formula with glutamine, BCAAs, and antioxidants',
+        benefits: ['Complete recovery support', 'Reduces muscle soreness', 'Anti-inflammatory'],
+        personalReason: 'Comprehensive recovery for your intense workouts',
+        healthFlags: ['Natural antioxidants', 'No artificial colors', 'Research-backed'],
+        price: '$39.99'
+      }
+    ],
+    'Strength Building': [
+      {
+        id: 'beta-alanine-1',
+        name: 'Beta-Alanine Powder',
+        image: '💪',
+        description: 'Pure beta-alanine for muscular endurance and strength',
+        benefits: ['Increases muscular endurance', 'Delays fatigue', 'Improves power output'],
+        personalReason: 'Pushes your strength training to the next level',
+        healthFlags: ['CarnoSyn grade', 'Third-party tested', 'Unflavored'],
+        price: '$25.99'
+      },
+      {
+        id: 'strength-stack-1',
+        name: 'Strength & Power Stack',
+        image: '🏋️',
+        description: 'Combination of creatine, beta-alanine, and citrulline for strength',
+        benefits: ['Maximum strength gains', 'Enhanced power', 'Improved pumps'],
+        personalReason: 'All-in-one solution for your strength goals',
+        healthFlags: ['Synergistic formula', 'Lab-tested', 'No fillers'],
+        price: '$44.99'
+      }
+    ],
+    'Lean Mass Support': [
+      {
+        id: 'lean-protein-1',
+        name: 'Lean Muscle Protein',
+        image: '🎯',
+        description: 'Low-carb protein blend optimized for lean muscle development',
+        benefits: ['High protein content', 'Minimal carbs and fats', 'Lean muscle support'],
+        personalReason: 'Perfect for building lean muscle without excess calories',
+        healthFlags: ['Low sugar', 'High bioavailability', 'Quality tested'],
+        price: '$46.99'
+      },
+      {
+        id: 'cla-1',
+        name: 'CLA (Conjugated Linoleic Acid)',
+        image: '🔬',
+        description: 'Natural CLA for body composition and lean muscle support',
+        benefits: ['Supports lean body mass', 'May reduce body fat', 'Natural fatty acid'],
+        personalReason: 'Helps optimize your body composition goals',
+        healthFlags: ['Safflower oil derived', 'Non-GMO', 'Softgel form'],
+        price: '$19.99'
+      }
+    ],
+
+    // === WEIGHT LOSS & FAT BURN ===
     'Fat Burning Support': [
       {
         id: 'green-tea-extract-1',
@@ -156,6 +296,16 @@ const SupplementHub = () => {
         personalReason: 'Perfect for your weight loss goals and healthy lifestyle',
         healthFlags: ['Standardized extract', 'Non-GMO', 'Vegan'],
         price: '$19.99'
+      },
+      {
+        id: 'l-carnitine-1',
+        name: 'L-Carnitine Liquid',
+        image: '🔥',
+        description: 'High-potency L-carnitine for fat metabolism and energy',
+        benefits: ['Enhances fat burning', 'Boosts energy', 'Supports recovery'],
+        personalReason: 'Helps your body use fat as fuel during workouts',
+        healthFlags: ['Pharmaceutical grade', 'Sugar-free', 'Natural flavors'],
+        price: '$24.99'
       }
     ],
     'Appetite Suppressant': [
@@ -168,6 +318,60 @@ const SupplementHub = () => {
         personalReason: 'Helps with portion control for your weight management goals',
         healthFlags: ['Pure konjac root', 'No additives', 'Vegan'],
         price: '$16.99'
+      },
+      {
+        id: '5-htp-1',
+        name: '5-HTP Natural',
+        image: '😌',
+        description: 'Natural 5-HTP from Griffonia seed for mood and appetite balance',
+        benefits: ['Reduces cravings', 'Mood support', 'Natural serotonin precursor'],
+        personalReason: 'Helps control emotional eating and food cravings',
+        healthFlags: ['From natural sources', 'Third-party tested', 'Vegetarian'],
+        price: '$22.99'
+      }
+    ],
+    'Carb Blocker': [
+      {
+        id: 'white-kidney-bean-1',
+        name: 'White Kidney Bean Extract',
+        image: '🫘',
+        description: 'Natural carb blocker from white kidney bean extract',
+        benefits: ['Blocks carb absorption', 'Supports weight management', 'Natural ingredient'],
+        personalReason: 'Helps reduce carb absorption from your meals',
+        healthFlags: ['Standardized extract', 'Non-GMO', 'Gluten-free'],
+        price: '$18.99'
+      },
+      {
+        id: 'chromium-1',
+        name: 'Chromium Picolinate',
+        image: '⚖️',
+        description: 'Essential mineral for carbohydrate and glucose metabolism',
+        benefits: ['Supports glucose metabolism', 'May reduce cravings', 'Essential mineral'],
+        personalReason: 'Helps your body process carbohydrates more efficiently',
+        healthFlags: ['Highly absorbable form', 'Third-party tested', 'Capsule form'],
+        price: '$12.99'
+      }
+    ],
+    'Craving Control': [
+      {
+        id: 'garcinia-1',
+        name: 'Garcinia Cambogia Extract',
+        image: '🍊',
+        description: 'Natural fruit extract for appetite and craving control',
+        benefits: ['Reduces appetite', 'Blocks fat production', 'Natural fruit extract'],
+        personalReason: 'Natural way to control food cravings and portion sizes',
+        healthFlags: ['60% HCA', 'No artificial fillers', 'Vegan capsules'],
+        price: '$17.99'
+      },
+      {
+        id: 'protein-powder-weight-1',
+        name: 'Lean Protein for Weight Loss',
+        image: '🥤',
+        description: 'Low-calorie protein powder designed for weight management',
+        benefits: ['High protein, low calories', 'Increases satiety', 'Preserves muscle'],
+        personalReason: 'Keeps you full while maintaining muscle during weight loss',
+        healthFlags: ['Low sugar', 'Added fiber', 'Natural flavors'],
+        price: '$41.99'
       }
     ],
     'Metabolism Booster': [
@@ -180,10 +384,130 @@ const SupplementHub = () => {
         personalReason: 'Great for your energy needs without the crash',
         healthFlags: ['Natural caffeine', 'Smooth focus', 'Third-party tested'],
         price: '$22.99'
+      },
+      {
+        id: 'green-coffee-1',
+        name: 'Green Coffee Bean Extract',
+        image: '☕',
+        description: 'Unroasted coffee beans rich in chlorogenic acid for metabolism',
+        benefits: ['Boosts metabolism', 'Antioxidant properties', 'Supports weight loss'],
+        personalReason: 'Natural metabolism booster from unprocessed coffee beans',
+        healthFlags: ['50% chlorogenic acid', 'Decaffeinated', 'Standardized'],
+        price: '$19.99'
       }
     ],
-    
-    // Existing supplements
+    'Thermogenic Aid': [
+      {
+        id: 'cayenne-pepper-1',
+        name: 'Cayenne Pepper Extract',
+        image: '🌶️',
+        description: 'Natural thermogenic from cayenne pepper for heat production',
+        benefits: ['Increases thermogenesis', 'Boosts metabolism', 'Natural spice extract'],
+        personalReason: 'Natural way to increase your body\'s calorie burning',
+        healthFlags: ['Standardized capsaicin', 'Vegetarian caps', 'No fillers'],
+        price: '$14.99'
+      },
+      {
+        id: 'yohimbe-1',
+        name: 'Yohimbe Bark Extract',
+        image: '🌳',
+        description: 'Traditional herb for thermogenesis and energy support',
+        benefits: ['Thermogenic properties', 'Energy support', 'Traditional use'],
+        personalReason: 'Traditional herb to support your fat burning goals',
+        healthFlags: ['Standardized extract', 'Third-party tested', 'Natural source'],
+        price: '$21.99'
+      }
+    ],
+    'Blood Sugar Balance': [
+      {
+        id: 'berberine-1',
+        name: 'Berberine HCL',
+        image: '🌿',
+        description: 'Natural compound for blood sugar and metabolic support',
+        benefits: ['Supports blood sugar', 'Metabolic health', 'Natural compound'],
+        personalReason: 'Helps maintain healthy blood sugar for weight management',
+        healthFlags: ['High purity', 'Research-backed', 'Vegan capsules'],
+        price: '$26.99'
+      },
+      {
+        id: 'cinnamon-1',
+        name: 'Ceylon Cinnamon Extract',
+        image: '🍂',
+        description: 'True cinnamon for blood sugar support and metabolism',
+        benefits: ['Blood sugar support', 'Antioxidant properties', 'True cinnamon'],
+        personalReason: 'Natural way to support healthy blood sugar levels',
+        healthFlags: ['Ceylon variety', 'Standardized extract', 'Organic'],
+        price: '$16.99'
+      }
+    ],
+    'Thyroid Support': [
+      {
+        id: 'iodine-1',
+        name: 'Kelp Iodine Complex',
+        image: '🌊',
+        description: 'Natural iodine from kelp for thyroid function support',
+        benefits: ['Thyroid health', 'Metabolic support', 'Natural iodine source'],
+        personalReason: 'Supports healthy thyroid function for optimal metabolism',
+        healthFlags: ['From kelp', 'Natural source', 'Third-party tested'],
+        price: '$13.99'
+      },
+      {
+        id: 'ashwagandha-1',
+        name: 'Ashwagandha Root Extract',
+        image: '🌱',
+        description: 'Adaptogenic herb for stress and thyroid support',
+        benefits: ['Stress management', 'Thyroid support', 'Adaptogenic properties'],
+        personalReason: 'Helps manage stress that can affect your metabolism',
+        healthFlags: ['KSM-66 extract', 'Organic', 'Third-party tested'],
+        price: '$24.99'
+      }
+    ],
+    'Hormonal Weight Control': [
+      {
+        id: 'dim-1',
+        name: 'DIM (Diindolylmethane)',
+        image: '🥦',
+        description: 'Natural compound from cruciferous vegetables for hormone balance',
+        benefits: ['Hormone metabolism', 'Estrogen balance', 'Natural compound'],
+        personalReason: 'Supports healthy hormone balance for weight management',
+        healthFlags: ['From broccoli', 'Enhanced absorption', 'Non-GMO'],
+        price: '$28.99'
+      },
+      {
+        id: 'maca-root-1',
+        name: 'Maca Root Powder',
+        image: '🌾',
+        description: 'Peruvian superfood for hormone balance and energy',
+        benefits: ['Hormone support', 'Natural energy', 'Adaptogenic properties'],
+        personalReason: 'Traditional superfood for hormonal health and vitality',
+        healthFlags: ['Organic', 'Raw powder', 'Fair trade'],
+        price: '$19.99'
+      }
+    ],
+    'Water Weight Reduction': [
+      {
+        id: 'dandelion-1',
+        name: 'Dandelion Root Extract',
+        image: '🌼',
+        description: 'Natural diuretic herb for healthy fluid balance',
+        benefits: ['Natural diuretic', 'Liver support', 'Reduces bloating'],
+        personalReason: 'Natural way to reduce water retention and bloating',
+        healthFlags: ['Standardized extract', 'Organic', 'Vegan caps'],
+        price: '$15.99'
+      },
+      {
+        id: 'potassium-1',
+        name: 'Potassium Citrate',
+        image: '⚡',
+        description: 'Essential electrolyte for fluid balance and muscle function',
+        benefits: ['Fluid balance', 'Muscle function', 'Electrolyte support'],
+        personalReason: 'Helps maintain healthy fluid balance and reduces bloating',
+        healthFlags: ['High absorption', 'No sodium', 'Capsule form'],
+        price: '$14.99'
+      }
+    ],
+
+    // === ENERGY & PERFORMANCE ===
     'Energy Boost': [
       {
         id: 'b-complex-1',
@@ -194,8 +518,174 @@ const SupplementHub = () => {
         personalReason: 'Great for your busy schedule and workout routine',
         healthFlags: ['Vegan', 'Non-GMO', 'Third-party tested'],
         price: '$19.99'
+      },
+      {
+        id: 'rhodiola-1',
+        name: 'Rhodiola Rosea Extract',
+        image: '🌸',
+        description: 'Adaptogenic herb for energy, stamina, and stress resistance',
+        benefits: ['Boosts energy', 'Reduces fatigue', 'Stress adaptation'],
+        personalReason: 'Natural energy without stimulants for sustained performance',
+        healthFlags: ['Standardized extract', 'Organic', 'Stress-tested'],
+        price: '$23.99'
       }
     ],
+    'Muscle Build': [
+      {
+        id: 'hmb-1',
+        name: 'HMB (β-Hydroxy β-Methylbutyrate)',
+        image: '🛡️',
+        description: 'Metabolite of leucine for muscle preservation and growth',
+        benefits: ['Prevents muscle breakdown', 'Enhances recovery', 'Supports lean mass'],
+        personalReason: 'Advanced supplement for serious muscle building goals',
+        healthFlags: ['Calcium HMB', 'Research-backed', 'Third-party tested'],
+        price: '$34.99'
+      },
+      {
+        id: 'tribulus-1',
+        name: 'Tribulus Terrestris Extract',
+        image: '🌿',
+        description: 'Traditional herb for natural testosterone and muscle support',
+        benefits: ['Natural testosterone support', 'Muscle building', 'Traditional use'],
+        personalReason: 'Natural support for your muscle building and strength goals',
+        healthFlags: ['40% saponins', 'Non-GMO', 'Standardized'],
+        price: '$21.99'
+      }
+    ],
+    'Athletic Recovery': [
+      {
+        id: 'tart-cherry-1',
+        name: 'Tart Cherry Extract',
+        image: '🍒',
+        description: 'Natural antioxidant for muscle recovery and sleep support',
+        benefits: ['Reduces muscle soreness', 'Anti-inflammatory', 'Sleep quality'],
+        personalReason: 'Natural recovery aid for your athletic training',
+        healthFlags: ['Montmorency cherries', 'No artificial colors', 'Concentrated'],
+        price: '$26.99'
+      },
+      {
+        id: 'curcumin-1',
+        name: 'Curcumin with BioPerine',
+        image: '🌿',
+        description: 'Turmeric extract with enhanced absorption for recovery',
+        benefits: ['Anti-inflammatory', 'Joint support', 'Enhanced absorption'],
+        personalReason: 'Reduces inflammation from intense training sessions',
+        healthFlags: ['95% curcuminoids', 'BioPerine added', 'Non-GMO'],
+        price: '$29.99'
+      }
+    ],
+    'Endurance': [
+      {
+        id: 'beetroot-1',
+        name: 'Beetroot Powder',
+        image: '🫐',
+        description: 'Natural nitrates for improved blood flow and endurance',
+        benefits: ['Increases nitric oxide', 'Improves endurance', 'Better pumps'],
+        personalReason: 'Natural way to boost your endurance and cardiovascular performance',
+        healthFlags: ['Organic beetroot', 'No additives', 'Rich in nitrates'],
+        price: '$22.99'
+      },
+      {
+        id: 'cordyceps-1',
+        name: 'Cordyceps Mushroom Extract',
+        image: '🍄',
+        description: 'Adaptogenic mushroom for oxygen utilization and endurance',
+        benefits: ['Improves oxygen use', 'Boosts endurance', 'Adaptogenic'],
+        personalReason: 'Traditional fungus for enhanced athletic endurance',
+        healthFlags: ['Organic', 'Dual-extracted', 'Beta-glucans'],
+        price: '$31.99'
+      }
+    ],
+    'Stamina': [
+      {
+        id: 'ginseng-1',
+        name: 'Panax Ginseng Extract',
+        image: '🌿',
+        description: 'Premium ginseng for energy, stamina, and vitality',
+        benefits: ['Boosts stamina', 'Improves vitality', 'Adaptogenic'],
+        personalReason: 'Traditional herb for sustained energy and endurance',
+        healthFlags: ['Standardized ginsenosides', 'Korean red ginseng', 'Authentic'],
+        price: '$27.99'
+      },
+      {
+        id: 'coenzyme-q10-1',
+        name: 'CoQ10 Ubiquinone',
+        image: '⚡',
+        description: 'Cellular energy production for stamina and heart health',
+        benefits: ['Cellular energy', 'Heart health', 'Antioxidant'],
+        personalReason: 'Supports cellular energy production for lasting stamina',
+        healthFlags: ['Ubiquinone form', 'Softgel delivery', 'High purity'],
+        price: '$33.99'
+      }
+    ],
+    'Workout Focus': [
+      {
+        id: 'lions-mane-1',
+        name: 'Lion\'s Mane Mushroom',
+        image: '🦁',
+        description: 'Nootropic mushroom for cognitive function and focus',
+        benefits: ['Enhances focus', 'Cognitive support', 'Nerve health'],
+        personalReason: 'Sharpens mental focus during intense training sessions',
+        healthFlags: ['Organic', 'Dual-extracted', 'Hericenones & erinacines'],
+        price: '$28.99'
+      },
+      {
+        id: 'tyrosine-1',
+        name: 'L-Tyrosine',
+        image: '🧠',
+        description: 'Amino acid for mental focus and stress resistance',
+        benefits: ['Improves focus', 'Stress resistance', 'Mental clarity'],
+        personalReason: 'Maintains focus and performance under training stress',
+        healthFlags: ['Free-form amino acid', 'Pure powder', 'Third-party tested'],
+        price: '$18.99'
+      }
+    ],
+    'Pre-Workout Support': [
+      {
+        id: 'citrulline-1',
+        name: 'L-Citrulline Malate',
+        image: '🍉',
+        description: 'Amino acid for improved blood flow and muscle pumps',
+        benefits: ['Better pumps', 'Improved endurance', 'Reduces fatigue'],
+        personalReason: 'Enhances your pre-workout performance and muscle pumps',
+        healthFlags: ['2:1 ratio', 'Pharmaceutical grade', 'Unflavored'],
+        price: '$26.99'
+      },
+      {
+        id: 'arginine-1',
+        name: 'L-Arginine AKG',
+        image: '💨',
+        description: 'Nitric oxide precursor for enhanced blood flow and pumps',
+        benefits: ['Nitric oxide boost', 'Enhanced pumps', 'Better nutrient delivery'],
+        personalReason: 'Maximizes blood flow and nutrient delivery to muscles',
+        healthFlags: ['Alpha-ketoglutarate form', 'Enhanced absorption', 'Pure'],
+        price: '$23.99'
+      }
+    ],
+    'Post-Workout Recovery': [
+      {
+        id: 'whey-hydrolysate-1',
+        name: 'Whey Protein Hydrolysate',
+        image: '🥛',
+        description: 'Fast-absorbing hydrolyzed whey for rapid recovery',
+        benefits: ['Fastest absorption', 'Rapid recovery', 'Pre-digested protein'],
+        personalReason: 'Fastest protein absorption for immediate post-workout recovery',
+        healthFlags: ['Hydrolyzed form', 'Low allergenicity', 'Premium quality'],
+        price: '$54.99'
+      },
+      {
+        id: 'dextrose-1',
+        name: 'Pure Dextrose Powder',
+        image: '🍯',
+        description: 'Fast-acting carbohydrate for glycogen replenishment',
+        benefits: ['Rapid glycogen refill', 'Insulin response', 'Quick energy'],
+        personalReason: 'Rapidly replenishes energy stores after intense workouts',
+        healthFlags: ['Pure dextrose', 'Fast absorption', 'No additives'],
+        price: '$15.99'
+      }
+    ],
+
+    // === HEART & LONGEVITY ===
     'Heart Health': [
       {
         id: 'omega-3-1',
@@ -219,6 +709,118 @@ const SupplementHub = () => {
         price: '$34.99'
       }
     ],
+    'Cholesterol Control': [
+      {
+        id: 'red-yeast-rice-1',
+        name: 'Red Yeast Rice Extract',
+        image: '🔴',
+        description: 'Traditional supplement for cholesterol management support',
+        benefits: ['Cholesterol support', 'Heart health', 'Traditional use'],
+        personalReason: 'Natural approach to supporting healthy cholesterol levels',
+        healthFlags: ['Standardized extract', 'No citriniin', 'Quality tested'],
+        price: '$22.99'
+      },
+      {
+        id: 'plant-sterols-1',
+        name: 'Plant Sterols Complex',
+        image: '🌱',
+        description: 'Natural plant compounds for cholesterol absorption blocking',
+        benefits: ['Blocks cholesterol absorption', 'Plant-based', 'Clinically studied'],
+        personalReason: 'Plant-powered approach to heart health maintenance',
+        healthFlags: ['Beta-sitosterol', 'Non-GMO', 'Vegetarian'],
+        price: '$19.99'
+      }
+    ],
+    'Blood Pressure Balance': [
+      {
+        id: 'hawthorne-1',
+        name: 'Hawthorn Berry Extract',
+        image: '🫐',
+        description: 'Traditional herb for cardiovascular and blood pressure support',
+        benefits: ['Blood pressure support', 'Heart health', 'Antioxidant'],
+        personalReason: 'Traditional herb for maintaining healthy blood pressure',
+        healthFlags: ['Standardized extract', 'Organic', 'Traditional use'],
+        price: '$17.99'
+      },
+      {
+        id: 'magnesium-1',
+        name: 'Magnesium Glycinate',
+        image: '💫',
+        description: 'Highly absorbable magnesium for heart and muscle function',
+        benefits: ['Blood pressure support', 'Muscle relaxation', 'Heart rhythm'],
+        personalReason: 'Essential mineral for cardiovascular health and relaxation',
+        healthFlags: ['Chelated form', 'High absorption', 'Gentle on stomach'],
+        price: '$21.99'
+      }
+    ],
+    'Circulation Support': [
+      {
+        id: 'ginkgo-1',
+        name: 'Ginkgo Biloba Extract',
+        image: '🍃',
+        description: 'Traditional herb for circulation and cognitive support',
+        benefits: ['Improves circulation', 'Cognitive support', 'Antioxidant'],
+        personalReason: 'Traditional herb for healthy blood flow and brain function',
+        healthFlags: ['24% flavonoids', 'Standardized', 'Third-party tested'],
+        price: '$18.99'
+      },
+      {
+        id: 'grape-seed-1',
+        name: 'Grape Seed Extract',
+        image: '🍇',
+        description: 'Powerful antioxidant for vascular health and circulation',
+        benefits: ['Vascular health', 'Antioxidant support', 'Circulation'],
+        personalReason: 'Potent antioxidant support for healthy blood vessels',
+        healthFlags: ['95% proanthocyanidins', 'Standardized', 'Non-GMO'],
+        price: '$16.99'
+      }
+    ],
+    'Anti-Aging': [
+      {
+        id: 'resveratrol-1',
+        name: 'Resveratrol Complex',
+        image: '🍷',
+        description: 'Powerful antioxidant from grapes for anti-aging support',
+        benefits: ['Anti-aging properties', 'Cellular protection', 'Heart health'],
+        personalReason: 'Powerful antioxidant for healthy aging and longevity',
+        healthFlags: ['Trans-resveratrol', 'High purity', 'Third-party tested'],
+        price: '$29.99'
+      },
+      {
+        id: 'nad-precursor-1',
+        name: 'NAD+ Precursor (NMN)',
+        image: '🔬',
+        description: 'Advanced cellular energy and anti-aging support',
+        benefits: ['Cellular energy', 'DNA repair', 'Anti-aging'],
+        personalReason: 'Cutting-edge supplement for cellular health and longevity',
+        healthFlags: ['Pharmaceutical grade', 'Third-party tested', 'High purity'],
+        price: '$49.99'
+      }
+    ],
+    'Cellular Repair': [
+      {
+        id: 'glutathione-1',
+        name: 'Liposomal Glutathione',
+        image: '🔬',
+        description: 'Master antioxidant for cellular detoxification and repair',
+        benefits: ['Cellular detox', 'Immune support', 'Anti-aging'],
+        personalReason: 'Master antioxidant for optimal cellular function',
+        healthFlags: ['Liposomal delivery', 'Reduced form', 'High bioavailability'],
+        price: '$39.99'
+      },
+      {
+        id: 'vitamin-c-1',
+        name: 'Vitamin C Complex',
+        image: '🍊',
+        description: 'Buffered vitamin C with bioflavonoids for immune and cellular support',
+        benefits: ['Immune support', 'Collagen synthesis', 'Antioxidant'],
+        personalReason: 'Essential vitamin for immune health and cellular protection',
+        healthFlags: ['Buffered form', 'With bioflavonoids', 'Non-acidic'],
+        price: '$14.99'
+      }
+    ],
+
+    // === BRAIN & MOOD ===
     'Brain Function': [
       {
         id: 'omega-3-brain',
@@ -229,6 +831,416 @@ const SupplementHub = () => {
         personalReason: 'Perfect for your mental performance goals',
         healthFlags: ['DHA concentrated', 'Third-party tested', 'Non-GMO'],
         price: '$29.99'
+      },
+      {
+        id: 'phosphatidylserine-1',
+        name: 'Phosphatidylserine',
+        image: '🧬',
+        description: 'Brain phospholipid for memory and cognitive function',
+        benefits: ['Memory support', 'Cognitive function', 'Brain health'],
+        personalReason: 'Essential phospholipid for optimal brain function',
+        healthFlags: ['Soy-free', 'Sunflower derived', 'Third-party tested'],
+        price: '$32.99'
+      }
+    ],
+    'Focus & Memory': [
+      {
+        id: 'bacopa-1',
+        name: 'Bacopa Monnieri Extract',
+        image: '🌿',
+        description: 'Ayurvedic herb for memory, learning, and cognitive function',
+        benefits: ['Enhances memory', 'Improves learning', 'Reduces anxiety'],
+        personalReason: 'Traditional herb for enhanced memory and mental clarity',
+        healthFlags: ['Standardized bacosides', 'Organic', 'Traditional use'],
+        price: '$24.99'
+      },
+      {
+        id: 'alpha-gpc-1',
+        name: 'Alpha-GPC',
+        image: '⚡',
+        description: 'Bioavailable choline source for brain function and focus',
+        benefits: ['Improves focus', 'Brain health', 'Acetylcholine support'],
+        personalReason: 'Premium choline source for mental performance',
+        healthFlags: ['99% pure', 'Pharmaceutical grade', 'Third-party tested'],
+        price: '$34.99'
+      }
+    ],
+    'Mental Clarity': [
+      {
+        id: 'gotu-kola-1',
+        name: 'Gotu Kola Extract',
+        image: '🍃',
+        description: 'Traditional herb for mental clarity and cognitive support',
+        benefits: ['Mental clarity', 'Cognitive support', 'Stress relief'],
+        personalReason: 'Traditional herb for clear thinking and mental focus',
+        healthFlags: ['Standardized extract', 'Organic', 'Ayurvedic tradition'],
+        price: '$19.99'
+      },
+      {
+        id: 'mct-oil-1',
+        name: 'MCT Oil for Brain Fuel',
+        image: '🥥',
+        description: 'Medium-chain triglycerides for brain energy and mental clarity',
+        benefits: ['Brain fuel', 'Mental clarity', 'Quick energy'],
+        personalReason: 'Clean brain fuel for sustained mental energy',
+        healthFlags: ['C8 & C10', 'Coconut derived', 'No palm oil'],
+        price: '$26.99'
+      }
+    ],
+    'Stress Relief': [
+      {
+        id: 'ashwagandha-stress-1',
+        name: 'Ashwagandha KSM-66',
+        image: '🌱',
+        description: 'Premium ashwagandha extract for stress management',
+        benefits: ['Reduces stress', 'Improves mood', 'Adaptogenic'],
+        personalReason: 'Clinically studied adaptogen for modern stress management',
+        healthFlags: ['KSM-66 extract', 'Organic', 'Clinically studied'],
+        price: '$24.99'
+      },
+      {
+        id: 'l-theanine-1',
+        name: 'L-Theanine Pure',
+        image: '🍵',
+        description: 'Amino acid from green tea for calm focus and relaxation',
+        benefits: ['Promotes relaxation', 'Calm focus', 'Stress reduction'],
+        personalReason: 'Natural relaxation without drowsiness for busy days',
+        healthFlags: ['Suntheanine brand', 'Pure L-theanine', 'Third-party tested'],
+        price: '$22.99'
+      }
+    ],
+    'Anxiety Balance': [
+      {
+        id: 'passionflower-1',
+        name: 'Passionflower Extract',
+        image: '🌸',
+        description: 'Traditional herb for anxiety relief and relaxation',
+        benefits: ['Anxiety relief', 'Promotes calm', 'Traditional use'],
+        personalReason: 'Traditional herb for natural anxiety management',
+        healthFlags: ['Standardized extract', 'Organic', 'Traditional use'],
+        price: '$18.99'
+      },
+      {
+        id: 'gaba-1',
+        name: 'GABA (Gamma-Aminobutyric Acid)',
+        image: '😌',
+        description: 'Neurotransmitter for relaxation and anxiety balance',
+        benefits: ['Promotes relaxation', 'Anxiety balance', 'Calm mood'],
+        personalReason: 'Natural neurotransmitter for peaceful, balanced mood',
+        healthFlags: ['Pharmaceutical grade', 'Free-form', 'Third-party tested'],
+        price: '$16.99'
+      }
+    ],
+    'Sleep Support': [
+      {
+        id: 'melatonin-1',
+        name: 'Melatonin 3mg',
+        image: '🌙',
+        description: 'Natural sleep hormone for healthy sleep cycles',
+        benefits: ['Promotes sleep', 'Regulates sleep cycle', 'Natural hormone'],
+        personalReason: 'Natural support for quality sleep and recovery',
+        healthFlags: ['Pharmaceutical grade', 'Time-release', 'Third-party tested'],
+        price: '$12.99'
+      },
+      {
+        id: 'valerian-1',
+        name: 'Valerian Root Extract',
+        image: '🌿',
+        description: 'Traditional herb for relaxation and sleep support',
+        benefits: ['Sleep support', 'Relaxation', 'Traditional use'],
+        personalReason: 'Traditional herb for natural, restful sleep',
+        healthFlags: ['Standardized extract', 'Organic', 'No next-day grogginess'],
+        price: '$15.99'
+      }
+    ],
+    'Mood Boost': [
+      {
+        id: 'st-johns-wort-1',
+        name: 'St. John\'s Wort Extract',
+        image: '☀️',
+        description: 'Traditional herb for mood support and emotional balance',
+        benefits: ['Mood support', 'Emotional balance', 'Traditional use'],
+        personalReason: 'Traditional herb for maintaining positive mood',
+        healthFlags: ['0.3% hypericin', 'Standardized', 'Traditional use'],
+        price: '$17.99'
+      },
+      {
+        id: 'sam-e-1',
+        name: 'SAM-e (S-Adenosyl Methionine)',
+        image: '😊',
+        description: 'Natural compound for mood support and joint health',
+        benefits: ['Mood support', 'Joint health', 'Liver support'],
+        personalReason: 'Natural compound for mood balance and overall wellness',
+        healthFlags: ['Enteric coated', 'Pharmaceutical grade', 'Stable form'],
+        price: '$39.99'
+      }
+    ],
+
+    // === GUT & IMMUNITY ===
+    'Gut Health': [
+      {
+        id: 'multi-probiotic-1',
+        name: 'Multi-Strain Probiotic',
+        image: '🦠',
+        description: '50 billion CFU multi-strain probiotic for digestive health',
+        benefits: ['Digestive health', 'Immune support', 'Gut flora balance'],
+        personalReason: 'Essential for maintaining healthy gut microbiome',
+        healthFlags: ['50 billion CFU', 'Delayed release', 'Shelf stable'],
+        price: '$34.99'
+      },
+      {
+        id: 'prebiotic-fiber-1',
+        name: 'Prebiotic Fiber Blend',
+        image: '🌾',
+        description: 'Prebiotic fibers to feed beneficial gut bacteria',
+        benefits: ['Feeds good bacteria', 'Digestive health', 'Fiber support'],
+        personalReason: 'Nourishes your beneficial gut bacteria for optimal health',
+        healthFlags: ['Multiple fiber sources', 'Organic', 'No artificial additives'],
+        price: '$19.99'
+      }
+    ],
+    'Probiotics & Digestion': [
+      {
+        id: 'digestive-enzymes-1',
+        name: 'Full Spectrum Digestive Enzymes',
+        image: '⚙️',
+        description: 'Complete enzyme blend for protein, carb, and fat digestion',
+        benefits: ['Improves digestion', 'Reduces bloating', 'Nutrient absorption'],
+        personalReason: 'Breaks down food efficiently for better nutrient absorption',
+        healthFlags: ['Broad spectrum', 'Acid-resistant', 'Plant-based'],
+        price: '$26.99'
+      },
+      {
+        id: 'lactobacillus-1',
+        name: 'Lactobacillus Acidophilus',
+        image: '🧪',
+        description: 'Targeted probiotic strain for digestive and vaginal health',
+        benefits: ['Digestive balance', 'Vaginal health', 'Immune support'],
+        personalReason: 'Specific strain for women\'s digestive and intimate health',
+        healthFlags: ['Clinically studied strain', 'Acid-resistant', 'Women\'s health'],
+        price: '$22.99'
+      }
+    ],
+    'Immune Support': [
+      {
+        id: 'elderberry-1',
+        name: 'Elderberry Extract',
+        image: '🫐',
+        description: 'Traditional berry extract for immune system support',
+        benefits: ['Immune support', 'Antioxidant rich', 'Traditional use'],
+        personalReason: 'Traditional immune support from nature\'s pharmacy',
+        healthFlags: ['Standardized extract', 'Organic', 'No artificial colors'],
+        price: '$18.99'
+      },
+      {
+        id: 'zinc-1',
+        name: 'Zinc Picolinate',
+        image: '⚡',
+        description: 'Highly absorbable zinc for immune function and healing',
+        benefits: ['Immune function', 'Wound healing', 'Antioxidant'],
+        personalReason: 'Essential mineral for strong immune system function',
+        healthFlags: ['Picolinate form', 'High absorption', 'Third-party tested'],
+        price: '$13.99'
+      }
+    ],
+    'Detox & Cleanse': [
+      {
+        id: 'milk-thistle-1',
+        name: 'Milk Thistle Extract',
+        image: '🌿',
+        description: 'Liver support herb for detoxification and cleansing',
+        benefits: ['Liver support', 'Detoxification', 'Antioxidant'],
+        personalReason: 'Traditional herb for liver health and natural detox',
+        healthFlags: ['80% silymarin', 'Standardized', 'Organic'],
+        price: '$19.99'
+      },
+      {
+        id: 'chlorella-1',
+        name: 'Organic Chlorella',
+        image: '🌿',
+        description: 'Nutrient-dense algae for detox and nutritional support',
+        benefits: ['Natural detox', 'Nutrient dense', 'Chlorophyll rich'],
+        personalReason: 'Nature\'s detoxifier packed with essential nutrients',
+        healthFlags: ['Organic', 'Cracked cell wall', 'Heavy metal tested'],
+        price: '$24.99'
+      }
+    ],
+    'Anti-Inflammatory': [
+      {
+        id: 'turmeric-1',
+        name: 'Turmeric Curcumin Complex',
+        image: '🌿',
+        description: 'Turmeric with black pepper for anti-inflammatory support',
+        benefits: ['Anti-inflammatory', 'Joint support', 'Antioxidant'],
+        personalReason: 'Powerful anti-inflammatory for recovery and joint health',
+        healthFlags: ['95% curcuminoids', 'With BioPerine', 'Organic'],
+        price: '$22.99'
+      },
+      {
+        id: 'boswellia-1',
+        name: 'Boswellia Serrata Extract',
+        image: '🌳',
+        description: 'Traditional resin for joint health and inflammation support',
+        benefits: ['Joint health', 'Anti-inflammatory', 'Traditional use'],
+        personalReason: 'Traditional resin for joint comfort and mobility',
+        healthFlags: ['65% boswellic acids', 'Standardized', 'Third-party tested'],
+        price: '$26.99'
+      }
+    ],
+    'Liver Health': [
+      {
+        id: 'nac-1',
+        name: 'NAC (N-Acetyl Cysteine)',
+        image: '🫁',
+        description: 'Amino acid for liver detox and respiratory support',
+        benefits: ['Liver support', 'Glutathione precursor', 'Respiratory health'],
+        personalReason: 'Powerful antioxidant precursor for liver detoxification',
+        healthFlags: ['Pharmaceutical grade', 'Free-form amino acid', 'Third-party tested'],
+        price: '$21.99'
+      },
+      {
+        id: 'artichoke-1',
+        name: 'Artichoke Leaf Extract',
+        image: '🌿',
+        description: 'Traditional herb for liver and digestive support',
+        benefits: ['Liver support', 'Digestive health', 'Cholesterol support'],
+        personalReason: 'Traditional Mediterranean herb for liver wellness',
+        healthFlags: ['Standardized extract', 'Organic', 'Traditional use'],
+        price: '$17.99'
+      }
+    ],
+
+    // === HORMONES & METABOLISM ===
+    'Hormonal Balance': [
+      {
+        id: 'vitex-1',
+        name: 'Vitex (Chasteberry)',
+        image: '🌸',
+        description: 'Traditional herb for women\'s hormonal balance',
+        benefits: ['Hormonal balance', 'PMS support', 'Women\'s health'],
+        personalReason: 'Traditional herb for natural hormonal harmony',
+        healthFlags: ['Standardized extract', 'Organic', 'Women\'s health'],
+        price: '$19.99'
+      },
+      {
+        id: 'evening-primrose-1',
+        name: 'Evening Primrose Oil',
+        image: '🌼',
+        description: 'GLA-rich oil for hormonal and skin health support',
+        benefits: ['Hormonal support', 'Skin health', 'GLA source'],
+        personalReason: 'Natural GLA for hormonal balance and healthy skin',
+        healthFlags: ['Cold-pressed', 'High GLA', 'Third-party tested'],
+        price: '$16.99'
+      }
+    ],
+    'Men\'s Health': [
+      {
+        id: 'saw-palmetto-1',
+        name: 'Saw Palmetto Extract',
+        image: '🌴',
+        description: 'Traditional herb for men\'s prostate and urinary health',
+        benefits: ['Prostate health', 'Urinary support', 'Men\'s wellness'],
+        personalReason: 'Traditional support for men\'s prostate health',
+        healthFlags: ['Standardized extract', 'Organic', 'Traditional use'],
+        price: '$18.99'
+      },
+      {
+        id: 'fenugreek-1',
+        name: 'Fenugreek Seed Extract',
+        image: '🌿',
+        description: 'Traditional herb for testosterone and metabolic support',
+        benefits: ['Testosterone support', 'Metabolic health', 'Traditional use'],
+        personalReason: 'Traditional herb for men\'s vitality and strength',
+        healthFlags: ['Standardized saponins', 'Organic', 'Third-party tested'],
+        price: '$21.99'
+      }
+    ],
+    'Women\'s Health': [
+      {
+        id: 'black-cohosh-1',
+        name: 'Black Cohosh Root',
+        image: '🖤',
+        description: 'Traditional herb for women\'s hormonal comfort',
+        benefits: ['Menopausal support', 'Hormonal comfort', 'Women\'s health'],
+        personalReason: 'Traditional herb for women\'s hormonal transitions',
+        healthFlags: ['Standardized extract', 'Organic', 'Traditional use'],
+        price: '$17.99'
+      },
+      {
+        id: 'red-clover-1',
+        name: 'Red Clover Extract',
+        image: '🍀',
+        description: 'Isoflavone-rich herb for women\'s hormonal support',
+        benefits: ['Isoflavones', 'Hormonal support', 'Women\'s wellness'],
+        personalReason: 'Natural isoflavones for women\'s hormonal health',
+        healthFlags: ['40% isoflavones', 'Standardized', 'Organic'],
+        price: '$16.99'
+      }
+    ],
+    'Weight Loss': [
+      {
+        id: 'forskolin-1',
+        name: 'Forskolin Extract',
+        image: '🌿',
+        description: 'Coleus forskohlii extract for weight management support',
+        benefits: ['Weight management', 'Metabolic support', 'Traditional use'],
+        personalReason: 'Traditional herb for natural weight management support',
+        healthFlags: ['20% forskolin', 'Standardized', 'Third-party tested'],
+        price: '$22.99'
+      },
+      {
+        id: 'conjugated-linoleic-acid-1',
+        name: 'CLA Complex',
+        image: '💊',
+        description: 'Conjugated linoleic acid for body composition support',
+        benefits: ['Body composition', 'Lean mass support', 'Natural fatty acid'],
+        personalReason: 'Natural fatty acid for healthy body composition',
+        healthFlags: ['80% CLA', 'Safflower oil', 'Non-GMO'],
+        price: '$19.99'
+      }
+    ],
+    'Blood Sugar Support': [
+      {
+        id: 'gymnema-1',
+        name: 'Gymnema Sylvestre',
+        image: '🍃',
+        description: 'Ayurvedic herb for blood sugar and sweet craving support',
+        benefits: ['Blood sugar support', 'Reduces sweet cravings', 'Traditional use'],
+        personalReason: 'Traditional herb for healthy blood sugar management',
+        healthFlags: ['25% gymnemic acids', 'Standardized', 'Ayurvedic tradition'],
+        price: '$18.99'
+      },
+      {
+        id: 'alpha-lipoic-acid-1',
+        name: 'Alpha Lipoic Acid',
+        image: '⚡',
+        description: 'Universal antioxidant for blood sugar and nerve support',
+        benefits: ['Blood sugar support', 'Antioxidant', 'Nerve health'],
+        personalReason: 'Powerful antioxidant for metabolic and nerve health',
+        healthFlags: ['R-lipoic acid', 'Bioavailable', 'Third-party tested'],
+        price: '$24.99'
+      }
+    ],
+    'Metabolism Boost': [
+      {
+        id: 'kelp-iodine-1',
+        name: 'Kelp Iodine Complex',
+        image: '🌊',
+        description: 'Natural iodine from kelp for thyroid and metabolic support',
+        benefits: ['Thyroid support', 'Metabolic health', 'Natural iodine'],
+        personalReason: 'Essential iodine for healthy thyroid function',
+        healthFlags: ['Atlantic kelp', 'Natural source', 'Third-party tested'],
+        price: '$13.99'
+      },
+      {
+        id: 'capsicum-1',
+        name: 'Capsicum Extract',
+        image: '🌶️',
+        description: 'Cayenne pepper extract for thermogenesis and metabolism',
+        benefits: ['Thermogenesis', 'Metabolic support', 'Circulation'],
+        personalReason: 'Natural heat for metabolic boost and circulation',
+        healthFlags: ['Standardized capsaicin', 'Enteric coated', 'No stomach irritation'],
+        price: '$15.99'
       }
     ]
   };
