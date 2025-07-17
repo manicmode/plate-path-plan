@@ -152,18 +152,6 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-full max-h-full w-full h-full p-0 border-0 bg-black overflow-hidden">
         <div className="relative w-full h-full">
-          {/* Header with close button */}
-          <div className="absolute top-4 right-4 z-50">
-            <Button
-              onClick={handleClose}
-              variant="ghost"
-              size="icon"
-              className="bg-black/50 hover:bg-black/70 text-white border border-white/20 rounded-full w-12 h-12"
-            >
-              <X className="w-6 h-6" />
-            </Button>
-          </div>
-
           {/* Main Content */}
           {currentState === 'scanner' && (
             <HealthScannerInterface 
