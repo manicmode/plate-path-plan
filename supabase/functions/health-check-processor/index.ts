@@ -137,11 +137,14 @@ async function fetchProductByBarcode(barcode: string): Promise<any | null> {
 
 async function analyzeImageWithGoogleVision(imageData: string): Promise<{ labels: string[], text: string }> {
   try {
+    console.log('🔍 Starting Google Vision analysis...');
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
     if (!apiKey) {
+      console.error('❌ Google Vision API key not configured');
       throw new Error('Google Vision API key not configured');
     }
 
+    console.log('🖼️ Making Google Vision API request...');
     const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -156,14 +159,37 @@ async function analyzeImageWithGoogleVision(imageData: string): Promise<{ labels
       })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Google Vision API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`Google Vision API failed: ${response.status} - ${errorText}`);
+    }
+
     const result = await response.json();
+    console.log('✅ Google Vision response received:', {
+      hasResponses: !!result.responses,
+      hasLabels: !!result.responses?.[0]?.labelAnnotations,
+      hasText: !!result.responses?.[0]?.textAnnotations
+    });
+
     const labels = result.responses[0]?.labelAnnotations?.map((label: any) => label.description) || [];
     const text = result.responses[0]?.textAnnotations?.[0]?.description || '';
 
+    console.log('🏷️ Extracted labels:', labels.slice(0, 3));
+    console.log('📝 Extracted text length:', text.length);
+
     return { labels, text };
   } catch (error) {
-    console.error('Error analyzing image:', error);
-    return { labels: [], text: '' };
+    console.error('💥 Critical error in Google Vision analysis:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    throw error; // Re-throw to be handled by calling function
   }
 }
 
@@ -200,11 +226,14 @@ async function transcribeAudio(audioData: string): Promise<string> {
 
 async function analyzeWithGPT(prompt: string): Promise<any> {
   try {
+    console.log('🤖 Starting OpenAI GPT analysis...');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('❌ OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
+    console.log('📤 Making OpenAI API request...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -224,12 +253,35 @@ async function analyzeWithGPT(prompt: string): Promise<any> {
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`OpenAI API failed: ${response.status} - ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('✅ OpenAI response received');
+    
     const content = data.choices[0]?.message?.content;
     
+    if (!content) {
+      console.error('❌ No content in OpenAI response:', data);
+      throw new Error('OpenAI returned empty response');
+    }
+    
     try {
-      return JSON.parse(content);
-    } catch {
+      const parsedContent = JSON.parse(content);
+      console.log('✅ Successfully parsed JSON response');
+      return parsedContent;
+    } catch (parseError) {
+      console.error('❌ Failed to parse JSON response:', {
+        error: parseError.message,
+        content: content.substring(0, 200)
+      });
       // If not valid JSON, return a structured response
       return {
         productName: "Unknown Product",
@@ -238,12 +290,12 @@ async function analyzeWithGPT(prompt: string): Promise<any> {
       };
     }
   } catch (error) {
-    console.error('Error analyzing with GPT:', error);
-    return {
-      productName: "Analysis Error",
-      ingredients: ["Error occurred during analysis"],
-      nutritionSummary: "Unable to complete analysis"
-    };
+    console.error('💥 Critical error in OpenAI GPT analysis:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    throw error; // Re-throw to be handled by calling function
   }
 }
 
@@ -433,38 +485,84 @@ serve(async (req) => {
   }
 
   try {
-    const { type, content, imageData } = await req.json();
+    console.log('🚀 Health-check-processor function called');
     
-    if (!type || !content) {
-      throw new Error('Missing required fields: type and content');
+    const requestBody = await req.json();
+    console.log('📦 Request body received:', JSON.stringify(requestBody, null, 2));
+    
+    // Handle both old and new parameter formats
+    const { 
+      type, 
+      content, 
+      imageData,
+      inputType, 
+      data, 
+      userId 
+    } = requestBody;
+    
+    // Map parameters from frontend format to function format
+    const processType = inputType || type;
+    const processContent = data || content;
+    const processImageData = imageData;
+    
+    console.log('🔍 Processed parameters:', {
+      processType,
+      processContent: processContent ? `${processContent.substring(0, 50)}...` : 'null',
+      hasImageData: !!processImageData,
+      userId
+    });
+    
+    if (!processType || !processContent) {
+      const errorMsg = `Missing required fields. Received: type=${processType}, content=${!!processContent}`;
+      console.error('❌ Validation error:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     const input: ProcessedInput = {
-      type,
-      content,
-      imageData
+      type: processType,
+      content: processContent,
+      imageData: processImageData
     };
 
+    console.log('⚙️ Starting health report processing...');
     const healthReport = await processInput(input);
     
-    console.log('Generated health report:', healthReport);
+    console.log('✅ Generated health report successfully:', {
+      productName: healthReport.productName,
+      healthScore: healthReport.healthScore,
+      flagsCount: healthReport.healthFlags.length
+    });
 
     return new Response(JSON.stringify(healthReport), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in health-check-processor:', error);
-    return new Response(JSON.stringify({ 
+    console.error('💥 Critical error in health-check-processor:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // Return detailed error information for debugging
+    const errorResponse = {
       error: error.message,
+      errorType: error.name,
       productName: "Error",
       ingredients: [],
-      healthFlags: [],
+      healthFlags: [{
+        type: 'danger' as const,
+        icon: '❌',
+        title: 'Processing Error',
+        description: `Failed to analyze: ${error.message}`
+      }],
       healthScore: 0,
       nutritionSummary: "Error occurred during analysis",
-      summary: "Unable to process request",
-      recommendations: ["Please try again"]
-    }), {
+      summary: "Unable to process request due to internal error",
+      recommendations: ["Please try again", "Check that all required data is provided"]
+    };
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
