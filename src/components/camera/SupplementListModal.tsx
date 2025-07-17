@@ -33,7 +33,20 @@ export const SupplementListModal = ({
 }: SupplementListModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0">
+      <DialogContent 
+        className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0 relative"
+        showCloseButton={false}
+        onEscapeKeyDown={onClose}
+        onPointerDownOutside={onClose}
+      >
+        {/* Custom Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 z-[60] rounded-full bg-background/80 backdrop-blur-sm hover:bg-background/90 p-2 transition-colors"
+          aria-label="Close modal"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <DialogHeader className="p-6 pb-2 space-y-0">
           <DialogTitle className="text-xl font-bold">AI Recommendations</DialogTitle>
           
