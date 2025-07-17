@@ -67,6 +67,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   }, [isOpen]);
 
   const handleImageCapture = async (imageData: string) => {
+    console.log("📥 handleImageCapture called with: ", imageData);
     try {
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
