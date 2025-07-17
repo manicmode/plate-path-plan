@@ -8,6 +8,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
+import { SupplementListModal } from '@/components/camera/SupplementListModal';
+import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 
 interface Supplement {
   id: string;
@@ -31,10 +33,13 @@ const SupplementHub = () => {
   const userSupplements = currentDay.supplements;
   
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategoryName, setSelectedCategoryName] = useState('');
   const [recommendations, setRecommendations] = useState<Supplement[]>([]);
   const [showMore, setShowMore] = useState(false);
   const [selectedSupplement, setSelectedSupplement] = useState<Supplement | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showSupplementList, setShowSupplementList] = useState(false);
+  const [showSupplementDetail, setShowSupplementDetail] = useState(false);
 
   // Scroll container ref for horizontal tabs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -230,20 +235,26 @@ const SupplementHub = () => {
 
   const handleGoalSelect = async (goalName: string) => {
     setSelectedCategory(goalName);
+    setSelectedCategoryName(goalName);
     setIsAnalyzing(true);
     setRecommendations([]);
     
     // Simulate AI analysis
     setTimeout(() => {
       const goalSupplements = supplementDatabase[goalName] || [];
-      const topRecommendations = goalSupplements.slice(0, 3);
       setRecommendations(goalSupplements);
       setIsAnalyzing(false);
       
-      if (topRecommendations.length > 0) {
+      if (goalSupplements.length > 0) {
+        setShowSupplementList(true);
         toast({
           title: "Recommendations Ready!",
-          description: `Found ${topRecommendations.length} personalized supplements for you.`,
+          description: `Found ${goalSupplements.length} personalized supplements for you.`,
+        });
+      } else {
+        toast({
+          title: "No Supplements Found",
+          description: "We're working on adding more supplements for this category.",
         });
       }
     }, 2000);
@@ -251,6 +262,8 @@ const SupplementHub = () => {
 
   const handleSupplementSelect = (supplement: Supplement) => {
     setSelectedSupplement(supplement);
+    setShowSupplementList(false);
+    setShowSupplementDetail(true);
   };
 
   const handleBuyNow = (supplement: Supplement) => {
@@ -267,6 +280,7 @@ const SupplementHub = () => {
       description: `${supplement.name} has been added to your supplement tracking.`,
     });
 
+    setShowSupplementDetail(false);
     setSelectedSupplement(null);
   };
 
@@ -284,106 +298,6 @@ const SupplementHub = () => {
 
   const displayedRecommendations = showMore ? recommendations : recommendations.slice(0, 3);
   const hasMoreRecommendations = recommendations.length > 3;
-
-  if (selectedSupplement) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 pb-32">
-        <div className="max-w-md mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSelectedSupplement(null)}
-              className="rounded-full glass-button"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-bold">Supplement Details</h1>
-          </div>
-
-          {/* Supplement Detail Card */}
-          <Card className="glass-card border-0 rounded-3xl overflow-hidden">
-            <CardContent className="p-6 space-y-6">
-              {/* Image and Name */}
-              <div className="text-center space-y-4">
-                <div className="text-6xl">{selectedSupplement.image}</div>
-                <h2 className="text-2xl font-bold">{selectedSupplement.name}</h2>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">Description</h3>
-                <p className="text-muted-foreground">{selectedSupplement.description}</p>
-              </div>
-
-              {/* Key Benefits */}
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">Key Benefits</h3>
-                <ul className="space-y-1">
-                  {selectedSupplement.benefits.map((benefit, index) => (
-                    <li key={index} className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      <span className="text-sm">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Personal Reason */}
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg flex items-center space-x-2">
-                  <span>🧠</span>
-                  <span>Why this is uniquely good for you</span>
-                </h3>
-                <p className="text-sm bg-primary/10 p-3 rounded-2xl">
-                  {selectedSupplement.personalReason}
-                </p>
-              </div>
-
-              {/* Health Flags */}
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">Verified Health Flags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSupplement.healthFlags.map((flag, index) => (
-                    <Badge key={index} variant="secondary" className="rounded-full">
-                      ✅ {flag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Study Links */}
-              {selectedSupplement.studyLinks && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-lg">Scientific Sources</h3>
-                  {selectedSupplement.studyLinks.map((link, index) => (
-                    <a
-                      key={index}
-                      href={`https://${link}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-sm text-primary hover:underline"
-                    >
-                      📚 Study {index + 1}
-                    </a>
-                  ))}
-                </div>
-              )}
-
-              {/* Buy Now Button */}
-              <Button
-                onClick={() => handleBuyNow(selectedSupplement)}
-                className="w-full h-14 text-lg font-bold gradient-primary text-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
-              >
-                💚 Buy Now {selectedSupplement.price && `- ${selectedSupplement.price}`}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
@@ -577,6 +491,22 @@ const SupplementHub = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <SupplementListModal
+        isOpen={showSupplementList}
+        onClose={() => setShowSupplementList(false)}
+        categoryName={selectedCategoryName}
+        supplements={recommendations}
+        onSupplementSelect={handleSupplementSelect}
+      />
+
+      <SupplementDetailModal
+        isOpen={showSupplementDetail}
+        onClose={() => setShowSupplementDetail(false)}
+        supplement={selectedSupplement}
+        onBuyNow={handleBuyNow}
+      />
     </div>
   );
 };
