@@ -34,8 +34,8 @@ export const DailyAveragesSection = ({ weeklyAverage }: DailyAveragesSectionProp
           </div>
         </CollapsibleTrigger>
         
-        <CollapsibleContent className="overflow-hidden">
-          <div className="flex flex-col gap-0.5">
+        <CollapsibleContent className="overflow-hidden p-3">
+          <div className="flex flex-col gap-1">
             <EnhancedDailyAverageCard
               title="Avg Daily Calories"
               value={weeklyAverage.calories}
