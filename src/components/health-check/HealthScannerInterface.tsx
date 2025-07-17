@@ -84,8 +84,17 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const captureImage = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    console.log("📸 HealthScannerInterface.captureImage called!");
+    
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("❌ Missing video or canvas ref!", {
+        video: !!videoRef.current,
+        canvas: !!canvasRef.current
+      });
+      return;
+    }
 
+    console.log("🎵 Playing camera sound...");
     playCameraClickSound();
     setIsScanning(true);
     
@@ -93,16 +102,29 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     const video = videoRef.current;
     const ctx = canvas.getContext('2d');
     
-    if (!ctx) return;
+    if (!ctx) {
+      console.error("❌ Cannot get canvas context!");
+      return;
+    }
+
+    console.log("🖼️ Drawing video to canvas...", {
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight
+    });
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log("✅ Image captured successfully!", {
+      dataLength: imageData.length,
+      dataPrefix: imageData.substring(0, 50)
+    });
     
     setTimeout(() => {
-      console.log("📸 Captured Image Data: ", imageData);
+      console.log("⏰ Timeout complete, calling onCapture...");
+      console.log("📤 About to send image data to handleImageCapture");
       onCapture(imageData);
     }, 1500);
   };

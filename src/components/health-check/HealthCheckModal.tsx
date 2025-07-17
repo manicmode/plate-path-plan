@@ -67,22 +67,35 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
   }, [isOpen]);
 
   const handleImageCapture = async (imageData: string) => {
-    console.log("📥 handleImageCapture called with: ", imageData);
+    console.log("🚀 HealthCheckModal.handleImageCapture called!");
+    console.log("📥 Image data received:", imageData ? `${imageData.length} characters` : "NO DATA");
+    console.log("👤 User ID:", user?.id || "NO USER");
+    
     try {
       setCurrentState('loading');
       setLoadingMessage('Analyzing image...');
       setAnalysisType('image');
       
-      console.log('🖼️ Processing image capture, sending to health-check-processor...');
+      console.log('🖼️ About to call health-check-processor function...');
+      console.log('📡 Function URL should be: https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/health-check-processor');
+      
+      // Log the exact payload being sent
+      const payload = {
+        inputType: 'image',
+        data: imageData,
+        userId: user?.id
+      };
+      console.log('📦 Payload being sent:', {
+        inputType: payload.inputType,
+        dataLength: payload.data?.length || 0,
+        userId: payload.userId
+      });
       
       let data, error;
       try {
+        console.log('🔄 Making supabase.functions.invoke call...');
         const result = await supabase.functions.invoke('health-check-processor', {
-          body: {
-            inputType: 'image',
-            data: imageData,
-            userId: user?.id
-          }
+          body: payload
         });
         console.log("✅ Supabase Function Call Success:", result);
         
