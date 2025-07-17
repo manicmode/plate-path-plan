@@ -1,7 +1,7 @@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 
 interface Supplement {
   id: string;
@@ -47,7 +47,7 @@ export const SupplementDetailModal = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="px-6 pb-6 space-y-6 overflow-y-auto max-h-[75vh]">
+        <div className="overflow-y-auto max-h-[75vh] p-6">
           {/* Large Image and Name */}
           <div className="text-center space-y-4">
             <div className="text-6xl">{supplement.image}</div>
@@ -55,13 +55,13 @@ export const SupplementDetailModal = ({
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
+          <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg">Description</h3>
             <p className="text-muted-foreground">{supplement.description}</p>
           </div>
 
           {/* Key Benefits */}
-          <div className="space-y-2">
+          <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg">Key Benefits</h3>
             <ul className="space-y-1">
               {supplement.benefits.map((benefit, index) => (
@@ -74,7 +74,7 @@ export const SupplementDetailModal = ({
           </div>
 
           {/* Personal Reason */}
-          <div className="space-y-2">
+          <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg flex items-center space-x-2">
               <span>🧠</span>
               <span>Why this is recommended for you</span>
@@ -85,7 +85,7 @@ export const SupplementDetailModal = ({
           </div>
 
           {/* Health Flags */}
-          <div className="space-y-2">
+          <div className="space-y-2 mt-6">
             <h3 className="font-semibold text-lg">Health Flags</h3>
             <div className="flex flex-wrap gap-2">
               {supplement.healthFlags.map((flag, index) => (
@@ -96,9 +96,24 @@ export const SupplementDetailModal = ({
             </div>
           </div>
 
+          {/* Reviews Section */}
+          <div className="mt-6">
+            <div className="flex items-center gap-2">
+              {/* Stars */}
+              {[1, 2, 3, 4, 5].map((i) => (
+                <span key={i} className="text-yellow-400 text-xl">★</span>
+              ))}
+            </div>
+            {/* Review count */}
+            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+              <User className="w-4 h-4" />
+              <span>124 reviews</span>
+            </div>
+          </div>
+
           {/* Study Links */}
           {supplement.studyLinks && (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-6">
               <h3 className="font-semibold text-lg">Scientific Sources</h3>
               {supplement.studyLinks.map((link, index) => (
                 <a
@@ -113,8 +128,10 @@ export const SupplementDetailModal = ({
               ))}
             </div>
           )}
+        </div>
 
-          {/* Big Green Buy Button */}
+        {/* Sticky Buy Button */}
+        <div className="sticky bottom-0 left-0 right-0 bg-background p-4 border-t border-border z-10">
           <Button
             onClick={() => onBuyNow(supplement)}
             className="w-full h-14 text-lg font-bold gradient-primary text-white rounded-2xl shadow-lg hover:shadow-xl transition-all"

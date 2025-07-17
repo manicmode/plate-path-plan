@@ -72,6 +72,16 @@ export const SupplementListModal = ({
                       </Badge>
                     )}
                     
+                    {/* Review Summary */}
+                    <div className="flex items-center gap-1 mt-2">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <span key={i} className="text-yellow-400 text-sm">★</span>
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-1">(124 reviews)</span>
+                    </div>
+                    
                     {/* Price */}
                     {supplement.price && (
                       <p className="text-sm font-medium text-primary">
