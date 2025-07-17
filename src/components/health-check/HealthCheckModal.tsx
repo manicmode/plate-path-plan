@@ -75,13 +75,23 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       
       console.log('🖼️ Processing image capture, sending to health-check-processor...');
       
-      const { data, error } = await supabase.functions.invoke('health-check-processor', {
-        body: {
-          inputType: 'image',
-          data: imageData,
-          userId: user?.id
-        }
-      });
+      let data, error;
+      try {
+        const result = await supabase.functions.invoke('health-check-processor', {
+          body: {
+            inputType: 'image',
+            data: imageData,
+            userId: user?.id
+          }
+        });
+        console.log("✅ Supabase Function Call Success:", result);
+        
+        data = result.data;
+        error = result.error;
+      } catch (funcError) {
+        console.error("❌ Supabase Function Call Failed:", funcError);
+        throw funcError;
+      }
 
       if (error) {
         throw new Error(error.message || 'Failed to analyze image');
@@ -100,7 +110,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
       }
       
       // Transform the backend response to match frontend interface
-      const result: HealthAnalysisResult = {
+      const analysisResult: HealthAnalysisResult = {
         itemName: data.productName || 'Unknown Item',
         healthScore: data.healthScore || 0,
         ingredientFlags: (data.healthFlags || []).map((flag: any) => ({
@@ -137,7 +147,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
                       data.healthScore >= 20 ? 'poor' : 'avoid'
       };
 
-      setAnalysisResult(result);
+      setAnalysisResult(analysisResult);
       setCurrentState('report');
     } catch (error) {
       console.error('❌ Analysis failed:', error);
