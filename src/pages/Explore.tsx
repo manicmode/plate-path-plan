@@ -2,10 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useState } from 'react';
+import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 
 const Explore = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
 
   const handleProfileClick = () => {
     navigate('/profile');
@@ -14,6 +17,8 @@ const Explore = () => {
   const handleTileClick = (tileId: string) => {
     if (tileId === 'supplement-hub') {
       navigate('/supplement-hub');
+    } else if (tileId === 'health-check') {
+      setIsHealthCheckOpen(true);
     }
     // Add other tile navigation here as needed
   };
@@ -135,6 +140,12 @@ const Explore = () => {
           </div>
         </Button>
       </div>
+
+      {/* Health Check Modal */}
+      <HealthCheckModal 
+        isOpen={isHealthCheckOpen} 
+        onClose={() => setIsHealthCheckOpen(false)} 
+      />
     </div>
   );
 };

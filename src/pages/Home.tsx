@@ -86,6 +86,9 @@ const Home = () => {
   // Tracker Insights state
   const { isOpen: isInsightsOpen, selectedTracker, openInsights, closeInsights } = useTrackerInsights();
 
+  // Health Check Modal state
+  const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
+
   // Listen for changes to localStorage preferences
   useEffect(() => {
     const handleStorageChange = () => {
@@ -1387,7 +1390,16 @@ const Home = () => {
               },
             ];
 
-            return exploreTiles.map((tile) => (
+            return exploreTiles.map((tile) => {
+              const handleTileClick = (tileId: string) => {
+                if (tileId === 'supplement-hub') {
+                  navigate('/supplement-hub');
+                } else if (tileId === 'health-check') {
+                  setIsHealthCheckOpen(true);
+                }
+              };
+
+              return (
               <Button
                 key={tile.id}
                 variant="ghost"
@@ -1423,7 +1435,7 @@ const Home = () => {
                   {tile.title}
                 </span>
               </Button>
-            ));
+            );
           })()}
         </div>
       </div>
@@ -1438,6 +1450,12 @@ const Home = () => {
           trackerColor={selectedTracker.color}
         />
       )}
+
+      {/* Health Check Modal */}
+      <HealthCheckModal 
+        isOpen={isHealthCheckOpen} 
+        onClose={() => setIsHealthCheckOpen(false)} 
+      />
     </div>
   );
 };
