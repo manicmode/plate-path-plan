@@ -290,7 +290,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
                 {totalItems && totalItems > 1 && (
                   <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                    Item {(currentIndex || 0) + 1} of {totalItems}
+                    Item {((currentIndex ?? 0) + 1)} of {totalItems}
                   </div>
                 )}
                 Confirm Food Log
