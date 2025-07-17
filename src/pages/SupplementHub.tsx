@@ -424,12 +424,13 @@ const SupplementHub = () => {
                   <Button
                     key={goal}
                     onClick={() => handleGoalSelect(goal)}
-                    variant={selectedCategory === goal ? "default" : "outline"}
+                    variant="default"
                     className={`
                       flex-shrink-0 h-10 px-4 rounded-full transition-all duration-300
+                      gradient-primary text-white shadow-lg hover:shadow-xl
                       ${selectedCategory === goal 
-                        ? 'gradient-primary text-white shadow-lg' 
-                        : 'glass-button hover:shadow-md'
+                        ? 'ring-2 ring-white ring-opacity-50 scale-105' 
+                        : 'hover:scale-102'
                       }
                     `}
                   >
