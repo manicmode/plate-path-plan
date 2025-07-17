@@ -33,7 +33,7 @@ export const SupplementListModal = ({
 }: SupplementListModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0 [&>button]:bg-transparent [&>button]:hover:bg-transparent">
+      <DialogContent className="max-w-md max-h-[85vh] glass-card border-0 rounded-3xl overflow-hidden p-0 [&_button.absolute.right-4.top-4]:!bg-transparent [&_button.absolute.right-4.top-4:hover]:!bg-transparent [&_button.absolute.right-4.top-4[data-state=open]]:!bg-transparent">
         <DialogHeader className="p-6 pb-2 space-y-0">
           <DialogTitle className="text-xl font-bold">AI Recommendations</DialogTitle>
           
