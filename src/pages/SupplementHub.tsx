@@ -40,6 +40,7 @@ const SupplementHub = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showSupplementList, setShowSupplementList] = useState(false);
   const [showSupplementDetail, setShowSupplementDetail] = useState(false);
+  const [isLoadingSupplements, setIsLoadingSupplements] = useState(false);
 
   // Scroll container ref for horizontal tabs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1251,22 +1252,26 @@ const SupplementHub = () => {
     setIsAnalyzing(true);
     setRecommendations([]);
     
+    // Open modal immediately with loading state
+    setIsLoadingSupplements(true);
+    setShowSupplementList(true);
+    
     // Simulate AI analysis
     setTimeout(() => {
       const goalSupplements = supplementDatabase[goalName] || [];
       setRecommendations(goalSupplements);
       setIsAnalyzing(false);
+      setIsLoadingSupplements(false);
       
-      if (goalSupplements.length > 0) {
-        setShowSupplementList(true);
-        toast({
-          title: "Recommendations Ready!",
-          description: `Found ${goalSupplements.length} personalized supplements for you.`,
-        });
-      } else {
+      if (goalSupplements.length === 0) {
         toast({
           title: "No Supplements Found",
           description: "We're working on adding more supplements for this category.",
+        });
+      } else {
+        toast({
+          title: "Recommendations Ready!",
+          description: `Found ${goalSupplements.length} personalized supplements for you.`,
         });
       }
     }, 2000);
@@ -1511,6 +1516,7 @@ const SupplementHub = () => {
         categoryName={selectedCategoryName}
         supplements={recommendations}
         onSupplementSelect={handleSupplementSelect}
+        isLoading={isLoadingSupplements}
       />
 
       <SupplementDetailModal
