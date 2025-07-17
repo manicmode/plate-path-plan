@@ -292,7 +292,7 @@ const SupplementHub = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 pb-32">
+    <div className="space-y-12 sm:space-y-16 animate-fade-in">
       <div className="max-w-md mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
@@ -306,15 +306,17 @@ const SupplementHub = () => {
           </Button>
         </div>
 
-        {/* Title - matching Home page styling exactly */}
-        <div className="text-center space-y-4">
-          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-primary to-emerald-600 bg-clip-text text-transparent leading-tight">
-            🌟 Your Personalized Supplement Hub
-          </h1>
+        {/* Header Section - matching Home page exactly */}
+        <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
+          <div className="inline-block">
+            <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4`}>
+              🌟 Your Personalized Supplement Hub
+            </h1>
+          </div>
           
-          {/* Scrolling Ticker Subtitle */}
-          <div className="overflow-hidden py-2 relative">
-            <div className="animate-marquee whitespace-nowrap text-base text-muted-foreground font-medium">
+          {/* Scrolling Ticker */}
+          <div className="overflow-hidden whitespace-nowrap bg-gradient-to-r from-transparent via-muted/20 to-transparent py-3">
+            <div className="animate-marquee text-lg text-muted-foreground font-medium">
               Smart AI-powered supplement recommendations based on your health, goals, and nutrition profile.
             </div>
           </div>
