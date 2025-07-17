@@ -42,6 +42,23 @@ const SupplementHub = () => {
   // Netflix-style categories with horizontal scrollable goals
   const supplementCategories = [
     {
+      id: 'muscle-growth',
+      title: '💪 Muscle Growth & Weight Gain',
+      goals: [
+        'Protein Powder', 'Creatine Supplements', 'Mass Gainers', 'BCAAs',
+        'Weight Gain Support', 'Muscle Recovery', 'Strength Building', 'Lean Mass Support'
+      ]
+    },
+    {
+      id: 'weight-loss',
+      title: '🔥 Weight Loss & Fat Burn',
+      goals: [
+        'Fat Burning Support', 'Appetite Suppressant', 'Carb Blocker', 'Craving Control',
+        'Metabolism Booster', 'Thermogenic Aid', 'Blood Sugar Balance', 'Thyroid Support',
+        'Hormonal Weight Control', 'Water Weight Reduction'
+      ]
+    },
+    {
       id: 'energy-performance',
       title: '🔥 Energy & Performance',
       goals: [
@@ -85,6 +102,83 @@ const SupplementHub = () => {
 
   // Mock supplement database - updated for new goal system
   const supplementDatabase: Record<string, Supplement[]> = {
+    // Muscle Growth & Weight Gain supplements
+    'Protein Powder': [
+      {
+        id: 'whey-protein-1',
+        name: 'Premium Whey Protein',
+        image: '💪',
+        description: 'High-quality whey protein isolate for muscle building and recovery',
+        benefits: ['Builds lean muscle', 'Fast absorption', 'Complete amino acid profile'],
+        personalReason: 'Perfect for your muscle building goals and workout routine',
+        healthFlags: ['Grass-fed', 'No artificial flavors', 'Third-party tested'],
+        price: '$49.99'
+      }
+    ],
+    'Creatine Supplements': [
+      {
+        id: 'creatine-mono-1',
+        name: 'Creatine Monohydrate',
+        image: '⚡',
+        description: 'Pure creatine monohydrate for strength and power gains',
+        benefits: ['Increases strength', 'Improves power output', 'Faster recovery'],
+        personalReason: 'Ideal for your strength training and athletic performance',
+        healthFlags: ['Micronized', 'Unflavored', 'Research-backed'],
+        price: '$24.99'
+      }
+    ],
+    'Mass Gainers': [
+      {
+        id: 'mass-gainer-1',
+        name: 'Serious Mass Gainer',
+        image: '📈',
+        description: 'High-calorie mass gainer for healthy weight gain',
+        benefits: ['1250 calories per serving', 'Protein and carb blend', 'Supports weight gain'],
+        personalReason: 'Great for your weight gain goals and busy lifestyle',
+        healthFlags: ['No banned substances', 'Quality tested', 'Added vitamins'],
+        price: '$59.99'
+      }
+    ],
+    
+    // Weight Loss & Fat Burn supplements
+    'Fat Burning Support': [
+      {
+        id: 'green-tea-extract-1',
+        name: 'Green Tea Extract',
+        image: '🍃',
+        description: 'Concentrated green tea extract with EGCG for fat burning',
+        benefits: ['Boosts metabolism', 'Fat oxidation', 'Antioxidant support'],
+        personalReason: 'Perfect for your weight loss goals and healthy lifestyle',
+        healthFlags: ['Standardized extract', 'Non-GMO', 'Vegan'],
+        price: '$19.99'
+      }
+    ],
+    'Appetite Suppressant': [
+      {
+        id: 'glucomannan-1',
+        name: 'Glucomannan Fiber',
+        image: '🌾',
+        description: 'Natural fiber supplement for appetite control and satiety',
+        benefits: ['Promotes fullness', 'Appetite control', 'Supports digestion'],
+        personalReason: 'Helps with portion control for your weight management goals',
+        healthFlags: ['Pure konjac root', 'No additives', 'Vegan'],
+        price: '$16.99'
+      }
+    ],
+    'Metabolism Booster': [
+      {
+        id: 'caffeine-l-theanine-1',
+        name: 'Caffeine + L-Theanine',
+        image: '☕',
+        description: 'Natural caffeine with L-theanine for clean energy and focus',
+        benefits: ['Boosts metabolism', 'Clean energy', 'No jitters'],
+        personalReason: 'Great for your energy needs without the crash',
+        healthFlags: ['Natural caffeine', 'Smooth focus', 'Third-party tested'],
+        price: '$22.99'
+      }
+    ],
+    
+    // Existing supplements
     'Energy Boost': [
       {
         id: 'b-complex-1',
