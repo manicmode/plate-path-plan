@@ -44,9 +44,12 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
     return Math.round((score / 10) * 5);
   };
 
-  const hasValidNutrition = (nutrition: any) => {
-    if (!nutrition) return false;
-    return Object.values(nutrition).some(value => value !== null && value !== undefined && value !== 0);
+  const hasValidNutrition = (nutrition: any): boolean => {
+    return nutrition && 
+           typeof nutrition === 'object' && 
+           !Array.isArray(nutrition) &&
+           Object.keys(nutrition).length > 0 &&
+           Object.values(nutrition).some(value => value !== null && value !== undefined);
   };
 
   const scoreLabel = getScoreLabel(result.healthScore);
@@ -138,19 +141,33 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <CardHeader className="pb-4">
               <h3 className="text-xl font-bold text-foreground flex items-center">
                 <div className="text-2xl mr-3">📊</div>
-                Nutrition Facts
+                NUTRITION FACTS
               </h3>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Object.entries(result.nutritionData).map(([key, value]) => {
                   if (value === undefined || value === null || value === 0) return null;
-                  const unit = key === 'calories' ? 'cal' : key === 'sodium' ? 'mg' : 'g';
-                  const displayKey = key === 'carbs' ? 'Carbs' : key.charAt(0).toUpperCase() + key.slice(1);
+                  
+                  const getUnit = (nutrientKey: string) => {
+                    if (nutrientKey === 'calories') return '';
+                    if (nutrientKey === 'sodium') return 'g';
+                    return 'g';
+                  };
+                  
+                  const getDisplayKey = (nutrientKey: string) => {
+                    if (nutrientKey === 'carbs') return 'Carbs';
+                    return nutrientKey.charAt(0).toUpperCase() + nutrientKey.slice(1);
+                  };
+                  
+                  const unit = getUnit(key);
+                  const displayKey = getDisplayKey(key);
                   
                   return (
                     <div key={key} className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                      <div className="text-3xl font-bold text-blue-800 mb-1">{value}</div>
+                      <div className="text-3xl font-bold text-blue-800 mb-1">
+                        {typeof value === 'number' ? value : value}
+                      </div>
                       <div className="text-sm text-blue-600 font-medium mb-1">{unit}</div>
                       <div className="text-xs text-blue-700 font-semibold uppercase tracking-wide">{displayKey}</div>
                     </div>

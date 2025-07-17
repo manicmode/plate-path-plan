@@ -18,7 +18,7 @@ interface HealthReport {
   ingredients: string[];
   healthFlags: HealthFlag[];
   healthScore: number;
-  nutritionSummary: string;
+  nutritionData: any;
   summary: string;
   recommendations: string[];
 }
@@ -330,7 +330,7 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
         ingredients,
         healthFlags,
         healthScore,
-        nutritionSummary: generateNutritionSummary(product.nutriments),
+        nutritionData: generateNutritionData(product.nutriments),
         summary: generateHealthSummary(healthFlags, healthScore),
         recommendations: generateRecommendations(healthFlags)
       };
@@ -345,7 +345,7 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
           description: "We couldn't find this product in the barcode database. Please try taking a photo of the product or enter ingredients manually."
         }],
         healthScore: 0,
-        nutritionSummary: "No nutritional data available",
+        nutritionData: null,
         summary: "Product not found in database",
         recommendations: ["Try taking a photo of the product", "Enter ingredients manually"]
       };
@@ -388,7 +388,7 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
       ingredients: gptResult.ingredients || [],
       healthFlags,
       healthScore,
-      nutritionSummary: gptResult.nutritionSummary || "No nutritional data available",
+      nutritionData: null, // Image analysis doesn't provide structured nutrition data
       summary: generateHealthSummary(healthFlags, healthScore),
       recommendations: generateRecommendations(healthFlags)
     };
@@ -423,23 +423,27 @@ async function processInput(input: ProcessedInput): Promise<HealthReport> {
     ingredients: gptResult.ingredients || [],
     healthFlags,
     healthScore,
-    nutritionSummary: gptResult.nutritionSummary || "No nutritional data available",
+    nutritionData: null, // Text analysis doesn't provide structured nutrition data
     summary: generateHealthSummary(healthFlags, healthScore),
     recommendations: generateRecommendations(healthFlags)
   };
 }
 
-function generateNutritionSummary(nutriments: any): string {
-  if (!nutriments) return "No nutritional data available";
+function generateNutritionData(nutriments: any): any {
+  if (!nutriments) return null;
   
-  const parts = [];
-  if (nutriments.energy_kcal_100g) parts.push(`${nutriments.energy_kcal_100g} cal/100g`);
-  if (nutriments.fat_100g) parts.push(`${nutriments.fat_100g}g fat`);
-  if (nutriments.carbohydrates_100g) parts.push(`${nutriments.carbohydrates_100g}g carbs`);
-  if (nutriments.proteins_100g) parts.push(`${nutriments.proteins_100g}g protein`);
-  if (nutriments.sodium_100g) parts.push(`${nutriments.sodium_100g}mg sodium`);
+  const nutritionData: any = {};
   
-  return parts.length > 0 ? parts.join(', ') : "Nutritional data incomplete";
+  // Convert per 100g values to standard serving format
+  if (nutriments.energy_kcal_100g) nutritionData.calories = Math.round(nutriments.energy_kcal_100g);
+  if (nutriments.fat_100g) nutritionData.fat = parseFloat(nutriments.fat_100g.toFixed(1));
+  if (nutriments.carbohydrates_100g) nutritionData.carbs = parseFloat(nutriments.carbohydrates_100g.toFixed(1));
+  if (nutriments.proteins_100g) nutritionData.protein = parseFloat(nutriments.proteins_100g.toFixed(1));
+  if (nutriments.sodium_100g) nutritionData.sodium = parseFloat((nutriments.sodium_100g / 1000).toFixed(3)); // Convert mg to g
+  if (nutriments.fiber_100g) nutritionData.fiber = parseFloat(nutriments.fiber_100g.toFixed(1));
+  if (nutriments.sugars_100g) nutritionData.sugar = parseFloat(nutriments.sugars_100g.toFixed(1));
+  
+  return Object.keys(nutritionData).length > 0 ? nutritionData : null;
 }
 
 function generateHealthSummary(flags: HealthFlag[], score: number): string {
@@ -565,7 +569,7 @@ serve(async (req) => {
         description: `Failed to analyze: ${error.message}`
       }],
       healthScore: 0,
-      nutritionSummary: "Error occurred during analysis",
+      nutritionData: null,
       summary: "Unable to process request due to internal error",
       recommendations: ["Please try again", "Check that all required data is provided"]
     };
