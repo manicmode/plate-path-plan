@@ -8,12 +8,14 @@ import { useAuth } from '@/contexts/auth';
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
   onManualEntry: () => void;
+  onManualSearch?: (query: string, type: 'text' | 'voice') => void;
   onCancel?: () => void;
 }
 
 export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   onCapture,
   onManualEntry,
+  onManualSearch,
   onCancel
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -111,13 +113,44 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
 
   const handleSearchDatabase = async () => {
     if (barcodeInput.trim()) {
-      // Trigger smart suggestions based on failed search
-      await generateSmartSuggestions(barcodeInput);
-      setShowSuggestions(true);
-      // Simulate database search failure to show suggestions
-      setTimeout(() => {
-        console.log('Search failed - showing suggestions');
-      }, 1000);
+      console.log('🔍 Searching database for:', barcodeInput);
+      
+      // If we have the onManualSearch prop, use it (preferred)
+      if (onManualSearch) {
+        onManualSearch(barcodeInput.trim(), 'text');
+        return;
+      }
+      
+      // Fallback: try to call the health-check-processor directly
+      try {
+        const { data, error } = await supabase.functions.invoke('health-check-processor', {
+          body: {
+            inputType: 'text',
+            data: barcodeInput.trim(),
+            userId: user?.id
+          }
+        });
+        
+        console.log('✅ Search result:', data);
+        
+        if (error) {
+          console.error('❌ Search error:', error);
+          // Generate suggestions on error
+          await generateSmartSuggestions(barcodeInput);
+          setShowSuggestions(true);
+          return;
+        }
+        
+        // If successful, switch to fallback to show results
+        if (data) {
+          onManualEntry();
+        }
+      } catch (error) {
+        console.error('❌ Error calling health-check-processor:', error);
+        // Fallback to generating suggestions
+        await generateSmartSuggestions(barcodeInput);
+        setShowSuggestions(true);
+      }
     }
   };
 
@@ -152,9 +185,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Auto-run health check for the suggestion
-    setBarcodeInput(suggestion);
-    onManualEntry(); // This will trigger the health check
+    // Use the manual search if available, otherwise fall back to manual entry
+    if (onManualSearch) {
+      onManualSearch(suggestion, 'text');
+    } else {
+      setBarcodeInput(suggestion);
+      onManualEntry(); // This will trigger the health check
+    }
   };
 
   // Load suggestions when view changes to notRecognized (scan failed)

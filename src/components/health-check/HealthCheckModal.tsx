@@ -255,6 +255,7 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
             <HealthScannerInterface 
               onCapture={handleImageCapture}
               onManualEntry={() => setCurrentState('fallback')}
+              onManualSearch={handleManualEntry}
               onCancel={handleClose}
             />
           )}
