@@ -11,7 +11,8 @@ import {
   RotateCcw,
   Star,
   ShieldCheck,
-  Zap
+  Zap,
+  X
 } from 'lucide-react';
 import { HealthAnalysisResult } from './HealthCheckModal';
 
@@ -60,11 +61,18 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         
         {/* 🧬 Health Report Title */}
-        <div className="text-center mb-8">
+        <div className="relative text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground flex items-center justify-center">
             <span className="text-4xl mr-3">🧬</span>
             Health Report
           </h1>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-0 right-0 p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
         
         {/* 🔬 1. TOP SECTION — Summary Card */}
@@ -289,7 +297,7 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
         </Card>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6">
           <Button
             onClick={() => {/* Handle save to log */}}
             className="bg-green-600 hover:bg-green-700 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
@@ -314,6 +322,15 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
           >
             <RotateCcw className="w-5 h-5 mr-2" />
             Scan Another
+          </Button>
+
+          <Button
+            onClick={onClose}
+            variant="outline"
+            className="border-2 border-red-500 text-red-600 hover:bg-red-50 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            <X className="w-5 h-5 mr-2" />
+            Cancel
           </Button>
         </div>
       </div>
