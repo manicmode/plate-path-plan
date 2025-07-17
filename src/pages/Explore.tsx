@@ -119,10 +119,12 @@ const Explore = () => {
             before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300
           "
         >
-          <div className="absolute left-8 text-2xl">👤</div>
-          <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-black tracking-wide drop-shadow-sm`}>
-            Profile
-          </span>
+          <div className="flex items-center space-x-4 transform -translate-x-4">
+            <div className="text-2xl">👤</div>
+            <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-black tracking-wide drop-shadow-sm`}>
+              Profile
+            </span>
+          </div>
         </Button>
       </div>
     </div>
