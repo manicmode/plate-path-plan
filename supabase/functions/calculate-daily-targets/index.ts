@@ -203,6 +203,123 @@ function calculateHydrationTarget(weight: number, weightUnit: string = 'lb'): nu
   return dailyMl;
 }
 
+function calculateSupplementRecommendations(
+  age: number,
+  gender: string,
+  healthConditions: string[] = [],
+  dietStyles: string[] = [],
+  activityLevel: string = 'moderate',
+  weightGoalType: string = 'maintain'
+): { name: string; reasoning: string }[] {
+  const recommendations: { name: string; reasoning: string }[] = [];
+  
+  // Multivitamin - if vegan/keto or excluding food groups
+  if (dietStyles.includes('vegan') || dietStyles.includes('keto')) {
+    recommendations.push({
+      name: 'Multivitamin',
+      reasoning: `Recommended for ${dietStyles.join('/')} diet to cover potential nutrient gaps`
+    });
+  }
+  
+  // Vitamin D - general recommendation (future: add sunlight exposure flag)
+  if (recommendations.length < 3) {
+    recommendations.push({
+      name: 'Vitamin D3',
+      reasoning: 'Essential for bone health and immune function, many people have insufficient levels'
+    });
+  }
+  
+  // Omega-3 - if vegan or rarely eats fish
+  if ((dietStyles.includes('vegan') || dietStyles.includes('vegetarian')) && recommendations.length < 3) {
+    recommendations.push({
+      name: 'Omega-3 (Algae-based)',
+      reasoning: 'Plant-based omega-3 for heart and brain health on vegan/vegetarian diet'
+    });
+  } else if (recommendations.length < 3) {
+    recommendations.push({
+      name: 'Omega-3 Fish Oil',
+      reasoning: 'Supports heart and brain health, reduces inflammation'
+    });
+  }
+  
+  // Magnesium - if high activity or stress/insomnia
+  if ((activityLevel === 'very_active' || activityLevel === 'extra_active' || 
+       healthConditions.includes('anxiety') || healthConditions.includes('insomnia')) && 
+      recommendations.length < 3) {
+    recommendations.push({
+      name: 'Magnesium',
+      reasoning: 'Supports muscle recovery, sleep quality, and stress management'
+    });
+  }
+  
+  // B12 - if vegan/vegetarian or fatigue
+  if ((dietStyles.includes('vegan') || dietStyles.includes('vegetarian') || 
+       healthConditions.includes('fatigue') || healthConditions.includes('anemia')) && 
+      recommendations.length < 3) {
+    recommendations.push({
+      name: 'Vitamin B12',
+      reasoning: 'Essential for energy and nervous system, often deficient in plant-based diets'
+    });
+  }
+  
+  // Iron - if female under 50 and low energy
+  if (gender === 'female' && age < 50 && 
+      (healthConditions.includes('anemia') || healthConditions.includes('fatigue')) && 
+      recommendations.length < 3) {
+    recommendations.push({
+      name: 'Iron',
+      reasoning: 'Supports healthy iron levels for women of reproductive age'
+    });
+  }
+  
+  // Creatine - if muscle gain goal and male (or very active female)
+  if ((weightGoalType === 'gain_weight' || weightGoalType === 'body_recomposition') && 
+      (gender === 'male' || activityLevel === 'very_active' || activityLevel === 'extra_active') && 
+      recommendations.length < 3) {
+    recommendations.push({
+      name: 'Creatine Monohydrate',
+      reasoning: 'Enhances muscle strength and power for resistance training'
+    });
+  }
+  
+  // Collagen - if female over 30
+  if (gender === 'female' && age > 30 && recommendations.length < 3) {
+    recommendations.push({
+      name: 'Collagen Peptides',
+      reasoning: 'Supports skin elasticity and joint health as collagen production declines with age'
+    });
+  }
+  
+  // Calcium - if lactose intolerant or avoids dairy
+  if (healthConditions.includes('lactose_intolerance') && recommendations.length < 3) {
+    recommendations.push({
+      name: 'Calcium',
+      reasoning: 'Essential for bone health when dairy intake is limited'
+    });
+  }
+  
+  // Zinc - if immune support or intense training
+  if ((healthConditions.includes('frequent_illness') || 
+       activityLevel === 'very_active' || activityLevel === 'extra_active') && 
+      recommendations.length < 3) {
+    recommendations.push({
+      name: 'Zinc',
+      reasoning: 'Supports immune function and recovery from intense training'
+    });
+  }
+  
+  // Probiotic - if digestive issues
+  if ((healthConditions.includes('ibs') || healthConditions.includes('digestive_issues')) && 
+      recommendations.length < 3) {
+    recommendations.push({
+      name: 'Probiotic',
+      reasoning: 'Supports digestive health and gut microbiome balance'
+    });
+  }
+  
+  return recommendations.slice(0, 3);
+}
+
 function calculateSupplementTarget(
   age: number,
   gender: string,
@@ -361,7 +478,16 @@ function calculateNutritionTargets(profile: any) {
   // Calculate hydration target
   const hydrationMl = calculateHydrationTarget(profile.weight, profile.weight_unit);
   
-  // Calculate supplement target
+  // Calculate supplement recommendations and target count
+  const supplementRecommendations = calculateSupplementRecommendations(
+    profile.age,
+    profile.gender,
+    profile.health_conditions || [],
+    profile.diet_styles || [],
+    profile.activity_level,
+    profile.weight_goal_type
+  );
+  
   const supplementCount = calculateSupplementTarget(
     profile.age,
     profile.gender,
@@ -390,6 +516,7 @@ function calculateNutritionTargets(profile: any) {
     fiber: macros.fiber,
     hydrationMl,
     supplementCount,
+    supplementRecommendations,
     priorityMicronutrients,
     flaggedIngredients,
   };
