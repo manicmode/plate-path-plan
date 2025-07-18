@@ -362,10 +362,10 @@ function GameAndChallengeContent() {
         </div>
       )}
 
-      {/* Main Content - Removed excessive top padding */}
+      {/* Main Content */}
       <div className={cn(
-        "container mx-auto space-y-4 max-w-full overflow-x-hidden",
-        isMobile ? "px-2 pt-2" : "px-4 pt-4"
+        "container mx-auto space-y-6 sm:space-y-12 max-w-full overflow-x-hidden",
+        isMobile ? "px-2" : "px-4"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
