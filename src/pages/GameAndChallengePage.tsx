@@ -650,7 +650,7 @@ function GameAndChallengeContent() {
       {/* Main Content */}
       <div className={cn(
         "container mx-auto space-y-6 sm:space-y-12",
-        isMobile ? "px-2 py-4" : "px-4 py-8"
+        isMobile ? "px-2 py-4 pb-24" : "px-4 py-8 pb-20"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
