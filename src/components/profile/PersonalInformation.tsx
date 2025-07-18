@@ -38,7 +38,7 @@ export const PersonalInformation = ({ formData, isEditing, onFormDataChange, onE
       <CardContent className={`space-y-3 sm:space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
           <div className="space-y-2">
-            <Label htmlFor="name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Full Name</Label>
+            <Label htmlFor="name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Profile Name</Label>
             <Input
               id="name"
               value={formData.name}
