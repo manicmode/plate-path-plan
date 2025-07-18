@@ -25,6 +25,7 @@ interface MonthlySummary {
 export const MonthlySummaryViewer = () => {
   const { user } = useAuth();
   const [summaries, setSummaries] = useState<MonthlySummary[]>([]);
+  const [userCounts, setUserCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState<string | null>(null);
 
@@ -33,6 +34,7 @@ export const MonthlySummaryViewer = () => {
       if (!user) return;
 
       try {
+        // Fetch user's monthly summaries
         const { data, error } = await supabase
           .from('monthly_summaries')
           .select('*')
@@ -42,6 +44,27 @@ export const MonthlySummaryViewer = () => {
 
         if (error) throw error;
         setSummaries(data || []);
+
+        // For each month, get the total user count
+        if (data && data.length > 0) {
+          const monthCounts: Record<string, number> = {};
+          
+          for (const summary of data) {
+            if (summary.ranking_position) {
+              // Only fetch user count if user has a ranking
+              const { count, error: countError } = await supabase
+                .from('monthly_summaries')
+                .select('*', { count: 'exact', head: true })
+                .eq('month_start', summary.month_start);
+
+              if (!countError && count !== null) {
+                monthCounts[summary.month_start] = count;
+              }
+            }
+          }
+          
+          setUserCounts(monthCounts);
+        }
       } catch (error) {
         console.error('Error fetching monthly summaries:', error);
       } finally {
@@ -371,6 +394,15 @@ export const MonthlySummaryViewer = () => {
                   <p className="text-sm text-foreground leading-relaxed">
                     {summary.message}
                   </p>
+                  
+                  {/* Ranking display line */}
+                  {summary.ranking_position && userCounts[summary.month_start] && (
+                    <div className="mt-3 pt-3 border-t border-muted-foreground/20">
+                      <p className="text-xs text-muted-foreground font-medium">
+                        You ranked #{summary.ranking_position} this month out of {userCounts[summary.month_start]} users.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
