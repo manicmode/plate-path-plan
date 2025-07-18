@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { TrendingUp, TrendingDown, Calendar, Activity, Target, Trophy } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, Activity, Target, Trophy, Volume2, VolumeX, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MonthlySummary {
@@ -28,6 +28,8 @@ export const MonthlySummaryViewer = () => {
   const [userCounts, setUserCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState<string | null>(null);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [volume, setVolume] = useState(0.3); // Default to 30% volume
 
   useEffect(() => {
     const fetchMonthlySummaries = async () => {
@@ -111,7 +113,63 @@ export const MonthlySummaryViewer = () => {
     }
   }, [summaries, user]);
 
+  // Audio generation for celebration sounds
+  const createCelebrationSound = (ranking: number) => {
+    if (!audioEnabled) return;
+
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const gainNode = audioContext.createGain();
+    gainNode.connect(audioContext.destination);
+    gainNode.gain.value = volume;
+
+    const playNote = (frequency: number, duration: number, delay: number = 0) => {
+      setTimeout(() => {
+        const oscillator = audioContext.createOscillator();
+        const noteGain = audioContext.createGain();
+        
+        oscillator.connect(noteGain);
+        noteGain.connect(gainNode);
+        
+        oscillator.frequency.value = frequency;
+        oscillator.type = 'sine';
+        
+        // Gentle envelope for smooth sound
+        noteGain.gain.setValueAtTime(0, audioContext.currentTime);
+        noteGain.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+        noteGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + duration);
+      }, delay);
+    };
+
+    // Different melodies for each ranking
+    switch (ranking) {
+      case 1: // Gold - Triumphant ascending melody
+        playNote(523.25, 0.3, 0);    // C5
+        playNote(659.25, 0.3, 150);  // E5
+        playNote(783.99, 0.3, 300);  // G5
+        playNote(1046.50, 0.5, 450); // C6
+        break;
+      case 2: // Silver - Cheerful celebration
+        playNote(440.00, 0.25, 0);   // A4
+        playNote(554.37, 0.25, 125); // C#5
+        playNote(659.25, 0.4, 250);  // E5
+        break;
+      case 3: // Bronze - Warm accomplishment
+        playNote(349.23, 0.3, 0);    // F4
+        playNote(440.00, 0.3, 150);  // A4
+        playNote(523.25, 0.4, 300);  // C5
+        break;
+    }
+
+    console.log(`🔊 Celebration sound played for ranking #${ranking} (volume: ${Math.round(volume * 100)}%)`);
+  };
+
   const triggerRankingConfetti = (ranking: number) => {
+    // Play celebration sound first
+    createCelebrationSound(ranking);
+
     const colors = {
       1: ['#FFD700', '#FFA500', '#FFFF00'], // Gold colors
       2: ['#C0C0C0', '#A9A9A9', '#D3D3D3'], // Silver colors  
@@ -263,10 +321,59 @@ export const MonthlySummaryViewer = () => {
     <TooltipProvider>
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Monthly Progress
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Monthly Progress
+            </CardTitle>
+            
+            {/* Audio Controls */}
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setAudioEnabled(!audioEnabled)}
+                    className="p-2 rounded-md hover:bg-muted transition-colors"
+                    aria-label={audioEnabled ? "Mute celebrations" : "Enable celebrations"}
+                  >
+                    {audioEnabled ? (
+                      <Volume2 className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <VolumeX className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{audioEnabled ? "Mute celebration sounds" : "Enable celebration sounds"}</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {audioEnabled && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 px-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={volume}
+                        onChange={(e) => setVolume(parseFloat(e.target.value))}
+                        className="w-16 h-1 bg-muted rounded-lg appearance-none cursor-pointer"
+                        aria-label="Volume control"
+                      />
+                      <span className="text-xs text-muted-foreground min-w-[3ch]">
+                        {Math.round(volume * 100)}%
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Adjust celebration volume</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
         {summaries.map((summary, index) => {
