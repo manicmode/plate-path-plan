@@ -284,14 +284,14 @@ function GameAndChallengeContent() {
 
   const navigationItems = [
     { id: 'ranking', label: 'Ranking', icon: Trophy },
-    { id: 'challenges', label: 'Global', icon: Target },
-    { id: 'my-challenges', label: 'My Challenges', icon: Star },
+    { id: 'challenges', label: 'Challenges', icon: Target },
     { id: 'chat', label: 'Chat', icon: MessageCircle },
-    { id: 'hall-of-fame', label: 'Hall of Fame', icon: Crown }
+    { id: 'winners', label: 'Winners', icon: Crown },
+    { id: 'hall-of-fame', label: 'Hall of Fame', icon: Star }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
       {/* Mystery Boxes - Hidden on mobile for performance */}
       {!isMobile && (
         <>
@@ -302,7 +302,7 @@ function GameAndChallengeContent() {
 
       {/* Mobile-Optimized Navigation - Fixed positioning below banner */}
       <div className="sticky z-40 bg-background/95 backdrop-blur-sm border-b" style={{ top: 'var(--header-height, 80px)' }}>
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-full">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
           {isMobile ? (
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
@@ -364,8 +364,8 @@ function GameAndChallengeContent() {
 
       {/* Main Content */}
       <div className={cn(
-        "container mx-auto max-w-full overflow-x-hidden",
-        isMobile ? "px-2 py-4 space-y-4" : "px-4 py-8 space-y-8"
+        "container mx-auto space-y-6 sm:space-y-12",
+        isMobile ? "px-2 py-4" : "px-4 py-8"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
@@ -531,9 +531,9 @@ function GameAndChallengeContent() {
 
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
-          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)] overflow-x-hidden">
+          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)]">
 
-            <TabsContent value="ranking" className="mt-4 overflow-x-hidden">
+            <TabsContent value="ranking" className="mt-4">
               {/* Mobile Ranking Section */}
               <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
@@ -650,71 +650,80 @@ function GameAndChallengeContent() {
                       />
                     ))}
                   </div>
-                 ) : (
-                   <Card className="border-2 border-dashed border-green-300 dark:border-green-700">
-                     <CardContent className="text-center py-6">
-                       <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                       <h3 className="font-semibold mb-2">No Global Challenges</h3>
-                       <p className="text-muted-foreground text-sm mb-3">
-                         Create or join global challenges with the community!
-                       </p>
-                       <Button 
-                         onClick={() => setShowChallengeModal(true)}
-                         size="sm"
-                       >
-                         <Plus className="h-4 w-4 mr-2" />
-                         Create Challenge
-                       </Button>
-                     </CardContent>
-                   </Card>
-                 )}
+                ) : (
+                  <Card className="border-2 border-dashed border-green-300 dark:border-green-700">
+                    <CardContent className="text-center py-6">
+                      <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <h3 className="font-semibold mb-2">No Active Challenges</h3>
+                      <p className="text-muted-foreground text-sm mb-3">
+                        Create your first challenge!
+                      </p>
+                      <Button 
+                        onClick={() => setShowChallengeModal(true)}
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Challenge
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
 
-                 {/* Micro-Challenges Section */}
-                 <div className="mt-6">
-                   <div className="flex items-center justify-between mb-4">
-                     <h2 className="text-lg font-bold flex items-center gap-2">
-                       <Sparkles className="h-5 w-5 text-yellow-500" />
-                       Quick Challenges
-                     </h2>
-                     <Button 
-                       onClick={() => setShowMicroChallengeModal(true)}
-                       size="sm"
-                       className="h-8 px-3 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
-                     >
-                       <Sparkles className="h-3 w-3 mr-1" />
-                       Create
-                     </Button>
-                   </div>
-                   
-                   {microChallenges.length > 0 ? (
-                     <div className="space-y-3">
-                       {microChallenges.map((challenge) => (
-                         <MicroChallengeCard 
-                           key={challenge.id} 
-                           challenge={challenge}
-                           onNudgeFriend={nudgeFriend}
-                         />
-                       ))}
-                     </div>
-                   ) : (
-                     <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
-                       <CardContent className="text-center py-6">
-                         <Sparkles className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-                         <h3 className="font-semibold mb-2">No Quick Challenges Yet</h3>
-                         <p className="text-muted-foreground text-sm mb-3">
-                           Create quick challenges with friends!
-                         </p>
-                         <Button 
-                           onClick={() => setShowMicroChallengeModal(true)}
-                           size="sm"
-                         >
-                           <Sparkles className="h-4 w-4 mr-2" />
-                           Start Quick Challenge
-                         </Button>
-                       </CardContent>
-                     </Card>
-                   )}
-                 </div>
+                {/* Micro-Challenges Section */}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-yellow-500" />
+                      Micro-Challenges
+                    </h2>
+                    <Button 
+                      onClick={() => setShowMicroChallengeModal(true)}
+                      size="sm"
+                      className="h-8 px-3 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Create
+                    </Button>
+                  </div>
+                  
+                  {microChallenges.length > 0 ? (
+                    <div className="space-y-3">
+                      {microChallenges.map((challenge) => (
+                        <MicroChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge}
+                          onNudgeFriend={nudgeFriend}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
+                      <CardContent className="text-center py-6">
+                        <Sparkles className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                        <h3 className="font-semibold mb-2">No Micro-Challenges Yet</h3>
+                        <p className="text-muted-foreground text-sm mb-3">
+                          Create quick 1-7 day challenges!
+                        </p>
+                        <Button 
+                          onClick={() => setShowMicroChallengeModal(true)}
+                          size="sm"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Start Micro-Challenge
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Monthly Automated Challenge at Bottom */}
+                <div className="mt-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Crown className="h-5 w-5 text-yellow-500" />
+                    <h2 className="text-lg font-bold">Monthly Challenge</h2>
+                  </div>
+                  <MonthlyTrophyPodium />
+                </div>
               </div>
             </TabsContent>
 
@@ -790,72 +799,8 @@ function GameAndChallengeContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden">
-              {/* My Challenges Section */}
-              <div className="space-y-6">
-                {/* Monthly Challenge */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Crown className="h-5 w-5 text-yellow-500" />
-                    <h2 className="text-lg font-bold">Monthly Challenge</h2>
-                  </div>
-                  <MonthlyTrophyPodium />
-                </div>
-
-                {/* My Enrolled Challenges */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Star className="h-5 w-5 text-blue-500" />
-                    <h2 className="text-lg font-bold">My Enrolled Challenges</h2>
-                  </div>
-                  
-                  {challenges.filter(c => c.participants.includes('current-user-id')).length > 0 ? (
-                    <div className="space-y-3">
-                      {challenges.filter(c => c.participants.includes('current-user-id')).map((challenge) => (
-                        <ChallengeCard 
-                          key={challenge.id} 
-                          challenge={challenge} 
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700">
-                      <CardContent className="text-center py-6">
-                        <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <h3 className="font-semibold mb-2">No Enrolled Challenges</h3>
-                        <p className="text-muted-foreground text-sm mb-3">
-                          Join global challenges to track your personal progress!
-                        </p>
-                        <Button 
-                          onClick={() => setActiveSection('challenges')}
-                          size="sm"
-                        >
-                          <Target className="h-4 w-4 mr-2" />
-                          Browse Challenges
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-
-                {/* Completed Challenges */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <h2 className="text-lg font-bold">Completed</h2>
-                  </div>
-                  
-                  <Card className="border-2 border-dashed border-green-300 dark:border-green-700">
-                    <CardContent className="text-center py-6">
-                      <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                      <h3 className="font-semibold mb-2">No Completed Challenges Yet</h3>
-                      <p className="text-muted-foreground text-sm">
-                        Complete challenges to see them here!
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+            <TabsContent value="winners" className="mt-4">
+              <MonthlyTrophyPodium />
             </TabsContent>
 
             <TabsContent value="hall-of-fame" className="mt-4 flex-1">
@@ -870,18 +815,18 @@ function GameAndChallengeContent() {
               </TabsTrigger>
               <TabsTrigger value="challenges" className="text-xs">
                 <Target className="h-3 w-3 mr-1" />
-                Global
-              </TabsTrigger>
-              <TabsTrigger value="my-challenges" className="text-xs">
-                <Star className="h-3 w-3 mr-1" />
-                My
+                Challenges
               </TabsTrigger>
               <TabsTrigger value="chat" className="text-xs">
                 <MessageCircle className="h-3 w-3 mr-1" />
                 Chat
               </TabsTrigger>
-              <TabsTrigger value="hall-of-fame" className="text-xs">
+              <TabsTrigger value="winners" className="text-xs">
                 <Crown className="h-3 w-3 mr-1" />
+                Winners
+              </TabsTrigger>
+              <TabsTrigger value="hall-of-fame" className="text-xs">
+                <Star className="h-3 w-3 mr-1" />
                 Fame
               </TabsTrigger>
             </TabsList>
@@ -914,15 +859,15 @@ function GameAndChallengeContent() {
                 </CardHeader>
                 
                 <CardContent className="p-6">
-                 {challenges.length > 0 ? (
-                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                     {challenges.map((challenge) => (
-                       <ChallengeCard 
-                         key={challenge.id} 
-                         challenge={challenge} 
-                       />
-                     ))}
-                   </div>
+                  {challenges.length > 0 ? (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {challenges.map((challenge) => (
+                        <ChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge} 
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <div className="text-center py-12">
                       <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -965,16 +910,16 @@ function GameAndChallengeContent() {
                   </Button>
                 </div>
                 
-                 {microChallenges.length > 0 ? (
-                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                     {microChallenges.map((challenge) => (
-                       <MicroChallengeCard 
-                         key={challenge.id} 
-                         challenge={challenge}
-                         onNudgeFriend={nudgeFriend}
-                       />
-                     ))}
-                   </div>
+                {microChallenges.length > 0 ? (
+                  <div className="flex gap-4 overflow-x-auto pb-4">
+                    {microChallenges.map((challenge) => (
+                      <MicroChallengeCard 
+                        key={challenge.id} 
+                        challenge={challenge}
+                        onNudgeFriend={nudgeFriend}
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
                     <CardContent className="text-center py-8">
