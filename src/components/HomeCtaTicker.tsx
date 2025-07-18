@@ -38,6 +38,7 @@ interface TriggerContext {
   daysSinceGoalStart: number;
   isUserBirthday: boolean;
   hasHitGoalMilestone: boolean;
+  isWeeklyChampion: boolean;
 }
 
 // Seasonal CTAs (Highest Priority)
@@ -121,7 +122,34 @@ const PERSONAL_MESSAGES: CtaMessage[] = [
     text: '🔥 You hit 50% of your goal! Let\'s finish strong.',
     priority: 'personal',
     checkTrigger: (ctx) => ctx.hasHitGoalMilestone
+  },
+  {
+    id: 'streak-30-day',
+    text: '🎉 You just hit a 30-day streak! You\'re absolutely crushing it!',
+    priority: 'personal',
+    checkTrigger: (ctx) => ctx.currentStreak === 30
+  },
+  {
+    id: 'weekly-champion',
+    text: '🥇 You\'re #1 this week! Keep that momentum going!',
+    priority: 'personal', 
+    checkTrigger: (ctx) => ctx.isWeeklyChampion
+  },
+  {
+    id: 'perfect-week',
+    text: '💯 Perfect 7-day logging streak! You\'re on fire!',
+    priority: 'personal',
+    checkTrigger: (ctx) => ctx.currentStreak === 7
   }
+];
+
+// High-value CTAs that deserve sound/vibration
+const ULTRA_SPECIAL_CTA_IDS = [
+  'streak-30-day',
+  'weekly-champion', 
+  'perfect-week',
+  'goal-milestone',
+  'birthday'
 ];
 
 // Default CTAs (Lowest Priority)
@@ -230,8 +258,94 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
 
   const [showCta, setShowCta] = useState(false);
   const [currentCtaMessage, setCurrentCtaMessage] = useState<string>('');
+  const [currentCtaId, setCurrentCtaId] = useState<string>('');
   const [lastCtaTime, setLastCtaTime] = useState<number>(0);
   const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Mobile UX enhancement functions
+  const isUltraSpecialCta = (ctaId: string): boolean => {
+    return ULTRA_SPECIAL_CTA_IDS.includes(ctaId);
+  };
+
+  const hasUserDisabledEffects = (): boolean => {
+    // Check for reduced motion preference
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    // Check for user sound preference (stored in localStorage)
+    const soundDisabled = localStorage.getItem('disable_sound_effects') === 'true';
+    
+    return reducedMotion || soundDisabled;
+  };
+
+  const canPlayEffectsToday = (): boolean => {
+    const today = new Date().toDateString();
+    const lastEffectDate = localStorage.getItem('last_cta_effect_date');
+    
+    return lastEffectDate !== today;
+  };
+
+  const playSuccessSound = (): void => {
+    if (!isMobile || hasUserDisabledEffects() || !canPlayEffectsToday()) return;
+    
+    try {
+      // Create a simple success chime using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create a sequence of notes for a pleasant chime
+      const playNote = (frequency: number, startTime: number, duration: number) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        oscillator.type = 'sine';
+        
+        // Gentle volume envelope
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.1, startTime + 0.05); // Low volume
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      };
+      
+      // Play a pleasant C major chord sequence
+      const now = audioContext.currentTime;
+      playNote(523.25, now, 0.3); // C5
+      playNote(659.25, now + 0.1, 0.3); // E5
+      playNote(783.99, now + 0.2, 0.4); // G5
+      
+    } catch (error) {
+      console.log('Audio not supported or blocked:', error);
+    }
+  };
+
+  const triggerVibration = (): void => {
+    if (!isMobile || hasUserDisabledEffects() || !canPlayEffectsToday()) return;
+    
+    // Check if device supports vibration
+    if ('vibrate' in navigator) {
+      try {
+        // Celebratory vibration pattern: short-long-short
+        navigator.vibrate([100, 50, 200, 50, 100]);
+      } catch (error) {
+        console.log('Vibration not supported:', error);
+      }
+    }
+  };
+
+  const triggerCelebratoryEffects = (ctaId: string): void => {
+    if (!isUltraSpecialCta(ctaId) || !canPlayEffectsToday()) return;
+    
+    // Play sound and vibration for ultra-special CTAs
+    playSuccessSound();
+    triggerVibration();
+    
+    // Mark that we've played effects today
+    localStorage.setItem('last_cta_effect_date', new Date().toDateString());
+  };
 
   // Load user profile data
   useEffect(() => {
@@ -353,6 +467,9 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     // Check for goal milestones (simplified)
     const hasHitGoalMilestone = calorieProgress >= 50 && calorieProgress < 60;
 
+    // Check if user is weekly champion (simplified - you could implement real ranking)
+    const isWeeklyChampion = currentStreak >= 7 && dayOfWeek === 1; // Monday check for weekly reset
+
     return {
       user,
       progress,
@@ -379,12 +496,13 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
       hoursInactive,
       daysSinceGoalStart,
       isUserBirthday: isUserBirthday(now, userProfile),
-      hasHitGoalMilestone
+      hasHitGoalMilestone,
+      isWeeklyChampion
     };
   };
 
   // Find valid CTA message with priority system
-  const findValidCta = (): string | null => {
+  const findValidCta = (): { text: string; id: string } | null => {
     const context = buildTriggerContext();
     
     // Priority order: Seasonal > Holiday > Personal > Default
@@ -399,9 +517,12 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
       if (cta.checkTrigger(context)) {
         // Handle dynamic text replacement for goal anniversary
         if (cta.id === 'goal-anniversary') {
-          return `🏁 You began this journey ${context.daysSinceGoalStart} days ago. Look how far you've come!`;
+          return { 
+            text: `🏁 You began this journey ${context.daysSinceGoalStart} days ago. Look how far you've come!`,
+            id: cta.id
+          };
         }
-        return cta.text;
+        return { text: cta.text, id: cta.id };
       }
     }
     
@@ -415,8 +536,14 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
       
       const validCta = findValidCta();
       if (validCta) {
-        setCurrentCtaMessage(validCta);
+        setCurrentCtaMessage(validCta.text);
+        setCurrentCtaId(validCta.id);
         setShowCta(true);
+        
+        // Trigger celebratory effects for ultra-special CTAs
+        setTimeout(() => {
+          triggerCelebratoryEffects(validCta.id);
+        }, 500); // Small delay to let animation start
         
         // Mark CTA as shown
         const now = Date.now();
