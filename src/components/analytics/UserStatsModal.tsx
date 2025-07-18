@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,11 +201,12 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
         <DialogContent className="max-w-md sm:max-w-xl max-h-[90vh] overflow-y-auto p-0 animate-in zoom-in-95 duration-700 slide-in-from-bottom-8 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
           <DialogHeader className="sr-only">
             <DialogTitle>User Profile</DialogTitle>
+            <DialogDescription>User statistics and achievements</DialogDescription>
           </DialogHeader>
             
-          {/* ULTRA-COMPACT Gaming Header */}
+          {/* TIGHTENED Gaming Header - Reduced padding */}
           <div className={cn(
-            "relative overflow-hidden p-3 sm:p-4",
+            "relative overflow-hidden p-2 sm:p-3",
             "bg-gradient-to-br from-primary/30 via-secondary/25 to-accent/30",
             "border-b-2 border-gradient-to-r from-primary/60 to-secondary/60"
           )}>
@@ -288,10 +289,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                 )}
               </div>
               
-              {/* DRAMATIC User Info Section */}
+              {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-lg">
+                  <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)]">
                     {user.nickname}
                   </h2>
                   
