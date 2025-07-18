@@ -27,6 +27,7 @@ import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
+import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1613,9 +1614,10 @@ const Home = () => {
         onClose={() => setIsHealthCheckOpen(false)} 
       />
       
-      {/* Development Test Component */}
+      {/* Development Test Components */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8">
+        <div className="mt-8 space-y-6">
+          <CoachCtaDemo />
           <MealScoringTestComponent />
         </div>
       )}

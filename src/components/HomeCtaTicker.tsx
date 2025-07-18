@@ -252,7 +252,7 @@ interface HomeCtaTickerProps {
 
 export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   const { user } = useAuth();
-  const { getTodaysProgress, currentDay } = useNutrition();
+  const { getTodaysProgress, currentDay, currentCoachCta, clearCoachCta } = useNutrition();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
 
@@ -532,6 +532,22 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   // Initialize CTA check
   useEffect(() => {
     const checkForCta = () => {
+      // HIGHEST PRIORITY: Coach CTA overrides everything
+      if (currentCoachCta) {
+        setCurrentCtaMessage(currentCoachCta);
+        setCurrentCtaId('coach-dynamic');
+        setShowCta(true);
+        
+        // Auto-hide after 15 seconds and clear coach CTA
+        setTimeout(() => {
+          setShowCta(false);
+          clearCoachCta(); // Clear from context to avoid repeat
+        }, 15000);
+        
+        return; // Exit early - coach CTA takes precedence
+      }
+      
+      // Standard CTA logic (only if no coach CTA)
       if (!shouldShowCta()) return;
       
       const validCta = findValidCta();
@@ -560,7 +576,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     // Small delay to let other components load and user profile to load
     const timer = setTimeout(checkForCta, 2000);
     return () => clearTimeout(timer);
-  }, [user, currentDay, userProfile]);
+  }, [user, currentDay, userProfile, currentCoachCta]); // Added currentCoachCta to dependencies
 
   // Track page visits for triggers
   useEffect(() => {

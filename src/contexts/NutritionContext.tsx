@@ -77,6 +77,11 @@ interface NutritionContextType {
   };
   getHydrationGoal: () => number;
   getSupplementGoal: () => number;
+  // Coach CTA functionality
+  coachCtaQueue: string[];
+  currentCoachCta: string | null;
+  addCoachCta: (message: string) => void;
+  clearCoachCta: () => void;
 }
 
 const NutritionContext = createContext<NutritionContextType | undefined>(undefined);
@@ -194,6 +199,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   };
 
   const [weeklyData, setWeeklyData] = useState<DailyNutrition[]>([]);
+  
+  // Coach CTA state
+  const [coachCtaQueue, setCoachCtaQueue] = useState<string[]>([]);
+  const [currentCoachCta, setCurrentCoachCta] = useState<string | null>(null);
 
   // Update weekly data when current day changes
   useEffect(() => {
@@ -372,6 +381,35 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const getHydrationGoal = () => dailyTargets.hydration_ml || 2000; // Use daily targets or 2L default
   const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default
 
+  // Coach CTA functions
+  const addCoachCta = (message: string) => {
+    // Add to queue if not already there
+    setCoachCtaQueue(prev => {
+      if (!prev.includes(message)) {
+        return [...prev, message];
+      }
+      return prev;
+    });
+    
+    // If no current CTA is active, set the first one from queue
+    if (!currentCoachCta) {
+      setCurrentCoachCta(message);
+      // Remove from queue once it becomes current
+      setCoachCtaQueue(prev => prev.filter(msg => msg !== message));
+    }
+  };
+
+  const clearCoachCta = () => {
+    setCurrentCoachCta(null);
+    
+    // If there are more CTAs in queue, activate the next one
+    if (coachCtaQueue.length > 0) {
+      const nextCta = coachCtaQueue[0];
+      setCurrentCoachCta(nextCta);
+      setCoachCtaQueue(prev => prev.slice(1)); // Remove the first item from queue
+    }
+  };
+
   return (
     <NutritionContext.Provider
       value={{
@@ -386,6 +424,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
         getTodaysProgress,
         getHydrationGoal,
         getSupplementGoal,
+        coachCtaQueue,
+        currentCoachCta,
+        addCoachCta,
+        clearCoachCta,
       }}
     >
       {children}
