@@ -241,7 +241,21 @@ function GameAndChallengeContent() {
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    
+    // Get the target element
+    const element = document.getElementById(sectionId);
+    if (!element) return;
+    
+    // Calculate offset for sticky header (approximate height)
+    const headerOffset = isMobile ? 120 : 140; // Adjust based on header height
+    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPosition = elementPosition - headerOffset;
+    
+    // Smooth scroll to the calculated position
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    });
   };
 
   const sendMessage = () => {
