@@ -192,149 +192,174 @@ function calculateDailyPerformanceScore({
   supplementLogs: any[],
   toxinDetections: any[]
 }): number {
-  let totalScore = 0
+  // 1. Nutrition Target Adherence (35%)
+  const nutritionScore = calculateNutritionTargetScore(targets, nutritionLogs)
+  console.log(`Nutrition target score: ${nutritionScore.toFixed(2)}/100`)
 
-  // 1. Nutrition Adherence (50 points total)
-  const nutritionScore = calculateNutritionScore(targets, nutritionLogs)
-  totalScore += nutritionScore
-  console.log(`Nutrition score: ${nutritionScore}/50`)
+  // 2. Meal Quality (30%)
+  const mealQualityAvg = calculateMealQualityAverage(nutritionLogs)
+  console.log(`Meal quality average: ${mealQualityAvg.toFixed(2)}/100`)
 
-  // 2. Hydration Adherence (15 points)
-  const hydrationScore = calculateHydrationScore(targets, hydrationLogs)
-  totalScore += hydrationScore
-  console.log(`Hydration score: ${hydrationScore}/15`)
+  // 3. Ingredient Flags Avoided (10%)
+  const ingredientPenalty = calculateIngredientFlagPenalty(nutritionLogs, targets)
+  const ingredientScore = (1 - ingredientPenalty) * 100
+  console.log(`Ingredient flags avoided: ${ingredientScore.toFixed(2)}/100`)
 
-  // 3. Supplement Adherence (10 points)
-  const supplementScore = calculateSupplementScore(targets, supplementLogs)
-  totalScore += supplementScore
-  console.log(`Supplement score: ${supplementScore}/10`)
+  // 4. Hydration Target Met (10%)
+  const hydrationPercent = calculateHydrationPercentage(targets, hydrationLogs)
+  console.log(`Hydration percentage: ${hydrationPercent.toFixed(2)}/100`)
 
-  // 4. Meal Quality Bonus (15 points)
-  const qualityScore = calculateMealQualityScore(nutritionLogs)
-  totalScore += qualityScore
-  console.log(`Quality score: ${qualityScore}/15`)
+  // 5. Micronutrients & Fiber (10%)
+  const micronutrientScore = calculateMicronutrientScore(targets, nutritionLogs)
+  console.log(`Micronutrient score: ${micronutrientScore.toFixed(2)}/100`)
 
-  // 5. Consistency Bonus (10 points) - based on logging frequency
-  const consistencyScore = calculateConsistencyScore(nutritionLogs, hydrationLogs, supplementLogs)
-  totalScore += consistencyScore
-  console.log(`Consistency score: ${consistencyScore}/10`)
+  // 6. Bonus (Streaks, Consistency) (5%)
+  const bonusPoints = calculateBonusPoints(nutritionLogs, hydrationLogs, supplementLogs)
+  console.log(`Bonus points: ${bonusPoints.toFixed(2)}/100`)
 
-  // 6. Toxin Penalty (up to -10 points)
-  const toxinPenalty = calculateToxinPenalty(toxinDetections)
-  totalScore += toxinPenalty
-  console.log(`Toxin penalty: ${toxinPenalty}`)
+  // Apply weighted formula
+  const finalScore = (
+    0.35 * nutritionScore +
+    0.30 * mealQualityAvg +
+    0.10 * ingredientScore +
+    0.10 * hydrationPercent +
+    0.10 * micronutrientScore +
+    0.05 * bonusPoints
+  )
 
-  // Ensure score is between 0 and 100
-  const finalScore = Math.max(0, Math.min(100, totalScore))
-  console.log(`Final score: ${finalScore}/100`)
+  console.log(`Final weighted score: ${finalScore.toFixed(2)}/100`)
   
-  return finalScore
+  // Ensure score is between 0 and 100
+  return Math.max(0, Math.min(100, finalScore))
 }
 
-function calculateNutritionScore(targets: any, nutritionLogs: any[]): number {
-  const maxNutritionScore = 50
-  let score = 0
+function calculateNutritionTargetScore(targets: any, nutritionLogs: any[]): number {
+  if (nutritionLogs.length === 0) return 0
 
   // Calculate actual totals
   const actualTotals = nutritionLogs.reduce((acc, log) => ({
     calories: acc.calories + (log.calories || 0),
     protein: acc.protein + (log.protein || 0),
     carbs: acc.carbs + (log.carbs || 0),
-    fat: acc.fat + (log.fat || 0),
-    fiber: acc.fiber + (log.fiber || 0)
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 })
+    fat: acc.fat + (log.fat || 0)
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
-  // Score each macro (10 points each)
-  const macros = ['calories', 'protein', 'carbs', 'fat', 'fiber']
+  const macros = ['calories', 'protein', 'carbs', 'fat']
+  let totalScore = 0
+  let validMacros = 0
+
   macros.forEach(macro => {
     const target = targets[macro]
     const actual = actualTotals[macro]
     
     if (target && target > 0) {
-      const adherence = Math.min(actual / target, 2) // Cap at 200% to prevent over-eating rewards
-      const macroScore = adherence <= 1 
-        ? adherence * 10 // Perfect score at 100% adherence
-        : Math.max(0, 10 - ((adherence - 1) * 5)) // Penalty for exceeding targets
+      validMacros++
+      const adherence = actual / target
+      // Perfect score at 90-110% adherence, declining outside that range
+      let macroScore = 0
+      if (adherence >= 0.9 && adherence <= 1.1) {
+        macroScore = 100 // Perfect adherence
+      } else if (adherence >= 0.7 && adherence <= 1.3) {
+        macroScore = 100 - Math.abs(adherence - 1) * 200 // Linear decline
+      } else {
+        macroScore = Math.max(0, 100 - Math.abs(adherence - 1) * 300) // Steeper decline
+      }
       
-      score += macroScore
-      console.log(`${macro}: ${actual}/${target} (${(adherence * 100).toFixed(1)}%) = ${macroScore.toFixed(1)} points`)
+      totalScore += macroScore
+      console.log(`${macro}: ${actual}/${target} (${(adherence * 100).toFixed(1)}%) = ${macroScore.toFixed(1)}`)
     }
   })
 
-  return Math.min(score, maxNutritionScore)
+  return validMacros > 0 ? totalScore / validMacros : 0
 }
 
-function calculateHydrationScore(targets: any, hydrationLogs: any[]): number {
-  const maxHydrationScore = 15
-  const targetHydration = targets.hydration_ml || 2000 // Default 2L
-  
-  const actualHydration = hydrationLogs.reduce((total, log) => total + (log.volume || 0), 0)
-  const adherence = Math.min(actualHydration / targetHydration, 1.5) // Cap at 150%
-  
-  const score = adherence <= 1 
-    ? adherence * maxHydrationScore
-    : Math.max(0, maxHydrationScore - ((adherence - 1) * 10)) // Slight penalty for excessive hydration
+function calculateMealQualityAverage(nutritionLogs: any[]): number {
+  if (nutritionLogs.length === 0) return 50 // Neutral score if no meals
 
-  console.log(`Hydration: ${actualHydration}ml/${targetHydration}ml (${(adherence * 100).toFixed(1)}%)`)
-  return score
+  const logsWithQuality = nutritionLogs.filter(log => 
+    log.quality_score !== null && log.quality_score !== undefined
+  )
+
+  if (logsWithQuality.length === 0) return 50 // Neutral score if no quality data
+
+  const avgQualityScore = logsWithQuality.reduce((sum, log) => 
+    sum + (log.quality_score || 0), 0
+  ) / logsWithQuality.length
+
+  console.log(`Meal quality: ${avgQualityScore.toFixed(1)}/100 (${logsWithQuality.length} meals)`)
+  return avgQualityScore
 }
 
-function calculateSupplementScore(targets: any, supplementLogs: any[]): number {
-  const maxSupplementScore = 10
-  const targetSupplements = targets.supplement_count || 0
-  
-  if (targetSupplements === 0) return maxSupplementScore // Full score if no supplements needed
-  
-  const actualSupplements = supplementLogs.length
-  const adherence = Math.min(actualSupplements / targetSupplements, 1)
-  
-  console.log(`Supplements: ${actualSupplements}/${targetSupplements}`)
-  return adherence * maxSupplementScore
-}
-
-function calculateMealQualityScore(nutritionLogs: any[]): number {
-  const maxQualityScore = 15
-  
+function calculateIngredientFlagPenalty(nutritionLogs: any[], targets: any): number {
   if (nutritionLogs.length === 0) return 0
-  
-  // Calculate average quality score
-  const logsWithQuality = nutritionLogs.filter(log => log.quality_score !== null && log.quality_score !== undefined)
-  
-  if (logsWithQuality.length === 0) return maxQualityScore * 0.5 // Neutral score if no quality data
-  
-  const avgQualityScore = logsWithQuality.reduce((sum, log) => sum + (log.quality_score || 0), 0) / logsWithQuality.length
-  
-  console.log(`Average meal quality: ${avgQualityScore.toFixed(1)}/100`)
-  // Convert 0-100 quality score to 0-15 point scale
-  return (avgQualityScore / 100) * maxQualityScore
+
+  const flaggedIngredients = targets.flagged_ingredients || []
+  if (flaggedIngredients.length === 0) return 0
+
+  let totalFlaggedCount = 0
+  let totalIngredientAnalyses = 0
+
+  nutritionLogs.forEach(log => {
+    if (log.ingredient_analysis && Array.isArray(log.ingredient_analysis)) {
+      totalIngredientAnalyses += log.ingredient_analysis.length
+      
+      log.ingredient_analysis.forEach((ingredient: any) => {
+        if (flaggedIngredients.some((flagged: string) => 
+          ingredient.name?.toLowerCase().includes(flagged.toLowerCase())
+        )) {
+          totalFlaggedCount++
+        }
+      })
+    }
+  })
+
+  const penalty = totalIngredientAnalyses > 0 ? totalFlaggedCount / totalIngredientAnalyses : 0
+  console.log(`Flagged ingredients: ${totalFlaggedCount}/${totalIngredientAnalyses} (penalty: ${(penalty * 100).toFixed(1)}%)`)
+  return Math.min(penalty, 1) // Cap at 100% penalty
 }
 
-function calculateConsistencyScore(nutritionLogs: any[], hydrationLogs: any[], supplementLogs: any[]): number {
-  const maxConsistencyScore = 10
-  let consistencyPoints = 0
+function calculateHydrationPercentage(targets: any, hydrationLogs: any[]): number {
+  const targetHydration = targets.hydration_ml || 2000
+  const actualHydration = hydrationLogs.reduce((total, log) => total + (log.volume || 0), 0)
   
-  // Points for having meals logged (up to 6 points)
+  const percentage = Math.min((actualHydration / targetHydration) * 100, 100)
+  console.log(`Hydration: ${actualHydration}ml/${targetHydration}ml (${percentage.toFixed(1)}%)`)
+  return percentage
+}
+
+function calculateMicronutrientScore(targets: any, nutritionLogs: any[]): number {
+  if (nutritionLogs.length === 0) return 0
+
+  const priorityMicronutrients = targets.priority_micronutrients || []
+  if (priorityMicronutrients.length === 0) return 100 // Full score if no specific priorities
+
+  // Calculate fiber target achievement
+  const targetFiber = targets.fiber || 25
+  const actualFiber = nutritionLogs.reduce((sum, log) => sum + (log.fiber || 0), 0)
+  const fiberScore = Math.min((actualFiber / targetFiber) * 100, 100)
+
+  // For now, use fiber as proxy for micronutrient achievement
+  // In future, could analyze ingredient_analysis for specific micronutrients
+  console.log(`Fiber: ${actualFiber}g/${targetFiber}g (${fiberScore.toFixed(1)}%)`)
+  return fiberScore
+}
+
+function calculateBonusPoints(nutritionLogs: any[], hydrationLogs: any[], supplementLogs: any[]): number {
+  let bonusScore = 0
+
+  // Consistency bonus (50 points max)
   const mealCount = nutritionLogs.length
-  consistencyPoints += Math.min(mealCount * 2, 6) // 2 points per meal, max 6
-  
-  // Points for hydration logging (2 points)
-  if (hydrationLogs.length > 0) consistencyPoints += 2
-  
-  // Points for supplement logging (2 points)
-  if (supplementLogs.length > 0) consistencyPoints += 2
-  
-  console.log(`Consistency: ${mealCount} meals, ${hydrationLogs.length} hydration, ${supplementLogs.length} supplements`)
-  return Math.min(consistencyPoints, maxConsistencyScore)
-}
+  if (mealCount >= 3) bonusScore += 30 // Full day logging
+  else if (mealCount >= 2) bonusScore += 20
+  else if (mealCount >= 1) bonusScore += 10
 
-function calculateToxinPenalty(toxinDetections: any[]): number {
-  const maxPenalty = -10
-  
-  if (toxinDetections.length === 0) return 0
-  
-  // -2 points per toxin detection, capped at -10
-  const penalty = Math.max(toxinDetections.length * -2, maxPenalty)
-  
-  console.log(`Toxin detections: ${toxinDetections.length} (penalty: ${penalty})`)
-  return penalty
+  // Hydration logging bonus (25 points)
+  if (hydrationLogs.length >= 3) bonusScore += 25
+  else if (hydrationLogs.length >= 1) bonusScore += 15
+
+  // Supplement adherence bonus (25 points)
+  if (supplementLogs.length > 0) bonusScore += 25
+
+  console.log(`Bonus: ${mealCount} meals, ${hydrationLogs.length} hydration, ${supplementLogs.length} supplements = ${bonusScore}/100`)
+  return Math.min(bonusScore, 100)
 }
