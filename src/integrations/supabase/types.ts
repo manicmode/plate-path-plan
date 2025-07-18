@@ -970,6 +970,57 @@ export type Database = {
         }
         Relationships: []
       }
+      yearly_hall_of_fame: {
+        Row: {
+          avg_hydration_streak: number | null
+          avg_nutrition_streak: number | null
+          avg_supplement_streak: number | null
+          created_at: string
+          display_name: string
+          id: string
+          monthly_trophies: number
+          rank_position: number
+          total_active_days: number
+          total_messages: number
+          user_id: string
+          username: string
+          year: number
+          yearly_score: number
+        }
+        Insert: {
+          avg_hydration_streak?: number | null
+          avg_nutrition_streak?: number | null
+          avg_supplement_streak?: number | null
+          created_at?: string
+          display_name: string
+          id?: string
+          monthly_trophies?: number
+          rank_position: number
+          total_active_days?: number
+          total_messages?: number
+          user_id: string
+          username: string
+          year: number
+          yearly_score?: number
+        }
+        Update: {
+          avg_hydration_streak?: number | null
+          avg_nutrition_streak?: number | null
+          avg_supplement_streak?: number | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          monthly_trophies?: number
+          rank_position?: number
+          total_active_days?: number
+          total_messages?: number
+          user_id?: string
+          username?: string
+          year?: number
+          yearly_score?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1045,6 +1096,22 @@ export type Database = {
           friend_phone: string
           relevance_score: number
           interaction_metadata: Json
+        }[]
+      }
+      get_top_100_yearly_users: {
+        Args: { target_year?: number }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string
+          yearly_score: number
+          monthly_trophies: number
+          avg_nutrition_streak: number
+          avg_hydration_streak: number
+          avg_supplement_streak: number
+          total_active_days: number
+          total_messages: number
+          rank_position: number
         }[]
       }
     }
