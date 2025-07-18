@@ -90,15 +90,13 @@ const Coach = () => {
 
   // Scroll to top function for commands
   const scrollToTop = () => {
-    // Scroll page to top smoothly
+    // Scroll page to top smoothly to show chat window optimally
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    // Also scroll chat area to bottom to show latest message after a brief delay
-    setTimeout(() => {
-      if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-      }
-    }, 100);
+    // Immediately scroll chat area to bottom to show latest content
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
   };
 
   // Topic filter function
