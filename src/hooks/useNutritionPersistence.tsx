@@ -69,7 +69,24 @@ export const useNutritionPersistence = () => {
       console.log('Food saved to database:', food.name);
       
       // Score the meal quality
-      await scoreMealAfterInsert(data, error);
+      const scoringResult = await scoreMealAfterInsert(data, error);
+      
+      // Automatically generate meal suggestions in the background (silent)
+      if (scoringResult) {
+        console.log('🎯 Triggering meal suggestions generation...');
+        // Call generate-meal-suggestions edge function silently
+        supabase.functions.invoke('generate-meal-suggestions', {
+          body: {}
+        }).then(({ data: suggestionData, error: suggestionError }) => {
+          if (suggestionError) {
+            console.warn('Background meal suggestion generation failed:', suggestionError);
+          } else {
+            console.log('✅ Meal suggestions generated:', suggestionData);
+          }
+        }).catch(error => {
+          console.warn('Background meal suggestion generation error:', error);
+        });
+      }
       
       // Return the database ID
       return data && data[0] ? data[0].id : null;
