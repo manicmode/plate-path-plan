@@ -362,15 +362,15 @@ function GameAndChallengeContent() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content - Fixed spacing issue */}
       <div className={cn(
-        "container mx-auto space-y-6 sm:space-y-12 max-w-full overflow-x-hidden",
+        "container mx-auto max-w-full overflow-x-hidden",
         isMobile ? "px-2" : "px-4"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
         {!isMobile && (
-          <section id="ranking" className="animate-fade-in">
+          <section id="ranking" className="animate-fade-in mt-6">
           <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
             <CardHeader className={cn(
               "bg-gradient-to-r from-primary/10 to-secondary/10",
@@ -531,7 +531,7 @@ function GameAndChallengeContent() {
 
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
-          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)]">
+          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)] mt-4">
 
             <TabsContent value="ranking" className="mt-4">
               {/* Mobile Ranking Section */}
@@ -839,7 +839,7 @@ function GameAndChallengeContent() {
           // Desktop sections (existing code)
           <>
             {/* Active Challenges Section */}
-            <section id="challenges" className="animate-fade-in">
+            <section id="challenges" className="animate-fade-in mt-12">
               <Card className="overflow-hidden border-2 border-green-200 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
                   <div className="flex items-center justify-between">
@@ -949,12 +949,12 @@ function GameAndChallengeContent() {
             </section>
 
             {/* Friends in the Arena Section */}
-            <section id="friends" className="animate-fade-in">
+            <section id="friends" className="animate-fade-in mt-12">
               <FriendsArena friends={optimizedFriends} />
             </section>
 
             {/* Chat Window Panel */}
-            <section id="chat" className="animate-fade-in">
+            <section id="chat" className="animate-fade-in mt-12">
               <Card className="overflow-hidden border-2 border-secondary/20 shadow-xl">
                 <CardHeader 
                   className="bg-gradient-to-r from-secondary/10 to-primary/10 cursor-pointer"
@@ -1045,12 +1045,12 @@ function GameAndChallengeContent() {
             </section>
 
             {/* Podium of the Month Section */}
-            <section id="winners" className="animate-fade-in">
+            <section id="winners" className="animate-fade-in mt-12">
               <MonthlyTrophyPodium />
             </section>
 
             {/* Hall of Fame Section */}
-            <section id="hall-of-fame" className="animate-fade-in">
+            <section id="hall-of-fame" className="animate-fade-in mt-12">
               <HallOfFame champions={optimizedHallOfFame} />
             </section>
           </>
