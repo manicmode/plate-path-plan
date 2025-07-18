@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_messages: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          emoji: string | null
+          id: string
+          tagged_users: string[] | null
+          text: string | null
+          timestamp: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          tagged_users?: string[] | null
+          text?: string | null
+          timestamp?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          tagged_users?: string[] | null
+          text?: string | null
+          timestamp?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       daily_nutrition_targets: {
         Row: {
           calculated_at: string
@@ -613,6 +649,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           activity_level: string | null
@@ -637,6 +700,7 @@ export type Database = {
           exercise_frequency: string | null
           exercise_types: string[] | null
           fasting_schedule: string | null
+          first_name: string | null
           food_allergies: Json | null
           foods_to_avoid: string | null
           gender: string | null
@@ -648,6 +712,7 @@ export type Database = {
           height_unit: string | null
           id: string
           last_hydration_log_date: string | null
+          last_name: string | null
           last_nutrition_log_date: string | null
           last_profile_update: string | null
           last_supplement_log_date: string | null
@@ -711,6 +776,7 @@ export type Database = {
           exercise_frequency?: string | null
           exercise_types?: string[] | null
           fasting_schedule?: string | null
+          first_name?: string | null
           food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
@@ -722,6 +788,7 @@ export type Database = {
           height_unit?: string | null
           id?: string
           last_hydration_log_date?: string | null
+          last_name?: string | null
           last_nutrition_log_date?: string | null
           last_profile_update?: string | null
           last_supplement_log_date?: string | null
@@ -785,6 +852,7 @@ export type Database = {
           exercise_frequency?: string | null
           exercise_types?: string[] | null
           fasting_schedule?: string | null
+          first_name?: string | null
           food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
@@ -796,6 +864,7 @@ export type Database = {
           height_unit?: string | null
           id?: string
           last_hydration_log_date?: string | null
+          last_name?: string | null
           last_nutrition_log_date?: string | null
           last_profile_update?: string | null
           last_supplement_log_date?: string | null
@@ -879,6 +948,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_friend_from_contact: {
+        Args: { contact_user_id: string }
+        Returns: boolean
+      }
       calculate_next_trigger: {
         Args: { reminder_id: string }
         Returns: string
@@ -890,6 +963,15 @@ export type Database = {
           email: string
           phone: string
           contact_hash: string
+        }[]
+      }
+      get_mutual_friends: {
+        Args: { current_user_id: string }
+        Returns: {
+          friend_id: string
+          friend_name: string
+          friend_email: string
+          friend_phone: string
         }[]
       }
     }

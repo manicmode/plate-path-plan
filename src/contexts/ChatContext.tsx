@@ -1,14 +1,18 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
+import { useToast } from '@/hooks/use-toast';
 
 export interface ChatMessage {
   id: string;
   challengeId: string;
   userId: string;
   username: string;
-  avatar: string;
+  avatar?: string;
   text?: string;
   emoji?: string;
   timestamp: string;
+  taggedUsers?: string[];
   reactions?: { [emoji: string]: string[] }; // emoji -> array of userIds
 }
 
@@ -25,12 +29,13 @@ export interface ChallengeChat {
 
 interface ChatContextType {
   chats: { [challengeId: string]: ChallengeChat };
-  sendMessage: (challengeId: string, text: string, emoji?: string) => void;
+  sendMessage: (challengeId: string, text?: string, emoji?: string, taggedUsers?: string[]) => void;
   addReaction: (challengeId: string, messageId: string, emoji: string) => void;
   removeReaction: (challengeId: string, messageId: string, emoji: string) => void;
   toggleMute: (challengeId: string) => void;
   canSendEmoji: (challengeId: string) => boolean;
   getLastEmojiTime: (challengeId: string) => number;
+  loadMessages: (challengeId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -120,8 +125,10 @@ const mockChats: { [challengeId: string]: ChallengeChat } = {
 };
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
-  const [chats, setChats] = useState<{ [challengeId: string]: ChallengeChat }>(mockChats);
+  const [chats, setChats] = useState<{ [challengeId: string]: ChallengeChat }>({});
   const [lastEmojiTimes, setLastEmojiTimes] = useState<{ [challengeId: string]: number }>({});
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const canSendEmoji = (challengeId: string): boolean => {
     const lastTime = lastEmojiTimes[challengeId] || 0;
@@ -132,48 +139,125 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     return lastEmojiTimes[challengeId] || 0;
   };
 
-  const sendMessage = (challengeId: string, text: string, emoji?: string) => {
+  // Load messages from Supabase
+  const loadMessages = useCallback(async (challengeId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('challenge_messages')
+        .select('*')
+        .eq('challenge_id', challengeId)
+        .order('timestamp', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedMessages: ChatMessage[] = data?.map(msg => ({
+        id: msg.id,
+        challengeId: msg.challenge_id,
+        userId: msg.user_id,
+        username: msg.username,
+        text: msg.text,
+        emoji: msg.emoji,
+        timestamp: msg.timestamp,
+        taggedUsers: msg.tagged_users || [],
+        reactions: {}
+      })) || [];
+
+      setChats(prev => ({
+        ...prev,
+        [challengeId]: {
+          challengeId,
+          messages: formattedMessages,
+          isMuted: prev[challengeId]?.isMuted || false,
+          pinnedMessage: prev[challengeId]?.pinnedMessage
+        }
+      }));
+
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  }, []);
+
+  // Send message with tagging support
+  const sendMessage = useCallback(async (challengeId: string, text?: string, emoji?: string, taggedUsers?: string[]) => {
+    if (!user || (!text?.trim() && !emoji)) return;
+
     // Check emoji cooldown
     if (emoji && !canSendEmoji(challengeId)) {
+      toast({
+        title: "Please wait",
+        description: "You can send emoji reactions every 10 seconds",
+        variant: "destructive"
+      });
       return;
     }
 
     // Check message length
     if (text && text.length > MAX_MESSAGE_LENGTH) {
+      toast({
+        title: "Message too long",
+        description: `Messages must be under ${MAX_MESSAGE_LENGTH} characters`,
+        variant: "destructive"
+      });
       return;
     }
 
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
       challengeId,
-      userId: 'current-user-id',
-      username: 'Maya 🌟',
-      avatar: '🌟',
-      text: text || undefined,
-      emoji: emoji || undefined,
+      userId: user.id,
+      username: user.name || user.email || 'Anonymous',
+      text: text?.trim(),
+      emoji,
       timestamp: new Date().toISOString(),
+      taggedUsers: taggedUsers || [],
       reactions: {}
     };
 
-    setChats(prev => {
-      const updatedChat = prev[challengeId] || { challengeId, messages: [], isMuted: false };
-      return {
-        ...prev,
-        [challengeId]: {
-          ...updatedChat,
-          messages: [...updatedChat.messages, newMessage]
-        }
-      };
-    });
+    try {
+      // Store in Supabase
+      const { error } = await supabase
+        .from('challenge_messages')
+        .insert({
+          challenge_id: challengeId,
+          user_id: user.id,
+          username: message.username,
+          text: message.text,
+          emoji: message.emoji,
+          tagged_users: taggedUsers || [],
+          timestamp: message.timestamp
+        });
 
-    // Update emoji cooldown
-    if (emoji) {
-      setLastEmojiTimes(prev => ({
-        ...prev,
-        [challengeId]: Date.now()
-      }));
+      if (error) throw error;
+
+      // Update local state
+      setChats(prev => {
+        const existingChat = prev[challengeId] || { challengeId, messages: [], isMuted: false };
+        return {
+          ...prev,
+          [challengeId]: {
+            ...existingChat,
+            messages: [...existingChat.messages, message]
+          }
+        };
+      });
+
+      // Update emoji cooldown
+      if (emoji) {
+        setLastEmojiTimes(prev => ({
+          ...prev,
+          [challengeId]: Date.now()
+        }));
+      }
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Failed to send message",
+        description: "Please try again",
+        variant: "destructive"
+      });
     }
-  };
+  }, [user, toast, canSendEmoji]);
 
   const addReaction = (challengeId: string, messageId: string, emoji: string) => {
     setChats(prev => {
@@ -266,6 +350,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     toggleMute,
     canSendEmoji,
     getLastEmojiTime,
+    loadMessages,
   };
 
   return (
