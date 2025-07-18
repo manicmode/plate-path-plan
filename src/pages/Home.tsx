@@ -26,7 +26,6 @@ import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
-import { Ticker } from '@/components/ui/ticker';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -699,11 +698,7 @@ const Home = () => {
             <span className="inline-block ml-2 animate-pulse-scale motion-reduce:animate-none">✨</span>
           </h2>
         </div>
-        <Ticker 
-          message="🏆 This Month's Challenge Is ON – Let's Climb That Leaderboard!"
-          size={isMobile ? 'md' : 'lg'}
-          className="animate-fade-in"
-        />
+        <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'} train-slide motion-reduce:animate-none`}>Your intelligent wellness companion is ready</p>
       </div>
 
       {/* Dynamic Tracker Cards based on user selection */}

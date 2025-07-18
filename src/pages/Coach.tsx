@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,11 @@ import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap, AlertCircle, HardDriveIcon } from 'lucide-react';
+import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import { RecipeStorageManager, SavedRecipe } from '@/lib/recipeStorage';
-import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
+import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 
 interface Message {
   id: string;
@@ -21,6 +19,14 @@ interface Message {
   isUser: boolean;
   timestamp: Date;
   isRecipe?: boolean;
+}
+
+interface SavedRecipe {
+  id: string;
+  title: string;
+  content: string;
+  timestamp: Date;
+  isFavorite?: boolean;
 }
 
 const Coach = () => {
@@ -46,60 +52,37 @@ const Coach = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [loadingError, setLoadingError] = useState<string | null>(null);
-  const [storageManager, setStorageManager] = useState<RecipeStorageManager | null>(null);
-  const [showRecovery, setShowRecovery] = useState(false);
-  const [storageInfo, setStorageInfo] = useState({ count: 0, maxCount: 0, isNearLimit: false });
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
-
-  // Initialize storage manager and perform health checks
-  useEffect(() => {
-    if (user && storageAvailable) {
-      try {
-        const manager = new RecipeStorageManager(user.id, isMobile);
-        
-        // Perform storage health check
-        const isHealthy = manager.checkStorageHealth();
-        
-        if (!isHealthy) {
-          console.warn('Storage health check failed, showing recovery');
-          setShowRecovery(true);
-          return;
-        }
-        
-        setStorageManager(manager);
-        
-        // Load recipes safely
-        const recipes = manager.getAllRecipes();
-        setSavedRecipes(recipes);
-        
-        // Update storage info
-        const info = manager.getStorageInfo();
-        setStorageInfo(info);
-        
-        // Warn if near storage limit
-        if (info.isNearLimit) {
-          toast.warning(`Storage nearly full (${info.count}/${info.maxCount} recipes). Consider removing old recipes.`);
-        }
-        
-      } catch (error) {
-        console.error('Error initializing Coach:', error);
-        handleError(error as Error, 'Initializing Coach');
-        setShowRecovery(true);
-      }
-    }
-  }, [user, storageAvailable, isMobile]);
 
   // Enhanced error handling for mobile
   const handleError = (error: Error, context: string) => {
     console.error(`Error in ${context}:`, error);
     setLoadingError(`${context}: ${error.message}`);
     
-    if (isMobile && (error.message.includes('storage') || error.message.includes('quota'))) {
+    if (isMobile && error.message.includes('storage')) {
       toast.error('Storage issue detected. Some features may be limited.');
     }
   };
+
+  // Load saved recipes with error handling
+  useEffect(() => {
+    if (user && storageAvailable) {
+      try {
+        const recipes = safeGetJSON(`saved_recipes_${user.id}`, []);
+        const optimizedRecipes = optimizeForMobile(recipes);
+        setSavedRecipes(optimizedRecipes);
+        
+        if (recipes.length > optimizedRecipes.length) {
+          console.log(`Optimized recipes for mobile: ${recipes.length} -> ${optimizedRecipes.length}`);
+        }
+      } catch (error) {
+        handleError(error as Error, 'Loading saved recipes');
+        setSavedRecipes([]);
+      }
+    }
+  }, [user, storageAvailable, optimizeForMobile]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -111,18 +94,6 @@ const Coach = () => {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // Show recovery screen if needed
-  if (showRecovery) {
-    return (
-      <CoachErrorRecovery 
-        onRecoveryComplete={() => {
-          setShowRecovery(false);
-          window.location.reload(); // Refresh to reinitialize everything
-        }}
-      />
-    );
-  }
 
   // Topic filter function
   const isWellnessRelated = (message: string) => {
@@ -284,19 +255,12 @@ const Coach = () => {
   };
 
   const saveRecipe = (message: Message) => {
-    if (!storageManager) {
+    if (!user || !storageAvailable) {
       toast.error('Cannot save recipe: Storage not available');
       return;
     }
     
     try {
-      // Check storage limits before saving
-      const info = storageManager.getStorageInfo();
-      if (info.count >= info.maxCount) {
-        toast.error(`Cannot save recipe: Storage limit reached (${info.maxCount} recipes max)`);
-        return;
-      }
-      
       const lines = message.content.split('\n');
       let title = lines.find(line => line.includes('Recipe') || line.includes('Meal') || line.includes('Dish'));
       if (!title) {
@@ -311,26 +275,11 @@ const Coach = () => {
         timestamp: new Date(),
       };
 
-      const success = storageManager.addRecipe(newRecipe);
-      
-      if (success) {
-        // Update local state
-        const updatedRecipes = storageManager.getAllRecipes();
-        setSavedRecipes(updatedRecipes);
-        
-        // Update storage info
-        const updatedInfo = storageManager.getStorageInfo();
-        setStorageInfo(updatedInfo);
-        
-        toast.success('Recipe saved!');
-        
-        // Warn if approaching limit
-        if (updatedInfo.isNearLimit) {
-          toast.warning(`Storage nearly full (${updatedInfo.count}/${updatedInfo.maxCount} recipes)`);
-        }
-      } else {
-        toast.error('Failed to save recipe: Storage issue');
-      }
+      const updatedRecipes = [...savedRecipes, newRecipe];
+      const optimizedRecipes = optimizeForMobile(updatedRecipes);
+      setSavedRecipes(optimizedRecipes);
+      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+      toast.success('Recipe saved!');
     } catch (error) {
       handleError(error as Error, 'Saving recipe');
       toast.error('Failed to save recipe');
@@ -338,69 +287,28 @@ const Coach = () => {
   };
 
   const deleteRecipe = (recipeId: string) => {
-    if (!storageManager) return;
-    
-    try {
-      const success = storageManager.deleteRecipe(recipeId);
-      if (success) {
-        const updatedRecipes = storageManager.getAllRecipes();
-        setSavedRecipes(updatedRecipes);
-        
-        const updatedInfo = storageManager.getStorageInfo();
-        setStorageInfo(updatedInfo);
-        
-        toast.success('Recipe deleted');
-      } else {
-        toast.error('Failed to delete recipe');
-      }
-    } catch (error) {
-      handleError(error as Error, 'Deleting recipe');
-      toast.error('Failed to delete recipe');
+    const updatedRecipes = savedRecipes.filter(r => r.id !== recipeId);
+    setSavedRecipes(updatedRecipes);
+    if (user) {
+      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
     }
+    toast.success('Recipe deleted');
   };
 
   const copyRecipe = (content: string) => {
-    try {
-      navigator.clipboard.writeText(content);
-      toast.success('Recipe copied to clipboard!');
-    } catch (error) {
-      console.error('Failed to copy recipe:', error);
-      toast.error('Failed to copy recipe');
-    }
+    navigator.clipboard.writeText(content);
+    toast.success('Recipe copied to clipboard!');
   };
 
   const toggleFavorite = (recipeId: string) => {
-    if (!storageManager) return;
-    
-    try {
-      const recipe = savedRecipes.find(r => r.id === recipeId);
-      if (recipe) {
-        const success = storageManager.updateRecipe(recipeId, { 
-          isFavorite: !recipe.isFavorite 
-        });
-        
-        if (success) {
-          const updatedRecipes = storageManager.getAllRecipes();
-          setSavedRecipes(updatedRecipes);
-        }
-      }
-    } catch (error) {
-      handleError(error as Error, 'Toggling favorite');
-      toast.error('Failed to update recipe');
-    }
-  };
-
-  const clearAllRecipes = () => {
-    if (!storageManager) return;
-    
-    try {
-      storageManager.clearAllRecipes();
-      setSavedRecipes([]);
-      setStorageInfo({ count: 0, maxCount: storageInfo.maxCount, isNearLimit: false });
-      toast.success('All recipes cleared');
-    } catch (error) {
-      handleError(error as Error, 'Clearing recipes');
-      toast.error('Failed to clear recipes');
+    const updatedRecipes = savedRecipes.map(recipe => 
+      recipe.id === recipeId 
+        ? { ...recipe, isFavorite: !recipe.isFavorite }
+        : recipe
+    );
+    setSavedRecipes(updatedRecipes);
+    if (user) {
+      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
     }
   };
 
@@ -453,28 +361,6 @@ const Coach = () => {
             <p className="text-xs text-amber-800 dark:text-amber-200">
               Low memory detected. Some features may be limited for better performance.
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Storage Info Alert */}
-      {storageInfo.isNearLimit && (
-        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <HardDriveIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-              <p className="text-xs text-orange-800 dark:text-orange-200">
-                Recipe storage nearly full ({storageInfo.count}/{storageInfo.maxCount})
-              </p>
-            </div>
-            <Button
-              onClick={clearAllRecipes}
-              variant="ghost"
-              size="sm"
-              className="text-orange-600 hover:text-orange-800 text-xs"
-            >
-              Clear All
-            </Button>
           </div>
         </div>
       )}
@@ -553,11 +439,9 @@ const Coach = () => {
                           size="sm"
                           variant="outline"
                           className="text-xs"
-                          disabled={storageInfo.count >= storageInfo.maxCount}
                         >
                           <Save className="h-3 w-3 mr-1" />
                           Save Recipe
-                          {storageInfo.count >= storageInfo.maxCount && ' (Full)'}
                         </Button>
                       </div>
                     )}
@@ -637,16 +521,9 @@ const Coach = () => {
       {/* Personalized Recipes Section */}
       <Card className="glass-card border-0 rounded-3xl">
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-          <CardTitle className={`flex items-center justify-between ${isMobile ? 'text-base' : 'text-lg'}`}>
-            <div className="flex items-center space-x-2">
-              <ChefHat className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
-              <span>🍽️ Personalized Recipes</span>
-            </div>
-            {storageInfo.count > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {storageInfo.count}/{storageInfo.maxCount}
-              </span>
-            )}
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <ChefHat className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
+            <span>🍽️ Personalized Recipes</span>
           </CardTitle>
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
@@ -668,22 +545,9 @@ const Coach = () => {
           {/* Saved Recipes Section */}
           {savedRecipes.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-300 flex items-center`}>
-                  🗂️ Saved Recipes ({savedRecipes.length})
-                </h3>
-                {savedRecipes.length > 5 && (
-                  <Button
-                    onClick={clearAllRecipes}
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Clear All
-                  </Button>
-                )}
-              </div>
+              <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center`}>
+                🗂️ Saved Recipes ({savedRecipes.length})
+              </h3>
               <ScrollArea className="h-48">
                 <div className="space-y-3">
                   {savedRecipes
