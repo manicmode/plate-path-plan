@@ -158,34 +158,54 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
     return 'from-blue-500 to-purple-600';
   };
 
-  // Confetti effect for top performers
+  // Enhanced confetti effect for top performers
   React.useEffect(() => {
     if (isOpen && user.rank <= 3) {
       setTimeout(() => {
+        const colors = user.rank === 1 ? ['#FFD700', '#FFA500', '#FFFF00'] : 
+                      user.rank === 2 ? ['#C0C0C0', '#E5E5E5', '#B8B8B8'] : 
+                      ['#CD7F32', '#D2691E', '#DAA520'];
+        
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: 120,
+          spread: 80,
           origin: { y: 0.3 },
-          colors: user.rank === 1 ? ['#FFD700', '#FFA500'] : user.rank === 2 ? ['#C0C0C0', '#A9A9A9'] : ['#CD7F32', '#D2691E'],
-          shapes: ['circle'],
-          startVelocity: 20,
-          gravity: 0.7
+          colors,
+          shapes: user.rank === 1 ? ['star'] : ['circle'],
+          startVelocity: 25,
+          gravity: 0.8,
+          drift: 0.1
         });
-      }, 300);
+
+        // Crown sparkle for #1
+        if (user.rank === 1) {
+          setTimeout(() => {
+            confetti({
+              particleCount: 50,
+              spread: 30,
+              origin: { y: 0.2 },
+              colors: ['#FFD700', '#FFFF00'],
+              shapes: ['star'],
+              startVelocity: 15,
+              gravity: 0.3
+            });
+          }, 500);
+        }
+      }, 400);
     }
   }, [isOpen, user.rank]);
 
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-md sm:max-w-xl max-h-[90vh] overflow-y-auto p-0 animate-in zoom-in-95 duration-500 slide-in-from-bottom-10 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+        <DialogContent className="max-w-md sm:max-w-xl max-h-[90vh] overflow-y-auto p-0 animate-in zoom-in-95 duration-700 slide-in-from-bottom-8 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
           <DialogHeader className="sr-only">
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>
             
-          {/* COMPACT Gaming Header - Main Character Showcase */}
+          {/* ULTRA-COMPACT Gaming Header */}
           <div className={cn(
-            "relative overflow-hidden p-4 sm:p-5",
+            "relative overflow-hidden p-3 sm:p-4",
             "bg-gradient-to-br from-primary/30 via-secondary/25 to-accent/30",
             "border-b-2 border-gradient-to-r from-primary/60 to-secondary/60"
           )}>
@@ -202,12 +222,12 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               <Sparkles className="absolute bottom-8 left-16 h-2 w-2 text-purple-400/60 animate-ping delay-500" />
             </div>
             
-            <div className="relative flex flex-col items-center text-center gap-3">
+            <div className="relative flex flex-col items-center text-center gap-2">
               {/* COMPACT Animated Avatar with Progress Ring */}
               <div className="relative">
-                {/* Progress Ring */}
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24">
-                  <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100">
+                {/* Compact Progress Ring */}
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20">
+                  <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
                     <circle
                       cx="50"
                       cy="50"
@@ -237,60 +257,67 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     </defs>
                   </svg>
                   
-                  {/* ENLARGED Avatar in center with enhanced sparkle animation */}
-                  <div className="absolute inset-3 flex items-center justify-center">
+                  {/* ENLARGED Avatar with enhanced glow */}
+                  <div className="absolute inset-2 flex items-center justify-center">
                     <div className={cn(
-                      "text-3xl sm:text-4xl relative",
-                      "hover:animate-bounce transition-all duration-300 cursor-pointer"
+                      "text-2xl sm:text-3xl relative",
+                      "hover:animate-bounce transition-all duration-300 cursor-pointer",
+                      "drop-shadow-2xl filter"
                     )}>
                       {user.avatar}
+                      
+                      {/* Dramatic glow effect behind avatar */}
+                      <div className={cn(
+                        "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
+                        user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
+                      )} style={{ zIndex: -1 }} />
                       {/* Enhanced sparkle particles */}
-                      <div className="absolute -inset-4 opacity-0 hover:opacity-100 transition-opacity duration-300">
-                        <Sparkles className="absolute -top-2 -right-2 h-4 w-4 text-yellow-400 animate-ping" />
-                        <Sparkles className="absolute -bottom-2 -left-2 h-3 w-3 text-blue-400 animate-ping delay-300" />
-                        <Sparkles className="absolute top-0 -left-3 h-2 w-2 text-purple-400 animate-ping delay-600" />
+                      <div className="absolute -inset-3 opacity-0 hover:opacity-100 transition-opacity duration-300">
+                        <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400 animate-ping" />
+                        <Sparkles className="absolute -bottom-1 -left-1 h-2 w-2 text-blue-400 animate-ping delay-300" />
+                        <Sparkles className="absolute top-0 -left-2 h-2 w-2 text-purple-400 animate-ping delay-600" />
                         <Sparkles className="absolute -top-1 right-0 h-2 w-2 text-green-400 animate-ping delay-900" />
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Enhanced online indicator with breathing effect */}
+                {/* Compact online indicator */}
                 {user.isOnline && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-3 border-background animate-ping" />
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-ping" />
                 )}
               </div>
               
-              {/* ENLARGED User Info Section */}
+              {/* DRAMATIC User Info Section */}
               <div className="w-full">
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-lg">
                     {user.nickname}
                   </h2>
                   
-                  {/* ENHANCED Animated Rank Badge */}
+                  {/* ENHANCED Rank Badge with glow */}
                   <div className={cn(
-                    "flex items-center gap-2 px-3 py-1 rounded-full",
-                    "bg-gradient-to-r from-primary/30 to-secondary/30",
-                    "border-2 border-primary/40 backdrop-blur-sm",
+                    "flex items-center gap-1 px-2 py-1 rounded-full",
+                    "bg-gradient-to-r from-primary/40 to-secondary/40",
+                    "border border-primary/50 backdrop-blur-sm",
                     "transform hover:scale-110 transition-all duration-300",
-                    "shadow-lg shadow-primary/20"
+                    "shadow-lg shadow-primary/30"
                   )}>
                     {getRankIcon()}
-                    <Badge variant="secondary" className="text-sm font-bold px-2 py-0.5">
+                    <Badge variant="secondary" className="text-xs font-bold px-1 py-0">
                       #{user.rank}
                     </Badge>
                   </div>
                 </div>
                 
-                {/* REORGANIZED Stats in elegant grid with tooltips */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {/* DRAMATIC Stats with large numbers and emoji icons */}
+                <div className="grid grid-cols-3 gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex flex-col items-center p-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl border border-primary/30 cursor-help">
+                      <div className="flex flex-col items-center p-2 bg-gradient-to-br from-primary/25 to-primary/15 rounded-xl border border-primary/40 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30">
                         <TrendingUp className="h-4 w-4 text-green-500 mb-1" />
-                        <span className="text-xl sm:text-2xl font-bold text-green-500">{user.score}</span>
-                        <span className="text-xs text-muted-foreground">📈 Score</span>
+                        <span className="text-2xl sm:text-3xl font-black text-green-500 drop-shadow-lg">{user.score}</span>
+                        <span className="text-xs text-muted-foreground font-semibold">📈 Score</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>Current Weekly Performance Score</TooltipContent>
@@ -298,10 +325,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex flex-col items-center p-2 bg-gradient-to-br from-orange-500/20 to-orange-500/10 rounded-xl border border-orange-500/30 cursor-help">
+                      <div className="flex flex-col items-center p-2 bg-gradient-to-br from-orange-500/25 to-orange-500/15 rounded-xl border border-orange-500/40 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/30">
                         <Flame className="h-4 w-4 text-orange-500 mb-1" />
-                        <span className="text-xl sm:text-2xl font-bold text-orange-500">{user.streak}</span>
-                        <span className="text-xs text-muted-foreground">🔥 Streak</span>
+                        <span className="text-2xl sm:text-3xl font-black text-orange-500 drop-shadow-lg">{user.streak}</span>
+                        <span className="text-xs text-muted-foreground font-semibold">🔥 Streak</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>Consecutive Days Logging</TooltipContent>
@@ -309,10 +336,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex flex-col items-center p-2 bg-gradient-to-br from-blue-500/20 to-blue-500/10 rounded-xl border border-blue-500/30 cursor-help">
+                      <div className="flex flex-col items-center p-2 bg-gradient-to-br from-blue-500/25 to-blue-500/15 rounded-xl border border-blue-500/40 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30">
                         <Activity className="h-4 w-4 text-blue-500 mb-1" />
-                        <span className="text-xl sm:text-2xl font-bold text-blue-500">{user.weeklyProgress}%</span>
-                        <span className="text-xs text-muted-foreground">📊 Progress</span>
+                        <span className="text-2xl sm:text-3xl font-black text-blue-500 drop-shadow-lg">{user.weeklyProgress}%</span>
+                        <span className="text-xs text-muted-foreground font-semibold">📊 Progress</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>Weekly Progress Percentage</TooltipContent>
@@ -320,14 +347,14 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                 </div>
               </div>
               
-              {/* REPOSITIONED Action Bar with enhanced styling */}
-              <div className="flex items-center gap-3 mt-2">
+              {/* ENHANCED Action Bar with dramatic styling */}
+              <div className="flex items-center gap-2 mt-1">
                 <Button
                   onClick={handleLike}
                   variant={isLiked ? "default" : "outline"}
                   className={cn(
-                    "transition-all duration-300 relative overflow-hidden px-4 py-2",
-                    isLiked ? "bg-red-500 hover:bg-red-600 scale-110 shadow-lg shadow-red-500/30" : "",
+                    "transition-all duration-300 relative overflow-hidden px-3 py-1.5 text-sm",
+                    isLiked ? "bg-red-500 hover:bg-red-600 scale-110 shadow-xl shadow-red-500/40" : "",
                     "hover:scale-105 active:scale-95 hover:shadow-lg"
                   )}
                 >
@@ -335,7 +362,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     "h-4 w-4 mr-2 transition-all duration-300",
                     isLiked ? "fill-current animate-bounce" : ""
                   )} />
-                  <span className="font-bold text-sm">❤️ Cheer ({likes})</span>
+                  <span className="font-black text-sm">❤️ Cheer ({likes})</span>
                   {isLiked && (
                     <div className="absolute inset-0 bg-red-400 animate-ping opacity-25 rounded" />
                   )}
@@ -345,13 +372,13 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   variant="outline" 
                   onClick={handleChallenge}
                   className={cn(
-                    "px-4 py-2 relative overflow-hidden",
+                    "px-3 py-1.5 text-sm relative overflow-hidden",
                     "hover:bg-orange-500 hover:text-white transition-all duration-300",
                     "active:scale-95 transform hover:scale-105 hover:shadow-lg hover:shadow-orange-500/30"
                   )}
                 >
                   <Swords className="h-4 w-4 mr-2" />
-                  <span className="font-bold text-sm">{challengeSent ? "⚔️ Sent!" : "⚔️ Duel"}</span>
+                  <span className="font-black text-sm">{challengeSent ? "⚔️ Sent!" : "⚔️ Duel"}</span>
                   {challengeSent && (
                     <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 animate-pulse opacity-30 rounded" />
                   )}
@@ -360,59 +387,59 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             </div>
           </div>
 
-        <div className="p-2 sm:p-3">
+        <div className="p-1 sm:p-2">
           <Tabs defaultValue="overview" className="w-full">
-            {/* ENLARGED Tab Navigation with glowing underlines */}
-            <TabsList className="grid w-full grid-cols-4 mb-3 h-14 bg-gradient-to-r from-primary/15 to-secondary/15 border-2 border-primary/20 rounded-xl">
-              <TabsTrigger 
+            {/* ENHANCED Tab Navigation with dramatic glowing effects */}
+            <TabsList className="grid w-full grid-cols-4 mb-2 h-16 bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary/30 rounded-xl shadow-lg">
+              <TabsTrigger
                 value="overview" 
-                className="text-sm font-bold flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary/30 data-[state=active]:to-secondary/30 data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 rounded-lg"
+                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary/40 data-[state=active]:to-secondary/40 data-[state=active]:shadow-xl data-[state=active]:shadow-primary/30 rounded-lg transition-all duration-300"
               >
                 <span className="text-xl">📊</span>
-                <span className="text-xs font-semibold">Performance</span>
+                <span className="text-xs font-black">Performance</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="trophies" 
-                className="text-sm font-bold flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-yellow-500/30 data-[state=active]:to-orange-500/30 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/20 rounded-lg"
+                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-yellow-500/40 data-[state=active]:to-orange-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-yellow-500/30 rounded-lg transition-all duration-300"
               >
                 <span className="text-xl">🏆</span>
-                <span className="text-xs font-semibold">Trophies</span>
+                <span className="text-xs font-black">Trophies</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="stats" 
-                className="text-sm font-bold flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-500/30 data-[state=active]:to-blue-500/30 data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/20 rounded-lg"
+                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-green-500/40 data-[state=active]:to-blue-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/30 rounded-lg transition-all duration-300"
               >
                 <span className="text-xl">📈</span>
-                <span className="text-xs font-semibold">Records</span>
+                <span className="text-xs font-black">Records</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="titles" 
-                className="text-sm font-bold flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500/30 data-[state=active]:to-pink-500/30 data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20 rounded-lg"
+                className="text-sm font-black flex flex-col items-center py-2 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500/40 data-[state=active]:to-pink-500/40 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/30 rounded-lg transition-all duration-300"
               >
                 <span className="text-xl">🚀</span>
-                <span className="text-xs font-semibold">Titles</span>
+                <span className="text-xs font-black">Titles</span>
               </TabsTrigger>
             </TabsList>
           
-            <TabsContent value="overview" className="space-y-2 animate-in slide-in-from-bottom-2">
-              {/* COMPACT Performance & Activity */}
-              <Card className="p-2 bg-gradient-to-br from-primary/15 via-secondary/10 to-accent/15 border-primary/30 shadow-lg">
+            <TabsContent value="overview" className="space-y-1 animate-in slide-in-from-bottom-4 duration-700">
+              {/* ULTRA-COMPACT Performance & Activity with TRUE 2x3 Grid */}
+              <Card className="p-2 bg-gradient-to-br from-primary/20 via-secondary/15 to-accent/20 border-primary/40 shadow-xl">
                 <CardHeader className="pb-1 px-0">
-                  <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
+                  <CardTitle className="text-xl font-black flex items-center gap-2 text-center justify-center">
                     <TrendingUp className="h-5 w-5 text-green-500" />
                     Performance & Activity
-                    <div className="h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent flex-1 ml-2" />
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-green-500/60 to-transparent flex-1 ml-2 rounded-full shadow-lg shadow-green-500/30" />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {/* TRUE 2-COLUMN GRID with equal sizes and larger numbers */}
+                  {/* TRUE 2x3 GRID with equal aspect-square tiles and massive numbers */}
                   <div className="grid grid-cols-2 gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="aspect-square flex flex-col items-center justify-center p-3 bg-gradient-to-br from-green-500/25 to-green-600/15 rounded-xl border border-green-500/40 cursor-help hover:scale-105 transition-transform">
+                        <div className="aspect-square flex flex-col items-center justify-center p-2 bg-gradient-to-br from-green-500/30 to-green-600/20 rounded-xl border-2 border-green-500/50 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/30">
                           <TrendingUp className="h-5 w-5 text-green-500 mb-1" />
-                          <span className="text-3xl font-bold text-green-500">{user.score}</span>
-                          <span className="text-xs text-muted-foreground font-medium">Current Score</span>
+                          <span className="text-3xl sm:text-4xl font-black text-green-500 drop-shadow-xl">{user.score}</span>
+                          <span className="text-xs text-muted-foreground font-bold">Current Score</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Your current weekly performance score</TooltipContent>
@@ -420,10 +447,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="aspect-square flex flex-col items-center justify-center p-3 bg-gradient-to-br from-blue-500/25 to-blue-600/15 rounded-xl border border-blue-500/40 cursor-help hover:scale-105 transition-transform">
+                        <div className="aspect-square flex flex-col items-center justify-center p-2 bg-gradient-to-br from-blue-500/30 to-blue-600/20 rounded-xl border-2 border-blue-500/50 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30">
                           <Activity className="h-5 w-5 text-blue-500 mb-1" />
-                          <span className="text-3xl font-bold text-blue-500">+{user.weeklyProgress}%</span>
-                          <span className="text-xs text-muted-foreground font-medium">Weekly Progress</span>
+                          <span className="text-3xl sm:text-4xl font-black text-blue-500 drop-shadow-xl">+{user.weeklyProgress}%</span>
+                          <span className="text-xs text-muted-foreground font-bold">Weekly Progress</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>This week's progress percentage</TooltipContent>
@@ -431,10 +458,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="aspect-square flex flex-col items-center justify-center p-3 bg-gradient-to-br from-orange-500/25 to-orange-600/15 rounded-xl border border-orange-500/40 cursor-help hover:scale-105 transition-transform">
+                        <div className="aspect-square flex flex-col items-center justify-center p-2 bg-gradient-to-br from-orange-500/30 to-orange-600/20 rounded-xl border-2 border-orange-500/50 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/30">
                           <Flame className="h-5 w-5 text-orange-500 mb-1" />
-                          <span className="text-3xl font-bold text-orange-500">{user.streak}</span>
-                          <span className="text-xs text-muted-foreground font-medium">Consecutive Days</span>
+                          <span className="text-3xl sm:text-4xl font-black text-orange-500 drop-shadow-xl">{user.streak}</span>
+                          <span className="text-xs text-muted-foreground font-bold">Days Logged</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Daily logging streak</TooltipContent>
@@ -442,10 +469,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="aspect-square flex flex-col items-center justify-center p-3 bg-gradient-to-br from-purple-500/25 to-purple-600/15 rounded-xl border border-purple-500/40 cursor-help hover:scale-105 transition-transform">
+                        <div className="aspect-square flex flex-col items-center justify-center p-2 bg-gradient-to-br from-purple-500/30 to-purple-600/20 rounded-xl border-2 border-purple-500/50 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/30">
                           <Calendar className="h-5 w-5 text-purple-500 mb-1" />
-                          <span className="text-lg font-bold text-purple-500">{mockStats.joinedDate}</span>
-                          <span className="text-xs text-muted-foreground font-medium">Member Since</span>
+                          <span className="text-lg sm:text-xl font-black text-purple-500 drop-shadow-lg">{mockStats.joinedDate}</span>
+                          <span className="text-xs text-muted-foreground font-bold">Member Since</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>When you joined the community</TooltipContent>
@@ -453,10 +480,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="aspect-square flex flex-col items-center justify-center p-3 bg-gradient-to-br from-indigo-500/25 to-indigo-600/15 rounded-xl border border-indigo-500/40 cursor-help hover:scale-105 transition-transform">
+                        <div className="aspect-square flex flex-col items-center justify-center p-2 bg-gradient-to-br from-indigo-500/30 to-indigo-600/20 rounded-xl border-2 border-indigo-500/50 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/30">
                           <Activity className="h-5 w-5 text-indigo-500 mb-1" />
-                          <span className="text-3xl font-bold text-indigo-500">{mockStats.totalActiveHours}h</span>
-                          <span className="text-xs text-muted-foreground font-medium">Total Active Time</span>
+                          <span className="text-3xl sm:text-4xl font-black text-indigo-500 drop-shadow-xl">{mockStats.totalActiveHours}h</span>
+                          <span className="text-xs text-muted-foreground font-bold">Active Time</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Total time spent in the app</TooltipContent>
@@ -464,10 +491,10 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="aspect-square flex flex-col items-center justify-center p-3 bg-gradient-to-br from-yellow-500/25 to-yellow-600/15 rounded-xl border border-yellow-500/40 cursor-help hover:scale-105 transition-transform">
+                        <div className="aspect-square flex flex-col items-center justify-center p-2 bg-gradient-to-br from-yellow-500/30 to-yellow-600/20 rounded-xl border-2 border-yellow-500/50 cursor-help hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-yellow-500/30">
                           <Star className="h-5 w-5 text-yellow-500 mb-1" />
-                          <span className="text-3xl font-bold text-yellow-500">{mockStats.achievements}</span>
-                          <span className="text-xs text-muted-foreground font-medium">Achievements</span>
+                          <span className="text-3xl sm:text-4xl font-black text-yellow-500 drop-shadow-xl">{mockStats.achievements}</span>
+                          <span className="text-xs text-muted-foreground font-bold">Achievements</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Total achievements unlocked</TooltipContent>
