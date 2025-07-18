@@ -32,7 +32,20 @@ export const useYearlyHallOfFame = (
   return useQuery({
     queryKey: ['yearly-hall-of-fame', targetYear, limit],
     queryFn: async (): Promise<YearlyHallOfFameUser[]> => {
-      // First try to fetch from the hall of fame table
+      // First try to fetch from the preview table (most up-to-date)
+      const { data: previewData, error: previewError } = await supabase
+        .from('yearly_score_preview')
+        .select('*')
+        .eq('year', targetYear)
+        .order('rank_position', { ascending: true })
+        .limit(limit);
+
+      if (!previewError && previewData && previewData.length > 0) {
+        console.log(`📊 Using preview data for year ${targetYear}: ${previewData.length} records`);
+        return previewData;
+      }
+
+      // Fallback to hall of fame table (finalized data)
       const { data: hallOfFameData, error: hallOfFameError } = await supabase
         .from('yearly_hall_of_fame')
         .select('*')
@@ -40,17 +53,13 @@ export const useYearlyHallOfFame = (
         .order('rank_position', { ascending: true })
         .limit(limit);
 
-      if (hallOfFameError) {
-        console.warn('Error fetching from hall_of_fame table:', hallOfFameError);
-      }
-
-      // If we have data from the hall of fame table, return it
-      if (hallOfFameData && hallOfFameData.length > 0) {
+      if (!hallOfFameError && hallOfFameData && hallOfFameData.length > 0) {
+        console.log(`🏆 Using hall of fame data for year ${targetYear}: ${hallOfFameData.length} records`);
         return hallOfFameData;
       }
 
-      // Fallback: Generate live data using the function
-      console.log('No cached hall of fame data found, generating live data...');
+      // Final fallback: Generate live data using the function
+      console.log(`🔄 Generating live data for year ${targetYear}...`);
       
       const { data: liveData, error: functionError } = await supabase
         .rpc('get_top_100_yearly_users', { target_year: targetYear });
@@ -81,25 +90,25 @@ export const useAvailableHallOfFameYears = () => {
   return useQuery({
     queryKey: ['available-hall-of-fame-years'],
     queryFn: async (): Promise<number[]> => {
-      const { data, error } = await supabase
-        .from('yearly_hall_of_fame')
-        .select('year')
-        .order('year', { ascending: false });
+      // Get years from both preview and finalized tables
+      const [previewResult, hallOfFameResult] = await Promise.all([
+        supabase.from('yearly_score_preview').select('year').order('year', { ascending: false }),
+        supabase.from('yearly_hall_of_fame').select('year').order('year', { ascending: false })
+      ]);
 
-      if (error) {
-        console.error('Error fetching available years:', error);
-        return [new Date().getFullYear()]; // Fallback to current year
-      }
-
-      const years = [...new Set(data?.map(item => item.year) || [])];
+      const previewYears = previewResult.data?.map(item => item.year) || [];
+      const hallOfFameYears = hallOfFameResult.data?.map(item => item.year) || [];
+      
+      // Combine and deduplicate years
+      const allYears = [...new Set([...previewYears, ...hallOfFameYears])];
       
       // Always include current year even if no data exists yet
       const currentYear = new Date().getFullYear();
-      if (!years.includes(currentYear)) {
-        years.unshift(currentYear);
+      if (!allYears.includes(currentYear)) {
+        allYears.unshift(currentYear);
       }
 
-      return years;
+      return allYears.sort((a, b) => b - a); // Sort descending
     },
     staleTime: 1000 * 60 * 30, // 30 minutes
     gcTime: 1000 * 60 * 60, // 1 hour
@@ -117,13 +126,25 @@ export const useUserYearlyRank = (userId: string, year?: number) => {
     queryFn: async (): Promise<YearlyHallOfFameUser | null> => {
       if (!userId) return null;
 
-      // First try hall of fame table
+      // First try preview table
+      const { data: previewData, error: previewError } = await supabase
+        .from('yearly_score_preview')
+        .select('*')
+        .eq('year', targetYear)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!previewError && previewData) {
+        return previewData;
+      }
+
+      // Then try hall of fame table
       const { data: hallOfFameData, error: hallOfFameError } = await supabase
         .from('yearly_hall_of_fame')
         .select('*')
         .eq('year', targetYear)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (!hallOfFameError && hallOfFameData) {
         return hallOfFameData;

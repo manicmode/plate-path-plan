@@ -1168,6 +1168,10 @@ export type Database = {
           rank_position: number
         }[]
       }
+      trigger_yearly_scores_preview_update: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
     }
     Enums: {
       suggestion_type: "praise" | "warning" | "tip"
