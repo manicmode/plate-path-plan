@@ -23,6 +23,8 @@ const Explore = () => {
       navigate('/supplement-hub');
     } else if (tileId === 'health-check') {
       setIsHealthCheckOpen(true);
+    } else if (tileId === 'game-challenge') {
+      navigate('/game-and-challenge');
     }
     // Add other tile navigation here as needed
   };

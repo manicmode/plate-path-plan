@@ -1551,6 +1551,8 @@ const Home = () => {
                   navigate('/supplement-hub');
                 } else if (tileId === 'health-check') {
                   setIsHealthCheckOpen(true);
+                } else if (tileId === 'game-challenge') {
+                  navigate('/game-and-challenge');
                 }
               };
 

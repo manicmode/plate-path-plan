@@ -583,7 +583,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
     const currentPath = window.location.pathname;
     if (currentPath === '/explore') {
       localStorage.setItem('visited_explore', 'true');
-    } else if (currentPath === '/game-challenge') {
+    } else if (currentPath === '/game-and-challenge') {
       localStorage.setItem('visited_game_challenge', 'true');
     } else if (currentPath === '/coach') {
       localStorage.setItem('opened_coach', 'true');

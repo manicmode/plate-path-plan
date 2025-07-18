@@ -26,6 +26,7 @@ import Explore from './pages/Explore';
 import Hydration from './pages/Hydration';
 import Supplements from './pages/Supplements';
 import SupplementHub from './pages/SupplementHub';
+import GameAndChallengePage from './pages/GameAndChallengePage';
 import AdminDashboard from './components/admin/AdminDashboard';
 
 const queryClient = new QueryClient();
@@ -170,6 +171,7 @@ function AppContent() {
             <Route path="hydration" element={<Hydration />} />
             <Route path="supplements" element={<Supplements />} />
             <Route path="supplement-hub" element={<SupplementHub />} />
+            <Route path="game-and-challenge" element={<GameAndChallengePage />} />
             <Route path="admin" element={<AdminDashboard />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
