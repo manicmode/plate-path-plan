@@ -31,6 +31,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
+import { FriendsArena } from '@/components/analytics/FriendsArena';
 import { cn } from '@/lib/utils';
 
 // Types
@@ -156,9 +157,12 @@ const mockHallOfFame = [
 ];
 
 const mockFriends = [
-  { id: 1, nickname: "Best Friend 💕", avatar: "💕", rank: 2, trend: "up", score: 89 },
-  { id: 2, nickname: "Workout Buddy 💪", avatar: "💪", rank: 7, trend: "down", score: 78 },
-  { id: 3, nickname: "Health Guru 🥗", avatar: "🥗", rank: 4, trend: "up", score: 85 },
+  { id: 1, nickname: "Best Friend 💕", avatar: "💕", rank: 2, trend: "up" as const, score: 89, streak: 15, weeklyProgress: 92, isOnline: true, lastSeen: "2 min ago" },
+  { id: 2, nickname: "Workout Buddy 💪", avatar: "💪", rank: 7, trend: "down" as const, score: 78, streak: 8, weeklyProgress: 67, isOnline: false, lastSeen: "1 hour ago" },
+  { id: 3, nickname: "Health Guru 🥗", avatar: "🥗", rank: 4, trend: "up" as const, score: 85, streak: 12, weeklyProgress: 85, isOnline: true, lastSeen: "just now" },
+  { id: 4, nickname: "Running Mate 🏃", avatar: "🏃", rank: 6, trend: "up" as const, score: 82, streak: 5, weeklyProgress: 71, isOnline: false, lastSeen: "3 hours ago" },
+  { id: 5, nickname: "Yoga Queen 🧘‍♀️", avatar: "🧘‍♀️", rank: 3, trend: "up" as const, score: 87, streak: 20, weeklyProgress: 95, isOnline: true, lastSeen: "5 min ago" },
+  { id: 6, nickname: "Meal Prep King 👨‍🍳", avatar: "👨‍🍳", rank: 8, trend: "down" as const, score: 76, streak: 3, weeklyProgress: 48, isOnline: false, lastSeen: "2 days ago" },
 ];
 
 const mockActiveChallenges = [
@@ -359,6 +363,11 @@ export default function GameAndChallengePage() {
               </div>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Friends in the Arena Section */}
+        <section id="friends" className="animate-fade-in">
+          <FriendsArena friends={mockFriends} />
         </section>
 
         {/* Chat Window Panel */}
