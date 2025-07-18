@@ -690,11 +690,8 @@ const Home = () => {
       {/* Enhanced Greeting Section */}
       <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
         <div className="inline-block">
-          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold mb-4 relative fade-up-stagger motion-reduce:animate-none`}>
-            <span className="word-1 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent">Let's</span>
-            <span className="word-2 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent"> optimize</span>
-            <span className="word-3 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent"> your</span>
-            <span className="word-4 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent"> day,</span>
+          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
+            {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
           </h1>
           <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative`}>
             {user?.name?.split(' ')[0] || 'Superstar'}! 
