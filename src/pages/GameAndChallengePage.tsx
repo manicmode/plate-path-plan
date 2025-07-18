@@ -650,7 +650,7 @@ function GameAndChallengeContent() {
       {/* Main Content */}
       <div className={cn(
         "container mx-auto space-y-6 sm:space-y-12",
-        isMobile ? "px-2 py-4 pb-24" : "px-4 py-8 pb-20"
+        isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
@@ -816,9 +816,9 @@ function GameAndChallengeContent() {
 
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
-          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)]">
+          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col">
 
-            <TabsContent value="ranking" className="mt-4">
+            <TabsContent value="ranking" className="mt-4 pb-32">
               {/* Mobile Ranking Section */}
               <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
@@ -908,7 +908,7 @@ function GameAndChallengeContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="challenges" className="mt-4">
+            <TabsContent value="challenges" className="mt-4 pb-32">
               {/* Active Challenges Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1012,7 +1012,7 @@ function GameAndChallengeContent() {
               </div>
             </TabsContent>
 
-            <TabsContent value="chat" className="mt-4">
+            <TabsContent value="chat" className="mt-4 pb-32">
               {/* Mobile-optimized chat */}
               <Card className="h-[60vh] flex flex-col">
                 <CardHeader className="pb-2">
@@ -1084,11 +1084,11 @@ function GameAndChallengeContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="winners" className="mt-4">
+            <TabsContent value="winners" className="mt-4 pb-32">
               <MonthlyTrophyPodium />
             </TabsContent>
 
-            <TabsContent value="hall-of-fame" className="mt-4 flex-1">
+            <TabsContent value="hall-of-fame" className="mt-4 pb-32">
               <HallOfFame champions={optimizedHallOfFame} />
             </TabsContent>
             
