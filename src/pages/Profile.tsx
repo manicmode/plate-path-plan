@@ -20,6 +20,7 @@ import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
+import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 
 // Helper function to save preferences
 const saveUserPreferences = (preferences: any) => {
@@ -41,6 +42,10 @@ const Profile = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userSelectedTrackers, setUserSelectedTrackers] = useState<string[]>(
+    user?.selectedTrackers || ['calories', 'protein', 'supplements']
+  );
+  
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -52,7 +57,7 @@ const Profile = () => {
     targetSupplements: user?.targetSupplements || 3,
     allergies: user?.allergies?.join(', ') || '',
     dietaryGoals: user?.dietaryGoals || [],
-    selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
+    selectedTrackers: getAutoFilledTrackers(user?.selectedTrackers || ['calories', 'protein', 'supplements']),
   });
 
   // Save tracker preferences whenever selectedTrackers changes
@@ -121,6 +126,8 @@ const Profile = () => {
 
   const handleCancel = () => {
     setIsEditing(false);
+    const originalTrackers = user?.selectedTrackers || ['calories', 'protein', 'supplements'];
+    setUserSelectedTrackers(originalTrackers);
     setFormData({
       name: user?.name || '',
       email: user?.email || '',
@@ -132,7 +139,7 @@ const Profile = () => {
       targetSupplements: user?.targetSupplements || 3,
       allergies: user?.allergies?.join(', ') || '',
       dietaryGoals: user?.dietaryGoals || [],
-      selectedTrackers: user?.selectedTrackers || ['calories', 'hydration', 'supplements'],
+      selectedTrackers: getAutoFilledTrackers(originalTrackers),
     });
   };
 
@@ -146,26 +153,30 @@ const Profile = () => {
   };
 
   const toggleTracker = (trackerId: string) => {
-    const currentTrackers = formData.selectedTrackers;
-    const isSelected = currentTrackers.includes(trackerId);
+    const isUserSelected = userSelectedTrackers.includes(trackerId);
     
-    console.log('toggleTracker called:', trackerId, 'current:', currentTrackers);
+    console.log('toggleTracker called:', trackerId, 'user selected:', isUserSelected);
     
-    if (isSelected) {
-      const newTrackers = currentTrackers.filter(t => t !== trackerId);
-      console.log('Removing tracker, new list:', newTrackers);
-      setFormData(prev => ({
-        ...prev,
-        selectedTrackers: newTrackers
-      }));
+    let newUserSelectedTrackers;
+    if (isUserSelected) {
+      // Remove from user selection
+      newUserSelectedTrackers = userSelectedTrackers.filter(t => t !== trackerId);
     } else {
-      const newTrackers = [...currentTrackers, trackerId];
-      console.log('Adding tracker, new list:', newTrackers);
-      setFormData(prev => ({
-        ...prev,
-        selectedTrackers: newTrackers
-      }));
+      // Add to user selection
+      newUserSelectedTrackers = [...userSelectedTrackers, trackerId];
     }
+    
+    // Auto-fill to ensure exactly 3 trackers
+    const autoFilledTrackers = getAutoFilledTrackers(newUserSelectedTrackers);
+    
+    console.log('New user selected:', newUserSelectedTrackers);
+    console.log('Auto-filled result:', autoFilledTrackers);
+    
+    setUserSelectedTrackers(newUserSelectedTrackers);
+    setFormData(prev => ({
+      ...prev,
+      selectedTrackers: autoFilledTrackers
+    }));
   };
 
   const updateFormData = (updates: Partial<typeof formData>) => {
@@ -236,6 +247,7 @@ const Profile = () => {
       {/* Tracker Selection */}
       <TrackerSelection 
         selectedTrackers={formData.selectedTrackers}
+        userSelectedTrackers={userSelectedTrackers}
         isEditing={isEditing}
         onToggleTracker={toggleTracker}
         onEditToggle={() => setIsEditing(!isEditing)}

@@ -1,6 +1,7 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { ExtendedUser } from './types';
+import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 
 export const loadUserProfile = async (userId: string) => {
   try {
@@ -45,6 +46,10 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
     profile = await loadUserProfile(supabaseUser.id);
   }
   
+  // Ensure exactly 3 trackers using auto-fill logic
+  const userTrackers = profile?.selected_trackers || ['calories', 'protein', 'supplements'];
+  const autoFilledTrackers = getAutoFilledTrackers(userTrackers);
+
   return {
     ...supabaseUser,
     name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
@@ -56,7 +61,7 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
     targetSupplements: 3,
     allergies: [],
     dietaryGoals: [],
-    selectedTrackers: profile?.selected_trackers || ['calories', 'hydration', 'supplements'],
+    selectedTrackers: autoFilledTrackers,
     main_health_goal: profile?.main_health_goal || undefined,
     diet_styles: profile?.diet_styles || [],
     foods_to_avoid: profile?.foods_to_avoid || undefined,
@@ -68,11 +73,14 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
 
 export const updateUserTrackers = async (userId: string, trackers: string[]) => {
   try {
+    // Ensure exactly 3 trackers using auto-fill logic
+    const autoFilledTrackers = getAutoFilledTrackers(trackers);
+    
     const { error } = await supabase
       .from('user_profiles')
       .upsert({
         user_id: userId,
-        selected_trackers: trackers,
+        selected_trackers: autoFilledTrackers,
         updated_at: new Date().toISOString(),
       });
 
@@ -80,7 +88,7 @@ export const updateUserTrackers = async (userId: string, trackers: string[]) => 
       console.error('Error updating trackers in database:', error);
     }
 
-    localStorage.setItem('user_preferences', JSON.stringify({ selectedTrackers: trackers }));
+    localStorage.setItem('user_preferences', JSON.stringify({ selectedTrackers: autoFilledTrackers }));
     
   } catch (error) {
     console.error('Error updating selected trackers:', error);

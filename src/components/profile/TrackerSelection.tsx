@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Monitor, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { getAutoFilledTrackers, isAutoFilledTracker } from '@/lib/trackerUtils';
 
 interface TrackerSelectionProps {
   selectedTrackers: string[];
+  userSelectedTrackers: string[]; // Trackers explicitly selected by user
   isEditing: boolean;
   onToggleTracker: (trackerId: string) => void;
   onEditToggle: () => void;
@@ -24,31 +26,23 @@ const trackerOptions = [
   { id: 'micronutrients', label: 'Micronutrients' },
 ];
 
-export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker, onEditToggle }: TrackerSelectionProps) => {
+export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEditing, onToggleTracker, onEditToggle }: TrackerSelectionProps) => {
   const isMobile = useIsMobile();
 
   const handleToggleTracker = (trackerId: string) => {
     if (!isEditing) return;
     
-    const isSelected = selectedTrackers.includes(trackerId);
-    console.log('Toggling tracker:', trackerId, 'currently selected:', isSelected);
+    const isUserSelected = userSelectedTrackers.includes(trackerId);
+    console.log('Toggling tracker:', trackerId, 'user selected:', isUserSelected);
     
-    if (isSelected) {
-      // Remove tracker (but ensure at least 1 remains)
-      if (selectedTrackers.length > 1) {
-        onToggleTracker(trackerId);
-        console.log('Removed tracker:', trackerId);
-      } else {
-        toast.error('You must have at least 1 tracker selected');
-      }
+    if (isUserSelected) {
+      // Remove tracker - auto-fill will handle ensuring 3 total
+      onToggleTracker(trackerId);
+      console.log('Removed tracker:', trackerId);
     } else {
-      // Add tracker if less than 3 selected
-      if (selectedTrackers.length < 3) {
-        onToggleTracker(trackerId);
-        console.log('Added tracker:', trackerId);
-      } else {
-        toast.error('You can only select 3 trackers');
-      }
+      // Add tracker - auto-fill will handle max 3 limit
+      onToggleTracker(trackerId);
+      console.log('Added tracker:', trackerId);
     }
   };
 
@@ -74,17 +68,37 @@ export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker,
             Choose which 3 trackers appear on your home page ({selectedTrackers.length}/3 selected)
           </p>
           <div className={`flex flex-wrap ${isMobile ? 'gap-1' : 'gap-2'}`}>
-            {trackerOptions.map(tracker => (
-              <Badge
-                key={tracker.id}
-                variant={selectedTrackers.includes(tracker.id) ? "default" : "outline"}
-                className={`cursor-pointer ${isEditing ? 'hover:bg-green-100' : 'cursor-default'} ${isMobile ? 'text-xs px-2 py-1' : 'text-sm'}`}
-                onClick={() => handleToggleTracker(tracker.id)}
-              >
-                {tracker.label}
-              </Badge>
-            ))}
+            {trackerOptions.map(tracker => {
+              const isSelected = selectedTrackers.includes(tracker.id);
+              const isUserSelected = userSelectedTrackers.includes(tracker.id);
+              const isAutoFilled = isSelected && !isUserSelected;
+              
+              return (
+                <Badge
+                  key={tracker.id}
+                  variant={isSelected ? "default" : "outline"}
+                  className={`cursor-pointer relative ${
+                    isEditing ? 'hover:bg-green-100' : 'cursor-default'
+                  } ${
+                    isMobile ? 'text-xs px-2 py-1' : 'text-sm'
+                  } ${
+                    isAutoFilled ? 'opacity-70 ring-1 ring-muted-foreground' : ''
+                  }`}
+                  onClick={() => handleToggleTracker(tracker.id)}
+                >
+                  {tracker.label}
+                  {isAutoFilled && (
+                    <span className="ml-1 text-xs opacity-60">•</span>
+                  )}
+                </Badge>
+              );
+            })}
           </div>
+          {isEditing && (
+            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground mt-2`}>
+              • Auto-filled trackers shown with lower opacity. They'll be replaced when you select others.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
