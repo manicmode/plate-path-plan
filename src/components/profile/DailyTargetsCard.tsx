@@ -16,6 +16,9 @@ interface DailyTarget {
   carbs: number | null;
   fat: number | null;
   fiber: number | null;
+  sugar: number | null;
+  sodium: number | null;
+  saturated_fat: number | null;
   hydration_ml: number | null;
   supplement_count: number | null;
   calculated_at: string;
@@ -181,32 +184,50 @@ export const DailyTargetsCard = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {targets.calories && (
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{targets.calories}</div>
+              <div className="text-2xl font-bold text-primary">{Math.round(targets.calories)}</div>
               <div className="text-sm text-muted-foreground">Calories</div>
             </div>
           )}
           {targets.protein && (
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{targets.protein}g</div>
+              <div className="text-2xl font-bold text-blue-600">{Math.round(targets.protein)}g</div>
               <div className="text-sm text-muted-foreground">Protein</div>
             </div>
           )}
           {targets.carbs && (
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{targets.carbs}g</div>
+              <div className="text-2xl font-bold text-green-600">{Math.round(targets.carbs)}g</div>
               <div className="text-sm text-muted-foreground">Carbs</div>
             </div>
           )}
           {targets.fat && (
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{targets.fat}g</div>
+              <div className="text-2xl font-bold text-yellow-600">{Math.round(targets.fat)}g</div>
               <div className="text-sm text-muted-foreground">Fat</div>
             </div>
           )}
           {targets.fiber && (
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{targets.fiber}g</div>
+              <div className="text-2xl font-bold text-orange-600">{Math.round(targets.fiber)}g</div>
               <div className="text-sm text-muted-foreground">Fiber</div>
+            </div>
+          )}
+          {targets.sugar && (
+            <div className="text-center">
+              <div className="text-2xl font-bold text-pink-600">{Math.round(targets.sugar)}g</div>
+              <div className="text-sm text-muted-foreground">Sugar</div>
+            </div>
+          )}
+          {targets.sodium && (
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{Math.round(targets.sodium)}mg</div>
+              <div className="text-sm text-muted-foreground">Sodium</div>
+            </div>
+          )}
+          {targets.saturated_fat && (
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{Math.round(targets.saturated_fat)}g</div>
+              <div className="text-sm text-muted-foreground">Sat Fat</div>
             </div>
           )}
           {targets.hydration_ml && (

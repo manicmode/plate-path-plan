@@ -5,6 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Target, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NutritionGoalsProps {
   formData: {
@@ -21,7 +24,30 @@ interface NutritionGoalsProps {
 }
 
 export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditToggle }: NutritionGoalsProps) => {
+  const { user } = useAuth();
   const isMobile = useIsMobile();
+  const [dailyTargets, setDailyTargets] = useState<any>(null);
+
+  // Load current daily targets
+  useEffect(() => {
+    const loadDailyTargets = async () => {
+      if (!user?.id) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('daily_nutrition_targets')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('target_date', today)
+        .maybeSingle();
+      
+      if (data && !error) {
+        setDailyTargets(data);
+      }
+    };
+    
+    loadDailyTargets();
+  }, [user?.id]);
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '200ms' }}>
@@ -42,70 +68,103 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
       <CardContent className={`space-y-3 sm:space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-3 gap-4'}`}>
           <div className="space-y-2">
-            <Label htmlFor="calories" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Calories</Label>
-            <Input
-              id="calories"
-              type="number"
-              value={formData.targetCalories}
-              onChange={(e) => onFormDataChange({ targetCalories: Number(e.target.value) })}
-              disabled={!isEditing}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Calories</Label>
+            <div className={`text-2xl font-bold text-emerald-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.calories ? Math.round(dailyTargets.calories) : (formData.targetCalories || 'Not set')}
+            </div>
+            {dailyTargets?.calories && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="protein" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Protein (g)</Label>
-            <Input
-              id="protein"
-              type="number"
-              value={formData.targetProtein}
-              onChange={(e) => onFormDataChange({ targetProtein: Number(e.target.value) })}
-              disabled={!isEditing}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Protein (g)</Label>
+            <div className={`text-2xl font-bold text-blue-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.protein ? Math.round(dailyTargets.protein) : (formData.targetProtein || 'Not set')}g
+            </div>
+            {dailyTargets?.protein && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="carbs" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Carbs (g)</Label>
-            <Input
-              id="carbs"
-              type="number"
-              value={formData.targetCarbs}
-              onChange={(e) => onFormDataChange({ targetCarbs: Number(e.target.value) })}
-              disabled={!isEditing}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Carbs (g)</Label>
+            <div className={`text-2xl font-bold text-green-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.carbs ? Math.round(dailyTargets.carbs) : (formData.targetCarbs || 'Not set')}g
+            </div>
+            {dailyTargets?.carbs && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="fat" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Fat (g)</Label>
-            <Input
-              id="fat"
-              type="number"
-              value={formData.targetFat}
-              onChange={(e) => onFormDataChange({ targetFat: Number(e.target.value) })}
-              disabled={!isEditing}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Fat (g)</Label>
+            <div className={`text-2xl font-bold text-yellow-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.fat ? Math.round(dailyTargets.fat) : (formData.targetFat || 'Not set')}g
+            </div>
+            {dailyTargets?.fat && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="hydration" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Hydration (glasses)</Label>
-            <Input
-              id="hydration"
-              type="number"
-              value={formData.targetHydration}
-              onChange={(e) => onFormDataChange({ targetHydration: Number(e.target.value) })}
-              disabled={!isEditing}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Fiber (g)</Label>
+            <div className={`text-2xl font-bold text-orange-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.fiber ? Math.round(dailyTargets.fiber) : 'Not set'}g
+            </div>
+            {dailyTargets?.fiber && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="supplements" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Supplements (count)</Label>
-            <Input
-              id="supplements"
-              type="number"
-              value={formData.targetSupplements}
-              onChange={(e) => onFormDataChange({ targetSupplements: Number(e.target.value) })}
-              disabled={!isEditing}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Sugar (g)</Label>
+            <div className={`text-2xl font-bold text-pink-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.sugar ? Math.round(dailyTargets.sugar) : 'Not set'}g
+            </div>
+            {dailyTargets?.sugar && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Sodium (mg)</Label>
+            <div className={`text-2xl font-bold text-red-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.sodium ? Math.round(dailyTargets.sodium) : 'Not set'}mg
+            </div>
+            {dailyTargets?.sodium && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Sat Fat (g)</Label>
+            <div className={`text-2xl font-bold text-purple-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.saturated_fat ? Math.round(dailyTargets.saturated_fat) : 'Not set'}g
+            </div>
+            {dailyTargets?.saturated_fat && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Hydration (glasses)</Label>
+            <div className={`text-2xl font-bold text-cyan-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.hydration_ml ? Math.round(dailyTargets.hydration_ml / 240) : (formData.targetHydration || 'Not set')}
+            </div>
+            {dailyTargets?.hydration_ml && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label className={`${isMobile ? 'text-sm' : 'text-base'}`}>Supplements</Label>
+            <div className={`text-2xl font-bold text-indigo-600 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+              {dailyTargets?.supplement_count ? Math.round(dailyTargets.supplement_count) : (formData.targetSupplements || 'Not set')}
+            </div>
+            {dailyTargets?.supplement_count && (
+              <div className="text-xs text-muted-foreground">From daily targets</div>
+            )}
           </div>
         </div>
       </CardContent>

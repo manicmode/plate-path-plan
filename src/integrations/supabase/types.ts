@@ -29,6 +29,9 @@ export type Database = {
           priority_micronutrients: string[] | null
           profile_version: number | null
           protein: number | null
+          saturated_fat: number | null
+          sodium: number | null
+          sugar: number | null
           supplement_count: number | null
           supplement_recommendations: Json | null
           target_date: string
@@ -49,6 +52,9 @@ export type Database = {
           priority_micronutrients?: string[] | null
           profile_version?: number | null
           protein?: number | null
+          saturated_fat?: number | null
+          sodium?: number | null
+          sugar?: number | null
           supplement_count?: number | null
           supplement_recommendations?: Json | null
           target_date?: string
@@ -69,6 +75,9 @@ export type Database = {
           priority_micronutrients?: string[] | null
           profile_version?: number | null
           protein?: number | null
+          saturated_fat?: number | null
+          sodium?: number | null
+          sugar?: number | null
           supplement_count?: number | null
           supplement_recommendations?: Json | null
           target_date?: string

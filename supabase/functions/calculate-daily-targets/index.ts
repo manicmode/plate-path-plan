@@ -104,6 +104,9 @@ Deno.serve(async (req) => {
       carbs: nutritionTargets.carbs,
       fat: nutritionTargets.fat,
       fiber: nutritionTargets.fiber,
+      sugar: nutritionTargets.sugar,
+      sodium: nutritionTargets.sodium,
+      saturated_fat: nutritionTargets.saturatedFat,
       hydration_ml: nutritionTargets.hydrationMl,
       supplement_count: nutritionTargets.supplementCount,
       supplement_recommendations: nutritionTargets.supplementRecommendations,
@@ -614,13 +617,16 @@ function calculateNutritionTargets(profile: any) {
   const flaggedIngredients = getFlaggedIngredients(profile.health_conditions);
   
   return {
-    bmr,
-    tdee,
-    calories,
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    calories: Math.round(calories),
     protein: macros.protein,
     carbs: macros.carbs,
     fat: macros.fat,
     fiber: macros.fiber,
+    sugar: Math.round(calories * 0.10 / 4), // 10% of calories as sugar max
+    sodium: (profile.health_conditions?.includes('hypertension')) ? 1500 : 2300, // mg
+    saturatedFat: Math.round((calories * 0.10) / 9), // 10% of calories as saturated fat max
     hydrationMl,
     supplementCount,
     supplementRecommendations,
