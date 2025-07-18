@@ -24,6 +24,7 @@ import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsig
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
+import { supabase } from '@/integrations/supabase/client';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -48,6 +49,17 @@ const Home = () => {
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
   const { toast } = useToast();
+  
+  // State for daily nutrition targets
+  const [dailyTargets, setDailyTargets] = useState({
+    calories: null,
+    protein: null,
+    carbs: null,
+    fat: null,
+    fiber: null,
+    hydration_ml: null,
+    supplement_count: null
+  });
   const { toxinData, loading: toxinLoading, detectToxinsForFood } = useToxinDetections();
   
   // Enable automatic toxin detection for new food logs
@@ -122,7 +134,37 @@ const Home = () => {
     }
   }, [user?.selectedTrackers]);
 
-  const totalCalories = user?.targetCalories || 2000;
+  // Load daily targets from database
+  useEffect(() => {
+    const loadDailyTargets = async () => {
+      if (!user?.id) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('daily_nutrition_targets')
+        .select('calories, protein, carbs, fat, fiber, hydration_ml, supplement_count')
+        .eq('user_id', user.id)
+        .eq('target_date', today)
+        .maybeSingle();
+      
+      if (data && !error) {
+        console.log('📊 Loaded daily targets for Home:', data);
+        setDailyTargets({
+          calories: data.calories,
+          protein: data.protein,
+          carbs: data.carbs,
+          fat: data.fat,
+          fiber: data.fiber,
+          hydration_ml: data.hydration_ml,
+          supplement_count: data.supplement_count
+        });
+      }
+    };
+    
+    loadDailyTargets();
+  }, [user?.id]);
+
+  const totalCalories = dailyTargets.calories || user?.targetCalories || 2000;
   const currentCalories = progress.calories;
   const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
 
@@ -187,42 +229,42 @@ const Home = () => {
     protein: {
       name: 'Protein',
       current: progress.protein,
-      target: user?.targetProtein || 150,
+      target: dailyTargets.protein || user?.targetProtein || 150,
       unit: 'g',
       color: 'from-blue-500/20 via-indigo-500/15 to-purple-500/10',
       gradient: 'proteinGradientVibrant',
       emoji: '💪',
       textColor: 'text-blue-900 dark:text-white',
       textColorSecondary: 'text-blue-800 dark:text-blue-100',
-      percentage: Math.min((progress.protein / (user?.targetProtein || 150)) * 100, 100),
+      percentage: Math.min((progress.protein / (dailyTargets.protein || user?.targetProtein || 150)) * 100, 100),
       shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)]',
       onClick: () => navigate('/camera'),
     },
     carbs: {
       name: 'Carbs',
       current: progress.carbs,
-      target: user?.targetCarbs || 200,
+      target: dailyTargets.carbs || user?.targetCarbs || 200,
       unit: 'g',
       color: 'from-yellow-500/20 via-orange-500/15 to-red-500/10',
       gradient: 'carbsGradientVibrant',
       emoji: '🍞',
       textColor: 'text-yellow-900 dark:text-white',
       textColorSecondary: 'text-yellow-800 dark:text-yellow-100',
-      percentage: Math.min((progress.carbs / (user?.targetCarbs || 200)) * 100, 100),
+      percentage: Math.min((progress.carbs / (dailyTargets.carbs || user?.targetCarbs || 200)) * 100, 100),
       shadow: 'shadow-[0_0_20px_rgba(251,191,36,0.4)] hover:shadow-[0_0_30px_rgba(251,191,36,0.6)]',
       onClick: () => navigate('/camera'),
     },
     fat: {
       name: 'Fat',
       current: progress.fat,
-      target: user?.targetFat || 65,
+      target: dailyTargets.fat || user?.targetFat || 65,
       unit: 'g',
       color: 'from-green-500/20 via-emerald-500/15 to-teal-500/10',
       gradient: 'fatGradientVibrant',
       emoji: '🥑',
       textColor: 'text-green-900 dark:text-white',
       textColorSecondary: 'text-green-800 dark:text-green-100',
-      percentage: Math.min((progress.fat / (user?.targetFat || 65)) * 100, 100),
+      percentage: Math.min((progress.fat / (dailyTargets.fat || user?.targetFat || 65)) * 100, 100),
       shadow: 'shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]',
       onClick: () => navigate('/camera'),
     },
@@ -307,7 +349,7 @@ const Home = () => {
     {
       name: 'Protein',
       current: progress.protein,
-      target: user?.targetProtein || 150,
+      target: dailyTargets.protein || user?.targetProtein || 150,
       unit: 'g',
       color: 'from-blue-400 to-blue-600',
       icon: Target,
@@ -315,7 +357,7 @@ const Home = () => {
     {
       name: 'Carbs',
       current: progress.carbs,
-      target: user?.targetCarbs || 200,
+      target: dailyTargets.carbs || user?.targetCarbs || 200,
       unit: 'g',
       color: 'from-orange-400 to-orange-600',
       icon: TrendingUp,
@@ -323,7 +365,7 @@ const Home = () => {
     {
       name: 'Fat',
       current: progress.fat,
-      target: user?.targetFat || 65,
+      target: dailyTargets.fat || user?.targetFat || 65,
       unit: 'g',
       color: 'from-purple-400 to-purple-600',
       icon: Target,

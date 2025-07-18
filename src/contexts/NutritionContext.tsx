@@ -3,6 +3,7 @@ import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 import { useAuth } from '@/contexts/auth';
+import { supabase } from '@/integrations/supabase/client';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
 interface FoodItem {
@@ -96,6 +97,36 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
   const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();
   const { user } = useAuth();
+  
+  // State for daily targets
+  const [dailyTargets, setDailyTargets] = useState({
+    hydration_ml: null,
+    supplement_count: null
+  });
+  
+  // Load daily targets from database
+  useEffect(() => {
+    const loadDailyTargets = async () => {
+      if (!user?.id) return;
+      
+      const { data, error } = await supabase
+        .from('daily_nutrition_targets')
+        .select('hydration_ml, supplement_count')
+        .eq('user_id', user.id)
+        .eq('target_date', today)
+        .maybeSingle();
+      
+      if (data && !error) {
+        console.log('🎯 Loaded daily targets for NutritionContext:', data);
+        setDailyTargets({
+          hydration_ml: data.hydration_ml,
+          supplement_count: data.supplement_count
+        });
+      }
+    };
+    
+    loadDailyTargets();
+  }, [user?.id, today]);
   
   const [currentDay, setCurrentDay] = useState<DailyNutrition>({
     date: today,
@@ -337,8 +368,8 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     };
   };
 
-  const getHydrationGoal = () => 2000; // 2L default goal
-  const getSupplementGoal = () => 3; // 3 supplements default goal
+  const getHydrationGoal = () => dailyTargets.hydration_ml || 2000; // Use daily targets or 2L default
+  const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default
 
   return (
     <NutritionContext.Provider

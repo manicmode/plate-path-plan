@@ -344,12 +344,30 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       }
 
       console.log('[DEBUG] OnboardingFlow: Profile saved successfully:', data);
-      console.log('[DEBUG] OnboardingFlow: Refreshing user profile...');
-      window.location.href = '/';
+      
       // Update localStorage immediately to prevent re-rendering onboarding
       const cacheKey = `onboarding_complete_${user.id}`;
       localStorage.setItem(cacheKey, 'true');
       console.log('[DEBUG] OnboardingFlow: Updated localStorage cache');
+      
+      console.log('[DEBUG] OnboardingFlow: Triggering daily targets generation...');
+      
+      // Generate daily nutrition targets using the edge function
+      try {
+        const { data: targetData, error: targetError } = await supabase.functions.invoke('calculate-daily-targets', {
+          body: { userId: user.id }
+        });
+
+        if (targetError) {
+          console.error('❌ Error generating daily targets:', targetError);
+          toast.error('Failed to generate personalized nutrition targets. You can generate them later from your profile.');
+        } else {
+          console.log('✅ Daily targets generated successfully:', targetData);
+        }
+      } catch (targetError) {
+        console.error('❌ Failed to trigger daily targets generation:', targetError);
+        toast.error('Failed to generate personalized nutrition targets. You can generate them later from your profile.');
+      }
       
       // Refresh the user profile to get the latest data
       await refreshUser();

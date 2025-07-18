@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       triggerDailyScoreCalculation(user.id);
       
       // Also regenerate daily targets if significant profile changes occurred
-      const significantFields = ['weight', 'age', 'gender', 'activityLevel', 'weightGoalType', 'healthConditions'];
+      const significantFields = ['weight', 'age', 'gender', 'activity_level', 'weight_goal_type', 'health_conditions', 'main_health_goal'];
       const hasSignificantChanges = significantFields.some(field => profileData[field as keyof ExtendedUser] !== undefined);
       
       if (hasSignificantChanges) {
