@@ -28,6 +28,8 @@ interface MessageInputWithTaggingProps {
   showEmojiReactions?: boolean;
   onEmojiClick?: (emoji: string) => void;
   className?: string;
+  useSmartRecommendations?: boolean;
+  excludeUserIds?: string[];
 }
 
 export const MessageInputWithTagging = ({
@@ -38,7 +40,9 @@ export const MessageInputWithTagging = ({
   disabled = false,
   showEmojiReactions = true,
   onEmojiClick,
-  className = ""
+  className = "",
+  useSmartRecommendations = true,
+  excludeUserIds = []
 }: MessageInputWithTaggingProps) => {
   const [showFriendSelector, setShowFriendSelector] = useState(false);
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
@@ -231,6 +235,9 @@ export const MessageInputWithTagging = ({
         onSelectFriend={handleSelectFriend}
         searchQuery={currentAtQuery}
         position={selectorPosition}
+        useSmartRecommendations={useSmartRecommendations}
+        maxResults={5}
+        excludeUserIds={excludeUserIds}
       />
     </div>
   );

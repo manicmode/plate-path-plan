@@ -1014,6 +1014,17 @@ export type Database = {
           friend_phone: string
         }[]
       }
+      get_smart_friend_recommendations: {
+        Args: { current_user_id: string }
+        Returns: {
+          friend_id: string
+          friend_name: string
+          friend_email: string
+          friend_phone: string
+          relevance_score: number
+          interaction_metadata: Json
+        }[]
+      }
     }
     Enums: {
       suggestion_type: "praise" | "warning" | "tip"

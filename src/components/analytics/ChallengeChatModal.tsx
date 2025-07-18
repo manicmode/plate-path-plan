@@ -205,6 +205,8 @@ export const ChallengeChatModal = ({
           placeholder="Type a message or @ to tag friends..."
           disabled={chat?.isMuted}
           showEmojiReactions={canSendEmoji(challengeId)}
+          useSmartRecommendations={true}
+          excludeUserIds={challengeParticipants || []}
         />
       </DialogContent>
     </Dialog>

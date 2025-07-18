@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { useSmartFriendRecommendations, SmartFriend } from './useSmartFriendRecommendations';
 
 interface Friend {
   id: string;
@@ -9,13 +10,21 @@ interface Friend {
   phone?: string;
 }
 
-export const useFriendTagging = () => {
+export const useFriendTagging = (useSmartRecommendations: boolean = true) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  
+  // Use smart recommendations when enabled
+  const { 
+    friends: smartFriends, 
+    isLoading: smartLoading,
+    searchRecommendations,
+    getTopRecommendations
+  } = useSmartFriendRecommendations();
 
   const loadFriends = useCallback(async () => {
-    if (!user) return;
+    if (!user || useSmartRecommendations) return;
 
     setIsLoading(true);
     try {
@@ -37,7 +46,7 @@ export const useFriendTagging = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, useSmartRecommendations]);
 
   useEffect(() => {
     loadFriends();
@@ -64,6 +73,15 @@ export const useFriendTagging = () => {
   }, [user, loadFriends]);
 
   const searchFriends = useCallback((query: string) => {
+    if (useSmartRecommendations) {
+      return searchRecommendations(query).map(smartFriend => ({
+        id: smartFriend.id,
+        name: smartFriend.name,
+        email: smartFriend.email,
+        phone: smartFriend.phone
+      }));
+    }
+
     if (!query.trim()) return friends;
     
     const lowerQuery = query.toLowerCase();
@@ -71,18 +89,34 @@ export const useFriendTagging = () => {
       friend.name.toLowerCase().includes(lowerQuery) ||
       friend.email?.toLowerCase().includes(lowerQuery)
     );
-  }, [friends]);
+  }, [friends, useSmartRecommendations, searchRecommendations]);
 
   const getFriendById = useCallback((friendId: string) => {
+    if (useSmartRecommendations) {
+      const smartFriend = smartFriends.find(friend => friend.id === friendId);
+      return smartFriend ? {
+        id: smartFriend.id,
+        name: smartFriend.name,
+        email: smartFriend.email,
+        phone: smartFriend.phone
+      } : undefined;
+    }
     return friends.find(friend => friend.id === friendId);
-  }, [friends]);
+  }, [friends, smartFriends, useSmartRecommendations]);
+
+  // Get the appropriate friends list based on mode
+  const currentFriends = useSmartRecommendations 
+    ? smartFriends.map(sf => ({ id: sf.id, name: sf.name, email: sf.email, phone: sf.phone }))
+    : friends;
 
   return {
-    friends,
-    isLoading,
+    friends: currentFriends,
+    smartFriends: useSmartRecommendations ? smartFriends : [],
+    isLoading: useSmartRecommendations ? smartLoading : isLoading,
     loadFriends,
     addFriend,
     searchFriends,
-    getFriendById
+    getFriendById,
+    getTopRecommendations: useSmartRecommendations ? getTopRecommendations : undefined,
   };
 };

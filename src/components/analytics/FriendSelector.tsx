@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useFriendTagging } from '@/hooks/useFriendTagging';
+import { SmartFriendSelector } from './SmartFriendSelector';
 
 interface Friend {
   id: string;
@@ -17,6 +18,9 @@ interface FriendSelectorProps {
   onSelectFriend: (friend: Friend) => void;
   searchQuery: string;
   position: { top: number; left: number };
+  useSmartRecommendations?: boolean;
+  maxResults?: number;
+  excludeUserIds?: string[];
 }
 
 export const FriendSelector = ({ 
@@ -24,11 +28,34 @@ export const FriendSelector = ({
   onClose, 
   onSelectFriend, 
   searchQuery,
-  position 
+  position,
+  useSmartRecommendations = false,
+  maxResults = 5,
+  excludeUserIds = []
 }: FriendSelectorProps) => {
-  const { searchFriends, isLoading } = useFriendTagging();
+  const { searchFriends, isLoading } = useFriendTagging(false); // Use legacy mode when smart is disabled
   const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]);
   const selectorRef = useRef<HTMLDivElement>(null);
+
+  // Use SmartFriendSelector when smart recommendations are enabled
+  if (useSmartRecommendations) {
+    return (
+      <SmartFriendSelector
+        isOpen={isOpen}
+        onClose={onClose}
+        onSelectFriend={(smartFriend) => onSelectFriend({
+          id: smartFriend.id,
+          name: smartFriend.name,
+          email: smartFriend.email,
+          phone: smartFriend.phone
+        })}
+        searchQuery={searchQuery}
+        position={position}
+        maxResults={maxResults}
+        excludeUserIds={excludeUserIds}
+      />
+    );
+  }
 
   useEffect(() => {
     if (isOpen) {
