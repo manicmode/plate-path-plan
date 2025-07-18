@@ -17,6 +17,10 @@ import { AchievementsSection } from '@/components/analytics/sections/Achievement
 import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
 import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
+import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
+import { MonthlyLeaderboard } from '@/components/analytics/MonthlyLeaderboard';
+import { AchievementBadges } from '@/components/analytics/AchievementBadges';
+import { useDailyScore } from '@/hooks/useDailyScore';
 
 const Analytics = () => {
   const isMobile = useIsMobile();
@@ -44,6 +48,9 @@ const Analytics = () => {
     user
   } = useAnalyticsCalculations();
 
+  // Get daily score data
+  const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
+
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
@@ -59,6 +66,17 @@ const Analytics = () => {
             <WeeklyProgressRing />
           </div>
         </div>
+
+        {/* Daily Performance Score - Featured prominently */}
+        {!scoreLoading && scoreStats && (
+          <DailyScoreCard 
+            score={todayScore || 0}
+            weeklyAverage={scoreStats.weeklyAverage}
+            streak={scoreStats.streak}
+            bestScore={scoreStats.bestScore}
+            className="mb-6"
+          />
+        )}
 
         {/* Daily Progress Cards - Enhanced with Real Data */}
         <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
@@ -90,8 +108,16 @@ const Analytics = () => {
         />
 
 
+        {/* Achievement Badges - New gamification feature */}
+        {!scoreLoading && scoreStats && (
+          <AchievementBadges scoreStats={scoreStats} className="mb-6" />
+        )}
+
         {/* Achievements & Streaks - Enhanced */}
         <AchievementsSection />
+
+        {/* Monthly Leaderboard - Competitive element */}
+        <MonthlyLeaderboard />
 
         {/* Smart Insights - Enhanced */}
         <SmartInsightsSection />

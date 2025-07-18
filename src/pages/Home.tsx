@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
+import { useDailyScore } from '@/hooks/useDailyScore';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -22,6 +23,7 @@ import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
+import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -41,6 +43,7 @@ const loadUserPreferences = () => {
 const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
+  const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
@@ -679,6 +682,19 @@ const Home = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Daily Performance Score Card - Featured prominently */}
+      <div className="px-2 sm:px-4 mt-8">
+        {!scoreLoading && scoreStats && (
+          <DailyScoreCard 
+            score={todayScore || 0}
+            weeklyAverage={scoreStats.weeklyAverage}
+            streak={scoreStats.streak}
+            bestScore={scoreStats.bestScore}
+            className="mb-6"
+          />
+        )}
       </div>
 
       {/* Enhanced Logging Actions Section with proper spacing */}
