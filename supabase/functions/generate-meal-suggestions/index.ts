@@ -46,31 +46,16 @@ serve(async (req) => {
     const userId = user.id;
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     console.log(`🎯 Generating meal suggestions for user: ${userId}`);
 
-    // Check if suggestion already exists for today
-    const { data: existingSuggestion } = await supabase
-      .from('meal_suggestions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('date', today)
-      .single();
-
-    if (existingSuggestion) {
-      console.log('⚠️ Suggestion already exists for today');
-      return new Response(
-        JSON.stringify({ message: 'Suggestion already exists for today', suggestion_id: existingSuggestion.id }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fetch meal scores from the last 3 days
-    const { data: mealScores, error: scoresError } = await supabase
+    // Fetch meal scores from the last 6 days (to compare current 3 days vs previous 3 days)
+    const { data: allMealScores, error: scoresError } = await supabase
       .from('meal_scores')
       .select('score, created_at')
       .eq('user_id', userId)
-      .gte('created_at', threeDaysAgo + 'T00:00:00.000Z')
+      .gte('created_at', sixDaysAgo + 'T00:00:00.000Z')
       .order('created_at', { ascending: true });
 
     if (scoresError) {
@@ -81,53 +66,95 @@ serve(async (req) => {
       );
     }
 
-    if (!mealScores || mealScores.length === 0) {
-      console.log('📊 No meal scores found for the last 3 days');
+    if (!allMealScores || allMealScores.length === 0) {
+      console.log('📊 No meal scores found for analysis');
       return new Response(
         JSON.stringify({ message: 'No meal scores found for analysis' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`📈 Found ${mealScores.length} meal scores for analysis`);
+    // Split scores into current 3 days and previous 3 days
+    const currentPeriodScores = allMealScores.filter(ms => 
+      ms.created_at >= threeDaysAgo + 'T00:00:00.000Z'
+    );
+    const previousPeriodScores = allMealScores.filter(ms => 
+      ms.created_at < threeDaysAgo + 'T00:00:00.000Z'
+    );
 
-    // Calculate average score
-    const scores = mealScores.map(ms => Number(ms.score));
-    const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    // Need at least 3 scores in current period
+    if (currentPeriodScores.length < 3) {
+      console.log(`📊 Need at least 3 scores in current period, found ${currentPeriodScores.length}`);
+      return new Response(
+        JSON.stringify({ message: 'Need at least 3 meal scores in the last 3 days for analysis' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`📈 Found ${currentPeriodScores.length} current scores, ${previousPeriodScores.length} previous scores`);
+
+    // Calculate current 3-day average
+    const currentScores = currentPeriodScores.map(ms => Number(ms.score));
+    const currentAverage = currentScores.reduce((sum, score) => sum + score, 0) / currentScores.length;
     
-    console.log(`📊 Average score over last 3 days: ${averageScore.toFixed(1)}`);
+    console.log(`📊 Current 3-day average: ${currentAverage.toFixed(1)}`);
 
     let suggestionType: 'praise' | 'warning' | 'tip';
     let message: string;
-    let scoreTriggered = averageScore;
+    let scoreTriggered = currentAverage;
+
+    // Check if we already have a suggestion of any type for today
+    const { data: existingSuggestion } = await supabase
+      .from('meal_suggestions')
+      .select('id, type')
+      .eq('user_id', userId)
+      .eq('date', today);
 
     // Determine suggestion type and message
-    if (averageScore >= 85) {
+    if (currentAverage > 85) {
       suggestionType = 'praise';
-      message = '🌟 Outstanding work! Your meals have been top-notch lately. Keep riding that healthy wave!';
-    } else if (averageScore < 60) {
+      message = '🔥 Amazing! Your meals have been top-notch the last 3 days.';
+    } else if (currentAverage < 60) {
       suggestionType = 'warning';
-      message = '💪 Let\'s turn things around! Small changes in your meal choices can make a big difference. You\'ve got this!';
+      message = '⚠️ Heads up! You\'ve had several low-quality meals recently. Need help bouncing back?';
     } else {
-      // Check for improvement (compare first day vs last day)
-      if (scores.length >= 2) {
-        const firstDayScore = scores[0];
-        const lastDayScore = scores[scores.length - 1];
-        const improvement = lastDayScore - firstDayScore;
+      // Check for significant improvement (compare current vs previous 3-day average)
+      if (previousPeriodScores.length >= 3) {
+        const previousScores = previousPeriodScores.map(ms => Number(ms.score));
+        const previousAverage = previousScores.reduce((sum, score) => sum + score, 0) / previousScores.length;
+        const improvement = currentAverage - previousAverage;
+        
+        console.log(`📈 Previous 3-day average: ${previousAverage.toFixed(1)}, improvement: ${improvement.toFixed(1)}`);
         
         if (improvement >= 20) {
           suggestionType = 'tip';
-          message = `🚀 Incredible improvement! You've boosted your meal quality by ${improvement.toFixed(0)} points. This momentum is amazing!`;
+          message = '🚀 Wow! Your meal quality is improving fast. Keep this momentum going!';
           scoreTriggered = improvement;
         } else {
-          // Default motivational tip
-          suggestionType = 'tip';
-          message = '🎯 You\'re doing well! Consider adding more colorful vegetables or lean proteins to boost your meal scores even higher.';
+          // No significant change, no suggestion needed
+          console.log('📊 No significant change detected, no suggestion needed');
+          return new Response(
+            JSON.stringify({ message: 'No new suggestion needed' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
       } else {
-        suggestionType = 'tip';
-        message = '🎯 You\'re doing well! Consider adding more colorful vegetables or lean proteins to boost your meal scores even higher.';
+        // Not enough previous data for comparison, no suggestion needed
+        console.log('📊 Not enough previous data for comparison');
+        return new Response(
+          JSON.stringify({ message: 'No new suggestion needed' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+    }
+
+    // Check if we already have a suggestion of this type for today
+    if (existingSuggestion && existingSuggestion.some(s => s.type === suggestionType)) {
+      console.log(`⚠️ ${suggestionType} suggestion already exists for today`);
+      return new Response(
+        JSON.stringify({ message: `${suggestionType} suggestion already exists for today` }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Insert the suggestion
@@ -158,8 +185,8 @@ serve(async (req) => {
         success: true,
         suggestion: newSuggestion,
         analysis: {
-          meal_count: mealScores.length,
-          average_score: Math.round(averageScore * 10) / 10,
+          meal_count: currentPeriodScores.length,
+          average_score: Math.round(currentAverage * 10) / 10,
           days_analyzed: 3
         }
       }),
