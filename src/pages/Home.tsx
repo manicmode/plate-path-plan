@@ -690,31 +690,11 @@ const Home = () => {
       {/* Enhanced Greeting Section */}
       <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
         <div className="inline-block">
-          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative wave-text motion-reduce:animate-none`}>
-            <span style={{"--delay": "0"} as React.CSSProperties}>L</span>
-            <span style={{"--delay": "0.1"} as React.CSSProperties}>e</span>
-            <span style={{"--delay": "0.2"} as React.CSSProperties}>t</span>
-            <span style={{"--delay": "0.3"} as React.CSSProperties}>'</span>
-            <span style={{"--delay": "0.4"} as React.CSSProperties}>s</span>
-            <span style={{"--delay": "0.5"} as React.CSSProperties}>&nbsp;</span>
-            <span style={{"--delay": "0.6"} as React.CSSProperties}>o</span>
-            <span style={{"--delay": "0.7"} as React.CSSProperties}>p</span>
-            <span style={{"--delay": "0.8"} as React.CSSProperties}>t</span>
-            <span style={{"--delay": "0.9"} as React.CSSProperties}>i</span>
-            <span style={{"--delay": "1.0"} as React.CSSProperties}>m</span>
-            <span style={{"--delay": "1.1"} as React.CSSProperties}>i</span>
-            <span style={{"--delay": "1.2"} as React.CSSProperties}>z</span>
-            <span style={{"--delay": "1.3"} as React.CSSProperties}>e</span>
-            <span style={{"--delay": "1.4"} as React.CSSProperties}>&nbsp;</span>
-            <span style={{"--delay": "1.5"} as React.CSSProperties}>y</span>
-            <span style={{"--delay": "1.6"} as React.CSSProperties}>o</span>
-            <span style={{"--delay": "1.7"} as React.CSSProperties}>u</span>
-            <span style={{"--delay": "1.8"} as React.CSSProperties}>r</span>
-            <span style={{"--delay": "1.9"} as React.CSSProperties}>&nbsp;</span>
-            <span style={{"--delay": "2.0"} as React.CSSProperties}>d</span>
-            <span style={{"--delay": "2.1"} as React.CSSProperties}>a</span>
-            <span style={{"--delay": "2.2"} as React.CSSProperties}>y</span>
-            <span style={{"--delay": "2.3"} as React.CSSProperties}>,</span>
+          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold mb-4 relative fade-up-stagger motion-reduce:animate-none`}>
+            <span className="word-1 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent">Let's</span>
+            <span className="word-2 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent"> optimize</span>
+            <span className="word-3 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent"> your</span>
+            <span className="word-4 bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent"> day,</span>
           </h1>
           <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative`}>
             {user?.name?.split(' ')[0] || 'Superstar'}! 
