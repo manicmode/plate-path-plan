@@ -278,7 +278,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               {/* Save/Confirm button with visual feedback */}
               <button
                 onClick={() => setIsChecked(!isChecked)}
-                className={`absolute -top-2 -left-2 w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                className={`absolute -top-2.5 -left-2.5 w-10 h-10 rounded-full border-2 transition-all duration-300 flex items-center justify-center hover:scale-105 ${
                   isChecked 
                     ? 'bg-green-500 border-green-500 text-white shadow-lg transform scale-110' 
                     : 'bg-emerald-50 border-emerald-300 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-800/30'
