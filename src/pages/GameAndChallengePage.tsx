@@ -45,6 +45,7 @@ import { ChallengeCard } from '@/components/analytics/ChallengeCard';
 import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
 import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 import { MysteryBox } from '@/components/analytics/MysteryBox';
+import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 
@@ -504,6 +505,8 @@ function GameAndChallengeContent() {
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   const [showRewardBox, setShowRewardBox] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -694,12 +697,16 @@ function GameAndChallengeContent() {
                   <div
                     key={user.id}
                     className={cn(
-                      "relative rounded-xl border-2 transition-all duration-500",
+                      "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
                       isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
                       user.isCurrentUser 
                         ? "border-primary bg-primary/5 shadow-lg shadow-primary/20 ring-2 ring-primary/30" 
                         : "border-muted bg-muted/30 hover:border-primary/40"
                     )}
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setIsUserStatsOpen(true);
+                    }}
                   >
                     {user.isCurrentUser && (
                       <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-bold">
@@ -846,11 +853,15 @@ function GameAndChallengeContent() {
                       <div
                         key={user.id}
                         className={cn(
-                          "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border",
+                          "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer",
                           user.isCurrentUser 
                             ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md" 
-                            : "bg-muted/30 border-muted hover:bg-muted/50"
+                            : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
                         )}
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsUserStatsOpen(true);
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
@@ -1387,6 +1398,18 @@ function GameAndChallengeContent() {
           )}
         </div>
       </div>
+
+      {/* User Stats Modal */}
+      {selectedUser && (
+        <UserStatsModal
+          isOpen={isUserStatsOpen}
+          onClose={() => {
+            setIsUserStatsOpen(false);
+            setSelectedUser(null);
+          }}
+          user={selectedUser}
+        />
+      )}
     </div>
   );
 }
