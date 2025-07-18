@@ -20,6 +20,9 @@ import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
+import { HealthGoalSettings } from '@/components/profile/HealthGoalSettings';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 
 // Helper function to save preferences
@@ -42,6 +45,8 @@ const Profile = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showHealthSettings, setShowHealthSettings] = useState(false);
+  const { toast } = useToast();
   const [userSelectedTrackers, setUserSelectedTrackers] = useState<string[]>(
     user?.selectedTrackers || ['calories', 'protein', 'supplements']
   );
@@ -121,7 +126,10 @@ const Profile = () => {
     await updateSelectedTrackers(formData.selectedTrackers);
     
     setIsEditing(false);
-    toast.success('Profile updated successfully! Changes will appear on the home page.');
+    toast({
+      title: "Profile Updated!",
+      description: "Changes will appear on the home page.",
+    });
   };
 
   const handleCancel = () => {
@@ -187,15 +195,46 @@ const Profile = () => {
     setShowOnboarding(true);
   };
 
-  const handleOnboardingComplete = () => {
+  // Handle onboarding completion
+  const handleOnboardingComplete = async () => {
     setShowOnboarding(false);
-    toast.success('Onboarding completed! Your profile has been updated.');
-    // Force refresh of user data
-    window.location.reload();
+    setShowHealthSettings(false);
+    
+    // Recalculate daily nutrition targets
+    if (user?.id) {
+      try {
+        await supabase.functions.invoke('calculate-daily-targets', {
+          body: { userId: user.id }
+        });
+        
+        toast({
+          title: "Goals Updated! 🎯",
+          description: "Your daily nutrition targets have been recalculated based on your latest health info.",
+          duration: 5000,
+        });
+      } catch (error) {
+        console.error('Error recalculating targets:', error);
+        toast({
+          title: "Settings Updated",
+          description: "Your health settings have been saved successfully.",
+          duration: 3000,
+        });
+      }
+    }
+  };
+  
+  // Handle health settings update
+  const handleUpdateHealthSettings = () => {
+    setShowHealthSettings(true);
+    setShowOnboarding(true);
   };
 
-  if (showOnboarding) {
-    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+  if (showOnboarding || showHealthSettings) {
+    return (
+      <OnboardingScreen 
+        onComplete={handleOnboardingComplete} 
+      />
+    );
   }
 
   return (
@@ -251,6 +290,12 @@ const Profile = () => {
         isEditing={isEditing}
         onToggleTracker={toggleTracker}
         onEditToggle={() => setIsEditing(!isEditing)}
+      />
+
+      {/* Health & Goal Settings */}
+      <HealthGoalSettings
+        onUpdateSettings={handleUpdateHealthSettings}
+        lastUpdated={user?.updated_at}
       />
 
       {/* Notification Settings */}

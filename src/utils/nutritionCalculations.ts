@@ -11,6 +11,12 @@ export interface NutritionTargets {
   priorityMicronutrients: string[];
 }
 
+export interface EnhancedNutritionTargets extends NutritionTargets {
+  hydrationMl: number;
+  supplementCount: number;
+  flaggedIngredients: string[];
+}
+
 // BMR calculation using Mifflin-St Jeor equation
 export const calculateBMR = (weight: number, height: number, age: number, gender: string): number => {
   const baseRate = 10 * weight + 6.25 * height - 5 * age;
@@ -115,6 +121,94 @@ export const calculateMacroTargets = (
   };
 };
 
+// Calculate hydration target in ml based on weight
+export const calculateHydrationTarget = (weight: number, weightUnit: string = 'lb'): number => {
+  // Convert weight to pounds if needed
+  const weightInPounds = weightUnit === 'kg' ? weight * 2.20462 : weight;
+  
+  // Formula: weight (lbs) × 0.67 = daily ounces, then convert to ml
+  const dailyOunces = weightInPounds * 0.67;
+  const dailyMl = Math.round(dailyOunces * 29.5735); // 1 fl oz = 29.5735 ml
+  
+  return dailyMl;
+};
+
+// Calculate supplement recommendations based on health conditions and demographics
+export const calculateSupplementTarget = (
+  age: number,
+  gender: string,
+  healthConditions: string[] = [],
+  dietStyles: string[] = []
+): number => {
+  let baseSupplementCount = 1; // Basic multivitamin
+  
+  // Age-based supplements
+  if (age > 50) baseSupplementCount += 1; // Vitamin D, B12
+  if (age > 65) baseSupplementCount += 1; // Calcium, additional support
+  
+  // Gender-based supplements
+  if (gender === 'female' && age < 50) baseSupplementCount += 1; // Iron
+  if (gender === 'female') baseSupplementCount += 1; // Folate/B9
+  
+  // Health condition-based supplements
+  const conditionSupplements: Record<string, number> = {
+    'diabetes': 1, // Chromium, Alpha-lipoic acid
+    'hypertension': 1, // Magnesium, CoQ10
+    'heart_disease': 2, // Omega-3, CoQ10
+    'osteoporosis': 2, // Calcium, Vitamin D
+    'anemia': 1, // Iron
+    'thyroid_disorders': 1, // Selenium, Iodine
+    'depression': 1, // Omega-3, Vitamin D
+    'anxiety': 1, // Magnesium, B-complex
+  };
+  
+  healthConditions.forEach(condition => {
+    if (conditionSupplements[condition]) {
+      baseSupplementCount += conditionSupplements[condition];
+    }
+  });
+  
+  // Diet-based supplements
+  const dietSupplements: Record<string, number> = {
+    'vegan': 2, // B12, Iron
+    'vegetarian': 1, // B12
+    'keto': 1, // Electrolytes
+    'paleo': 1, // Vitamin D
+  };
+  
+  dietStyles.forEach(diet => {
+    if (dietSupplements[diet]) {
+      baseSupplementCount += dietSupplements[diet];
+    }
+  });
+  
+  return Math.min(baseSupplementCount, 8); // Cap at 8 supplements
+};
+
+// Get flagged ingredients based on health conditions
+export const getFlaggedIngredients = (healthConditions: string[] = []): string[] => {
+  const flaggedIngredients: string[] = [];
+  
+  const conditionFlags: Record<string, string[]> = {
+    'diabetes': ['high fructose corn syrup', 'sugar', 'glucose', 'sucrose', 'dextrose'],
+    'hypertension': ['sodium', 'salt', 'monosodium glutamate', 'sodium chloride'],
+    'heart_disease': ['trans fats', 'partially hydrogenated oils', 'saturated fats'],
+    'celiac_disease': ['wheat', 'gluten', 'barley', 'rye', 'malt'],
+    'lactose_intolerance': ['lactose', 'milk', 'dairy', 'whey', 'casein'],
+    'kidney_disease': ['phosphorus', 'potassium', 'sodium'],
+    'gout': ['purines', 'fructose', 'alcohol'],
+    'ibs': ['artificial sweeteners', 'sorbitol', 'mannitol', 'xylitol'],
+  };
+  
+  healthConditions.forEach(condition => {
+    if (conditionFlags[condition]) {
+      flaggedIngredients.push(...conditionFlags[condition]);
+    }
+  });
+  
+  return [...new Set(flaggedIngredients)]; // Remove duplicates
+};
+
 // Determine priority micronutrients based on profile
 export const getPriorityMicronutrients = (
   age: number,
@@ -122,58 +216,89 @@ export const getPriorityMicronutrients = (
   healthConditions: string[],
   dietStyles: string[]
 ): string[] => {
-  const priorities: string[] = [];
-
-  // Age-based priorities
+  const micronutrients: string[] = [];
+  
+  // Base micronutrients for everyone
+  micronutrients.push('Vitamin D', 'Vitamin B12', 'Omega-3');
+  
+  // Age-based micronutrients
   if (age > 50) {
-    priorities.push('vitamin_b12', 'vitamin_d', 'calcium');
+    micronutrients.push('Calcium', 'Vitamin B6');
   }
   if (age > 65) {
-    priorities.push('vitamin_b6', 'folate');
+    micronutrients.push('Vitamin K', 'Magnesium');
   }
-
-  // Gender-based priorities
+  
+  // Gender-based micronutrients
   if (gender === 'female') {
-    priorities.push('iron', 'folate', 'calcium');
+    if (age < 50) {
+      micronutrients.push('Iron', 'Folate');
+    } else {
+      micronutrients.push('Calcium', 'Vitamin K');
+    }
   }
-
-  // Health condition priorities
-  if (healthConditions.includes('inflammation')) {
-    priorities.push('omega_3', 'vitamin_c', 'vitamin_e');
-  }
-  if (healthConditions.includes('diabetes')) {
-    priorities.push('chromium', 'magnesium', 'alpha_lipoic_acid');
-  }
-  if (healthConditions.includes('digestive_issues')) {
-    priorities.push('fiber', 'probiotics', 'vitamin_d');
-  }
-
-  // Diet-based priorities
-  if (dietStyles.includes('vegan')) {
-    priorities.push('vitamin_b12', 'iron', 'vitamin_d', 'omega_3');
-  }
-  if (dietStyles.includes('keto')) {
-    priorities.push('electrolytes', 'magnesium', 'potassium');
-  }
-
-  return [...new Set(priorities)]; // Remove duplicates
+  
+  // Health condition-based micronutrients
+  const conditionMicronutrients: Record<string, string[]> = {
+    'diabetes': ['Chromium', 'Alpha-lipoic acid', 'Vitamin C'],
+    'hypertension': ['Magnesium', 'Potassium', 'CoQ10'],
+    'heart_disease': ['Omega-3', 'CoQ10', 'Vitamin E'],
+    'osteoporosis': ['Calcium', 'Vitamin D', 'Vitamin K'],
+    'anemia': ['Iron', 'Vitamin B12', 'Folate'],
+    'thyroid_disorders': ['Selenium', 'Iodine', 'Zinc'],
+    'depression': ['Omega-3', 'Vitamin D', 'B-complex'],
+    'anxiety': ['Magnesium', 'B-complex', 'Vitamin C'],
+  };
+  
+  healthConditions.forEach(condition => {
+    if (conditionMicronutrients[condition]) {
+      micronutrients.push(...conditionMicronutrients[condition]);
+    }
+  });
+  
+  // Diet-based micronutrients
+  const dietMicronutrients: Record<string, string[]> = {
+    'vegan': ['Vitamin B12', 'Iron', 'Zinc', 'Vitamin D'],
+    'vegetarian': ['Vitamin B12', 'Iron', 'Zinc'],
+    'keto': ['Electrolytes', 'Magnesium', 'Potassium'],
+    'paleo': ['Vitamin D', 'Calcium'],
+  };
+  
+  dietStyles.forEach(diet => {
+    if (dietMicronutrients[diet]) {
+      micronutrients.push(...dietMicronutrients[diet]);
+    }
+  });
+  
+  // Remove duplicates and limit to top 8
+  return [...new Set(micronutrients)].slice(0, 8);
 };
 
-// Calculate complete nutrition targets
+// Calculate complete nutrition targets including hydration and supplements
 export const calculateNutritionTargets = (profileData: {
-  weight: number;
-  height: number;
   age: number;
   gender: string;
+  weight: number;
+  height_cm?: number;
+  height_feet?: number;
+  height_inches?: number;
   activityLevel: string;
   weightGoalType?: string;
-  weightGoalTimeline?: string;
-  healthConditions: string[];
-  dietStyles: string[];
+  timeline?: string;
+  healthConditions?: string[];
+  dietStyles?: string[];
   dailyLifestyle?: string;
   exerciseFrequency?: string;
-}): NutritionTargets => {
-  const bmr = calculateBMR(profileData.weight, profileData.height, profileData.age, profileData.gender);
+  weightUnit?: string;
+}): EnhancedNutritionTargets => {
+  // Calculate height in cm
+  let heightCm = profileData.height_cm || 0;
+  if (!heightCm && profileData.height_feet && profileData.height_inches) {
+    heightCm = (profileData.height_feet * 12 + profileData.height_inches) * 2.54;
+  }
+  
+  // Calculate BMR and TDEE
+  const bmr = calculateBMR(profileData.weight, heightCm, profileData.age, profileData.gender);
   const activityMultiplier = getActivityMultiplier(
     profileData.activityLevel,
     profileData.dailyLifestyle,
@@ -181,31 +306,50 @@ export const calculateNutritionTargets = (profileData: {
   );
   const tdee = bmr * activityMultiplier;
   
-  const calories = calculateCalorieTarget(
-    tdee,
-    profileData.weightGoalType || 'maintain_weight',
-    profileData.weightGoalTimeline
-  );
+  // Calculate calorie target
+  const calories = calculateCalorieTarget(tdee, profileData.weightGoalType || 'maintain', profileData.timeline);
   
+  // Calculate macro targets
   const macros = calculateMacroTargets(
     calories,
-    profileData.weightGoalType || 'maintain_weight',
-    profileData.healthConditions,
+    profileData.weightGoalType || 'maintain',
+    profileData.healthConditions || [],
     profileData.activityLevel
   );
   
-  const priorityMicronutrients = getPriorityMicronutrients(
+  // Calculate hydration target
+  const hydrationMl = calculateHydrationTarget(profileData.weight, profileData.weightUnit);
+  
+  // Calculate supplement target
+  const supplementCount = calculateSupplementTarget(
     profileData.age,
     profileData.gender,
     profileData.healthConditions,
     profileData.dietStyles
   );
-
+  
+  // Get priority micronutrients
+  const priorityMicronutrients = getPriorityMicronutrients(
+    profileData.age,
+    profileData.gender,
+    profileData.healthConditions || [],
+    profileData.dietStyles || []
+  );
+  
+  // Get flagged ingredients
+  const flaggedIngredients = getFlaggedIngredients(profileData.healthConditions);
+  
   return {
     bmr,
     tdee,
     calories,
-    ...macros,
-    priorityMicronutrients
+    protein: macros.protein,
+    carbs: macros.carbs,
+    fat: macros.fat,
+    fiber: macros.fiber,
+    hydrationMl,
+    supplementCount,
+    priorityMicronutrients,
+    flaggedIngredients,
   };
 };

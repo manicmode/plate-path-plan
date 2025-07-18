@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_nutrition_targets: {
+        Row: {
+          calculated_at: string
+          calories: number | null
+          carbs: number | null
+          created_at: string
+          fat: number | null
+          fiber: number | null
+          flagged_ingredients: string[] | null
+          hydration_ml: number | null
+          id: string
+          priority_micronutrients: string[] | null
+          profile_version: number | null
+          protein: number | null
+          supplement_count: number | null
+          target_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fat?: number | null
+          fiber?: number | null
+          flagged_ingredients?: string[] | null
+          hydration_ml?: number | null
+          id?: string
+          priority_micronutrients?: string[] | null
+          profile_version?: number | null
+          protein?: number | null
+          supplement_count?: number | null
+          target_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fat?: number | null
+          fiber?: number | null
+          flagged_ingredients?: string[] | null
+          hydration_ml?: number | null
+          id?: string
+          priority_micronutrients?: string[] | null
+          profile_version?: number | null
+          protein?: number | null
+          supplement_count?: number | null
+          target_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_recognitions: {
         Row: {
           confidence_scores: number[] | null

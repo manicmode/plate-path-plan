@@ -212,18 +212,31 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         if (weight && height && age) {
           nutritionTargets = calculateNutritionTargets({
             weight,
-            height,
+            height_cm: formData.heightUnit === 'cm' ? parseInt(formData.heightCm) : undefined,
+            height_feet: formData.heightUnit === 'ft' ? parseInt(formData.heightFeet) : undefined,
+            height_inches: formData.heightUnit === 'ft' ? parseInt(formData.heightInches) : undefined,
             age,
             gender: formData.gender,
             activityLevel: formData.activityLevel,
             weightGoalType: formData.weightGoalType,
-            weightGoalTimeline: formData.weightGoalTimeline,
+            timeline: formData.weightGoalTimeline,
             healthConditions: formData.healthConditions,
             dietStyles: formData.dietStyles,
             dailyLifestyle: formData.dailyLifestyle,
             exerciseFrequency: formData.exerciseFrequency,
+            weightUnit: formData.weightUnit,
           });
           console.log('Calculated nutrition targets:', nutritionTargets);
+          
+          // Store daily nutrition targets
+          try {
+            await supabase.functions.invoke('calculate-daily-targets', {
+              body: { userId: user.id }
+            });
+            console.log('Daily nutrition targets stored successfully');
+          } catch (targetError) {
+            console.error('Error storing daily targets:', targetError);
+          }
         }
       }
 
