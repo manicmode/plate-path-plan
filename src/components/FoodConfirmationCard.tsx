@@ -6,13 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
+import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus, ChevronDown, ChevronUp, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
 import { ManualIngredientEntry } from './camera/ManualIngredientEntry';
 import { useIngredientAlert } from '@/hooks/useIngredientAlert';
 import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FoodItem {
   id?: string;
@@ -58,6 +61,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isChecked, setIsChecked] = useState(false);
   const [showManualIngredientEntry, setShowManualIngredientEntry] = useState(false);
   const [manualIngredients, setManualIngredients] = useState('');
+  const [qualityData, setQualityData] = useState<any>(null);
+  const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
+  const [showQualityDetails, setShowQualityDetails] = useState(false);
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
@@ -143,13 +149,98 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return flags;
   };
 
+  // Meal Quality Evaluation Functions
+  const evaluateMealQuality = async (nutritionLogId: string) => {
+    if (!nutritionLogId) return;
+    
+    setIsEvaluatingQuality(true);
+    try {
+      console.log('Evaluating meal quality for nutrition log:', nutritionLogId);
+      
+      const { data, error } = await supabase.functions.invoke('evaluate-meal-quality', {
+        body: { nutrition_log_id: nutritionLogId }
+      });
+
+      if (error) {
+        console.error('Error evaluating meal quality:', error);
+        return;
+      }
+
+      console.log('Meal quality evaluation result:', data);
+      setQualityData(data);
+      
+      // Show toast if score is particularly good or concerning
+      if (data.quality_score >= 85) {
+        toast({
+          title: "🌟 Excellent Food Choice!",
+          description: `Quality score: ${data.quality_score}/100 - ${data.quality_verdict}`,
+          duration: 4000,
+        });
+      } else if (data.quality_score < 50) {
+        toast({
+          title: "⚠️ Consider Healthier Options",
+          description: `Quality score: ${data.quality_score}/100 - Consider the flagged ingredients`,
+          duration: 4000,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to evaluate meal quality:', error);
+    } finally {
+      setIsEvaluatingQuality(false);
+    }
+  };
+
+  const getProcessingLevelBadge = (level: string) => {
+    switch (level) {
+      case 'whole':
+        return { label: 'Whole Food', color: 'bg-green-500', textColor: 'text-white' };
+      case 'minimally_processed':
+        return { label: 'Minimally Processed', color: 'bg-green-400', textColor: 'text-white' };
+      case 'processed':
+        return { label: 'Processed', color: 'bg-yellow-500', textColor: 'text-white' };
+      case 'ultra_processed':
+        return { label: 'Ultra-Processed', color: 'bg-red-500', textColor: 'text-white' };
+      default:
+        return { label: 'Unknown', color: 'bg-gray-400', textColor: 'text-white' };
+    }
+  };
+
+  const getQualityScoreColor = (score: number) => {
+    if (score >= 85) return 'text-green-600';
+    if (score >= 70) return 'text-blue-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
   const handleConfirm = async () => {
     setIsConfirming(true);
     
     // Success animation delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
+    // Call the onConfirm with adjusted food - this should create the nutrition log
     onConfirm(adjustedFood);
+    
+    // Evaluate meal quality after logging
+    // Note: We need the nutrition_log_id, which should be returned from onConfirm
+    // For now, we'll simulate this - in a real implementation, onConfirm should return the created log ID
+    setTimeout(async () => {
+      // This is a temporary solution - in production, onConfirm should return the nutrition log ID
+      try {
+        const { data: recentLogs, error } = await supabase
+          .from('nutrition_logs')
+          .select('id')
+          .eq('food_name', adjustedFood.name)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (recentLogs && recentLogs.length > 0) {
+          await evaluateMealQuality(recentLogs[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to find recent nutrition log for quality evaluation:', error);
+      }
+    }, 1000);
     
     // Show success toast with animation
     toast({
@@ -441,44 +532,151 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsContent>
               
               <TabsContent value="health" className="space-y-4 mt-4">
-                {/* Health Score Badge - Improved Design */}
-                <div className="text-center">
-                  <Badge className={`${healthBadge.bgColor} text-white font-medium px-4 py-2 text-sm rounded-full inline-flex items-center space-x-2`}>
-                    <span>{healthBadge.emoji}</span>
-                    <span>{healthBadge.label}</span>
-                    <span className="text-xs">({healthScore}/100)</span>
-                  </Badge>
-                </div>
-                
-                {/* Health Flags - Improved Layout */}
-                <div className="space-y-2">
-                  {healthFlags.length > 0 ? (
-                    healthFlags.map((flag, index) => (
-                      <div 
-                        key={index}
-                        className={`flex items-center space-x-3 p-3 rounded-lg ${
-                          flag.positive 
-                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
-                            : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
-                        }`}
-                      >
-                        <span className="text-lg">{flag.emoji}</span>
-                        <span className={`text-sm font-medium ${
-                          flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
-                        }`}>
-                          {flag.label}
-                        </span>
+                {/* Meal Quality Section */}
+                {qualityData ? (
+                  <div className="space-y-4">
+                    {/* Quality Score Display */}
+                    <div className="text-center">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                          <Award className="h-6 w-6 text-purple-600" />
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Meal Quality Analysis
+                          </h3>
+                        </div>
+                        
+                        {/* Score Circle and Verdict */}
+                        <div className="flex items-center justify-center gap-4">
+                          <div className="relative w-20 h-20">
+                            <Progress 
+                              value={qualityData.quality_score} 
+                              className="w-20 h-20 rounded-full"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={`text-xl font-bold ${getQualityScoreColor(qualityData.quality_score)}`}>
+                                {qualityData.quality_score}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <Badge 
+                              className={`text-sm font-medium px-3 py-1 ${
+                                qualityData.quality_verdict === 'Excellent' ? 'bg-green-500 text-white' :
+                                qualityData.quality_verdict === 'Good' ? 'bg-blue-500 text-white' :
+                                qualityData.quality_verdict === 'Moderate' ? 'bg-yellow-500 text-white' :
+                                'bg-red-500 text-white'
+                              }`}
+                            >
+                              {qualityData.quality_verdict}
+                            </Badge>
+                            {qualityData.processing_level && (
+                              <div className="mt-2">
+                                <Badge 
+                                  className={`text-xs ${getProcessingLevelBadge(qualityData.processing_level).color} ${getProcessingLevelBadge(qualityData.processing_level).textColor}`}
+                                >
+                                  {getProcessingLevelBadge(qualityData.processing_level).label}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                        No specific health flags detected
-                      </span>
                     </div>
-                  )}
-                </div>
+
+                    {/* Quality Reasons - Expandable */}
+                    {qualityData.quality_reasons && qualityData.quality_reasons.length > 0 && (
+                      <Collapsible open={showQualityDetails} onOpenChange={setShowQualityDetails}>
+                        <CollapsibleTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-between"
+                          >
+                            <span>Quality Analysis Details</span>
+                            {showQualityDetails ? 
+                              <ChevronUp className="h-4 w-4" /> : 
+                              <ChevronDown className="h-4 w-4" />
+                            }
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 mt-3">
+                          {qualityData.quality_reasons.map((reason: string, index: number) => (
+                            <div 
+                              key={index}
+                              className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
+                                reason.includes('High') && (reason.includes('protein') || reason.includes('fiber')) ||
+                                reason.includes('Excellent') || reason.includes('Good') || reason.includes('Whole food')
+                                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                                  : reason.includes('Low') || reason.includes('Contains') || reason.includes('High sodium') || reason.includes('High sugar')
+                                  ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                                  : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200'
+                              }`}
+                            >
+                              <span className="text-base">
+                                {reason.includes('High') && (reason.includes('protein') || reason.includes('fiber')) ||
+                                 reason.includes('Excellent') || reason.includes('Good') || reason.includes('Whole food') ? '✅' :
+                                 reason.includes('Low') || reason.includes('Contains') || reason.includes('High sodium') || reason.includes('High sugar') ? '⚠️' : 'ℹ️'}
+                              </span>
+                              <span className="font-medium">{reason}</span>
+                            </div>
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* Loading or Initial State */}
+                    {isEvaluatingQuality ? (
+                      <div className="text-center py-6">
+                        <div className="animate-spin h-8 w-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Analyzing meal quality...
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Fallback to original health score display */}
+                        <div className="text-center">
+                          <Badge className={`${healthBadge.bgColor} text-white font-medium px-4 py-2 text-sm rounded-full inline-flex items-center space-x-2`}>
+                            <span>{healthBadge.emoji}</span>
+                            <span>{healthBadge.label}</span>
+                            <span className="text-xs">({healthScore}/100)</span>
+                          </Badge>
+                        </div>
+                        
+                        {/* Health Flags - Improved Layout */}
+                        <div className="space-y-2">
+                          {healthFlags.length > 0 ? (
+                            healthFlags.map((flag, index) => (
+                              <div 
+                                key={index}
+                                className={`flex items-center space-x-3 p-3 rounded-lg ${
+                                  flag.positive 
+                                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                                    : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800'
+                                }`}
+                              >
+                                <span className="text-lg">{flag.emoji}</span>
+                                <span className={`text-sm font-medium ${
+                                  flag.positive ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'
+                                }`}>
+                                  {flag.label}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="flex items-center space-x-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                                No specific health flags detected
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
               </TabsContent>
               
               <TabsContent value="ingredients" className="space-y-4 mt-4">
@@ -662,6 +860,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         onClose={() => setIsEditOpen(false)}
         onSave={handleEditSave}
         foodItem={currentFoodItem}
+      />
+
+      {/* Manual Ingredient Entry */}
+      <ManualIngredientEntry
+        isOpen={showManualIngredientEntry}
+        onClose={() => setShowManualIngredientEntry(false)}
+        onIngredientsSubmit={handleManualIngredientSubmit}
+        productName={currentFoodItem?.name || ''}
       />
     </>
   );
