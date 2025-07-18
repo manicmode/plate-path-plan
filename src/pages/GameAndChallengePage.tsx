@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
 import { RewardsProvider } from '@/contexts/RewardsContext';
 import { ChatProvider } from '@/contexts/ChatContext';
@@ -12,6 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Trophy, 
   Crown, 
@@ -31,7 +34,9 @@ import {
   Plus,
   Filter,
   Sparkles,
-  CheckCircle
+  CheckCircle,
+  Menu,
+  X
 } from 'lucide-react';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
@@ -55,7 +60,6 @@ interface ChatMessage {
   isBot?: boolean;
 }
 
-// Mock data for demonstration
 const mockLeaderboard = [
   { 
     id: 1, 
@@ -202,20 +206,44 @@ export default function GameAndChallengePage() {
 
 function GameAndChallengeContent() {
   const { challenges, microChallenges, nudgeFriend } = useChallenge();
+  const isMobile = useIsMobile();
+  const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
+    enableLazyLoading: true,
+    memoryThreshold: 0.7,
+    storageQuotaCheck: true
+  });
+
   const [activeSection, setActiveSection] = useState('ranking');
   const [chatMessage, setChatMessage] = useState('');
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(isMobile);
   const [messages, setMessages] = useState(mockChatMessages);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   const [showRewardBox, setShowRewardBox] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Use the scroll-to-top hook
   useScrollToTop();
 
+  // Optimize data for mobile
+  const optimizedLeaderboard = optimizeForMobile(mockLeaderboard);
+  const optimizedFriends = optimizeForMobile(mockFriends);
+  const optimizedHallOfFame = optimizeForMobile(mockHallOfFame);
+
+  // Mobile pull-to-refresh
+  const handleRefresh = async () => {
+    if (!isMobile) return;
+    setIsRefreshing(true);
+    // Simulate refresh
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
+  };
+
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
+    setShowMobileMenu(false);
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -243,44 +271,107 @@ function GameAndChallengeContent() {
 
   const quickEmojis = ['😆', '🔥', '👏', '🥦', '🍩', '💪', '🚀', '⭐'];
 
+  const navigationItems = [
+    { id: 'ranking', label: 'Ranking', icon: Trophy },
+    { id: 'challenges', label: 'Challenges', icon: Target },
+    { id: 'chat', label: 'Chat', icon: MessageCircle },
+    { id: 'winners', label: 'Winners', icon: Crown },
+    { id: 'hall-of-fame', label: 'Hall of Fame', icon: Star }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
-      {/* Mystery Boxes */}
-      <MysteryBox position="top-right" />
-      <MysteryBox position="bottom-left" />
-      {/* Navigation */}
-      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-center space-x-4 flex-wrap">
-            {[
-              { id: 'ranking', label: 'Ranking', icon: Trophy },
-              { id: 'challenges', label: 'Challenges', icon: Target },
-              { id: 'chat', label: 'Chat', icon: MessageCircle },
-              { id: 'winners', label: 'Winners', icon: Crown },
-              { id: 'hall-of-fame', label: 'Hall of Fame', icon: Star }
-            ].map(({ id, label, icon: Icon }) => (
-              <Button
-                key={id}
-                variant={activeSection === id ? "default" : "ghost"}
-                onClick={() => scrollToSection(id)}
-                className="flex items-center gap-2 transition-all duration-300"
-                size="sm"
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Button>
-            ))}
-          </div>
+      {/* Mystery Boxes - Hidden on mobile for performance */}
+      {!isMobile && (
+        <>
+          <MysteryBox position="top-right" />
+          <MysteryBox position="bottom-left" />
+        </>
+      )}
+
+      {/* Mobile-Optimized Navigation */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
+          {isMobile ? (
+            // Mobile Tab Navigation
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center justify-between">
+                <h1 className="text-lg font-bold">Game & Challenge</h1>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  className="h-8 w-8 p-0"
+                >
+                  {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </Button>
+              </div>
+              
+              {showMobileMenu && (
+                <div className="grid grid-cols-2 gap-2 pb-2">
+                  {navigationItems.map(({ id, label, icon: Icon }) => (
+                    <Button
+                      key={id}
+                      variant={activeSection === id ? "default" : "ghost"}
+                      onClick={() => scrollToSection(id)}
+                      className="flex items-center gap-2 h-12 text-xs"
+                      size="sm"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="truncate">{label}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Mobile horizontal scroll tabs */}
+              <ScrollArea className="w-full">
+                <div className="flex space-x-2 pb-2">
+                  {navigationItems.map(({ id, label, icon: Icon }) => (
+                    <Button
+                      key={id}
+                      variant={activeSection === id ? "default" : "ghost"}
+                      onClick={() => scrollToSection(id)}
+                      className="flex items-center gap-1 whitespace-nowrap h-8 px-3 text-xs"
+                      size="sm"
+                    >
+                      <Icon className="h-3 w-3" />
+                      {isMobile ? '' : label}
+                    </Button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          ) : (
+            // Desktop Navigation
+            <div className="flex justify-center space-x-4 flex-wrap">
+              {navigationItems.map(({ id, label, icon: Icon }) => (
+                <Button
+                  key={id}
+                  variant={activeSection === id ? "default" : "ghost"}
+                  onClick={() => scrollToSection(id)}
+                  className="flex items-center gap-2 transition-all duration-300"
+                  size="sm"
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+          )}
           
-          {/* Sort Controls */}
+          {/* Sort Controls - Responsive */}
           {activeSection === 'ranking' && (
-            <div className="flex items-center justify-center gap-4 mt-4">
+            <div className={cn(
+              "flex items-center gap-2 mt-2",
+              isMobile ? "justify-between" : "justify-center gap-4"
+            )}>
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
-                <span className="text-sm font-medium">Sort by:</span>
+                <span className={cn("font-medium", isMobile ? "text-xs" : "text-sm")}>Sort:</span>
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className={cn(isMobile ? "w-32 h-8 text-xs" : "w-40")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
@@ -294,37 +385,61 @@ function GameAndChallengeContent() {
         </div>
       </div>
 
+      {/* Pull to Refresh Indicator */}
+      {isRefreshing && isMobile && (
+        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm animate-pulse">
+          Refreshing...
+        </div>
+      )}
+
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 space-y-12">
+      <div className={cn(
+        "container mx-auto space-y-6 sm:space-y-12",
+        isMobile ? "px-2 py-4" : "px-4 py-8"
+      )}>
         
         {/* Ranking Arena Section */}
         <section id="ranking" className="animate-fade-in">
           <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-3xl font-bold flex items-center gap-3">
-                  <Trophy className="h-8 w-8 text-yellow-500" />
+            <CardHeader className={cn(
+              "bg-gradient-to-r from-primary/10 to-secondary/10",
+              isMobile ? "p-4" : "p-6"
+            )}>
+              <div className={cn(
+                "flex items-center",
+                isMobile ? "flex-col space-y-2" : "justify-between"
+              )}>
+                <CardTitle className={cn(
+                  "font-bold flex items-center gap-2",
+                  isMobile ? "text-xl text-center" : "text-3xl gap-3"
+                )}>
+                  <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
                   Live Rankings Arena
-                  <Trophy className="h-8 w-8 text-yellow-500" />
+                  <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
                 </CardTitle>
                 
                 {/* Create Challenge Button */}
                 <Button 
                   onClick={() => setShowChallengeModal(true)}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg"
+                  className={cn(
+                    "flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg",
+                    isMobile ? "h-8 px-3 text-xs w-full" : ""
+                  )}
+                  size={isMobile ? "sm" : "default"}
                 >
                   <Plus className="h-4 w-4" />
-                  Create Challenge
+                  <span className={isMobile ? "text-xs" : ""}>Create Challenge</span>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {mockLeaderboard.map((user, index) => (
+            <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
+              <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
+                {optimizedLeaderboard.map((user, index) => (
                   <div
                     key={user.id}
                     className={cn(
-                      "relative p-4 rounded-xl border-2 transition-all duration-500 hover:scale-[1.02]",
+                      "relative rounded-xl border-2 transition-all duration-500",
+                      isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
                       user.isCurrentUser 
                         ? "border-primary bg-primary/5 shadow-lg shadow-primary/20 ring-2 ring-primary/30" 
                         : "border-muted bg-muted/30 hover:border-primary/40"
@@ -336,9 +451,18 @@ function GameAndChallengeContent() {
                       </div>
                     )}
                     
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="text-2xl font-bold text-muted-foreground w-8">
+                    <div className={cn(
+                      "flex items-center",
+                      isMobile ? "flex-col space-y-2" : "justify-between"
+                    )}>
+                      <div className={cn(
+                        "flex items-center",
+                        isMobile ? "w-full justify-between" : "gap-4"
+                      )}>
+                        <div className={cn(
+                          "font-bold text-muted-foreground",
+                          isMobile ? "text-lg w-8" : "text-2xl w-8"
+                        )}>
                           #{user.rank}
                         </div>
                         
@@ -349,51 +473,81 @@ function GameAndChallengeContent() {
                           weeklyProgress={user.weeklyProgress}
                           dailyStreak={user.dailyStreak}
                           weeklyStreak={user.weeklyStreak}
-                          size="md"
+                          size={isMobile ? "sm" : "md"}
                         />
                         
-                        {/* Additional Progress Stats */}
-                        <div className="flex items-center gap-3 text-sm">
-                          <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                            <CheckCircle className="h-3 w-3 text-green-600" />
-                            <span className="text-green-700 dark:text-green-400 font-medium">
-                              {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
-                            </span>
+                        {!isMobile && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                              <span className="text-green-700 dark:text-green-400 font-medium">
+                                {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              Score: {user.score}
+                            </Badge>
                           </div>
-                          <Badge variant="outline" className="text-xs">
-                            Score: {user.score}
-                          </Badge>
-                        </div>
+                        )}
                       </div>
                       
-                      <div className="flex items-center gap-6">
-                        {/* Trophies */}
-                        <div className="flex gap-2">
-                          <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
-                            🥇 {user.gold}
-                          </Badge>
-                          <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
-                            🥈 {user.silver}
-                          </Badge>
-                          <Badge variant="secondary" className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
-                            🥉 {user.bronze}
-                          </Badge>
-                        </div>
-                        
-                        {/* Improvement Indicator */}
-                        <div className="flex items-center gap-2">
-                          {user.improvement > 0 ? (
+                      <div className={cn(
+                        "flex items-center",
+                        isMobile ? "w-full justify-between text-xs" : "gap-6"
+                      )}>
+                        {/* Mobile: Compact display */}
+                        {isMobile ? (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs px-1">
+                              🥇{user.gold}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs px-1">
+                              Score: {user.score}
+                            </Badge>
                             <div className="flex items-center gap-1 text-green-600">
-                              <TrendingUp className="h-4 w-4" />
-                              <span className="text-sm font-medium">+{user.improvement}</span>
+                              {user.improvement > 0 ? (
+                                <>
+                                  <TrendingUp className="h-3 w-3" />
+                                  <span className="text-xs">+{user.improvement}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <TrendingDown className="h-3 w-3" />
+                                  <span className="text-xs">{user.improvement}</span>
+                                </>
+                              )}
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-red-500">
-                              <TrendingDown className="h-4 w-4" />
-                              <span className="text-sm font-medium">{user.improvement}</span>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Desktop: Full display */}
+                            <div className="flex gap-2">
+                              <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
+                                🥇 {user.gold}
+                              </Badge>
+                              <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
+                                🥈 {user.silver}
+                              </Badge>
+                              <Badge variant="secondary" className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                                🥉 {user.bronze}
+                              </Badge>
                             </div>
-                          )}
-                        </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {user.improvement > 0 ? (
+                                <div className="flex items-center gap-1 text-green-600">
+                                  <TrendingUp className="h-4 w-4" />
+                                  <span className="text-sm font-medium">+{user.improvement}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-red-500">
+                                  <TrendingDown className="h-4 w-4" />
+                                  <span className="text-sm font-medium">{user.improvement}</span>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -403,249 +557,418 @@ function GameAndChallengeContent() {
           </Card>
         </section>
 
-        {/* Active Challenges Section */}
-        <section id="challenges" className="animate-fade-in">
-          <Card className="overflow-hidden border-2 border-green-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-3xl font-bold flex items-center gap-3">
-                  <Target className="h-8 w-8 text-green-600" />
-                  🏃‍♂️ Active Challenges
-                  <Target className="h-8 w-8 text-green-600" />
-                </CardTitle>
-                
-                <Button 
-                  onClick={() => setShowChallengeModal(true)}
-                  className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg"
-                >
-                  <Plus className="h-4 w-4" />
-                  New Challenge
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Join ongoing challenges or create your own mini-competition!
-              </p>
-            </CardHeader>
-            
-            <CardContent className="p-6">
-              {challenges.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {challenges.map((challenge) => (
-                    <ChallengeCard 
-                      key={challenge.id} 
-                      challenge={challenge} 
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Target className="h-10 w-10 text-green-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Be the first to create a challenge and inspire others to join!
-                  </p>
+        {/* Mobile-Optimized Tabs for Other Sections */}
+        {isMobile ? (
+          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-12">
+              <TabsTrigger value="challenges" className="text-xs">
+                <Target className="h-3 w-3 mr-1" />
+                Challenges
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="text-xs">
+                <MessageCircle className="h-3 w-3 mr-1" />
+                Chat
+              </TabsTrigger>
+              <TabsTrigger value="winners" className="text-xs">
+                <Crown className="h-3 w-3 mr-1" />
+                Winners
+              </TabsTrigger>
+              <TabsTrigger value="hall-of-fame" className="text-xs">
+                <Star className="h-3 w-3 mr-1" />
+                Fame
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="challenges" className="mt-4">
+              {/* Mobile-optimized challenges section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <Target className="h-5 w-5 text-green-600" />
+                    Active Challenges
+                  </h2>
                   <Button 
                     onClick={() => setShowChallengeModal(true)}
-                    className="flex items-center gap-2"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
                   >
-                    <Plus className="h-4 w-4" />
-                    Create First Challenge
+                    <Plus className="h-3 w-3 mr-1" />
+                    New
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Micro-Challenges Section */}
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-6 w-6 text-yellow-500" />
-                <h2 className="text-2xl font-bold">⚡ Micro-Challenges</h2>
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
-                  Quick & Fun
-                </Badge>
-              </div>
-              
-              <Button 
-                onClick={() => setShowMicroChallengeModal(true)}
-                size="sm"
-                className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg"
-              >
-                <Sparkles className="h-4 w-4" />
-                Create Micro-Challenge
-              </Button>
-            </div>
-            
-            {microChallenges.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-4">
-                {microChallenges.map((challenge) => (
-                  <MicroChallengeCard 
-                    key={challenge.id} 
-                    challenge={challenge}
-                    onNudgeFriend={nudgeFriend}
-                  />
-                ))}
-              </div>
-            ) : (
-              <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
-                <CardContent className="text-center py-8">
-                  <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="h-8 w-8 text-yellow-500" />
+                
+                {challenges.length > 0 ? (
+                  <div className="space-y-3">
+                    {challenges.map((challenge) => (
+                      <ChallengeCard 
+                        key={challenge.id} 
+                        challenge={challenge} 
+                      />
+                    ))}
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No Micro-Challenges Yet</h3>
-                  <p className="text-muted-foreground mb-4 text-sm">
-                    Create quick 1-7 day challenges with friends for instant motivation!
+                ) : (
+                  <Card className="border-2 border-dashed border-green-300 dark:border-green-700">
+                    <CardContent className="text-center py-6">
+                      <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <h3 className="font-semibold mb-2">No Active Challenges</h3>
+                      <p className="text-muted-foreground text-sm mb-3">
+                        Create your first challenge!
+                      </p>
+                      <Button 
+                        onClick={() => setShowChallengeModal(true)}
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Challenge
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="chat" className="mt-4">
+              {/* Mobile-optimized chat */}
+              <Card className="h-[60vh] flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Group Chat
+                    <Badge variant="secondary" className="text-xs">Live</Badge>
+                  </CardTitle>
+                </CardHeader>
+                
+                <CardContent className="flex-1 flex flex-col p-0">
+                  <ScrollArea className="flex-1 p-3">
+                    <div className="space-y-3">
+                      {messages.map((msg) => (
+                        <div key={msg.id} className={cn(
+                          "p-2 rounded-lg text-sm",
+                          msg.isBot 
+                            ? "bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200 mx-auto text-center" 
+                            : "bg-muted/50"
+                        )}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-xs">{msg.user}</span>
+                            <span className="text-xs text-muted-foreground">{msg.time}</span>
+                          </div>
+                          <div className="text-sm">{msg.message}</div>
+                          {msg.reactions && msg.reactions.length > 0 && (
+                            <div className="flex gap-1 mt-2">
+                              {msg.reactions.map((reaction, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs h-5">
+                                  {reaction}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  
+                  {/* Sticky Mobile Chat Input */}
+                  <div className="p-3 border-t bg-background/95 backdrop-blur-sm">
+                    <div className="flex gap-1 mb-2 overflow-x-auto">
+                      {quickEmojis.map((emoji) => (
+                        <Button
+                          key={emoji}
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-sm flex-shrink-0"
+                          onClick={() => setChatMessage(chatMessage + emoji)}
+                        >
+                          {emoji}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Type message..."
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        className="text-sm"
+                      />
+                      <Button onClick={sendMessage} size="sm" className="h-10 w-10 p-0">
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="winners" className="mt-4">
+              <MonthlyTrophyPodium />
+            </TabsContent>
+
+            <TabsContent value="hall-of-fame" className="mt-4">
+              <HallOfFame champions={optimizedHallOfFame} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          // Desktop sections (existing code)
+          <>
+            {/* Active Challenges Section */}
+            <section id="challenges" className="animate-fade-in">
+              <Card className="overflow-hidden border-2 border-green-200 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-3xl font-bold flex items-center gap-3">
+                      <Target className="h-8 w-8 text-green-600" />
+                      🏃‍♂️ Active Challenges
+                      <Target className="h-8 w-8 text-green-600" />
+                    </CardTitle>
+                    
+                    <Button 
+                      onClick={() => setShowChallengeModal(true)}
+                      className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New Challenge
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Join ongoing challenges or create your own mini-competition!
                   </p>
+                </CardHeader>
+                
+                <CardContent className="p-6">
+                  {challenges.length > 0 ? (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {challenges.map((challenge) => (
+                        <ChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Target className="h-10 w-10 text-green-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Be the first to create a challenge and inspire others to join!
+                      </p>
+                      <Button 
+                        onClick={() => setShowChallengeModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create First Challenge
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {/* Micro-Challenges Section */}
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-yellow-500" />
+                    <h2 className="text-2xl font-bold">⚡ Micro-Challenges</h2>
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
+                      Quick & Fun
+                    </Badge>
+                  </div>
+                  
                   <Button 
                     onClick={() => setShowMicroChallengeModal(true)}
                     size="sm"
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                    className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg"
                   >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Start Your First Micro-Challenge
+                    <Sparkles className="h-4 w-4" />
+                    Create Micro-Challenge
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </section>
-
-        {/* Friends in the Arena Section */}
-        <section id="friends" className="animate-fade-in">
-          <FriendsArena friends={mockFriends} />
-        </section>
-
-        {/* Chat Window Panel */}
-        <section id="chat" className="animate-fade-in">
-          <Card className="overflow-hidden border-2 border-secondary/20 shadow-xl">
-            <CardHeader 
-              className="bg-gradient-to-r from-secondary/10 to-primary/10 cursor-pointer"
-              onClick={() => setIsChatCollapsed(!isChatCollapsed)}
-            >
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageCircle className="h-6 w-6 text-secondary" />
-                  Group Chat
-                  <Badge variant="secondary">Live</Badge>
                 </div>
-                {isChatCollapsed ? <ChevronDown /> : <ChevronUp />}
-              </CardTitle>
-            </CardHeader>
-            
-            {!isChatCollapsed && (
-              <CardContent className="p-0">
-                <ScrollArea className="h-80 p-4">
-                  <div className="space-y-4">
-                    {messages.map((msg) => (
-                      <div key={msg.id} className={cn(
-                        "p-3 rounded-lg max-w-[80%]",
-                        msg.isBot 
-                          ? "bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200 mx-auto text-center" 
-                          : "bg-muted/50"
-                      )}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-sm">{msg.user}</span>
-                          <span className="text-xs text-muted-foreground">{msg.time}</span>
-                        </div>
-                        <div className="text-sm">{msg.message}</div>
-                        {msg.reactions && msg.reactions.length > 0 && (
-                          <div className="flex gap-1 mt-2">
-                            {msg.reactions.map((reaction, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {reaction}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex gap-1 mt-2">
-                          {quickEmojis.slice(0, 4).map((emoji) => (
-                            <Button
-                              key={emoji}
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-xs hover:scale-110 transition-transform"
-                              onClick={() => addReaction(msg.id, emoji)}
-                            >
-                              {emoji}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
                 
-                <div className="p-4 border-t bg-muted/20">
-                  <div className="flex gap-2 mb-3">
-                    {quickEmojis.map((emoji) => (
-                      <Button
-                        key={emoji}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:scale-110 transition-transform"
-                        onClick={() => setChatMessage(chatMessage + emoji)}
-                      >
-                        {emoji}
-                      </Button>
+                {microChallenges.length > 0 ? (
+                  <div className="flex gap-4 overflow-x-auto pb-4">
+                    {microChallenges.map((challenge) => (
+                      <MicroChallengeCard 
+                        key={challenge.id} 
+                        challenge={challenge}
+                        onNudgeFriend={nudgeFriend}
+                      />
                     ))}
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Type your message..."
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    />
-                    <Button onClick={sendMessage} size="sm">
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        </section>
+                ) : (
+                  <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
+                    <CardContent className="text-center py-8">
+                      <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Sparkles className="h-8 w-8 text-yellow-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">No Micro-Challenges Yet</h3>
+                      <p className="text-muted-foreground mb-4 text-sm">
+                        Create quick 1-7 day challenges with friends for instant motivation!
+                      </p>
+                      <Button 
+                        onClick={() => setShowMicroChallengeModal(true)}
+                        size="sm"
+                        className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Start Your First Micro-Challenge
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </section>
 
-        {/* Podium of the Month Section */}
-        <section id="winners" className="animate-fade-in">
-          <MonthlyTrophyPodium />
-        </section>
+            {/* Friends in the Arena Section */}
+            <section id="friends" className="animate-fade-in">
+              <FriendsArena friends={optimizedFriends} />
+            </section>
 
-        {/* Hall of Fame Section */}
-        <section id="hall-of-fame" className="animate-fade-in">
-          <HallOfFame champions={mockHallOfFame} />
-        </section>
+            {/* Chat Window Panel */}
+            <section id="chat" className="animate-fade-in">
+              <Card className="overflow-hidden border-2 border-secondary/20 shadow-xl">
+                <CardHeader 
+                  className="bg-gradient-to-r from-secondary/10 to-primary/10 cursor-pointer"
+                  onClick={() => setIsChatCollapsed(!isChatCollapsed)}
+                >
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="h-6 w-6 text-secondary" />
+                      Group Chat
+                      <Badge variant="secondary">Live</Badge>
+                    </div>
+                    {isChatCollapsed ? <ChevronDown /> : <ChevronUp />}
+                  </CardTitle>
+                </CardHeader>
+                
+                {!isChatCollapsed && (
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-80 p-4">
+                      <div className="space-y-4">
+                        {messages.map((msg) => (
+                          <div key={msg.id} className={cn(
+                            "p-3 rounded-lg max-w-[80%]",
+                            msg.isBot 
+                              ? "bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200 mx-auto text-center" 
+                              : "bg-muted/50"
+                          )}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-sm">{msg.user}</span>
+                              <span className="text-xs text-muted-foreground">{msg.time}</span>
+                            </div>
+                            <div className="text-sm">{msg.message}</div>
+                            {msg.reactions && msg.reactions.length > 0 && (
+                              <div className="flex gap-1 mt-2">
+                                {msg.reactions.map((reaction, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {reaction}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex gap-1 mt-2">
+                              {quickEmojis.slice(0, 4).map((emoji) => (
+                                <Button
+                                  key={emoji}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-xs hover:scale-110 transition-transform"
+                                  onClick={() => addReaction(msg.id, emoji)}
+                                >
+                                  {emoji}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    
+                    <div className="p-4 border-t bg-muted/20">
+                      <div className="flex gap-2 mb-3">
+                        {quickEmojis.map((emoji) => (
+                          <Button
+                            key={emoji}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:scale-110 transition-transform"
+                            onClick={() => setChatMessage(chatMessage + emoji)}
+                          >
+                            {emoji}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Type your message..."
+                          value={chatMessage}
+                          onChange={(e) => setChatMessage(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        />
+                        <Button onClick={sendMessage} size="sm">
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            </section>
 
-        {/* Challenge Creation Modal */}
+            {/* Podium of the Month Section */}
+            <section id="winners" className="animate-fade-in">
+              <MonthlyTrophyPodium />
+            </section>
+
+            {/* Hall of Fame Section */}
+            <section id="hall-of-fame" className="animate-fade-in">
+              <HallOfFame champions={optimizedHallOfFame} />
+            </section>
+          </>
+        )}
+
+        {/* Challenge Creation Modals */}
         <ChallengeCreationModal
           open={showChallengeModal}
           onOpenChange={setShowChallengeModal}
-          friends={mockFriends}
+          friends={optimizedFriends}
         />
 
-        {/* Micro-Challenge Creation Modal */}
         <MicroChallengeCreationModal
           open={showMicroChallengeModal}
           onOpenChange={setShowMicroChallengeModal}
         />
 
-        {/* Mystery Reward Box Button */}
-        <div className="fixed bottom-6 right-6 z-40">
+        {/* Mobile-Optimized Mystery Reward Box */}
+        <div className={cn(
+          "fixed z-40",
+          isMobile 
+            ? "bottom-4 right-4" 
+            : "bottom-6 right-6"
+        )}>
           <Button
             onClick={() => setShowRewardBox(!showRewardBox)}
-            className="w-16 h-16 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-2xl animate-bounce"
+            className={cn(
+              "rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-2xl",
+              isMobile 
+                ? "w-12 h-12 animate-pulse" 
+                : "w-16 h-16 animate-bounce"
+            )}
             size="sm"
           >
-            <Gift className="h-8 w-8" />
+            <Gift className={cn(isMobile ? "h-6 w-6" : "h-8 w-8")} />
           </Button>
           
           {showRewardBox && (
-            <div className="absolute bottom-20 right-0 bg-background border rounded-lg p-4 shadow-xl animate-scale-in">
-              <h4 className="font-bold mb-2">🎁 Mystery Box</h4>
-              <p className="text-sm text-muted-foreground mb-3">
+            <div className={cn(
+              "absolute bg-background border rounded-lg p-3 shadow-xl animate-scale-in",
+              isMobile 
+                ? "bottom-14 right-0 w-48" 
+                : "bottom-20 right-0"
+            )}>
+              <h4 className={cn("font-bold mb-2", isMobile ? "text-sm" : "")}>🎁 Mystery Box</h4>
+              <p className={cn("text-muted-foreground mb-3", isMobile ? "text-xs" : "text-sm")}>
                 Complete daily challenges to unlock rewards!
               </p>
               <Button size="sm" className="w-full">

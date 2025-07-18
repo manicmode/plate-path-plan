@@ -1,40 +1,38 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Users, 
-  UserPlus, 
-  Flame, 
   TrendingUp, 
   TrendingDown, 
+  MessageCircle, 
+  UserPlus, 
+  Trophy,
+  Target,
+  Calendar,
+  Flame,
   Crown,
   Medal,
-  Award,
-  Contact,
-  Share2,
-  MessageCircle,
-  Phone,
-  Mail,
-  Search,
-  Download,
-  CheckCircle,
-  Clock
+  Star,
+  Zap,
+  Gift
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ProgressAvatar } from './ui/ProgressAvatar';
 
 interface Friend {
   id: number;
   nickname: string;
   avatar: string;
   rank: number;
-  trend: 'up' | 'down';
+  trend: 'up' | 'down' | 'stable';
   score: number;
   streak: number;
   weeklyProgress: number;
@@ -47,372 +45,322 @@ interface FriendsArenaProps {
 }
 
 export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [showContactsDialog, setShowContactsDialog] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [encouragedFriends, setEncouragedFriends] = useState<Set<number>>(new Set());
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
-  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
-  const encourageFriend = (friendId: number, friendName: string) => {
-    if (encouragedFriends.has(friendId)) return;
-    
-    setEncouragedFriends(prev => new Set([...prev, friendId]));
-    toast({
-      title: "Encouragement Sent! 🔥",
-      description: `Your motivation has been sent to ${friendName}`,
-    });
-    
-    // Reset after 30 seconds
-    setTimeout(() => {
-      setEncouragedFriends(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(friendId);
-        return newSet;
-      });
-    }, 30000);
-  };
-
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1: return <Crown className="h-4 w-4 text-yellow-500" />;
-      case 2: return <Medal className="h-4 w-4 text-gray-400" />;
-      case 3: return <Award className="h-4 w-4 text-amber-600" />;
-      default: return null;
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'up': return <TrendingUp className="h-4 w-4 text-green-500" />;
+      case 'down': return <TrendingDown className="h-4 w-4 text-red-500" />;
+      default: return <div className="h-4 w-4" />;
     }
   };
 
-  const getRankColor = (rank: number) => {
-    if (rank <= 3) return 'text-primary font-bold';
-    if (rank <= 5) return 'text-secondary font-semibold';
-    return 'text-muted-foreground';
-  };
-
-  const requestContacts = async () => {
-    setIsLoadingContacts(true);
-    try {
-      // Simulate contact access (in real app, this would use native APIs)
-      setTimeout(() => {
-        const mockContacts = [
-          { id: 1, name: "Sarah Johnson", phone: "+1234567890", email: "sarah@example.com", hasApp: true },
-          { id: 2, name: "Mike Chen", phone: "+1234567891", email: "mike@example.com", hasApp: false },
-          { id: 3, name: "Emma Davis", phone: "+1234567892", email: "emma@example.com", hasApp: true },
-          { id: 4, name: "Alex Wilson", phone: "+1234567893", email: "alex@example.com", hasApp: false },
-        ];
-        setContacts(mockContacts);
-        setIsLoadingContacts(false);
-        toast({
-          title: "Contacts Loaded! 📱",
-          description: `Found ${mockContacts.length} contacts`,
-        });
-      }, 2000);
-    } catch (error) {
-      setIsLoadingContacts(false);
-      toast({
-        title: "Access Denied",
-        description: "Unable to access contacts. Please check permissions.",
-        variant: "destructive",
-      });
+  const getOnlineStatus = (isOnline: boolean, lastSeen: string) => {
+    if (isOnline) {
+      return <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">🟢 Online</Badge>;
     }
+    return <span className="text-xs text-muted-foreground">Last seen {lastSeen}</span>;
   };
 
-  const inviteContact = (contact: any) => {
-    toast({
-      title: "Invitation Sent! 📤",
-      description: `Invited ${contact.name} to join the challenge`,
-    });
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return <Badge className="bg-yellow-500 text-yellow-900"><Crown className="h-3 w-3 mr-1" />1st</Badge>;
+    if (rank === 2) return <Badge className="bg-gray-400 text-gray-900"><Medal className="h-3 w-3 mr-1" />2nd</Badge>;
+    if (rank === 3) return <Badge className="bg-amber-600 text-amber-100"><Star className="h-3 w-3 mr-1" />3rd</Badge>;
+    return <Badge variant="outline">#{rank}</Badge>;
   };
 
   return (
     <Card className="overflow-hidden border-2 border-blue-200 shadow-xl">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Users className="h-6 w-6 text-blue-600" />
-            Friends in the Arena
-            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-              {friends.length} Active
-            </Badge>
-          </div>
-          <div className="flex gap-2">
-            <Dialog open={showContactsDialog} onOpenChange={setShowContactsDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Contact className="h-4 w-4" />
-                  Sync Contacts
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Contact className="h-5 w-5" />
-                    Sync Your Contacts
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Find friends who are already using the app and invite others to join the challenge!
-                  </p>
-                  
-                  <Button 
-                    onClick={requestContacts} 
-                    disabled={isLoadingContacts}
-                    className="w-full flex items-center gap-2"
-                  >
-                    {isLoadingContacts ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        Accessing Contacts...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4" />
-                        Access Contacts
-                      </>
-                    )}
-                  </Button>
-
-                  {contacts.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Search className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search contacts..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="text-sm"
-                        />
-                      </div>
-                      
-                      <ScrollArea className="h-48">
-                        <div className="space-y-2">
-                          {contacts
-                            .filter(contact => 
-                              contact.name.toLowerCase().includes(searchQuery.toLowerCase())
-                            )
-                            .map((contact) => (
-                              <div key={contact.id} className="flex items-center justify-between p-2 rounded-lg border">
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="text-xs">
-                                      {contact.name.split(' ').map((n: string) => n[0]).join('')}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <div className="font-medium text-sm">{contact.name}</div>
-                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                      {contact.hasApp ? (
-                                        <>
-                                          <CheckCircle className="h-3 w-3 text-green-500" />
-                                          Has App
-                                        </>
-                                      ) : (
-                                        <>
-                                          <UserPlus className="h-3 w-3 text-blue-500" />
-                                          Invite
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant={contact.hasApp ? "outline" : "default"}
-                                  onClick={() => inviteContact(contact)}
-                                  className="text-xs"
-                                >
-                                  {contact.hasApp ? "Add Friend" : "Invite"}
-                                </Button>
-                              </div>
-                            ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Add Friends
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <UserPlus className="h-5 w-5" />
-                    Invite Friends to the Arena
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" className="flex items-center gap-2 h-16 flex-col">
-                      <Share2 className="h-5 w-5" />
-                      <span className="text-xs">Share Link</span>
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-2 h-16 flex-col">
-                      <MessageCircle className="h-5 w-5" />
-                      <span className="text-xs">Text Invite</span>
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-2 h-16 flex-col">
-                      <Mail className="h-5 w-5" />
-                      <span className="text-xs">Email</span>
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-2 h-16 flex-col">
-                      <Contact className="h-5 w-5" />
-                      <span className="text-xs">Contacts</span>
-                    </Button>
-                  </div>
-                  
-                  <div className="p-4 bg-muted/30 rounded-lg">
-                    <h4 className="font-semibold text-sm mb-2">Invitation Message Preview:</h4>
-                    <p className="text-sm text-muted-foreground italic">
-                      "Hey! I'm crushing my health goals in this awesome nutrition challenge. 
-                      Want to join me and see who can build the healthiest habits? 🏆💪"
-                    </p>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardTitle>
+      <CardHeader className={cn(
+        "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20",
+        isMobile ? "p-4" : "p-6"
+      )}>
+        <div className={cn(
+          "flex items-center",
+          isMobile ? "flex-col space-y-2" : "justify-between"
+        )}>
+          <CardTitle className={cn(
+            "font-bold flex items-center gap-2",
+            isMobile ? "text-xl" : "text-3xl gap-3"
+          )}>
+            <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
+            👥 Friends Arena
+            <Users className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-blue-600")} />
+          </CardTitle>
+          
+          <Button 
+            onClick={() => setShowInviteModal(true)}
+            className={cn(
+              "flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg",
+              isMobile ? "h-8 px-3 text-xs w-full" : ""
+            )}
+            size={isMobile ? "sm" : "default"}
+          >
+            <UserPlus className="h-4 w-4" />
+            <span className={isMobile ? "text-xs" : ""}>Invite Friends</span>
+          </Button>
+        </div>
+        <p className={cn(
+          "text-muted-foreground",
+          isMobile ? "text-sm text-center" : "mt-2"
+        )}>
+          Challenge your friends and climb the leaderboard together!
+        </p>
       </CardHeader>
       
-      <CardContent className="p-0">
-        <ScrollArea className="w-full">
-          <div className="flex gap-4 p-6 min-w-max">
+      <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
+        {isMobile ? (
+          // Mobile: Vertical Stack Layout
+          <div className="space-y-3">
             {friends.map((friend) => (
-              <div
-                key={friend.id}
-                className="flex-shrink-0 w-64 p-4 rounded-xl border-2 border-muted bg-background hover:border-primary/40 transition-all duration-300 hover:shadow-lg"
+              <Card 
+                key={friend.id} 
+                className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
+                onClick={() => setSelectedFriend(friend)}
               >
-                {/* Online Status & Rank */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {getRankIcon(friend.rank)}
-                    <Badge variant="outline" className={cn("text-xs", getRankColor(friend.rank))}>
-                      #{friend.rank}
-                    </Badge>
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <ProgressAvatar 
+                        avatar={friend.avatar}
+                        nickname={friend.nickname}
+                        weeklyProgress={friend.weeklyProgress}
+                        dailyStreak={friend.streak}
+                        weeklyStreak={0}
+                        size="sm"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-sm">{friend.nickname}</h3>
+                        {getOnlineStatus(friend.isOnline, friend.lastSeen)}
+                      </div>
+                    </div>
+                    {getRankBadge(friend.rank)}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      friend.isOnline ? "bg-green-500" : "bg-gray-400"
-                    )} />
-                    <span className="text-xs text-muted-foreground">
-                      {friend.isOnline ? "Online" : friend.lastSeen}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Avatar with Progress */}
-                <div className="flex justify-center mb-3">
-                  <ProgressAvatar 
-                    avatar={friend.avatar}
-                    nickname={friend.nickname}
-                    weeklyProgress={friend.weeklyProgress}
-                    dailyStreak={friend.streak}
-                    weeklyStreak={Math.floor(friend.streak / 7)}
-                    size="md"
-                    showStats={false}
-                  />
-                </div>
-
-                {/* Friend Info */}
-                <div className="text-center mb-3">
-                  <h4 className="font-semibold text-sm mb-1">{friend.nickname}</h4>
-                  <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                  
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Score: {friend.score}</span>
+                      {getTrendIcon(friend.trend)}
+                    </div>
                     <div className="flex items-center gap-1">
                       <Flame className="h-3 w-3 text-orange-500" />
-                      <span>{friend.streak} streak</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {friend.trend === 'up' ? (
-                        <TrendingUp className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 text-red-500" />
-                      )}
-                      <span>{friend.score} pts</span>
+                      <span>{friend.streak} day streak</span>
                     </div>
                   </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Weekly Progress</span>
-                    <span className="font-medium">{friend.weeklyProgress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${friend.weeklyProgress}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-2">
-                  <Button
-                    onClick={() => encourageFriend(friend.id, friend.nickname)}
-                    disabled={encouragedFriends.has(friend.id)}
-                    className={cn(
-                      "w-full text-sm transition-all duration-300",
-                      encouragedFriends.has(friend.id) 
-                        ? "bg-green-500 hover:bg-green-600 text-white" 
-                        : "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
-                    )}
-                    size="sm"
-                  >
-                    {encouragedFriends.has(friend.id) ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Encouraged!
-                      </>
-                    ) : (
-                      <>
-                        🔥 Encourage
-                      </>
-                    )}
-                  </Button>
                   
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    <MessageCircle className="h-3 w-3 mr-1" />
-                    Message
-                  </Button>
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Weekly Progress</span>
+                      <span>{friend.weeklyProgress}%</span>
+                    </div>
+                    <Progress value={friend.weeklyProgress} className="h-1" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          // Desktop: Horizontal Grid Layout
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {friends.map((friend) => (
+              <Card 
+                key={friend.id} 
+                className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
+                onClick={() => setSelectedFriend(friend)}
+              >
+                {/* Rank Badge Overlay */}
+                <div className="absolute top-2 right-2 z-10">
+                  {getRankBadge(friend.rank)}
+                </div>
+                
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <ProgressAvatar 
+                      avatar={friend.avatar}
+                      nickname={friend.nickname}
+                      weeklyProgress={friend.weeklyProgress}
+                      dailyStreak={friend.streak}
+                      weeklyStreak={0}
+                      size="md"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg mb-1">{friend.nickname}</h3>
+                      {getOnlineStatus(friend.isOnline, friend.lastSeen)}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-4 w-4 text-yellow-500" />
+                        <span className="font-medium">Score: {friend.score}</span>
+                      </div>
+                      {getTrendIcon(friend.trend)}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm">{friend.streak} day streak</span>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Weekly Progress</span>
+                        <span className="font-medium">{friend.weeklyProgress}%</span>
+                      </div>
+                      <Progress value={friend.weeklyProgress} className="h-2" />
+                    </div>
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle challenge friend
+                        }}
+                      >
+                        <Target className="h-3 w-3 mr-1" />
+                        Challenge
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle message friend
+                        }}
+                      >
+                        <MessageCircle className="h-3 w-3 mr-1" />
+                        Message
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {friends.length === 0 && (
+          <div className="text-center py-12">
+            <div className={cn(
+              "bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4",
+              isMobile ? "w-16 h-16" : "w-20 h-20"
+            )}>
+              <Users className={cn(isMobile ? "h-8 w-8" : "h-10 w-10", "text-blue-600")} />
+            </div>
+            <h3 className={cn("font-semibold mb-2", isMobile ? "text-lg" : "text-xl")}>
+              No Friends Yet
+            </h3>
+            <p className={cn("text-muted-foreground mb-4", isMobile ? "text-sm" : "")}>
+              Invite friends to make your health journey more fun and competitive!
+            </p>
+            <Button 
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-2"
+              size={isMobile ? "sm" : "default"}
+            >
+              <UserPlus className="h-4 w-4" />
+              Invite Your First Friend
+            </Button>
+          </div>
+        )}
+      </CardContent>
+
+      {/* Friend Detail Modal */}
+      {selectedFriend && (
+        <Dialog open={!!selectedFriend} onOpenChange={() => setSelectedFriend(null)}>
+          <DialogContent className={cn(isMobile ? "max-w-sm" : "max-w-md")}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <span className="text-2xl">{selectedFriend.avatar}</span>
+                {selectedFriend.nickname}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                {getRankBadge(selectedFriend.rank)}
+                {getOnlineStatus(selectedFriend.isOnline, selectedFriend.lastSeen)}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="font-bold text-lg">{selectedFriend.score}</div>
+                  <div className="text-sm text-muted-foreground">Score</div>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="font-bold text-lg flex items-center justify-center gap-1">
+                    <Flame className="h-4 w-4 text-orange-500" />
+                    {selectedFriend.streak}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Day Streak</div>
                 </div>
               </div>
-            ))}
-
-            {/* Add Friends Card */}
-            <div className="flex-shrink-0 w-64 p-4 rounded-xl border-2 border-dashed border-muted bg-muted/20 hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center min-h-[280px]">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <UserPlus className="h-8 w-8 text-primary" />
+              
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span>Weekly Progress</span>
+                  <span className="font-medium">{selectedFriend.weeklyProgress}%</span>
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Invite More Friends</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    The more friends you have, the more motivation you'll get!
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => setShowInviteDialog(true)}
-                  className="w-full"
-                  size="sm"
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add Friends
+                <Progress value={selectedFriend.weeklyProgress} className="h-3" />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button className="flex-1" size={isMobile ? "sm" : "default"}>
+                  <Target className="h-4 w-4 mr-2" />
+                  Challenge Friend
+                </Button>
+                <Button variant="outline" className="flex-1" size={isMobile ? "sm" : "default"}>
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Send Message
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Invite Friends Modal */}
+      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
+        <DialogContent className={cn(isMobile ? "max-w-sm" : "max-w-md")}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Invite Friends
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              Share your referral code or invite friends via social media to join the challenge!
+            </p>
+            
+            <div className="text-center p-4 bg-muted/30 rounded-lg">
+              <div className="text-sm text-muted-foreground mb-2">Your Referral Code</div>
+              <div className="text-2xl font-bold font-mono">HEALTH24</div>
+              <Button variant="outline" size="sm" className="mt-2">
+                Copy Code
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm">Share on WhatsApp</Button>
+              <Button variant="outline" size="sm">Share on Instagram</Button>
+              <Button variant="outline" size="sm">Share on Facebook</Button>
+              <Button variant="outline" size="sm">Copy Link</Button>
+            </div>
+            
+            <Button className="w-full">
+              <Gift className="h-4 w-4 mr-2" />
+              Send Invitations
+            </Button>
           </div>
-        </ScrollArea>
-      </CardContent>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
