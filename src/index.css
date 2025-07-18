@@ -957,11 +957,46 @@
   }
 }
 
+/* Mystery Box Animations */
+@keyframes mystery-float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  33% { 
+    transform: translateY(-8px) rotate(1deg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+  66% { 
+    transform: translateY(-4px) rotate(-1deg);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.25);
+  }
+}
+
+@keyframes mystery-wobble {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(3deg); }
+}
+
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
 /* Respect user's reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .shimmer-text::after,
   .train-slide,
-  .animate-pulse-scale {
+  .animate-pulse-scale,
+  .animate-mystery-float,
+  .animate-mystery-wobble,
+  .animate-confetti {
     animation: none;
   }
 }
