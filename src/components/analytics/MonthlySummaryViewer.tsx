@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TrendingUp, TrendingDown, Calendar, Activity, Target, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -104,6 +105,36 @@ export const MonthlySummaryViewer = () => {
     return { percentage, color };
   };
 
+  const getRankingInfo = (ranking: number | null) => {
+    if (!ranking) return null;
+    
+    switch (ranking) {
+      case 1:
+        return {
+          badge: '🥇',
+          tooltip: 'You ranked #1 this month! Congrats!',
+          cardClass: 'border-yellow-400 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 shadow-lg shadow-yellow-200/50 dark:shadow-yellow-900/20',
+          glow: 'ring-2 ring-yellow-300 ring-offset-2'
+        };
+      case 2:
+        return {
+          badge: '🥈',
+          tooltip: 'Amazing! You ranked #2 this month!',
+          cardClass: 'border-gray-400 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/20 dark:to-gray-600/20 shadow-lg shadow-gray-200/50 dark:shadow-gray-700/20',
+          glow: 'ring-2 ring-gray-300 ring-offset-2'
+        };
+      case 3:
+        return {
+          badge: '🥉',
+          tooltip: 'Great job! You ranked #3 this month!',
+          cardClass: 'border-amber-600 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/20 dark:to-orange-800/20 shadow-lg shadow-amber-200/50 dark:shadow-amber-900/20',
+          glow: 'ring-2 ring-amber-400 ring-offset-2'
+        };
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <Card className="w-full">
@@ -143,26 +174,29 @@ export const MonthlySummaryViewer = () => {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Monthly Progress
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <TooltipProvider>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Monthly Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         {summaries.map((summary, index) => {
           const scoreChange = getScoreChange(summary.average_score, summary.previous_month_average);
           const isLatest = index === 0;
           const daysProgress = getDaysProgress(summary.days_with_meals, summary.month_start);
+          const rankingInfo = getRankingInfo(summary.ranking_position);
           
           return (
             <div 
               key={summary.id}
               className={cn(
                 "relative p-5 rounded-lg border transition-all duration-300",
-                isLatest ? "border-primary bg-primary/5 shadow-md" : "border-border",
-                showCelebration === summary.id && "ring-2 ring-emerald-500 ring-offset-2"
+                rankingInfo ? rankingInfo.cardClass : (isLatest ? "border-primary bg-primary/5 shadow-md" : "border-border"),
+                showCelebration === summary.id && "ring-2 ring-emerald-500 ring-offset-2",
+                rankingInfo && rankingInfo.glow
               )}
             >
               {/* Celebration effect for improvements */}
@@ -179,9 +213,21 @@ export const MonthlySummaryViewer = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div>
-                      <h3 className="font-semibold text-lg text-foreground">
+                      <h3 className="font-semibold text-lg text-foreground flex items-center gap-2">
                         {getMonthName(summary.month_start)}
                         {isLatest && <span className="text-xs ml-2 text-primary">(Current)</span>}
+                        {rankingInfo && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-2xl cursor-help animate-pulse">
+                                {rankingInfo.badge}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{rankingInfo.tooltip}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(summary.month_start), 'MMMM yyyy')} Performance
@@ -190,8 +236,8 @@ export const MonthlySummaryViewer = () => {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    {summary.ranking_position && (
-                      <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                    {summary.ranking_position && !rankingInfo && (
+                      <div className="flex items-center gap-1 text-muted-foreground">
                         <Trophy className="h-4 w-4" />
                         <span className="text-sm font-medium">#{summary.ranking_position}</span>
                       </div>
@@ -267,7 +313,8 @@ export const MonthlySummaryViewer = () => {
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 };
