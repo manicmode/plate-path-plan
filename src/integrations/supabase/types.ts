@@ -176,6 +176,41 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_scores: {
+        Row: {
+          created_at: string
+          id: string
+          meal_id: string | null
+          rating_text: string | null
+          score: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meal_id?: string | null
+          rating_text?: string | null
+          score: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meal_id?: string | null
+          rating_text?: string | null
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_scores_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
