@@ -815,3 +815,95 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Welcome Text Animation Effects */
+.shimmer-text {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-text::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 20%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0.6) 80%,
+    transparent 100%
+  );
+  animation: shimmerSweep 2s ease-out 0.5s 1 forwards;
+  pointer-events: none;
+}
+
+.dark .shimmer-text::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 20%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.3) 80%,
+    transparent 100%
+  );
+}
+
+@keyframes shimmerSweep {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.train-slide {
+  animation: trainSlide 1s ease-in-out 1.5s 1 forwards;
+}
+
+@keyframes trainSlide {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  25% {
+    transform: translateX(-100vw);
+    opacity: 0;
+  }
+  75% {
+    transform: translateX(100vw);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-pulse-scale {
+  animation: pulseScale 2s ease-in-out 2.5s 1 forwards;
+}
+
+@keyframes pulseScale {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.4);
+    filter: brightness(1.3) drop-shadow(0 0 8px rgba(255, 223, 0, 0.6));
+  }
+}
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text::after,
+  .train-slide,
+  .animate-pulse-scale {
+    animation: none;
+  }
+}

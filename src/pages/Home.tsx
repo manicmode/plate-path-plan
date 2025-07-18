@@ -690,14 +690,15 @@ const Home = () => {
       {/* Enhanced Greeting Section */}
       <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
         <div className="inline-block">
-          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4`}>
+          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
             {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
           </h1>
-          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text`}>
-            {user?.name?.split(' ')[0] || 'Superstar'}! ✨
+          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative`}>
+            {user?.name?.split(' ')[0] || 'Superstar'}! 
+            <span className="inline-block ml-2 animate-pulse-scale motion-reduce:animate-none">✨</span>
           </h2>
         </div>
-        <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'}`}>Your intelligent wellness companion is ready</p>
+        <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'} train-slide motion-reduce:animate-none`}>Your intelligent wellness companion is ready</p>
       </div>
 
       {/* Dynamic Tracker Cards based on user selection */}
