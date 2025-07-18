@@ -175,7 +175,12 @@ export type Database = {
           food_name: string
           id: string
           image_url: string | null
+          ingredient_analysis: Json | null
+          processing_level: string | null
           protein: number | null
+          quality_reasons: string[] | null
+          quality_score: number | null
+          quality_verdict: string | null
           serving_size: string | null
           sodium: number | null
           source: string | null
@@ -192,7 +197,12 @@ export type Database = {
           food_name: string
           id?: string
           image_url?: string | null
+          ingredient_analysis?: Json | null
+          processing_level?: string | null
           protein?: number | null
+          quality_reasons?: string[] | null
+          quality_score?: number | null
+          quality_verdict?: string | null
           serving_size?: string | null
           sodium?: number | null
           source?: string | null
@@ -209,7 +219,12 @@ export type Database = {
           food_name?: string
           id?: string
           image_url?: string | null
+          ingredient_analysis?: Json | null
+          processing_level?: string | null
           protein?: number | null
+          quality_reasons?: string[] | null
+          quality_score?: number | null
+          quality_verdict?: string | null
           serving_size?: string | null
           sodium?: number | null
           source?: string | null
