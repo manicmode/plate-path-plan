@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Trophy, Medal, Award, Crown, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trophy, Medal, Award, Crown, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ export const MonthlyLeaderboard: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     fetchLeaderboard();
@@ -76,6 +78,66 @@ export const MonthlyLeaderboard: React.FC = () => {
           average_score: 91.5,
           best_score: 96.5,
           current_streak: 6
+        },
+        {
+          user_id: '5',
+          name: 'Emma Strong',
+          email: 'emma@example.com',
+          total_score: 2320.1,
+          days_logged: 25,
+          average_score: 92.8,
+          best_score: 98.0,
+          current_streak: 4
+        },
+        {
+          user_id: '6',
+          name: 'James Runner',
+          email: 'james@example.com',
+          total_score: 2280.7,
+          days_logged: 24,
+          average_score: 95.0,
+          best_score: 99.2,
+          current_streak: 3
+        },
+        {
+          user_id: '7',
+          name: 'Lisa Health',
+          email: 'lisa@example.com',
+          total_score: 2240.9,
+          days_logged: 23,
+          average_score: 97.4,
+          best_score: 100.0,
+          current_streak: 2
+        },
+        {
+          user_id: '8',
+          name: 'David Power',
+          email: 'david@example.com',
+          total_score: 2200.5,
+          days_logged: 22,
+          average_score: 100.0,
+          best_score: 100.0,
+          current_streak: 1
+        },
+        {
+          user_id: '9',
+          name: 'Anna Vitality',
+          email: 'anna@example.com',
+          total_score: 2180.3,
+          days_logged: 21,
+          average_score: 103.8,
+          best_score: 100.0,
+          current_streak: 0
+        },
+        {
+          user_id: '10',
+          name: 'Chris Endurance',
+          email: 'chris@example.com',
+          total_score: 2150.8,
+          days_logged: 20,
+          average_score: 107.5,
+          best_score: 100.0,
+          current_streak: 5
         }
       ];
 
@@ -136,8 +198,9 @@ export const MonthlyLeaderboard: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Top 5 Rankings */}
         <div className="space-y-4">
-          {leaderboard.map((entry, index) => {
+          {leaderboard.slice(0, 5).map((entry, index) => {
             const rank = index + 1;
             const isCurrentUser = entry.user_id === user?.id;
             
@@ -205,7 +268,100 @@ export const MonthlyLeaderboard: React.FC = () => {
           })}
         </div>
 
-        {currentUserRank && currentUserRank > 4 && (
+        {/* Expand/Collapse Button */}
+        {leaderboard.length > 5 && (
+          <div className="mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  Collapse
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  View Full Rankings ({leaderboard.length})
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Expanded Rankings (6-20) */}
+        {isExpanded && leaderboard.length > 5 && (
+          <div className="mt-4 border-t pt-4">
+            <div className="max-h-64 overflow-y-auto space-y-3">
+              {leaderboard.slice(5).map((entry, index) => {
+                const rank = index + 6;
+                const isCurrentUser = entry.user_id === user?.id;
+                
+                return (
+                  <div
+                    key={entry.user_id}
+                    className={cn(
+                      "flex items-center gap-4 p-3 rounded-lg transition-colors",
+                      isCurrentUser ? "bg-primary/5 border border-primary/20" : "hover:bg-muted/50"
+                    )}
+                  >
+                    {/* Rank */}
+                    <div className="flex items-center justify-center w-10">
+                      <Badge variant="secondary" className={getRankBadgeColor(rank)}>
+                        #{rank}
+                      </Badge>
+                    </div>
+
+                    {/* Avatar */}
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={entry.avatar_url} />
+                      <AvatarFallback>
+                        {entry.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    {/* User Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold truncate">
+                          {entry.name}
+                          {isCurrentUser && (
+                            <Badge variant="outline" className="ml-2 text-xs">You</Badge>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{entry.days_logged} days</span>
+                        <span>Avg: {entry.average_score.toFixed(1)}</span>
+                        {entry.current_streak > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            {entry.current_streak} streak
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Score */}
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-primary">
+                        {entry.total_score.toFixed(1)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Best: {entry.best_score.toFixed(1)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Current User Rank (if not in top 5 and not expanded) */}
+        {currentUserRank && currentUserRank > 5 && !isExpanded && (
           <div className="mt-4 pt-4 border-t">
             <p className="text-center text-sm text-muted-foreground">
               You're ranked #{currentUserRank} this month
