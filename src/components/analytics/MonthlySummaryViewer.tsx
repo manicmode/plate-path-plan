@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import confetti from 'canvas-confetti';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,6 +63,68 @@ export const MonthlySummaryViewer = () => {
       }
     });
   }, [summaries]);
+
+  // Trigger confetti for top 3 rankings (once per session)
+  useEffect(() => {
+    if (summaries.length === 0 || !user) return;
+    
+    const latestSummary = summaries[0];
+    const ranking = latestSummary.ranking_position;
+    
+    // Check if user has a top 3 ranking in their latest summary
+    if (ranking && ranking <= 3) {
+      const confettiKey = `monthly-confetti-${user.id}-${latestSummary.month_start}`;
+      const hasShownConfetti = sessionStorage.getItem(confettiKey);
+      
+      if (!hasShownConfetti) {
+        // Set flag first to prevent multiple triggers
+        sessionStorage.setItem(confettiKey, 'true');
+        
+        // Delay confetti slightly to ensure component is fully rendered
+        setTimeout(() => {
+          triggerRankingConfetti(ranking);
+        }, 500);
+      }
+    }
+  }, [summaries, user]);
+
+  const triggerRankingConfetti = (ranking: number) => {
+    const colors = {
+      1: ['#FFD700', '#FFA500', '#FFFF00'], // Gold colors
+      2: ['#C0C0C0', '#A9A9A9', '#D3D3D3'], // Silver colors  
+      3: ['#CD7F32', '#D2691E', '#F4A460']  // Bronze colors
+    };
+
+    const particleCount = ranking === 1 ? 150 : ranking === 2 ? 120 : 100;
+    const spread = ranking === 1 ? 70 : 60;
+
+    // Multiple bursts for more celebration
+    const triggerBurst = (delay: number) => {
+      setTimeout(() => {
+        confetti({
+          particleCount,
+          spread,
+          origin: { y: 0.6 },
+          colors: colors[ranking as keyof typeof colors],
+          gravity: 1,
+          drift: 0,
+          ticks: 300,
+          scalar: 1.2,
+          shapes: ['star', 'circle'],
+          disableForReducedMotion: true,
+        });
+      }, delay);
+    };
+
+    // Create a celebratory sequence
+    triggerBurst(0);
+    triggerBurst(300);
+    if (ranking === 1) {
+      triggerBurst(600); // Extra burst for gold medal
+    }
+
+    console.log(`🎉 Confetti triggered for ranking #${ranking}!`);
+  };
 
   const getMonthName = (monthStart: string) => {
     const date = new Date(monthStart);
