@@ -72,7 +72,7 @@ const SupplementHub = () => {
     },
     {
       id: 'energy-performance',
-      title: '🔥 Energy & Performance',
+      title: '⚡ Energy & Performance',
       goals: [
         'Energy Boost', 'Muscle Build', 'Athletic Recovery', 'Endurance', 
         'Stamina', 'Workout Focus', 'Pre-Workout Support', 'Post-Workout Recovery'
