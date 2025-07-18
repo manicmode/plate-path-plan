@@ -21,6 +21,7 @@ import { DailyMealQualityTracker } from '@/components/analytics/DailyMealQuality
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { MonthlyLeaderboard } from '@/components/analytics/MonthlyLeaderboard';
 import { AchievementBadges } from '@/components/analytics/AchievementBadges';
+import { WeeklySummaryViewer } from '@/components/analytics/WeeklySummaryViewer';
 import { useDailyScore } from '@/hooks/useDailyScore';
 
 const Analytics = () => {
@@ -90,6 +91,9 @@ const Analytics = () => {
 
         {/* Meal Quality Analytics - NEW */}
         <MealQualityAnalyticsSection className="mt-8" />
+
+        {/* Weekly Summary Viewer - Performance Overview */}
+        <WeeklySummaryViewer />
 
         {/* Logging Consistency Tracker - Increased separation with visual distinction */}
         <div className="mt-20 pt-8 border-t border-gray-200 dark:border-gray-700">
