@@ -291,7 +291,7 @@ function GameAndChallengeContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative overflow-x-hidden">
       {/* Mystery Boxes - Hidden on mobile for performance */}
       {!isMobile && (
         <>
@@ -302,10 +302,10 @@ function GameAndChallengeContent() {
 
       {/* Mobile-Optimized Navigation - Fixed positioning below banner */}
       <div className="sticky z-40 bg-background/95 backdrop-blur-sm border-b" style={{ top: 'var(--header-height, 80px)' }}>
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
+        <div className="container mx-auto px-4 py-4 max-w-full">
           {isMobile ? (
             // Mobile Tab Navigation
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-4">
               <div className="flex items-center justify-center">
                 <h1 className="text-lg font-bold">Game & Challenge</h1>
               </div>
@@ -364,8 +364,8 @@ function GameAndChallengeContent() {
 
       {/* Main Content */}
       <div className={cn(
-        "container mx-auto space-y-6 sm:space-y-12",
-        isMobile ? "px-2 py-4" : "px-4 py-8"
+        "container mx-auto max-w-full",
+        isMobile ? "px-4 py-6 space-y-6" : "px-4 py-8 space-y-8"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
@@ -555,8 +555,8 @@ function GameAndChallengeContent() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="p-3">
-                  <div className="space-y-2">
+                 <CardContent className="p-4">
+                   <div className="space-y-4">
                     {optimizedLeaderboard.map((user, index) => (
                       <div
                         key={user.id}
@@ -641,16 +641,16 @@ function GameAndChallengeContent() {
                   </Button>
                 </div>
                 
-                {challenges.length > 0 ? (
-                  <div className="space-y-3">
-                    {challenges.map((challenge) => (
-                      <ChallengeCard 
-                        key={challenge.id} 
-                        challenge={challenge} 
-                      />
-                    ))}
-                  </div>
-                ) : (
+                 {challenges.length > 0 ? (
+                   <div className="space-y-4">
+                     {challenges.map((challenge) => (
+                       <ChallengeCard 
+                         key={challenge.id} 
+                         challenge={challenge} 
+                       />
+                     ))}
+                   </div>
+                 ) : (
                   <Card className="border-2 border-dashed border-green-300 dark:border-green-700">
                     <CardContent className="text-center py-6">
                       <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
@@ -669,9 +669,9 @@ function GameAndChallengeContent() {
                   </Card>
                 )}
 
-                {/* Micro-Challenges Section */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-4">
+                 {/* Micro-Challenges Section */}
+                 <div className="mt-8">
+                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-yellow-500" />
                       Micro-Challenges
@@ -686,17 +686,17 @@ function GameAndChallengeContent() {
                     </Button>
                   </div>
                   
-                  {microChallenges.length > 0 ? (
-                    <div className="space-y-3">
-                      {microChallenges.map((challenge) => (
-                        <MicroChallengeCard 
-                          key={challenge.id} 
-                          challenge={challenge}
-                          onNudgeFriend={nudgeFriend}
-                        />
-                      ))}
-                    </div>
-                  ) : (
+                   {microChallenges.length > 0 ? (
+                     <div className="space-y-4">
+                       {microChallenges.map((challenge) => (
+                         <MicroChallengeCard 
+                           key={challenge.id} 
+                           challenge={challenge}
+                           onNudgeFriend={nudgeFriend}
+                         />
+                       ))}
+                     </div>
+                   ) : (
                     <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
                       <CardContent className="text-center py-6">
                         <Sparkles className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
