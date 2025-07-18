@@ -37,6 +37,8 @@ import { PodiumOfTheMonth } from '@/components/analytics/PodiumOfTheMonth';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
 import { ChallengeCreationModal } from '@/components/analytics/ChallengeCreationModal';
 import { ChallengeCard } from '@/components/analytics/ChallengeCard';
+import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
+import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 
@@ -192,13 +194,14 @@ export default function GameAndChallengePage() {
 }
 
 function GameAndChallengeContent() {
-  const { challenges } = useChallenge();
+  const { challenges, microChallenges, nudgeFriend } = useChallenge();
   const [activeSection, setActiveSection] = useState('ranking');
   const [chatMessage, setChatMessage] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [messages, setMessages] = useState(mockChatMessages);
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   const [showRewardBox, setShowRewardBox] = useState(false);
   
   // Use the scroll-to-top hook
@@ -444,6 +447,60 @@ function GameAndChallengeContent() {
               )}
             </CardContent>
           </Card>
+          
+          {/* Micro-Challenges Section */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-6 w-6 text-yellow-500" />
+                <h2 className="text-2xl font-bold">⚡ Micro-Challenges</h2>
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
+                  Quick & Fun
+                </Badge>
+              </div>
+              
+              <Button 
+                onClick={() => setShowMicroChallengeModal(true)}
+                size="sm"
+                className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg"
+              >
+                <Sparkles className="h-4 w-4" />
+                Create Micro-Challenge
+              </Button>
+            </div>
+            
+            {microChallenges.length > 0 ? (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {microChallenges.map((challenge) => (
+                  <MicroChallengeCard 
+                    key={challenge.id} 
+                    challenge={challenge}
+                    onNudgeFriend={nudgeFriend}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
+                <CardContent className="text-center py-8">
+                  <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="h-8 w-8 text-yellow-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No Micro-Challenges Yet</h3>
+                  <p className="text-muted-foreground mb-4 text-sm">
+                    Create quick 1-7 day challenges with friends for instant motivation!
+                  </p>
+                  <Button 
+                    onClick={() => setShowMicroChallengeModal(true)}
+                    size="sm"
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Start Your First Micro-Challenge
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </section>
 
         {/* Friends in the Arena Section */}
@@ -557,6 +614,12 @@ function GameAndChallengeContent() {
           open={showChallengeModal}
           onOpenChange={setShowChallengeModal}
           friends={mockFriends}
+        />
+
+        {/* Micro-Challenge Creation Modal */}
+        <MicroChallengeCreationModal
+          open={showMicroChallengeModal}
+          onOpenChange={setShowMicroChallengeModal}
         />
 
         {/* Mystery Reward Box Button */}

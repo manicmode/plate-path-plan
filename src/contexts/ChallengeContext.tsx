@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 export interface Challenge {
   id: string;
   name: string;
-  type: 'public' | 'private';
+  type: 'public' | 'private' | 'micro';
   creatorId: string;
   creatorName: string;
   goalType: 'no-sugar' | 'log-meals' | 'drink-water' | 'eat-veggies' | 'custom';
@@ -21,12 +21,14 @@ export interface Challenge {
 
 interface ChallengeContextType {
   challenges: Challenge[];
+  microChallenges: Challenge[];
   activeUserChallenges: Challenge[];
   createChallenge: (challenge: Omit<Challenge, 'id' | 'isActive'>) => void;
   joinChallenge: (challengeId: string, userId: string, userDetails: { name: string; avatar: string }) => void;
   leaveChallenenge: (challengeId: string, userId: string) => void;
   updateProgress: (challengeId: string, userId: string, progress: number) => void;
   deleteChallenge: (challengeId: string) => void;
+  nudgeFriend: (challengeId: string, friendId: string) => void;
 }
 
 const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
@@ -112,6 +114,49 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       inviteCode: 'VEGGIE123',
       isActive: true,
     },
+    // Mock micro-challenges
+    {
+      id: 'micro-1',
+      name: '💧 3 Glasses Today',
+      type: 'micro',
+      creatorId: 'user-2',
+      creatorName: 'Alex 🦄',
+      goalType: 'drink-water',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day
+      participants: ['user-2', 'user-3', 'user-4'],
+      participantDetails: {
+        'user-2': { name: 'Alex 🦄', avatar: '🦄' },
+        'user-3': { name: 'Sam 🔥', avatar: '🔥' },
+        'user-4': { name: 'Jordan 🚀', avatar: '🚀' },
+      },
+      progress: {
+        'user-2': 67,
+        'user-3': 33,
+        'user-4': 100,
+      },
+      isActive: true,
+    },
+    {
+      id: 'micro-2',
+      name: '🥗 2 Veggie Servings',
+      type: 'micro',
+      creatorId: 'user-1',
+      creatorName: 'Maya 🌟',
+      goalType: 'eat-veggies',
+      startDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 3 days total
+      participants: ['user-1', 'user-5'],
+      participantDetails: {
+        'user-1': { name: 'Maya 🌟', avatar: '🌟' },
+        'user-5': { name: 'Casey 🌈', avatar: '🌈' },
+      },
+      progress: {
+        'user-1': 75,
+        'user-5': 50,
+      },
+      isActive: true,
+    },
   ]);
 
   const createChallenge = (challengeData: Omit<Challenge, 'id' | 'isActive'>) => {
@@ -178,19 +223,30 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     setChallenges(prev => prev.filter(challenge => challenge.id !== challengeId));
   };
 
+  const nudgeFriend = (challengeId: string, friendId: string) => {
+    // Simulate sending a nudge notification
+    console.log(`Nudging friend ${friendId} for challenge ${challengeId}`);
+  };
+
   // Get challenges where current user is participating
   const activeUserChallenges = challenges.filter(challenge => 
     challenge.participants.includes('current-user-id') && challenge.isActive
   );
 
+  // Separate micro challenges from regular challenges
+  const microChallenges = challenges.filter(c => c.type === 'micro' && c.isActive);
+  const regularChallenges = challenges.filter(c => c.type !== 'micro' && c.isActive);
+
   const value: ChallengeContextType = {
-    challenges: challenges.filter(c => c.isActive),
+    challenges: regularChallenges,
+    microChallenges,
     activeUserChallenges,
     createChallenge,
     joinChallenge,
     leaveChallenenge,
     updateProgress,
     deleteChallenge,
+    nudgeFriend,
   };
 
   return (
