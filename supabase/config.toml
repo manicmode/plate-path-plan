@@ -1,6 +1,9 @@
 
 project_id = "uzoiiijqtahohfafqirm"
 
+[functions.generate-weekly-summary]
+verify_jwt = false
+
 [functions.health-check-processor]
 verify_jwt = false
 

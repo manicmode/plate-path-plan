@@ -659,6 +659,42 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_summaries: {
+        Row: {
+          average_score: number | null
+          created_at: string | null
+          days_with_meals: number | null
+          id: string
+          meals_logged_count: number | null
+          message: string
+          previous_week_average: number | null
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          average_score?: number | null
+          created_at?: string | null
+          days_with_meals?: number | null
+          id?: string
+          meals_logged_count?: number | null
+          message: string
+          previous_week_average?: number | null
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          average_score?: number | null
+          created_at?: string | null
+          days_with_meals?: number | null
+          id?: string
+          meals_logged_count?: number | null
+          message?: string
+          previous_week_average?: number | null
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
