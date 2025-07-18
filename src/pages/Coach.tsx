@@ -91,11 +91,14 @@ const Coach = () => {
 
   // Scroll to chat window function for commands
   const scrollToTop = () => {
-    // Scroll to the chat card to show it optimally on mobile screen
+    // Scroll to the chat card with better positioning for mobile
     if (chatCardRef.current) {
-      chatCardRef.current.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
+      const headerHeight = isMobile ? 80 : 100; // Account for mobile header
+      const cardTop = chatCardRef.current.offsetTop - headerHeight;
+      
+      window.scrollTo({ 
+        top: cardTop, 
+        behavior: 'smooth' 
       });
     }
     
