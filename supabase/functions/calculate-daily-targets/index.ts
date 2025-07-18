@@ -368,18 +368,69 @@ function calculateSupplementTarget(
   return Math.min(baseSupplementCount, 8);
 }
 
-function getFlaggedIngredients(healthConditions: string[] = []): string[] {
-  const flaggedIngredients: string[] = [];
+function getFlaggedIngredients(healthConditions: string[] = []): { ingredient: string; reason: string; severity: 'low' | 'medium' | 'high' }[] {
+  const flaggedIngredients: { ingredient: string; reason: string; severity: 'low' | 'medium' | 'high' }[] = [];
   
-  const conditionFlags: Record<string, string[]> = {
-    'diabetes': ['high fructose corn syrup', 'sugar', 'glucose', 'sucrose', 'dextrose'],
-    'hypertension': ['sodium', 'salt', 'monosodium glutamate', 'sodium chloride'],
-    'heart_disease': ['trans fats', 'partially hydrogenated oils', 'saturated fats'],
-    'celiac_disease': ['wheat', 'gluten', 'barley', 'rye', 'malt'],
-    'lactose_intolerance': ['lactose', 'milk', 'dairy', 'whey', 'casein'],
-    'kidney_disease': ['phosphorus', 'potassium', 'sodium'],
-    'gout': ['purines', 'fructose', 'alcohol'],
-    'ibs': ['artificial sweeteners', 'sorbitol', 'mannitol', 'xylitol'],
+  const conditionFlags: Record<string, { ingredient: string; reason: string; severity: 'low' | 'medium' | 'high' }[]> = {
+    'hypertension': [
+      { ingredient: 'sodium', reason: 'High sodium intake can worsen hypertension', severity: 'high' },
+      { ingredient: 'monosodium glutamate', reason: 'MSG can contribute to blood pressure elevation', severity: 'medium' },
+      { ingredient: 'sodium benzoate', reason: 'Preservative that may affect blood pressure', severity: 'medium' },
+      { ingredient: 'sodium nitrate', reason: 'Preservative linked to cardiovascular issues', severity: 'medium' },
+      { ingredient: 'sodium nitrite', reason: 'Preservative linked to cardiovascular issues', severity: 'medium' }
+    ],
+    'diabetes': [
+      { ingredient: 'high fructose corn syrup', reason: 'Rapidly spikes blood glucose levels', severity: 'high' },
+      { ingredient: 'corn syrup', reason: 'Can cause rapid blood sugar spikes', severity: 'high' },
+      { ingredient: 'maltodextrin', reason: 'Has higher glycemic index than table sugar', severity: 'high' },
+      { ingredient: 'fruit juice concentrate', reason: 'Concentrated sugars without fiber', severity: 'medium' },
+      { ingredient: 'sugar', reason: 'Direct impact on blood glucose', severity: 'medium' },
+      { ingredient: 'glucose', reason: 'Rapidly absorbed, spikes blood sugar', severity: 'high' },
+      { ingredient: 'dextrose', reason: 'Rapidly absorbed, spikes blood sugar', severity: 'high' }
+    ],
+    'inflammation': [
+      { ingredient: 'soybean oil', reason: 'High omega-6 content promotes inflammation', severity: 'medium' },
+      { ingredient: 'canola oil', reason: 'Processed seed oil that may promote inflammation', severity: 'medium' },
+      { ingredient: 'sunflower oil', reason: 'High omega-6 content when refined', severity: 'medium' },
+      { ingredient: 'trans fats', reason: 'Directly promotes systemic inflammation', severity: 'high' },
+      { ingredient: 'partially hydrogenated oils', reason: 'Contains trans fats that cause inflammation', severity: 'high' },
+      { ingredient: 'gluten', reason: 'Can trigger inflammatory response in sensitive individuals', severity: 'medium' },
+      { ingredient: 'sucralose', reason: 'Artificial sweetener that may disrupt gut microbiome', severity: 'low' },
+      { ingredient: 'aspartame', reason: 'May trigger inflammatory responses in some people', severity: 'low' }
+    ],
+    'digestive_issues': [
+      { ingredient: 'lactose', reason: 'Can cause digestive distress in lactose intolerant individuals', severity: 'medium' },
+      { ingredient: 'milk', reason: 'Contains lactose and casein that may cause digestive issues', severity: 'medium' },
+      { ingredient: 'sorbitol', reason: 'Sugar alcohol that can cause digestive upset', severity: 'medium' },
+      { ingredient: 'mannitol', reason: 'Sugar alcohol that may cause digestive distress', severity: 'medium' },
+      { ingredient: 'carrageenan', reason: 'Additive that may cause intestinal inflammation', severity: 'medium' }
+    ],
+    'high_cholesterol': [
+      { ingredient: 'trans fats', reason: 'Directly raises LDL cholesterol', severity: 'high' },
+      { ingredient: 'partially hydrogenated oils', reason: 'Contains trans fats that worsen cholesterol profile', severity: 'high' },
+      { ingredient: 'hydrogenated oils', reason: 'May contain trans fats that affect cholesterol', severity: 'high' },
+      { ingredient: 'palm kernel oil', reason: 'Very high in saturated fat', severity: 'medium' },
+      { ingredient: 'coconut oil', reason: 'High in saturated fat, use in moderation', severity: 'low' }
+    ],
+    'pcos': [
+      { ingredient: 'refined flour', reason: 'High glycemic index can worsen insulin resistance', severity: 'medium' },
+      { ingredient: 'white rice', reason: 'Refined carb that spikes insulin', severity: 'medium' },
+      { ingredient: 'sugar', reason: 'Worsens insulin resistance common in PCOS', severity: 'high' },
+      { ingredient: 'soy protein isolate', reason: 'Highly processed soy may affect hormones', severity: 'medium' },
+      { ingredient: 'conventional dairy', reason: 'May contain hormones that affect PCOS', severity: 'low' }
+    ],
+    'hormonal_imbalance': [
+      { ingredient: 'BPA', reason: 'Endocrine disruptor that mimics estrogen', severity: 'high' },
+      { ingredient: 'soy isolate', reason: 'Concentrated isoflavones may affect hormone balance', severity: 'medium' },
+      { ingredient: 'conventional dairy', reason: 'May contain added hormones', severity: 'low' },
+      { ingredient: 'conventional meat', reason: 'May contain growth hormones', severity: 'low' }
+    ],
+    'kidney_disease': [
+      { ingredient: 'phosphorus', reason: 'Kidneys may struggle to filter excess phosphorus', severity: 'high' },
+      { ingredient: 'potassium', reason: 'Can accumulate to dangerous levels with kidney disease', severity: 'high' },
+      { ingredient: 'sodium phosphate', reason: 'Additive that adds extra phosphorus load', severity: 'high' },
+      { ingredient: 'potassium chloride', reason: 'Salt substitute that may be dangerous for kidney patients', severity: 'high' }
+    ]
   };
   
   healthConditions.forEach(condition => {
@@ -388,7 +439,20 @@ function getFlaggedIngredients(healthConditions: string[] = []): string[] {
     }
   });
   
-  return [...new Set(flaggedIngredients)];
+  // Remove duplicates based on ingredient name
+  const uniqueFlags = flaggedIngredients.reduce((acc, current) => {
+    const existing = acc.find(item => item.ingredient === current.ingredient);
+    if (!existing) {
+      acc.push(current);
+    } else if (current.severity === 'high' && existing.severity !== 'high') {
+      // Keep the higher severity version
+      const index = acc.indexOf(existing);
+      acc[index] = current;
+    }
+    return acc;
+  }, [] as { ingredient: string; reason: string; severity: 'low' | 'medium' | 'high' }[]);
+  
+  return uniqueFlags;
 }
 
 function getPriorityMicronutrients(
@@ -504,7 +568,7 @@ function calculateNutritionTargets(profile: any) {
     profile.diet_styles || []
   );
   
-  // Get flagged ingredients
+  // Get flagged ingredients with detailed info
   const flaggedIngredients = getFlaggedIngredients(profile.health_conditions);
   
   return {

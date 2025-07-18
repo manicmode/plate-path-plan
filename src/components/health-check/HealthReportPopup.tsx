@@ -181,49 +181,84 @@ export const HealthReportPopup: React.FC<HealthReportPopupProps> = ({
             <h3 className="text-xl font-bold text-foreground flex items-center">
               <AlertTriangle className="w-6 h-6 text-orange-500 mr-3" />
               Flagged Ingredients
+              {result.ingredientFlags.length > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {result.ingredientFlags.length} warning{result.ingredientFlags.length > 1 ? 's' : ''}
+                </Badge>
+              )}
             </h3>
           </CardHeader>
           <CardContent>
             {result.ingredientFlags.length > 0 ? (
-              <div className="space-y-3">
-                {result.ingredientFlags.map((flag, index) => {
-                  const isLowSeverity = flag.severity.toLowerCase() === 'low';
-                  return (
-                    <div 
-                      key={index} 
-                      className={`flex items-center space-x-3 p-3 rounded-lg ${
-                        isLowSeverity 
-                          ? 'bg-green-50 border border-green-200' 
-                          : 'bg-red-50 border border-red-200'
-                      }`}
-                    >
-                      {isLowSeverity ? (
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                      )}
-                      <div className="flex-1">
-                        <span className={`font-semibold ${isLowSeverity ? 'text-green-800' : 'text-red-800'}`}>
-                          {flag.flag}: 
-                        </span>
-                        <span className={`${isLowSeverity ? 'text-green-700' : 'text-red-700'}`}>
-                          {flag.ingredient}
-                        </span>
-                      </div>
-                      <Badge 
-                        variant={isLowSeverity ? "secondary" : "destructive"} 
-                        className="text-xs"
+              <div className="space-y-4">
+                {/* Warning Summary */}
+                <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
+                    <p className="text-red-800 font-semibold">
+                      This product contains {result.ingredientFlags.length} ingredient{result.ingredientFlags.length > 1 ? 's' : ''} 
+                      that may not align with your health profile.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Detailed Flagged Ingredients */}
+                <div className="space-y-3">
+                  {result.ingredientFlags.map((flag, index) => {
+                    const getSeverityColor = (severity: string) => {
+                      switch (severity.toLowerCase()) {
+                        case 'high': return { bg: 'bg-red-50 border-red-200', text: 'text-red-800', icon: 'text-red-500' };
+                        case 'medium': return { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', icon: 'text-orange-500' };
+                        default: return { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-800', icon: 'text-yellow-500' };
+                      }
+                    };
+
+                    const colors = getSeverityColor(flag.severity);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`p-4 rounded-lg border ${colors.bg}`}
                       >
-                        {flag.severity}
-                      </Badge>
-                    </div>
-                  );
-                })}
+                        <div className="flex items-start space-x-3">
+                          <XCircle className={`w-5 h-5 ${colors.icon} mt-0.5 flex-shrink-0`} />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className={`font-bold ${colors.text} capitalize`}>
+                                {flag.ingredient || flag.flag}
+                              </h4>
+                              <Badge 
+                                variant={flag.severity === 'high' ? 'destructive' : flag.severity === 'medium' ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {flag.severity} risk
+                              </Badge>
+                            </div>
+                            <p className={`${colors.text} text-sm leading-relaxed`}>
+                              {flag.reason || flag.flag || `This ingredient may be concerning based on your health conditions.`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Health Condition Context */}
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-blue-700 text-sm">
+                    💡 <strong>Note:</strong> These warnings are personalized based on your health profile. 
+                    Consult with your healthcare provider for specific dietary guidance.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <CheckCircle className="w-6 h-6 text-green-500" />
-                <span className="text-green-800 font-medium">No harmful ingredients detected. Great choice!</span>
+                <div>
+                  <span className="text-green-800 font-medium">No concerning ingredients detected for your health profile!</span>
+                  <p className="text-green-700 text-sm mt-1">This product appears to be safe based on your health conditions.</p>
+                </div>
               </div>
             )}
           </CardContent>

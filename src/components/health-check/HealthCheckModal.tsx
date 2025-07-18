@@ -22,6 +22,7 @@ export interface HealthAnalysisResult {
     ingredient: string;
     flag: string;
     severity: 'low' | 'medium' | 'high';
+    reason?: string;
   }>;
   nutritionData: {
     calories?: number;
