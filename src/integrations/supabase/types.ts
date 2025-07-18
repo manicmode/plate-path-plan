@@ -29,6 +29,7 @@ export type Database = {
           profile_version: number | null
           protein: number | null
           supplement_count: number | null
+          supplement_recommendations: Json | null
           target_date: string
           updated_at: string
           user_id: string
@@ -47,6 +48,7 @@ export type Database = {
           profile_version?: number | null
           protein?: number | null
           supplement_count?: number | null
+          supplement_recommendations?: Json | null
           target_date?: string
           updated_at?: string
           user_id: string
@@ -65,6 +67,7 @@ export type Database = {
           profile_version?: number | null
           protein?: number | null
           supplement_count?: number | null
+          supplement_recommendations?: Json | null
           target_date?: string
           updated_at?: string
           user_id?: string

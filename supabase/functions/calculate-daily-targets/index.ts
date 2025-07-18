@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
       fiber: nutritionTargets.fiber,
       hydration_ml: nutritionTargets.hydrationMl,
       supplement_count: nutritionTargets.supplementCount,
+      supplement_recommendations: nutritionTargets.supplementRecommendations,
       priority_micronutrients: nutritionTargets.priorityMicronutrients,
       flagged_ingredients: nutritionTargets.flaggedIngredients,
       calculated_at: new Date().toISOString(),
