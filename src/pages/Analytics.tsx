@@ -17,6 +17,7 @@ import { AchievementsSection } from '@/components/analytics/sections/Achievement
 import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
 import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
+import { DailyMealQualityTracker } from '@/components/analytics/DailyMealQualityTracker';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { MonthlyLeaderboard } from '@/components/analytics/MonthlyLeaderboard';
 import { AchievementBadges } from '@/components/analytics/AchievementBadges';
@@ -83,6 +84,9 @@ const Analytics = () => {
 
         {/* Enhanced Daily Averages with Fixed Spacing */}
         <DailyAveragesSection weeklyAverage={weeklyAverage} />
+
+        {/* Daily Meal Quality Tracker - Visual Chart */}
+        <DailyMealQualityTracker />
 
         {/* Meal Quality Analytics - NEW */}
         <MealQualityAnalyticsSection className="mt-8" />
