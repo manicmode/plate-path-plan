@@ -817,33 +817,41 @@
 }
 
 /* Welcome Text Animation Effects */
-.typewriter-text {
+.fade-up-stagger {
   position: relative;
-  overflow: hidden;
 }
 
-.typewriter-text::before {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 100%;
-  overflow: hidden;
-  background: inherit;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: typewriter 2s ease-out 0.5s 1 forwards;
-  filter: drop-shadow(0 0 8px hsla(var(--primary), 0.3));
+.fade-up-stagger span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.6s ease-out forwards;
 }
 
-@keyframes typewriter {
+.fade-up-stagger .word-1 {
+  animation-delay: 0.5s;
+}
+
+.fade-up-stagger .word-2 {
+  animation-delay: 0.7s;
+}
+
+.fade-up-stagger .word-3 {
+  animation-delay: 0.9s;
+}
+
+.fade-up-stagger .word-4 {
+  animation-delay: 1.1s;
+}
+
+@keyframes fadeUp {
   0% {
-    width: 0;
+    opacity: 0;
+    transform: translateY(20px);
   }
   100% {
-    width: 100%;
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
