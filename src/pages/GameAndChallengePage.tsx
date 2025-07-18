@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
-import { PodiumOfTheMonth } from '@/components/analytics/PodiumOfTheMonth';
+import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
 import { ChallengeCreationModal } from '@/components/analytics/ChallengeCreationModal';
 import { ChallengeCard } from '@/components/analytics/ChallengeCard';
@@ -611,7 +611,7 @@ function GameAndChallengeContent() {
 
         {/* Podium of the Month Section */}
         <section id="winners" className="animate-fade-in">
-          <PodiumOfTheMonth contenders={mockPodiumWinners} />
+          <MonthlyTrophyPodium />
         </section>
 
         {/* Hall of Fame Section */}

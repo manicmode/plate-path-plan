@@ -996,6 +996,28 @@ export type Database = {
           contact_hash: string
         }[]
       }
+      get_challenge_podium_winners: {
+        Args: { challenge_id_param: string; month_year?: string }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string
+          final_score: number
+          final_streak: number
+          completion_date: string
+          podium_position: number
+          total_interactions: number
+        }[]
+      }
+      get_completed_challenges_for_month: {
+        Args: { target_month?: string }
+        Returns: {
+          challenge_id: string
+          challenge_name: string
+          participant_count: number
+          completion_date: string
+        }[]
+      }
       get_follow_status: {
         Args: { target_user_id: string }
         Returns: {
