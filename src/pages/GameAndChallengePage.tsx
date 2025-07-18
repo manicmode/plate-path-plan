@@ -34,9 +34,7 @@ import {
   Plus,
   Filter,
   Sparkles,
-  CheckCircle,
-  Menu,
-  X
+  CheckCircle
 } from 'lucide-react';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
@@ -221,7 +219,7 @@ function GameAndChallengeContent() {
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
   const [showRewardBox, setShowRewardBox] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Use the scroll-to-top hook
@@ -243,7 +241,6 @@ function GameAndChallengeContent() {
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
-    setShowMobileMenu(false);
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -295,34 +292,9 @@ function GameAndChallengeContent() {
           {isMobile ? (
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-center">
                 <h1 className="text-lg font-bold">Game & Challenge</h1>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowMobileMenu(!showMobileMenu)}
-                  className="h-8 w-8 p-0"
-                >
-                  {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-                </Button>
               </div>
-              
-              {showMobileMenu && (
-                <div className="grid grid-cols-2 gap-2 pb-2">
-                  {navigationItems.map(({ id, label, icon: Icon }) => (
-                    <Button
-                      key={id}
-                      variant={activeSection === id ? "default" : "ghost"}
-                      onClick={() => scrollToSection(id)}
-                      className="flex items-center gap-2 h-12 text-xs"
-                      size="sm"
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span className="truncate">{label}</span>
-                    </Button>
-                  ))}
-                </div>
-              )}
               
               {/* Mobile horizontal scroll tabs */}
               <ScrollArea className="w-full">
