@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { safeSetJSON } from '@/lib/safeStorage';
+import { useMealScoring } from './useMealScoring';
 
 interface FoodItem {
   id: string;
@@ -40,12 +41,13 @@ interface SupplementItem {
 
 export const useNutritionPersistence = () => {
   const { user } = useAuth();
+  const { scoreMealAfterInsert } = useMealScoring();
 
   const saveFood = useCallback(async (food: FoodItem) => {
     if (!user || !food.confirmed) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('nutrition_logs')
         .insert({
           user_id: user.id,
@@ -60,10 +62,14 @@ export const useNutritionPersistence = () => {
           confidence: food.confidence,
           image_url: food.image,
           created_at: food.timestamp.toISOString()
-        });
+        })
+        .select();
 
       if (error) throw error;
       console.log('Food saved to database:', food.name);
+      
+      // Score the meal quality
+      await scoreMealAfterInsert(data, error);
     } catch (error) {
       console.error('Error saving food:', error);
       // Save to localStorage as fallback
@@ -73,7 +79,7 @@ export const useNutritionPersistence = () => {
       existing.foods.push(food);
       safeSetJSON(localKey, existing);
     }
-  }, [user]);
+  }, [user, scoreMealAfterInsert]);
 
   const saveHydration = useCallback(async (hydration: HydrationItem) => {
     if (!user) return;

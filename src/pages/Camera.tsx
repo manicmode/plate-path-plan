@@ -15,6 +15,7 @@ import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
 import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
+import { useMealScoring } from '@/hooks/useMealScoring';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -98,6 +99,7 @@ const CameraPage = () => {
   const [failedBarcode, setFailedBarcode] = useState('');
   const { addRecentBarcode } = useRecentBarcodes();
   const { addToHistory } = useBarcodeHistory();
+  const { scoreMealAfterInsert } = useMealScoring();
   
   // Review Items Screen states
   const [showReviewScreen, setShowReviewScreen] = useState(false);
@@ -1165,7 +1167,7 @@ const CameraPage = () => {
         });
 
         // Persist to Supabase nutrition_logs table
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('nutrition_logs')
           .insert({
             food_name: food.name,
@@ -1180,11 +1182,15 @@ const CameraPage = () => {
             serving_size: food.serving,
             source: inputSource === 'voice' ? 'voice' : inputSource === 'manual' ? 'manual' : 'vision_api',
             image_url: selectedImage || null,
-          });
+          })
+          .select();
 
         if (error) {
           console.error('Error saving to Supabase:', error);
           // Don't throw error to avoid disrupting UX, but log it
+        } else {
+          // Score the meal quality
+          await scoreMealAfterInsert(data, error);
         }
       }
 
@@ -1350,7 +1356,7 @@ const CameraPage = () => {
       
       // Save to Supabase
       console.log('💾 STEP 1: Saving to Supabase database...');
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('nutrition_logs')
         .insert({
           food_name: foodItem.name,
@@ -1365,7 +1371,8 @@ const CameraPage = () => {
           serving_size: foodItem.serving || 'Estimated portion',
           source: 'vision_api',
           image_url: selectedImage || null,
-        });
+        })
+        .select();
 
       if (error) {
         confirmationDebug.errors.push(`Database save error: ${error.message}`);
@@ -1376,6 +1383,9 @@ const CameraPage = () => {
       
       confirmationDebug.saveToDatabase = true;
       console.log('✅ DATABASE SAVE SUCCESS - Food logged to nutrition_logs table');
+      
+      // Score the meal quality
+      await scoreMealAfterInsert(data, error);
       
     } catch (error) {
       confirmationDebug.errors.push(`Save exception: ${error.message}`);

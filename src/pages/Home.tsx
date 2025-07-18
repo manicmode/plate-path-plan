@@ -25,6 +25,7 @@ import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { supabase } from '@/integrations/supabase/client';
+import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1609,6 +1610,13 @@ const Home = () => {
         isOpen={isHealthCheckOpen} 
         onClose={() => setIsHealthCheckOpen(false)} 
       />
+      
+      {/* Development Test Component */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-8">
+          <MealScoringTestComponent />
+        </div>
+      )}
     </div>
   );
 };
