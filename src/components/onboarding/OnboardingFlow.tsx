@@ -20,7 +20,53 @@ import { AllergiesScreen } from './AllergiesScreen';
 import { EatingPatternsScreen } from './EatingPatternsScreen';
 import { SupplementsScreen } from './SupplementsScreen';
 import { OnboardingComplete } from './OnboardingComplete';
-import { calculateNutritionTargets } from '@/utils/nutritionCalculations';
+
+function calculateNutritionTargets(profile) {
+  const { age, gender, weight, height, activity_level, goal, health_conditions, dietary_preferences } = profile;
+
+  const bmr = gender === 'male'
+    ? 10 * weight + 6.25 * height - 5 * age + 5
+    : 10 * weight + 6.25 * height - 5 * age - 161;
+
+  const activityMultiplier = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    very_active: 1.9,
+  }[activity_level || 'moderate'];
+
+  const tdee = bmr * activityMultiplier;
+
+  let calories = tdee;
+  if (goal === 'lose_fat') calories *= 0.85;
+  if (goal === 'gain_muscle') calories *= 1.10;
+
+  const protein = Math.round(2 * weight);
+  const fat = Math.round((0.25 * calories) / 9);
+  const carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
+  const fiber = gender === 'male' ? 38 : 25;
+  const hydration = Math.round((weight * 35) / 240);
+  const sugar = Math.round(calories * 0.10 / 4);
+  const sodium = health_conditions?.includes('hypertension') ? 1500 : 2300;
+  const supplements = 3;
+  const priorityMicronutrients = health_conditions?.includes('anemia') ? ['iron'] : [];
+
+  return {
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    calories: Math.round(calories),
+    protein,
+    carbs,
+    fat,
+    fiber,
+    hydration,
+    sugar,
+    sodium,
+    supplements,
+    priorityMicronutrients,
+  };
+}
 
 export interface OnboardingData {
   // Basic info
@@ -200,45 +246,21 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
     console.log('Starting onboarding completion process...');
 
     try {
-      // Calculate nutrition targets if we have enough data
-      let nutritionTargets = null;
-      if (formData.weight && formData.age && formData.gender && formData.activityLevel) {
-        const weight = parseFloat(formData.weight);
-        const height = formData.heightUnit === 'cm' 
+      // Calculate nutrition targets using local function
+      const nutritionTargets = calculateNutritionTargets({
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        weight: parseFloat(formData.weight),
+        height: formData.heightUnit === 'cm' 
           ? parseInt(formData.heightCm) 
-          : (parseInt(formData.heightFeet) * 30.48) + (parseInt(formData.heightInches) * 2.54);
-        const age = parseInt(formData.age);
+          : (parseInt(formData.heightFeet) * 30.48) + (parseInt(formData.heightInches) * 2.54),
+        activity_level: formData.activityLevel,
+        goal: formData.mainHealthGoal,
+        health_conditions: formData.healthConditions,
+        dietary_preferences: formData.dietStyles,
+      });
 
-        if (weight && height && age) {
-          nutritionTargets = calculateNutritionTargets({
-            weight,
-            height_cm: formData.heightUnit === 'cm' ? parseInt(formData.heightCm) : undefined,
-            height_feet: formData.heightUnit === 'ft' ? parseInt(formData.heightFeet) : undefined,
-            height_inches: formData.heightUnit === 'ft' ? parseInt(formData.heightInches) : undefined,
-            age,
-            gender: formData.gender,
-            activityLevel: formData.activityLevel,
-            weightGoalType: formData.weightGoalType,
-            timeline: formData.weightGoalTimeline,
-            healthConditions: formData.healthConditions,
-            dietStyles: formData.dietStyles,
-            dailyLifestyle: formData.dailyLifestyle,
-            exerciseFrequency: formData.exerciseFrequency,
-            weightUnit: formData.weightUnit,
-          });
-          console.log('Calculated nutrition targets:', nutritionTargets);
-          
-          // Store daily nutrition targets
-          try {
-            await supabase.functions.invoke('calculate-daily-targets', {
-              body: { userId: user.id }
-            });
-            console.log('Daily nutrition targets stored successfully');
-          } catch (targetError) {
-            console.error('Error storing daily targets:', targetError);
-          }
-        }
-      }
+      console.log('[DEBUG] Nutrition Targets:', nutritionTargets);
 
       const profileData = {
         user_id: user.id,
@@ -285,14 +307,14 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
         deficiency_concerns: formData.deficiencyConcerns.length > 0 ? formData.deficiencyConcerns : null,
         
         // Calculated targets (from nutrition calculations)
-        calculated_bmr: nutritionTargets?.bmr || null,
-        calculated_tdee: nutritionTargets?.tdee || null,
-        target_calories: nutritionTargets?.calories || null,
-        target_protein: nutritionTargets?.protein || null,
-        target_carbs: nutritionTargets?.carbs || null,
-        target_fat: nutritionTargets?.fat || null,
-        target_fiber: nutritionTargets?.fiber || null,
-        priority_micronutrients: nutritionTargets?.priorityMicronutrients || null,
+        calculated_bmr: nutritionTargets.bmr,
+        calculated_tdee: nutritionTargets.tdee,
+        target_calories: nutritionTargets.calories,
+        target_protein: nutritionTargets.protein,
+        target_carbs: nutritionTargets.carbs,
+        target_fat: nutritionTargets.fat,
+        target_fiber: nutritionTargets.fiber,
+        priority_micronutrients: nutritionTargets.priorityMicronutrients,
         
         // Completion status
         onboarding_completed: true,
