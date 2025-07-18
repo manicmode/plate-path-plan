@@ -1,6 +1,8 @@
 
 project_id = "uzoiiijqtahohfafqirm"
 
+[functions.assign-monthly-rankings]
+
 [functions.generate-monthly-summary]
 
 [functions.generate-weekly-summary]

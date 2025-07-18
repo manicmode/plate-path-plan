@@ -123,6 +123,22 @@ export const useNutritionPersistence = () => {
           }).catch(error => {
             console.warn('Monthly summary generation error:', error);
           });
+
+          // On the 1st day of a new month, also assign monthly rankings
+          if (isFirstDayOfMonth) {
+            console.log('🏆 First day of month detected, assigning monthly rankings...');
+            supabase.functions.invoke('assign-monthly-rankings', {
+              body: {}
+            }).then(({ data: rankingsData, error: rankingsError }) => {
+              if (rankingsError) {
+                console.warn('Monthly rankings assignment failed:', rankingsError);
+              } else {
+                console.log('✅ Monthly rankings assigned:', rankingsData);
+              }
+            }).catch(error => {
+              console.warn('Monthly rankings assignment error:', error);
+            });
+          }
         } else {
           console.log('📅 Not month-end or month-start, skipping monthly summary generation');
         }
