@@ -9,6 +9,7 @@ import { ManualEntryFallback } from './ManualEntryFallback';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
 interface HealthCheckModalProps {
   isOpen: boolean;
@@ -145,6 +146,12 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
           
           setAnalysisResult(analysisResult);
           setCurrentState('report');
+          
+          // Trigger daily score calculation after health scan completion
+          if (user?.id) {
+            triggerDailyScoreCalculation(user.id);
+          }
+          
           return;
         } catch (barcodeError) {
           console.error('❌ Barcode analysis failed:', barcodeError);
@@ -285,6 +292,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       setAnalysisResult(analysisResult);
       setCurrentState('report');
+      
+      // Trigger daily score calculation after health scan completion
+      if (user?.id) {
+        triggerDailyScoreCalculation(user.id);
+      }
     } catch (error) {
       console.error('❌ Analysis failed:', error);
       toast({
@@ -360,6 +372,11 @@ export const HealthCheckModal: React.FC<HealthCheckModalProps> = ({
 
       setAnalysisResult(result);
       setCurrentState('report');
+      
+      // Trigger daily score calculation after health scan completion
+      if (user?.id) {
+        triggerDailyScoreCalculation(user.id);
+      }
     } catch (error) {
       console.error(`❌ ${type} analysis failed:`, error);
       toast({

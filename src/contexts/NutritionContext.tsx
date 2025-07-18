@@ -2,6 +2,8 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
+import { useAuth } from '@/contexts/auth';
+import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
 interface FoodItem {
   id: string;
@@ -93,6 +95,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const today = new Date().toISOString().split('T')[0];
   const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
   const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();
+  const { user } = useAuth();
   
   const [currentDay, setCurrentDay] = useState<DailyNutrition>({
     date: today,
@@ -227,6 +230,11 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     // Save to database
     saveFood(newFood);
 
+    // Trigger daily score calculation
+    if (user?.id) {
+      triggerDailyScoreCalculation(user.id);
+    }
+
     console.log('Food added to context:', newFood);
     console.log('Updated totals:', totals);
   };
@@ -249,6 +257,11 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
 
     // Save to database
     saveHydration(newHydration);
+
+    // Trigger daily score calculation
+    if (user?.id) {
+      triggerDailyScoreCalculation(user.id);
+    }
   };
 
   const addSupplement = (supplement: Omit<SupplementItem, 'id' | 'timestamp'>) => {
@@ -265,6 +278,11 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
 
     // Save to database
     saveSupplement(newSupplement);
+
+    // Trigger daily score calculation
+    if (user?.id) {
+      triggerDailyScoreCalculation(user.id);
+    }
   };
 
   const confirmFood = (foodId: string) => {

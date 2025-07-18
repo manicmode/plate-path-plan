@@ -5,6 +5,7 @@ import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, signOutUser, resendEmailConfirmation } from './authService';
 import { createExtendedUser, updateUserTrackers } from './userService';
 import { Session } from '@supabase/supabase-js';
+import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -119,6 +120,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (user) {
       const updatedUser = { ...user, ...profileData };
       setUser(updatedUser);
+      
+      // Trigger daily score calculation when profile is updated
+      triggerDailyScoreCalculation(user.id);
     }
   };
 
