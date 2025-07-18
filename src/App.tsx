@@ -27,6 +27,7 @@ import Hydration from './pages/Hydration';
 import Supplements from './pages/Supplements';
 import SupplementHub from './pages/SupplementHub';
 import AdminDashboard from './components/admin/AdminDashboard';
+import HallOfFame from './pages/HallOfFame';
 
 const queryClient = new QueryClient();
 
@@ -170,6 +171,7 @@ function AppContent() {
             <Route path="hydration" element={<Hydration />} />
             <Route path="supplements" element={<Supplements />} />
             <Route path="supplement-hub" element={<SupplementHub />} />
+            <Route path="hall-of-fame" element={<HallOfFame />} />
             <Route path="admin" element={<AdminDashboard />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
