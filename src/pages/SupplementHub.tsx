@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Heart, Zap, Brain, Dumbbell, Shield, Utensils, Flame, Moon, User, Smile } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Heart, Zap, Brain, Dumbbell, Shield, Utensils, Flame, Moon, User, Smile, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Supplement {
   id: string;
@@ -41,6 +42,11 @@ const SupplementHub = () => {
   const [showSupplementList, setShowSupplementList] = useState(false);
   const [showSupplementDetail, setShowSupplementDetail] = useState(false);
   const [isLoadingSupplements, setIsLoadingSupplements] = useState(false);
+  
+  // Personal recommendations state
+  const [personalRecommendations, setPersonalRecommendations] = useState<Supplement[]>([]);
+  const [showMorePersonal, setShowMorePersonal] = useState(false);
+  const [isGeneratingPersonal, setIsGeneratingPersonal] = useState(false);
 
   // Scroll container ref for horizontal tabs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1313,8 +1319,104 @@ const SupplementHub = () => {
     navigate('/supplements');
   };
 
+  // Generate personalized recommendations using AI
+  const generatePersonalRecommendations = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to get personalized recommendations.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingPersonal(true);
+    try {
+      // Get user profile data for AI analysis
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      // Create comprehensive user context
+      const userContext = {
+        profile,
+        currentSupplements: userSupplements.map(s => s.name),
+        nutritionData: currentDay,
+      };
+
+      // Call AI coach to analyze and recommend supplements
+      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
+        body: {
+          message: `Based on my complete health profile, current supplements, and nutrition data, please recommend the top 10 most beneficial supplements I should consider. Exclude any supplements I'm already taking. For each recommendation, provide a brief personalized explanation of why it would benefit me specifically. Format as a JSON array with objects containing: name, description, personalReason, benefits (array), and healthFlags (array).`,
+          userContext,
+          type: 'supplement_recommendations'
+        }
+      });
+
+      if (error) throw error;
+
+      // Parse AI response to create supplement objects
+      let aiRecommendations = [];
+      try {
+        // Extract JSON from AI response
+        const responseText = data.response;
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsedRecommendations = JSON.parse(jsonMatch[0]);
+          aiRecommendations = parsedRecommendations.map((rec: any, index: number) => ({
+            id: `ai-rec-${index}`,
+            name: rec.name || 'Unknown Supplement',
+            image: '🧬', // AI recommendation icon
+            description: rec.description || 'AI-recommended supplement',
+            benefits: rec.benefits || [],
+            personalReason: rec.personalReason || 'Recommended based on your profile',
+            healthFlags: rec.healthFlags || ['AI-Selected', 'Personalized'],
+            price: '$29.99' // Default price
+          }));
+        }
+      } catch (parseError) {
+        console.error('Error parsing AI response:', parseError);
+        // Fallback to default recommendations if parsing fails
+        aiRecommendations = [
+          {
+            id: 'ai-default-1',
+            name: 'Personalized Multivitamin',
+            image: '🧬',
+            description: 'AI-selected multivitamin based on your specific nutritional gaps',
+            benefits: ['Fills nutritional gaps', 'Supports overall health', 'Personalized formula'],
+            personalReason: 'Based on your profile analysis, this multivitamin addresses your specific nutritional needs',
+            healthFlags: ['AI-Selected', 'Comprehensive'],
+            price: '$34.99'
+          }
+        ];
+      }
+
+      setPersonalRecommendations(aiRecommendations);
+      
+      toast({
+        title: "✨ Personal Recommendations Ready!",
+        description: `Found ${aiRecommendations.length} supplements tailored for you.`,
+      });
+
+    } catch (error) {
+      console.error('Error generating personal recommendations:', error);
+      toast({
+        title: "Error",
+        description: "Unable to generate recommendations. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingPersonal(false);
+    }
+  };
+
   const displayedRecommendations = showMore ? recommendations : recommendations.slice(0, 3);
   const hasMoreRecommendations = recommendations.length > 3;
+  
+  const displayedPersonalRecommendations = showMorePersonal ? personalRecommendations : personalRecommendations.slice(0, 3);
+  const hasMorePersonalRecommendations = personalRecommendations.length > 3;
 
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
@@ -1448,6 +1550,115 @@ const SupplementHub = () => {
             )}
           </div>
         )}
+
+        {/* Personal AI Recommendations Section */}
+        <Card className="glass-card border-0 rounded-3xl bg-gradient-to-br from-purple-50/50 via-blue-50/30 to-emerald-50/40 dark:from-purple-900/20 dark:via-blue-900/10 dark:to-emerald-900/15 shadow-lg border border-purple-200/30 dark:border-purple-700/30 animate-slide-up">
+          <CardHeader className="text-center space-y-3">
+            <div className="flex items-center justify-center space-x-2">
+              <Sparkles className="h-6 w-6 text-purple-500 animate-pulse" />
+              <CardTitle className="bg-gradient-to-r from-purple-600 via-blue-600 to-emerald-600 bg-clip-text text-transparent text-xl font-bold">
+                General Recommendations Just For You
+              </CardTitle>
+              <Sparkles className="h-6 w-6 text-purple-500 animate-pulse" />
+            </div>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              🧠 Get AI-powered supplement recommendations tailored to your unique health profile, goals, and current nutrition status.
+            </p>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            {personalRecommendations.length === 0 && !isGeneratingPersonal ? (
+              <div className="text-center py-8 space-y-4">
+                <div className="text-6xl animate-bounce">🎯</div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg">Ready for Your Personal Analysis?</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                    Our AI will analyze your health profile, current supplements, and nutrition data to recommend the perfect supplements for you.
+                  </p>
+                </div>
+                <Button 
+                  onClick={generatePersonalRecommendations}
+                  className="gradient-primary text-white font-semibold px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                >
+                  <Brain className="h-5 w-5 mr-2" />
+                  Generate My Recommendations
+                </Button>
+              </div>
+            ) : isGeneratingPersonal ? (
+              <div className="text-center py-8 space-y-4">
+                <div className="animate-spin h-12 w-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold">🧠 Analyzing Your Profile...</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Reviewing your health data, goals, and current supplements to find perfect matches...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <Button 
+                    onClick={generatePersonalRecommendations}
+                    variant="outline"
+                    size="sm"
+                    className="glass-button rounded-full"
+                    disabled={isGeneratingPersonal}
+                  >
+                    <Brain className="h-4 w-4 mr-2" />
+                    Refresh Recommendations
+                  </Button>
+                </div>
+                
+                {displayedPersonalRecommendations.map((supplement) => (
+                  <Card 
+                    key={supplement.id}
+                    className="glass-card border-0 rounded-2xl cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] bg-white/60 dark:bg-gray-800/60"
+                    onClick={() => handleSupplementSelect(supplement)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start space-x-4">
+                        <div className="text-4xl">{supplement.image}</div>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-semibold">{supplement.name}</h3>
+                            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                              AI Selected
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {supplement.description}
+                          </p>
+                          <div className="bg-gradient-to-r from-purple-100/80 to-blue-100/80 dark:from-purple-900/40 dark:to-blue-900/40 p-3 rounded-xl border border-purple-200/50 dark:border-purple-700/50">
+                            <p className="text-xs font-medium text-purple-800 dark:text-purple-200">
+                              🎯 {supplement.personalReason}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {supplement.healthFlags.slice(0, 3).map((flag, index) => (
+                              <Badge key={index} variant="outline" className="text-xs border-emerald-200 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300">
+                                ✨ {flag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {hasMorePersonalRecommendations && (
+                  <Button
+                    onClick={() => setShowMorePersonal(!showMorePersonal)}
+                    variant="outline"
+                    className="w-full glass-button rounded-2xl bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-700"
+                  >
+                    {showMorePersonal ? 'Show Less' : `✨ Show ${personalRecommendations.length - 3} More Personal Picks`}
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* My Supplements Section */}
         <Card className="glass-card border-0 rounded-3xl">
