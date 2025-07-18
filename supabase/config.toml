@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.calculate-daily-performance]
 verify_jwt = false
+
+[functions.calculate-daily-score]
+verify_jwt = false
