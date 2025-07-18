@@ -531,29 +531,7 @@ function GameAndChallengeContent() {
 
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
-          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 h-12">
-              <TabsTrigger value="ranking" className="text-xs">
-                <Trophy className="h-3 w-3 mr-1" />
-                Ranking
-              </TabsTrigger>
-              <TabsTrigger value="challenges" className="text-xs">
-                <Target className="h-3 w-3 mr-1" />
-                Challenges
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="text-xs">
-                <MessageCircle className="h-3 w-3 mr-1" />
-                Chat
-              </TabsTrigger>
-              <TabsTrigger value="winners" className="text-xs">
-                <Crown className="h-3 w-3 mr-1" />
-                Winners
-              </TabsTrigger>
-              <TabsTrigger value="hall-of-fame" className="text-xs">
-                <Star className="h-3 w-3 mr-1" />
-                Fame
-              </TabsTrigger>
-            </TabsList>
+          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)]">
 
             <TabsContent value="ranking" className="mt-4">
               {/* Mobile Ranking Section */}
@@ -825,9 +803,33 @@ function GameAndChallengeContent() {
               <MonthlyTrophyPodium />
             </TabsContent>
 
-            <TabsContent value="hall-of-fame" className="mt-4">
+            <TabsContent value="hall-of-fame" className="mt-4 flex-1">
               <HallOfFame champions={optimizedHallOfFame} />
             </TabsContent>
+            
+            {/* Bottom Navigation Tabs */}
+            <TabsList className="grid w-full grid-cols-5 h-12 mt-auto sticky bottom-0 bg-background/95 backdrop-blur-sm border-t">
+              <TabsTrigger value="ranking" className="text-xs">
+                <Trophy className="h-3 w-3 mr-1" />
+                Ranking
+              </TabsTrigger>
+              <TabsTrigger value="challenges" className="text-xs">
+                <Target className="h-3 w-3 mr-1" />
+                Challenges
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="text-xs">
+                <MessageCircle className="h-3 w-3 mr-1" />
+                Chat
+              </TabsTrigger>
+              <TabsTrigger value="winners" className="text-xs">
+                <Crown className="h-3 w-3 mr-1" />
+                Winners
+              </TabsTrigger>
+              <TabsTrigger value="hall-of-fame" className="text-xs">
+                <Star className="h-3 w-3 mr-1" />
+                Fame
+              </TabsTrigger>
+            </TabsList>
           </Tabs>
         ) : (
           // Desktop sections (existing code)
