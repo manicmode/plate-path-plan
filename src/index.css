@@ -839,25 +839,37 @@
   );
   animation: shimmerSweep 2s ease-out 0.5s 1 forwards;
   pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: overlay;
+  opacity: 0;
 }
 
 .dark .shimmer-text::after {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.3) 20%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0.3) 80%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.2) 80%,
     transparent 100%
   );
+  mix-blend-mode: soft-light;
 }
 
 @keyframes shimmerSweep {
   0% {
     left: -100%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
   }
   100% {
     left: 100%;
+    opacity: 0;
   }
 }
 
