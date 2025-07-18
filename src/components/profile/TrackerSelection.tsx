@@ -20,6 +20,8 @@ const trackerOptions = [
   { id: 'fat', label: 'Fat' },
   { id: 'hydration', label: 'Hydration' },
   { id: 'supplements', label: 'Supplements' },
+  { id: 'fiber', label: 'Fiber' },
+  { id: 'micronutrients', label: 'Micronutrients' },
 ];
 
 export const TrackerSelection = ({ selectedTrackers, isEditing, onToggleTracker, onEditToggle }: TrackerSelectionProps) => {
