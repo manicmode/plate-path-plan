@@ -5,7 +5,7 @@ import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, signOutUser, resendEmailConfirmation } from './authService';
 import { createExtendedUser, updateUserTrackers } from './userService';
 import { Session } from '@supabase/supabase-js';
-import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
+import { triggerDailyScoreCalculation, triggerDailyTargetsGeneration } from '@/lib/dailyScoreUtils';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -123,6 +123,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Trigger daily score calculation when profile is updated
       triggerDailyScoreCalculation(user.id);
+      
+      // Also regenerate daily targets if significant profile changes occurred
+      const significantFields = ['weight', 'age', 'gender', 'activityLevel', 'weightGoalType', 'healthConditions'];
+      const hasSignificantChanges = significantFields.some(field => profileData[field as keyof ExtendedUser] !== undefined);
+      
+      if (hasSignificantChanges) {
+        console.log('Significant profile changes detected, regenerating daily targets...');
+        triggerDailyTargetsGeneration(user.id);
+      }
     }
   };
 

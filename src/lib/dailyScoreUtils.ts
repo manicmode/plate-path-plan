@@ -23,3 +23,24 @@ export const triggerDailyScoreCalculation = async (userId: string, targetDate?: 
     return null;
   }
 };
+
+export const triggerDailyTargetsGeneration = async (userId: string) => {
+  try {
+    console.log('🎯 Triggering daily targets generation for user:', userId);
+    
+    const { data, error } = await supabase.functions.invoke('calculate-daily-targets', {
+      body: { userId }
+    });
+
+    if (error) {
+      console.error('❌ Error generating daily targets:', error);
+      return null;
+    }
+
+    console.log('✅ Daily targets generated successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error in triggerDailyTargetsGeneration:', error);
+    return null;
+  }
+};

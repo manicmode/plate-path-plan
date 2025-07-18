@@ -16,6 +16,9 @@ import { AllergiesSection } from '@/components/profile/AllergiesSection';
 import { NotificationSettings } from '@/components/profile/NotificationSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
+import { DailyTargetsCard } from '@/components/profile/DailyTargetsCard';
+import { BackfillTargetsButton } from '@/components/profile/BackfillTargetsButton';
+import { TargetsTestButton } from '@/components/debug/TargetsTestButton';
 import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
@@ -283,6 +286,25 @@ const Profile = () => {
         onEditToggle={() => setIsEditing(!isEditing)}
       />
 
+      {/* Allergies */}
+      <AllergiesSection 
+        allergies={formData.allergies}
+        isEditing={isEditing}
+        onAllergiesChange={(allergies) => updateFormData({ allergies })}
+        onEditToggle={() => setIsEditing(!isEditing)}
+      />
+
+      {/* Daily Targets */}
+      <DailyTargetsCard />
+
+      {/* Admin: Backfill Targets for All Users */}
+      {user?.email === 'ashkan_e2000@yahoo.com' && (
+        <>
+          <BackfillTargetsButton />
+          <TargetsTestButton />
+        </>
+      )}
+
       {/* Tracker Selection */}
       <TrackerSelection 
         selectedTrackers={formData.selectedTrackers}
@@ -309,14 +331,6 @@ const Profile = () => {
 
       {/* Reminder Management */}
       <ReminderManagement />
-
-      {/* Allergies & Restrictions */}
-      <AllergiesSection 
-        allergies={formData.allergies}
-        isEditing={isEditing}
-        onAllergiesChange={(allergies) => updateFormData({ allergies })}
-        onEditToggle={() => setIsEditing(!isEditing)}
-      />
 
       {/* Action Buttons */}
       <ProfileActions 

@@ -129,6 +129,23 @@ export const useOnboardingStatus = () => {
       }
       
       console.log('[DEBUG] markOnboardingComplete: Database update successful');
+      
+      // Generate daily nutrition targets after onboarding completion
+      try {
+        console.log('[DEBUG] markOnboardingComplete: Generating daily nutrition targets...');
+        const { data, error: targetsError } = await supabase.functions.invoke('calculate-daily-targets', {
+          body: { userId: user.id }
+        });
+        
+        if (targetsError) {
+          console.error('[DEBUG] markOnboardingComplete: Error generating targets:', targetsError);
+        } else {
+          console.log('[DEBUG] markOnboardingComplete: Daily nutrition targets generated successfully:', data);
+        }
+      } catch (targetsError) {
+        console.error('[DEBUG] markOnboardingComplete: Error invoking targets function:', targetsError);
+      }
+      
     } catch (error) {
       console.error('[DEBUG] markOnboardingComplete: Error updating completion status:', error);
       throw error;
