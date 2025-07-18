@@ -27,8 +27,10 @@ import {
   Calendar,
   Plus,
   Filter,
-  Sparkles
+  Sparkles,
+  CheckCircle
 } from 'lucide-react';
+import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { cn } from '@/lib/utils';
 
 // Types
@@ -43,11 +45,101 @@ interface ChatMessage {
 
 // Mock data for demonstration
 const mockLeaderboard = [
-  { id: 1, nickname: "Alex 🦄", avatar: "🦄", score: 95, streak: 12, gold: 3, silver: 2, bronze: 1, rank: 1, isCurrentUser: false, consistency: 95, improvement: 12 },
-  { id: 2, nickname: "Maya 🌟", avatar: "🌟", score: 92, streak: 8, gold: 2, silver: 3, bronze: 2, rank: 2, isCurrentUser: true, consistency: 88, improvement: 8 },
-  { id: 3, nickname: "Sam 🔥", avatar: "🔥", score: 88, streak: 5, gold: 1, silver: 2, bronze: 4, rank: 3, isCurrentUser: false, consistency: 76, improvement: -3 },
-  { id: 4, nickname: "Jordan 🚀", avatar: "🚀", score: 85, streak: 15, gold: 0, silver: 1, bronze: 3, rank: 4, isCurrentUser: false, consistency: 92, improvement: 15 },
-  { id: 5, nickname: "Casey 🌈", avatar: "🌈", score: 82, streak: 3, gold: 1, silver: 0, bronze: 2, rank: 5, isCurrentUser: false, consistency: 65, improvement: -5 },
+  { 
+    id: 1, 
+    nickname: "Alex 🦄", 
+    avatar: "🦄", 
+    score: 95, 
+    streak: 12, 
+    gold: 3, 
+    silver: 2, 
+    bronze: 1, 
+    rank: 1, 
+    isCurrentUser: false, 
+    consistency: 95, 
+    improvement: 12,
+    mealsLoggedThisWeek: 6,
+    totalMealsThisWeek: 7,
+    weeklyProgress: 86,
+    dailyStreak: 12,
+    weeklyStreak: 2
+  },
+  { 
+    id: 2, 
+    nickname: "Maya 🌟", 
+    avatar: "🌟", 
+    score: 92, 
+    streak: 8, 
+    gold: 2, 
+    silver: 3, 
+    bronze: 2, 
+    rank: 2, 
+    isCurrentUser: true, 
+    consistency: 88, 
+    improvement: 8,
+    mealsLoggedThisWeek: 5,
+    totalMealsThisWeek: 7,
+    weeklyProgress: 71,
+    dailyStreak: 8,
+    weeklyStreak: 1
+  },
+  { 
+    id: 3, 
+    nickname: "Sam 🔥", 
+    avatar: "🔥", 
+    score: 88, 
+    streak: 5, 
+    gold: 1, 
+    silver: 2, 
+    bronze: 4, 
+    rank: 3, 
+    isCurrentUser: false, 
+    consistency: 76, 
+    improvement: -3,
+    mealsLoggedThisWeek: 4,
+    totalMealsThisWeek: 7,
+    weeklyProgress: 57,
+    dailyStreak: 5,
+    weeklyStreak: 0
+  },
+  { 
+    id: 4, 
+    nickname: "Jordan 🚀", 
+    avatar: "🚀", 
+    score: 85, 
+    streak: 15, 
+    gold: 0, 
+    silver: 1, 
+    bronze: 3, 
+    rank: 4, 
+    isCurrentUser: false, 
+    consistency: 92, 
+    improvement: 15,
+    mealsLoggedThisWeek: 7,
+    totalMealsThisWeek: 7,
+    weeklyProgress: 100,
+    dailyStreak: 15,
+    weeklyStreak: 3
+  },
+  { 
+    id: 5, 
+    nickname: "Casey 🌈", 
+    avatar: "🌈", 
+    score: 82, 
+    streak: 3, 
+    gold: 1, 
+    silver: 0, 
+    bronze: 2, 
+    rank: 5, 
+    isCurrentUser: false, 
+    consistency: 65, 
+    improvement: -5,
+    mealsLoggedThisWeek: 3,
+    totalMealsThisWeek: 7,
+    weeklyProgress: 43,
+    dailyStreak: 3,
+    weeklyStreak: 0
+  },
 ];
 
 const mockPodiumWinners = [
@@ -207,44 +299,58 @@ export default function GameAndChallengePage() {
                         <div className="text-2xl font-bold text-muted-foreground w-8">
                           #{user.rank}
                         </div>
-                        <Avatar className="h-12 w-12 text-2xl">
-                          <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                            {user.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-semibold">{user.nickname}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Streak: {user.streak} <Flame className="inline h-4 w-4 text-orange-500" />
+                        
+                        {/* Enhanced Progress Avatar */}
+                        <ProgressAvatar 
+                          avatar={user.avatar}
+                          nickname={user.nickname}
+                          weeklyProgress={user.weeklyProgress}
+                          dailyStreak={user.dailyStreak}
+                          weeklyStreak={user.weeklyStreak}
+                          size="md"
+                        />
+                        
+                        {/* Additional Progress Stats */}
+                        <div className="flex items-center gap-3 text-sm">
+                          <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span className="text-green-700 dark:text-green-400 font-medium">
+                              {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
+                            </span>
                           </div>
+                          <Badge variant="outline" className="text-xs">
+                            Score: {user.score}
+                          </Badge>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-6">
-                        {/* Score Ring */}
-                        <div className="relative">
-                          <div className="w-16 h-16 rounded-full border-4 border-muted flex items-center justify-center relative">
-                            <div 
-                              className="absolute inset-0 rounded-full border-4 border-primary transition-all duration-1000"
-                              style={{
-                                background: `conic-gradient(hsl(var(--primary)) ${user.score * 3.6}deg, transparent 0deg)`
-                              }}
-                            />
-                            <span className="text-sm font-bold z-10">{user.score}</span>
-                          </div>
-                        </div>
-                        
                         {/* Trophies */}
                         <div className="flex gap-2">
-                          <Badge variant="secondary" className="flex items-center gap-1">
+                          <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
                             🥇 {user.gold}
                           </Badge>
-                          <Badge variant="secondary" className="flex items-center gap-1">
+                          <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
                             🥈 {user.silver}
                           </Badge>
-                          <Badge variant="secondary" className="flex items-center gap-1">
+                          <Badge variant="secondary" className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
                             🥉 {user.bronze}
                           </Badge>
+                        </div>
+                        
+                        {/* Improvement Indicator */}
+                        <div className="flex items-center gap-2">
+                          {user.improvement > 0 ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <TrendingUp className="h-4 w-4" />
+                              <span className="text-sm font-medium">+{user.improvement}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-red-500">
+                              <TrendingDown className="h-4 w-4" />
+                              <span className="text-sm font-medium">{user.improvement}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
