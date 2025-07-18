@@ -29,6 +29,7 @@ import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSetting
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
 import { HealthGoalSettings } from '@/components/profile/HealthGoalSettings';
+import { ContactSync } from '@/components/profile/ContactSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
@@ -266,6 +267,9 @@ const ProfileContent = () => {
 
         {/* Streak Badges Section */}
         <StreakBadgesSection />
+
+        {/* Contact Sync & Friends */}
+        <ContactSync />
 
         {/* Profile Header */}
       <Card className="animate-slide-up glass-card border-0 rounded-3xl">

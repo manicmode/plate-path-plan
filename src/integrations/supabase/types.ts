@@ -586,6 +586,33 @@ export type Database = {
           },
         ]
       }
+      user_contacts: {
+        Row: {
+          contact_hash: string
+          contact_name: string
+          contact_type: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          contact_hash: string
+          contact_name: string
+          contact_type?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          contact_hash?: string
+          contact_name?: string
+          contact_type?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           activity_level: string | null
@@ -632,6 +659,7 @@ export type Database = {
           medications: string[] | null
           onboarding_completed: boolean | null
           onboarding_skipped: boolean | null
+          phone: string | null
           priority_micronutrients: string[] | null
           profile_completion_percentage: number | null
           progress_tracking_priorities: string[] | null
@@ -705,6 +733,7 @@ export type Database = {
           medications?: string[] | null
           onboarding_completed?: boolean | null
           onboarding_skipped?: boolean | null
+          phone?: string | null
           priority_micronutrients?: string[] | null
           profile_completion_percentage?: number | null
           progress_tracking_priorities?: string[] | null
@@ -778,6 +807,7 @@ export type Database = {
           medications?: string[] | null
           onboarding_completed?: boolean | null
           onboarding_skipped?: boolean | null
+          phone?: string | null
           priority_micronutrients?: string[] | null
           profile_completion_percentage?: number | null
           progress_tracking_priorities?: string[] | null
@@ -852,6 +882,15 @@ export type Database = {
       calculate_next_trigger: {
         Args: { reminder_id: string }
         Returns: string
+      }
+      find_user_friends: {
+        Args: { contact_hashes: string[] }
+        Returns: {
+          user_id: string
+          email: string
+          phone: string
+          contact_hash: string
+        }[]
       }
     }
     Enums: {
