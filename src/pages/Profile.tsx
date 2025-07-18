@@ -18,6 +18,7 @@ import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { DailyTargetsCard } from '@/components/profile/DailyTargetsCard';
 import { BackfillTargetsButton } from '@/components/profile/BackfillTargetsButton';
+import { DailyTargetsTestSuite } from '@/components/debug/DailyTargetsTestSuite';
 import { TargetsTestButton } from '@/components/debug/TargetsTestButton';
 import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
@@ -302,6 +303,7 @@ const Profile = () => {
         <>
           <BackfillTargetsButton />
           <TargetsTestButton />
+          <DailyTargetsTestSuite />
         </>
       )}
 

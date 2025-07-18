@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, targetDate } = await req.json();
+    const { userId, targetDate, testProfile } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -31,24 +31,66 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log(`Calculating daily targets for user: ${userId}, date: ${targetDate || 'today'}`);
+    console.log('Test profile provided:', testProfile ? 'Yes' : 'No');
 
-    // Get user profile data
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    let profile;
 
-    if (profileError || !profile) {
-      console.error('Profile fetch error:', profileError);
+    if (testProfile) {
+      // Use provided test profile for testing purposes
+      profile = testProfile;
+      console.log('Using test profile for calculations');
+    } else {
+      // Get user profile data from database
+      const { data: dbProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (profileError || !dbProfile) {
+        console.error('Profile fetch error:', profileError);
+        return new Response(
+          JSON.stringify({ error: 'User profile not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      profile = dbProfile;
+    }
+
+    console.log('Profile data for calculations:', {
+      age: profile.age,
+      gender: profile.gender,
+      weight: profile.weight,
+      height_cm: profile.height_cm,
+      height_feet: profile.height_feet,
+      height_inches: profile.height_inches,
+      activity_level: profile.activity_level,
+      weight_goal_type: profile.weight_goal_type,
+      main_health_goal: profile.main_health_goal,
+      health_conditions: profile.health_conditions,
+      diet_styles: profile.diet_styles
+    });
+
+    // Validate required profile data
+    const requiredFields = ['age', 'gender', 'weight', 'activity_level'];
+    const missingFields = requiredFields.filter(field => !profile[field]);
+    
+    if (missingFields.length > 0) {
+      console.error(`Missing required profile data: ${missingFields.join(', ')}`);
       return new Response(
-        JSON.stringify({ error: 'User profile not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: `Missing required profile data: ${missingFields.join(', ')}`,
+          profile: profile 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Calculate nutrition targets using the same logic as frontend
     const nutritionTargets = calculateNutritionTargets(profile);
+    
+    console.log('Calculated targets:', nutritionTargets);
 
     // Prepare target date
     const date = targetDate || new Date().toISOString().split('T')[0];
@@ -66,7 +108,7 @@ Deno.serve(async (req) => {
       supplement_count: nutritionTargets.supplementCount,
       supplement_recommendations: nutritionTargets.supplementRecommendations,
       priority_micronutrients: nutritionTargets.priorityMicronutrients,
-      flagged_ingredients: nutritionTargets.flaggedIngredients,
+      flagged_ingredients: nutritionTargets.flaggedIngredients.map(f => f.ingredient),
       calculated_at: new Date().toISOString(),
       profile_version: 1,
     };
