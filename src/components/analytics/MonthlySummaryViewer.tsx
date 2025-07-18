@@ -198,21 +198,21 @@ export const MonthlySummaryViewer = () => {
       case 1:
         return {
           badge: '🥇',
-          tooltip: 'You ranked #1 this month! Congrats!',
+          tooltip: 'Top 1% – Nutritional Champion!',
           cardClass: 'border-yellow-400 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 shadow-lg shadow-yellow-200/50 dark:shadow-yellow-900/20',
           glow: 'ring-2 ring-yellow-300 ring-offset-2'
         };
       case 2:
         return {
           badge: '🥈',
-          tooltip: 'Amazing! You ranked #2 this month!',
+          tooltip: 'Amazing! You placed second this month!',
           cardClass: 'border-gray-400 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/20 dark:to-gray-600/20 shadow-lg shadow-gray-200/50 dark:shadow-gray-700/20',
           glow: 'ring-2 ring-gray-300 ring-offset-2'
         };
       case 3:
         return {
           badge: '🥉',
-          tooltip: 'Great job! You ranked #3 this month!',
+          tooltip: 'Great work! Third place overall!',
           cardClass: 'border-amber-600 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/20 dark:to-orange-800/20 shadow-lg shadow-amber-200/50 dark:shadow-amber-900/20',
           glow: 'ring-2 ring-amber-400 ring-offset-2'
         };
