@@ -42,3 +42,6 @@ verify_jwt = false
 
 [functions.batch-evaluate-meals]
 verify_jwt = false
+
+[functions.calculate-daily-performance]
+verify_jwt = false

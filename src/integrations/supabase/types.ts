@@ -20,6 +20,7 @@ export type Database = {
           calories: number | null
           carbs: number | null
           created_at: string
+          daily_performance_score: number | null
           fat: number | null
           fiber: number | null
           flagged_ingredients: string[] | null
@@ -39,6 +40,7 @@ export type Database = {
           calories?: number | null
           carbs?: number | null
           created_at?: string
+          daily_performance_score?: number | null
           fat?: number | null
           fiber?: number | null
           flagged_ingredients?: string[] | null
@@ -58,6 +60,7 @@ export type Database = {
           calories?: number | null
           carbs?: number | null
           created_at?: string
+          daily_performance_score?: number | null
           fat?: number | null
           fiber?: number | null
           flagged_ingredients?: string[] | null
