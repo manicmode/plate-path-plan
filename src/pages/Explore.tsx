@@ -2,19 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
-import { trackPageVisit } from '@/utils/pageTracking';
 
 const Explore = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
-
-  // Track page visit for ticker triggers
-  useEffect(() => {
-    trackPageVisit('Explore');
-  }, []);
 
   const handleProfileClick = () => {
     navigate('/profile');

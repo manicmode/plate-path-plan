@@ -14,7 +14,6 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
 import { RecipeStorageManager, SavedRecipe } from '@/lib/recipeStorage';
 import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
-import { trackPageVisit } from '@/utils/pageTracking';
 
 interface Message {
   id: string;
@@ -53,11 +52,6 @@ const Coach = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
-
-  // Track page visit for ticker triggers
-  useEffect(() => {
-    trackPageVisit('Coach');
-  }, []);
 
   // Initialize storage manager and perform health checks
   useEffect(() => {

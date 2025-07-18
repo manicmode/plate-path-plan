@@ -1,17 +1,19 @@
-
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/auth';
 import Index from './pages/Index';
 import Home from './pages/Home';
+import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
+import { OnboardingScreen } from './components/onboarding/OnboardingScreen';
 import { OnboardingReminder } from '@/components/onboarding/OnboardingReminder';
 import EmailVerificationRequired from '@/components/auth/EmailVerificationRequired';
 import { ConfirmEmail } from '@/components/auth/ConfirmEmail';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { SavingScreen } from './components/SavingScreen';
 import { OnboardingWithNavigation } from './components/onboarding/OnboardingWithNavigation';
 import { LoadingScreen } from './components/LoadingScreen';
 
@@ -46,6 +48,9 @@ function AppContent() {
 
   // Bootstrap loading state - combines auth and onboarding initialization
   const isBootstrapping = loading || (isAuthenticated && isEmailConfirmed && onboardingLoading);
+
+  // Add debug logging at the top
+  console.log('[DEBUG] route', window.location.pathname);
 
   const handleStartOnboarding = () => {
     setShowOnboarding(true);
@@ -179,24 +184,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AppContent />
+
+        {/* Toast notifications */}
+        <Toaster position="top-center" richColors />
         
-        {/* Single Sonner Toast Container with proper theme support */}
-        <Toaster 
-          position="top-center" 
-          richColors
-          closeButton
-          toastOptions={{
-            style: {
-              background: 'hsl(var(--background))',
-              color: 'hsl(var(--foreground))',
-              border: '1px solid hsl(var(--border))',
-            },
-            className: 'sonner-toast',
-          }}
-        />
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
+
 
 export default App;

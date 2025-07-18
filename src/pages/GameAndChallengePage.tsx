@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { trackPageVisit } from '@/utils/pageTracking';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,11 +89,6 @@ export default function GameAndChallengePage() {
   const [challengeName, setChallengeName] = useState('');
   const [challengeDescription, setChallengeDescription] = useState('');
   const [selectedTimeframe, setSelectedTimeframe] = useState('7');
-
-  // Track page visit for ticker triggers
-  useEffect(() => {
-    trackPageVisit('GameChallenge');
-  }, []);
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);

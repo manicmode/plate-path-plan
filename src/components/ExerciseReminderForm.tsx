@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExerciseReminderFormProps {
   isOpen: boolean;
@@ -25,6 +24,7 @@ const DAYS_OF_WEEK = [
 export const ExerciseReminderForm = ({ isOpen, onClose }: ExerciseReminderFormProps) => {
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [reminderTime, setReminderTime] = useState('18:00');
+  const { toast } = useToast();
 
   const handleDayToggle = (dayId: number) => {
     setSelectedDays(prev => 
@@ -36,8 +36,10 @@ export const ExerciseReminderForm = ({ isOpen, onClose }: ExerciseReminderFormPr
 
   const handleSubmit = () => {
     if (selectedDays.length === 0) {
-      toast.error("Please select at least one day", {
+      toast({
+        title: "Please select at least one day",
         description: "Choose which days you want to be reminded to log exercise.",
+        variant: "destructive",
       });
       return;
     }
@@ -48,7 +50,8 @@ export const ExerciseReminderForm = ({ isOpen, onClose }: ExerciseReminderFormPr
       time: reminderTime,
     });
 
-    toast.success("Exercise reminder set! 🏋️", {
+    toast({
+      title: "Exercise reminder set! 🏋️",
       description: `You'll be reminded to log exercise on selected days at ${reminderTime}`,
     });
 
