@@ -362,10 +362,10 @@ function GameAndChallengeContent() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content - Removed excessive top padding */}
       <div className={cn(
-        "container mx-auto space-y-6 sm:space-y-12 max-w-full overflow-x-hidden",
-        isMobile ? "px-2 py-4" : "px-4 py-8"
+        "container mx-auto space-y-4 max-w-full overflow-x-hidden",
+        isMobile ? "px-2 pt-2" : "px-4 pt-4"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
@@ -556,7 +556,7 @@ function GameAndChallengeContent() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-3">
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {optimizedLeaderboard.map((user, index) => (
                       <div
                         key={user.id}
@@ -698,9 +698,11 @@ function GameAndChallengeContent() {
                      </div>
                   ) : (
                     <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
-                      <CardContent className="text-center py-6">
-                        <Sparkles className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-                        <h3 className="font-semibold mb-2">No Micro-Challenges Yet</h3>
+                      <CardContent className="text-center py-8">
+                        <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Sparkles className="h-8 w-8 text-yellow-500" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">No Micro-Challenges Yet</h3>
                         <p className="text-muted-foreground text-sm mb-3">
                           Create quick 1-7 day challenges!
                         </p>
