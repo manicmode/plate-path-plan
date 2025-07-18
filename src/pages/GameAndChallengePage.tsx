@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { ChallengeProvider } from '@/contexts/ChallengeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,9 @@ import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
 import { PodiumOfTheMonth } from '@/components/analytics/PodiumOfTheMonth';
 import { HallOfFame } from '@/components/analytics/HallOfFame';
+import { ChallengeCreationModal } from '@/components/analytics/ChallengeCreationModal';
+import { ChallengeCard } from '@/components/analytics/ChallengeCard';
+import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 
 // Types
@@ -173,11 +177,6 @@ const mockFriends = [
   { id: 6, nickname: "Meal Prep King 👨‍🍳", avatar: "👨‍🍳", rank: 8, trend: "down" as const, score: 76, streak: 3, weeklyProgress: 48, isOnline: false, lastSeen: "2 days ago" },
 ];
 
-const mockActiveChallenges = [
-  { id: 1, name: "7-Day Veggie Challenge", creator: "Sam 🔥", participants: 5, timeLeft: "3 days", progress: 60 },
-  { id: 2, name: "Water Warrior Week", creator: "Maya 🌟", participants: 8, timeLeft: "2 days", progress: 85 },
-];
-
 const mockChatMessages: ChatMessage[] = [
   { id: 1, user: "Alex 🦄", message: "Great job everyone! 💪", time: "2:15 PM", reactions: ["🔥", "👏"] },
   { id: 2, user: "Bot", message: "@Maya wins the 🥑 Consistency Award!", time: "2:10 PM", isBot: true, reactions: [] },
@@ -185,18 +184,25 @@ const mockChatMessages: ChatMessage[] = [
 ];
 
 export default function GameAndChallengePage() {
+  return (
+    <ChallengeProvider>
+      <GameAndChallengeContent />
+    </ChallengeProvider>
+  );
+}
+
+function GameAndChallengeContent() {
+  const { challenges } = useChallenge();
   const [activeSection, setActiveSection] = useState('ranking');
   const [chatMessage, setChatMessage] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [messages, setMessages] = useState(mockChatMessages);
   const [sortBy, setSortBy] = useState('score');
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [showRewardBox, setShowRewardBox] = useState(false);
   
   // Use the scroll-to-top hook
   useScrollToTop();
-  const [showRewardBox, setShowRewardBox] = useState(false);
-  const [challengeName, setChallengeName] = useState('');
-  const [challengeDescription, setChallengeDescription] = useState('');
-  const [selectedTimeframe, setSelectedTimeframe] = useState('7');
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
@@ -235,10 +241,10 @@ export default function GameAndChallengePage() {
           <div className="flex justify-center space-x-4 flex-wrap">
             {[
               { id: 'ranking', label: 'Ranking', icon: Trophy },
+              { id: 'challenges', label: 'Challenges', icon: Target },
               { id: 'chat', label: 'Chat', icon: MessageCircle },
               { id: 'winners', label: 'Winners', icon: Crown },
-              { id: 'hall-of-fame', label: 'Hall of Fame', icon: Star },
-              { id: 'challenges', label: 'Challenges', icon: Target }
+              { id: 'hall-of-fame', label: 'Hall of Fame', icon: Star }
             ].map(({ id, label, icon: Icon }) => (
               <Button
                 key={id}
@@ -281,12 +287,23 @@ export default function GameAndChallengePage() {
         {/* Ranking Arena Section */}
         <section id="ranking" className="animate-fade-in">
           <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 text-center">
-              <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3">
-                <Trophy className="h-8 w-8 text-yellow-500" />
-                Live Rankings Arena
-                <Trophy className="h-8 w-8 text-yellow-500" />
-              </CardTitle>
+            <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-3xl font-bold flex items-center gap-3">
+                  <Trophy className="h-8 w-8 text-yellow-500" />
+                  Live Rankings Arena
+                  <Trophy className="h-8 w-8 text-yellow-500" />
+                </CardTitle>
+                
+                {/* Create Challenge Button */}
+                <Button 
+                  onClick={() => setShowChallengeModal(true)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Challenge
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
@@ -373,14 +390,60 @@ export default function GameAndChallengePage() {
           </Card>
         </section>
 
-        {/* Podium of the Month Section */}
-        <section id="podium" className="animate-fade-in">
-          <PodiumOfTheMonth contenders={mockPodiumWinners} />
-        </section>
-
-        {/* Hall of Fame Section */}
-        <section id="hall-of-fame" className="animate-fade-in">
-          <HallOfFame champions={mockHallOfFame} />
+        {/* Active Challenges Section */}
+        <section id="challenges" className="animate-fade-in">
+          <Card className="overflow-hidden border-2 border-green-200 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-3xl font-bold flex items-center gap-3">
+                  <Target className="h-8 w-8 text-green-600" />
+                  🏃‍♂️ Active Challenges
+                  <Target className="h-8 w-8 text-green-600" />
+                </CardTitle>
+                
+                <Button 
+                  onClick={() => setShowChallengeModal(true)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Challenge
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Join ongoing challenges or create your own mini-competition!
+              </p>
+            </CardHeader>
+            
+            <CardContent className="p-6">
+              {challenges.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {challenges.map((challenge) => (
+                    <ChallengeCard 
+                      key={challenge.id} 
+                      challenge={challenge} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Target className="h-10 w-10 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No Active Challenges</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Be the first to create a challenge and inspire others to join!
+                  </p>
+                  <Button 
+                    onClick={() => setShowChallengeModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create First Challenge
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </section>
 
         {/* Friends in the Arena Section */}
@@ -479,350 +542,45 @@ export default function GameAndChallengePage() {
           </Card>
         </section>
 
-        {/* Trophy Podium Section */}
+        {/* Podium of the Month Section */}
         <section id="winners" className="animate-fade-in">
-          <Card className="overflow-hidden border-2 border-yellow-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-yellow-100 to-orange-100 text-center">
-              <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3">
-                <Crown className="h-8 w-8 text-yellow-500" />
-                Last Month's Champions
-                <Crown className="h-8 w-8 text-yellow-500" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8">
-              <div className="flex justify-center items-end gap-8 max-w-2xl mx-auto">
-                {/* 2nd Place */}
-                <div className="text-center animate-scale-in" style={{ animationDelay: '0.2s' }}>
-                  <div className="relative">
-                    <Avatar className="h-20 w-20 mx-auto mb-4 text-4xl border-4 border-gray-300">
-                      <AvatarFallback className="text-4xl bg-gradient-to-br from-gray-100 to-gray-200">
-                        {mockPodiumWinners[1].avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Medal className="h-8 w-8 text-gray-400 absolute -top-2 -right-2" />
-                  </div>
-                  <div className="bg-gradient-to-t from-gray-300 to-gray-200 h-24 w-24 mx-auto rounded-t-lg flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">2</span>
-                  </div>
-                  <div className="mt-3">
-                    <div className="font-bold">{mockPodiumWinners[1].nickname}</div>
-                    <div className="text-sm text-muted-foreground">{mockPodiumWinners[1].score} pts</div>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      🎉 Cheer
-                    </Button>
-                  </div>
-                </div>
-
-                {/* 1st Place */}
-                <div className="text-center animate-scale-in relative">
-                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-2xl animate-bounce">
-                    ✨🎉✨
-                  </div>
-                  <div className="relative">
-                    <Avatar className="h-24 w-24 mx-auto mb-4 text-5xl border-4 border-yellow-400 shadow-lg">
-                      <AvatarFallback className="text-5xl bg-gradient-to-br from-yellow-200 to-yellow-300">
-                        {mockPodiumWinners[0].avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Crown className="h-10 w-10 text-yellow-500 absolute -top-3 left-1/2 transform -translate-x-1/2" />
-                  </div>
-                  <div className="bg-gradient-to-t from-yellow-500 to-yellow-400 h-32 w-28 mx-auto rounded-t-lg flex items-center justify-center shadow-lg">
-                    <span className="text-3xl font-bold text-white">1</span>
-                  </div>
-                  <div className="mt-3">
-                    <div className="font-bold text-lg">{mockPodiumWinners[0].nickname}</div>
-                    <div className="text-sm text-muted-foreground">{mockPodiumWinners[0].score} pts</div>
-                    <Button variant="default" size="sm" className="mt-2 bg-yellow-500 hover:bg-yellow-600">
-                      🏆 Celebrate
-                    </Button>
-                  </div>
-                </div>
-
-                {/* 3rd Place */}
-                <div className="text-center animate-scale-in" style={{ animationDelay: '0.4s' }}>
-                  <div className="relative">
-                    <Avatar className="h-18 w-18 mx-auto mb-4 text-3xl border-4 border-orange-300">
-                      <AvatarFallback className="text-3xl bg-gradient-to-br from-orange-100 to-orange-200">
-                        {mockPodiumWinners[2].avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Star className="h-7 w-7 text-orange-400 absolute -top-1 -right-1" />
-                  </div>
-                  <div className="bg-gradient-to-t from-orange-400 to-orange-300 h-20 w-20 mx-auto rounded-t-lg flex items-center justify-center">
-                    <span className="text-xl font-bold text-white">3</span>
-                  </div>
-                  <div className="mt-3">
-                    <div className="font-bold">{mockPodiumWinners[2].nickname}</div>
-                    <div className="text-sm text-muted-foreground">{mockPodiumWinners[2].score} pts</div>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      👏 Applaud
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PodiumOfTheMonth contenders={mockPodiumWinners} />
         </section>
 
-        {/* Hall of Fame Wall */}
+        {/* Hall of Fame Section */}
         <section id="hall-of-fame" className="animate-fade-in">
-          <Card className="overflow-hidden border-2 border-purple-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100 text-center">
-              <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3">
-                <Star className="h-8 w-8 text-purple-500" />
-                🏛️ Hall of Fame Wall
-                <Star className="h-8 w-8 text-purple-500" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <ScrollArea className="w-full">
-                <div className="flex gap-6 pb-4">
-                  {mockHallOfFame.map((champion, index) => (
-                    <div
-                      key={champion.id}
-                      className="min-w-[280px] p-6 rounded-xl bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 animate-scale-in hover:scale-105 transition-transform"
-                      style={{ animationDelay: `${index * 0.2}s` }}
-                    >
-                      <div className="text-center">
-                        <Avatar className="h-16 w-16 mx-auto mb-4 text-3xl border-4 border-purple-300">
-                          <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-200 to-blue-200">
-                            {champion.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="font-bold text-lg">{champion.nickname}</div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          {champion.month} {champion.year}
-                        </div>
-                        <Badge variant="secondary" className="mb-3">
-                          👑 Champion - {champion.score} pts
-                        </Badge>
-                        <div className="text-sm font-medium text-purple-700 bg-purple-100 p-2 rounded-lg">
-                          "{champion.quote}"
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          <HallOfFame champions={mockHallOfFame} />
         </section>
 
-        {/* Friends in the Arena & Micro-Challenges Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Friends in the Arena */}
-          <Card className="border-2 border-green-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-green-100 to-teal-100">
-              <CardTitle className="flex items-center gap-3">
-                <Users className="h-6 w-6 text-green-500" />
-                🧑‍🤝‍🧑 Your Friends
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                {mockFriends.map((friend) => (
-                  <div key={friend.id} className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10 text-lg">
-                        <AvatarFallback className="text-lg bg-gradient-to-br from-green-200 to-teal-200">
-                          {friend.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-semibold text-sm">{friend.nickname}</div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                          Rank #{friend.rank} • {friend.score} pts
-                          {friend.trend === 'up' ? (
-                            <TrendingUp className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 text-red-500" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" className="text-xs">
-                      🎯 Challenge
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Challenge Creation Modal */}
+        <ChallengeCreationModal
+          open={showChallengeModal}
+          onOpenChange={setShowChallengeModal}
+          friends={mockFriends}
+        />
 
-          {/* Micro-Challenges Launcher */}
-          <Card className="border-2 border-orange-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Target className="h-6 w-6 text-orange-500" />
-                  🎯 Mini Challenges
-                </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-background border z-50">
-                    <DialogHeader>
-                      <DialogTitle>Create Mini Challenge</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium">Challenge Name</label>
-                        <Input
-                          placeholder="e.g., Log All Meals for 3 Days"
-                          value={challengeName}
-                          onChange={(e) => setChallengeName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Description</label>
-                        <Textarea
-                          placeholder="Describe your challenge..."
-                          value={challengeDescription}
-                          onChange={(e) => setChallengeDescription(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Duration (days)</label>
-                        <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border z-50">
-                            <SelectItem value="3">3 Days</SelectItem>
-                            <SelectItem value="7">1 Week</SelectItem>
-                            <SelectItem value="14">2 Weeks</SelectItem>
-                            <SelectItem value="30">1 Month</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button className="w-full">
-                        🚀 Launch Challenge
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                {mockActiveChallenges.map((challenge) => (
-                  <div key={challenge.id} className="p-3 rounded-lg bg-orange-50 border border-orange-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-semibold text-sm">{challenge.name}</div>
-                      <Badge variant="outline" className="text-xs">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {challenge.timeLeft}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground mb-2">
-                      by {challenge.creator} • {challenge.participants} participants
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-orange-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${challenge.progress}%` }}
-                      />
-                    </div>
-                    <div className="text-xs text-orange-600 mt-1 font-medium">
-                      {challenge.progress}% complete
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Mystery Reward Boxes */}
-        {showRewardBox && (
-          <div className="fixed bottom-20 right-8 z-50 animate-bounce">
-            <div
-              className="relative cursor-pointer transform hover:scale-110 transition-transform"
-              onClick={() => {
-                setShowRewardBox(false);
-                // Add reward logic here
-                alert('🎁 You earned an XP Boost! +50 XP');
-              }}
-            >
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-lg flex items-center justify-center animate-pulse">
-                <Gift className="h-8 w-8 text-white" />
-              </div>
-              <div className="absolute -top-2 -right-2">
-                <Sparkles className="h-6 w-6 text-yellow-400 animate-spin" />
-              </div>
+        {/* Mystery Reward Box Button */}
+        <div className="fixed bottom-6 right-6 z-40">
+          <Button
+            onClick={() => setShowRewardBox(!showRewardBox)}
+            className="w-16 h-16 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-2xl animate-bounce"
+            size="sm"
+          >
+            <Gift className="h-8 w-8" />
+          </Button>
+          
+          {showRewardBox && (
+            <div className="absolute bottom-20 right-0 bg-background border rounded-lg p-4 shadow-xl animate-scale-in">
+              <h4 className="font-bold mb-2">🎁 Mystery Box</h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Complete daily challenges to unlock rewards!
+              </p>
+              <Button size="sm" className="w-full">
+                Open Box
+              </Button>
             </div>
-          </div>
-        )}
-
-        {/* Challenges Section */}
-        <section id="challenges" className="animate-fade-in">
-          <Card className="overflow-hidden border-2 border-blue-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100 text-center">
-              <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3">
-                <Target className="h-8 w-8 text-blue-500" />
-                Active Challenges Arena
-                <Target className="h-8 w-8 text-blue-500" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {mockActiveChallenges.map((challenge) => (
-                  <div
-                    key={challenge.id}
-                    className="p-6 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 hover:shadow-lg transition-all"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-lg">{challenge.name}</h3>
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {challenge.timeLeft}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground mb-4">
-                      Created by {challenge.creator} • {challenge.participants} participants
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progress</span>
-                        <span className="font-medium">{challenge.progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${challenge.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="outline" className="flex-1">
-                        👀 View Details
-                      </Button>
-                      <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600">
-                        🎯 Join Challenge
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      </div>
-
-      {/* Mystery Reward Box Trigger */}
-      <div className="fixed bottom-4 right-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowRewardBox(true)}
-          className="bg-yellow-100 hover:bg-yellow-200 border-yellow-300"
-        >
-          🎁 Mystery Box
-        </Button>
+          )}
+        </div>
       </div>
     </div>
   );
