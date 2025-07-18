@@ -43,8 +43,8 @@ export const useNutritionPersistence = () => {
   const { user } = useAuth();
   const { scoreMealAfterInsert } = useMealScoring();
 
-  const saveFood = useCallback(async (food: FoodItem) => {
-    if (!user || !food.confirmed) return;
+  const saveFood = useCallback(async (food: FoodItem): Promise<string | null> => {
+    if (!user || !food.confirmed) return null;
 
     try {
       const { data, error } = await supabase
@@ -70,6 +70,9 @@ export const useNutritionPersistence = () => {
       
       // Score the meal quality
       await scoreMealAfterInsert(data, error);
+      
+      // Return the database ID
+      return data && data[0] ? data[0].id : null;
     } catch (error) {
       console.error('Error saving food:', error);
       // Save to localStorage as fallback
@@ -78,6 +81,7 @@ export const useNutritionPersistence = () => {
       const existing = JSON.parse(localStorage.getItem(localKey) || '{"foods":[]}');
       existing.foods.push(food);
       safeSetJSON(localKey, existing);
+      return null;
     }
   }, [user, scoreMealAfterInsert]);
 

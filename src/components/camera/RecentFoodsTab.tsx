@@ -4,6 +4,7 @@ import { Clock, Repeat, Barcode } from 'lucide-react';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { useNutrition } from '@/contexts/NutritionContext';
+import { MealScoreDisplay } from '@/components/MealScoreDisplay';
 
 interface RecentFoodsTabProps {
   onFoodSelect: (food: any) => void;
@@ -91,6 +92,12 @@ export const RecentFoodsTab = ({ onFoodSelect, onBarcodeSelect }: RecentFoodsTab
                       <Clock className="h-3 w-3" />
                       <span>{food.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
+                    {/* Meal Score Display - Only show if we have database ID */}
+                    {food.databaseId && (
+                      <div className="mt-2">
+                        <MealScoreDisplay mealId={food.databaseId} className="text-xs" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

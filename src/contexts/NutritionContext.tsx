@@ -20,6 +20,7 @@ interface FoodItem {
   confidence?: number;
   timestamp: Date;
   confirmed: boolean;
+  databaseId?: string; // ID from nutrition_logs table for meal scoring
 }
 
 interface HydrationItem {
