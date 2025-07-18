@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import HomeAIInsights from '@/components/HomeAIInsights';
+import { HomeCtaTicker } from '@/components/HomeCtaTicker';
 import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
@@ -698,7 +699,7 @@ const Home = () => {
             <span className="inline-block ml-2 animate-pulse-scale motion-reduce:animate-none">✨</span>
           </h2>
         </div>
-        <p className={`text-gray-600 dark:text-gray-300 font-medium ${isMobile ? 'text-lg' : 'text-xl'} train-slide motion-reduce:animate-none`}>Your intelligent wellness companion is ready</p>
+        <HomeCtaTicker className={`${isMobile ? 'text-lg' : 'text-xl'} train-slide motion-reduce:animate-none`} />
       </div>
 
       {/* Dynamic Tracker Cards based on user selection */}
