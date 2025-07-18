@@ -216,7 +216,53 @@
       0 8px 20px rgba(255, 87, 34, 0.15),
       inset 0 1px 0 rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 154, 0, 0.4);
+}
+
+/* Podium animations */
+@keyframes podiumSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100px) scale(0.8);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes podiumGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(168, 85, 247, 0.8);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Hall of Fame animations */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px) rotateY(20deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg);
+  }
+}
 
   .hydration-tracker-vibrant {
     position: relative;

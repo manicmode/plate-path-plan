@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
+import { PodiumOfTheMonth } from '@/components/analytics/PodiumOfTheMonth';
+import { HallOfFame } from '@/components/analytics/HallOfFame';
 import { cn } from '@/lib/utils';
 
 // Types
@@ -144,16 +146,22 @@ const mockLeaderboard = [
 ];
 
 const mockPodiumWinners = [
-  { id: 1, nickname: "Alex 🦄", avatar: "🦄", score: 2850, position: 1 },
-  { id: 2, nickname: "Maya 🌟", avatar: "🌟", score: 2720, position: 2 },
-  { id: 3, nickname: "Sam 🔥", avatar: "🔥", score: 2650, position: 3 },
+  { id: 1, nickname: "Alex 🦄", avatar: "🦄", score: 2850, position: 1 as const, weeklyProgress: 98, dailyStreak: 28 },
+  { id: 2, nickname: "Maya 🌟", avatar: "🌟", score: 2720, position: 2 as const, weeklyProgress: 92, dailyStreak: 25 },
+  { id: 3, nickname: "Sam 🔥", avatar: "🔥", score: 2650, position: 3 as const, weeklyProgress: 87, dailyStreak: 22 },
 ];
 
 const mockHallOfFame = [
-  { id: 1, nickname: "Alex 🦄", avatar: "🦄", month: "December", year: "2024", score: 2850, quote: "Beast Mode Activated 💪" },
-  { id: 2, nickname: "Luna 🌙", avatar: "🌙", month: "November", year: "2024", score: 2720, quote: "Consistency is Key 🗝️" },
-  { id: 3, nickname: "Phoenix 🔥", avatar: "🔥", month: "October", year: "2024", score: 2650, quote: "Rise from the Ashes 🔥" },
-  { id: 4, nickname: "Storm ⚡", avatar: "⚡", month: "September", year: "2024", score: 2580, quote: "Electrifying Performance ⚡" },
+  { id: 1, nickname: "Alex 🦄", avatar: "🦄", month: "December", year: "2024", score: 2850, quote: "Beast Mode Activated 💪", achievement: "🏆 December 2024 Champion", trophy: "gold" as const },
+  { id: 2, nickname: "Luna 🌙", avatar: "🌙", month: "November", year: "2024", score: 2720, quote: "Consistency is Key 🗝️", achievement: "🏆 November 2024 Champion", trophy: "gold" as const },
+  { id: 3, nickname: "Phoenix 🔥", avatar: "🔥", month: "October", year: "2024", score: 2650, quote: "Rise from the Ashes 🔥", achievement: "🏆 October 2024 Champion", trophy: "gold" as const },
+  { id: 4, nickname: "Storm ⚡", avatar: "⚡", month: "September", year: "2024", score: 2580, quote: "Electrifying Performance ⚡", achievement: "🏆 September 2024 Champion", trophy: "gold" as const },
+  { id: 5, nickname: "Zen Master 🧘", avatar: "🧘", month: "August", year: "2024", score: 2320, quote: "Mind over matter, always", achievement: "🥈 Most Consistent in August", trophy: "silver" as const },
+  { id: 6, nickname: "Iron Will 💪", avatar: "💪", month: "July", year: "2024", score: 2145, quote: "Every rep counts!", achievement: "🥉 Most Improved in July", trophy: "bronze" as const },
+  { id: 7, nickname: "Green Goddess 🌱", avatar: "🌱", month: "June", year: "2024", score: 2890, quote: "Plants are power!", achievement: "🏆 June 2024 Champion", trophy: "gold" as const },
+  { id: 8, nickname: "Sunshine ☀️", avatar: "☀️", month: "May", year: "2024", score: 2076, quote: "Bright days ahead!", achievement: "⭐ Positivity Award May", trophy: "special" as const },
+  { id: 9, nickname: "Ocean Wave 🌊", avatar: "🌊", month: "April", year: "2024", score: 2234, quote: "Flow like water", achievement: "🥈 Hydration Hero April", trophy: "silver" as const },
+  { id: 10, nickname: "Mountain Peak ⛰️", avatar: "⛰️", month: "March", year: "2024", score: 2567, quote: "Reach new heights!", achievement: "🏆 March 2024 Champion", trophy: "gold" as const },
 ];
 
 const mockFriends = [
@@ -363,6 +371,16 @@ export default function GameAndChallengePage() {
               </div>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Podium of the Month Section */}
+        <section id="podium" className="animate-fade-in">
+          <PodiumOfTheMonth contenders={mockPodiumWinners} />
+        </section>
+
+        {/* Hall of Fame Section */}
+        <section id="hall-of-fame" className="animate-fade-in">
+          <HallOfFame champions={mockHallOfFame} />
         </section>
 
         {/* Friends in the Arena Section */}
