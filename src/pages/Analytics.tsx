@@ -16,6 +16,7 @@ import { ActivityExerciseSection } from '@/components/analytics/sections/Activit
 import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
 import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
+import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
 
 const Analytics = () => {
   const isMobile = useIsMobile();
@@ -64,6 +65,9 @@ const Analytics = () => {
 
         {/* Enhanced Daily Averages with Fixed Spacing */}
         <DailyAveragesSection weeklyAverage={weeklyAverage} />
+
+        {/* Meal Quality Analytics - NEW */}
+        <MealQualityAnalyticsSection className="mt-8" />
 
         {/* Logging Consistency Tracker - Increased separation with visual distinction */}
         <div className="mt-20 pt-8 border-t border-gray-200 dark:border-gray-700">
