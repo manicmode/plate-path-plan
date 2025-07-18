@@ -291,7 +291,7 @@ function GameAndChallengeContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative overflow-x-hidden max-w-full">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
       {/* Mystery Boxes - Hidden on mobile for performance */}
       {!isMobile && (
         <>
@@ -301,8 +301,8 @@ function GameAndChallengeContent() {
       )}
 
       {/* Mobile-Optimized Navigation - Fixed positioning below banner */}
-      <div className="sticky z-40 bg-background/95 backdrop-blur-sm border-b overflow-x-hidden" style={{ top: 'var(--header-height, 80px)' }}>
-        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-full overflow-x-hidden">
+      <div className="sticky z-40 bg-background/95 backdrop-blur-sm border-b" style={{ top: 'var(--header-height, 80px)' }}>
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
           {isMobile ? (
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
@@ -362,15 +362,15 @@ function GameAndChallengeContent() {
         </div>
       )}
 
-      {/* Main Content - Fixed spacing issue */}
+      {/* Main Content */}
       <div className={cn(
-        "container mx-auto max-w-full overflow-x-hidden",
-        isMobile ? "px-2" : "px-4"
+        "container mx-auto space-y-6 sm:space-y-12",
+        isMobile ? "px-2 py-4" : "px-4 py-8"
       )}>
         
         {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
         {!isMobile && (
-          <section id="ranking" className="animate-fade-in mt-6">
+          <section id="ranking" className="animate-fade-in">
           <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
             <CardHeader className={cn(
               "bg-gradient-to-r from-primary/10 to-secondary/10",
@@ -531,7 +531,7 @@ function GameAndChallengeContent() {
 
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
-          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)] mt-4">
+          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col h-[calc(100vh-200px)]">
 
             <TabsContent value="ranking" className="mt-4">
               {/* Mobile Ranking Section */}
@@ -556,7 +556,7 @@ function GameAndChallengeContent() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-3">
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {optimizedLeaderboard.map((user, index) => (
                       <div
                         key={user.id}
@@ -641,15 +641,15 @@ function GameAndChallengeContent() {
                   </Button>
                 </div>
                 
-                 {challenges.length > 0 ? (
-                   <div className="space-y-4">
-                     {challenges.map((challenge) => (
-                       <ChallengeCard 
-                         key={challenge.id} 
-                         challenge={challenge} 
-                       />
-                     ))}
-                   </div>
+                {challenges.length > 0 ? (
+                  <div className="space-y-3">
+                    {challenges.map((challenge) => (
+                      <ChallengeCard 
+                        key={challenge.id} 
+                        challenge={challenge} 
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <Card className="border-2 border-dashed border-green-300 dark:border-green-700">
                     <CardContent className="text-center py-6">
@@ -686,23 +686,21 @@ function GameAndChallengeContent() {
                     </Button>
                   </div>
                   
-                   {microChallenges.length > 0 ? (
-                     <div className="space-y-4">
-                       {microChallenges.map((challenge) => (
-                         <MicroChallengeCard 
-                           key={challenge.id} 
-                           challenge={challenge}
-                           onNudgeFriend={nudgeFriend}
-                         />
-                       ))}
-                     </div>
+                  {microChallenges.length > 0 ? (
+                    <div className="space-y-3">
+                      {microChallenges.map((challenge) => (
+                        <MicroChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge}
+                          onNudgeFriend={nudgeFriend}
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
-                      <CardContent className="text-center py-8">
-                        <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Sparkles className="h-8 w-8 text-yellow-500" />
-                        </div>
-                        <h3 className="text-lg font-semibold mb-2">No Micro-Challenges Yet</h3>
+                      <CardContent className="text-center py-6">
+                        <Sparkles className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                        <h3 className="font-semibold mb-2">No Micro-Challenges Yet</h3>
                         <p className="text-muted-foreground text-sm mb-3">
                           Create quick 1-7 day challenges!
                         </p>
@@ -771,21 +769,19 @@ function GameAndChallengeContent() {
                   
                   {/* Sticky Mobile Chat Input */}
                   <div className="p-3 border-t bg-background/95 backdrop-blur-sm">
-                    <ScrollArea className="w-full max-w-full">
-                      <div className="flex gap-1 mb-2 pb-2">
-                        {quickEmojis.map((emoji) => (
-                          <Button
-                            key={emoji}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-sm flex-shrink-0"
-                            onClick={() => setChatMessage(chatMessage + emoji)}
-                          >
-                            {emoji}
-                          </Button>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                    <div className="flex gap-1 mb-2 overflow-x-auto">
+                      {quickEmojis.map((emoji) => (
+                        <Button
+                          key={emoji}
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-sm flex-shrink-0"
+                          onClick={() => setChatMessage(chatMessage + emoji)}
+                        >
+                          {emoji}
+                        </Button>
+                      ))}
+                    </div>
                     <div className="flex gap-2">
                       <Input
                         placeholder="Type message..."
@@ -839,7 +835,7 @@ function GameAndChallengeContent() {
           // Desktop sections (existing code)
           <>
             {/* Active Challenges Section */}
-            <section id="challenges" className="animate-fade-in mt-12">
+            <section id="challenges" className="animate-fade-in">
               <Card className="overflow-hidden border-2 border-green-200 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
                   <div className="flex items-center justify-between">
@@ -949,12 +945,12 @@ function GameAndChallengeContent() {
             </section>
 
             {/* Friends in the Arena Section */}
-            <section id="friends" className="animate-fade-in mt-12">
+            <section id="friends" className="animate-fade-in">
               <FriendsArena friends={optimizedFriends} />
             </section>
 
             {/* Chat Window Panel */}
-            <section id="chat" className="animate-fade-in mt-12">
+            <section id="chat" className="animate-fade-in">
               <Card className="overflow-hidden border-2 border-secondary/20 shadow-xl">
                 <CardHeader 
                   className="bg-gradient-to-r from-secondary/10 to-primary/10 cursor-pointer"
@@ -1045,12 +1041,12 @@ function GameAndChallengeContent() {
             </section>
 
             {/* Podium of the Month Section */}
-            <section id="winners" className="animate-fade-in mt-12">
+            <section id="winners" className="animate-fade-in">
               <MonthlyTrophyPodium />
             </section>
 
             {/* Hall of Fame Section */}
-            <section id="hall-of-fame" className="animate-fade-in mt-12">
+            <section id="hall-of-fame" className="animate-fade-in">
               <HallOfFame champions={optimizedHallOfFame} />
             </section>
           </>
