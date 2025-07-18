@@ -342,7 +342,7 @@ function calculateMealQuality(
 }
 
 function isWholeFood(foodName: string): boolean {
-  const wholeFood Keywords = [
+  const wholeFoodKeywords = [
     'apple', 'banana', 'orange', 'berries', 'spinach', 'broccoli', 'carrot',
     'chicken breast', 'salmon', 'tuna', 'eggs', 'almonds', 'walnuts',
     'quinoa', 'brown rice', 'oats', 'sweet potato', 'avocado'
