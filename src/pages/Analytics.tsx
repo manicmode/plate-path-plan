@@ -22,6 +22,7 @@ import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { MonthlyLeaderboard } from '@/components/analytics/MonthlyLeaderboard';
 import { AchievementBadges } from '@/components/analytics/AchievementBadges';
 import { WeeklySummaryViewer } from '@/components/analytics/WeeklySummaryViewer';
+import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
 import { useDailyScore } from '@/hooks/useDailyScore';
 
 const Analytics = () => {
@@ -94,6 +95,9 @@ const Analytics = () => {
 
         {/* Weekly Summary Viewer - Performance Overview */}
         <WeeklySummaryViewer />
+
+        {/* Monthly Summary Viewer - Long-term Progress */}
+        <MonthlySummaryViewer />
 
         {/* Logging Consistency Tracker - Increased separation with visual distinction */}
         <div className="mt-20 pt-8 border-t border-gray-200 dark:border-gray-700">

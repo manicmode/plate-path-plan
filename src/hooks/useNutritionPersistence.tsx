@@ -105,6 +105,27 @@ export const useNutritionPersistence = () => {
         } else {
           console.log('📅 Not Sunday, skipping weekly summary generation');
         }
+
+        // Check if it's month-end or month-start and generate monthly summary
+        const isLastDayOfMonth = today.getDate() === new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        const isFirstDayOfMonth = today.getDate() === 1;
+        
+        if (isLastDayOfMonth || isFirstDayOfMonth) {
+          console.log(`📅 ${isLastDayOfMonth ? 'Last day of month' : 'First day of month'} detected, generating monthly summary...`);
+          supabase.functions.invoke('generate-monthly-summary', {
+            body: {}
+          }).then(({ data: monthlySummaryData, error: monthlySummaryError }) => {
+            if (monthlySummaryError) {
+              console.warn('Monthly summary generation failed:', monthlySummaryError);
+            } else {
+              console.log('✅ Monthly summary generated:', monthlySummaryData);
+            }
+          }).catch(error => {
+            console.warn('Monthly summary generation error:', error);
+          });
+        } else {
+          console.log('📅 Not month-end or month-start, skipping monthly summary generation');
+        }
       }
       
       // Return the database ID

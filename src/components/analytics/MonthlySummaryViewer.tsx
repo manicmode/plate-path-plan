@@ -1,0 +1,273 @@
+import React, { useState, useEffect } from 'react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { TrendingUp, TrendingDown, Calendar, Activity, Target, Trophy } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface MonthlySummary {
+  id: string;
+  month_start: string;
+  average_score: number | null;
+  previous_month_average: number | null;
+  meals_logged_count: number | null;
+  days_with_meals: number | null;
+  message: string;
+  ranking_position: number | null;
+  created_at: string;
+}
+
+export const MonthlySummaryViewer = () => {
+  const { user } = useAuth();
+  const [summaries, setSummaries] = useState<MonthlySummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCelebration, setShowCelebration] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMonthlySummaries = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('monthly_summaries')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('month_start', { ascending: false })
+          .limit(6); // Show last 6 months
+
+        if (error) throw error;
+        setSummaries(data || []);
+      } catch (error) {
+        console.error('Error fetching monthly summaries:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMonthlySummaries();
+  }, [user]);
+
+  // Trigger celebration for improved scores
+  useEffect(() => {
+    summaries.forEach((summary, index) => {
+      if (index === 0 && summary.average_score && summary.previous_month_average) {
+        if (summary.average_score > summary.previous_month_average) {
+          setShowCelebration(summary.id);
+          setTimeout(() => setShowCelebration(null), 4000);
+        }
+      }
+    });
+  }, [summaries]);
+
+  const getMonthName = (monthStart: string) => {
+    const date = new Date(monthStart);
+    return format(date, 'MMMM yyyy');
+  };
+
+  const getScoreBadgeColor = (score: number | null) => {
+    if (!score) return 'bg-gray-500';
+    if (score >= 85) return 'bg-emerald-500';
+    if (score >= 70) return 'bg-green-500';
+    if (score >= 60) return 'bg-yellow-500';
+    if (score >= 45) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
+  const getScoreChange = (current: number | null, previous: number | null) => {
+    if (!current || !previous) return null;
+    const change = current - previous;
+    return {
+      value: Math.abs(change),
+      isPositive: change > 0,
+      isNeutral: Math.abs(change) < 1
+    };
+  };
+
+  const getDaysProgress = (daysWithMeals: number | null, monthStart: string) => {
+    if (!daysWithMeals) return { percentage: 0, color: 'bg-gray-400' };
+    
+    const month = new Date(monthStart);
+    const isCurrentMonth = month.getMonth() === new Date().getMonth() && month.getFullYear() === new Date().getFullYear();
+    const totalDays = isCurrentMonth ? new Date().getDate() : endOfMonth(month).getDate();
+    
+    const percentage = (daysWithMeals / totalDays) * 100;
+    
+    let color = 'bg-red-400';
+    if (percentage >= 80) color = 'bg-emerald-400';
+    else if (percentage >= 60) color = 'bg-green-400';
+    else if (percentage >= 40) color = 'bg-yellow-400';
+    else if (percentage >= 20) color = 'bg-orange-400';
+    
+    return { percentage, color };
+  };
+
+  if (loading) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Monthly Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (summaries.length === 0) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Monthly Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No monthly summaries yet.</p>
+            <p className="text-sm">Keep logging meals to unlock monthly insights!</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Monthly Progress
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {summaries.map((summary, index) => {
+          const scoreChange = getScoreChange(summary.average_score, summary.previous_month_average);
+          const isLatest = index === 0;
+          const daysProgress = getDaysProgress(summary.days_with_meals, summary.month_start);
+          
+          return (
+            <div 
+              key={summary.id}
+              className={cn(
+                "relative p-5 rounded-lg border transition-all duration-300",
+                isLatest ? "border-primary bg-primary/5 shadow-md" : "border-border",
+                showCelebration === summary.id && "ring-2 ring-emerald-500 ring-offset-2"
+              )}
+            >
+              {/* Celebration effect for improvements */}
+              {showCelebration === summary.id && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 via-green-400/20 to-blue-400/20 animate-pulse" />
+                  <div className="absolute top-2 right-2 animate-bounce">
+                    🎉
+                  </div>
+                </div>
+              )}
+              
+              <div className="relative z-10">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h3 className="font-semibold text-lg text-foreground">
+                        {getMonthName(summary.month_start)}
+                        {isLatest && <span className="text-xs ml-2 text-primary">(Current)</span>}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(summary.month_start), 'MMMM yyyy')} Performance
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {summary.ranking_position && (
+                      <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                        <Trophy className="h-4 w-4" />
+                        <span className="text-sm font-medium">#{summary.ranking_position}</span>
+                      </div>
+                    )}
+                    
+                    <Badge 
+                      className={cn(
+                        "text-white font-semibold text-sm px-3 py-1",
+                        getScoreBadgeColor(summary.average_score)
+                      )}
+                    >
+                      {summary.average_score?.toFixed(1) || 'N/A'}
+                    </Badge>
+                    
+                    {scoreChange && (
+                      <div className={cn(
+                        "flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium",
+                        scoreChange.isNeutral 
+                          ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                          : scoreChange.isPositive 
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      )}>
+                        {scoreChange.isNeutral ? (
+                          <span>~</span>
+                        ) : scoreChange.isPositive ? (
+                          <>
+                            <TrendingUp className="h-4 w-4" />
+                            +{scoreChange.value.toFixed(1)}
+                          </>
+                        ) : (
+                          <>
+                            <TrendingDown className="h-4 w-4" />
+                            -{scoreChange.value.toFixed(1)}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Activity className="h-4 w-4" />
+                    <span>{summary.meals_logged_count || 0} meals logged</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Target className="h-4 w-4" />
+                    <span>{summary.days_with_meals || 0} active days</span>
+                  </div>
+                </div>
+                
+                {/* Days progress bar */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                    <span>Activity consistency</span>
+                    <span>{daysProgress.percentage.toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div 
+                      className={cn("h-2 rounded-full transition-all duration-300", daysProgress.color)}
+                      style={{ width: `${Math.min(daysProgress.percentage, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="bg-muted/50 p-4 rounded-md">
+                  <p className="text-sm text-foreground leading-relaxed">
+                    {summary.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+};

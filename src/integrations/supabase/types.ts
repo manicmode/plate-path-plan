@@ -241,6 +241,45 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_summaries: {
+        Row: {
+          average_score: number | null
+          created_at: string | null
+          days_with_meals: number | null
+          id: string
+          meals_logged_count: number | null
+          message: string
+          month_start: string
+          previous_month_average: number | null
+          ranking_position: number | null
+          user_id: string
+        }
+        Insert: {
+          average_score?: number | null
+          created_at?: string | null
+          days_with_meals?: number | null
+          id?: string
+          meals_logged_count?: number | null
+          message: string
+          month_start: string
+          previous_month_average?: number | null
+          ranking_position?: number | null
+          user_id: string
+        }
+        Update: {
+          average_score?: number | null
+          created_at?: string | null
+          days_with_meals?: number | null
+          id?: string
+          meals_logged_count?: number | null
+          message?: string
+          month_start?: string
+          previous_month_average?: number | null
+          ranking_position?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
