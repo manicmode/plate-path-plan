@@ -22,7 +22,6 @@ interface Message {
   isRecipe?: boolean;
 }
 
-
 const Coach = () => {
   const { user } = useAuth();
   const { getTodaysProgress, currentDay } = useNutrition();
@@ -88,6 +87,19 @@ const Coach = () => {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Scroll to top function for commands
+  const scrollToTop = () => {
+    // Scroll page to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Also scroll chat area to bottom to show latest message after a brief delay
+    setTimeout(() => {
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      }
+    }, 100);
+  };
 
   // Topic filter function
   const isWellnessRelated = (message: string) => {
@@ -241,10 +253,12 @@ const Coach = () => {
   };
 
   const handleQuickQuestion = (question: string) => {
+    scrollToTop();
     sendMessage(question);
   };
 
   const handleRecipeRequest = (prompt: string) => {
+    scrollToTop();
     sendMessage(prompt, true);
   };
 
