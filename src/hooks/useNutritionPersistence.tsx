@@ -86,6 +86,25 @@ export const useNutritionPersistence = () => {
         }).catch(error => {
           console.warn('Background meal suggestion generation error:', error);
         });
+        
+        // Check if today is Sunday and generate weekly summary
+        const today = new Date();
+        if (today.getDay() === 0) { // 0 = Sunday
+          console.log('📅 Sunday detected, generating weekly summary...');
+          supabase.functions.invoke('generate-weekly-summary', {
+            body: {}
+          }).then(({ data: summaryData, error: summaryError }) => {
+            if (summaryError) {
+              console.warn('Weekly summary generation failed:', summaryError);
+            } else {
+              console.log('✅ Weekly summary generated:', summaryData);
+            }
+          }).catch(error => {
+            console.warn('Weekly summary generation error:', error);
+          });
+        } else {
+          console.log('📅 Not Sunday, skipping weekly summary generation');
+        }
       }
       
       // Return the database ID
