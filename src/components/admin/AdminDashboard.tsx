@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-import { Users, Trash2, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Users, Trash2, RefreshCw, AlertTriangle, CheckCircle, Award } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CleanupResult {
@@ -18,9 +18,45 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null);
+  const [isBatchEvaluating, setIsBatchEvaluating] = useState(false);
+  const [batchResult, setBatchResult] = useState<any>(null);
   
   // Simple admin check - in a real app, you'd have proper role-based access
   const isAdmin = user?.email?.includes('admin') || user?.email?.includes('test');
+
+  const runBatchMealEvaluation = async () => {
+    setIsBatchEvaluating(true);
+    setBatchResult(null);
+    
+    try {
+      console.log('🔄 Starting batch meal quality evaluation...');
+      
+      const { data, error } = await supabase.functions.invoke('batch-evaluate-meals', {
+        body: { limit: 1000, offset: 0 }
+      });
+
+      if (error) {
+        console.error('Batch evaluation error:', error);
+        toast.error('Failed to start batch evaluation: ' + error.message);
+        return;
+      }
+
+      console.log('Batch evaluation result:', data);
+      setBatchResult(data);
+      
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message || 'Batch evaluation failed');
+      }
+      
+    } catch (error: any) {
+      console.error('Batch evaluation error:', error);
+      toast.error('Failed to start batch evaluation: ' + error.message);
+    } finally {
+      setIsBatchEvaluating(false);
+    }
+  };
 
   const runManualCleanup = async () => {
     setIsLoading(true);
@@ -174,6 +210,97 @@ const AdminDashboard = () => {
             ) : (
               <div className="text-center text-muted-foreground py-6">
                 No cleanup has been run yet during this session.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Meal Quality Batch Evaluation */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Batch Evaluation Controls */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Award className="h-5 w-5" />
+              <span>Meal Quality Batch Evaluation</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                This will evaluate meal quality for all nutrition logs that don't have quality scores yet. Processes up to 1000 records at a time.
+              </AlertDescription>
+            </Alert>
+            
+            <Button 
+              onClick={runBatchMealEvaluation} 
+              disabled={isBatchEvaluating}
+              variant="default"
+              className="w-full"
+            >
+              {isBatchEvaluating ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processing Meals...
+                </>
+              ) : (
+                <>
+                  <Award className="h-4 w-4 mr-2" />
+                  Start Batch Evaluation
+                </>
+              )}
+            </Button>
+
+            <div className="text-sm text-muted-foreground">
+              <p>• Evaluates nutrient density, processing level, flagged ingredients</p>
+              <p>• Considers user health conditions for personalized scoring</p>
+              <p>• Runs in background to avoid timeouts</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Batch Evaluation Results */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5" />
+              <span>Batch Evaluation Status</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {batchResult ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {batchResult.total_logs || 0}
+                    </div>
+                    <div className="text-sm text-purple-700 dark:text-purple-300">
+                      Total Logs
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {batchResult.estimated_batches || 0}
+                    </div>
+                    <div className="text-sm text-green-700 dark:text-green-300">
+                      Estimated Batches
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    <p><strong>Status:</strong> {batchResult.success ? 'Started successfully' : 'Failed to start'}</p>
+                    <p className="mt-1">{batchResult.message}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-6">
+                No batch evaluation has been run yet during this session.
               </div>
             )}
           </CardContent>
