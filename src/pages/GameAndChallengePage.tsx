@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
 import { RewardsProvider } from '@/contexts/RewardsContext';
+import { ChatProvider } from '@/contexts/ChatContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -190,9 +191,11 @@ const mockChatMessages: ChatMessage[] = [
 export default function GameAndChallengePage() {
   return (
     <RewardsProvider>
-      <ChallengeProvider>
-        <GameAndChallengeContent />
-      </ChallengeProvider>
+      <ChatProvider>
+        <ChallengeProvider>
+          <GameAndChallengeContent />
+        </ChallengeProvider>
+      </ChatProvider>
     </RewardsProvider>
   );
 }

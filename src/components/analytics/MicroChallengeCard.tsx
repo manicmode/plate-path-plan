@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Clock, Zap, Users } from 'lucide-react';
+import { Clock, Zap, Users, MessageCircle } from 'lucide-react';
 import { Challenge } from '@/contexts/ChallengeContext';
+import { ChallengeChatModal } from './ChallengeChatModal';
 import { cn } from '@/lib/utils';
 
 interface MicroChallengeCardProps {
@@ -14,6 +15,7 @@ interface MicroChallengeCardProps {
 }
 
 export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeCardProps) {
+  const [showChat, setShowChat] = useState(false);
   const timeLeft = challenge.endDate.getTime() - new Date().getTime();
   const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
   const hoursLeft = Math.ceil(timeLeft / (1000 * 60 * 60));
@@ -147,13 +149,24 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
             <Button
               size="sm"
               variant="outline"
-              className="flex-1"
+              onClick={() => setShowChat(true)}
+              className="flex items-center gap-1"
             >
-              View Details
+              <MessageCircle className="h-3 w-3" />
+              💬
             </Button>
           </div>
         </div>
       </CardContent>
+
+      {/* Challenge Chat Modal */}
+      <ChallengeChatModal
+        open={showChat}
+        onOpenChange={setShowChat}
+        challengeId={challenge.id}
+        challengeName={challenge.name}
+        participantCount={challenge.participants.length}
+      />
     </Card>
   );
 }

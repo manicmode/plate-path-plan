@@ -18,10 +18,12 @@ import {
   Target,
   Calendar,
   Globe,
-  Lock
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Challenge, useChallenge } from '@/contexts/ChallengeContext';
+import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChallengeCardProps {
@@ -33,6 +35,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   challenge, 
   currentUserId = 'current-user-id' 
 }) => {
+  const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const { joinChallenge, leaveChallenenge } = useChallenge();
@@ -354,6 +357,16 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
               </Dialog>
             )}
 
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowChat(true)}
+              className="flex items-center gap-1"
+            >
+              <MessageCircle className="h-3 w-3" />
+              💬 Chat
+            </Button>
+
             {isParticipant && (
               <Button 
                 variant="outline" 
@@ -366,6 +379,15 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             )}
           </div>
         </CardContent>
+
+        {/* Challenge Chat Modal */}
+        <ChallengeChatModal
+          open={showChat}
+          onOpenChange={setShowChat}
+          challengeId={challenge.id}
+          challengeName={challenge.name}
+          participantCount={challenge.participants.length}
+        />
 
         {/* Floating progress indicator for current user */}
         {isParticipant && (
