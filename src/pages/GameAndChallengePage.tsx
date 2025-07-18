@@ -384,8 +384,9 @@ function GameAndChallengeContent() {
         isMobile ? "px-2 py-4" : "px-4 py-8"
       )}>
         
-        {/* Ranking Arena Section */}
-        <section id="ranking" className="animate-fade-in">
+        {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
+        {!isMobile && (
+          <section id="ranking" className="animate-fade-in">
           <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
             <CardHeader className={cn(
               "bg-gradient-to-r from-primary/10 to-secondary/10",
@@ -542,11 +543,16 @@ function GameAndChallengeContent() {
             </CardContent>
           </Card>
         </section>
+        )}
 
-        {/* Mobile-Optimized Tabs for Other Sections */}
+        {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
           <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-12">
+            <TabsList className="grid w-full grid-cols-5 h-12">
+              <TabsTrigger value="ranking" className="text-xs">
+                <Trophy className="h-3 w-3 mr-1" />
+                Ranking
+              </TabsTrigger>
               <TabsTrigger value="challenges" className="text-xs">
                 <Target className="h-3 w-3 mr-1" />
                 Challenges
@@ -565,8 +571,98 @@ function GameAndChallengeContent() {
               </TabsTrigger>
             </TabsList>
 
+            <TabsContent value="ranking" className="mt-4">
+              {/* Mobile Ranking Section */}
+              <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
+                  <div className="flex flex-col space-y-2">
+                    <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
+                      <Trophy className="h-6 w-6 text-yellow-500" />
+                      Live Rankings Arena
+                      <Trophy className="h-6 w-6 text-yellow-500" />
+                    </CardTitle>
+                    
+                    {/* Create Challenge Button */}
+                    <Button 
+                      onClick={() => setShowChallengeModal(true)}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg h-8 px-3 text-xs w-full"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Create Challenge
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div className="space-y-2">
+                    {optimizedLeaderboard.map((user, index) => (
+                      <div
+                        key={user.id}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border",
+                          user.isCurrentUser 
+                            ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md" 
+                            : "bg-muted/30 border-muted hover:bg-muted/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
+                            index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white" :
+                            index === 1 ? "bg-gradient-to-r from-gray-300 to-gray-500 text-white" :
+                            index === 2 ? "bg-gradient-to-r from-amber-500 to-amber-700 text-white" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            #{user.rank}
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <div className="text-lg">{user.avatar}</div>
+                            <div>
+                              <div className="font-semibold text-sm flex items-center gap-1">
+                                {user.nickname}
+                                {user.isCurrentUser && (
+                                  <Badge variant="secondary" className="text-xs h-5">YOU</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>Score: {user.score}</span>
+                                <span>•</span>
+                                <span>{user.weeklyProgress}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center gap-1 text-xs">
+                            <Flame className="h-3 w-3 text-orange-500" />
+                            <span>{user.streak}d</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1 mt-1">
+                            {user.improvement > 0 ? (
+                              <>
+                                <TrendingUp className="h-3 w-3 text-green-600" />
+                                <span className="text-xs text-green-600">+{user.improvement}</span>
+                              </>
+                            ) : (
+                              <>
+                                <TrendingDown className="h-3 w-3" />
+                                <span className="text-xs">{user.improvement}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="challenges" className="mt-4">
-              {/* Mobile-optimized challenges section */}
+              {/* Active Challenges Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold flex items-center gap-2">
@@ -576,7 +672,7 @@ function GameAndChallengeContent() {
                   <Button 
                     onClick={() => setShowChallengeModal(true)}
                     size="sm"
-                    className="h-8 px-3 text-xs"
+                    className="h-8 px-3 text-xs bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     New
@@ -610,6 +706,62 @@ function GameAndChallengeContent() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Micro-Challenges Section */}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-yellow-500" />
+                      Micro-Challenges
+                    </h2>
+                    <Button 
+                      onClick={() => setShowMicroChallengeModal(true)}
+                      size="sm"
+                      className="h-8 px-3 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Create
+                    </Button>
+                  </div>
+                  
+                  {microChallenges.length > 0 ? (
+                    <div className="space-y-3">
+                      {microChallenges.map((challenge) => (
+                        <MicroChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge}
+                          onNudgeFriend={nudgeFriend}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700">
+                      <CardContent className="text-center py-6">
+                        <Sparkles className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                        <h3 className="font-semibold mb-2">No Micro-Challenges Yet</h3>
+                        <p className="text-muted-foreground text-sm mb-3">
+                          Create quick 1-7 day challenges!
+                        </p>
+                        <Button 
+                          onClick={() => setShowMicroChallengeModal(true)}
+                          size="sm"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Start Micro-Challenge
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Monthly Automated Challenge at Bottom */}
+                <div className="mt-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Crown className="h-5 w-5 text-yellow-500" />
+                    <h2 className="text-lg font-bold">Monthly Challenge</h2>
+                  </div>
+                  <MonthlyTrophyPodium />
+                </div>
               </div>
             </TabsContent>
 
