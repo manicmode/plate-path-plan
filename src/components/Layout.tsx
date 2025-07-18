@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3, Trophy } from 'lucide-react';
+import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -23,7 +23,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/camera', icon: Camera, label: 'Log' },
     { path: '/analytics', icon: BarChart3, label: 'Progress' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
-    { path: '/hall-of-fame', icon: Trophy, label: 'Hall' },
+    { path: '/explore', icon: Compass, label: 'Explore' },
   ];
 
   const scrollToTop = useCallback(() => {

@@ -23,8 +23,6 @@ const Explore = () => {
       navigate('/supplement-hub');
     } else if (tileId === 'health-check') {
       setIsHealthCheckOpen(true);
-    } else if (tileId === 'hall-of-fame') {
-      navigate('/hall-of-fame');
     }
     // Add other tile navigation here as needed
   };
@@ -40,22 +38,13 @@ const Explore = () => {
       animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
     },
     {
-      id: 'hall-of-fame',
-      title: 'Hall of Fame',
+      id: 'game-challenge',
+      title: 'Game & Challenge',
       emoji: '🏆',
       color: 'from-yellow-500 via-orange-400 to-orange-500',
       shadowColor: 'shadow-yellow-500/30',
       glowColor: 'hover:shadow-yellow-400/50',
       animatedGradient: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-orange-600',
-    },
-    {
-      id: 'game-challenge',
-      title: 'Game & Challenge',
-      emoji: '🎮',
-      color: 'from-green-500 via-emerald-400 to-teal-500',
-      shadowColor: 'shadow-green-500/30',
-      glowColor: 'hover:shadow-emerald-400/50',
-      animatedGradient: 'bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600',
     },
     {
       id: 'supplement-hub',
