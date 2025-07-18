@@ -328,23 +328,7 @@ function GameAndChallengeContent() {
                 </div>
               </ScrollArea>
             </div>
-          ) : (
-            // Desktop Navigation
-            <div className="flex justify-center space-x-4 flex-wrap">
-              {navigationItems.map(({ id, label, icon: Icon }) => (
-                <Button
-                  key={id}
-                  variant={activeSection === id ? "default" : "ghost"}
-                  onClick={() => scrollToSection(id)}
-                  className="flex items-center gap-2 transition-all duration-300"
-                  size="sm"
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Button>
-              ))}
-            </div>
-          )}
+          ) : null}
           
           {/* Sort Controls - Responsive */}
           {activeSection === 'ranking' && (
