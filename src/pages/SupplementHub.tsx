@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,9 @@ const SupplementHub = () => {
   const { user } = useAuth();
   const { currentDay, addSupplement } = useNutrition();
   const { toast } = useToast();
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
   
   const userSupplements = currentDay.supplements;
   

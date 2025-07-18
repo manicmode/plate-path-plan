@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Target, TrendingUp, TrendingDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
@@ -15,10 +16,8 @@ const ProgressFat = () => {
   const { getTodaysProgress } = useNutrition();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+  // Use the scroll-to-top hook
+  useScrollToTop();
   
   const targetFat = user?.targetFat || 65;
   const todayProgress = getTodaysProgress();

@@ -7,6 +7,7 @@ import { Camera, Upload, Plus, Droplets, Coffee, Wine, Milk } from 'lucide-react
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
 
 const Hydration = () => {
@@ -19,6 +20,9 @@ const Hydration = () => {
   const { addHydration } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
 
   const quickDrinks = [
     { name: 'Water Glass', volume: 250, icon: Droplets },

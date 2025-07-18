@@ -8,6 +8,7 @@ import { Camera, Upload, Plus, Pill, Zap, Heart, Brain, Shield, Sun, Bone } from
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
 
 const Supplements = () => {
@@ -20,6 +21,9 @@ const Supplements = () => {
   const { addSupplement } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
 
   const quickSupplements = [
     { name: 'Vitamin D', dosage: 1000, unit: 'IU', icon: Sun },

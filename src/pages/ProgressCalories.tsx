@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Flame, TrendingUp, TrendingDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
@@ -16,6 +17,9 @@ const ProgressCalories = () => {
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
   
   const targetCalories = user?.targetCalories || 2000;
   const todayProgress = getTodaysProgress();

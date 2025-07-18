@@ -6,6 +6,7 @@ import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, Fi
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
@@ -82,6 +83,9 @@ interface VoiceApiResponse {
 const CameraPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);

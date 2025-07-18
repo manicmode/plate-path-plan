@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useState } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 
@@ -9,6 +10,9 @@ const Explore = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
 
   const handleProfileClick = () => {
     navigate('/profile');

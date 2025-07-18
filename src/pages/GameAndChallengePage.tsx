@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,6 +86,9 @@ export default function GameAndChallengePage() {
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [messages, setMessages] = useState(mockChatMessages);
   const [sortBy, setSortBy] = useState('score');
+  
+  // Use the scroll-to-top hook
+  useScrollToTop();
   const [showRewardBox, setShowRewardBox] = useState(false);
   const [challengeName, setChallengeName] = useState('');
   const [challengeDescription, setChallengeDescription] = useState('');
