@@ -11,7 +11,8 @@ import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Za
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
+import { RecipeStorage, type SavedRecipe } from '@/lib/recipeStorage';
+import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
 
 interface Message {
   id: string;
@@ -21,13 +22,6 @@ interface Message {
   isRecipe?: boolean;
 }
 
-interface SavedRecipe {
-  id: string;
-  title: string;
-  content: string;
-  timestamp: Date;
-  isFavorite?: boolean;
-}
 
 const Coach = () => {
   const { user } = useAuth();
@@ -70,8 +64,8 @@ const Coach = () => {
   useEffect(() => {
     if (user && storageAvailable) {
       try {
-        const recipes = safeGetJSON(`saved_recipes_${user.id}`, []);
-        const optimizedRecipes = optimizeForMobile(recipes);
+        const recipes = RecipeStorage.loadRecipes(user.id);
+        const optimizedRecipes = RecipeStorage.optimizeForMobile(recipes);
         setSavedRecipes(optimizedRecipes);
         
         if (recipes.length > optimizedRecipes.length) {
@@ -82,7 +76,7 @@ const Coach = () => {
         setSavedRecipes([]);
       }
     }
-  }, [user, storageAvailable, optimizeForMobile]);
+  }, [user, storageAvailable]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -268,18 +262,20 @@ const Coach = () => {
       }
       title = title.replace(/[#*]/g, '').trim();
 
-      const newRecipe: SavedRecipe = {
-        id: Date.now().toString(),
+      const savedRecipe = RecipeStorage.addRecipe(user.id, {
         title,
         content: message.content,
         timestamp: new Date(),
-      };
+      });
 
-      const updatedRecipes = [...savedRecipes, newRecipe];
-      const optimizedRecipes = optimizeForMobile(updatedRecipes);
-      setSavedRecipes(optimizedRecipes);
-      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
-      toast.success('Recipe saved!');
+      if (savedRecipe) {
+        const updatedRecipes = RecipeStorage.loadRecipes(user.id);
+        const optimizedRecipes = RecipeStorage.optimizeForMobile(updatedRecipes);
+        setSavedRecipes(optimizedRecipes);
+        toast.success('Recipe saved!');
+      } else {
+        throw new Error('Failed to save recipe');
+      }
     } catch (error) {
       handleError(error as Error, 'Saving recipe');
       toast.error('Failed to save recipe');
@@ -287,12 +283,15 @@ const Coach = () => {
   };
 
   const deleteRecipe = (recipeId: string) => {
-    const updatedRecipes = savedRecipes.filter(r => r.id !== recipeId);
-    setSavedRecipes(updatedRecipes);
-    if (user) {
-      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+    if (!user) return;
+    
+    if (RecipeStorage.deleteRecipe(user.id, recipeId)) {
+      const updatedRecipes = RecipeStorage.loadRecipes(user.id);
+      setSavedRecipes(updatedRecipes);
+      toast.success('Recipe deleted');
+    } else {
+      toast.error('Failed to delete recipe');
     }
-    toast.success('Recipe deleted');
   };
 
   const copyRecipe = (content: string) => {
@@ -301,14 +300,13 @@ const Coach = () => {
   };
 
   const toggleFavorite = (recipeId: string) => {
-    const updatedRecipes = savedRecipes.map(recipe => 
-      recipe.id === recipeId 
-        ? { ...recipe, isFavorite: !recipe.isFavorite }
-        : recipe
-    );
-    setSavedRecipes(updatedRecipes);
-    if (user) {
-      safeSetJSON(`saved_recipes_${user.id}`, updatedRecipes);
+    if (!user) return;
+    
+    if (RecipeStorage.toggleFavorite(user.id, recipeId)) {
+      const updatedRecipes = RecipeStorage.loadRecipes(user.id);
+      setSavedRecipes(updatedRecipes);
+    } else {
+      toast.error('Failed to update favorite');
     }
   };
 
@@ -334,23 +332,16 @@ const Coach = () => {
 
   return (
     <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
-      {/* Loading Error Alert */}
+      {/* Error Recovery Component */}
       {loadingError && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center space-x-2">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm text-destructive font-medium">Error</p>
-            <p className="text-xs text-destructive/80">{loadingError}</p>
-          </div>
-          <Button
-            onClick={() => setLoadingError(null)}
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive/80"
-          >
-            Dismiss
-          </Button>
-        </div>
+        <CoachErrorRecovery 
+          userId={user?.id}
+          error={new Error(loadingError)}
+          onRecoveryComplete={() => {
+            setLoadingError(null);
+            window.location.reload();
+          }}
+        />
       )}
 
       {/* Mobile Performance Warning */}
