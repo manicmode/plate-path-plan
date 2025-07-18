@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          rarity: string
+          requirement_duration: number | null
+          requirement_type: string
+          requirement_value: number
+          title: string
+          tracker_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          rarity?: string
+          requirement_duration?: number | null
+          requirement_type: string
+          requirement_value: number
+          title: string
+          tracker_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          rarity?: string
+          requirement_duration?: number | null
+          requirement_type?: string
+          requirement_value?: number
+          title?: string
+          tracker_type?: string | null
+        }
+        Relationships: []
+      }
       daily_nutrition_targets: {
         Row: {
           calculated_at: string
@@ -509,6 +554,38 @@ export type Database = {
           },
         ]
       }
+      user_badges: {
+        Row: {
+          badge_id: string
+          created_at: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           activity_level: string | null
@@ -522,6 +599,9 @@ export type Database = {
           created_at: string
           cross_contamination_sensitivity: boolean | null
           cultural_dietary_restrictions: string[] | null
+          current_hydration_streak: number | null
+          current_nutrition_streak: number | null
+          current_supplement_streak: number | null
           current_supplements: Json | null
           daily_lifestyle: string | null
           deficiency_concerns: string[] | null
@@ -540,7 +620,13 @@ export type Database = {
           height_inches: number | null
           height_unit: string | null
           id: string
+          last_hydration_log_date: string | null
+          last_nutrition_log_date: string | null
           last_profile_update: string | null
+          last_supplement_log_date: string | null
+          longest_hydration_streak: number | null
+          longest_nutrition_streak: number | null
+          longest_supplement_streak: number | null
           main_health_goal: string | null
           meal_frequency: number | null
           medications: string[] | null
@@ -551,6 +637,7 @@ export type Database = {
           progress_tracking_priorities: string[] | null
           recovery_sleep_quality: string | null
           reminder_frequency: string | null
+          selected_badge_title: string | null
           selected_trackers: string[] | null
           show_onboarding_reminder: boolean | null
           snacking_patterns: string | null
@@ -564,6 +651,7 @@ export type Database = {
           target_fiber: number | null
           target_protein: number | null
           target_weight: number | null
+          total_badges_earned: number | null
           toxin_sensitivity_level: string | null
           updated_at: string
           user_id: string
@@ -584,6 +672,9 @@ export type Database = {
           created_at?: string
           cross_contamination_sensitivity?: boolean | null
           cultural_dietary_restrictions?: string[] | null
+          current_hydration_streak?: number | null
+          current_nutrition_streak?: number | null
+          current_supplement_streak?: number | null
           current_supplements?: Json | null
           daily_lifestyle?: string | null
           deficiency_concerns?: string[] | null
@@ -602,7 +693,13 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_hydration_log_date?: string | null
+          last_nutrition_log_date?: string | null
           last_profile_update?: string | null
+          last_supplement_log_date?: string | null
+          longest_hydration_streak?: number | null
+          longest_nutrition_streak?: number | null
+          longest_supplement_streak?: number | null
           main_health_goal?: string | null
           meal_frequency?: number | null
           medications?: string[] | null
@@ -613,6 +710,7 @@ export type Database = {
           progress_tracking_priorities?: string[] | null
           recovery_sleep_quality?: string | null
           reminder_frequency?: string | null
+          selected_badge_title?: string | null
           selected_trackers?: string[] | null
           show_onboarding_reminder?: boolean | null
           snacking_patterns?: string | null
@@ -626,6 +724,7 @@ export type Database = {
           target_fiber?: number | null
           target_protein?: number | null
           target_weight?: number | null
+          total_badges_earned?: number | null
           toxin_sensitivity_level?: string | null
           updated_at?: string
           user_id: string
@@ -646,6 +745,9 @@ export type Database = {
           created_at?: string
           cross_contamination_sensitivity?: boolean | null
           cultural_dietary_restrictions?: string[] | null
+          current_hydration_streak?: number | null
+          current_nutrition_streak?: number | null
+          current_supplement_streak?: number | null
           current_supplements?: Json | null
           daily_lifestyle?: string | null
           deficiency_concerns?: string[] | null
@@ -664,7 +766,13 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_hydration_log_date?: string | null
+          last_nutrition_log_date?: string | null
           last_profile_update?: string | null
+          last_supplement_log_date?: string | null
+          longest_hydration_streak?: number | null
+          longest_nutrition_streak?: number | null
+          longest_supplement_streak?: number | null
           main_health_goal?: string | null
           meal_frequency?: number | null
           medications?: string[] | null
@@ -675,6 +783,7 @@ export type Database = {
           progress_tracking_priorities?: string[] | null
           recovery_sleep_quality?: string | null
           reminder_frequency?: string | null
+          selected_badge_title?: string | null
           selected_trackers?: string[] | null
           show_onboarding_reminder?: boolean | null
           snacking_patterns?: string | null
@@ -688,6 +797,7 @@ export type Database = {
           target_fiber?: number | null
           target_protein?: number | null
           target_weight?: number | null
+          total_badges_earned?: number | null
           toxin_sensitivity_level?: string | null
           updated_at?: string
           user_id?: string

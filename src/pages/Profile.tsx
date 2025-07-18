@@ -1,8 +1,11 @@
 
+import React from 'react';
+import { BadgeProvider } from '@/contexts/BadgeContext';
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { StreakBadgesSection } from '@/components/analytics/StreakBadgesSection';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -40,7 +43,15 @@ const saveUserPreferences = (preferences: any) => {
   }
 };
 
-const Profile = () => {
+export default function Profile() {
+  return (
+    <BadgeProvider>
+      <ProfileContent />
+    </BadgeProvider>
+  );
+}
+
+const ProfileContent = () => {
   const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -253,7 +264,10 @@ const Profile = () => {
       {/* Onboarding Completion Card - Show if onboarding not completed */}
       <OnboardingCompletionCard onStartOnboarding={handleStartOnboarding} />
 
-      {/* Profile Header */}
+        {/* Streak Badges Section */}
+        <StreakBadgesSection />
+
+        {/* Profile Header */}
       <Card className="animate-slide-up glass-card border-0 rounded-3xl">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <ProfileHeader 
@@ -348,5 +362,3 @@ const Profile = () => {
     </div>
   );
 };
-
-export default Profile;
