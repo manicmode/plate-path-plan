@@ -943,13 +943,7 @@ const CameraPage = () => {
       // Ensure we're in barcode mode to prevent food UI from showing
       setInputSource('barcode');
 
-      // Success message with ingredient status
-      const baseMessage = `Found: ${foodItem.name}`;
-      const ingredientStatus = product.ingredients_available 
-        ? ' (ingredients detected)' 
-        : ' (add ingredients manually for safety check)';
-      
-      toast.success(baseMessage + ingredientStatus);
+      // Product info is already displayed in the confirmation popup, no need for success toast
       console.log('=== BARCODE CONFIRMATION READY ===');
 
     } catch (error) {
