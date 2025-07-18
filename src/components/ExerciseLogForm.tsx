@@ -1,10 +1,11 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface ExerciseLogFormProps {
   isOpen: boolean;
@@ -44,7 +45,6 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
   const [exerciseType, setExerciseType] = useState('');
   const [duration, setDuration] = useState('');
   const [intensity, setIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
-  const { toast } = useToast();
 
   const calculateCalories = () => {
     const selectedExercise = EXERCISE_TYPES.find(ex => ex.value === exerciseType);
@@ -56,10 +56,8 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
 
   const handleSubmit = () => {
     if (!exerciseType || !duration) {
-      toast({
-        title: "Please fill in all fields",
+      toast.error("Please fill in all fields", {
         description: "Select exercise type and enter duration.",
-        variant: "destructive",
       });
       return;
     }
@@ -73,8 +71,7 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
 
     onSubmit(exerciseData);
     
-    toast({
-      title: "Exercise logged! 🔥",
+    toast.success("Exercise logged! 🔥", {
       description: `${duration} minutes of ${EXERCISE_TYPES.find(ex => ex.value === exerciseType)?.label} - ${exerciseData.caloriesBurned} calories burned`,
     });
 
