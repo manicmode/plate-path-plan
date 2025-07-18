@@ -1021,6 +1021,60 @@ export type Database = {
         }
         Relationships: []
       }
+      yearly_score_preview: {
+        Row: {
+          avg_hydration_streak: number | null
+          avg_nutrition_streak: number | null
+          avg_supplement_streak: number | null
+          created_at: string
+          display_name: string
+          id: string
+          last_updated: string
+          monthly_trophies: number
+          rank_position: number
+          total_active_days: number
+          total_messages: number
+          user_id: string
+          username: string
+          year: number
+          yearly_score: number
+        }
+        Insert: {
+          avg_hydration_streak?: number | null
+          avg_nutrition_streak?: number | null
+          avg_supplement_streak?: number | null
+          created_at?: string
+          display_name: string
+          id?: string
+          last_updated?: string
+          monthly_trophies?: number
+          rank_position: number
+          total_active_days?: number
+          total_messages?: number
+          user_id: string
+          username: string
+          year: number
+          yearly_score?: number
+        }
+        Update: {
+          avg_hydration_streak?: number | null
+          avg_nutrition_streak?: number | null
+          avg_supplement_streak?: number | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_updated?: string
+          monthly_trophies?: number
+          rank_position?: number
+          total_active_days?: number
+          total_messages?: number
+          user_id?: string
+          username?: string
+          year?: number
+          yearly_score?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
