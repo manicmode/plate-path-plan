@@ -158,134 +158,147 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md sm:max-w-xl max-h-[90vh] overflow-y-auto p-0 animate-in zoom-in-95 duration-300 slide-in-from-bottom-10">
+      <DialogContent className="max-w-md sm:max-w-xl max-h-[90vh] overflow-y-auto p-0 animate-in zoom-in-95 duration-500 slide-in-from-bottom-10 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
         <DialogHeader className="sr-only">
           <DialogTitle>User Profile</DialogTitle>
         </DialogHeader>
           
-        {/* Animated Gaming Header */}
+        {/* ENLARGED Gaming Header - Main Character Showcase */}
         <div className={cn(
-          "relative overflow-hidden p-3 sm:p-4",
-          "bg-gradient-to-br from-primary/20 via-secondary/15 to-accent/20",
-          "border-b-2 border-gradient-to-r from-primary/50 to-secondary/50"
+          "relative overflow-hidden p-6 sm:p-8",
+          "bg-gradient-to-br from-primary/30 via-secondary/25 to-accent/30",
+          "border-b-4 border-gradient-to-r from-primary/60 to-secondary/60"
         )}>
-          {/* Background glow effect */}
+          {/* Enhanced background glow effect */}
           <div className={cn(
-            "absolute inset-0 opacity-30 animate-pulse",
+            "absolute inset-0 opacity-40 animate-pulse",
             `bg-gradient-to-br ${getStreakColor()}`
           )} />
           
-          <div className="relative flex items-center gap-3">
-            {/* Animated Avatar with Progress Ring */}
+          {/* Floating sparkles background */}
+          <div className="absolute inset-0 overflow-hidden">
+            <Sparkles className="absolute top-4 left-8 h-4 w-4 text-yellow-400/60 animate-ping delay-1000" />
+            <Sparkles className="absolute top-12 right-12 h-3 w-3 text-blue-400/60 animate-ping delay-2000" />
+            <Sparkles className="absolute bottom-8 left-16 h-2 w-2 text-purple-400/60 animate-ping delay-500" />
+          </div>
+          
+          <div className="relative flex flex-col items-center text-center gap-4">
+            {/* ENLARGED Animated Avatar with Progress Ring */}
             <div className="relative">
-              {/* Progress Ring */}
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20">
+              {/* Larger Progress Ring */}
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
-                    r="45"
+                    r="42"
                     stroke="hsl(var(--muted))"
-                    strokeWidth="6"
+                    strokeWidth="4"
                     fill="none"
                     opacity="0.3"
                   />
                   <circle
                     cx="50"
                     cy="50"
-                    r="45"
+                    r="42"
                     stroke="url(#progressGradient)"
-                    strokeWidth="6"
+                    strokeWidth="4"
                     fill="none"
-                    strokeDasharray={`${(user.weeklyProgress / 100) * 283} 283`}
+                    strokeDasharray={`${(user.weeklyProgress / 100) * 264} 264`}
                     strokeLinecap="round"
                     className="transition-all duration-1000 ease-out"
                   />
                   <defs>
                     <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="hsl(var(--primary))" />
-                      <stop offset="100%" stopColor="hsl(var(--accent))" />
+                      <stop offset="50%" stopColor="hsl(var(--accent))" />
+                      <stop offset="100%" stopColor="hsl(var(--secondary))" />
                     </linearGradient>
                   </defs>
                 </svg>
                 
-                {/* Avatar in center with sparkle animation */}
-                <div className="absolute inset-2 flex items-center justify-center">
+                {/* ENLARGED Avatar in center with enhanced sparkle animation */}
+                <div className="absolute inset-3 flex items-center justify-center">
                   <div className={cn(
-                    "text-2xl sm:text-3xl relative",
-                    "animate-pulse hover:animate-bounce transition-all duration-300"
+                    "text-4xl sm:text-5xl relative",
+                    "hover:animate-bounce transition-all duration-300 cursor-pointer"
                   )}>
                     {user.avatar}
-                    {/* Sparkle particles */}
-                    <div className="absolute -inset-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
-                      <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400 animate-ping" />
-                      <Sparkles className="absolute -bottom-1 -left-1 h-2 w-2 text-blue-400 animate-ping delay-300" />
+                    {/* Enhanced sparkle particles */}
+                    <div className="absolute -inset-4 opacity-0 hover:opacity-100 transition-opacity duration-300">
+                      <Sparkles className="absolute -top-2 -right-2 h-4 w-4 text-yellow-400 animate-ping" />
+                      <Sparkles className="absolute -bottom-2 -left-2 h-3 w-3 text-blue-400 animate-ping delay-300" />
+                      <Sparkles className="absolute top-0 -left-3 h-2 w-2 text-purple-400 animate-ping delay-600" />
+                      <Sparkles className="absolute -top-1 right-0 h-2 w-2 text-green-400 animate-ping delay-900" />
                     </div>
                   </div>
                 </div>
               </div>
               
-              {/* Online indicator with breathing effect */}
+              {/* Enhanced online indicator with breathing effect */}
               {user.isOnline && (
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-ping" />
+                <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-background animate-ping" />
               )}
             </div>
             
-            {/* User Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-lg sm:text-xl font-bold truncate bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            {/* ENLARGED User Info Section */}
+            <div className="w-full">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
                   {user.nickname}
                 </h2>
                 
-                {/* Animated Rank Badge */}
+                {/* ENHANCED Animated Rank Badge */}
                 <div className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-full",
-                  "bg-gradient-to-r from-primary/20 to-secondary/20",
-                  "border border-primary/30 backdrop-blur-sm",
-                  "transform hover:scale-110 transition-all duration-200"
+                  "flex items-center gap-2 px-4 py-2 rounded-full",
+                  "bg-gradient-to-r from-primary/30 to-secondary/30",
+                  "border-2 border-primary/40 backdrop-blur-sm",
+                  "transform hover:scale-110 transition-all duration-300",
+                  "shadow-lg shadow-primary/20"
                 )}>
                   {getRankIcon()}
-                  <Badge variant="secondary" className="text-xs font-bold">
+                  <Badge variant="secondary" className="text-sm font-bold px-2 py-1">
                     #{user.rank}
                   </Badge>
                 </div>
               </div>
               
-              {/* Compact Stats Row */}
-              <div className="flex items-center gap-2 sm:gap-3 text-xs flex-wrap">
-                <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded-full">
-                  <TrendingUp className="h-3 w-3 text-green-500" />
-                  <span className="font-bold">{user.score}</span>
+              {/* REORGANIZED Stats in elegant grid */}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <div className="flex flex-col items-center p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl border border-primary/30">
+                  <TrendingUp className="h-5 w-5 text-green-500 mb-1" />
+                  <span className="text-2xl sm:text-3xl font-bold text-green-500">{user.score}</span>
+                  <span className="text-xs text-muted-foreground">Score</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-orange-500/10 rounded-full">
-                  <Flame className="h-3 w-3 text-orange-500" />
-                  <span className="font-bold">{user.streak}d</span>
+                <div className="flex flex-col items-center p-3 bg-gradient-to-br from-orange-500/20 to-orange-500/10 rounded-xl border border-orange-500/30">
+                  <Flame className="h-5 w-5 text-orange-500 mb-1" />
+                  <span className="text-2xl sm:text-3xl font-bold text-orange-500">{user.streak}</span>
+                  <span className="text-xs text-muted-foreground">Day Streak</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded-full">
-                  <Activity className="h-3 w-3 text-blue-500" />
-                  <span className="font-bold">{user.weeklyProgress}%</span>
+                <div className="flex flex-col items-center p-3 bg-gradient-to-br from-blue-500/20 to-blue-500/10 rounded-xl border border-blue-500/30">
+                  <Activity className="h-5 w-5 text-blue-500 mb-1" />
+                  <span className="text-2xl sm:text-3xl font-bold text-blue-500">{user.weeklyProgress}%</span>
+                  <span className="text-xs text-muted-foreground">This Week</span>
                 </div>
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-2">
+            {/* REPOSITIONED Action Bar */}
+            <div className="flex items-center gap-4 mt-2">
               <Button
                 onClick={handleLike}
                 variant={isLiked ? "default" : "outline"}
-                size="sm"
                 className={cn(
-                  "transition-all duration-300 relative overflow-hidden",
+                  "transition-all duration-300 relative overflow-hidden px-6 py-2",
                   isLiked ? "bg-red-500 hover:bg-red-600 scale-110" : "",
                   "hover:scale-105 active:scale-95"
                 )}
               >
                 <Heart className={cn(
-                  "h-3 w-3 mr-1 transition-all duration-300",
+                  "h-4 w-4 mr-2 transition-all duration-300",
                   isLiked ? "fill-current animate-bounce" : ""
                 )} />
-                <span className="font-bold">{likes}</span>
+                <span className="font-bold">❤️ Cheer ({likes})</span>
                 {isLiked && (
                   <div className="absolute inset-0 bg-red-400 animate-ping opacity-25 rounded" />
                 )}
@@ -293,16 +306,15 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               
               <Button 
                 variant="outline" 
-                size="sm" 
                 onClick={handleChallenge}
                 className={cn(
-                  "text-xs px-2 relative overflow-hidden",
+                  "px-6 py-2 relative overflow-hidden",
                   "hover:bg-orange-500 hover:text-white transition-all duration-300",
                   "active:scale-95 transform"
                 )}
               >
-                <Swords className="h-3 w-3 mr-1" />
-                {challengeSent ? "Sent! ⚔️" : "Duel"}
+                <Swords className="h-4 w-4 mr-2" />
+                <span className="font-bold">{challengeSent ? "⚔️ Duel Sent!" : "⚔️ Duel"}</span>
                 {challengeSent && (
                   <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 animate-pulse opacity-30 rounded" />
                 )}
@@ -311,66 +323,74 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
           </div>
         </div>
 
-        <div className="p-3 sm:p-4">
+        <div className="p-2 sm:p-3">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-3 h-8">
-              <TabsTrigger value="overview" className="text-xs">📊</TabsTrigger>
-              <TabsTrigger value="trophies" className="text-xs">🏆</TabsTrigger>
-              <TabsTrigger value="stats" className="text-xs">📈</TabsTrigger>
-              <TabsTrigger value="titles" className="text-xs">🚀</TabsTrigger>
+            {/* ENLARGED Tab Navigation */}
+            <TabsList className="grid w-full grid-cols-4 mb-4 h-12 bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+              <TabsTrigger value="overview" className="text-sm font-medium flex flex-col items-center py-2">
+                <span className="text-lg">📊</span>
+                <span className="text-xs">Performance</span>
+              </TabsTrigger>
+              <TabsTrigger value="trophies" className="text-sm font-medium flex flex-col items-center py-2">
+                <span className="text-lg">🏆</span>
+                <span className="text-xs">Trophies</span>
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="text-sm font-medium flex flex-col items-center py-2">
+                <span className="text-lg">📈</span>
+                <span className="text-xs">Records</span>
+              </TabsTrigger>
+              <TabsTrigger value="titles" className="text-sm font-medium flex flex-col items-center py-2">
+                <span className="text-lg">🚀</span>
+                <span className="text-xs">Titles</span>
+              </TabsTrigger>
             </TabsList>
           
-            <TabsContent value="overview" className="space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Card className="p-2 bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                      Performance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Current Score</span>
-                      <span className="text-sm font-bold text-green-500">{user.score}</span>
+            <TabsContent value="overview" className="space-y-1">
+              {/* COMPACT Single Unified Stats Card */}
+              <Card className="p-3 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 border-primary/30 shadow-lg">
+                <CardHeader className="pb-2 px-0">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                    Performance & Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 space-y-3">
+                  {/* Primary Stats Grid */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-2 bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-lg border border-green-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Current Score</span>
+                      <span className="text-xl font-bold text-green-500">{user.score}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Weekly Growth</span>
-                      <span className="text-sm font-bold text-blue-500">+{user.weeklyProgress}%</span>
+                    <div className="text-center p-2 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-lg border border-blue-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">This Week's Progress</span>
+                      <span className="text-xl font-bold text-blue-500">+{user.weeklyProgress}%</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Current Streak</span>
-                      <div className="flex items-center gap-1">
-                        <Flame className="h-3 w-3 text-orange-500" />
-                        <span className="text-sm font-bold">{user.streak}</span>
+                    <div className="text-center p-2 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-lg border border-orange-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Daily Logging Streak</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <Flame className="h-4 w-4 text-orange-500" />
+                        <span className="text-xl font-bold text-orange-500">{user.streak}</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="p-2 bg-gradient-to-br from-accent/5 to-primary/5 border-accent/20">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-blue-500" />
-                      Activity
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Member Since</span>
-                      <span className="text-sm font-bold">{mockStats.joinedDate}</span>
+                  </div>
+
+                  {/* Secondary Stats Grid */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-2 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-lg border border-purple-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Member Since</span>
+                      <span className="text-sm font-bold text-purple-500">{mockStats.joinedDate}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Active Hours</span>
-                      <span className="text-sm font-bold text-purple-500">{mockStats.totalActiveHours}h</span>
+                    <div className="text-center p-2 bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 rounded-lg border border-indigo-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Total Active Time</span>
+                      <span className="text-lg font-bold text-indigo-500">{mockStats.totalActiveHours}h</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Achievements</span>
-                      <span className="text-sm font-bold text-yellow-500">{mockStats.achievements}</span>
+                    <div className="text-center p-2 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-lg border border-yellow-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Achievements</span>
+                      <span className="text-lg font-bold text-yellow-500">{mockStats.achievements}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
             
             <TabsContent value="trophies" className="space-y-2">
@@ -406,48 +426,55 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               </div>
             </TabsContent>
             
-            <TabsContent value="stats" className="space-y-2">
-              <Card className="p-2 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
+            <TabsContent value="stats" className="space-y-1">
+              {/* COMPACT Records Card */}
+              <Card className="p-3 bg-gradient-to-br from-yellow-500/15 to-orange-500/15 border-yellow-500/30 shadow-lg">
                 <CardHeader className="p-0 pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-yellow-500 animate-pulse" />
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 justify-center">
+                    <Trophy className="h-5 w-5 text-yellow-500 animate-pulse" />
                     Lifetime Records
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 p-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Best Score</span>
-                    <span className="font-bold text-sm text-yellow-600">{mockStats.lifetimeBestScore}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Longest Streak</span>
-                    <div className="flex items-center gap-1">
-                      <Flame className="h-3 w-3 text-orange-500" />
-                      <span className="font-bold text-sm">{mockStats.personalBestStreak} days</span>
+                <CardContent className="p-0 space-y-3">
+                  {/* Records Grid */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-2 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-lg border border-yellow-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Personal Best Score</span>
+                      <span className="text-xl font-bold text-yellow-600">{mockStats.lifetimeBestScore}</span>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Challenges Won</span>
-                    <span className="font-bold text-sm text-green-600">{mockStats.totalChallengesCompleted}</span>
+                    <div className="text-center p-2 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-lg border border-orange-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Longest Daily Streak</span>
+                      <div className="flex items-center justify-center gap-1">
+                        <Flame className="h-4 w-4 text-orange-500" />
+                        <span className="text-xl font-bold text-orange-500">{mockStats.personalBestStreak}</span>
+                      </div>
+                    </div>
+                    <div className="text-center p-2 bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-lg border border-green-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Challenges Won</span>
+                      <span className="text-xl font-bold text-green-600">{mockStats.totalChallengesCompleted}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="p-2 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20">
+              {/* COMPACT Preferences Card */}
+              <Card className="p-3 bg-gradient-to-br from-blue-500/15 to-purple-500/15 border-blue-500/30 shadow-lg">
                 <CardHeader className="p-0 pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Target className="h-4 w-4 text-blue-500" />
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 justify-center">
+                    <Target className="h-5 w-5 text-blue-500" />
                     Preferences
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 p-0">
-                  <div>
-                    <span className="text-xs text-muted-foreground">Favorite Category</span>
-                    <p className="font-bold text-sm text-blue-600">{mockStats.favoriteChallengeCategory}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Most Active Time</span>
-                    <p className="font-bold text-sm text-purple-600">Morning (6-9 AM)</p>
+                <CardContent className="p-0 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-2 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-lg border border-blue-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Favorite Category</span>
+                      <span className="text-sm font-bold text-blue-600">{mockStats.favoriteChallengeCategory}</span>
+                    </div>
+                    <div className="text-center p-2 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-lg border border-purple-500/30">
+                      <span className="text-xs text-muted-foreground block mb-1">Most Active Time</span>
+                      <span className="text-sm font-bold text-purple-600">Morning (6-9 AM)</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
