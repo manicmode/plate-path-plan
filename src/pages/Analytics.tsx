@@ -23,6 +23,7 @@ import { MonthlyLeaderboard } from '@/components/analytics/MonthlyLeaderboard';
 import { AchievementBadges } from '@/components/analytics/AchievementBadges';
 import { WeeklySummaryViewer } from '@/components/analytics/WeeklySummaryViewer';
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
+import { TrophyPodium } from '@/components/TrophyPodium';
 import { useDailyScore } from '@/hooks/useDailyScore';
 
 const Analytics = () => {
@@ -68,6 +69,19 @@ const Analytics = () => {
           <div className="mb-8">
             <WeeklyProgressRing />
           </div>
+        </div>
+
+        {/* Trophy Podium Section - Lifetime Achievement Showcase */}
+        <div className="mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              🏆 Your Lifetime Trophies
+            </h2>
+            <p className="text-muted-foreground">
+              Celebrating your monthly ranking achievements
+            </p>
+          </div>
+          <TrophyPodium />
         </div>
 
         {/* Daily Performance Score - Featured prominently */}
