@@ -46,6 +46,7 @@ const Coach = () => {
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const chatCardRef = useRef<HTMLDivElement>(null);
 
   const progress = getTodaysProgress();
 
@@ -88,10 +89,15 @@ const Coach = () => {
     }
   }, [messages]);
 
-  // Scroll to top function for commands
+  // Scroll to chat window function for commands
   const scrollToTop = () => {
-    // Scroll page to top smoothly to show chat window optimally
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll to the chat card to show it optimally on mobile screen
+    if (chatCardRef.current) {
+      chatCardRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
     
     // Immediately scroll chat area to bottom to show latest content
     if (scrollAreaRef.current) {
@@ -384,7 +390,7 @@ const Coach = () => {
       </div>
 
       {/* Chat Interface with enhanced mobile optimization */}
-      <Card className="glass-card border-0 rounded-3xl">
+      <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
           <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
             <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
