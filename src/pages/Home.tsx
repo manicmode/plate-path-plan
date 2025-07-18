@@ -690,7 +690,10 @@ const Home = () => {
       {/* Enhanced Greeting Section */}
       <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
         <div className="inline-block">
-          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
+          <h1 
+            className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden typewriter-text motion-reduce:animate-none`}
+            data-text={isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
+          >
             {isMobile ? "Let's optimize your day," : "Let's optimize your day,"}
           </h1>
           <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold neon-text relative`}>

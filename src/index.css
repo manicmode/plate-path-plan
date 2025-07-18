@@ -817,59 +817,33 @@
 }
 
 /* Welcome Text Animation Effects */
-.shimmer-text {
+.typewriter-text {
   position: relative;
   overflow: hidden;
 }
 
-.shimmer-text::after {
-  content: '';
+.typewriter-text::before {
+  content: attr(data-text);
   position: absolute;
   top: 0;
-  left: -100%;
-  width: 100%;
+  left: 0;
+  width: 0;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.6) 20%,
-    rgba(255, 255, 255, 0.8) 50%,
-    rgba(255, 255, 255, 0.6) 80%,
-    transparent 100%
-  );
-  animation: shimmerSweep 2s ease-out 0.5s 1 forwards;
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: overlay;
-  opacity: 0;
+  overflow: hidden;
+  background: inherit;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: typewriter 2s ease-out 0.5s 1 forwards;
+  filter: drop-shadow(0 0 8px hsla(var(--primary), 0.3));
 }
 
-.dark .shimmer-text::after {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.2) 20%,
-    rgba(255, 255, 255, 0.4) 50%,
-    rgba(255, 255, 255, 0.2) 80%,
-    transparent 100%
-  );
-  mix-blend-mode: soft-light;
-}
-
-@keyframes shimmerSweep {
+@keyframes typewriter {
   0% {
-    left: -100%;
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
+    width: 0;
   }
   100% {
-    left: 100%;
-    opacity: 0;
+    width: 100%;
   }
 }
 
