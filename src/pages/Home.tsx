@@ -27,6 +27,7 @@ import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { Ticker } from '@/components/ui/ticker';
+import { useSmartTicker } from '@/hooks/useSmartTicker';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -47,6 +48,7 @@ const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
   const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
+  const { message: tickerMessage, isDefault: isDefaultTicker, triggerMessage } = useSmartTicker();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
@@ -700,9 +702,10 @@ const Home = () => {
           </h2>
         </div>
         <Ticker 
-          message="🏆 This Month's Challenge Is ON – Let's Climb That Leaderboard!"
+          message={tickerMessage}
           size={isMobile ? 'md' : 'lg'}
-          className="animate-fade-in"
+          className={isDefaultTicker ? "" : "animate-fade-in"}
+          speed={isDefaultTicker ? "slow" : "normal"}
         />
       </div>
 
