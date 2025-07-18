@@ -211,6 +211,36 @@ export type Database = {
           },
         ]
       }
+      meal_suggestions: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          message: string
+          score_triggered: number | null
+          type: Database["public"]["Enums"]["suggestion_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          message: string
+          score_triggered?: number | null
+          type: Database["public"]["Enums"]["suggestion_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          message?: string
+          score_triggered?: number | null
+          type?: Database["public"]["Enums"]["suggestion_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
@@ -640,7 +670,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      suggestion_type: "praise" | "warning" | "tip"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -767,6 +797,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      suggestion_type: ["praise", "warning", "tip"],
+    },
   },
 } as const
