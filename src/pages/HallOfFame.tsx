@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Crown, Zap, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useYearlyHallOfFame, useAvailableHallOfFameYears } from '@/hooks/useYearlyHallOfFame';
 
 interface HallOfFameUser {
   user_id: string;
@@ -24,53 +25,29 @@ interface HallOfFameUser {
 
 const HallOfFamePage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [hallOfFameData, setHallOfFameData] = useState<HallOfFameUser[]>([]);
-  const [archivedYears, setArchivedYears] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Use the new hooks
+  const { 
+    data: hallOfFameData = [], 
+    isLoading: loading, 
+    error 
+  } = useYearlyHallOfFame(selectedYear);
+  
+  const { 
+    data: availableYears = [] 
+  } = useAvailableHallOfFameYears();
+
+  // Handle errors
   useEffect(() => {
-    fetchHallOfFameData();
-    fetchArchivedYears();
-  }, [selectedYear]);
-
-  const fetchHallOfFameData = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('yearly_hall_of_fame')
-        .select('*')
-        .eq('year', selectedYear)
-        .order('rank_position', { ascending: true });
-
-      if (error) throw error;
-      setHallOfFameData(data || []);
-    } catch (error: any) {
+    if (error) {
       toast({
         title: "Error loading Hall of Fame",
-        description: error.message,
+        description: "Failed to load the leaderboard data",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const fetchArchivedYears = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('yearly_hall_of_fame')
-        .select('year')
-        .neq('year', selectedYear);
-
-      if (error) throw error;
-      
-      const years = [...new Set(data?.map(item => item.year) || [])].sort((a, b) => b - a);
-      setArchivedYears(years);
-    } catch (error: any) {
-      console.error('Error fetching archived years:', error);
-    }
-  };
+  }, [error, toast]);
 
   const getSpecialBadge = (user: HallOfFameUser, allUsers: HallOfFameUser[]) => {
     if (user.rank_position === 1) {
@@ -322,7 +299,7 @@ const HallOfFamePage: React.FC = () => {
           </Card>
 
           {/* Archived Years */}
-          {archivedYears.length > 0 && (
+          {availableYears.filter(year => year !== selectedYear).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -332,7 +309,7 @@ const HallOfFamePage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2 flex-wrap">
-                  {archivedYears.map(year => (
+                  {availableYears.filter(year => year !== selectedYear).map(year => (
                     <Button
                       key={year}
                       variant="outline"
