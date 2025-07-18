@@ -89,12 +89,13 @@ const Coach = () => {
     }
   }, [messages]);
 
-  // Scroll to chat window function for commands
+  // Scroll to chat window function for commands with improved alignment
   const scrollToTop = () => {
     // Scroll to the chat card with better positioning for mobile
     if (chatCardRef.current) {
       const headerHeight = isMobile ? 80 : 100; // Account for mobile header
-      const cardTop = chatCardRef.current.offsetTop - headerHeight;
+      const alignmentOffset = isMobile ? 25 : 30; // Small offset to center better
+      const cardTop = chatCardRef.current.offsetTop - headerHeight + alignmentOffset;
       
       window.scrollTo({ 
         top: cardTop, 
