@@ -300,8 +300,8 @@ function GameAndChallengeContent() {
         </>
       )}
 
-      {/* Mobile-Optimized Navigation */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
+      {/* Mobile-Optimized Navigation - Fixed positioning below banner */}
+      <div className="sticky z-40 bg-background/95 backdrop-blur-sm border-b" style={{ top: 'var(--header-height, 80px)' }}>
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
           {isMobile ? (
             // Mobile Tab Navigation
