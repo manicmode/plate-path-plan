@@ -116,13 +116,7 @@ if (isIOS && isSafari) {
   }
 }
 
-// Disable strict mode on mobile to reduce re-renders
-const AppWrapper = isMobile ? App : () => (
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
-
+// Conditionally wrap with StrictMode for non-mobile devices
 console.log('Rendering app...', { strictMode: !isMobile });
 
 root.render(
@@ -144,7 +138,13 @@ root.render(
       }>
         <NutritionProvider>
           <NotificationProvider>
-            <AppWrapper />
+            {isMobile ? (
+              <App />
+            ) : (
+              <StrictMode>
+                <App />
+              </StrictMode>
+            )}
           </NotificationProvider>
         </NutritionProvider>
       </ErrorBoundary>
