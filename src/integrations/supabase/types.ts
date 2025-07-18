@@ -649,6 +649,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_follows: {
+        Row: {
+          created_at: string
+          followed_user_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          followed_user_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          followed_user_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_friends: {
         Row: {
           created_at: string
@@ -701,6 +722,8 @@ export type Database = {
           exercise_types: string[] | null
           fasting_schedule: string | null
           first_name: string | null
+          followers_count: number | null
+          following_count: number | null
           food_allergies: Json | null
           foods_to_avoid: string | null
           gender: string | null
@@ -777,6 +800,8 @@ export type Database = {
           exercise_types?: string[] | null
           fasting_schedule?: string | null
           first_name?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
@@ -853,6 +878,8 @@ export type Database = {
           exercise_types?: string[] | null
           fasting_schedule?: string | null
           first_name?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
@@ -956,6 +983,10 @@ export type Database = {
         Args: { reminder_id: string }
         Returns: string
       }
+      check_social_badges: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       find_user_friends: {
         Args: { contact_hashes: string[] }
         Returns: {
@@ -963,6 +994,15 @@ export type Database = {
           email: string
           phone: string
           contact_hash: string
+        }[]
+      }
+      get_follow_status: {
+        Args: { target_user_id: string }
+        Returns: {
+          is_following: boolean
+          is_followed_by: boolean
+          followers_count: number
+          following_count: number
         }[]
       }
       get_mutual_friends: {

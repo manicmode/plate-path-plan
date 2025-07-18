@@ -30,6 +30,7 @@ import { OnboardingCompletionCard } from '@/components/profile/OnboardingComplet
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
 import { HealthGoalSettings } from '@/components/profile/HealthGoalSettings';
 import { ContactSync } from '@/components/profile/ContactSync';
+import { FollowStatsCard } from '@/components/social/FollowStatsCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
@@ -267,6 +268,14 @@ const ProfileContent = () => {
 
         {/* Streak Badges Section */}
         <StreakBadgesSection />
+
+        {/* Social Follow Stats */}
+        <FollowStatsCard 
+          userId={user?.id}
+          followersCount={0}
+          followingCount={0}
+          isCurrentUser={true}
+        />
 
         {/* Contact Sync & Friends */}
         <ContactSync />
