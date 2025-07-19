@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Volume2, VolumeX, Pin, Crown, MessageCircle, Users, Clock } from 'lucide-react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/auth';
+import { useChatModal } from '@/contexts/ChatModalContext';
 import { MessageInputWithTagging } from './MessageInputWithTagging';
 import { MessageBubbleWithTags } from './MessageBubbleWithTags';
 import { ChatroomSelector } from './ChatroomSelector';
@@ -36,6 +36,7 @@ export const ChallengeChatModal = ({
   const { chats, sendMessage, toggleMute, canSendEmoji, getLastEmojiTime, loadMessages } = useChat();
   const { user } = useAuth();
   const { challenges, microChallenges, activeUserChallenges } = useChallenge();
+  const { setIsChatModalOpen } = useChatModal();
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);
   const [activeChatroomId, setActiveChatroomId] = useState(challengeId);
@@ -43,6 +44,16 @@ export const ChallengeChatModal = ({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const chat = chats[activeChatroomId];
+
+  // Update chat modal state in context when modal opens/closes
+  useEffect(() => {
+    setIsChatModalOpen(open);
+    return () => {
+      if (!open) {
+        setIsChatModalOpen(false);
+      }
+    };
+  }, [open, setIsChatModalOpen]);
 
   // Build chatrooms for selector
   const chatrooms = [];

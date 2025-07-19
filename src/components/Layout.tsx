@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3 } from 'lucide-react';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useChatModal } from '@/contexts/ChatModalContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,6 +16,7 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const isMobile = useIsMobile();
+  const { isChatModalOpen } = useChatModal();
   const [isNavigating, setIsNavigating] = useState(false);
 
   const navItems = [
@@ -107,42 +108,44 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      {/* Enhanced Bottom Navigation */}
-      <nav className={`fixed ${isMobile ? 'bottom-3 left-3 right-3' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
-        <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
-          <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
-            {navItems.map(({ path, icon: Icon, label }) => {
-              const isActive = (path === '/' && (location.pathname === '/' || location.pathname === '/home')) || 
-                              (path !== '/' && location.pathname === path);
-              return (
-                <Button
-                  key={path}
-                  variant="ghost"
-                  size="sm"
-                  disabled={isNavigating}
-                  className={`flex flex-col items-center justify-center space-y-1 ${
-                    isMobile 
-                      ? 'h-16 px-2 min-w-[60px] flex-1' 
-                      : 'h-20 w-24 px-4'
-                  } rounded-2xl transition-all duration-300 ${
-                    isActive 
-                      ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
-                      : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
-                  } ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => handleNavigation(path)}
-                >
-                  <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
-                  <span className={`${
-                    isMobile ? 'text-xs' : 'text-sm'
-                  } font-semibold leading-tight text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}>
-                    {label}
-                  </span>
-                </Button>
-              );
-            })}
+      {/* Enhanced Bottom Navigation - Hide when chat modal is open */}
+      {!isChatModalOpen && (
+        <nav className={`fixed ${isMobile ? 'bottom-3 left-3 right-3' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
+          <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
+            <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
+              {navItems.map(({ path, icon: Icon, label }) => {
+                const isActive = (path === '/' && (location.pathname === '/' || location.pathname === '/home')) || 
+                                (path !== '/' && location.pathname === path);
+                return (
+                  <Button
+                    key={path}
+                    variant="ghost"
+                    size="sm"
+                    disabled={isNavigating}
+                    className={`flex flex-col items-center justify-center space-y-1 ${
+                      isMobile 
+                        ? 'h-16 px-2 min-w-[60px] flex-1' 
+                        : 'h-20 w-24 px-4'
+                    } rounded-2xl transition-all duration-300 ${
+                      isActive 
+                        ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
+                        : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
+                    } ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => handleNavigation(path)}
+                  >
+                    <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'animate-pulse' : ''} flex-shrink-0`} />
+                    <span className={`${
+                      isMobile ? 'text-xs' : 'text-sm'
+                    } font-semibold leading-tight text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}>
+                      {label}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
 import { RewardsProvider } from '@/contexts/RewardsContext';
 import { ChatProvider } from '@/contexts/ChatContext';
+import { useChatModal } from '@/contexts/ChatModalContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -497,6 +498,7 @@ export default function GameAndChallengePage() {
 
 function GameAndChallengeContent() {
   const { challenges, microChallenges, nudgeFriend } = useChallenge();
+  const { setIsChatModalOpen } = useChatModal();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
@@ -520,6 +522,11 @@ function GameAndChallengeContent() {
   
   // Use the scroll-to-top hook
   useScrollToTop();
+
+  // Update chat modal state in context when chatroom manager opens/closes
+  useEffect(() => {
+    setIsChatModalOpen(isChatroomManagerOpen);
+  }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
   // Optimize data for mobile
   const optimizedLeaderboard = optimizeForMobile(mockLeaderboard);
