@@ -54,6 +54,7 @@ import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { MyFriendsTab } from '@/components/social/MyFriendsTab';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
+import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 
 // Types
 interface ChatMessage {
@@ -513,6 +514,7 @@ function GameAndChallengeContent() {
   const [showRewardBox, setShowRewardBox] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
+  const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -535,6 +537,12 @@ function GameAndChallengeContent() {
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
+    
+    // Handle chat section specially to open chatroom manager
+    if (sectionId === 'chat') {
+      setIsChatroomManagerOpen(true);
+      return;
+    }
     
     // Get the target element
     const element = document.getElementById(sectionId);
@@ -838,7 +846,13 @@ function GameAndChallengeContent() {
 
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
-          <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full flex flex-col">
+          <Tabs value={activeSection} onValueChange={(value) => {
+            if (value === 'chat') {
+              setIsChatroomManagerOpen(true);
+            } else {
+              setActiveSection(value);
+            }
+          }} className="w-full flex flex-col">
 
             <TabsContent value="ranking" className="mt-4 pb-32">
               {/* Mobile Ranking Section */}
@@ -945,94 +959,21 @@ function GameAndChallengeContent() {
             </TabsContent>
 
             <TabsContent value="chat" className="mt-0 pb-32 -mt-4">
-              {/* Fixed Mobile Chat Container */}
-              <Card className="h-[75vh] flex flex-col overflow-hidden">
-                <CardHeader className="pb-2 flex-shrink-0">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <MessageCircle className="h-5 w-5" />
-                    Group Chat
-                    <Badge variant="secondary" className="text-xs">Live</Badge>
-                  </CardTitle>
-                </CardHeader>
-                
-                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-                  {/* Messages Container - Flexible height with proper scroll */}
-                  <div 
-                    className="flex-1 overflow-y-auto px-3 py-2 space-y-3" 
-                    id="mobile-chat-scroll"
-                  >
-                    {messages.length === 0 ? (
-                      <div className="text-center py-8">
-                        <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-muted-foreground">No messages yet</p>
-                        <p className="text-sm text-muted-foreground">Start the conversation!</p>
-                      </div>
-                    ) : (
-                      messages.map((msg) => (
-                        <div key={msg.id} className={cn(
-                          "p-2 rounded-lg text-sm",
-                          msg.isBot 
-                            ? "bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 mx-auto text-center" 
-                            : "bg-muted/50"
-                        )}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-xs">{msg.user}</span>
-                            <span className="text-xs text-muted-foreground">{msg.time}</span>
-                          </div>
-                          <div className="text-sm">{msg.message}</div>
-                          {msg.reactions && msg.reactions.length > 0 && (
-                            <div className="flex gap-1 mt-2">
-                              {msg.reactions.map((reaction, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs h-5">
-                                  {reaction}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  
-                  {/* Fixed Quick Emoji Bar */}
-                  <div className="px-3 py-2 border-t bg-background/95 backdrop-blur-sm flex-shrink-0">
-                    <div className="flex gap-1 overflow-x-auto">
-                      {quickEmojis.map((emoji) => (
-                        <Button
-                          key={emoji}
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-sm flex-shrink-0"
-                          onClick={() => setChatMessage(chatMessage + emoji)}
-                        >
-                          {emoji}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Fixed Input Area */}
-                  <div className="px-3 py-3 border-t bg-background/95 backdrop-blur-sm flex-shrink-0">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Type message..."
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        className="text-sm flex-1"
-                      />
-                      <Button 
-                        onClick={sendMessage} 
-                        size="sm" 
-                        className="h-10 w-10 p-0 flex-shrink-0"
-                        disabled={!chatMessage.trim()}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Chat is now handled by ChatroomManager */}
+              <div className="text-center py-12">
+                <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Challenge Chatrooms</h3>
+                <p className="text-muted-foreground mb-4">
+                  Chat with participants in your active challenges
+                </p>
+                <Button 
+                  onClick={() => setIsChatroomManagerOpen(true)}
+                  className="bg-gradient-to-r from-primary to-purple-600"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Open Chatrooms
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="winners" className="mt-4 pb-32">
@@ -1065,7 +1006,11 @@ function GameAndChallengeContent() {
                 <Star className="h-4 w-4" />
                 <span>Mine</span>
               </TabsTrigger>
-              <TabsTrigger value="chat" className="text-xs py-2 flex flex-col items-center gap-1">
+              <TabsTrigger 
+                value="chat" 
+                className="text-xs py-2 flex flex-col items-center gap-1"
+                onClick={() => setIsChatroomManagerOpen(true)}
+              >
                 <MessageCircle className="h-4 w-4" />
                 <span>Chat</span>
               </TabsTrigger>
@@ -1197,94 +1142,37 @@ function GameAndChallengeContent() {
               <FriendsArena friends={optimizedFriends} />
             </section>
 
-            {/* Chat Window Panel */}
+            {/* Chat Window Panel - Updated to use ChatroomManager */}
             <section id="chat" className="animate-fade-in">
               <Card className="overflow-hidden border-2 border-secondary/20 shadow-xl">
-                <CardHeader 
-                  className="bg-gradient-to-r from-secondary/10 to-primary/10 cursor-pointer"
-                  onClick={() => setIsChatCollapsed(!isChatCollapsed)}
-                >
+                <CardHeader className="bg-gradient-to-r from-secondary/10 to-primary/10">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <MessageCircle className="h-6 w-6 text-secondary" />
-                      Group Chat
-                      <Badge variant="secondary">Live</Badge>
+                      Challenge Chatrooms
+                      <Badge variant="secondary">Multi-Room</Badge>
                     </div>
-                    {isChatCollapsed ? <ChevronDown /> : <ChevronUp />}
                   </CardTitle>
                 </CardHeader>
                 
-                {!isChatCollapsed && (
-                  <CardContent className="p-0">
-                    <ScrollArea className="h-80 p-4">
-                      <div className="space-y-4">
-                        {messages.map((msg) => (
-                          <div key={msg.id} className={cn(
-                            "p-3 rounded-lg max-w-[80%]",
-                            msg.isBot 
-                              ? "bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200 mx-auto text-center" 
-                              : "bg-muted/50"
-                          )}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-sm">{msg.user}</span>
-                              <span className="text-xs text-muted-foreground">{msg.time}</span>
-                            </div>
-                            <div className="text-sm">{msg.message}</div>
-                            {msg.reactions && msg.reactions.length > 0 && (
-                              <div className="flex gap-1 mt-2">
-                                {msg.reactions.map((reaction, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {reaction}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex gap-1 mt-2">
-                              {quickEmojis.slice(0, 4).map((emoji) => (
-                                <Button
-                                  key={emoji}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 text-xs hover:scale-110 transition-transform"
-                                  onClick={() => addReaction(msg.id, emoji)}
-                                >
-                                  {emoji}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                    
-                    <div className="p-4 border-t bg-muted/20">
-                      <div className="flex gap-2 mb-3">
-                        {quickEmojis.map((emoji) => (
-                          <Button
-                            key={emoji}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:scale-110 transition-transform"
-                            onClick={() => setChatMessage(chatMessage + emoji)}
-                          >
-                            {emoji}
-                          </Button>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Type your message..."
-                          value={chatMessage}
-                          onChange={(e) => setChatMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        />
-                        <Button onClick={sendMessage} size="sm">
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
+                <CardContent className="p-6 text-center">
+                  <div className="space-y-4">
+                    <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto" />
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">Challenge Chatrooms</h3>
+                      <p className="text-muted-foreground">
+                        Chat with participants in your active challenges. Each challenge has its own dedicated chatroom.
+                      </p>
                     </div>
-                  </CardContent>
-                )}
+                    <Button 
+                      onClick={() => setIsChatroomManagerOpen(true)}
+                      className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Open Chatrooms
+                    </Button>
+                  </div>
+                </CardContent>
               </Card>
             </section>
 
@@ -1362,6 +1250,12 @@ function GameAndChallengeContent() {
           user={selectedUser}
         />
       )}
+
+      {/* Chatroom Manager */}
+      <ChatroomManager
+        isOpen={isChatroomManagerOpen}
+        onOpenChange={setIsChatroomManagerOpen}
+      />
     </div>
   );
 }

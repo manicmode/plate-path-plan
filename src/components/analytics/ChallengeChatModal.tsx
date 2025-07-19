@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/auth';
 import { MessageInputWithTagging } from './MessageInputWithTagging';
 import { MessageBubbleWithTags } from './MessageBubbleWithTags';
+import { ChatroomSelector } from './ChatroomSelector';
+import { useChallenge } from '@/contexts/ChallengeContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +21,7 @@ interface ChallengeChatModalProps {
   challengeName: string;
   participantCount?: number;
   challengeParticipants?: string[];
+  showChatroomSelector?: boolean;
 }
 
 export const ChallengeChatModal = ({ 
@@ -26,23 +30,69 @@ export const ChallengeChatModal = ({
   challengeId, 
   challengeName,
   participantCount = 0,
-  challengeParticipants = []
+  challengeParticipants = [],
+  showChatroomSelector = true
 }: ChallengeChatModalProps) => {
   const { chats, sendMessage, toggleMute, canSendEmoji, getLastEmojiTime, loadMessages } = useChat();
   const { user } = useAuth();
+  const { challenges, microChallenges, userParticipations, privateParticipations } = useChallenge();
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);
+  const [activeChatroomId, setActiveChatroomId] = useState(challengeId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
-  const chat = chats[challengeId];
+  const chat = chats[activeChatroomId];
 
-  // Load messages when modal opens
-  useEffect(() => {
-    if (open) {
-      loadMessages(challengeId);
+  // Build chatrooms for selector
+  const chatrooms = [];
+  
+  // Add public challenges
+  userParticipations?.forEach(participation => {
+    const challenge = challenges.find(c => c.id === participation.challenge_id);
+    if (challenge) {
+      chatrooms.push({
+        id: challenge.id,
+        name: challenge.title,
+        type: 'public' as const,
+        participantCount: challenge.participant_count || 0,
+      });
     }
-  }, [open, challengeId, loadMessages]);
+  });
+
+  // Add micro-challenges
+  microChallenges?.forEach(challenge => {
+    chatrooms.push({
+      id: `micro-${challenge.id}`,
+      name: challenge.title,
+      type: 'public' as const,
+      participantCount: challenge.participantCount || 1,
+    });
+  });
+
+  // Add private challenges
+  privateParticipations?.forEach(participation => {
+    if (participation.private_challenge) {
+      chatrooms.push({
+        id: participation.private_challenge.id,
+        name: participation.private_challenge.title,
+        type: 'private' as const,
+        participantCount: participation.private_challenge.max_participants || 0,
+      });
+    }
+  });
+
+  // Get current chatroom info
+  const currentChatroom = chatrooms.find(room => room.id === activeChatroomId);
+  const displayName = currentChatroom?.name || challengeName;
+  const displayCount = currentChatroom?.participantCount || participantCount;
+
+  // Load messages when modal opens or chatroom changes
+  useEffect(() => {
+    if (open && activeChatroomId) {
+      loadMessages(activeChatroomId);
+    }
+  }, [open, activeChatroomId, loadMessages]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -54,13 +104,13 @@ export const ChallengeChatModal = ({
 
   // Emoji cooldown timer
   useEffect(() => {
-    if (!open || canSendEmoji(challengeId)) {
+    if (!open || canSendEmoji(activeChatroomId)) {
       setEmojiCooldownTime(0);
       return;
     }
 
     const interval = setInterval(() => {
-      const lastTime = getLastEmojiTime(challengeId);
+      const lastTime = getLastEmojiTime(activeChatroomId);
       const cooldownEnd = lastTime + 10000; // 10 seconds
       const remaining = Math.max(0, cooldownEnd - Date.now());
       
@@ -72,20 +122,20 @@ export const ChallengeChatModal = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [open, challengeId, getLastEmojiTime, canSendEmoji]);
+  }, [open, activeChatroomId, getLastEmojiTime, canSendEmoji]);
 
   // Handle message send with tagging
   const handleSendMessage = (messageText: string, taggedUsers?: string[]) => {
     if (messageText.trim()) {
-      sendMessage(challengeId, messageText, undefined, taggedUsers);
+      sendMessage(activeChatroomId, messageText, undefined, taggedUsers);
       setMessage('');
     }
   };
 
   // Handle emoji reactions
   const handleEmojiClick = (emoji: string) => {
-    if (canSendEmoji(challengeId)) {
-      sendMessage(challengeId, undefined, emoji);
+    if (canSendEmoji(activeChatroomId)) {
+      sendMessage(activeChatroomId, undefined, emoji);
     }
   };
 
@@ -101,6 +151,10 @@ export const ChallengeChatModal = ({
     console.log('Invite user to challenge:', userId);
   };
 
+  const handleChatroomSelect = (chatroomId: string) => {
+    setActiveChatroomId(chatroomId);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
@@ -110,19 +164,28 @@ export const ChallengeChatModal = ({
             <div className="flex items-center gap-3">
               <MessageCircle className="h-5 w-5 text-primary" />
               <div>
-                <DialogTitle className="text-lg">{challengeName}</DialogTitle>
+                <DialogTitle className="text-lg">{displayName}</DialogTitle>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-3 w-3" />
-                  {participantCount || challengeParticipants.length} participants
+                  {displayCount} participants
                 </div>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Chatroom Selector */}
+              {showChatroomSelector && chatrooms.length > 1 && (
+                <ChatroomSelector
+                  chatrooms={chatrooms}
+                  activeChatroomId={activeChatroomId}
+                  onSelectChatroom={handleChatroomSelect}
+                />
+              )}
+              
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => toggleMute(challengeId)}
+                onClick={() => toggleMute(activeChatroomId)}
                 className="h-8 w-8 p-0"
               >
                 {chat?.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -201,7 +264,7 @@ export const ChallengeChatModal = ({
             onEmojiClick={handleEmojiClick}
             placeholder="Type a message or @ to tag friends..."
             disabled={chat?.isMuted}
-            showEmojiReactions={canSendEmoji(challengeId)}
+            showEmojiReactions={canSendEmoji(activeChatroomId)}
             useSmartRecommendations={true}
             excludeUserIds={challengeParticipants || []}
           />
