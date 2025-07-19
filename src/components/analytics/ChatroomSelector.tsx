@@ -35,14 +35,14 @@ export const ChatroomSelector = ({
       <PopoverTrigger asChild>
         <Button
           variant="outline" 
-          size="sm"
-          className="h-8 px-2 gap-1 border-muted"
+          size="default"
+          className="h-10 px-4 gap-2 border-primary/30 bg-primary/5 hover:bg-primary/10 font-medium"
         >
-          <MessageCircle className="h-3 w-3" />
-          <span className="text-xs">
-            {activeChatroom ? activeChatroom.name.slice(0, 15) + '...' : 'Select Room'}
+          <MessageCircle className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">
+            {activeChatroom ? activeChatroom.name.slice(0, 20) + '...' : 'Select Chatroom'}
           </span>
-          <ChevronDown className="h-3 w-3" />
+          <ChevronDown className="h-4 w-4 text-primary" />
         </Button>
       </PopoverTrigger>
       
