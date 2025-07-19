@@ -51,6 +51,7 @@ import { MysteryBox } from '@/components/analytics/MysteryBox';
 import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesBrowse';
 import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
+import { MyFriendsTab } from '@/components/social/MyFriendsTab';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 
@@ -585,6 +586,7 @@ function GameAndChallengeContent() {
 
   const navigationItems = [
     { id: 'ranking', label: 'Ranking', icon: Trophy },
+    { id: 'my-friends', label: 'My Friends', icon: Users },
     { id: 'challenges', label: 'Browse', icon: Target },
     { id: 'my-challenges', label: 'My Challenges', icon: Star },
     { id: 'chat', label: 'Chat', icon: MessageCircle },
@@ -1042,15 +1044,23 @@ function GameAndChallengeContent() {
               <MonthlyTrophyPodium />
             </TabsContent>
 
+            <TabsContent value="my-friends" className="mt-4 pb-32">
+              <MyFriendsTab />
+            </TabsContent>
+
             <TabsContent value="hall-of-fame" className="mt-4 pb-32">
               <HallOfFame champions={optimizedHallOfFame} />
             </TabsContent>
             
             {/* Bottom Navigation Tabs */}
-            <TabsList className="grid w-full grid-cols-6 h-14 mt-auto sticky bottom-0 bg-background/95 backdrop-blur-sm border-t">
+            <TabsList className="grid w-full grid-cols-7 h-14 mt-auto sticky bottom-0 bg-background/95 backdrop-blur-sm border-t">
               <TabsTrigger value="ranking" className="text-xs py-2 flex flex-col items-center gap-1">
                 <Trophy className="h-4 w-4" />
                 <span>Rank</span>
+              </TabsTrigger>
+              <TabsTrigger value="my-friends" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>Friends</span>
               </TabsTrigger>
               <TabsTrigger value="challenges" className="text-xs py-2 flex flex-col items-center gap-1">
                 <Target className="h-4 w-4" />
