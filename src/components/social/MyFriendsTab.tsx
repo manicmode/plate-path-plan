@@ -124,9 +124,6 @@ export const MyFriendsTab = () => {
           <Users className="h-6 w-6" />
           My Friends
         </h1>
-        <p className="text-muted-foreground">
-          Connect, motivate, and grow together on your wellness journey
-        </p>
       </div>
 
       <Tabs defaultValue="friends" className="space-y-4">
