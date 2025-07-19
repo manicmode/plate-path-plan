@@ -275,13 +275,13 @@ export const UserChallengeParticipations: React.FC = () => {
     challenges: any[];
   }) => {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <h2 className="text-xl font-bold flex items-center justify-center gap-2 px-4">
           <Icon className={`w-5 h-5 ${iconColor}`} />
           {title}
         </h2>
         
-        <div className="space-y-4 px-4">
+        <div className="space-y-6 px-4">
           {challenges.map((item, index) => (
             <ChallengeCard key={`${title}-${index}`} item={item} />
           ))}
