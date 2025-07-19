@@ -58,7 +58,7 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     loading: publicLoading 
   } = usePublicChallenges();
   const { 
-    userActiveChallenges: privateChallenges, 
+    challengesWithParticipation: privateChallenges, 
     loading: privateLoading 
   } = usePrivateChallenges();
 
