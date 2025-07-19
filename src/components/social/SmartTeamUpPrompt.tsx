@@ -1,5 +1,5 @@
-import React from 'react';
-import { UserPlus, X, Trophy, Target } from 'lucide-react';
+import React, { useState } from 'react';
+import { UserPlus, X, Trophy, Target, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -12,15 +12,28 @@ export const SmartTeamUpPrompt = () => {
     sendFriendRequestFromPrompt, 
     dismissPrompt 
   } = useTeamUpPrompts();
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
 
   if (!currentPrompt) return null;
 
-  const handleSendRequest = () => {
-    sendFriendRequestFromPrompt(currentPrompt);
+  const handleSendRequest = async () => {
+    setIsLoading(true);
+    try {
+      await sendFriendRequestFromPrompt(currentPrompt);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDismiss = () => {
-    dismissPrompt(currentPrompt);
+  const handleDismiss = async () => {
+    setIsDismissing(true);
+    try {
+      await dismissPrompt(currentPrompt);
+    } finally {
+      setIsDismissing(false);
+    }
   };
 
   const formatChallengeName = (challengeId: string) => {
@@ -52,9 +65,10 @@ export const SmartTeamUpPrompt = () => {
               variant="ghost"
               size="sm"
               onClick={handleDismiss}
-              className="h-6 w-6 p-0 hover:bg-muted/50"
+              disabled={isLoading || isDismissing}
+              className="h-6 w-6 p-0 hover:bg-muted/50 disabled:opacity-50"
             >
-              <X className="h-3 w-3" />
+              {isDismissing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
             </Button>
           </div>
 
@@ -106,18 +120,29 @@ export const SmartTeamUpPrompt = () => {
             <div className="flex gap-3">
               <Button
                 onClick={handleSendRequest}
-                className="flex-1 bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white font-medium"
+                disabled={isLoading || isDismissing}
+                className="flex-1 bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white font-medium disabled:opacity-50"
               >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Send Friend Request
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Send Friend Request
+                  </>
+                )}
               </Button>
               
               <Button
                 variant="outline"
                 onClick={handleDismiss}
-                className="px-4"
+                disabled={isLoading || isDismissing}
+                className="px-4 disabled:opacity-50"
               >
-                Maybe Later
+                {isDismissing ? "..." : "Not Now"}
               </Button>
             </div>
 

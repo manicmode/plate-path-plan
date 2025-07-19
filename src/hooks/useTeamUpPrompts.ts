@@ -20,6 +20,31 @@ export const useTeamUpPrompts = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const checkPromptAlreadyShown = async (buddyUserId: string, challengeId: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return true; // Don't show if not authenticated
+
+      const { data, error } = await supabase
+        .from('team_up_prompts_shown')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('buddy_user_id', buddyUserId)
+        .eq('challenge_id', challengeId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking prompt history:', error);
+        return false; // Show prompt if we can't check
+      }
+
+      return !!data; // Return true if a record exists (prompt was already shown)
+    } catch (error) {
+      console.error('Error checking prompt history:', error);
+      return false;
+    }
+  };
+
   const loadPotentialBuddies = async () => {
     setIsLoading(true);
     try {
@@ -32,11 +57,21 @@ export const useTeamUpPrompts = () => {
 
       if (error) throw error;
 
-      const buddies = (data || []) as AccountabilityBuddy[];
-      setPotentialBuddies(buddies);
+      const allBuddies = (data || []) as AccountabilityBuddy[];
+      
+      // Filter out buddies that have already been shown
+      const filteredBuddies = [];
+      for (const buddy of allBuddies) {
+        const alreadyShown = await checkPromptAlreadyShown(buddy.buddy_user_id, buddy.challenge_id);
+        if (!alreadyShown) {
+          filteredBuddies.push(buddy);
+        }
+      }
+
+      setPotentialBuddies(filteredBuddies);
 
       // Show the first buddy as a prompt if available and from same ranking group
-      const topBuddy = buddies.find(buddy => buddy.shared_ranking_group);
+      const topBuddy = filteredBuddies.find(buddy => buddy.shared_ranking_group);
       if (topBuddy && !currentPrompt) {
         setCurrentPrompt(topBuddy);
       }
@@ -65,14 +100,13 @@ export const useTeamUpPrompts = () => {
 
       if (requestSent) {
         toast({
-          title: "Accountability buddy request sent! 💪",
-          description: `Your friend request has been sent to ${buddy.buddy_name}`,
+          title: "🎉 Friend request sent to " + buddy.buddy_name.split(' ')[0] + "!",
+          description: "Great choice! You'll make excellent accountability partners 💪",
         });
       } else {
         toast({
-          title: "Request already exists",
-          description: "A friend request already exists with this user.",
-          variant: "destructive",
+          title: "Already connected! 🤝",
+          description: "You already have a pending or accepted friend request with this user.",
         });
       }
 
