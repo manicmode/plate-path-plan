@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth';
+import { usePublicChallenges } from '@/hooks/usePublicChallenges';
+import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 export interface Challenge {
   id: string;
@@ -29,6 +33,7 @@ interface ChallengeContextType {
   updateProgress: (challengeId: string, userId: string, progress: number) => void;
   deleteChallenge: (challengeId: string) => void;
   nudgeFriend: (challengeId: string, friendId: string) => void;
+  loading: boolean;
 }
 
 const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
@@ -46,118 +51,119 @@ interface ChallengeProviderProps {
 }
 
 export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }) => {
-  const [challenges, setChallenges] = useState<Challenge[]>([
-    // Mock data for demonstration
-    {
-      id: '1',
-      name: '7-Day No Sugar Challenge 🍯',
-      type: 'public',
-      creatorId: 'user-1',
-      creatorName: 'Maya 🌟',
-      goalType: 'no-sugar',
-      startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Started 2 days ago
-      endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Ends in 5 days
-      participants: ['user-1', 'user-2', 'user-3'],
-      participantDetails: {
-        'user-1': { name: 'Maya 🌟', avatar: '🌟' },
-        'user-2': { name: 'Alex 🦄', avatar: '🦄' },
-        'user-3': { name: 'Sam 🔥', avatar: '🔥' },
-      },
-      progress: {
-        'user-1': 85,
-        'user-2': 92,
-        'user-3': 67,
-      },
-      maxParticipants: 10,
-      isActive: true,
-      trending: true,
-    },
-    {
-      id: '2',
-      name: 'Hydration Heroes 💧',
-      type: 'public',
-      creatorId: 'user-4',
-      creatorName: 'Jordan 🚀',
-      goalType: 'drink-water',
-      startDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Started 1 day ago
-      endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // Ends in 2 days
-      participants: ['user-4', 'user-5'],
-      participantDetails: {
-        'user-4': { name: 'Jordan 🚀', avatar: '🚀' },
-        'user-5': { name: 'Casey 🌈', avatar: '🌈' },
-      },
-      progress: {
-        'user-4': 78,
-        'user-5': 45,
-      },
-      maxParticipants: 5,
-      isActive: true,
-    },
-    {
-      id: '3',
-      name: 'Private Veggie Squad 🥬',
-      type: 'private',
-      creatorId: 'user-6',
-      creatorName: 'Health Guru 🥗',
-      goalType: 'eat-veggies',
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      participants: ['user-6', 'user-7'],
-      participantDetails: {
-        'user-6': { name: 'Health Guru 🥗', avatar: '🥗' },
-        'user-7': { name: 'Workout Buddy 💪', avatar: '💪' },
-      },
-      progress: {
-        'user-6': 100,
-        'user-7': 86,
-      },
-      inviteCode: 'VEGGIE123',
-      isActive: true,
-    },
-    // Mock micro-challenges
-    {
-      id: 'micro-1',
-      name: '💧 3 Glasses Today',
-      type: 'micro',
-      creatorId: 'user-2',
-      creatorName: 'Alex 🦄',
-      goalType: 'drink-water',
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day
-      participants: ['user-2', 'user-3', 'user-4'],
-      participantDetails: {
-        'user-2': { name: 'Alex 🦄', avatar: '🦄' },
-        'user-3': { name: 'Sam 🔥', avatar: '🔥' },
-        'user-4': { name: 'Jordan 🚀', avatar: '🚀' },
-      },
-      progress: {
-        'user-2': 67,
-        'user-3': 33,
-        'user-4': 100,
-      },
-      isActive: true,
-    },
-    {
-      id: 'micro-2',
-      name: '🥗 2 Veggie Servings',
-      type: 'micro',
-      creatorId: 'user-1',
-      creatorName: 'Maya 🌟',
-      goalType: 'eat-veggies',
-      startDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 3 days total
-      participants: ['user-1', 'user-5'],
-      participantDetails: {
-        'user-1': { name: 'Maya 🌟', avatar: '🌟' },
-        'user-5': { name: 'Casey 🌈', avatar: '🌈' },
-      },
-      progress: {
-        'user-1': 75,
-        'user-5': 50,
-      },
-      isActive: true,
-    },
-  ]);
+  const { user } = useAuth();
+  const { 
+    challenges: publicChallenges, 
+    userParticipations, 
+    loading: publicLoading 
+  } = usePublicChallenges();
+  const { 
+    userActiveChallenges: privateChallenges, 
+    loading: privateLoading 
+  } = usePrivateChallenges();
+
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [microChallenges, setMicroChallenges] = useState<Challenge[]>([]);
+  const [activeUserChallenges, setActiveUserChallenges] = useState<Challenge[]>([]);
+
+  // Convert Supabase data to Challenge format
+  useEffect(() => {
+    if (!user) {
+      setChallenges([]);
+      setMicroChallenges([]);
+      setActiveUserChallenges([]);
+      return;
+    }
+
+    console.log('Converting challenge data for user:', user.id);
+    console.log('Public challenges:', publicChallenges);
+    console.log('User participations:', userParticipations);
+    console.log('Private challenges:', privateChallenges);
+
+    // Convert public challenges
+    const convertedPublicChallenges: Challenge[] = [];
+    const convertedMicroChallenges: Challenge[] = [];
+    const userActiveList: Challenge[] = [];
+
+    // Process public challenges user is participating in
+    publicChallenges.forEach(pubChallenge => {
+      const userParticipation = userParticipations.find(p => p.challenge_id === pubChallenge.id);
+      if (!userParticipation) return;
+
+      const challenge: Challenge = {
+        id: pubChallenge.id,
+        name: pubChallenge.title,
+        type: pubChallenge.duration_days <= 3 ? 'micro' : 'public',
+        creatorId: 'system',
+        creatorName: 'System',
+        goalType: 'custom',
+        customGoal: pubChallenge.goal_description,
+        startDate: new Date(userParticipation.start_date),
+        endDate: new Date(userParticipation.end_date),
+        participants: [user.id],
+        participantDetails: {
+          [user.id]: { 
+            name: user.email?.split('@')[0] || 'You', 
+            avatar: '🌟' 
+          }
+        },
+        progress: {
+          [user.id]: userParticipation.completion_percentage
+        },
+        maxParticipants: 100,
+        isActive: true,
+        trending: pubChallenge.is_trending
+      };
+
+      if (pubChallenge.duration_days <= 3) {
+        convertedMicroChallenges.push(challenge);
+      } else {
+        convertedPublicChallenges.push(challenge);
+      }
+      userActiveList.push(challenge);
+    });
+
+    // Process private challenges
+    privateChallenges.forEach(privChallenge => {
+      const challenge: Challenge = {
+        id: privChallenge.id,
+        name: privChallenge.title,
+        type: 'private',
+        creatorId: privChallenge.creator_id,
+        creatorName: 'Challenge Creator',
+        goalType: 'custom',
+        customGoal: privChallenge.description,
+        startDate: new Date(privChallenge.start_date),
+        endDate: new Date(new Date(privChallenge.start_date).getTime() + privChallenge.duration_days * 24 * 60 * 60 * 1000),
+        participants: [user.id],
+        participantDetails: {
+          [user.id]: { 
+            name: user.email?.split('@')[0] || 'You', 
+            avatar: '🔥' 
+          }
+        },
+        progress: {
+          [user.id]: privChallenge.participation?.completion_percentage || 0
+        },
+        maxParticipants: privChallenge.max_participants,
+        inviteCode: `INV${privChallenge.id.slice(0, 6)}`,
+        isActive: privChallenge.status === 'active' || privChallenge.status === 'pending',
+      };
+
+      convertedPublicChallenges.push(challenge);
+      userActiveList.push(challenge);
+    });
+
+    console.log('Converted challenges:', {
+      public: convertedPublicChallenges,
+      micro: convertedMicroChallenges,
+      active: userActiveList
+    });
+
+    setChallenges(convertedPublicChallenges);
+    setMicroChallenges(convertedMicroChallenges);
+    setActiveUserChallenges(userActiveList);
+  }, [user, publicChallenges, userParticipations, privateChallenges]);
 
   const createChallenge = (challengeData: Omit<Challenge, 'id' | 'isActive'>) => {
     const newChallenge: Challenge = {
@@ -224,21 +230,11 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
   };
 
   const nudgeFriend = (challengeId: string, friendId: string) => {
-    // Simulate sending a nudge notification
     console.log(`Nudging friend ${friendId} for challenge ${challengeId}`);
   };
 
-  // Get challenges where current user is participating
-  const activeUserChallenges = challenges.filter(challenge => 
-    challenge.participants.includes('current-user-id') && challenge.isActive
-  );
-
-  // Separate micro challenges from regular challenges
-  const microChallenges = challenges.filter(c => c.type === 'micro' && c.isActive);
-  const regularChallenges = challenges.filter(c => c.type !== 'micro' && c.isActive);
-
   const value: ChallengeContextType = {
-    challenges: regularChallenges,
+    challenges,
     microChallenges,
     activeUserChallenges,
     createChallenge,
@@ -247,6 +243,7 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     updateProgress,
     deleteChallenge,
     nudgeFriend,
+    loading: publicLoading || privateLoading,
   };
 
   return (
