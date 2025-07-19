@@ -22,6 +22,10 @@ import { FriendsLeaderboard } from './FriendsLeaderboard';
 import { GroupFeed } from './GroupFeed';
 import { useFriendTagging } from '@/hooks/useFriendTagging';
 import { PrivateChallengeCreationModal } from '@/components/analytics/PrivateChallengeCreationModal';
+import { FriendSearch } from './FriendSearch';
+import { PendingRequests } from './PendingRequests';
+import { SuggestedFriends } from './SuggestedFriends';
+import { InviteFriends } from './InviteFriends';
 import { cn } from '@/lib/utils';
 
 interface FriendCardProps {
@@ -198,14 +202,26 @@ export const MyFriendsTab = () => {
                       </Button>
                     </div>
                     
-                    <div className="text-center space-y-2 pt-4">
-                      <div className="text-lg font-semibold text-foreground">
-                        Motivate and grow together on your wellness journey
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Create challenges with your friends to stay motivated and achieve your goals together
-                      </p>
-                    </div>
+                     <div className="text-center space-y-2 pt-4">
+                       <div className="text-lg font-semibold text-foreground">
+                         Motivate and grow together on your wellness journey
+                       </div>
+                       <p className="text-sm text-muted-foreground">
+                         Create challenges with your friends to stay motivated and achieve your goals together
+                       </p>
+                     </div>
+                     
+                     {/* Friend Search */}
+                     <FriendSearch />
+                     
+                     {/* Pending Requests */}
+                     <PendingRequests />
+                     
+                     {/* Suggested Friends */}
+                     <SuggestedFriends />
+                     
+                     {/* Invite Friends */}
+                     <InviteFriends />
                   </div>
                 </div>
               ) : (

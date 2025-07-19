@@ -1407,6 +1407,10 @@ export type Database = {
         Args: { invitation_id_param: string }
         Returns: boolean
       }
+      accept_friend_request: {
+        Args: { request_id: string }
+        Returns: boolean
+      }
       add_friend_from_contact: {
         Args: { contact_user_id: string }
         Returns: boolean
@@ -1476,6 +1480,21 @@ export type Database = {
           friend_phone: string
         }[]
       }
+      get_pending_friend_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          request_id: string
+          requester_id: string
+          requested_id: string
+          requester_name: string
+          requested_name: string
+          requester_email: string
+          requested_email: string
+          created_at: string
+          status: string
+          direction: string
+        }[]
+      }
       get_smart_friend_recommendations: {
         Args: { current_user_id: string }
         Returns: {
@@ -1505,6 +1524,28 @@ export type Database = {
       }
       get_user_private_challenge_access: {
         Args: { challenge_id_param: string }
+        Returns: boolean
+      }
+      reject_friend_request: {
+        Args: { request_id: string }
+        Returns: boolean
+      }
+      search_users_by_username_email: {
+        Args: { search_term: string }
+        Returns: {
+          user_id: string
+          username: string
+          email: string
+          display_name: string
+          first_name: string
+          last_name: string
+          current_nutrition_streak: number
+          current_hydration_streak: number
+          current_supplement_streak: number
+        }[]
+      }
+      send_friend_request: {
+        Args: { target_user_id: string }
         Returns: boolean
       }
       trigger_yearly_scores_preview_update: {
