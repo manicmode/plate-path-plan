@@ -19,7 +19,7 @@ interface ChatroomManagerProps {
 }
 
 export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) => {
-  const { challenges, microChallenges, userParticipations, privateParticipations } = useChallenge();
+  const { challenges, microChallenges, activeUserChallenges } = useChallenge();
   const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
 
@@ -28,15 +28,14 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
     const availableChatrooms: Chatroom[] = [];
 
     // Add public challenges the user is participating in
-    userParticipations?.forEach(participation => {
-      const challenge = challenges.find(c => c.id === participation.challenge_id);
-      if (challenge) {
+    activeUserChallenges?.forEach(challenge => {
+      if (challenge.type === 'public') {
         availableChatrooms.push({
           id: challenge.id,
-          name: challenge.title,
+          name: challenge.name,
           type: 'public',
-          participantCount: challenge.participant_count || 0,
-          participantIds: [], // Would be populated from actual participant data
+          participantCount: challenge.participants.length,
+          participantIds: challenge.participants,
         });
       }
     });
@@ -44,23 +43,23 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
     // Add micro-challenges (treating them as mini chatrooms)
     microChallenges?.forEach(challenge => {
       availableChatrooms.push({
-        id: `micro-${challenge.id}`,
-        name: challenge.title,
+        id: challenge.id,
+        name: challenge.name,
         type: 'public',
-        participantCount: challenge.participantCount || 1,
-        participantIds: challenge.participants || [],
+        participantCount: challenge.participants.length,
+        participantIds: challenge.participants,
       });
     });
 
     // Add private challenges the user is participating in
-    privateParticipations?.forEach(participation => {
-      if (participation.private_challenge) {
+    activeUserChallenges?.forEach(challenge => {
+      if (challenge.type === 'private') {
         availableChatrooms.push({
-          id: participation.private_challenge.id,
-          name: participation.private_challenge.title,
+          id: challenge.id,
+          name: challenge.name,
           type: 'private',
-          participantCount: participation.private_challenge.max_participants || 0,
-          participantIds: participation.private_challenge.invited_user_ids || [],
+          participantCount: challenge.participants.length,
+          participantIds: challenge.participants,
         });
       }
     });
@@ -71,7 +70,7 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
     if (availableChatrooms.length > 0 && !activeChatroomId) {
       setActiveChatroomId(availableChatrooms[0].id);
     }
-  }, [challenges, microChallenges, userParticipations, privateParticipations, activeChatroomId]);
+  }, [challenges, microChallenges, activeUserChallenges, activeChatroomId]);
 
   const handleSelectChatroom = (chatroomId: string) => {
     setActiveChatroomId(chatroomId);

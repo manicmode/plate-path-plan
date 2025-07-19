@@ -35,7 +35,7 @@ export const ChallengeChatModal = ({
 }: ChallengeChatModalProps) => {
   const { chats, sendMessage, toggleMute, canSendEmoji, getLastEmojiTime, loadMessages } = useChat();
   const { user } = useAuth();
-  const { challenges, microChallenges, userParticipations, privateParticipations } = useChallenge();
+  const { challenges, microChallenges, activeUserChallenges } = useChallenge();
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);
   const [activeChatroomId, setActiveChatroomId] = useState(challengeId);
@@ -47,15 +47,14 @@ export const ChallengeChatModal = ({
   // Build chatrooms for selector
   const chatrooms = [];
   
-  // Add public challenges
-  userParticipations?.forEach(participation => {
-    const challenge = challenges.find(c => c.id === participation.challenge_id);
-    if (challenge) {
+  // Add public challenges where user is participating
+  activeUserChallenges?.forEach(challenge => {
+    if (challenge.type === 'public') {
       chatrooms.push({
         id: challenge.id,
-        name: challenge.title,
+        name: challenge.name,
         type: 'public' as const,
-        participantCount: challenge.participant_count || 0,
+        participantCount: challenge.participants.length,
       });
     }
   });
@@ -63,21 +62,21 @@ export const ChallengeChatModal = ({
   // Add micro-challenges
   microChallenges?.forEach(challenge => {
     chatrooms.push({
-      id: `micro-${challenge.id}`,
-      name: challenge.title,
+      id: challenge.id,
+      name: challenge.name,
       type: 'public' as const,
-      participantCount: challenge.participantCount || 1,
+      participantCount: challenge.participants.length,
     });
   });
 
-  // Add private challenges
-  privateParticipations?.forEach(participation => {
-    if (participation.private_challenge) {
+  // Add private challenges where user is participating
+  activeUserChallenges?.forEach(challenge => {
+    if (challenge.type === 'private') {
       chatrooms.push({
-        id: participation.private_challenge.id,
-        name: participation.private_challenge.title,
+        id: challenge.id,
+        name: challenge.name,
         type: 'private' as const,
-        participantCount: participation.private_challenge.max_participants || 0,
+        participantCount: challenge.participants.length,
       });
     }
   });
