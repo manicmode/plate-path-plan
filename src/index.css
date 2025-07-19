@@ -1081,4 +1081,70 @@
       background-position: 100% 50%;
     }
   }
+
+  /* Challenge Card Gradients - Matching Reference Design */
+  .challenge-card-gradient-blue {
+    background: linear-gradient(135deg, 
+      hsl(220, 70%, 50%) 0%,
+      hsl(250, 80%, 60%) 50%,
+      hsl(280, 70%, 55%) 100%
+    );
+  }
+
+  .challenge-card-gradient-purple {
+    background: linear-gradient(135deg, 
+      hsl(280, 70%, 50%) 0%,
+      hsl(300, 80%, 60%) 50%,
+      hsl(320, 70%, 55%) 100%
+    );
+  }
+
+  .challenge-card-gradient-orange {
+    background: linear-gradient(135deg, 
+      hsl(30, 80%, 55%) 0%,
+      hsl(45, 85%, 60%) 50%,
+      hsl(60, 80%, 65%) 100%
+    );
+  }
+
+  .challenge-card-gradient-gray {
+    background: linear-gradient(135deg, 
+      hsl(210, 20%, 40%) 0%,
+      hsl(220, 25%, 50%) 50%,
+      hsl(230, 20%, 45%) 100%
+    );
+  }
+
+  /* Modern Challenge Card Styling */
+  .challenge-card-modern {
+    box-shadow: 
+      0 10px 25px -5px rgba(0, 0, 0, 0.1),
+      0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+
+  .challenge-card-modern:hover {
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.15),
+      0 20px 25px -8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Premium Progress Bar Styling */
+  .challenge-progress-bar [data-state="complete"] {
+    background: linear-gradient(90deg, 
+      hsl(160, 84%, 39%) 0%,
+      hsl(158, 64%, 52%) 50%,
+      hsl(160, 84%, 39%) 100%
+    );
+    box-shadow: 0 0 10px hsla(160, 84%, 39%, 0.4);
+    animation: progress-glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes progress-glow {
+    from {
+      box-shadow: 0 0 5px hsla(160, 84%, 39%, 0.4);
+    }
+    to {
+      box-shadow: 0 0 15px hsla(160, 84%, 39%, 0.6);
+    }
+  }
 }
