@@ -187,7 +187,7 @@ export const MyFriendsTab = () => {
                   </div>
                   
                   {/* Motivational section moved here */}
-                  <div className="space-y-4 pt-4 border-t border-border/50">
+                  <div className="space-y-6 pt-4 border-t border-border/50">
                     <div className="flex justify-center">
                       <Button 
                         onClick={() => setShowCreateModal(true)}
@@ -198,7 +198,7 @@ export const MyFriendsTab = () => {
                       </Button>
                     </div>
                     
-                    <div className="text-center space-y-2">
+                    <div className="text-center space-y-2 pt-4">
                       <div className="text-lg font-semibold text-foreground">
                         Motivate and grow together on your wellness journey
                       </div>
