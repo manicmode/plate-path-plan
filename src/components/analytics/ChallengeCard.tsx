@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Challenge, useChallenge } from '@/contexts/ChallengeContext';
+import { Challenge, useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -38,7 +39,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const { joinChallenge, leaveChallenenge } = useChallenge();
+  const { joinChallenge, leaveChallenge } = useSimplifiedChallenge();
   const { toast } = useToast();
 
   const isParticipant = challenge.participants.includes(currentUserId);
@@ -85,7 +86,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   };
 
   const handleLeaveChallenge = () => {
-    leaveChallenenge(challenge.id, currentUserId);
+    leaveChallenge(challenge.id, currentUserId);
     toast({
       title: "Left Challenge",
       description: `You have left "${challenge.name}"`,

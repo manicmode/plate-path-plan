@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { useChatModal } from '@/contexts/ChatModalContext';
 import { MessageInputWithTagging } from './MessageInputWithTagging';
 import { MessageBubbleWithTags } from './MessageBubbleWithTags';
 import { ChatroomSelector } from './ChatroomSelector';
-import { useChallenge } from '@/contexts/ChallengeContext';
+import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +36,7 @@ export const ChallengeChatModal = ({
 }: ChallengeChatModalProps) => {
   const { chats, sendMessage, toggleMute, canSendEmoji, getLastEmojiTime, loadMessages } = useChat();
   const { user } = useAuth();
-  const { challenges, microChallenges, activeUserChallenges } = useChallenge();
+  const { challenges, microChallenges, activeUserChallenges } = useSimplifiedChallenge();
   const { setIsChatModalOpen } = useChatModal();
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);

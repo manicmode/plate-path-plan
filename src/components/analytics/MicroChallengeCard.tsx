@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Clock, Zap, Users, MessageCircle } from 'lucide-react';
-import { Challenge } from '@/contexts/ChallengeContext';
+import { Challenge } from '@/contexts/SimplifiedChallengeContext';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { cn } from '@/lib/utils';
 

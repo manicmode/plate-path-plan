@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { ChatroomSelector } from './ChatroomSelector';
-import { useChallenge } from '@/contexts/ChallengeContext';
+import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
 
 interface Chatroom {
   id: string;
@@ -19,7 +19,7 @@ interface ChatroomManagerProps {
 }
 
 export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) => {
-  const { challenges, microChallenges, activeUserChallenges, loading } = useChallenge();
+  const { challenges, microChallenges, activeUserChallenges, loading } = useSimplifiedChallenge();
   const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
 
