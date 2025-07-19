@@ -609,16 +609,16 @@ function GameAndChallengeContent() {
               
               {/* Mobile horizontal scroll tabs */}
               <ScrollArea className="w-full">
-                <div className="flex space-x-2 pb-2">
+                <div className="flex space-x-2 pb-3 pt-1">
                   {navigationItems.map(({ id, label, icon: Icon }) => (
                     <Button
                       key={id}
                       variant={activeSection === id ? "default" : "ghost"}
                       onClick={() => scrollToSection(id)}
-                      className="flex items-center gap-1 whitespace-nowrap h-8 px-3 text-xs"
+                      className="flex items-center gap-1 whitespace-nowrap h-9 px-3 text-xs py-2"
                       size="sm"
                     >
-                      <Icon className="h-3 w-3" />
+                      <Icon className="h-4 w-4" />
                       {isMobile ? '' : label}
                     </Button>
                   ))}
@@ -1175,30 +1175,30 @@ function GameAndChallengeContent() {
             </TabsContent>
             
             {/* Bottom Navigation Tabs */}
-            <TabsList className="grid w-full grid-cols-6 h-12 mt-auto sticky bottom-0 bg-background/95 backdrop-blur-sm border-t">
-              <TabsTrigger value="ranking" className="text-xs">
-                <Trophy className="h-3 w-3 mr-1" />
-                Rank
+            <TabsList className="grid w-full grid-cols-6 h-14 mt-auto sticky bottom-0 bg-background/95 backdrop-blur-sm border-t">
+              <TabsTrigger value="ranking" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Trophy className="h-4 w-4" />
+                <span>Rank</span>
               </TabsTrigger>
-              <TabsTrigger value="challenges" className="text-xs">
-                <Target className="h-3 w-3 mr-1" />
-                Browse
+              <TabsTrigger value="challenges" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Target className="h-4 w-4" />
+                <span>Browse</span>
               </TabsTrigger>
-              <TabsTrigger value="my-challenges" className="text-xs">
-                <Star className="h-3 w-3 mr-1" />
-                Mine
+              <TabsTrigger value="my-challenges" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Star className="h-4 w-4" />
+                <span>Mine</span>
               </TabsTrigger>
-              <TabsTrigger value="chat" className="text-xs">
-                <MessageCircle className="h-3 w-3 mr-1" />
-                Chat
+              <TabsTrigger value="chat" className="text-xs py-2 flex flex-col items-center gap-1">
+                <MessageCircle className="h-4 w-4" />
+                <span>Chat</span>
               </TabsTrigger>
-              <TabsTrigger value="winners" className="text-xs">
-                <Crown className="h-3 w-3 mr-1" />
-                Winners
+              <TabsTrigger value="winners" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Crown className="h-4 w-4" />
+                <span>Winners</span>
               </TabsTrigger>
-              <TabsTrigger value="hall-of-fame" className="text-xs">
-                <Medal className="h-3 w-3 mr-1" />
-                Fame
+              <TabsTrigger value="hall-of-fame" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Medal className="h-4 w-4" />
+                <span>Fame</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
