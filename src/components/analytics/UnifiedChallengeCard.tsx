@@ -228,7 +228,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
               className={cn(
                 "w-full h-11 text-sm font-semibold rounded-xl transition-all duration-200",
                 isParticipating 
-                  ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
+                  ? "bg-red-500 hover:bg-red-600 text-white" 
                   : "bg-emerald-500 hover:bg-emerald-600 text-white"
               )}
             >
@@ -237,7 +237,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
                 : isCompleted
                   ? 'Completed'
                   : isParticipating 
-                    ? (challengeType === 'friend' ? 'Joined' : <><UserPlus className="w-4 h-4 mr-2" />Join Challenge</>) 
+                    ? 'Leave Challenge'
                     : <><UserPlus className="w-4 h-4 mr-2" />Join Challenge</>
               }
             </Button>
