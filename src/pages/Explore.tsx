@@ -5,11 +5,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useState } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
+import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 
 const Explore = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -25,6 +27,8 @@ const Explore = () => {
       setIsHealthCheckOpen(true);
     } else if (tileId === 'game-challenge') {
       navigate('/game-and-challenge');
+    } else if (tileId === 'influencers') {
+      setIsComingSoonOpen(true);
     }
     // Add other tile navigation here as needed
   };
@@ -151,6 +155,13 @@ const Explore = () => {
       <HealthCheckModal 
         isOpen={isHealthCheckOpen} 
         onClose={() => setIsHealthCheckOpen(false)} 
+      />
+      
+      {/* Coming Soon Popup */}
+      <ComingSoonPopup 
+        isOpen={isComingSoonOpen} 
+        onClose={() => setIsComingSoonOpen(false)}
+        feature="Influencers"
       />
     </div>
   );

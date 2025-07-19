@@ -25,6 +25,7 @@ import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsig
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
+import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
@@ -110,6 +111,9 @@ const Home = () => {
 
   // Health Check Modal state
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
+  
+  // Coming Soon Modal state
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -1553,6 +1557,8 @@ const Home = () => {
                   setIsHealthCheckOpen(true);
                 } else if (tileId === 'game-challenge') {
                   navigate('/game-and-challenge');
+                } else if (tileId === 'influencers') {
+                  setIsComingSoonOpen(true);
                 }
               };
 
@@ -1623,6 +1629,13 @@ const Home = () => {
           <MealScoringTestComponent />
         </div>
       )}
+      
+      {/* Coming Soon Popup */}
+      <ComingSoonPopup 
+        isOpen={isComingSoonOpen} 
+        onClose={() => setIsComingSoonOpen(false)}
+        feature="Influencers"
+      />
     </div>
   );
 };
