@@ -103,6 +103,11 @@ export const UserChallengeParticipations: React.FC = () => {
                 challenge={challenge}
                 participation={participation!}
                 onUpdateProgress={updatePrivateProgress}
+                onLeave={async (challengeId) => {
+                  // Implement leave functionality for private challenges
+                  console.log('Leave private challenge:', challengeId);
+                  return true;
+                }}
               />
             ))}
           </div>
@@ -127,99 +132,95 @@ export const UserChallengeParticipations: React.FC = () => {
 
               const isCompleted = participation.is_completed;
               const progressPercentage = participation.completion_percentage;
-              const daysLeft = Math.max(0, Math.ceil(
-                (new Date(participation.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-              ));
+
+              // Determine challenge type based on duration for color coding
+              const getChallengeType = () => {
+                if (challenge.duration_days <= 3) return 'quick';
+                return 'global';
+              };
+
+              const challengeType = getChallengeType();
+              const getColorClass = () => {
+                if (challengeType === 'quick') return 'border-t-orange-500 bg-orange-500/5';
+                return 'border-t-blue-500 bg-blue-500/5';
+              };
 
               return (
-                <Card 
-                  key={participation.id} 
-                  className={`transition-all duration-200 ${
-                    isCompleted 
-                      ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' 
-                      : 'hover:shadow-md'
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-lg">{challenge.badge_icon}</span>
-                            <h4 className="font-semibold">{challenge.title}</h4>
-                            {isCompleted && <Trophy className="w-4 h-4 text-yellow-500" />}
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {challenge.goal_description}
-                          </p>
-                          
-                          {/* Status badges */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge 
-                              variant={isCompleted ? "default" : "secondary"}
-                              className={isCompleted ? "bg-green-500 text-white" : ""}
-                            >
-                              {isCompleted ? 'Completed' : `${Math.round(progressPercentage)}% Complete`}
-                            </Badge>
+                <div key={participation.id} className={`border-t-4 rounded-lg ${getColorClass()}`}>
+                  <Card className="border-0 bg-transparent">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        {/* Header */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">{challenge.badge_icon}</span>
+                              <h4 className="font-semibold">{challenge.title}</h4>
+                              {isCompleted && <Trophy className="w-4 h-4 text-yellow-500" />}
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {challenge.goal_description}
+                            </p>
                             
-                            {!isCompleted && (
+                            {/* Status badges */}
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline" className="text-xs">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {daysLeft} days left
+                                {challengeType === 'quick' ? '⚡ Quick' : '🌐 Public'}
                               </Badge>
-                            )}
-                            
-                            {participation.streak_count > 0 && (
-                              <Badge variant="outline" className="text-xs">
-                                <Flame className="w-3 h-3 mr-1" />
-                                {participation.streak_count} day streak
+                              
+                              <Badge 
+                                variant={isCompleted ? "default" : "secondary"}
+                                className={isCompleted ? "bg-green-500 text-white" : ""}
+                              >
+                                {isCompleted ? 'Completed' : `${Math.round(progressPercentage)}% Complete`}
                               </Badge>
-                            )}
+                              
+                              {participation.streak_count > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Flame className="w-3 h-3 mr-1" />
+                                  {participation.streak_count} day streak
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
+
+                        {/* Progress bar */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Group Progress</span>
+                            <span className="text-sm text-muted-foreground">
+                              {Math.round(progressPercentage)}%
+                            </span>
+                          </div>
+                          <Progress value={progressPercentage} className="h-2" />
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{challenge.participant_count} participants</span>
+                          </div>
+                        </div>
+
+                        {/* Main button */}
+                        <Button 
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to leave this challenge?')) {
+                              leaveChallenge(challenge.id);
+                            }
+                          }}
+                        >
+                          Joined
+                        </Button>
+
+                        {isCompleted && participation.completed_at && (
+                          <div className="text-xs text-muted-foreground pt-2 border-t">
+                            Completed on {new Date(participation.completed_at).toLocaleDateString()}
+                          </div>
+                        )}
                       </div>
-
-                      {/* Progress bar */}
-                      <div className="space-y-2">
-                        <Progress value={progressPercentage} className="h-2" />
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>
-                            {participation.current_progress}/{participation.total_target} 
-                            {challenge.target_unit || 'days'}
-                          </span>
-                          <span>Best streak: {participation.best_streak} days</span>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      {!isCompleted && (
-                        <div className="flex gap-2 pt-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => updateProgress(challenge.id, 1)}
-                            className="flex-1"
-                          >
-                            Log Today's Progress
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => leaveChallenge(challenge.id)}
-                          >
-                            Leave
-                          </Button>
-                        </div>
-                      )}
-
-                      {isCompleted && participation.completed_at && (
-                        <div className="text-xs text-muted-foreground pt-2 border-t">
-                          Completed on {new Date(participation.completed_at).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               );
             })}
           </div>
