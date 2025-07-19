@@ -371,7 +371,7 @@ const ProfileContent = () => {
       />
 
       {/* Logout */}
-      <LogoutSection />
+      <LogoutSection onLogout={logout} />
     </div>
   );
 };

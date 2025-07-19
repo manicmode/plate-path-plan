@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,7 +30,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
+import { useChallenge } from '@/contexts/ChallengeContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChallengeCreationModalProps {
@@ -55,7 +54,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [maxParticipants, setMaxParticipants] = useState('10');
   
-  const { createChallenge } = useActiveChallenges();
+  const { createChallenge } = useChallenge();
   const { toast } = useToast();
 
   const goalOptions = [

@@ -1,15 +1,13 @@
 
 import { useAuth } from '@/contexts/auth';
 import AuthForm from '@/components/auth/AuthForm';
-import { Navigate } from 'react-router-dom';
 
 const Index = () => {
-  const { isAuthenticated, loading, session } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   console.log('Index component rendering:', { 
     isAuthenticated, 
     loading,
-    hasSession: !!session,
     timestamp: new Date().toISOString()
   });
 
@@ -24,12 +22,6 @@ const Index = () => {
         </div>
       </div>
     );
-  }
-
-  // If user is authenticated, redirect to home
-  if (isAuthenticated) {
-    console.log('User authenticated, redirecting to home');
-    return <Navigate to="/home" replace />;
   }
 
   // Only show auth form for unauthenticated users

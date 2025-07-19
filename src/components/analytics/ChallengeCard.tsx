@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,25 +22,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
-
-interface Challenge {
-  id: string;
-  name: string;
-  type: 'public' | 'private' | 'micro';
-  creatorId: string;
-  creatorName: string;
-  goalType: string;
-  customGoal?: string;
-  startDate: Date;
-  endDate: Date;
-  participants: string[];
-  participantDetails: Record<string, { name: string; avatar: string }>;
-  progress: Record<string, number>;
-  maxParticipants?: number;
-  inviteCode?: string;
-  trending?: boolean;
-}
+import { Challenge, useChallenge } from '@/contexts/ChallengeContext';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -57,7 +38,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const { joinChallenge, leaveChallenge } = useActiveChallenges();
+  const { joinChallenge, leaveChallenenge } = useChallenge();
   const { toast } = useToast();
 
   const isParticipant = challenge.participants.includes(currentUserId);
@@ -96,7 +77,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   }, [challenge.endDate]);
 
   const handleJoinChallenge = () => {
-    joinChallenge(challenge.id);
+    joinChallenge(challenge.id, currentUserId, { name: 'Current User 👤', avatar: '👤' });
     toast({
       title: "Joined Challenge! 🎉",
       description: `You are now part of "${challenge.name}"`,
@@ -104,7 +85,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   };
 
   const handleLeaveChallenge = () => {
-    leaveChallenge(challenge.id);
+    leaveChallenenge(challenge.id, currentUserId);
     toast({
       title: "Left Challenge",
       description: `You have left "${challenge.name}"`,
@@ -162,7 +143,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   // Calculate average progress
   const progressValues = Object.values(challenge.progress);
   const averageProgress = progressValues.length > 0 
-    ? progressValues.reduce((sum, progress) => (Number(sum) || 0) + (Number(progress) || 0), 0) / progressValues.length
+    ? progressValues.reduce((sum, progress) => sum + progress, 0) / progressValues.length
     : 0;
 
   return (

@@ -11,14 +11,9 @@ import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { AuthProvider } from '@/contexts/auth';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
-import { SmartTimingProvider } from '@/contexts/SmartTimingContext';
-import { OptimizedChallengeProvider } from '@/contexts/OptimizedChallengeProvider';
-import { SocialBoostManager } from '@/components/social/SocialBoostManager';
-import { AppWithNotifications } from '@/components/AppWithNotifications';
-import { Layout } from '@/components/Layout';
+import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -58,156 +53,43 @@ function App() {
           <ThemeProvider>
             <TooltipProvider>
               <AuthProvider>
-                <SmartTimingProvider>
-                  <NutritionProvider>
-                    <NotificationProvider>
-                      <IngredientAlertProvider>
-                        <BadgeProvider>
-                          <OptimizedChallengeProvider>
-                            <ChatModalProvider>
-                              <SocialBoostManager>
-                                <AppWithNotifications>
-                                  <Suspense fallback={<LoadingScreen />}>
-                                    <Routes>
-                                      {/* Public route - Login/Signup page */}
-                                      <Route path="/" element={<Index />} />
-                                      
-                                      {/* Protected routes - wrapped with ProtectedRoute */}
-                                      <Route path="/home" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Home />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/camera" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Camera />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/analytics" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Analytics />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/coach" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Coach />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/explore" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Explore />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/profile" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Profile />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/game-and-challenge" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <GameAndChallengePage />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/supplement-hub" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <SupplementHub />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/supplements" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Supplements />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/hydration" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <Hydration />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/progress/calories" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <ProgressCalories />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/progress/protein" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <ProgressProtein />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/progress/carbs" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <ProgressCarbs />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/progress/fat" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <ProgressFat />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/progress/hydration" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <ProgressHydration />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      <Route path="/progress/supplements" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <ProgressSupplements />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      
-                                      <Route path="/firebase-setup" element={
-                                        <ProtectedRoute>
-                                          <Layout>
-                                            <FirebaseSetup />
-                                          </Layout>
-                                        </ProtectedRoute>
-                                      } />
-                                      
-                                      <Route path="/404" element={<NotFound />} />
-                                      <Route path="*" element={<Navigate to="/404" replace />} />
-                                    </Routes>
-                                  </Suspense>
-                                </AppWithNotifications>
-                              </SocialBoostManager>
-                              <Toaster />
-                            </ChatModalProvider>
-                          </OptimizedChallengeProvider>
-                        </BadgeProvider>
-                      </IngredientAlertProvider>
-                    </NotificationProvider>
-                  </NutritionProvider>
-                </SmartTimingProvider>
+                <NutritionProvider>
+                  <NotificationProvider>
+                    <IngredientAlertProvider>
+                      <BadgeProvider>
+                        <ChatModalProvider>
+                          <Layout>
+                            <Suspense fallback={<LoadingScreen />}>
+                              <Routes>
+                                <Route path="/" element={<Index />} />
+                                <Route path="/home" element={<Home />} />
+                                <Route path="/camera" element={<Camera />} />
+                                <Route path="/analytics" element={<Analytics />} />
+                                <Route path="/coach" element={<Coach />} />
+                                <Route path="/explore" element={<Explore />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/game-and-challenge" element={<GameAndChallengePage />} />
+                                <Route path="/supplement-hub" element={<SupplementHub />} />
+                                <Route path="/supplements" element={<Supplements />} />
+                                <Route path="/hydration" element={<Hydration />} />
+                                <Route path="/progress/calories" element={<ProgressCalories />} />
+                                <Route path="/progress/protein" element={<ProgressProtein />} />
+                                <Route path="/progress/carbs" element={<ProgressCarbs />} />
+                                <Route path="/progress/fat" element={<ProgressFat />} />
+                                <Route path="/progress/hydration" element={<ProgressHydration />} />
+                                <Route path="/progress/supplements" element={<ProgressSupplements />} />
+                                <Route path="/firebase-setup" element={<FirebaseSetup />} />
+                                <Route path="/404" element={<NotFound />} />
+                                <Route path="*" element={<Navigate to="/404" replace />} />
+                              </Routes>
+                            </Suspense>
+                          </Layout>
+                          <Toaster />
+                        </ChatModalProvider>
+                      </BadgeProvider>
+                    </IngredientAlertProvider>
+                  </NotificationProvider>
+                </NutritionProvider>
               </AuthProvider>
             </TooltipProvider>
           </ThemeProvider>

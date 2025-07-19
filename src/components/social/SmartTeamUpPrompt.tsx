@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { UserPlus, X, Trophy, Target, Loader2 } from 'lucide-react';
+import React from 'react';
+import { UserPlus, X, Trophy, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useTeamUpPrompts } from '@/hooks/useTeamUpPrompts';
-import { useSmartTiming } from '@/contexts/SmartTimingContext';
-import { useSocialBoosts } from '@/hooks/useSocialBoosts';
 
 export const SmartTeamUpPrompt = () => {
   const { 
@@ -14,40 +12,15 @@ export const SmartTeamUpPrompt = () => {
     sendFriendRequestFromPrompt, 
     dismissPrompt 
   } = useTeamUpPrompts();
-  
-  const { shouldShowTeamUpPrompt, timingState } = useSmartTiming();
-  const { handleFriendRequestSent } = useSocialBoosts();
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDismissing, setIsDismissing] = useState(false);
 
-  // Only show if timing conditions are met and we have a prompt
-  if (!currentPrompt || !shouldShowTeamUpPrompt()) {
-    return null;
-  }
+  if (!currentPrompt) return null;
 
-  const handleSendRequest = async () => {
-    setIsLoading(true);
-    try {
-      await sendFriendRequestFromPrompt(currentPrompt);
-      
-      // Trigger social boosts after successful friend request
-      await handleFriendRequestSent(
-        currentPrompt.buddy_user_id, 
-        currentPrompt.buddy_name
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSendRequest = () => {
+    sendFriendRequestFromPrompt(currentPrompt);
   };
 
-  const handleDismiss = async () => {
-    setIsDismissing(true);
-    try {
-      await dismissPrompt(currentPrompt);
-    } finally {
-      setIsDismissing(false);
-    }
+  const handleDismiss = () => {
+    dismissPrompt(currentPrompt);
   };
 
   const formatChallengeName = (challengeId: string) => {
@@ -79,10 +52,9 @@ export const SmartTeamUpPrompt = () => {
               variant="ghost"
               size="sm"
               onClick={handleDismiss}
-              disabled={isLoading || isDismissing}
-              className="h-6 w-6 p-0 hover:bg-muted/50 disabled:opacity-50"
+              className="h-6 w-6 p-0 hover:bg-muted/50"
             >
-              {isDismissing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+              <X className="h-3 w-3" />
             </Button>
           </div>
 
@@ -134,29 +106,18 @@ export const SmartTeamUpPrompt = () => {
             <div className="flex gap-3">
               <Button
                 onClick={handleSendRequest}
-                disabled={isLoading || isDismissing}
-                className="flex-1 bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white font-medium disabled:opacity-50"
+                className="flex-1 bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white font-medium"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Send Friend Request
-                  </>
-                )}
+                <UserPlus className="h-4 w-4 mr-2" />
+                Send Friend Request
               </Button>
               
               <Button
                 variant="outline"
                 onClick={handleDismiss}
-                disabled={isLoading || isDismissing}
-                className="px-4 disabled:opacity-50"
+                className="px-4"
               >
-                {isDismissing ? "..." : "Not Now"}
+                Maybe Later
               </Button>
             </div>
 

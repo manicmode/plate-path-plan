@@ -1,4 +1,4 @@
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,7 @@ interface UnifiedChallengeCardProps {
   showInMyActiveChallenges?: boolean;
 }
 
-export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = memo(({
+export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
   id,
   title,
   description,
@@ -59,52 +59,48 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = memo(({
   const [isLoading, setIsLoading] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
-  // Memoize type-related calculations
-  const typeData = useMemo(() => ({
-    color: (() => {
-      switch (challengeType) {
-        case 'global': return 'challenge-card-gradient-blue';
-        case 'friend': return 'challenge-card-gradient-purple';
-        case 'quick': return 'challenge-card-gradient-orange';
-        default: return 'challenge-card-gradient-gray';
-      }
-    })(),
-    badgeIcon: (() => {
-      switch (challengeType) {
-        case 'global': return <Globe className="w-3 h-3" />;
-        case 'friend': return <Lock className="w-3 h-3" />;
-        case 'quick': return <Zap className="w-3 h-3" />;
-        default: return <Target className="w-3 h-3" />;
-      }
-    })(),
-    icon: (() => {
-      switch (challengeType) {
-        case 'global': return <Globe className="w-4 h-4" />;
-        case 'friend': return <Lock className="w-4 h-4" />;
-        case 'quick': return <Zap className="w-4 h-4" />;
-      }
-    })(),
-    label: (() => {
-      switch (challengeType) {
-        case 'global': return 'Public';
-        case 'friend': return 'Private';
-        case 'quick': return 'Quick';
-      }
-    })()
-  }), [challengeType]);
+  const getTypeColor = (type: ChallengeType) => {
+    switch (type) {
+      case 'global': return 'challenge-card-gradient-blue';
+      case 'friend': return 'challenge-card-gradient-purple';
+      case 'quick': return 'challenge-card-gradient-orange';
+      default: return 'challenge-card-gradient-gray';
+    }
+  };
 
-  // Memoize difficulty color calculation
-  const difficultyColor = useMemo(() => {
-    switch (difficultyLevel) {
+  const getTypeBadgeIcon = (type: ChallengeType) => {
+    switch (type) {
+      case 'global': return <Globe className="w-3 h-3" />;
+      case 'friend': return <Lock className="w-3 h-3" />;
+      case 'quick': return <Zap className="w-3 h-3" />;
+      default: return <Target className="w-3 h-3" />;
+    }
+  };
+
+  const getTypeIcon = (type: ChallengeType) => {
+    switch (type) {
+      case 'global': return <Globe className="w-4 h-4" />;
+      case 'friend': return <Lock className="w-4 h-4" />;
+      case 'quick': return <Zap className="w-4 h-4" />;
+    }
+  };
+
+  const getTypeLabel = (type: ChallengeType) => {
+    switch (type) {
+      case 'global': return 'Public';
+      case 'friend': return 'Private';
+      case 'quick': return 'Quick';
+    }
+  };
+
+  const getDifficultyColor = (level?: string) => {
+    switch (level) {
       case 'beginner': return 'bg-green-500/10 text-green-700 border-green-500/20';
       case 'intermediate': return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20';
       case 'advanced': return 'bg-red-500/10 text-red-700 border-red-500/20';
       default: return 'bg-muted text-muted-foreground';
     }
-  }, [difficultyLevel]);
-
-  // Memoize progress percentage calculation
-  const roundedProgress = useMemo(() => Math.round(progressPercentage), [progressPercentage]);
+  };
 
   const handleMainButtonClick = async () => {
     if (!isParticipating) {
@@ -137,14 +133,14 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = memo(({
         "hover:shadow-2xl hover:scale-[1.02]",
         "border-0 rounded-2xl overflow-hidden relative",
         "backdrop-blur-sm",
-        typeData.color
+        getTypeColor(challengeType)
       )}>
         {/* Top badges row */}
         <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Badge className="challenge-type-badge text-xs font-medium px-3 py-1 rounded-full bg-black/30 text-white backdrop-blur-sm border-0">
-              {typeData.badgeIcon}
-              <span className="ml-1 capitalize">{typeData.label}</span>
+              {getTypeBadgeIcon(challengeType)}
+              <span className="ml-1 capitalize">{getTypeLabel(challengeType)}</span>
             </Badge>
             <Badge className="duration-badge text-xs font-medium px-3 py-1 rounded-full bg-black/30 text-white backdrop-blur-sm border-0">
               <Clock className="w-3 h-3 mr-1" />
@@ -194,7 +190,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = memo(({
                 {showInMyActiveChallenges ? 'Group Progress' : 'Progress'}
               </span>
               <span className="text-sm font-bold text-emerald-600">
-                {roundedProgress}%
+                {Math.round(progressPercentage)}%
               </span>
             </div>
             <div className="relative">
@@ -298,4 +294,4 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = memo(({
       </Dialog>
     </>
   );
-});
+};

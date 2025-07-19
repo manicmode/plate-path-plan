@@ -13,8 +13,6 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
 import { RecipeStorage, type SavedRecipe } from '@/lib/recipeStorage';
 import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
-import { FriendHighlightsSection } from '@/components/coach/FriendHighlightsSection';
-import { CoachDailyDigest } from '@/components/coach/CoachDailyDigest';
 
 interface Message {
   id: string;
@@ -557,73 +555,67 @@ const Coach = () => {
             ))}
           </div>
 
-      {/* Saved Recipes Section */}
-      {savedRecipes.length > 0 && (
-        <div>
-          <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center`}>
-            🗂️ Saved Recipes ({savedRecipes.length})
-          </h3>
-          <ScrollArea className="h-48">
-            <div className="space-y-3">
-              {savedRecipes
-                .sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0))
-                .map((recipe) => (
-                <div
-                  key={recipe.id}
-                  className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-gray-900 dark:text-white mb-1 flex items-center`}>
-                        {recipe.isFavorite && <Heart className="h-4 w-4 text-red-500 mr-1 fill-current" />}
-                        {recipe.title}
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {recipe.timestamp.toLocaleDateString()}
-                      </p>
+          {/* Saved Recipes Section */}
+          {savedRecipes.length > 0 && (
+            <div>
+              <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center`}>
+                🗂️ Saved Recipes ({savedRecipes.length})
+              </h3>
+              <ScrollArea className="h-48">
+                <div className="space-y-3">
+                  {savedRecipes
+                    .sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0))
+                    .map((recipe) => (
+                    <div
+                      key={recipe.id}
+                      className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-gray-900 dark:text-white mb-1 flex items-center`}>
+                            {recipe.isFavorite && <Heart className="h-4 w-4 text-red-500 mr-1 fill-current" />}
+                            {recipe.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {recipe.timestamp.toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex space-x-1 ml-2">
+                          <Button
+                            onClick={() => toggleFavorite(recipe.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Heart className={`h-3 w-3 ${recipe.isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+                          </Button>
+                          <Button
+                            onClick={() => copyRecipe(recipe.content)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                          </Button>
+                          <Button
+                            onClick={() => deleteRecipe(recipe.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex space-x-1 ml-2">
-                      <Button
-                        onClick={() => toggleFavorite(recipe.id)}
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Heart className={`h-3 w-3 ${recipe.isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
-                      </Button>
-                      <Button
-                        onClick={() => copyRecipe(recipe.content)}
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                      </Button>
-                      <Button
-                        onClick={() => deleteRecipe(recipe.id)}
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-3 w-3 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </ScrollArea>
             </div>
-          </ScrollArea>
-        </div>
-      )}
-    </CardContent>
-  </Card>
-
-  {/* Friend Highlights Section */}
-  <FriendHighlightsSection />
-
-  {/* Daily Digest Section */}
-  <CoachDailyDigest />
-</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

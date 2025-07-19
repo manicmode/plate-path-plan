@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Users, Calendar, Target, X } from 'lucide-react';
-import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
+import { useChallenge } from '@/contexts/ChallengeContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface MicroChallengeCreationModalProps {
@@ -43,7 +42,7 @@ export function MicroChallengeCreationModal({ open, onOpenChange }: MicroChallen
   const [customGoal, setCustomGoal] = useState('');
   const [duration, setDuration] = useState<number>(1);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const { createChallenge } = useActiveChallenges();
+  const { createChallenge } = useChallenge();
   const { toast } = useToast();
 
   const handleReset = () => {

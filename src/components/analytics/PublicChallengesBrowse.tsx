@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,9 +6,8 @@ import { Globe, Zap, TrendingUp, Sparkles } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { VirtualizedChallengeList } from './VirtualizedChallengeList';
 
-export const PublicChallengesBrowse: React.FC = memo(() => {
+export const PublicChallengesBrowse: React.FC = () => {
   const {
     globalChallenges,
     quickChallenges,
@@ -20,27 +19,6 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
     leaveChallenge,
     getUserParticipation,
   } = usePublicChallenges();
-
-  // Memoize challenge statistics calculations
-  const challengeStats = useMemo(() => ({
-    globalCount: globalChallenges.length,
-    quickCount: quickChallenges.length,
-    trendingCount: trendingChallenges.length,
-    totalParticipants: globalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
-                     quickChallenges.reduce((sum, c) => sum + c.participant_count, 0)
-  }), [globalChallenges, quickChallenges, trendingChallenges]);
-
-  // Memoized challenge render function
-  const renderChallengeCard = useMemo(() => (challenge: any) => (
-    <PublicChallengeCard
-      key={challenge.id}
-      challenge={challenge}
-      participation={getUserParticipation(challenge.id)}
-      onJoin={joinChallenge}
-      onUpdateProgress={updateProgress}
-      onLeave={leaveChallenge}
-    />
-  ), [getUserParticipation, joinChallenge, updateProgress, leaveChallenge]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -92,13 +70,18 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
                   No global challenges available right now
                 </div>
               ) : (
-                <VirtualizedChallengeList
-                  challenges={globalChallenges}
-                  renderItem={renderChallengeCard}
-                  layout="grid"
-                  gridColumns={3}
-                  itemHeight={420}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {globalChallenges.map((challenge) => (
+                    <PublicChallengeCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      participation={getUserParticipation(challenge.id)}
+                      onJoin={joinChallenge}
+                      onUpdateProgress={updateProgress}
+                      onLeave={leaveChallenge}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -121,13 +104,18 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
                   No quick challenges available right now
                 </div>
               ) : (
-                <VirtualizedChallengeList
-                  challenges={quickChallenges}
-                  renderItem={renderChallengeCard}
-                  layout="grid"
-                  gridColumns={4}
-                  itemHeight={420}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {quickChallenges.map((challenge) => (
+                    <PublicChallengeCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      participation={getUserParticipation(challenge.id)}
+                      onJoin={joinChallenge}
+                      onUpdateProgress={updateProgress}
+                      onLeave={leaveChallenge}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -150,13 +138,18 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
                   No trending challenges right now
                 </div>
               ) : (
-                <VirtualizedChallengeList
-                  challenges={trendingChallenges}
-                  renderItem={renderChallengeCard}
-                  layout="grid"
-                  gridColumns={3}
-                  itemHeight={420}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {trendingChallenges.map((challenge) => (
+                    <PublicChallengeCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      participation={getUserParticipation(challenge.id)}
+                      onJoin={joinChallenge}
+                      onUpdateProgress={updateProgress}
+                      onLeave={leaveChallenge}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -179,13 +172,18 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
                   No new challenges available right now
                 </div>
               ) : (
-                <VirtualizedChallengeList
-                  challenges={newChallenges}
-                  renderItem={renderChallengeCard}
-                  layout="grid"
-                  gridColumns={3}
-                  itemHeight={420}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {newChallenges.map((challenge) => (
+                    <PublicChallengeCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      participation={getUserParticipation(challenge.id)}
+                      onJoin={joinChallenge}
+                      onUpdateProgress={updateProgress}
+                      onLeave={leaveChallenge}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -201,25 +199,26 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {challengeStats.globalCount}
+                {globalChallenges.length}
               </div>
               <div className="text-sm text-muted-foreground">Global Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {challengeStats.quickCount}
+                {quickChallenges.length}
               </div>
               <div className="text-sm text-muted-foreground">Quick Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {challengeStats.trendingCount}
+                {trendingChallenges.length}
               </div>
               <div className="text-sm text-muted-foreground">Trending</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {challengeStats.totalParticipants}
+                {globalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
+                 quickChallenges.reduce((sum, c) => sum + c.participant_count, 0)}
               </div>
               <div className="text-sm text-muted-foreground">Total Participants</div>
             </div>
@@ -228,4 +227,4 @@ export const PublicChallengesBrowse: React.FC = memo(() => {
       </Card>
     </div>
   );
-});
+};

@@ -109,10 +109,10 @@ export const MyFriendsTab = () => {
 
   if (selectedFriend) {
     return (
-        <FriendProfileView
-          friendId={selectedFriend.friend_id}
-          onClose={() => setSelectedFriend(null)}
-        />
+      <FriendProfileView 
+        friend={selectedFriend} 
+        onBack={() => setSelectedFriend(null)} 
+      />
     );
   }
 

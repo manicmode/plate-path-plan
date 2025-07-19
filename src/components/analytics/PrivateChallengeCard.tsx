@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React from 'react';
 import { PrivateChallenge, PrivateChallengeParticipation } from '@/hooks/usePrivateChallenges';
 import { UnifiedChallengeCard } from './UnifiedChallengeCard';
 
@@ -21,18 +21,15 @@ const getUserName = (userId: string) => {
   return mockUsers[userId] || { name: 'Unknown User', avatar: '👤' };
 };
 
-export const PrivateChallengeCard: React.FC<PrivateChallengeCardProps> = memo(({
+export const PrivateChallengeCard: React.FC<PrivateChallengeCardProps> = ({
   challenge,
   participation,
   onUpdateProgress,
   onLeave,
 }) => {
-  // Memoize computed values to prevent unnecessary recalculations
-  const { isCompleted, isCreator, progressPercentage } = useMemo(() => ({
-    isCompleted: participation.completion_percentage >= 100,
-    isCreator: participation.is_creator,
-    progressPercentage: participation.completion_percentage
-  }), [participation.completion_percentage, participation.is_creator]);
+  const isCompleted = participation.completion_percentage >= 100;
+  const isCreator = participation.is_creator;
+  const progressPercentage = participation.completion_percentage;
 
   const handleJoin = async () => {
     // Private challenges are already joined, this shouldn't be called
@@ -65,4 +62,4 @@ export const PrivateChallengeCard: React.FC<PrivateChallengeCardProps> = memo(({
       showInMyActiveChallenges={true}
     />
   );
-});
+};

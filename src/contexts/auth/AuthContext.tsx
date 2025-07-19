@@ -1,6 +1,6 @@
-
 import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, signOutUser, resendEmailConfirmation } from './authService';
 import { createExtendedUser, updateUserTrackers } from './userService';
@@ -13,13 +13,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   const updateUserWithProfile = async (supabaseUser: any) => {
     try {
-      console.log('Creating extended user for:', supabaseUser.id);
       const extendedUser = await createExtendedUser(supabaseUser);
       setUser(extendedUser);
-      console.log('Extended user created successfully');
     } catch (error) {
       console.error('Error creating extended user:', error);
       // Set basic user info even if profile creation fails
@@ -32,81 +31,88 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const initializeAuth = async (retryCount = 0) => {
+    try {
+      console.log(`Auth initialization attempt ${retryCount + 1}`);
+      
+      const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting initial session:', error);
+        if (retryCount < 2) {
+          setTimeout(() => initializeAuth(retryCount + 1), 1000);
+          return;
+        }
+      } else if (initialSession?.user) {
+        setSession(initialSession);
+        await updateUserWithProfile(initialSession.user);
+      }
+      
+      setLoading(false);
+      setInitializationAttempts(retryCount + 1);
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      if (retryCount < 2) {
+        setTimeout(() => initializeAuth(retryCount + 1), 1000);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  // App lifecycle callbacks
+  const handleAppForeground = () => {
+    console.log('App came to foreground - refreshing auth state');
+    if (loading && initializationAttempts > 0) {
+      initializeAuth();
+    }
+  };
+
+  const handleAppBackground = () => {
+    console.log('App went to background');
+  };
+
+  useAppLifecycle({
+    onForeground: handleAppForeground,
+    onBackground: handleAppBackground,
+  });
+
   useEffect(() => {
     let mounted = true;
     
-    console.log('Setting up auth state listener...');
-    
-    // Set up auth state listener
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      console.log('Auth state changed:', event, 'Session exists:', !!session);
-      
-      if (event === 'SIGNED_OUT') {
-        console.log('User signed out, clearing state');
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      
+      console.log('Auth state changed:', event);
       setSession(session);
       
       if (session?.user) {
-        console.log('User signed in, loading profile');
-        // Use setTimeout to prevent potential deadlocks
+        // Defer profile loading to prevent deadlocks
         setTimeout(async () => {
           if (mounted) {
             await updateUserWithProfile(session.user);
-            setLoading(false);
           }
         }, 0);
       } else {
-        console.log('No user in session, clearing user state');
         setUser(null);
-        setLoading(false);
       }
     });
 
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        console.log('Getting initial session...');
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting initial session:', error);
-        } else if (initialSession?.user) {
-          console.log('Found existing session');
-          setSession(initialSession);
-          await updateUserWithProfile(initialSession.user);
-        } else {
-          console.log('No existing session found');
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    // Set timeout to ensure loading doesn't hang indefinitely
-    const loadingTimeout = setTimeout(() => {
-      if (mounted && loading) {
+    // Initialize auth with timeout
+    const initTimeout = setTimeout(() => {
+      if (loading) {
         console.warn('Auth initialization timeout - forcing completion');
         setLoading(false);
       }
-    }, 5000);
+    }, 10000);
+
+    initializeAuth();
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearTimeout(loadingTimeout);
+      clearTimeout(initTimeout);
     };
   }, []);
 
@@ -144,22 +150,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[DEBUG] AuthContext: User profile refresh complete');
   };
 
-  // Simplified authentication check - just require valid session
-  const isAuthenticated = !!session?.user;
-  
-  console.log('AuthContext state:', {
-    hasSession: !!session,
-    hasUser: !!user,
-    isAuthenticated,
-    loading,
-    userEmail: session?.user?.email
-  });
-
   const contextValue: AuthContextType = {
     user,
     session,
     loading,
-    isAuthenticated,
+    isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,
