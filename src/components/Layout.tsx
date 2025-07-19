@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Camera, MessageCircle, Compass, Moon, Sun, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useChatModal } from '@/contexts/ChatModalContext';
 
@@ -15,12 +17,13 @@ const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { isAuthenticated } = useAuth();
   const isMobile = useIsMobile();
   const { isChatModalOpen } = useChatModal();
   const [isNavigating, setIsNavigating] = useState(false);
 
   const navItems = [
-    { path: '/', icon: Home, label: 'Home' },
+    { path: '/home', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
     { path: '/analytics', icon: BarChart3, label: 'Progress' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
@@ -70,6 +73,9 @@ const Layout = ({ children }: LayoutProps) => {
     setIsNavigating(false);
   }, [location.pathname]);
 
+  // Show only header for unauthenticated users on non-auth pages
+  const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
+
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
       {/* Enhanced Header with better spacing */}
@@ -103,19 +109,18 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content */}
       <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-        isMobile ? 'pb-40' : 'pb-60'
+        shouldShowNavigation ? (isMobile ? 'pb-40' : 'pb-60') : 'pb-8'
       } min-h-[calc(100vh-140px)]`}>
         {children}
       </main>
 
-      {/* Enhanced Bottom Navigation - Hide when chat modal is open */}
-      {!isChatModalOpen && (
+      {/* Enhanced Bottom Navigation - Only show for authenticated users and hide when chat modal is open */}
+      {shouldShowNavigation && !isChatModalOpen && (
         <nav className={`fixed ${isMobile ? 'bottom-3 left-3 right-3' : 'bottom-6 left-1/2 transform -translate-x-1/2'} z-50`}>
           <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
             <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
-                const isActive = (path === '/' && (location.pathname === '/' || location.pathname === '/home')) || 
-                                (path !== '/' && location.pathname === path);
+                const isActive = location.pathname === path;
                 return (
                   <Button
                     key={path}

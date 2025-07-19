@@ -1,5 +1,6 @@
 
 import { useAuth } from '@/contexts/auth';
+import { Navigate } from 'react-router-dom';
 import AuthForm from '@/components/auth/AuthForm';
 
 const Index = () => {
@@ -24,7 +25,13 @@ const Index = () => {
     );
   }
 
-  // Only show auth form for unauthenticated users
+  // Redirect to home if authenticated
+  if (isAuthenticated) {
+    console.log('User authenticated, redirecting to home');
+    return <Navigate to="/home" replace />;
+  }
+
+  // Show auth form for unauthenticated users
   console.log('User not authenticated, showing AuthForm');
   return <AuthForm />;
 };

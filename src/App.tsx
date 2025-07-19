@@ -13,6 +13,7 @@ import { AuthProvider } from '@/contexts/auth';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Lazy load components
@@ -62,23 +63,91 @@ function App() {
                             <Suspense fallback={<LoadingScreen />}>
                               <Routes>
                                 <Route path="/" element={<Index />} />
-                                <Route path="/home" element={<Home />} />
-                                <Route path="/camera" element={<Camera />} />
-                                <Route path="/analytics" element={<Analytics />} />
-                                <Route path="/coach" element={<Coach />} />
-                                <Route path="/explore" element={<Explore />} />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/game-and-challenge" element={<GameAndChallengePage />} />
-                                <Route path="/supplement-hub" element={<SupplementHub />} />
-                                <Route path="/supplements" element={<Supplements />} />
-                                <Route path="/hydration" element={<Hydration />} />
-                                <Route path="/progress/calories" element={<ProgressCalories />} />
-                                <Route path="/progress/protein" element={<ProgressProtein />} />
-                                <Route path="/progress/carbs" element={<ProgressCarbs />} />
-                                <Route path="/progress/fat" element={<ProgressFat />} />
-                                <Route path="/progress/hydration" element={<ProgressHydration />} />
-                                <Route path="/progress/supplements" element={<ProgressSupplements />} />
-                                <Route path="/firebase-setup" element={<FirebaseSetup />} />
+                                <Route path="/home" element={
+                                  <ProtectedRoute>
+                                    <Home />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/camera" element={
+                                  <ProtectedRoute>
+                                    <Camera />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/analytics" element={
+                                  <ProtectedRoute>
+                                    <Analytics />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/coach" element={
+                                  <ProtectedRoute>
+                                    <Coach />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/explore" element={
+                                  <ProtectedRoute>
+                                    <Explore />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/profile" element={
+                                  <ProtectedRoute>
+                                    <Profile />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/game-and-challenge" element={
+                                  <ProtectedRoute>
+                                    <GameAndChallengePage />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/supplement-hub" element={
+                                  <ProtectedRoute>
+                                    <SupplementHub />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/supplements" element={
+                                  <ProtectedRoute>
+                                    <Supplements />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/hydration" element={
+                                  <ProtectedRoute>
+                                    <Hydration />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/progress/calories" element={
+                                  <ProtectedRoute>
+                                    <ProgressCalories />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/progress/protein" element={
+                                  <ProtectedRoute>
+                                    <ProgressProtein />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/progress/carbs" element={
+                                  <ProtectedRoute>
+                                    <ProgressCarbs />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/progress/fat" element={
+                                  <ProtectedRoute>
+                                    <ProgressFat />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/progress/hydration" element={
+                                  <ProtectedRoute>
+                                    <ProgressHydration />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/progress/supplements" element={
+                                  <ProtectedRoute>
+                                    <ProgressSupplements />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="/firebase-setup" element={
+                                  <ProtectedRoute>
+                                    <FirebaseSetup />
+                                  </ProtectedRoute>
+                                } />
                                 <Route path="/404" element={<NotFound />} />
                                 <Route path="*" element={<Navigate to="/404" replace />} />
                               </Routes>

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/lib/authUtils';
 import { toast } from 'sonner';
@@ -227,21 +228,49 @@ export const resendEmailConfirmation = async (email: string) => {
   }
 };
 
+// Updated signOut function that uses proper navigation flow
+let signOutNavigationCallback: (() => void) | null = null;
+
+export const setSignOutNavigationCallback = (callback: () => void) => {
+  signOutNavigationCallback = callback;
+};
+
 export const signOutUser = async () => {
   try {
+    console.log('🔓 Starting sign out process...');
+    
     // Clean up auth state first
     cleanupAuthState();
     
-    // Attempt global sign out
+    // Attempt Supabase sign out
+    console.log('📤 Calling Supabase signOut...');
     const { error } = await supabase.auth.signOut({ scope: 'global' });
-    if (error) throw error;
     
-    // Force page refresh for completely clean state
-    window.location.href = '/';
-  } catch (error) {
-    console.error('Error signing out:', error);
+    if (error) {
+      console.error('❌ Supabase signOut error:', error);
+      // Continue with cleanup even if Supabase signOut fails
+    } else {
+      console.log('✅ Supabase signOut successful');
+    }
+    
+    // Use navigation callback if available, otherwise fallback to hard refresh
+    if (signOutNavigationCallback) {
+      console.log('📍 Using React Router navigation');
+      signOutNavigationCallback();
+    } else {
+      console.log('📍 Fallback to hard refresh');
+      window.location.href = '/';
+    }
+    
+  } catch (error: any) {
+    console.error('💥 Error during sign out:', error);
     toast.error('Error signing out');
-    // Force refresh even if signout fails
-    window.location.href = '/';
+    
+    // Force navigation even if there are errors
+    if (signOutNavigationCallback) {
+      signOutNavigationCallback();
+    } else {
+      window.location.href = '/';
+    }
   }
 };

@@ -1,8 +1,10 @@
+
 import React, { createContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
-import { loginUser, registerUser, signOutUser, resendEmailConfirmation } from './authService';
+import { loginUser, registerUser, resendEmailConfirmation, signOutUser, setSignOutNavigationCallback } from './authService';
 import { createExtendedUser, updateUserTrackers } from './userService';
 import { Session } from '@supabase/supabase-js';
 import { triggerDailyScoreCalculation, triggerDailyTargetsGeneration } from '@/lib/dailyScoreUtils';
@@ -13,7 +15,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
   const [initializationAttempts, setInitializationAttempts] = useState(0);
+  const navigate = useNavigate();
 
   const updateUserWithProfile = async (supabaseUser: any) => {
     try {
@@ -60,6 +64,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Custom signOut function with proper state management
+  const handleSignOut = async () => {
+    try {
+      setSigningOut(true);
+      
+      // Immediately clear local state
+      setUser(null);
+      setSession(null);
+      
+      console.log('🔓 Signing out user...');
+      
+      // Call the signOut function - it will handle navigation
+      await signOutUser();
+      
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  // Set up navigation callback for signOut
+  useEffect(() => {
+    setSignOutNavigationCallback(() => {
+      console.log('📍 Navigating to home after sign out');
+      navigate('/', { replace: true });
+    });
+  }, [navigate]);
+
   // App lifecycle callbacks
   const handleAppForeground = () => {
     console.log('App came to foreground - refreshing auth state');
@@ -84,17 +117,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      console.log('Auth state changed:', event);
+      console.log('Auth state changed:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_OUT') {
+        console.log('🔓 Auth state: SIGNED_OUT');
+        setSession(null);
+        setUser(null);
+        setSigningOut(false);
+        return;
+      }
+      
       setSession(session);
       
-      if (session?.user) {
+      if (session?.user && event === 'SIGNED_IN') {
         // Defer profile loading to prevent deadlocks
         setTimeout(async () => {
           if (mounted) {
             await updateUserWithProfile(session.user);
           }
         }, 0);
-      } else {
+      } else if (!session?.user) {
         setUser(null);
       }
     });
@@ -153,14 +195,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const contextValue: AuthContextType = {
     user,
     session,
-    loading,
+    loading: loading || signingOut,
     isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,
     resendEmailConfirmation,
-    signOut: signOutUser,
-    logout: signOutUser,
+    signOut: handleSignOut,
+    logout: handleSignOut,
     updateProfile,
     updateSelectedTrackers,
     refreshUser,
