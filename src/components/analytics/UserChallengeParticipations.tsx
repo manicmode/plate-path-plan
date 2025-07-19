@@ -30,41 +30,17 @@ export const UserChallengeParticipations: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+          <div key={i} className="animate-pulse">
+            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-t-2xl h-20"></div>
+            <div className="bg-card/80 backdrop-blur rounded-b-2xl p-4 space-y-3">
+              <div className="h-4 bg-muted rounded w-3/4"></div>
               <div className="h-3 bg-muted rounded w-1/2"></div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
-    );
-  }
-
-  const hasAnyChallenge = userParticipations.length > 0 || challengesWithParticipation.length > 0;
-
-  if (!hasAnyChallenge) {
-    return (
-      <Card className="border-2 border-dashed border-muted">
-        <CardContent className="text-center py-8">
-          <Target className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <h3 className="font-semibold mb-2">No Active Challenges</h3>
-          <p className="text-muted-foreground text-sm mb-3">
-            Browse public challenges or create a private one with friends!
-          </p>
-          <div className="flex gap-2 justify-center">
-            <Button variant="outline" size="sm">
-              Browse Public
-            </Button>
-            <Button size="sm" onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-1" />
-              Create Private
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     );
   }
 
@@ -98,190 +74,198 @@ export const UserChallengeParticipations: React.FC = () => {
     }).filter(Boolean)
   ];
 
-  return (
-    <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-yellow-500" />
-          <h3 className="text-lg font-bold">My Challenges</h3>
-          <Badge variant="secondary">
-            {allActiveChallenges.length} active
-          </Badge>
+  if (allActiveChallenges.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No Active Challenges</h3>
+        <p className="text-muted-foreground mb-6">
+          Browse public challenges or create a private one with friends!
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Button variant="outline">Browse Public</Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Private
+          </Button>
         </div>
-        <Button size="sm" onClick={() => setShowCreateModal(true)}>
-          <Plus className="w-4 h-4 mr-1" />
-          Create Private
-        </Button>
       </div>
+    );
+  }
 
-      {/* Unified Challenge Cards - No separators or category headers */}
-      <div className="space-y-4">
-        {allActiveChallenges.map((item) => {
-          if (!item) return null;
-          
-          const { type, challenge, participation, onLeave } = item;
-          
-          // Handle different participation types
-          const isCompleted = type === 'private' 
-            ? (participation as any).completion_pct === 100 
-            : (participation as any).is_completed || participation.completion_percentage === 100;
-          
-          const progressPercentage = type === 'private'
-            ? (participation as any).completion_pct || 0
-            : participation.completion_percentage || 0;
+  return (
+    <div className="space-y-4">
+      {/* Challenge Cards - Stacked vertically with exact style match */}
+      {allActiveChallenges.map((item) => {
+        if (!item) return null;
+        
+        const { type, challenge, participation, onLeave } = item;
+        
+        const progressPercentage = type === 'private'
+          ? (participation as any).completion_pct || 0
+          : participation.completion_percentage || 0;
 
-          // Header gradient based on challenge type
-          const getHeaderClass = () => {
-            switch (type) {
-              case 'private':
-                return 'bg-gradient-to-r from-purple-600 to-pink-600';
-              case 'quick':
-                return 'bg-gradient-to-r from-orange-500 to-yellow-500';
-              case 'public':
-              default:
-                return 'bg-gradient-to-r from-blue-600 to-purple-600';
-            }
-          };
+        // Get background gradient based on challenge type
+        const getBackgroundGradient = () => {
+          switch (type) {
+            case 'private':
+              return 'bg-gradient-to-br from-purple-600 to-purple-800';
+            case 'quick':
+              return 'bg-gradient-to-br from-orange-500 to-yellow-600';
+            case 'public':
+            default:
+              return 'bg-gradient-to-br from-blue-600 to-purple-700';
+          }
+        };
 
-          // Type badge
-          const getTypeBadge = () => {
-            switch (type) {
-              case 'private':
-                return { icon: '🔒', label: 'Private' };
-              case 'quick':
-                return { icon: '⚡', label: 'Quick' };
-              case 'public':
-              default:
-                return { icon: '🌐', label: 'Public' };
-            }
-          };
+        // Get type badge info
+        const getTypeBadge = () => {
+          switch (type) {
+            case 'private':
+              return { icon: '🔒', label: 'Private' };
+            case 'quick':
+              return { icon: '⚡', label: 'Quick' };
+            case 'public':
+            default:
+              return { icon: '🌐', label: 'Public' };
+          }
+        };
 
-          const typeBadge = getTypeBadge();
-          const timeLeft = challenge.duration_days ? `${challenge.duration_days}d` : '∞';
+        const typeBadge = getTypeBadge();
+        const timeLeft = challenge.duration_days ? `${challenge.duration_days}d` : '∞';
+        
+        // Get challenge details
+        const challengeIcon = type === 'private' 
+          ? (challenge as any).emoji_icon || '🎯'
+          : (challenge as any).badge_icon || '🎯';
+        
+        const challengeSubtitle = type === 'private'
+          ? (challenge as any).challenge_type || (challenge as any).description
+          : (challenge as any).goal_description || (challenge as any).description;
 
-          // Get challenge icon and description
-          const challengeIcon = type === 'private' 
-            ? (challenge as any).emoji_icon || '🎯'
-            : (challenge as any).badge_icon || '🎯';
-          
-          const challengeDescription = type === 'private'
-            ? (challenge as any).challenge_type || (challenge as any).description
-            : (challenge as any).goal_description || (challenge as any).description;
+        const participantCount = type === 'private'
+          ? (challenge as any).max_participants || 1
+          : (challenge as any).participant_count || 1;
 
-          // Get participant count
-          const participantCount = type === 'private'
-            ? (challenge as any).max_participants || 1
-            : (challenge as any).participant_count || 1;
+        const maxParticipants = type === 'private'
+          ? (challenge as any).max_participants || 1
+          : 10; // Default for public challenges
 
-          return (
-            <Card key={`${type}-${challenge.id}`} className="overflow-hidden border-0 bg-card/80 backdrop-blur">
-              {/* Header with gradient */}
-              <div className={`${getHeaderClass()} p-4 text-white`}>
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+        return (
+          <div key={`${type}-${challenge.id}`} className="rounded-2xl overflow-hidden shadow-lg">
+            {/* Header Section - Matches second image exactly */}
+            <div className={`${getBackgroundGradient()} p-4 text-white relative`}>
+              {/* Top row with badges */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-white/20 text-white text-xs px-2 py-1 border-0">
                     {typeBadge.icon} {typeBadge.label}
                   </Badge>
-                  <div className="flex items-center gap-1 text-sm">
-                    <Clock className="w-4 h-4" />
-                    <span>{timeLeft}</span>
-                  </div>
+                  {progressPercentage > 70 && (
+                    <Badge className="bg-yellow-500/30 text-yellow-100 text-xs px-2 py-1 border-0">
+                      🔥 Trending
+                    </Badge>
+                  )}
                 </div>
-                
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="text-2xl">{challengeIcon}</span>
-                    {challenge.title}
-                  </h3>
-                  <p className="text-white/90 text-sm">
-                    {challengeDescription}
-                  </p>
-                  {type === 'private' && (
-                    <p className="text-white/70 text-xs flex items-center gap-1">
-                      <span>📝</span>
-                      Created by {(challenge as any).creator_id === participation.user_id ? 'You' : 'Friend'}
-                    </p>
+                <div className="flex items-center gap-1 text-sm opacity-90">
+                  <Clock className="w-4 h-4" />
+                  <span>{timeLeft}</span>
+                </div>
+              </div>
+              
+              {/* Challenge title and subtitle */}
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold">{challenge.title} {challengeIcon}</h3>
+                <p className="text-sm opacity-90">{challengeIcon} {challengeSubtitle}</p>
+                {type === 'private' && (
+                  <div className="flex items-center gap-1 text-xs opacity-75">
+                    <span>📝</span>
+                    <span>Created by {(challenge as any).creator_id === participation.user_id ? 'You' : 'Friend'} ⭐</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Content Section - Dark background like second image */}
+            <div className="bg-slate-800 text-white p-4 space-y-4">
+              {/* Group Progress */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-300">Group Progress</span>
+                  <span className="text-sm text-slate-400">{Math.round(progressPercentage)}%</span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div 
+                    className="bg-emerald-500 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${progressPercentage}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    <span>{participantCount} participants / {maxParticipants}</span>
+                  </div>
+                  {participation.streak_count > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Flame className="w-3 h-3" />
+                      {participation.streak_count} day streak
+                    </span>
                   )}
                 </div>
               </div>
 
-              <CardContent className="p-4 space-y-4">
-                {/* Group Progress */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Group Progress</span>
-                    <span className="text-sm text-muted-foreground">
-                      {Math.round(progressPercentage)}%
-                    </span>
-                  </div>
-                  <Progress value={progressPercentage} className="h-2" />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{participantCount} participants</span>
-                    {participation.streak_count > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Flame className="w-3 h-3" />
-                        {participation.streak_count} day streak
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Participant Avatars */}
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    {/* Mock avatars - replace with actual participant data */}
-                    {[1, 2, 3].slice(0, Math.min(3, participantCount)).map((i) => (
-                      <div 
-                        key={i}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 border-2 border-background flex items-center justify-center text-white text-xs font-bold"
-                      >
-                        {i === 1 ? '🏆' : i === 2 ? '⭐' : '💪'}
-                      </div>
-                    ))}
-                  </div>
-                  {participantCount > 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{participantCount - 3} more
-                    </span>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <Button 
-                    className="flex-1 bg-primary hover:bg-primary/90"
-                    onClick={() => {
-                      if (confirm('Do you want to leave this challenge?')) {
-                        onLeave(challenge.id);
-                      }
+              {/* Participant Avatars - Exactly like second image */}
+              <div className="flex -space-x-2">
+                {[1, 2, 3].slice(0, Math.min(3, participantCount)).map((i) => (
+                  <div 
+                    key={i}
+                    className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center text-white text-sm font-bold"
+                    style={{
+                      background: i === 1 ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                                 i === 2 ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : 
+                                 'linear-gradient(135deg, #f59e0b, #d97706)'
                     }}
                   >
-                    Joined
-                  </Button>
-                  
-                  {type === 'private' && (
-                    <Button variant="outline" size="sm">
-                      <Users className="w-4 h-4 mr-1" />
-                      Invite
-                    </Button>
-                  )}
-                  
-                  <Button variant="outline" size="sm">
-                    <Users className="w-4 h-4 mr-1" />
-                    Chat
-                  </Button>
-                </div>
-
-                {isCompleted && participation.completed_at && (
-                  <div className="text-xs text-muted-foreground pt-2 border-t flex items-center gap-1">
-                    <Trophy className="w-3 h-3 text-yellow-500" />
-                    Completed on {new Date(participation.completed_at).toLocaleDateString()}
+                    {i === 1 ? '⭐' : i === 2 ? '❄️' : '🔥'}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                ))}
+              </div>
+
+              {/* Action Buttons - Exactly like second image layout */}
+              <div className="flex gap-3">
+                <Button 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  onClick={() => {
+                    if (confirm('Do you want to leave this challenge?')) {
+                      onLeave(challenge.id);
+                    }
+                  }}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Joined
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Add floating create button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button 
+          onClick={() => setShowCreateModal(true)}
+          className="rounded-full w-14 h-14 bg-primary hover:bg-primary/90 shadow-lg"
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
       </div>
 
       {/* Creation Modal */}
