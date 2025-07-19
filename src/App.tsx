@@ -15,7 +15,7 @@ import { SmartTimingProvider } from '@/contexts/SmartTimingContext';
 import { OptimizedChallengeProvider } from '@/contexts/OptimizedChallengeProvider';
 import { SocialBoostManager } from '@/components/social/SocialBoostManager';
 import { AppWithNotifications } from '@/components/AppWithNotifications';
-import Layout from '@/components/Layout';
+import { Layout } from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ProtectedRoute } from '@/components/ProtectedRoute';

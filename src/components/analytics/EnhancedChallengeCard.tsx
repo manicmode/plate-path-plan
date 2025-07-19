@@ -71,7 +71,7 @@ export const EnhancedChallengeCard: React.FC<EnhancedChallengeCardProps> = ({
       await broadcastProgress(challenge.id, data.completion_percentage);
       
       // Send completion notification
-      if (data.is_completed && !challenge.progress >= 100) {
+      if (data.is_completed && challenge.progress < 100) {
         await sendNotification(
           user.id,
           'challenge_complete',

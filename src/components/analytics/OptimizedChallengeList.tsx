@@ -1,6 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { FixedSizeList as List } from 'react-window';
+import { Trophy } from 'lucide-react';
 import { EnhancedChallengeCard } from './EnhancedChallengeCard';
 
 interface Challenge {
@@ -69,6 +70,7 @@ export const OptimizedChallengeList: React.FC<OptimizedChallengeListProps> = ({
     return (
       <List
         height={height}
+        width="100%"
         itemCount={challenges.length}
         itemSize={280} // Approximate height of each challenge card
         itemData={itemData}

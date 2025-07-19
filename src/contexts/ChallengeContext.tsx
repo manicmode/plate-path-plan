@@ -36,7 +36,7 @@ interface ChallengeContextType {
   loading: boolean;
 }
 
-const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
+export const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
 
 export const useChallenge = () => {
   const context = useContext(ChallengeContext);

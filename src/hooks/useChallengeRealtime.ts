@@ -21,10 +21,12 @@ export const useChallengeRealtime = (challengeIds: string[]) => {
       const channel = supabase
         .channel(`challenge-${challengeId}`)
         .on('broadcast', { event: 'progress_update' }, (payload) => {
-          setUpdates(prev => [...prev, payload as RealtimeUpdate]);
+          const update = payload.payload as RealtimeUpdate;
+          setUpdates(prev => [...prev, update]);
         })
         .on('broadcast', { event: 'challenge_complete' }, (payload) => {
-          setUpdates(prev => [...prev, { ...payload, type: 'completion' } as RealtimeUpdate]);
+          const update = { ...payload.payload, type: 'completion' } as RealtimeUpdate;
+          setUpdates(prev => [...prev, update]);
         })
         .subscribe();
 

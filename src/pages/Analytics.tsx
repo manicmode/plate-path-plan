@@ -1,9 +1,8 @@
 import React from 'react';
-import { SectionHeader } from '@/components/ui/SectionHeader';
+import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CircleUserRound, CalendarClock, CheckCircle2, Flame, Users } from 'lucide-react';
-import { ChallengeContext } from '@/contexts/ChallengeContext';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 import { OptimizedChallengeList } from '@/components/analytics/OptimizedChallengeList';
@@ -14,17 +13,22 @@ interface AnalyticsProps {
   // Add any props here
 }
 
-export const Analytics: React.FC<AnalyticsProps> = ({ /* props */ }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ /* props */ }) => {
   const { activeChallenges, refreshActiveChallenges } = useActiveChallenges();
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <SectionHeader title="Analytics Dashboard" subtitle="Track your progress and stay motivated!" />
+      <SectionHeader 
+        icon={Flame} 
+        title="Analytics Dashboard" 
+        subtitle="Track your progress and stay motivated!" 
+      />
 
       {/* Active Challenges Section - Enhanced */}
       <div className="space-y-4">
         <SectionHeader 
+          icon={Users}
           title="My Active Challenges" 
           subtitle={`${activeChallenges.length} active challenges`}
         />
@@ -53,3 +57,5 @@ export const Analytics: React.FC<AnalyticsProps> = ({ /* props */ }) => {
     </div>
   );
 };
+
+export default Analytics;
