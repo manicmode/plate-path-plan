@@ -1091,7 +1091,7 @@ function GameAndChallengeContent() {
               </Card>
               
               {/* Micro-Challenges Section */}
-              <div className="mt-8">
+              <div className="mt-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <Sparkles className="h-6 w-6 text-yellow-500" />
