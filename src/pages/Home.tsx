@@ -444,8 +444,7 @@ const Home = () => {
       {/* Daily Score Card - Enhanced with Real Data */}
       {todayScore !== null && (
         <DailyScoreCard 
-          score={todayScore} 
-          activeChallengesCount={activeChallenges.length}
+          score={todayScore}
         />
       )}
 
@@ -505,7 +504,7 @@ const Home = () => {
                     className="w-full mt-3 bg-white/10 border-white/20 hover:bg-white/20"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openInsights(tracker.name.toLowerCase());
+                      openInsights({ type: tracker.name.toLowerCase(), name: tracker.name, color: tracker.color });
                     }}
                   >
                     <TrendingUp className="mr-1 h-3 w-3" />
@@ -540,6 +539,7 @@ const Home = () => {
       {/* Celebration Popup */}
       {showCelebration && (
         <CelebrationPopup
+          show={showCelebration}
           onClose={() => setShowCelebration(false)}
           message={celebrationType}
         />
@@ -550,10 +550,10 @@ const Home = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">
-              {typeof selectedTracker === 'string' ? selectedTracker.charAt(0).toUpperCase() + selectedTracker.slice(1) : 'Tracker'} Insights
+              {selectedTracker ? selectedTracker.name : 'Tracker'} Insights
             </h3>
             <p className="text-muted-foreground mb-4">
-              Detailed insights for your {typeof selectedTracker === 'string' ? selectedTraker : 'tracker'} tracking coming soon!
+              Detailed insights for your {selectedTracker?.name || 'tracker'} tracking coming soon!
             </p>
             <Button onClick={closeInsights} className="w-full">
               Close
