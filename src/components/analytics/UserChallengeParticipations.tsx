@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle } from 'lucide-react';
+import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle, Zap } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
@@ -108,16 +108,16 @@ export const UserChallengeParticipations: React.FC = () => {
       ? (participation as any).completion_percentage || 0
       : participation.completion_percentage || 0;
 
-    // Get background gradient based on challenge type - matching reference images
+    // Get modern background gradient with glassmorphism
     const getBackgroundGradient = () => {
       switch (type) {
         case 'private':
-          return 'bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700';
+          return 'bg-gradient-to-br from-purple-500/30 via-purple-600/25 to-purple-700/20 backdrop-blur-xl border border-purple-300/20';
         case 'quick':
-          return 'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600';
+          return 'bg-gradient-to-br from-orange-400/30 via-orange-500/25 to-orange-600/20 backdrop-blur-xl border border-orange-300/20';
         case 'public':
         default:
-          return 'bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600';
+          return 'bg-gradient-to-br from-blue-500/30 via-blue-600/25 to-purple-600/20 backdrop-blur-xl border border-blue-300/20';
       }
     };
 
@@ -155,43 +155,44 @@ export const UserChallengeParticipations: React.FC = () => {
 
     return (
       <div className="min-w-full px-4 scroll-snap-align-start">
-        <Card className="w-full overflow-hidden bg-gray-800 border-gray-700">
-          {/* Header Section with Gradient - exactly matching reference */}
-          <div className={`${getBackgroundGradient()} p-4 text-white relative rounded-t-lg`}>
+        <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300 h-80">
+          {/* Header Section with Gradient - modern glassmorphism design */}
+          <div className={`${getBackgroundGradient()} p-6 text-white relative rounded-t-2xl h-32`}>
             {/* Type badge and time in top row */}
-            <div className="flex items-center justify-between mb-3">
-              <Badge className="bg-white/20 text-white border-white/30 text-xs">
+            <div className="flex items-center justify-between mb-4">
+              <Badge className="bg-white/25 text-white border-white/40 text-xs px-3 py-1 rounded-full backdrop-blur-sm">
                 <typeBadge.icon className="w-3 h-3 mr-1" />
                 {typeBadge.label}
               </Badge>
-              <div className="flex items-center gap-1 text-sm">
+              <div className="flex items-center gap-2 text-sm bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
                 <Clock className="w-4 h-4" />
-                <span>{timeLeft}</span>
+                <span className="font-medium">{timeLeft}</span>
               </div>
             </div>
             
             {/* Title with emoji */}
-            <h3 className="text-lg font-bold flex items-center gap-2 mb-1">
-              {challengeIcon} {challengeTitle}
+            <h3 className="text-xl font-bold flex items-center gap-3 mb-2">
+              <span className="text-2xl">{challengeIcon}</span>
+              <span className="truncate">{challengeTitle}</span>
             </h3>
             
             {/* Description */}
-            <p className="text-sm text-white/90">
+            <p className="text-sm text-white/95 line-clamp-2">
               {challengeDescription}
             </p>
           </div>
 
-          {/* Dark bottom section - matching reference exactly */}
-          <div className="bg-gray-800 p-4 space-y-4">
+          {/* Modern bottom section with glassmorphism */}
+          <div className="bg-card/80 backdrop-blur-xl p-6 space-y-5 h-48">
             {/* Progress section */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-white font-medium">Your Progress</span>
-                <span className="text-gray-400">{Math.round(progressPercentage)}%</span>
+                <span className="text-foreground font-semibold">Your Progress</span>
+                <span className="text-muted-foreground font-medium">{Math.round(progressPercentage)}%</span>
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
+              <div className="w-full bg-muted/40 rounded-full h-3 overflow-hidden">
                 <div 
-                  className="bg-teal-400 h-2 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>
@@ -199,30 +200,30 @@ export const UserChallengeParticipations: React.FC = () => {
 
             {/* Participants count and status */}
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-gray-400">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="w-4 h-4" />
-                <span>{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
+                <span className="font-medium">{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
               </div>
-              <div className="flex items-center gap-1 text-yellow-400">
+              <div className="flex items-center gap-2 text-green-600">
                 <Trophy className="w-4 h-4" />
-                <span>Active</span>
+                <span className="font-semibold">Active</span>
               </div>
             </div>
 
             {/* Participant avatar */}
             <div className="flex gap-2">
-              <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center">
-                <span className="text-lg">😊</span>
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                <span className="text-xl">😊</span>
               </div>
             </div>
 
-            {/* Action buttons - exactly matching reference */}
-            <div className="flex gap-2">
+            {/* Action buttons - modern design with better spacing */}
+            <div className="flex gap-3 pt-2">
               <Button 
                 variant="outline"
                 size="sm"
                 onClick={() => handleShare(challengeTitle)}
-                className="flex-1 bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                className="flex-1 bg-muted/50 border-border/50 hover:bg-muted/70 transition-all duration-200"
               >
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
@@ -231,7 +232,7 @@ export const UserChallengeParticipations: React.FC = () => {
               <Button 
                 variant="outline"
                 size="sm"
-                className="flex-1 bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                className="flex-1 bg-muted/50 border-border/50 hover:bg-muted/70 transition-all duration-200"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Chat
@@ -245,7 +246,7 @@ export const UserChallengeParticipations: React.FC = () => {
                     onLeave(challenge.id);
                   }
                 }}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-red-500/80 hover:bg-red-500 backdrop-blur-sm transition-all duration-200"
               >
                 Leave
               </Button>
@@ -271,8 +272,8 @@ export const UserChallengeParticipations: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     return (
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold flex items-center gap-2 px-4">
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold flex items-center justify-center gap-2 px-4">
           <Icon className={`w-5 h-5 ${iconColor}`} />
           {title}
         </h2>
@@ -298,17 +299,17 @@ export const UserChallengeParticipations: React.FC = () => {
           {challenges.length > 1 && (
             <>
               {/* Left fade indicator */}
-              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-900 to-transparent pointer-events-none" />
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
               
               {/* Right fade indicator with peeking card edge */}
-              <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-900 via-gray-900/80 to-transparent pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background via-background/80 to-transparent pointer-events-none z-10" />
               
               {/* Scroll indicator dots */}
               <div className="flex justify-center mt-4 gap-2">
                 {challenges.map((_, index) => (
                   <div 
                     key={index}
-                    className="w-2 h-2 rounded-full bg-gray-600 transition-colors"
+                    className="w-2 h-2 rounded-full bg-muted-foreground/40 transition-colors"
                   />
                 ))}
               </div>
@@ -341,12 +342,12 @@ export const UserChallengeParticipations: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 bg-gray-900 min-h-screen">
+    <div className="space-y-8 min-h-screen">
       {/* Centered Create Challenge Button */}
       <div className="flex justify-center pt-4 pb-2">
         <Button 
           onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl flex items-center gap-2"
+          className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-4 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Create New Challenge

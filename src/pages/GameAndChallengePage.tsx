@@ -34,7 +34,10 @@ import {
   Plus,
   Filter,
   Sparkles,
-  CheckCircle
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
@@ -600,13 +603,13 @@ function GameAndChallengeContent() {
       )}
 
       {/* Mobile-Optimized Navigation - Fixed positioning */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b">
+      <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
           {isMobile ? (
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
               <div className="flex items-center justify-center">
-                <h1 className="text-lg font-bold">Game & Challenge</h1>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
               </div>
               
               {/* Mobile horizontal scroll tabs */}
@@ -935,10 +938,9 @@ function GameAndChallengeContent() {
             </TabsContent>
 
             <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Star className="h-5 w-5 text-purple-600" />
-                  <h2 className="text-lg font-bold">My Active Challenges</h2>
+              <div className="space-y-8">
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">My Active Challenges</h2>
                 </div>
                 
                 <UserChallengeParticipations />
