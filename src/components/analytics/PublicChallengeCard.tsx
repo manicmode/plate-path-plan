@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 import { PublicChallenge, UserChallengeParticipation } from '@/hooks/usePublicChallenges';
 import { UnifiedChallengeCard, ChallengeType } from './UnifiedChallengeCard';
 
@@ -10,22 +10,22 @@ interface PublicChallengeCardProps {
   onLeave: (challengeId: string) => Promise<boolean>;
 }
 
-export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = ({
+export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = memo(({
   challenge,
   participation,
   onJoin,
   onUpdateProgress,
   onLeave,
 }) => {
-  const isParticipating = !!participation;
-  const isCompleted = participation?.is_completed || false;
-  const progressPercentage = participation?.completion_percentage || 0;
-
-  // Determine challenge type based on duration for color coding
-  const getChallengeType = (): ChallengeType => {
-    if (challenge.duration_days <= 3) return 'quick';
-    return 'global';
-  };
+  // Memoize computed values to prevent recalculation on every render
+  const { isParticipating, isCompleted, progressPercentage, challengeType } = useMemo(() => {
+    return {
+      isParticipating: !!participation,
+      isCompleted: participation?.is_completed || false,
+      progressPercentage: participation?.completion_percentage || 0,
+      challengeType: (challenge.duration_days <= 3 ? 'quick' : 'global') as ChallengeType
+    };
+  }, [participation, challenge.duration_days]);
 
   const handleJoin = async () => {
     await onJoin(challenge.id);
@@ -41,7 +41,7 @@ export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = ({
       title={challenge.title}
       description={challenge.goal_description}
       badgeIcon={challenge.badge_icon}
-      challengeType={getChallengeType()}
+      challengeType={challengeType}
       durationDays={challenge.duration_days}
       participantCount={challenge.participant_count}
       targetValue={challenge.target_value}
@@ -58,4 +58,4 @@ export const PublicChallengeCard: React.FC<PublicChallengeCardProps> = ({
       onLeave={handleLeave}
     />
   );
-};
+});

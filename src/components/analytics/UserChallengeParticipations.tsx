@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -50,34 +50,43 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   }
 
-  // Process all user participations and categorize them properly
-  const allPublicChallenges = userParticipations.map((participation) => {
-    const challenge = challenges.find(c => c.id === participation.challenge_id);
-    if (!challenge) return null;
-    
-    return {
-      type: challenge.duration_days <= 3 ? 'quick' : 'public',
+  // Memoize processed challenges to prevent recalculation on every render
+  const { allPublicChallenges, privateChallenges, quickChallenges, regularPublicChallenges } = useMemo(() => {
+    const publicChallenges = userParticipations.map((participation) => {
+      const challenge = challenges.find(c => c.id === participation.challenge_id);
+      if (!challenge) return null;
+      
+      return {
+        type: challenge.duration_days <= 3 ? 'quick' : 'public',
+        challenge,
+        participation,
+        onLeave: async (challengeId: string) => {
+          return leaveChallenge(challengeId);
+        }
+      };
+    }).filter(Boolean);
+
+    const privateChallengesData = challengesWithParticipation.map(({ participation, ...challenge }) => ({
+      type: 'private',
       challenge,
-      participation,
+      participation: participation!,
       onLeave: async (challengeId: string) => {
-        return leaveChallenge(challengeId);
+        console.log('Leave private challenge:', challengeId);
+        return true;
       }
+    }));
+
+    // Separate by type
+    const quickChallengesData = publicChallenges.filter(item => item?.type === 'quick');
+    const regularPublicChallengesData = publicChallenges.filter(item => item?.type === 'public');
+
+    return {
+      allPublicChallenges: publicChallenges,
+      privateChallenges: privateChallengesData,
+      quickChallenges: quickChallengesData,
+      regularPublicChallenges: regularPublicChallengesData
     };
-  }).filter(Boolean);
-
-  const privateChallenges = challengesWithParticipation.map(({ participation, ...challenge }) => ({
-    type: 'private',
-    challenge,
-    participation: participation!,
-    onLeave: async (challengeId: string) => {
-      console.log('Leave private challenge:', challengeId);
-      return true;
-    }
-  }));
-
-  // Separate by type
-  const quickChallenges = allPublicChallenges.filter(item => item?.type === 'quick');
-  const regularPublicChallenges = allPublicChallenges.filter(item => item?.type === 'public');
+  }, [userParticipations, challenges, challengesWithParticipation, leaveChallenge]);
 
   const handleShare = (challengeName: string) => {
     const shareText = `Join me in the "${challengeName}" challenge! 💪`;
@@ -95,64 +104,83 @@ export const UserChallengeParticipations: React.FC = () => {
     }
   };
 
-  const ChallengeCard = ({ item }: { item: any }) => {
+  const ChallengeCard = memo(({ item }: { item: any }) => {
     if (!item) return null;
     
     const { type, challenge, participation, onLeave } = item;
     
-    const progressPercentage = type === 'private'
-      ? (participation as any).completion_percentage || 0
-      : participation.completion_percentage || 0;
+    // Memoize expensive calculations
+    const {
+      progressPercentage,
+      backgroundGradient,
+      typeBadge,
+      timeLeft,
+      challengeIcon,
+      challengeTitle,
+      challengeDescription,
+      participantCount
+    } = useMemo(() => {
+      const progress = type === 'private'
+        ? (participation as any).completion_percentage || 0
+        : participation.completion_percentage || 0;
 
-    // Get modern background gradient with glassmorphism
-    const getBackgroundGradient = () => {
-      switch (type) {
-        case 'private':
-          return 'bg-gradient-to-br from-purple-500/30 via-purple-600/25 to-purple-700/20 backdrop-blur-xl border border-purple-300/20';
-        case 'quick':
-          return 'bg-gradient-to-br from-orange-400/30 via-orange-500/25 to-orange-600/20 backdrop-blur-xl border border-orange-300/20';
-        case 'public':
-        default:
-          return 'bg-gradient-to-br from-blue-500/30 via-blue-600/25 to-purple-600/20 backdrop-blur-xl border border-blue-300/20';
-      }
-    };
+      const gradient = (() => {
+        switch (type) {
+          case 'private':
+            return 'bg-gradient-to-br from-purple-500/30 via-purple-600/25 to-purple-700/20 backdrop-blur-xl border border-purple-300/20';
+          case 'quick':
+            return 'bg-gradient-to-br from-orange-400/30 via-orange-500/25 to-orange-600/20 backdrop-blur-xl border border-orange-300/20';
+          case 'public':
+          default:
+            return 'bg-gradient-to-br from-blue-500/30 via-blue-600/25 to-purple-600/20 backdrop-blur-xl border border-blue-300/20';
+        }
+      })();
 
-    // Get type badge info
-    const getTypeBadge = () => {
-      switch (type) {
-        case 'private':
-          return { icon: Lock, label: 'Private' };
-        case 'quick':
-          return { icon: Flame, label: 'Quick' };
-        case 'public':
-        default:
-          return { icon: Users, label: 'Public' };
-      }
-    };
+      const badge = (() => {
+        switch (type) {
+          case 'private':
+            return { icon: Lock, label: 'Private' };
+          case 'quick':
+            return { icon: Flame, label: 'Quick' };
+          case 'public':
+          default:
+            return { icon: Users, label: 'Public' };
+        }
+      })();
 
-    const typeBadge = getTypeBadge();
-    const timeLeft = challenge.duration_days ? `${challenge.duration_days}d` : '∞';
-    
-    // Get challenge details
-    const challengeIcon = type === 'private' 
-      ? (challenge as any).badge_icon || '🧘'
-      : type === 'quick' 
-        ? (challenge as any).badge_icon || '🏃'
-        : (challenge as any).badge_icon || '🧘';
-    
-    const challengeTitle = challenge.title;
-    const challengeDescription = type === 'private'
-      ? (challenge as any).description
-      : (challenge as any).goal_description || (challenge as any).description;
+      const time = challenge.duration_days ? `${challenge.duration_days}d` : '∞';
+      
+      const icon = type === 'private' 
+        ? (challenge as any).badge_icon || '🧘'
+        : type === 'quick' 
+          ? (challenge as any).badge_icon || '🏃'
+          : (challenge as any).badge_icon || '🧘';
+      
+      const title = challenge.title;
+      const description = type === 'private'
+        ? (challenge as any).description
+        : (challenge as any).goal_description || (challenge as any).description;
 
-    const participantCount = type === 'private'
-      ? 1 // For now, private challenges show 1 participant
-      : (challenge as any).participant_count || 1;
+      const participants = type === 'private'
+        ? 1 // For now, private challenges show 1 participant
+        : (challenge as any).participant_count || 1;
+
+      return {
+        progressPercentage: progress,
+        backgroundGradient: gradient,
+        typeBadge: badge,
+        timeLeft: time,
+        challengeIcon: icon,
+        challengeTitle: title,
+        challengeDescription: description,
+        participantCount: participants
+      };
+    }, [type, participation, challenge]);
 
     return (
       <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300">
         {/* Header Section with Gradient - modern glassmorphism design */}
-        <div className={`${getBackgroundGradient()} p-6 text-white relative rounded-t-2xl h-32`}>
+        <div className={`${backgroundGradient} p-6 text-white relative rounded-t-2xl h-32`}>
           {/* Type badge and time in top row */}
           <div className="flex items-center justify-between mb-4">
             <Badge className="bg-white/25 text-white border-white/40 text-xs px-3 py-1 rounded-full backdrop-blur-sm">
@@ -255,10 +283,10 @@ export const UserChallengeParticipations: React.FC = () => {
           </div>
         </Card>
     );
-  };
+  });
 
-  // Vertical Stack Section Component
-  const VerticalStack = ({ 
+  // Memoized Vertical Stack Section Component
+  const VerticalStack = memo(({ 
     title, 
     icon: Icon, 
     iconColor, 
@@ -283,9 +311,13 @@ export const UserChallengeParticipations: React.FC = () => {
         </div>
       </div>
     );
-  };
+  });
 
-  const hasAnyChallenges = privateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
+  // Memoize the hasAnyChallenges check
+  const hasAnyChallenges = useMemo(() => 
+    privateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0,
+    [privateChallenges.length, regularPublicChallenges.length, quickChallenges.length]
+  );
 
   if (!hasAnyChallenges) {
     return (

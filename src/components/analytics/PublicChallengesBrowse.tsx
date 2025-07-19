@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +7,7 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
-export const PublicChallengesBrowse: React.FC = () => {
+export const PublicChallengesBrowse: React.FC = memo(() => {
   const {
     globalChallenges,
     quickChallenges,
@@ -19,6 +19,31 @@ export const PublicChallengesBrowse: React.FC = () => {
     leaveChallenge,
     getUserParticipation,
   } = usePublicChallenges();
+
+  // Memoize challenge statistics calculations
+  const challengeStats = useMemo(() => ({
+    globalCount: globalChallenges.length,
+    quickCount: quickChallenges.length,
+    trendingCount: trendingChallenges.length,
+    totalParticipants: globalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
+                     quickChallenges.reduce((sum, c) => sum + c.participant_count, 0)
+  }), [globalChallenges, quickChallenges, trendingChallenges]);
+
+  // Memoized challenge grid component
+  const ChallengeGrid = memo(({ challenges, columns = "lg:grid-cols-3" }: { challenges: any[], columns?: string }) => (
+    <div className={`grid grid-cols-1 md:grid-cols-2 ${columns} gap-4`}>
+      {challenges.map((challenge) => (
+        <PublicChallengeCard
+          key={challenge.id}
+          challenge={challenge}
+          participation={getUserParticipation(challenge.id)}
+          onJoin={joinChallenge}
+          onUpdateProgress={updateProgress}
+          onLeave={leaveChallenge}
+        />
+      ))}
+    </div>
+  ));
 
   if (loading) {
     return <LoadingScreen />;
@@ -70,18 +95,7 @@ export const PublicChallengesBrowse: React.FC = () => {
                   No global challenges available right now
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {globalChallenges.map((challenge) => (
-                    <PublicChallengeCard
-                      key={challenge.id}
-                      challenge={challenge}
-                      participation={getUserParticipation(challenge.id)}
-                      onJoin={joinChallenge}
-                      onUpdateProgress={updateProgress}
-                      onLeave={leaveChallenge}
-                    />
-                  ))}
-                </div>
+                <ChallengeGrid challenges={globalChallenges} />
               )}
             </CardContent>
           </Card>
@@ -104,18 +118,7 @@ export const PublicChallengesBrowse: React.FC = () => {
                   No quick challenges available right now
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {quickChallenges.map((challenge) => (
-                    <PublicChallengeCard
-                      key={challenge.id}
-                      challenge={challenge}
-                      participation={getUserParticipation(challenge.id)}
-                      onJoin={joinChallenge}
-                      onUpdateProgress={updateProgress}
-                      onLeave={leaveChallenge}
-                    />
-                  ))}
-                </div>
+                <ChallengeGrid challenges={quickChallenges} columns="lg:grid-cols-4" />
               )}
             </CardContent>
           </Card>
@@ -138,18 +141,7 @@ export const PublicChallengesBrowse: React.FC = () => {
                   No trending challenges right now
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {trendingChallenges.map((challenge) => (
-                    <PublicChallengeCard
-                      key={challenge.id}
-                      challenge={challenge}
-                      participation={getUserParticipation(challenge.id)}
-                      onJoin={joinChallenge}
-                      onUpdateProgress={updateProgress}
-                      onLeave={leaveChallenge}
-                    />
-                  ))}
-                </div>
+                <ChallengeGrid challenges={trendingChallenges} />
               )}
             </CardContent>
           </Card>
@@ -172,18 +164,7 @@ export const PublicChallengesBrowse: React.FC = () => {
                   No new challenges available right now
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {newChallenges.map((challenge) => (
-                    <PublicChallengeCard
-                      key={challenge.id}
-                      challenge={challenge}
-                      participation={getUserParticipation(challenge.id)}
-                      onJoin={joinChallenge}
-                      onUpdateProgress={updateProgress}
-                      onLeave={leaveChallenge}
-                    />
-                  ))}
-                </div>
+                <ChallengeGrid challenges={newChallenges} />
               )}
             </CardContent>
           </Card>
@@ -199,26 +180,25 @@ export const PublicChallengesBrowse: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {globalChallenges.length}
+                {challengeStats.globalCount}
               </div>
               <div className="text-sm text-muted-foreground">Global Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {quickChallenges.length}
+                {challengeStats.quickCount}
               </div>
               <div className="text-sm text-muted-foreground">Quick Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {trendingChallenges.length}
+                {challengeStats.trendingCount}
               </div>
               <div className="text-sm text-muted-foreground">Trending</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {globalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
-                 quickChallenges.reduce((sum, c) => sum + c.participant_count, 0)}
+                {challengeStats.totalParticipants}
               </div>
               <div className="text-sm text-muted-foreground">Total Participants</div>
             </div>
@@ -227,4 +207,4 @@ export const PublicChallengesBrowse: React.FC = () => {
       </Card>
     </div>
   );
-};
+});
