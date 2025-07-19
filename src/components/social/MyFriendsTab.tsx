@@ -125,23 +125,6 @@ export const MyFriendsTab = () => {
         </p>
       </div>
 
-      {/* Create Challenge Section - Moved to top */}
-      <div className="text-center space-y-3 pb-4">
-        <div className="text-lg font-semibold text-foreground">
-          Motivate and grow together on your wellness journey
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Create challenges with your friends to stay motivated and achieve your goals together
-        </p>
-        <Button 
-          onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
-        >
-          <Users className="w-5 h-5" />
-          Create New Challenge
-        </Button>
-      </div>
-
       <Tabs defaultValue="friends" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="friends" className="flex items-center gap-2">
@@ -193,13 +176,32 @@ export const MyFriendsTab = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="text-sm text-muted-foreground mt-2">Loading friends...</p>
                 </div>
-              ) : friends.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-medium mb-2">No friends yet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Connect with others to see them here
-                  </p>
+               ) : friends.length === 0 ? (
+                <div className="text-center py-8 space-y-6">
+                  <div>
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="font-medium mb-2">No friends yet</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Connect with others to see them here
+                    </p>
+                  </div>
+                  
+                  {/* Motivational section moved here */}
+                  <div className="space-y-3 pt-4 border-t border-border/50">
+                    <div className="text-lg font-semibold text-foreground">
+                      Motivate and grow together on your wellness journey
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Create challenges with your friends to stay motivated and achieve your goals together
+                    </p>
+                    <Button 
+                      onClick={() => setShowCreateModal(true)}
+                      className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                    >
+                      <Users className="w-5 h-5" />
+                      Create New Challenge
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 friends.map((friend) => (
