@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,7 +12,7 @@ import { BadgeProvider } from '@/contexts/BadgeContext';
 import { AuthProvider } from '@/contexts/auth';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import { SmartTimingProvider } from '@/contexts/SmartTimingContext';
-import { SimplifiedChallengeProvider } from '@/contexts/SimplifiedChallengeContext';
+import { OptimizedChallengeProvider } from '@/contexts/OptimizedChallengeProvider';
 import { SocialBoostManager } from '@/components/social/SocialBoostManager';
 import { AppWithNotifications } from '@/components/AppWithNotifications';
 import Layout from '@/components/Layout';
@@ -62,7 +63,7 @@ function App() {
                     <NotificationProvider>
                       <IngredientAlertProvider>
                         <BadgeProvider>
-                          <SimplifiedChallengeProvider>
+                          <OptimizedChallengeProvider>
                             <ChatModalProvider>
                               <SocialBoostManager>
                                 <AppWithNotifications>
@@ -201,7 +202,7 @@ function App() {
                               </SocialBoostManager>
                               <Toaster />
                             </ChatModalProvider>
-                          </SimplifiedChallengeProvider>
+                          </OptimizedChallengeProvider>
                         </BadgeProvider>
                       </IngredientAlertProvider>
                     </NotificationProvider>

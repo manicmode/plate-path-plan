@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Users, Calendar, Target, Flame, Star } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
+import { useActiveChallenges } from '@/contexts/ActiveChallengesContext';
+import { usePublicChallengesContext } from '@/contexts/PublicChallengesContext';
+import { useChallengeParticipation } from '@/contexts/ChallengeParticipationContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 const GameAndChallengePage = () => {
@@ -15,21 +17,43 @@ const GameAndChallengePage = () => {
   const [activeTab, setActiveTab] = useState('active');
   
   const {
-    challenges,
+    activeChallenges,
     microChallenges,
-    activeUserChallenges,
-    loading,
-    error,
-    updateProgress
-  } = useSimplifiedChallenge();
+    completedChallenges,
+    totalActiveCount,
+    completionRate,
+    loading: activeChallengesLoading,
+    error: activeChallengesError
+  } = useActiveChallenges();
+
+  const {
+    allChallenges,
+    quickChallenges,
+    globalChallenges,
+    trendingChallenges,
+    newChallenges,
+    loading: publicChallengesLoading,
+    error: publicChallengesError,
+    joinChallenge,
+    leaveChallenge
+  } = usePublicChallengesContext();
+
+  const {
+    updateProgress,
+    loading: participationLoading,
+    error: participationError
+  } = useChallengeParticipation();
 
   console.log('GameAndChallengePage: Rendering with data:', {
-    challengesCount: challenges.length,
+    activeChallengesCount: activeChallenges.length,
     microChallengesCount: microChallenges.length,
-    activeUserChallengesCount: activeUserChallenges.length,
-    loading,
-    error
+    allChallengesCount: allChallenges.length,
+    loading: activeChallengesLoading || publicChallengesLoading || participationLoading,
+    errors: { activeChallengesError, publicChallengesError, participationError }
   });
+
+  const loading = activeChallengesLoading || publicChallengesLoading || participationLoading;
+  const error = activeChallengesError || publicChallengesError || participationError;
 
   if (loading) {
     return <LoadingScreen />;
@@ -58,8 +82,8 @@ const GameAndChallengePage = () => {
     );
   }
 
-  const handleProgressUpdate = (challengeId: string, userId: string, newProgress: number) => {
-    updateProgress(challengeId, userId, newProgress);
+  const handleProgressUpdate = (challengeId: string, newProgress: number) => {
+    updateProgress({ challengeId, value: newProgress });
   };
 
   return (
@@ -80,29 +104,31 @@ const GameAndChallengePage = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <Trophy className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{completedChallenges.length}</div>
               <div className="text-sm text-muted-foreground">Completed</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Target className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-              <div className="text-2xl font-bold">{activeUserChallenges.length}</div>
+              <div className="text-2xl font-bold">{totalActiveCount}</div>
               <div className="text-sm text-muted-foreground">Active</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Flame className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-              <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">Streak</div>
+              <div className="text-2xl font-bold">
+                {activeChallenges.length > 0 ? Math.max(...activeChallenges.map(c => c.streakCount)) : 0}
+              </div>
+              <div className="text-sm text-muted-foreground">Best Streak</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Star className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-              <div className="text-2xl font-bold">0</div>
-              <div className="text-sm text-muted-foreground">Points</div>
+              <div className="text-2xl font-bold">{Math.round(completionRate)}%</div>
+              <div className="text-sm text-muted-foreground">Success Rate</div>
             </CardContent>
           </Card>
         </div>
@@ -128,8 +154,8 @@ const GameAndChallengePage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {activeUserChallenges.length > 0 ? (
-                  activeUserChallenges.map((challenge) => (
+                {activeChallenges.length > 0 ? (
+                  activeChallenges.map((challenge) => (
                     <div key={challenge.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">{challenge.name}</h3>
@@ -140,26 +166,25 @@ const GameAndChallengePage = () => {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span>Progress</span>
-                          <span>{challenge.progress[Object.keys(challenge.progress)[0]] || 0}%</span>
+                          <span>{challenge.progress}%</span>
                         </div>
-                        <Progress value={challenge.progress[Object.keys(challenge.progress)[0]] || 0} />
+                        <Progress value={challenge.progress} />
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {challenge.participants.length} participants
+                          <Flame className="h-4 w-4" />
+                          {challenge.streakCount} day streak
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {Math.ceil((challenge.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left
+                          {challenge.durationDays} days total
                         </div>
                       </div>
                       <Button 
                         size="sm" 
                         onClick={() => {
-                          const currentProgress = challenge.progress[Object.keys(challenge.progress)[0]] || 0;
-                          const newProgress = Math.min(100, currentProgress + 10);
-                          handleProgressUpdate(challenge.id, Object.keys(challenge.progress)[0], newProgress);
+                          const newProgress = Math.min(100, challenge.progress + 10);
+                          handleProgressUpdate(challenge.id, newProgress);
                         }}
                       >
                         Update Progress
@@ -185,12 +210,46 @@ const GameAndChallengePage = () => {
                   Discover new challenges to join and compete!
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>More challenges coming soon!</p>
-                  <p className="text-sm">Check back later for new opportunities.</p>
-                </div>
+              <CardContent className="space-y-4">
+                {allChallenges.length > 0 ? (
+                  <div className="grid gap-4">
+                    {allChallenges.slice(0, 6).map((challenge) => (
+                      <div key={challenge.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">{challenge.title}</h3>
+                          <div className="flex gap-2">
+                            {challenge.isTrending && <Badge variant="secondary">Trending</Badge>}
+                            {challenge.isNew && <Badge variant="outline">New</Badge>}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{challenge.description}</p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {challenge.participantCount} participants
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {challenge.durationDays} days
+                          </div>
+                          <Badge variant="outline">{challenge.difficulty}</Badge>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          onClick={() => joinChallenge(challenge.id)}
+                        >
+                          Join Challenge
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No challenges available right now!</p>
+                    <p className="text-sm">Check back later for new opportunities.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -211,15 +270,15 @@ const GameAndChallengePage = () => {
                         <h3 className="font-semibold">{challenge.name}</h3>
                         <Badge variant="secondary">Micro</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{challenge.customGoal}</p>
+                      <p className="text-sm text-muted-foreground">{challenge.goalDescription}</p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {challenge.participants.length} participants
+                          <Flame className="h-4 w-4" />
+                          {challenge.streakCount} day streak
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {Math.ceil((challenge.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left
+                          {challenge.durationDays} days left
                         </div>
                       </div>
                     </div>

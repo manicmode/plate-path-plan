@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
@@ -45,10 +45,11 @@ interface ActiveChallengesProviderProps {
 export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   console.log('ActiveChallengesProvider: Initializing with user:', user?.id);
 
-  // Initialize hooks with error handling
+  // Initialize hooks with better error handling
   const publicChallengesHook = usePublicChallenges();
   const privateChallengesHook = usePrivateChallenges();
 
@@ -65,21 +66,29 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     refreshData: refreshPrivate
   } = privateChallengesHook || {};
 
-  // Clear error when data loads successfully
+  // Initialize after auth is ready
   useEffect(() => {
-    if (publicChallenges.length > 0 || privateChallenges.length > 0) {
+    if (user !== undefined) { // Wait for auth to initialize (null or user object)
+      setIsInitialized(true);
       setError(null);
     }
-  }, [publicChallenges.length, privateChallenges.length]);
+  }, [user]);
+
+  // Clear error when data loads successfully
+  useEffect(() => {
+    if (isInitialized && (publicChallenges.length > 0 || privateChallenges.length > 0)) {
+      setError(null);
+    }
+  }, [isInitialized, publicChallenges.length, privateChallenges.length]);
 
   // Memoized active challenges with error handling
   const activeChallenges = useMemo(() => {
-    try {
-      if (!user) {
-        console.log('ActiveChallengesProvider: No user, returning empty challenges');
-        return [];
-      }
+    if (!isInitialized || !user) {
+      console.log('ActiveChallengesProvider: Not initialized or no user, returning empty challenges');
+      return [];
+    }
 
+    try {
       console.log('ActiveChallengesProvider: Processing challenges', {
         publicCount: publicChallenges.length,
         privateCount: privateChallenges.length,
@@ -148,7 +157,7 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
       setError('Failed to load active challenges');
       return [];
     }
-  }, [user, publicChallenges, userParticipations, privateChallenges]);
+  }, [isInitialized, user, publicChallenges, userParticipations, privateChallenges]);
 
   // Memoized micro challenges
   const microChallenges = useMemo(() => {
@@ -162,9 +171,9 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
 
   // Memoized completed challenges with error handling
   const completedChallenges = useMemo(() => {
-    try {
-      if (!user) return [];
+    if (!isInitialized || !user) return [];
 
+    try {
       const completedList: ActiveChallenge[] = [];
 
       // Process completed public challenges
@@ -224,7 +233,7 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
       console.error('Error in completedChallenges calculation:', err);
       return [];
     }
-  }, [user, publicChallenges, userParticipations, privateChallenges]);
+  }, [isInitialized, user, publicChallenges, userParticipations, privateChallenges]);
 
   // Memoized calculated values
   const totalActiveCount = useMemo(() => activeChallenges.length, [activeChallenges]);
@@ -239,7 +248,7 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     }
   }, [activeChallenges.length, completedChallenges.length]);
 
-  const refreshActiveChallenges = () => {
+  const refreshActiveChallenges = useCallback(() => {
     try {
       setError(null);
       console.log('ActiveChallengesProvider: Refreshing challenges');
@@ -249,7 +258,9 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
       console.error('Error refreshing challenges:', err);
       setError('Failed to refresh challenges');
     }
-  };
+  }, [refreshPublic, refreshPrivate]);
+
+  const loading = !isInitialized || publicLoading || privateLoading;
 
   const value: ActiveChallengesContextType = {
     activeChallenges,
@@ -257,7 +268,7 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     completedChallenges,
     totalActiveCount,
     completionRate,
-    loading: publicLoading || privateLoading,
+    loading,
     error,
     refreshActiveChallenges,
   };
@@ -267,7 +278,8 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     microCount: microChallenges.length,
     completedCount: completedChallenges.length,
     loading: value.loading,
-    error: value.error
+    error: value.error,
+    isInitialized
   });
 
   return (

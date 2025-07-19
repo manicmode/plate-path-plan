@@ -83,30 +83,39 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [filters, setFiltersState] = useState<ChallengeFilters>(defaultFilters);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   console.log('PublicChallengesProvider: Initializing with user:', user?.id);
 
   const publicChallengesHook = usePublicChallenges();
   
   const {
+    challenges: rawChallenges = [],
     globalChallenges: rawGlobalChallenges = [],
     quickChallenges: rawQuickChallenges = [],
     trendingChallenges: rawTrendingChallenges = [],
     newChallenges: rawNewChallenges = [],
     joinChallenge: originalJoinChallenge,
     leaveChallenge: originalLeaveChallenge,
-    updateProgress,
     getUserParticipation,
     loading = false,
     refreshData
   } = publicChallengesHook || {};
 
-  // Clear error when data loads successfully
+  // Initialize after auth is ready
   useEffect(() => {
-    if (rawGlobalChallenges.length > 0 || rawQuickChallenges.length > 0) {
+    if (user !== undefined) { // Wait for auth to initialize (null or user object)
+      setIsInitialized(true);
       setError(null);
     }
-  }, [rawGlobalChallenges.length, rawQuickChallenges.length]);
+  }, [user]);
+
+  // Clear error when data loads successfully
+  useEffect(() => {
+    if (isInitialized && (rawChallenges.length > 0 || rawGlobalChallenges.length > 0 || rawQuickChallenges.length > 0)) {
+      setError(null);
+    }
+  }, [isInitialized, rawChallenges.length, rawGlobalChallenges.length, rawQuickChallenges.length]);
 
   // Safe challenge conversion helper
   const convertChallenge = useCallback((challenge: any): PublicChallenge | null => {
@@ -137,14 +146,21 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
 
   // Memoized challenge conversions with error handling
   const allChallenges = useMemo(() => {
+    if (!isInitialized) return [];
+    
     try {
       console.log('PublicChallengesProvider: Converting challenges', {
+        rawChallengesCount: rawChallenges.length,
         globalCount: rawGlobalChallenges.length,
         quickCount: rawQuickChallenges.length
       });
 
-      const combinedChallenges = [...(rawGlobalChallenges || []), ...(rawQuickChallenges || [])];
-      const converted = combinedChallenges
+      // Use rawChallenges if available, otherwise combine global and quick
+      const sourceChallenges = rawChallenges.length > 0 
+        ? rawChallenges 
+        : [...(rawGlobalChallenges || []), ...(rawQuickChallenges || [])];
+        
+      const converted = sourceChallenges
         .map(convertChallenge)
         .filter((challenge): challenge is PublicChallenge => challenge !== null);
       
@@ -155,9 +171,11 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
       setError('Failed to load challenges');
       return [];
     }
-  }, [rawGlobalChallenges, rawQuickChallenges, convertChallenge]);
+  }, [isInitialized, rawChallenges, rawGlobalChallenges, rawQuickChallenges, convertChallenge]);
 
   const quickChallenges = useMemo(() => {
+    if (!isInitialized) return [];
+    
     try {
       return (rawQuickChallenges || [])
         .map(convertChallenge)
@@ -166,9 +184,11 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
       console.error('Error processing quick challenges:', err);
       return [];
     }
-  }, [rawQuickChallenges, convertChallenge]);
+  }, [isInitialized, rawQuickChallenges, convertChallenge]);
 
   const globalChallenges = useMemo(() => {
+    if (!isInitialized) return [];
+    
     try {
       return (rawGlobalChallenges || [])
         .map(convertChallenge)
@@ -177,9 +197,11 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
       console.error('Error processing global challenges:', err);
       return [];
     }
-  }, [rawGlobalChallenges, convertChallenge]);
+  }, [isInitialized, rawGlobalChallenges, convertChallenge]);
 
   const trendingChallenges = useMemo(() => {
+    if (!isInitialized) return [];
+    
     try {
       return (rawTrendingChallenges || [])
         .map(convertChallenge)
@@ -188,9 +210,11 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
       console.error('Error processing trending challenges:', err);
       return [];
     }
-  }, [rawTrendingChallenges, convertChallenge]);
+  }, [isInitialized, rawTrendingChallenges, convertChallenge]);
 
   const newChallenges = useMemo(() => {
+    if (!isInitialized) return [];
+    
     try {
       return (rawNewChallenges || [])
         .map(convertChallenge)
@@ -199,7 +223,7 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
       console.error('Error processing new challenges:', err);
       return [];
     }
-  }, [rawNewChallenges, convertChallenge]);
+  }, [isInitialized, rawNewChallenges, convertChallenge]);
 
   // Memoized filtered challenges with error handling
   const filteredChallenges = useMemo(() => {
@@ -293,6 +317,8 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
     }
   }, [refreshData]);
 
+  const contextLoading = !isInitialized || loading;
+
   const value: PublicChallengesContextType = {
     allChallenges,
     quickChallenges,
@@ -306,7 +332,7 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
     joinChallenge,
     leaveChallenge,
     refreshChallenges,
-    loading,
+    loading: contextLoading,
     error,
     getUserParticipation: getUserParticipation || (() => null),
   };
@@ -315,7 +341,8 @@ export const PublicChallengesProvider: React.FC<PublicChallengesProviderProps> =
     allCount: allChallenges.length,
     filteredCount: filteredChallenges.length,
     loading: value.loading,
-    error: value.error
+    error: value.error,
+    isInitialized
   });
 
   return (

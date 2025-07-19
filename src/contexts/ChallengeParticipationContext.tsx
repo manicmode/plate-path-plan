@@ -75,6 +75,7 @@ interface ChallengeParticipationProviderProps {
 export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   console.log('ChallengeParticipationProvider: Initializing with user:', user?.id);
 
@@ -98,12 +99,20 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
     refreshData: refreshPrivate
   } = privateChallengesHook || {};
 
-  // Clear error when data loads successfully
+  // Initialize after auth is ready
   useEffect(() => {
-    if (rawPublicParticipations.length > 0 || privateChallenges.length > 0) {
+    if (user !== undefined) { // Wait for auth to initialize (null or user object)
+      setIsInitialized(true);
       setError(null);
     }
-  }, [rawPublicParticipations.length, privateChallenges.length]);
+  }, [user]);
+
+  // Clear error when data loads successfully
+  useEffect(() => {
+    if (isInitialized && (rawPublicParticipations.length > 0 || privateChallenges.length > 0)) {
+      setError(null);
+    }
+  }, [isInitialized, rawPublicParticipations.length, privateChallenges.length]);
 
   // Safe participation conversion helper
   const convertPublicParticipation = useCallback((participation: any, challenge: any): ParticipationData | null => {
@@ -159,12 +168,12 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
 
   // Memoized public participations with error handling
   const publicParticipations = useMemo(() => {
-    try {
-      if (!user) {
-        console.log('ChallengeParticipationProvider: No user, returning empty public participations');
-        return [];
-      }
+    if (!isInitialized || !user) {
+      console.log('ChallengeParticipationProvider: Not initialized or no user, returning empty public participations');
+      return [];
+    }
 
+    try {
       console.log('ChallengeParticipationProvider: Processing public participations', {
         participationsCount: rawPublicParticipations.length,
         challengesCount: publicChallenges.length
@@ -181,16 +190,16 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
       setError('Failed to load public participations');
       return [];
     }
-  }, [user, rawPublicParticipations, publicChallenges, convertPublicParticipation]);
+  }, [isInitialized, user, rawPublicParticipations, publicChallenges, convertPublicParticipation]);
 
   // Memoized private participations with error handling
   const privateParticipations = useMemo(() => {
-    try {
-      if (!user) {
-        console.log('ChallengeParticipationProvider: No user, returning empty private participations');
-        return [];
-      }
+    if (!isInitialized || !user) {
+      console.log('ChallengeParticipationProvider: Not initialized or no user, returning empty private participations');
+      return [];
+    }
 
+    try {
       console.log('ChallengeParticipationProvider: Processing private participations', {
         challengesCount: privateChallenges.length
       });
@@ -203,7 +212,7 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
       setError('Failed to load private participations');
       return [];
     }
-  }, [user, privateChallenges, convertPrivateParticipation]);
+  }, [isInitialized, user, privateChallenges, convertPrivateParticipation]);
 
   // Combined participations
   const userParticipations = useMemo(() => {
@@ -356,6 +365,8 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
     }
   }, [refreshPublic, refreshPrivate]);
 
+  const contextLoading = !isInitialized || publicLoading || privateLoading;
+
   const value: ChallengeParticipationContextType = {
     userParticipations,
     publicParticipations,
@@ -369,7 +380,7 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
     getDailyProgress,
     getWeeklyProgress,
     getOverallProgress,
-    loading: publicLoading || privateLoading,
+    loading: contextLoading,
     error,
     refreshParticipations,
     getParticipation,
@@ -381,7 +392,8 @@ export const ChallengeParticipationProvider: React.FC<ChallengeParticipationProv
     publicParticipationsCount: publicParticipations.length,
     privateParticipationsCount: privateParticipations.length,
     loading: value.loading,
-    error: value.error
+    error: value.error,
+    isInitialized
   });
 
   return (
