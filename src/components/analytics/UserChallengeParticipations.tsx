@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
@@ -12,9 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 
 export const UserChallengeParticipations: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [publicCarouselIndex, setPublicCarouselIndex] = useState(0);
-  const [quickCarouselIndex, setQuickCarouselIndex] = useState(0);
-  const [privateCarouselIndex, setPrivateCarouselIndex] = useState(0);
   const { toast } = useToast();
   
   const { 
@@ -102,39 +99,6 @@ export const UserChallengeParticipations: React.FC = () => {
     }
   };
 
-  // Carousel navigation functions
-  const nextCard = (section: 'public' | 'quick' | 'private') => {
-    if (section === 'public') {
-      setPublicCarouselIndex((prev) => 
-        prev < regularPublicChallenges.length - 1 ? prev + 1 : 0
-      );
-    } else if (section === 'quick') {
-      setQuickCarouselIndex((prev) => 
-        prev < quickChallenges.length - 1 ? prev + 1 : 0
-      );
-    } else if (section === 'private') {
-      setPrivateCarouselIndex((prev) => 
-        prev < privateChallenges.length - 1 ? prev + 1 : 0
-      );
-    }
-  };
-
-  const prevCard = (section: 'public' | 'quick' | 'private') => {
-    if (section === 'public') {
-      setPublicCarouselIndex((prev) => 
-        prev > 0 ? prev - 1 : regularPublicChallenges.length - 1
-      );
-    } else if (section === 'quick') {
-      setQuickCarouselIndex((prev) => 
-        prev > 0 ? prev - 1 : quickChallenges.length - 1
-      );
-    } else if (section === 'private') {
-      setPrivateCarouselIndex((prev) => 
-        prev > 0 ? prev - 1 : privateChallenges.length - 1
-      );
-    }
-  };
-
   const ChallengeCard = ({ item }: { item: any }) => {
     if (!item) return null;
     
@@ -190,7 +154,7 @@ export const UserChallengeParticipations: React.FC = () => {
       : (challenge as any).participant_count || 1;
 
     return (
-      <div className="w-80 flex-shrink-0">
+      <div className="min-w-full px-4 scroll-snap-align-start">
         <Card className="w-full overflow-hidden bg-gray-800 border-gray-700">
           {/* Header Section with Gradient - exactly matching reference */}
           <div className={`${getBackgroundGradient()} p-4 text-white relative rounded-t-lg`}>
@@ -292,63 +256,68 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   };
 
-  // Carousel Section Component
-  const CarouselSection = ({ 
+  // Swipeable Carousel Section Component
+  const SwipeableCarousel = ({ 
     title, 
     icon: Icon, 
     iconColor, 
-    challenges, 
-    currentIndex, 
-    onNext, 
-    onPrev 
+    challenges 
   }: {
     title: string;
     icon: any;
     iconColor: string;
     challenges: any[];
-    currentIndex: number;
-    onNext: () => void;
-    onPrev: () => void;
-  }) => (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold flex items-center gap-2">
-        <Icon className={`w-5 h-5 ${iconColor}`} />
-        {title}
-      </h2>
-      
-      <div className="relative">
-        {/* Left Arrow */}
-        <button
-          onClick={onPrev}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800/80 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg transition-all"
-          disabled={challenges.length <= 1}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+  }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-        {/* Cards Container */}
-        <div className="overflow-hidden px-12">
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold flex items-center gap-2 px-4">
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+          {title}
+        </h2>
+        
+        <div className="relative">
+          {/* Swipeable container with smooth scrolling */}
           <div 
-            className="flex transition-transform duration-300 ease-in-out"
-            style={{ transform: `translateX(-${currentIndex * 320}px)` }}
+            ref={scrollRef}
+            className="overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
           >
-            {challenges.map((item, index) => (
-              <ChallengeCard key={`${title}-${index}`} item={item} />
-            ))}
+            <div className="flex gap-4 px-4">
+              {challenges.map((item, index) => (
+                <ChallengeCard key={`${title}-${index}`} item={item} />
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Right Arrow */}
-        <button
-          onClick={onNext}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800/80 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg transition-all"
-          disabled={challenges.length <= 1}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+          {/* Subtle fade indicators for more cards */}
+          {challenges.length > 1 && (
+            <>
+              {/* Left fade indicator */}
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-900 to-transparent pointer-events-none" />
+              
+              {/* Right fade indicator with peeking card edge */}
+              <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-900 via-gray-900/80 to-transparent pointer-events-none" />
+              
+              {/* Scroll indicator dots */}
+              <div className="flex justify-center mt-4 gap-2">
+                {challenges.map((_, index) => (
+                  <div 
+                    key={index}
+                    className="w-2 h-2 rounded-full bg-gray-600 transition-colors"
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const hasAnyChallenges = privateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
 
@@ -375,40 +344,31 @@ export const UserChallengeParticipations: React.FC = () => {
     <div className="space-y-8 bg-gray-900 min-h-screen">
       {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
-        <CarouselSection
+        <SwipeableCarousel
           title="My Public Challenges"
           icon={Users}
           iconColor="text-blue-500"
           challenges={regularPublicChallenges}
-          currentIndex={publicCarouselIndex}
-          onNext={() => nextCard('public')}
-          onPrev={() => prevCard('public')}
         />
       )}
 
       {/* My Quick Challenges Section */}
       {quickChallenges.length > 0 && (
-        <CarouselSection
+        <SwipeableCarousel
           title="My Quick Challenges"
           icon={Flame}
           iconColor="text-orange-500"
           challenges={quickChallenges}
-          currentIndex={quickCarouselIndex}
-          onNext={() => nextCard('quick')}
-          onPrev={() => prevCard('quick')}
         />
       )}
 
       {/* My Private Challenges Section */}
       {privateChallenges.length > 0 && (
-        <CarouselSection
+        <SwipeableCarousel
           title="My Private Challenges"
           icon={Lock}
           iconColor="text-purple-500"
           challenges={privateChallenges}
-          currentIndex={privateCarouselIndex}
-          onNext={() => nextCard('private')}
-          onPrev={() => prevCard('private')}
         />
       )}
 

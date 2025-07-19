@@ -1000,3 +1000,19 @@
     animation: none;
   }
 }
+
+/* Scrollbar hiding utilities for carousel */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scroll-snap-align-start {
+    scroll-snap-align: start;
+  }
+}
