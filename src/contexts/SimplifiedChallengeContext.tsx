@@ -29,7 +29,7 @@ interface SimplifiedChallengeContextType {
   error: string | null;
   createChallenge: (challenge: Omit<Challenge, 'id' | 'isActive'>) => void;
   joinChallenge: (challengeId: string, userId: string, userDetails: { name: string; avatar: string }) => void;
-  leaveChallenege: (challengeId: string, userId: string) => void;
+  leaveChallenge: (challengeId: string, userId: string) => void;
   updateProgress: (challengeId: string, userId: string, progress: number) => void;
   deleteChallenge: (challengeId: string) => void;
 }
@@ -141,7 +141,7 @@ export const SimplifiedChallengeProvider: React.FC<SimplifiedChallengeProviderPr
     }));
   };
 
-  const leaveChallenenge = (challengeId: string, userId: string) => {
+  const leaveChallenge = (challengeId: string, userId: string) => {
     setChallenges(prev => prev.map(challenge => {
       if (challenge.id === challengeId) {
         const { [userId]: removedProgress, ...restProgress } = challenge.progress;
@@ -184,7 +184,7 @@ export const SimplifiedChallengeProvider: React.FC<SimplifiedChallengeProviderPr
     error,
     createChallenge,
     joinChallenge,
-    leaveChallenenge,
+    leaveChallenge,
     updateProgress,
     deleteChallenge,
   };
