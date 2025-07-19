@@ -59,6 +59,44 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_invitations: {
+        Row: {
+          id: string
+          invited_at: string
+          invitee_id: string
+          inviter_id: string
+          private_challenge_id: string | null
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string
+          invitee_id: string
+          inviter_id: string
+          private_challenge_id?: string | null
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string
+          invitee_id?: string
+          inviter_id?: string
+          private_challenge_id?: string | null
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_invitations_private_challenge_id_fkey"
+            columns: ["private_challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_messages: {
         Row: {
           challenge_id: string
@@ -468,6 +506,119 @@ export type Database = {
           source?: string | null
           sugar?: number | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      private_challenge_participations: {
+        Row: {
+          completed_at: string | null
+          completed_days: number
+          completion_percentage: number
+          daily_completions: Json
+          id: string
+          is_creator: boolean
+          joined_at: string
+          last_progress_update: string | null
+          private_challenge_id: string | null
+          progress_value: number
+          streak_count: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_days?: number
+          completion_percentage?: number
+          daily_completions?: Json
+          id?: string
+          is_creator?: boolean
+          joined_at?: string
+          last_progress_update?: string | null
+          private_challenge_id?: string | null
+          progress_value?: number
+          streak_count?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_days?: number
+          completion_percentage?: number
+          daily_completions?: Json
+          id?: string
+          is_creator?: boolean
+          joined_at?: string
+          last_progress_update?: string | null
+          private_challenge_id?: string | null
+          progress_value?: number
+          streak_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_challenge_participations_private_challenge_id_fkey"
+            columns: ["private_challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_challenges: {
+        Row: {
+          badge_icon: string
+          category: string
+          challenge_type: string
+          created_at: string
+          creator_id: string
+          description: string
+          duration_days: number
+          id: string
+          invited_user_ids: string[]
+          max_participants: number
+          start_date: string
+          status: string
+          target_metric: string | null
+          target_unit: string | null
+          target_value: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge_icon?: string
+          category: string
+          challenge_type?: string
+          created_at?: string
+          creator_id: string
+          description: string
+          duration_days: number
+          id?: string
+          invited_user_ids?: string[]
+          max_participants?: number
+          start_date: string
+          status?: string
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          badge_icon?: string
+          category?: string
+          challenge_type?: string
+          created_at?: string
+          creator_id?: string
+          description?: string
+          duration_days?: number
+          id?: string
+          invited_user_ids?: string[]
+          max_participants?: number
+          start_date?: string
+          status?: string
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1252,6 +1403,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_challenge_invitation: {
+        Args: { invitation_id_param: string }
+        Returns: boolean
+      }
       add_friend_from_contact: {
         Args: { contact_user_id: string }
         Returns: boolean
@@ -1263,6 +1418,10 @@ export type Database = {
       calculate_next_trigger: {
         Args: { reminder_id: string }
         Returns: string
+      }
+      calculate_private_challenge_progress: {
+        Args: { participation_id_param: string }
+        Returns: undefined
       }
       check_social_badges: {
         Args: { target_user_id: string }
@@ -1347,6 +1506,10 @@ export type Database = {
       trigger_yearly_scores_preview_update: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      update_private_challenge_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {
