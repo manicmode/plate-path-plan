@@ -619,7 +619,7 @@ function GameAndChallengeContent() {
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
               <div className="flex items-center justify-center">
-                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
               </div>
               
               {/* Mobile horizontal scroll tabs */}
