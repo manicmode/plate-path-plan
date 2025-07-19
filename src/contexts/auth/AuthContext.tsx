@@ -1,6 +1,5 @@
 
 import React, { createContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
@@ -17,7 +16,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const [initializationAttempts, setInitializationAttempts] = useState(0);
-  const navigate = useNavigate();
 
   const updateUserWithProfile = async (supabaseUser: any) => {
     try {
@@ -89,9 +87,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     setSignOutNavigationCallback(() => {
       console.log('📍 Navigating to home after sign out');
-      navigate('/', { replace: true });
+      window.location.href = '/';
     });
-  }, [navigate]);
+  }, []);
 
   // App lifecycle callbacks
   const handleAppForeground = () => {
