@@ -941,10 +941,6 @@ function GameAndChallengeContent() {
 
             <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
               <div className="space-y-8">
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">My Active Challenges</h2>
-                </div>
-                
                 <UserChallengeParticipations />
               </div>
             </TabsContent>
