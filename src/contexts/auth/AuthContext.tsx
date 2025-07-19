@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
