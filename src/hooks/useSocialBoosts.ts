@@ -33,9 +33,23 @@ export const useSocialBoosts = (): SocialBoostFunctions => {
     }
   };
 
-  // Track friend request accepted - return modal data
+  // Track friend request accepted - return modal data and send challenge suggestions
   const handleFriendRequestAccepted = async (friendId: string, friendName: string) => {
     try {
+      // Send challenge suggestions to both parties
+      setTimeout(() => {
+        toast({
+          title: "🎯 Perfect Timing!",
+          description: `You and ${friendName} are now friends! Ready to start a challenge together?`,
+          duration: 8000,
+        });
+      }, 2000);
+
+      // Suggest trending challenges
+      setTimeout(() => {
+        showTrendingChallengeToast("7-Day Clean Eating", 3);
+      }, 5000);
+
       return {
         showModal: true,
         friendName,
