@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
@@ -44,8 +45,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
       } else if (initialSession?.user) {
+        console.log('Found existing session during initialization');
         setSession(initialSession);
         await updateUserWithProfile(initialSession.user);
+      } else {
+        console.log('No existing session found during initialization');
       }
       
       setLoading(false);
@@ -84,10 +88,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      console.log('Auth state changed:', event);
+      console.log('Auth state changed:', event, 'Session exists:', !!session);
+      
+      if (event === 'SIGNED_OUT') {
+        console.log('User signed out, clearing state');
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       
       if (session?.user) {
+        console.log('User signed in, loading profile');
         // Defer profile loading to prevent deadlocks
         setTimeout(async () => {
           if (mounted) {
@@ -95,8 +109,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }, 0);
       } else {
+        console.log('No user in session, clearing user state');
         setUser(null);
       }
+      
+      setLoading(false);
     });
 
     // Initialize auth with timeout
@@ -150,11 +167,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[DEBUG] AuthContext: User profile refresh complete');
   };
 
+  // Enhanced authentication check - requires both valid session and confirmed email
+  const isAuthenticated = !!session?.user && !!session?.user?.email_confirmed_at;
+  
+  console.log('AuthContext state:', {
+    hasSession: !!session,
+    hasUser: !!user,
+    isAuthenticated,
+    loading,
+    userEmail: session?.user?.email,
+    emailConfirmed: !!session?.user?.email_confirmed_at
+  });
+
   const contextValue: AuthContextType = {
     user,
     session,
     loading,
-    isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
+    isAuthenticated,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,

@@ -3,13 +3,29 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/auth';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-interface LogoutSectionProps {
-  onLogout: () => void;
-}
-
-export const LogoutSection = ({ onLogout }: LogoutSectionProps) => {
+export const LogoutSection = () => {
   const isMobile = useIsMobile();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      console.log('Initiating logout...');
+      await signOut();
+      toast.success('Signed out successfully');
+      console.log('Logout successful, navigating to login');
+      // Navigation will be handled by the signOut function in authService
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Error signing out');
+      // Force navigation even if signout fails
+      navigate('/', { replace: true });
+    }
+  };
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '600ms' }}>
@@ -21,7 +37,7 @@ export const LogoutSection = ({ onLogout }: LogoutSectionProps) => {
           </div>
           <Button 
             variant="outline" 
-            onClick={onLogout} 
+            onClick={handleLogout} 
             className={`text-red-600 border-red-200 hover:bg-red-50 ${isMobile ? 'w-full h-12' : ''}`}
           >
             <LogOut className={`${isMobile ? 'h-4 w-4' : 'h-4 w-4'} mr-2`} />
