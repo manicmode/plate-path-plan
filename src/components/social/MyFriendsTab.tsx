@@ -117,16 +117,16 @@ export const MyFriendsTab = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="text-center space-y-2">
+      <div className="text-center">
         <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
           <Users className="h-6 w-6" />
           My Friends
         </h1>
       </div>
 
-      <Tabs defaultValue="friends" className="space-y-4">
+      <Tabs defaultValue="friends" className="space-y-3">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
