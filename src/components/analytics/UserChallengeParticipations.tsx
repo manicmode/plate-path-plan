@@ -181,15 +181,15 @@ export const UserChallengeParticipations: React.FC = () => {
                 </div>
               </div>
 
-              {/* Content Section - Dark background matching reference */}
-              <div className="bg-slate-800 text-white p-4 space-y-4">
+              {/* Content Section - Much darker background for sleek look */}
+              <div className="bg-slate-900 text-white p-4 space-y-4">
                 {/* Group Progress */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-white">Group Progress</span>
                     <span className="text-sm text-slate-300">{Math.round(progressPercentage)}%</span>
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div className="w-full bg-slate-800 rounded-full h-2">
                     <div 
                       className="bg-teal-400 h-2 rounded-full transition-all duration-300" 
                       style={{ width: `${progressPercentage}%` }}
@@ -203,16 +203,12 @@ export const UserChallengeParticipations: React.FC = () => {
                   <span>{participantCount} participants</span>
                 </div>
 
-                {/* Participant Avatars - Matching reference layout */}
+                {/* Participant Avatars - Matching reference layout with green circles */}
                 <div className="flex gap-2">
                   {[1, 2].slice(0, Math.min(2, participantCount)).map((i) => (
                     <div 
                       key={i}
-                      className="w-10 h-10 rounded-full border-2 border-slate-700 flex items-center justify-center text-white text-sm font-bold"
-                      style={{
-                        background: i === 1 ? 'linear-gradient(135deg, #10b981, #059669)' : 
-                                   'linear-gradient(135deg, #f59e0b, #d97706)'
-                      }}
+                      className="w-10 h-10 rounded-full border-2 border-slate-700 flex items-center justify-center text-white text-sm font-bold bg-green-500"
                     >
                       {i === 1 ? '😊' : '🔥'}
                     </div>
@@ -222,7 +218,7 @@ export const UserChallengeParticipations: React.FC = () => {
                 {/* Action Buttons - Matching reference exact style */}
                 <div className="flex gap-2 pt-2">
                   <Button 
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm py-2 h-9"
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white rounded-full text-sm py-2 h-9 border border-slate-700"
                     onClick={() => {
                       // Invite functionality
                     }}
@@ -231,7 +227,7 @@ export const UserChallengeParticipations: React.FC = () => {
                   </Button>
                   
                   <Button 
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm py-2 h-9"
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white rounded-full text-sm py-2 h-9 border border-slate-700"
                     onClick={() => {
                       if (confirm("Do you want to leave this challenge?")) {
                         onLeave(challenge.id);
