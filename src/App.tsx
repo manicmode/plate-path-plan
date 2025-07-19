@@ -12,6 +12,7 @@ import { BadgeProvider } from '@/contexts/BadgeContext';
 import { AuthProvider } from '@/contexts/auth';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import { SmartTimingProvider } from '@/contexts/SmartTimingContext';
+import { SocialBoostManager } from '@/components/social/SocialBoostManager';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -60,7 +61,8 @@ function App() {
                       <IngredientAlertProvider>
                         <BadgeProvider>
                           <ChatModalProvider>
-                          <Layout>
+                            <SocialBoostManager>
+                              <Layout>
                             <Suspense fallback={<LoadingScreen />}>
                               <Routes>
                                 <Route path="/" element={<Index />} />
@@ -85,9 +87,10 @@ function App() {
                                 <Route path="*" element={<Navigate to="/404" replace />} />
                               </Routes>
                             </Suspense>
-                          </Layout>
-                          <Toaster />
-                        </ChatModalProvider>
+                              </Layout>
+                            </SocialBoostManager>
+                            <Toaster />
+                          </ChatModalProvider>
                       </BadgeProvider>
                     </IngredientAlertProvider>
                   </NotificationProvider>

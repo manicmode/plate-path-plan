@@ -57,6 +57,7 @@ import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
+import { SocialBoostsDemo } from '@/components/social/SocialBoostsDemo';
 
 // Types
 interface ChatMessage {
@@ -1192,6 +1193,11 @@ function GameAndChallengeContent() {
             {/* Hall of Fame Section */}
             <section id="hall-of-fame" className="animate-fade-in">
               <HallOfFame champions={optimizedHallOfFame} />
+            </section>
+
+            {/* Social Boosts Demo Section */}
+            <section id="social-boosts" className="animate-fade-in">
+              <SocialBoostsDemo />
             </section>
           </>
         )}

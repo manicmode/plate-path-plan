@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useTeamUpPrompts } from '@/hooks/useTeamUpPrompts';
 import { useSmartTiming } from '@/contexts/SmartTimingContext';
+import { useSocialBoosts } from '@/hooks/useSocialBoosts';
 
 export const SmartTeamUpPrompt = () => {
   const { 
@@ -15,6 +16,7 @@ export const SmartTeamUpPrompt = () => {
   } = useTeamUpPrompts();
   
   const { shouldShowTeamUpPrompt, timingState } = useSmartTiming();
+  const { handleFriendRequestSent } = useSocialBoosts();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
@@ -28,6 +30,12 @@ export const SmartTeamUpPrompt = () => {
     setIsLoading(true);
     try {
       await sendFriendRequestFromPrompt(currentPrompt);
+      
+      // Trigger social boosts after successful friend request
+      await handleFriendRequestSent(
+        currentPrompt.buddy_user_id, 
+        currentPrompt.buddy_name
+      );
     } finally {
       setIsLoading(false);
     }

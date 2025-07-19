@@ -777,6 +777,48 @@ export type Database = {
         }
         Relationships: []
       }
+      social_boosts: {
+        Row: {
+          challenge_id: string | null
+          challenge_name: string | null
+          created_at: string
+          friend_id: string
+          friend_name: string
+          id: string
+          shown: boolean
+          triggered_at: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id?: string | null
+          challenge_name?: string | null
+          created_at?: string
+          friend_id: string
+          friend_name: string
+          id?: string
+          shown?: boolean
+          triggered_at?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string | null
+          challenge_name?: string | null
+          created_at?: string
+          friend_id?: string
+          friend_name?: string
+          id?: string
+          shown?: boolean
+          triggered_at?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       supplement_logs: {
         Row: {
           created_at: string
