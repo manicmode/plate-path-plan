@@ -55,8 +55,8 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   }
 
-  // Separate challenges by type
-  const publicChallenges = userParticipations.map((participation) => {
+  // Separate challenges by type and limit to one per category
+  const publicChallenges = userParticipations.slice(0, 1).map((participation) => {
     const challenge = challenges.find(c => c.id === participation.challenge_id);
     if (!challenge) return null;
     
@@ -70,7 +70,7 @@ export const UserChallengeParticipations: React.FC = () => {
     };
   }).filter(Boolean);
 
-  const privateChallenges = challengesWithParticipation.map(({ participation, ...challenge }) => ({
+  const privateChallenges = challengesWithParticipation.slice(0, 1).map(({ participation, ...challenge }) => ({
     type: 'private',
     challenge,
     participation: participation!,
@@ -154,49 +154,54 @@ export const UserChallengeParticipations: React.FC = () => {
       : (challenge as any).participant_count || 1;
 
     return (
-      <div className="min-w-full px-4 scroll-snap-align-start">
-        <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300 h-80">
-          {/* Header Section with Gradient - modern glassmorphism design */}
-          <div className={`${getBackgroundGradient()} p-6 text-white relative rounded-t-2xl h-32`}>
-            {/* Type badge and time in top row */}
-            <div className="flex items-center justify-between mb-4">
-              <Badge className="bg-white/25 text-white border-white/40 text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-                <typeBadge.icon className="w-3 h-3 mr-1" />
-                {typeBadge.label}
-              </Badge>
-              <div className="flex items-center gap-2 text-sm bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
-                <Clock className="w-4 h-4" />
-                <span className="font-medium">{timeLeft}</span>
-              </div>
+      <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300 mb-4">
+        {/* Header Section with Gradient - modern glassmorphism design */}
+        <div className={`${getBackgroundGradient()} p-6 text-white relative rounded-t-2xl h-32`}>
+          {/* Type badge and time in top row */}
+          <div className="flex items-center justify-between mb-4">
+            <Badge className="bg-white/25 text-white border-white/40 text-xs px-3 py-1 rounded-full backdrop-blur-sm">
+              <typeBadge.icon className="w-3 h-3 mr-1" />
+              {typeBadge.label}
+            </Badge>
+            <div className="flex items-center gap-2 text-sm bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+              <Clock className="w-4 h-4" />
+              <span className="font-medium">{timeLeft}</span>
             </div>
-            
-            {/* Title with emoji */}
-            <h3 className="text-xl font-bold flex items-center gap-3 mb-2">
-              <span className="text-2xl">{challengeIcon}</span>
-              <span className="truncate">{challengeTitle}</span>
-            </h3>
-            
-            {/* Description */}
-            <p className="text-sm text-white/95 line-clamp-2">
-              {challengeDescription}
-            </p>
           </div>
+          
+          {/* Title with emoji */}
+          <h3 className="text-xl font-bold flex items-center gap-3 mb-2">
+            <span className="text-2xl">{challengeIcon}</span>
+            <span className="truncate">{challengeTitle}</span>
+          </h3>
+          
+          {/* Description */}
+          <p className="text-sm text-white/95 line-clamp-2">
+            {challengeDescription}
+          </p>
+        </div>
 
-          {/* Modern bottom section with glassmorphism */}
-          <div className="bg-card/80 backdrop-blur-xl p-6 space-y-5 h-48">
-            {/* Progress section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-foreground font-semibold">Your Progress</span>
-                <span className="text-muted-foreground font-medium">{Math.round(progressPercentage)}%</span>
-              </div>
-              <div className="w-full bg-muted/40 rounded-full h-3 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
-                  style={{ width: `${progressPercentage}%` }}
-                />
+        {/* Modern bottom section with glassmorphism */}
+        <div className="bg-card/80 backdrop-blur-xl p-6 space-y-5">
+          {/* Progress section with improved visibility */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-foreground font-semibold">Your Progress</span>
+              <span className="text-emerald-600 font-bold">{Math.round(progressPercentage)}%</span>
+            </div>
+            <div className="w-full bg-gradient-to-r from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-full h-3 overflow-hidden border border-emerald-300/30">
+              <div 
+                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-500 ease-out shadow-lg relative"
+                style={{ 
+                  width: progressPercentage > 0 ? `${progressPercentage}%` : '8%',
+                  minWidth: '8%',
+                  opacity: progressPercentage > 0 ? 1 : 0.6
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full animate-pulse opacity-50"></div>
               </div>
             </div>
+          </div>
 
             {/* Participants count and status */}
             <div className="flex items-center justify-between text-sm">
@@ -253,12 +258,11 @@ export const UserChallengeParticipations: React.FC = () => {
             </div>
           </div>
         </Card>
-      </div>
     );
   };
 
-  // Swipeable Carousel Section Component
-  const SwipeableCarousel = ({ 
+  // Vertical Stack Section Component
+  const VerticalStack = ({ 
     title, 
     icon: Icon, 
     iconColor, 
@@ -269,52 +273,17 @@ export const UserChallengeParticipations: React.FC = () => {
     iconColor: string;
     challenges: any[];
   }) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <h2 className="text-xl font-bold flex items-center justify-center gap-2 px-4">
           <Icon className={`w-5 h-5 ${iconColor}`} />
           {title}
         </h2>
         
-        <div className="relative">
-          {/* Swipeable container with smooth scrolling */}
-          <div 
-            ref={scrollRef}
-            className="overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            }}
-          >
-            <div className="flex gap-4 px-4">
-              {challenges.map((item, index) => (
-                <ChallengeCard key={`${title}-${index}`} item={item} />
-              ))}
-            </div>
-          </div>
-
-          {/* Subtle fade indicators for more cards */}
-          {challenges.length > 1 && (
-            <>
-              {/* Left fade indicator */}
-              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
-              
-              {/* Right fade indicator with peeking card edge */}
-              <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background via-background/80 to-transparent pointer-events-none z-10" />
-              
-              {/* Scroll indicator dots */}
-              <div className="flex justify-center mt-4 gap-2">
-                {challenges.map((_, index) => (
-                  <div 
-                    key={index}
-                    className="w-2 h-2 rounded-full bg-muted-foreground/40 transition-colors"
-                  />
-                ))}
-              </div>
-            </>
-          )}
+        <div className="space-y-4 px-4">
+          {challenges.map((item, index) => (
+            <ChallengeCard key={`${title}-${index}`} item={item} />
+          ))}
         </div>
       </div>
     );
@@ -356,7 +325,7 @@ export const UserChallengeParticipations: React.FC = () => {
 
       {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
-        <SwipeableCarousel
+        <VerticalStack
           title="My Public Challenges"
           icon={Users}
           iconColor="text-blue-500"
@@ -366,7 +335,7 @@ export const UserChallengeParticipations: React.FC = () => {
 
       {/* My Quick Challenges Section */}
       {quickChallenges.length > 0 && (
-        <SwipeableCarousel
+        <VerticalStack
           title="My Quick Challenges"
           icon={Flame}
           iconColor="text-orange-500"
@@ -376,7 +345,7 @@ export const UserChallengeParticipations: React.FC = () => {
 
       {/* My Private Challenges Section */}
       {privateChallenges.length > 0 && (
-        <SwipeableCarousel
+        <VerticalStack
           title="My Private Challenges"
           icon={Lock}
           iconColor="text-purple-500"
