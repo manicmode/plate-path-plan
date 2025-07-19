@@ -155,23 +155,73 @@ export const BadgeProvider: React.FC<BadgeProviderProps> = ({ children }) => {
     }
   };
 
-  // Check if user qualifies for new badges using the server function
+  // Check if user qualifies for new badges using manual badge checking
   const checkForNewBadges = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Call the database function to check and award badges
-      const { data, error } = await supabase.rpc('check_and_award_all_badges', {
-        target_user_id: user.id
-      });
+      console.log('Checking for new badges...');
+      
+      // For now, we'll do a simple manual check since the RPC function might not be available yet
+      // Get user's current streaks
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('current_nutrition_streak, current_hydration_streak, current_supplement_streak')
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) {
-        console.error('Error checking badges:', error);
-        return;
+      if (!profile) return;
+
+      // Get available badges that user doesn't have yet
+      const { data: availableBadges } = await supabase
+        .from('badges')
+        .select('*')
+        .eq('is_active', true)
+        .eq('requirement_type', 'streak');
+
+      if (!availableBadges) return;
+
+      let badgesAwarded = 0;
+
+      for (const badge of availableBadges) {
+        // Check if user already has this badge
+        const hasBadge = userBadges.some(ub => ub.badge_id === badge.id);
+        if (hasBadge) continue;
+
+        // Check if user qualifies
+        let qualifies = false;
+        
+        if (badge.tracker_type === 'nutrition' && profile.current_nutrition_streak >= badge.requirement_value) {
+          qualifies = true;
+        } else if (badge.tracker_type === 'hydration' && profile.current_hydration_streak >= badge.requirement_value) {
+          qualifies = true;
+        } else if (badge.tracker_type === 'supplements' && profile.current_supplement_streak >= badge.requirement_value) {
+          qualifies = true;
+        } else if (badge.tracker_type === 'any') {
+          const maxStreak = Math.max(
+            profile.current_nutrition_streak || 0,
+            profile.current_hydration_streak || 0,
+            profile.current_supplement_streak || 0
+          );
+          if (maxStreak >= badge.requirement_value) {
+            qualifies = true;
+          }
+        }
+
+        if (qualifies) {
+          const { error } = await supabase
+            .from('user_badges')
+            .insert({
+              user_id: user.id,
+              badge_id: badge.id,
+            });
+
+          if (!error) {
+            badgesAwarded++;
+          }
+        }
       }
-
-      const badgesAwarded = data || 0;
       
       if (badgesAwarded > 0) {
         toast({

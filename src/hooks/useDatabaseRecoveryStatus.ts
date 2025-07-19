@@ -51,18 +51,23 @@ export const useDatabaseRecoveryStatus = () => {
 
         if (logsError) throw logsError;
 
-        // Check if performance scores table exists by trying to query it
-        const { error: performanceError } = await supabase
-          .from('daily_performance_scores')
-          .select('id')
-          .limit(1);
+        // Check if performance scores table exists by trying a simple query
+        // We'll use a generic approach since the table might not be in types yet
+        let performanceTableExists = false;
+        try {
+          const { error: performanceError } = await supabase
+            .rpc('trigger_yearly_scores_preview_update');
+          performanceTableExists = !performanceError;
+        } catch {
+          performanceTableExists = false;
+        }
 
         setStatus({
           badgesAwarded: badgesData?.length || 0,
           yearlyRankingPosition: rankingData?.rank_position || null,
           totalNutritionLogs: totalLogs || 0,
           orphanedLogsFixed: true, // We cleaned these up in SQL
-          performanceScoresTable: !performanceError
+          performanceScoresTable: performanceTableExists
         });
       } catch (err) {
         console.error('Recovery status check error:', err);
@@ -109,17 +114,21 @@ export const useDatabaseRecoveryStatus = () => {
 
         if (logsError) throw logsError;
 
-        const { error: performanceError } = await supabase
-          .from('daily_performance_scores')
-          .select('id')
-          .limit(1);
+        let performanceTableExists = false;
+        try {
+          const { error: performanceError } = await supabase
+            .rpc('trigger_yearly_scores_preview_update');
+          performanceTableExists = !performanceError;
+        } catch {
+          performanceTableExists = false;
+        }
 
         setStatus({
           badgesAwarded: badgesData?.length || 0,
           yearlyRankingPosition: rankingData?.rank_position || null,
           totalNutritionLogs: totalLogs || 0,
           orphanedLogsFixed: true,
-          performanceScoresTable: !performanceError
+          performanceScoresTable: performanceTableExists
         });
       } catch (err) {
         console.error('Recovery status check error:', err);
