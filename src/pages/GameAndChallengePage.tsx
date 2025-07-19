@@ -944,9 +944,9 @@ function GameAndChallengeContent() {
               </div>
             </TabsContent>
 
-            <TabsContent value="chat" className="mt-4 pb-32">
+            <TabsContent value="chat" className="mt-0 pb-32">
               {/* Fixed Mobile Chat Container */}
-              <Card className="h-[70vh] flex flex-col overflow-hidden">
+              <Card className="h-[75vh] flex flex-col overflow-hidden">
                 <CardHeader className="pb-2 flex-shrink-0">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <MessageCircle className="h-5 w-5" />
