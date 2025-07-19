@@ -313,16 +313,6 @@ export const UserChallengeParticipations: React.FC = () => {
 
   return (
     <div className="space-y-8 min-h-screen">
-      {/* Centered Create Challenge Button */}
-      <div className="flex justify-center pt-4 pb-2">
-        <Button 
-          onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-4 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Create New Challenge
-        </Button>
-      </div>
 
       {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
@@ -354,21 +344,6 @@ export const UserChallengeParticipations: React.FC = () => {
         />
       )}
 
-      {/* Floating Create Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button 
-          onClick={() => setShowCreateModal(true)}
-          className="rounded-full w-14 h-14 bg-primary hover:bg-primary/90 shadow-lg"
-        >
-          <Plus className="w-6 h-6" />
-        </Button>
-      </div>
-
-      {/* Creation Modal */}
-      <PrivateChallengeCreationModal 
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
     </div>
   );
 };

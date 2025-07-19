@@ -21,6 +21,7 @@ import { FriendProfileView } from './FriendProfileView';
 import { FriendsLeaderboard } from './FriendsLeaderboard';
 import { GroupFeed } from './GroupFeed';
 import { useFriendTagging } from '@/hooks/useFriendTagging';
+import { PrivateChallengeCreationModal } from '@/components/analytics/PrivateChallengeCreationModal';
 import { cn } from '@/lib/utils';
 
 interface FriendCardProps {
@@ -99,6 +100,7 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
 
 export const MyFriendsTab = () => {
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { friends, isLoading } = useFriendTagging(true);
 
   if (selectedFriend) {
@@ -193,6 +195,25 @@ export const MyFriendsTab = () => {
               )}
             </div>
           </ScrollArea>
+
+          {/* Create Challenge Section */}
+          <div className="space-y-4 pt-6 border-t border-border/50">
+            <div className="text-center space-y-3">
+              <div className="text-lg font-semibold text-foreground">
+                Motivate and grow together on your wellness journey
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Create challenges with your friends to stay motivated and achieve your goals together
+              </p>
+              <Button 
+                onClick={() => setShowCreateModal(true)}
+                className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
+              >
+                <Users className="w-5 h-5" />
+                Create New Challenge
+              </Button>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="leaderboard">
@@ -203,6 +224,12 @@ export const MyFriendsTab = () => {
           <GroupFeed friends={friends} />
         </TabsContent>
       </Tabs>
+
+      {/* Challenge Creation Modal */}
+      <PrivateChallengeCreationModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 };
