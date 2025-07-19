@@ -15,6 +15,7 @@ interface ActiveChallenge {
   streakCount: number;
   goalDescription: string;
   durationDays: number;
+  participants?: Array<{ id: string; name: string; avatar: string; progress: number }>;
 }
 
 interface ActiveChallengesContextType {
@@ -26,6 +27,10 @@ interface ActiveChallengesContextType {
   loading: boolean;
   error: string | null;
   refreshActiveChallenges: () => void;
+  joinChallenge: (challengeId: string) => Promise<void>;
+  leaveChallenge: (challengeId: string) => Promise<void>;
+  createChallenge: (challengeData: any) => Promise<void>;
+  userChallenges: ActiveChallenge[];
 }
 
 const ActiveChallengesContext = createContext<ActiveChallengesContextType | undefined>(undefined);
@@ -260,6 +265,43 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     }
   }, [refreshPublic, refreshPrivate]);
 
+  const joinChallenge = useCallback(async (challengeId: string) => {
+    try {
+      // Implementation will be added when needed
+      console.log('Joining challenge:', challengeId);
+      refreshActiveChallenges();
+    } catch (err) {
+      console.error('Error joining challenge:', err);
+      setError('Failed to join challenge');
+    }
+  }, [refreshActiveChallenges]);
+
+  const leaveChallenge = useCallback(async (challengeId: string) => {
+    try {
+      // Implementation will be added when needed
+      console.log('Leaving challenge:', challengeId);
+      refreshActiveChallenges();
+    } catch (err) {
+      console.error('Error leaving challenge:', err);
+      setError('Failed to leave challenge');
+    }
+  }, [refreshActiveChallenges]);
+
+  const createChallenge = useCallback(async (challengeData: any) => {
+    try {
+      // Implementation will be added when needed
+      console.log('Creating challenge:', challengeData);
+      refreshActiveChallenges();
+    } catch (err) {
+      console.error('Error creating challenge:', err);
+      setError('Failed to create challenge');
+    }
+  }, [refreshActiveChallenges]);
+
+  const userChallenges = useMemo(() => {
+    return [...activeChallenges, ...completedChallenges];
+  }, [activeChallenges, completedChallenges]);
+
   const loading = !isInitialized || publicLoading || privateLoading;
 
   const value: ActiveChallengesContextType = {
@@ -271,6 +313,10 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     loading,
     error,
     refreshActiveChallenges,
+    joinChallenge,
+    leaveChallenge,
+    createChallenge,
+    userChallenges,
   };
 
   console.log('ActiveChallengesProvider: Providing context value', {

@@ -96,7 +96,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   }, [challenge.endDate]);
 
   const handleJoinChallenge = () => {
-    joinChallenge(challenge.id, currentUserId, { name: 'Current User 👤', avatar: '👤' });
+    joinChallenge(challenge.id);
     toast({
       title: "Joined Challenge! 🎉",
       description: `You are now part of "${challenge.name}"`,
@@ -104,7 +104,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   };
 
   const handleLeaveChallenge = () => {
-    leaveChallenge(challenge.id, currentUserId);
+    leaveChallenge(challenge.id);
     toast({
       title: "Left Challenge",
       description: `You have left "${challenge.name}"`,

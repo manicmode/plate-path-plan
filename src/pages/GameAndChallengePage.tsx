@@ -356,7 +356,41 @@ const GameAndChallengePage = () => {
               <p className="text-muted-foreground">Celebrating our greatest champions and achievers</p>
             </div>
             
-            <HallOfFame />
+            <HallOfFame champions={[
+              {
+                id: 1,
+                nickname: "NutritionNinja",
+                avatar: "🥗",
+                achievement: "Longest Nutrition Streak",
+                month: "November",
+                year: "2024",
+                quote: "Consistency is the key to transformation!",
+                score: 2847,
+                trophy: "gold"
+              },
+              {
+                id: 2, 
+                nickname: "HydroHero",
+                avatar: "💧",
+                achievement: "Hydration Champion",
+                month: "October", 
+                year: "2024",
+                quote: "Water is life, life is water!",
+                score: 2156,
+                trophy: "silver"
+              },
+              {
+                id: 3,
+                nickname: "SupplementSage", 
+                avatar: "💊",
+                achievement: "Most Consistent Logger",
+                month: "September",
+                year: "2024",
+                quote: "Small daily improvements lead to stunning results!",
+                score: 1934,
+                trophy: "bronze"
+              }
+            ]} />
           </TabsContent>
 
           {/* Friends Tab */}

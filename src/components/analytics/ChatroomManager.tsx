@@ -40,7 +40,7 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
         name: challenge.name,
         type: challenge.type === 'private' ? 'private' : 'public',
         participantCount: challenge.participants?.length || 0,
-        participantIds: challenge.participants || [],
+        participantIds: (challenge.participants || []).map(p => p.id),
       });
     });
 
