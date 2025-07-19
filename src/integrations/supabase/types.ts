@@ -448,6 +448,48 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_rankings: {
+        Row: {
+          completion_date: string
+          created_at: string
+          display_name: string
+          final_score: number
+          final_streak: number
+          id: string
+          month_year: string
+          podium_position: number
+          total_interactions: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          completion_date: string
+          created_at?: string
+          display_name: string
+          final_score?: number
+          final_streak?: number
+          id?: string
+          month_year: string
+          podium_position: number
+          total_interactions?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string
+          display_name?: string
+          final_score?: number
+          final_streak?: number
+          id?: string
+          month_year?: string
+          podium_position?: number
+          total_interactions?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       monthly_summaries: {
         Row: {
           average_score: number | null

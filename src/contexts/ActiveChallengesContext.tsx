@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useMe
 import { useAuth } from '@/contexts/auth';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ActiveChallenge {
   id: string;
@@ -289,12 +290,22 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
 
   const createChallenge = useCallback(async (challengeData: any) => {
     try {
-      // Implementation will be added when needed
-      console.log('Creating challenge:', challengeData);
+      console.log('Creating challenge with data:', challengeData);
+      
+      const { data, error } = await supabase.functions.invoke('challenge-creator', {
+        body: challengeData
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Challenge created successfully:', data);
       refreshActiveChallenges();
     } catch (err) {
       console.error('Error creating challenge:', err);
       setError('Failed to create challenge');
+      throw err;
     }
   }, [refreshActiveChallenges]);
 
