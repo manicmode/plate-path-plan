@@ -588,7 +588,7 @@ function GameAndChallengeContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
+    <div className="overflow-x-hidden w-full max-w-full min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
       {/* Mystery Boxes - Hidden on mobile for performance */}
       {!isMobile && (
         <>
