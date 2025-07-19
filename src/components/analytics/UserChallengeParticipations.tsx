@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -31,13 +31,8 @@ export const UserChallengeParticipations: React.FC = () => {
 
   const loading = publicLoading || privateLoading;
 
-  // Auto-refresh on mount to get latest data after RLS fix
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      refreshData();
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [refreshData]);
+  // Removed auto-refresh timer - only refresh on initial mount
+  // Manual refresh can be triggered by refreshData() function when needed
 
   if (loading) {
     return (
