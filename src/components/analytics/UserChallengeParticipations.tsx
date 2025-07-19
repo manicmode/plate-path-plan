@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle } from 'lucide-react';
+import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
@@ -12,6 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 
 export const UserChallengeParticipations: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [publicCarouselIndex, setPublicCarouselIndex] = useState(0);
+  const [quickCarouselIndex, setQuickCarouselIndex] = useState(0);
+  const [privateCarouselIndex, setPrivateCarouselIndex] = useState(0);
   const { toast } = useToast();
   
   const { 
@@ -99,6 +102,39 @@ export const UserChallengeParticipations: React.FC = () => {
     }
   };
 
+  // Carousel navigation functions
+  const nextCard = (section: 'public' | 'quick' | 'private') => {
+    if (section === 'public') {
+      setPublicCarouselIndex((prev) => 
+        prev < regularPublicChallenges.length - 1 ? prev + 1 : 0
+      );
+    } else if (section === 'quick') {
+      setQuickCarouselIndex((prev) => 
+        prev < quickChallenges.length - 1 ? prev + 1 : 0
+      );
+    } else if (section === 'private') {
+      setPrivateCarouselIndex((prev) => 
+        prev < privateChallenges.length - 1 ? prev + 1 : 0
+      );
+    }
+  };
+
+  const prevCard = (section: 'public' | 'quick' | 'private') => {
+    if (section === 'public') {
+      setPublicCarouselIndex((prev) => 
+        prev > 0 ? prev - 1 : regularPublicChallenges.length - 1
+      );
+    } else if (section === 'quick') {
+      setQuickCarouselIndex((prev) => 
+        prev > 0 ? prev - 1 : quickChallenges.length - 1
+      );
+    } else if (section === 'private') {
+      setPrivateCarouselIndex((prev) => 
+        prev > 0 ? prev - 1 : privateChallenges.length - 1
+      );
+    }
+  };
+
   const ChallengeCard = ({ item }: { item: any }) => {
     if (!item) return null;
     
@@ -108,16 +144,16 @@ export const UserChallengeParticipations: React.FC = () => {
       ? (participation as any).completion_percentage || 0
       : participation.completion_percentage || 0;
 
-    // Get background gradient based on challenge type
+    // Get background gradient based on challenge type - matching reference images
     const getBackgroundGradient = () => {
       switch (type) {
         case 'private':
-          return 'bg-gradient-to-br from-purple-500 to-purple-700';
+          return 'bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700';
         case 'quick':
-          return 'bg-gradient-to-br from-orange-500 to-yellow-600';
+          return 'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600';
         case 'public':
         default:
-          return 'bg-gradient-to-br from-blue-500 to-blue-700';
+          return 'bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600';
       }
     };
 
@@ -125,12 +161,12 @@ export const UserChallengeParticipations: React.FC = () => {
     const getTypeBadge = () => {
       switch (type) {
         case 'private':
-          return { icon: Lock, label: 'Private', bgColor: 'bg-purple-500/20' };
+          return { icon: Lock, label: 'Private' };
         case 'quick':
-          return { icon: Flame, label: 'Quick', bgColor: 'bg-orange-500/20' };
+          return { icon: Flame, label: 'Quick' };
         case 'public':
         default:
-          return { icon: Users, label: 'Public', bgColor: 'bg-blue-500/20' };
+          return { icon: Users, label: 'Public' };
       }
     };
 
@@ -139,8 +175,10 @@ export const UserChallengeParticipations: React.FC = () => {
     
     // Get challenge details
     const challengeIcon = type === 'private' 
-      ? (challenge as any).badge_icon || '🎯'
-      : (challenge as any).badge_icon || '🎯';
+      ? (challenge as any).badge_icon || '🧘'
+      : type === 'quick' 
+        ? (challenge as any).badge_icon || '🏃'
+        : (challenge as any).badge_icon || '🧘';
     
     const challengeTitle = challenge.title;
     const challengeDescription = type === 'private'
@@ -152,123 +190,165 @@ export const UserChallengeParticipations: React.FC = () => {
       : (challenge as any).participant_count || 1;
 
     return (
-      <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-        {/* Header Section with Gradient */}
-        <CardHeader className={`${getBackgroundGradient()} p-6 text-white relative`}>
-          {/* Trending badge */}
-          {(challenge as any).is_trending && (
-            <div className="absolute top-4 right-4">
-              <Badge className="bg-yellow-500 text-yellow-900 font-bold animate-pulse">
-                🔥 Trending
-              </Badge>
-            </div>
-          )}
-
-          {/* Top badges row */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Badge className={`${typeBadge.bgColor} text-white border-white/20`}>
+      <div className="w-80 flex-shrink-0">
+        <Card className="w-full overflow-hidden bg-gray-800 border-gray-700">
+          {/* Header Section with Gradient - exactly matching reference */}
+          <div className={`${getBackgroundGradient()} p-4 text-white relative rounded-t-lg`}>
+            {/* Type badge and time in top row */}
+            <div className="flex items-center justify-between mb-3">
+              <Badge className="bg-white/20 text-white border-white/30 text-xs">
                 <typeBadge.icon className="w-3 h-3 mr-1" />
                 {typeBadge.label}
               </Badge>
+              <div className="flex items-center gap-1 text-sm">
+                <Clock className="w-4 h-4" />
+                <span>{timeLeft}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 text-sm opacity-90">
-              <Clock className="w-4 h-4" />
-              <span>{timeLeft}</span>
-            </div>
-          </div>
-          
-          {/* Title and description */}
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <span>{challengeIcon}</span>
-              {challengeTitle}
+            
+            {/* Title with emoji */}
+            <h3 className="text-lg font-bold flex items-center gap-2 mb-1">
+              {challengeIcon} {challengeTitle}
             </h3>
-            <p className="text-sm opacity-90 leading-relaxed">
+            
+            {/* Description */}
+            <p className="text-sm text-white/90">
               {challengeDescription}
             </p>
           </div>
-        </CardHeader>
 
-        {/* Content Section */}
-        <CardContent className="p-6 space-y-4">
-          {/* Progress Overview */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Your Progress</span>
-              <span className="text-sm text-muted-foreground font-bold">
-                {Math.round(progressPercentage)}%
-              </span>
+          {/* Dark bottom section - matching reference exactly */}
+          <div className="bg-gray-800 p-4 space-y-4">
+            {/* Progress section */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white font-medium">Your Progress</span>
+                <span className="text-gray-400">{Math.round(progressPercentage)}%</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-teal-400 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
             </div>
-            <Progress 
-              value={progressPercentage} 
-              className="h-3"
-            />
-          </div>
 
-          {/* Participants section */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span>{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
-            </div>
-            {type !== 'private' && (
-              <div className="flex items-center gap-1">
-                <Trophy className="w-4 h-4 text-yellow-500" />
+            {/* Participants count and status */}
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-gray-400">
+                <Users className="w-4 h-4" />
+                <span>{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex items-center gap-1 text-yellow-400">
+                <Trophy className="w-4 h-4" />
                 <span>Active</span>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Participant Avatars */}
-          <div className="flex gap-2">
-            {[...Array(Math.min(3, participantCount))].map((_, i) => (
-              <div 
-                key={i}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-sm font-bold border-2 border-background"
-              >
-                {i === 0 ? '😊' : i === 1 ? '🔥' : '💪'}
+            {/* Participant avatar */}
+            <div className="flex gap-2">
+              <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center">
+                <span className="text-lg">😊</span>
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => handleShare(challengeTitle)}
-              className="flex-1"
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
-            </Button>
-            
-            <Button 
-              variant="outline"
-              size="sm"
-              className="flex-1"
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Chat
-            </Button>
+            {/* Action buttons - exactly matching reference */}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => handleShare(challengeTitle)}
+                className="flex-1 bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat
+              </Button>
 
-            <Button 
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                if (confirm("Do you want to leave this challenge?")) {
-                  onLeave(challenge.id);
-                }
-              }}
-            >
-              Leave
-            </Button>
+              <Button 
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (confirm("Do you want to leave this challenge?")) {
+                    onLeave(challenge.id);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Leave
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     );
   };
+
+  // Carousel Section Component
+  const CarouselSection = ({ 
+    title, 
+    icon: Icon, 
+    iconColor, 
+    challenges, 
+    currentIndex, 
+    onNext, 
+    onPrev 
+  }: {
+    title: string;
+    icon: any;
+    iconColor: string;
+    challenges: any[];
+    currentIndex: number;
+    onNext: () => void;
+    onPrev: () => void;
+  }) => (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold flex items-center gap-2">
+        <Icon className={`w-5 h-5 ${iconColor}`} />
+        {title}
+      </h2>
+      
+      <div className="relative">
+        {/* Left Arrow */}
+        <button
+          onClick={onPrev}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800/80 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg transition-all"
+          disabled={challenges.length <= 1}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        {/* Cards Container */}
+        <div className="overflow-hidden px-12">
+          <div 
+            className="flex transition-transform duration-300 ease-in-out"
+            style={{ transform: `translateX(-${currentIndex * 320}px)` }}
+          >
+            {challenges.map((item, index) => (
+              <ChallengeCard key={`${title}-${index}`} item={item} />
+            ))}
+          </div>
+        </div>
+
+        {/* Right Arrow */}
+        <button
+          onClick={onNext}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800/80 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg transition-all"
+          disabled={challenges.length <= 1}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
 
   const hasAnyChallenges = privateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
 
@@ -292,59 +372,44 @@ export const UserChallengeParticipations: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Friend Challenges Section */}
-      {privateChallenges.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Lock className="w-5 h-5 text-purple-500" />
-              Friend Challenges
-            </h2>
-            <Badge variant="secondary">{privateChallenges.length}</Badge>
-          </div>
-          <div className="grid gap-4">
-            {privateChallenges.map((item, index) => (
-              <ChallengeCard key={`private-${index}`} item={item} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Public Challenges Section */}
+    <div className="space-y-8 bg-gray-900 min-h-screen">
+      {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-500" />
-              My Public Challenges
-            </h2>
-            <Badge variant="secondary">{regularPublicChallenges.length}</Badge>
-          </div>
-          <div className="grid gap-4">
-            {regularPublicChallenges.map((item, index) => (
-              <ChallengeCard key={`public-${index}`} item={item} />
-            ))}
-          </div>
-        </div>
+        <CarouselSection
+          title="My Public Challenges"
+          icon={Users}
+          iconColor="text-blue-500"
+          challenges={regularPublicChallenges}
+          currentIndex={publicCarouselIndex}
+          onNext={() => nextCard('public')}
+          onPrev={() => prevCard('public')}
+        />
       )}
 
-      {/* Quick Challenges Section */}
+      {/* My Quick Challenges Section */}
       {quickChallenges.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Flame className="w-5 h-5 text-orange-500" />
-              My Quick Challenges
-            </h2>
-            <Badge variant="secondary">{quickChallenges.length}</Badge>
-          </div>
-          <div className="grid gap-4">
-            {quickChallenges.map((item, index) => (
-              <ChallengeCard key={`quick-${index}`} item={item} />
-            ))}
-          </div>
-        </div>
+        <CarouselSection
+          title="My Quick Challenges"
+          icon={Flame}
+          iconColor="text-orange-500"
+          challenges={quickChallenges}
+          currentIndex={quickCarouselIndex}
+          onNext={() => nextCard('quick')}
+          onPrev={() => prevCard('quick')}
+        />
+      )}
+
+      {/* My Private Challenges Section */}
+      {privateChallenges.length > 0 && (
+        <CarouselSection
+          title="My Private Challenges"
+          icon={Lock}
+          iconColor="text-purple-500"
+          challenges={privateChallenges}
+          currentIndex={privateCarouselIndex}
+          onNext={() => nextCard('private')}
+          onPrev={() => prevCard('private')}
+        />
       )}
 
       {/* Floating Create Button */}
