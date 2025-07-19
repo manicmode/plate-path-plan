@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
@@ -23,6 +24,7 @@ interface ActiveChallengesContextType {
   totalActiveCount: number;
   completionRate: number;
   loading: boolean;
+  error: string | null;
   refreshActiveChallenges: () => void;
 }
 
@@ -42,127 +44,211 @@ interface ActiveChallengesProviderProps {
 
 export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> = ({ children }) => {
   const { user } = useAuth();
-  const { 
-    challenges: publicChallenges, 
-    userParticipations, 
-    loading: publicLoading,
+  const [error, setError] = useState<string | null>(null);
+
+  console.log('ActiveChallengesProvider: Initializing with user:', user?.id);
+
+  // Initialize hooks with error handling
+  const publicChallengesHook = usePublicChallenges();
+  const privateChallengesHook = usePrivateChallenges();
+
+  const {
+    challenges: publicChallenges = [],
+    userParticipations = [],
+    loading: publicLoading = false,
     refreshData: refreshPublic
-  } = usePublicChallenges();
-  const { 
-    challengesWithParticipation: privateChallenges, 
-    loading: privateLoading,
+  } = publicChallengesHook || {};
+
+  const {
+    challengesWithParticipation: privateChallenges = [],
+    loading: privateLoading = false,
     refreshData: refreshPrivate
-  } = usePrivateChallenges();
+  } = privateChallengesHook || {};
 
-  // Memoized active challenges to prevent unnecessary recalculations
+  // Clear error when data loads successfully
+  useEffect(() => {
+    if (publicChallenges.length > 0 || privateChallenges.length > 0) {
+      setError(null);
+    }
+  }, [publicChallenges.length, privateChallenges.length]);
+
+  // Memoized active challenges with error handling
   const activeChallenges = useMemo(() => {
-    if (!user) return [];
+    try {
+      if (!user) {
+        console.log('ActiveChallengesProvider: No user, returning empty challenges');
+        return [];
+      }
 
-    const activeList: ActiveChallenge[] = [];
-
-    // Process public challenges user is participating in
-    publicChallenges.forEach(pubChallenge => {
-      const userParticipation = userParticipations.find(p => p.challenge_id === pubChallenge.id);
-      if (!userParticipation || userParticipation.is_completed) return;
-
-      activeList.push({
-        id: pubChallenge.id,
-        name: pubChallenge.title,
-        type: pubChallenge.duration_days <= 3 ? 'micro' : 'public',
-        startDate: new Date(userParticipation.start_date),
-        endDate: new Date(userParticipation.end_date),
-        progress: userParticipation.completion_percentage,
-        isCompleted: userParticipation.is_completed,
-        streakCount: userParticipation.streak_count || 0,
-        goalDescription: pubChallenge.goal_description,
-        durationDays: pubChallenge.duration_days
+      console.log('ActiveChallengesProvider: Processing challenges', {
+        publicCount: publicChallenges.length,
+        privateCount: privateChallenges.length,
+        participationsCount: userParticipations.length
       });
-    });
 
-    // Process private challenges
-    privateChallenges.forEach(privChallenge => {
-      if (!privChallenge.participation || privChallenge.participation.completion_percentage >= 100) return;
+      const activeList: ActiveChallenge[] = [];
 
-      activeList.push({
-        id: privChallenge.id,
-        name: privChallenge.title,
-        type: 'private',
-        startDate: new Date(privChallenge.start_date),
-        endDate: new Date(new Date(privChallenge.start_date).getTime() + privChallenge.duration_days * 24 * 60 * 60 * 1000),
-        progress: privChallenge.participation.completion_percentage,
-        isCompleted: false,
-        streakCount: privChallenge.participation.streak_count || 0,
-        goalDescription: privChallenge.description,
-        durationDays: privChallenge.duration_days
-      });
-    });
+      // Process public challenges user is participating in
+      if (Array.isArray(publicChallenges) && Array.isArray(userParticipations)) {
+        publicChallenges.forEach(pubChallenge => {
+          try {
+            const userParticipation = userParticipations.find(p => p.challenge_id === pubChallenge.id);
+            if (!userParticipation || userParticipation.is_completed) return;
 
-    return activeList;
+            activeList.push({
+              id: pubChallenge.id,
+              name: pubChallenge.title || 'Untitled Challenge',
+              type: (pubChallenge.duration_days || 0) <= 3 ? 'micro' : 'public',
+              startDate: new Date(userParticipation.start_date),
+              endDate: new Date(userParticipation.end_date),
+              progress: userParticipation.completion_percentage || 0,
+              isCompleted: userParticipation.is_completed || false,
+              streakCount: userParticipation.streak_count || 0,
+              goalDescription: pubChallenge.goal_description || '',
+              durationDays: pubChallenge.duration_days || 0
+            });
+          } catch (err) {
+            console.warn('Error processing public challenge:', pubChallenge.id, err);
+          }
+        });
+      }
+
+      // Process private challenges
+      if (Array.isArray(privateChallenges)) {
+        privateChallenges.forEach(privChallenge => {
+          try {
+            if (!privChallenge.participation || (privChallenge.participation.completion_percentage || 0) >= 100) return;
+
+            const startDate = new Date(privChallenge.start_date);
+            const endDate = new Date(startDate.getTime() + (privChallenge.duration_days || 0) * 24 * 60 * 60 * 1000);
+
+            activeList.push({
+              id: privChallenge.id,
+              name: privChallenge.title || 'Untitled Private Challenge',
+              type: 'private',
+              startDate,
+              endDate,
+              progress: privChallenge.participation.completion_percentage || 0,
+              isCompleted: false,
+              streakCount: privChallenge.participation.streak_count || 0,
+              goalDescription: privChallenge.description || '',
+              durationDays: privChallenge.duration_days || 0
+            });
+          } catch (err) {
+            console.warn('Error processing private challenge:', privChallenge.id, err);
+          }
+        });
+      }
+
+      console.log('ActiveChallengesProvider: Processed active challenges:', activeList.length);
+      return activeList;
+
+    } catch (err) {
+      console.error('Error in activeChallenges calculation:', err);
+      setError('Failed to load active challenges');
+      return [];
+    }
   }, [user, publicChallenges, userParticipations, privateChallenges]);
 
-  // Memoized micro challenges (short duration)
-  const microChallenges = useMemo(() => 
-    activeChallenges.filter(challenge => challenge.type === 'micro'),
-    [activeChallenges]
-  );
+  // Memoized micro challenges
+  const microChallenges = useMemo(() => {
+    try {
+      return activeChallenges.filter(challenge => challenge.type === 'micro');
+    } catch (err) {
+      console.error('Error filtering micro challenges:', err);
+      return [];
+    }
+  }, [activeChallenges]);
 
-  // Memoized completed challenges
+  // Memoized completed challenges with error handling
   const completedChallenges = useMemo(() => {
-    if (!user) return [];
+    try {
+      if (!user) return [];
 
-    const completedList: ActiveChallenge[] = [];
+      const completedList: ActiveChallenge[] = [];
 
-    // Process completed public challenges
-    publicChallenges.forEach(pubChallenge => {
-      const userParticipation = userParticipations.find(p => p.challenge_id === pubChallenge.id);
-      if (!userParticipation || !userParticipation.is_completed) return;
+      // Process completed public challenges
+      if (Array.isArray(publicChallenges) && Array.isArray(userParticipations)) {
+        publicChallenges.forEach(pubChallenge => {
+          try {
+            const userParticipation = userParticipations.find(p => p.challenge_id === pubChallenge.id);
+            if (!userParticipation || !userParticipation.is_completed) return;
 
-      completedList.push({
-        id: pubChallenge.id,
-        name: pubChallenge.title,
-        type: pubChallenge.duration_days <= 3 ? 'micro' : 'public',
-        startDate: new Date(userParticipation.start_date),
-        endDate: new Date(userParticipation.end_date),
-        progress: userParticipation.completion_percentage,
-        isCompleted: true,
-        streakCount: userParticipation.streak_count || 0,
-        goalDescription: pubChallenge.goal_description,
-        durationDays: pubChallenge.duration_days
-      });
-    });
+            completedList.push({
+              id: pubChallenge.id,
+              name: pubChallenge.title || 'Untitled Challenge',
+              type: (pubChallenge.duration_days || 0) <= 3 ? 'micro' : 'public',
+              startDate: new Date(userParticipation.start_date),
+              endDate: new Date(userParticipation.end_date),
+              progress: userParticipation.completion_percentage || 0,
+              isCompleted: true,
+              streakCount: userParticipation.streak_count || 0,
+              goalDescription: pubChallenge.goal_description || '',
+              durationDays: pubChallenge.duration_days || 0
+            });
+          } catch (err) {
+            console.warn('Error processing completed public challenge:', pubChallenge.id, err);
+          }
+        });
+      }
 
-    // Process completed private challenges
-    privateChallenges.forEach(privChallenge => {
-      if (!privChallenge.participation || privChallenge.participation.completion_percentage < 100) return;
+      // Process completed private challenges
+      if (Array.isArray(privateChallenges)) {
+        privateChallenges.forEach(privChallenge => {
+          try {
+            if (!privChallenge.participation || (privChallenge.participation.completion_percentage || 0) < 100) return;
 
-      completedList.push({
-        id: privChallenge.id,
-        name: privChallenge.title,
-        type: 'private',
-        startDate: new Date(privChallenge.start_date),
-        endDate: new Date(new Date(privChallenge.start_date).getTime() + privChallenge.duration_days * 24 * 60 * 60 * 1000),
-        progress: privChallenge.participation.completion_percentage,
-        isCompleted: true,
-        streakCount: privChallenge.participation.streak_count || 0,
-        goalDescription: privChallenge.description,
-        durationDays: privChallenge.duration_days
-      });
-    });
+            const startDate = new Date(privChallenge.start_date);
+            const endDate = new Date(startDate.getTime() + (privChallenge.duration_days || 0) * 24 * 60 * 60 * 1000);
 
-    return completedList;
+            completedList.push({
+              id: privChallenge.id,
+              name: privChallenge.title || 'Untitled Private Challenge',
+              type: 'private',
+              startDate,
+              endDate,
+              progress: privChallenge.participation.completion_percentage || 0,
+              isCompleted: true,
+              streakCount: privChallenge.participation.streak_count || 0,
+              goalDescription: privChallenge.description || '',
+              durationDays: privChallenge.duration_days || 0
+            });
+          } catch (err) {
+            console.warn('Error processing completed private challenge:', privChallenge.id, err);
+          }
+        });
+      }
+
+      return completedList;
+    } catch (err) {
+      console.error('Error in completedChallenges calculation:', err);
+      return [];
+    }
   }, [user, publicChallenges, userParticipations, privateChallenges]);
 
   // Memoized calculated values
   const totalActiveCount = useMemo(() => activeChallenges.length, [activeChallenges]);
   
   const completionRate = useMemo(() => {
-    const totalChallenges = activeChallenges.length + completedChallenges.length;
-    return totalChallenges > 0 ? (completedChallenges.length / totalChallenges) * 100 : 0;
+    try {
+      const totalChallenges = activeChallenges.length + completedChallenges.length;
+      return totalChallenges > 0 ? (completedChallenges.length / totalChallenges) * 100 : 0;
+    } catch (err) {
+      console.error('Error calculating completion rate:', err);
+      return 0;
+    }
   }, [activeChallenges.length, completedChallenges.length]);
 
   const refreshActiveChallenges = () => {
-    refreshPublic();
-    refreshPrivate();
+    try {
+      setError(null);
+      console.log('ActiveChallengesProvider: Refreshing challenges');
+      refreshPublic?.();
+      refreshPrivate?.();
+    } catch (err) {
+      console.error('Error refreshing challenges:', err);
+      setError('Failed to refresh challenges');
+    }
   };
 
   const value: ActiveChallengesContextType = {
@@ -172,8 +258,17 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     totalActiveCount,
     completionRate,
     loading: publicLoading || privateLoading,
+    error,
     refreshActiveChallenges,
   };
+
+  console.log('ActiveChallengesProvider: Providing context value', {
+    activeCount: activeChallenges.length,
+    microCount: microChallenges.length,
+    completedCount: completedChallenges.length,
+    loading: value.loading,
+    error: value.error
+  });
 
   return (
     <ActiveChallengesContext.Provider value={value}>
