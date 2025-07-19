@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Users, Calendar, Target, X } from 'lucide-react';
-import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
+import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
 import { useToast } from '@/hooks/use-toast';
 
 interface MicroChallengeCreationModalProps {
@@ -43,7 +43,7 @@ export function MicroChallengeCreationModal({ open, onOpenChange }: MicroChallen
   const [customGoal, setCustomGoal] = useState('');
   const [duration, setDuration] = useState<number>(1);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const { createChallenge } = useSimplifiedChallenge();
+  const { createChallenge } = useActiveChallenges();
   const { toast } = useToast();
 
   const handleReset = () => {

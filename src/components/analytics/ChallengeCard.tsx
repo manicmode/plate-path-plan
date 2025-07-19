@@ -23,7 +23,25 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Challenge, useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
+import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
+
+interface Challenge {
+  id: string;
+  name: string;
+  type: 'public' | 'private' | 'micro';
+  creatorId: string;
+  creatorName: string;
+  goalType: string;
+  customGoal?: string;
+  startDate: Date;
+  endDate: Date;
+  participants: string[];
+  participantDetails: Record<string, { name: string; avatar: string }>;
+  progress: Record<string, number>;
+  maxParticipants?: number;
+  inviteCode?: string;
+  trending?: boolean;
+}
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,7 +57,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const { joinChallenge, leaveChallenge } = useSimplifiedChallenge();
+  const { joinChallenge, leaveChallenge } = useActiveChallenges();
   const { toast } = useToast();
 
   const isParticipant = challenge.participants.includes(currentUserId);
@@ -144,7 +162,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   // Calculate average progress
   const progressValues = Object.values(challenge.progress);
   const averageProgress = progressValues.length > 0 
-    ? progressValues.reduce((sum, progress) => sum + progress, 0) / progressValues.length
+    ? progressValues.reduce((sum, progress) => (Number(sum) || 0) + (Number(progress) || 0), 0) / progressValues.length
     : 0;
 
   return (

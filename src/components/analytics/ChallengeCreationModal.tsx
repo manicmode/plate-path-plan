@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
+import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChallengeCreationModalProps {
@@ -55,7 +55,7 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [maxParticipants, setMaxParticipants] = useState('10');
   
-  const { createChallenge } = useSimplifiedChallenge();
+  const { createChallenge } = useActiveChallenges();
   const { toast } = useToast();
 
   const goalOptions = [

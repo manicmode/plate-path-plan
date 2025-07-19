@@ -6,7 +6,23 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Clock, Zap, Users, MessageCircle } from 'lucide-react';
-import { Challenge } from '@/contexts/SimplifiedChallengeContext';
+interface Challenge {
+  id: string;
+  name: string;
+  type: 'public' | 'private' | 'micro';
+  creatorId: string;
+  creatorName: string;
+  goalType: string;
+  customGoal?: string;
+  startDate: Date;
+  endDate: Date;
+  participants: string[];
+  participantDetails: Record<string, { name: string; avatar: string }>;
+  progress: Record<string, number>;
+  maxParticipants?: number;
+  inviteCode?: string;
+  trending?: boolean;
+}
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +51,7 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
     }));
   };
 
-  const averageProgress = Object.values(challenge.progress).reduce((sum, progress) => sum + progress, 0) / challenge.participants.length;
+  const averageProgress = Object.values(challenge.progress).reduce((sum, progress) => (Number(sum) || 0) + (Number(progress) || 0), 0) / challenge.participants.length;
 
   return (
     <Card className="min-w-[320px] bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border-2 border-yellow-200 dark:border-yellow-800 hover:shadow-lg transition-all duration-300">

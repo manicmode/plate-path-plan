@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { ChatroomSelector } from './ChatroomSelector';
-import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
+import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
 
 interface Chatroom {
   id: string;
@@ -19,7 +19,7 @@ interface ChatroomManagerProps {
 }
 
 export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) => {
-  const { challenges, microChallenges, activeUserChallenges, loading } = useSimplifiedChallenge();
+  const { userChallenges, loading } = useActiveChallenges();
   const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
 
@@ -27,24 +27,20 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
   useEffect(() => {
     if (loading) return;
 
-    console.log('Building chatrooms from challenges:', {
-      challenges,
-      microChallenges,
-      activeUserChallenges
-    });
+    console.log('Building chatrooms from user challenges:', userChallenges);
 
     const availableChatrooms: Chatroom[] = [];
 
-    // Add all active user challenges as chatrooms
-    activeUserChallenges?.forEach(challenge => {
+    // Add all user challenges as chatrooms
+    userChallenges?.forEach(challenge => {
       console.log('Adding chatroom for challenge:', challenge);
       
       availableChatrooms.push({
         id: challenge.id,
         name: challenge.name,
         type: challenge.type === 'private' ? 'private' : 'public',
-        participantCount: challenge.participants.length,
-        participantIds: challenge.participants,
+        participantCount: challenge.participants?.length || 0,
+        participantIds: challenge.participants || [],
       });
     });
 
@@ -55,7 +51,7 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
     if (availableChatrooms.length > 0 && !activeChatroomId) {
       setActiveChatroomId(availableChatrooms[0].id);
     }
-  }, [challenges, microChallenges, activeUserChallenges, activeChatroomId, loading]);
+  }, [userChallenges, activeChatroomId, loading]);
 
   const handleSelectChatroom = (chatroomId: string) => {
     setActiveChatroomId(chatroomId);

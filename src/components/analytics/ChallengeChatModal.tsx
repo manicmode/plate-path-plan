@@ -11,7 +11,7 @@ import { useChatModal } from '@/contexts/ChatModalContext';
 import { MessageInputWithTagging } from './MessageInputWithTagging';
 import { MessageBubbleWithTags } from './MessageBubbleWithTags';
 import { ChatroomSelector } from './ChatroomSelector';
-import { useSimplifiedChallenge } from '@/contexts/SimplifiedChallengeContext';
+import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +36,7 @@ export const ChallengeChatModal = ({
 }: ChallengeChatModalProps) => {
   const { chats, sendMessage, toggleMute, canSendEmoji, getLastEmojiTime, loadMessages } = useChat();
   const { user } = useAuth();
-  const { challenges, microChallenges, activeUserChallenges } = useSimplifiedChallenge();
+  const { userChallenges, loading } = useActiveChallenges();
   const { setIsChatModalOpen } = useChatModal();
   const [message, setMessage] = useState('');
   const [emojiCooldownTime, setEmojiCooldownTime] = useState(0);
@@ -59,38 +59,14 @@ export const ChallengeChatModal = ({
   // Build chatrooms for selector
   const chatrooms = [];
   
-  // Add public challenges where user is participating
-  activeUserChallenges?.forEach(challenge => {
-    if (challenge.type === 'public') {
-      chatrooms.push({
-        id: challenge.id,
-        name: challenge.name,
-        type: 'public' as const,
-        participantCount: challenge.participants.length,
-      });
-    }
-  });
-
-  // Add micro-challenges
-  microChallenges?.forEach(challenge => {
+  // Add all user challenges as chatrooms
+  userChallenges?.forEach(challenge => {
     chatrooms.push({
       id: challenge.id,
       name: challenge.name,
-      type: 'public' as const,
-      participantCount: challenge.participants.length,
+      type: challenge.type === 'private' ? 'private' as const : 'public' as const,
+      participantCount: challenge.participants?.length || 0,
     });
-  });
-
-  // Add private challenges where user is participating
-  activeUserChallenges?.forEach(challenge => {
-    if (challenge.type === 'private') {
-      chatrooms.push({
-        id: challenge.id,
-        name: challenge.name,
-        type: 'private' as const,
-        participantCount: challenge.participants.length,
-      });
-    }
   });
 
   // Get current chatroom info
