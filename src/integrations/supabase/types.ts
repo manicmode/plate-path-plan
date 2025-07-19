@@ -1503,6 +1503,10 @@ export type Database = {
           rank_position: number
         }[]
       }
+      get_user_private_challenge_access: {
+        Args: { challenge_id_param: string }
+        Returns: boolean
+      }
       trigger_yearly_scores_preview_update: {
         Args: Record<PropertyKey, never>
         Returns: Json

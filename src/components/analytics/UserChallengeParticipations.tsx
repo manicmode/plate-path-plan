@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -23,10 +23,19 @@ export const UserChallengeParticipations: React.FC = () => {
   const {
     challengesWithParticipation,
     updatePrivateProgress,
-    loading: privateLoading
+    loading: privateLoading,
+    refreshData
   } = usePrivateChallenges();
 
   const loading = publicLoading || privateLoading;
+
+  // Auto-refresh on mount to get latest data after RLS fix
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      refreshData();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [refreshData]);
 
   if (loading) {
     return (
