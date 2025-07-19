@@ -174,6 +174,53 @@ export type Database = {
           },
         ]
       }
+      challenge_teams: {
+        Row: {
+          challenge_id: string | null
+          created_at: string
+          creator_id: string
+          current_score: number
+          id: string
+          member_ids: string[]
+          name: string
+          team_rank: number | null
+          total_progress: number
+          updated_at: string
+        }
+        Insert: {
+          challenge_id?: string | null
+          created_at?: string
+          creator_id: string
+          current_score?: number
+          id?: string
+          member_ids?: string[]
+          name: string
+          team_rank?: number | null
+          total_progress?: number
+          updated_at?: string
+        }
+        Update: {
+          challenge_id?: string | null
+          created_at?: string
+          creator_id?: string
+          current_score?: number
+          id?: string
+          member_ids?: string[]
+          name?: string
+          team_rank?: number | null
+          total_progress?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_teams_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_nutrition_targets: {
         Row: {
           calculated_at: string
@@ -522,6 +569,7 @@ export type Database = {
           private_challenge_id: string | null
           progress_value: number
           streak_count: number
+          team_id: string | null
           user_id: string
         }
         Insert: {
@@ -536,6 +584,7 @@ export type Database = {
           private_challenge_id?: string | null
           progress_value?: number
           streak_count?: number
+          team_id?: string | null
           user_id: string
         }
         Update: {
@@ -550,6 +599,7 @@ export type Database = {
           private_challenge_id?: string | null
           progress_value?: number
           streak_count?: number
+          team_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -560,10 +610,18 @@ export type Database = {
             referencedRelation: "private_challenges"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "private_challenge_participations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_teams"
+            referencedColumns: ["id"]
+          },
         ]
       }
       private_challenges: {
         Row: {
+          auto_team_enabled: boolean | null
           badge_icon: string
           category: string
           challenge_type: string
@@ -573,16 +631,20 @@ export type Database = {
           duration_days: number
           id: string
           invited_user_ids: string[]
+          is_team_challenge: boolean
           max_participants: number
           start_date: string
           status: string
           target_metric: string | null
           target_unit: string | null
           target_value: number | null
+          team_ranking_basis: string | null
+          team_size: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          auto_team_enabled?: boolean | null
           badge_icon?: string
           category: string
           challenge_type?: string
@@ -592,16 +654,20 @@ export type Database = {
           duration_days: number
           id?: string
           invited_user_ids?: string[]
+          is_team_challenge?: boolean
           max_participants?: number
           start_date: string
           status?: string
           target_metric?: string | null
           target_unit?: string | null
           target_value?: number | null
+          team_ranking_basis?: string | null
+          team_size?: number | null
           title: string
           updated_at?: string
         }
         Update: {
+          auto_team_enabled?: boolean | null
           badge_icon?: string
           category?: string
           challenge_type?: string
@@ -611,12 +677,15 @@ export type Database = {
           duration_days?: number
           id?: string
           invited_user_ids?: string[]
+          is_team_challenge?: boolean
           max_participants?: number
           start_date?: string
           status?: string
           target_metric?: string | null
           target_unit?: string | null
           target_value?: number | null
+          team_ranking_basis?: string | null
+          team_size?: number | null
           title?: string
           updated_at?: string
         }
@@ -1484,6 +1553,10 @@ export type Database = {
         Args: { contact_user_id: string }
         Returns: boolean
       }
+      auto_assign_teams: {
+        Args: { challenge_id_param: string; team_size_param?: number }
+        Returns: number
+      }
       calculate_challenge_progress: {
         Args: { participation_id_param: string }
         Returns: undefined
@@ -1645,6 +1718,10 @@ export type Database = {
       }
       update_private_challenge_status: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_team_scores: {
+        Args: { challenge_id_param: string }
         Returns: undefined
       }
     }
