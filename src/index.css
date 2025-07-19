@@ -1023,4 +1023,62 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Premium Challenge Card Styles */
+  .premium-challenge-card {
+    background: 
+      linear-gradient(135deg, 
+        hsla(var(--card) / 0.95) 0%, 
+        hsla(var(--card) / 0.85) 100%
+      );
+    backdrop-filter: blur(12px);
+    border: 1px solid hsla(var(--border) / 0.2);
+    box-shadow: 
+      0 10px 40px -12px hsla(var(--primary) / 0.15),
+      0 4px 16px -4px hsla(var(--primary) / 0.1),
+      inset 0 1px 0 hsla(var(--background) / 0.6);
+  }
+
+  .premium-challenge-card:hover {
+    border-color: hsla(var(--primary) / 0.3);
+    box-shadow: 
+      0 20px 60px -12px hsla(var(--primary) / 0.25),
+      0 8px 24px -4px hsla(var(--primary) / 0.15),
+      inset 0 1px 0 hsla(var(--background) / 0.8);
+  }
+
+  /* Premium Progress Bar Styles */
+  .premium-progress-bar [data-state="complete"] > div {
+    background: linear-gradient(
+      90deg,
+      hsl(147 50% 60%) 0%,
+      hsl(280 60% 70%) 35%,
+      hsl(215 70% 60%) 70%,
+      hsl(147 50% 60%) 100%
+    );
+    background-size: 200% 100%;
+    animation: progress-shimmer 2s ease-in-out infinite;
+    box-shadow: 
+      0 0 8px hsla(var(--primary) / 0.6),
+      inset 0 1px 0 hsla(var(--background) / 0.2);
+  }
+
+  .premium-progress-glow {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsla(var(--primary) / 0.3) 50%,
+      transparent 100%
+    );
+    filter: blur(4px);
+  }
+
+  @keyframes progress-shimmer {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
 }
