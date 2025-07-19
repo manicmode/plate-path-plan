@@ -155,7 +155,7 @@ export const UserChallengeParticipations: React.FC = () => {
       : (challenge as any).participant_count || 1;
 
     return (
-      <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300 mb-4">
+      <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300">
         {/* Header Section with Gradient - modern glassmorphism design */}
         <div className={`${getBackgroundGradient()} p-6 text-white relative rounded-t-2xl h-32`}>
           {/* Type badge and time in top row */}
