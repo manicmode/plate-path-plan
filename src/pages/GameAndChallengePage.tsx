@@ -56,6 +56,7 @@ import { MyFriendsTab } from '@/components/social/MyFriendsTab';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
+import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 
 // Types
 interface ChatMessage {
@@ -1263,6 +1264,9 @@ function GameAndChallengeContent() {
         isOpen={isChatroomManagerOpen}
         onOpenChange={setIsChatroomManagerOpen}
       />
+      
+      {/* Smart Team-Up Prompts */}
+      <SmartTeamUpPrompt />
     </div>
   );
 }

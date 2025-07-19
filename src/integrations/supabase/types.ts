@@ -810,6 +810,33 @@ export type Database = {
         }
         Relationships: []
       }
+      team_up_prompts_shown: {
+        Row: {
+          action_taken: string | null
+          buddy_user_id: string
+          challenge_id: string
+          id: string
+          shown_at: string
+          user_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          buddy_user_id: string
+          challenge_id: string
+          id?: string
+          shown_at?: string
+          user_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          buddy_user_id?: string
+          challenge_id?: string
+          id?: string
+          shown_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       toxin_detections: {
         Row: {
           created_at: string
@@ -1495,6 +1522,20 @@ export type Database = {
           direction: string
         }[]
       }
+      get_potential_accountability_buddies: {
+        Args: { current_user_id: string }
+        Returns: {
+          buddy_user_id: string
+          buddy_name: string
+          buddy_email: string
+          challenge_name: string
+          challenge_id: string
+          completion_date: string
+          shared_ranking_group: boolean
+          buddy_rank_position: number
+          current_user_rank_position: number
+        }[]
+      }
       get_smart_friend_recommendations: {
         Args: { current_user_id: string }
         Returns: {
@@ -1524,6 +1565,14 @@ export type Database = {
       }
       get_user_private_challenge_access: {
         Args: { challenge_id_param: string }
+        Returns: boolean
+      }
+      record_team_up_prompt_action: {
+        Args: {
+          buddy_user_id_param: string
+          challenge_id_param: string
+          action_param: string
+        }
         Returns: boolean
       }
       reject_friend_request: {
