@@ -46,11 +46,9 @@ export const ChallengeChatModal = ({
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+    const el = document.getElementById('chat-scroll-container');
+    if (el) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [chat?.messages?.length]);
 
@@ -105,9 +103,9 @@ export const ChallengeChatModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg h-[600px] flex flex-col p-0">
+      <DialogContent className="max-w-lg h-[600px] flex flex-col p-0 overflow-hidden">
         {/* Header */}
-        <DialogHeader className="p-4 border-b bg-muted/30">
+        <DialogHeader className="p-4 border-b bg-muted/30 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <MessageCircle className="h-5 w-5 text-primary" />
@@ -144,7 +142,7 @@ export const ChallengeChatModal = ({
 
         {/* Pinned Message */}
         {chat?.pinnedMessage && (
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border-b border-yellow-200 dark:border-yellow-800">
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border-b border-yellow-200 dark:border-yellow-800 flex-shrink-0">
             <div className="flex items-start gap-2">
               <Pin className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
@@ -159,36 +157,34 @@ export const ChallengeChatModal = ({
           </div>
         )}
 
-        {/* Messages */}
-        <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-          <div className="space-y-4">
-            {(!chat?.messages || chat.messages.length === 0) ? (
-              <div className="text-center py-8">
-                <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No messages yet</p>
-                <p className="text-sm text-muted-foreground">Be the first to share or tag friends!</p>
-              </div>
-            ) : (
-              <>
-                {chat.messages.map((msg) => (
-                  <MessageBubbleWithTags
-                    key={msg.id}
-                    message={msg}
-                    isCurrentUser={msg.userId === user?.id}
-                    onTagClick={handleTagClick}
-                    onJoinChallenge={handleJoinChallenge}
-                    challengeParticipants={challengeParticipants}
-                  />
-                ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
-        </ScrollArea>
+        {/* Messages Container - Fixed height with proper scroll */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2" id="chat-scroll-container">
+          {(!chat?.messages || chat.messages.length === 0) ? (
+            <div className="text-center py-8">
+              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No messages yet</p>
+              <p className="text-sm text-muted-foreground">Be the first to share or tag friends!</p>
+            </div>
+          ) : (
+            <>
+              {chat.messages.map((msg) => (
+                <MessageBubbleWithTags
+                  key={msg.id}
+                  message={msg}
+                  isCurrentUser={msg.userId === user?.id}
+                  onTagClick={handleTagClick}
+                  onJoinChallenge={handleJoinChallenge}
+                  challengeParticipants={challengeParticipants}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
 
         {/* Emoji Cooldown Indicator */}
         {emojiCooldownTime > 0 && (
-          <div className="px-4 py-2 bg-muted/50 border-t">
+          <div className="px-4 py-2 bg-muted/50 border-t flex-shrink-0">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-3 w-3" />
               Emoji cooldown: {Math.ceil(emojiCooldownTime / 1000)}s
@@ -196,18 +192,20 @@ export const ChallengeChatModal = ({
           </div>
         )}
 
-        {/* Message Input with Tagging */}
-        <MessageInputWithTagging
-          value={message}
-          onChange={(value) => setMessage(value)}
-          onSend={handleSendMessage}
-          onEmojiClick={handleEmojiClick}
-          placeholder="Type a message or @ to tag friends..."
-          disabled={chat?.isMuted}
-          showEmojiReactions={canSendEmoji(challengeId)}
-          useSmartRecommendations={true}
-          excludeUserIds={challengeParticipants || []}
-        />
+        {/* Message Input with Tagging - Fixed at bottom */}
+        <div className="flex-shrink-0">
+          <MessageInputWithTagging
+            value={message}
+            onChange={(value) => setMessage(value)}
+            onSend={handleSendMessage}
+            onEmojiClick={handleEmojiClick}
+            placeholder="Type a message or @ to tag friends..."
+            disabled={chat?.isMuted}
+            showEmojiReactions={canSendEmoji(challengeId)}
+            useSmartRecommendations={true}
+            excludeUserIds={challengeParticipants || []}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );
