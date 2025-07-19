@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +47,7 @@ interface BadgeContextType {
   selectBadgeTitle: (title: string) => Promise<void>;
   getBadgeProgress: (badge: Badge) => number;
   refreshUserData: () => Promise<void>;
+  awardBadgeManually: (badgeId: string) => Promise<boolean>;
 }
 
 const BadgeContext = createContext<BadgeContextType | undefined>(undefined);
@@ -153,54 +155,66 @@ export const BadgeProvider: React.FC<BadgeProviderProps> = ({ children }) => {
     }
   };
 
-  // Check if user qualifies for new badges
+  // Check if user qualifies for new badges using the server function
   const checkForNewBadges = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !userStreaks) return;
+      if (!user) return;
 
-      const unlockedBadgeIds = userBadges.map(ub => ub.badge_id);
-      const newlyUnlockedBadges: Badge[] = [];
+      // Call the database function to check and award badges
+      const { data, error } = await supabase.rpc('check_and_award_all_badges', {
+        target_user_id: user.id
+      });
 
-      for (const badge of badges) {
-        if (unlockedBadgeIds.includes(badge.id)) continue;
-
-        const progress = getBadgeProgress(badge);
-        if (progress >= 100) {
-          // User qualifies for this badge
-          const { error } = await supabase
-            .from('user_badges')
-            .insert({
-              user_id: user.id,
-              badge_id: badge.id,
-            });
-
-          if (!error) {
-            newlyUnlockedBadges.push(badge);
-            
-            // Show unlock notification
-            toast({
-              title: "🎉 New Badge Unlocked!",
-              description: `You've earned "${badge.title}"!`,
-            });
-          }
-        }
+      if (error) {
+        console.error('Error checking badges:', error);
+        return;
       }
 
-      if (newlyUnlockedBadges.length > 0) {
-        // Update total badges count
-        await supabase
-          .from('user_profiles')
-          .update({
-            total_badges_earned: userBadges.length + newlyUnlockedBadges.length
-          })
-          .eq('user_id', user.id);
+      const badgesAwarded = data || 0;
+      
+      if (badgesAwarded > 0) {
+        toast({
+          title: "🎉 New Badges Unlocked!",
+          description: `You've earned ${badgesAwarded} new badge${badgesAwarded > 1 ? 's' : ''}!`,
+        });
 
         // Refresh user data
         await refreshUserData();
       }
     } catch (error) {
       console.error('Error checking for new badges:', error);
+    }
+  };
+
+  // Award badge manually (for testing)
+  const awardBadgeManually = async (badgeId: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { error } = await supabase
+        .from('user_badges')
+        .insert({
+          user_id: user.id,
+          badge_id: badgeId,
+        });
+
+      if (error) {
+        console.error('Error awarding badge:', error);
+        return false;
+      }
+
+      toast({
+        title: "🎉 Badge Awarded!",
+        description: "Badge has been manually awarded for testing.",
+      });
+
+      await refreshUserData();
+      return true;
+    } catch (error) {
+      console.error('Error awarding badge manually:', error);
+      return false;
     }
   };
 
@@ -251,7 +265,6 @@ export const BadgeProvider: React.FC<BadgeProviderProps> = ({ children }) => {
         break;
       
       default:
-        // For other requirement types, assume 0% progress for now
         return 0;
     }
 
@@ -283,12 +296,24 @@ export const BadgeProvider: React.FC<BadgeProviderProps> = ({ children }) => {
     initializeData();
   }, []);
 
-  // Check for new badges when user streaks update
+  // Check for new badges when user streaks update (but not too frequently)
   useEffect(() => {
     if (!loading && userStreaks && badges.length > 0) {
-      checkForNewBadges();
+      // Only check if user has any active streaks
+      const hasActiveStreaks = userStreaks.current_nutrition_streak > 0 || 
+                              userStreaks.current_hydration_streak > 0 || 
+                              userStreaks.current_supplement_streak > 0;
+      
+      if (hasActiveStreaks) {
+        // Use a timeout to avoid rapid-fire badge checks
+        const timeoutId = setTimeout(() => {
+          checkForNewBadges();
+        }, 1000);
+
+        return () => clearTimeout(timeoutId);
+      }
     }
-  }, [userStreaks?.current_nutrition_streak, userStreaks?.current_hydration_streak, userStreaks?.current_supplement_streak]);
+  }, [userStreaks?.current_nutrition_streak, userStreaks?.current_hydration_streak, userStreaks?.current_supplement_streak, loading, badges.length]);
 
   const value: BadgeContextType = {
     badges,
@@ -299,6 +324,7 @@ export const BadgeProvider: React.FC<BadgeProviderProps> = ({ children }) => {
     selectBadgeTitle,
     getBadgeProgress,
     refreshUserData,
+    awardBadgeManually,
   };
 
   return (
