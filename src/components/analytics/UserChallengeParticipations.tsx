@@ -68,6 +68,36 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   }
 
+  // Combine all challenges into one unified list
+  const allActiveChallenges = [
+    // Private challenges
+    ...challengesWithParticipation.map(({ participation, ...challenge }) => ({
+      type: 'private',
+      challenge,
+      participation: participation!,
+      onLeave: async (challengeId: string) => {
+        console.log('Leave private challenge:', challengeId);
+        return true;
+      }
+    })),
+    // Public challenges  
+    ...userParticipations.map((participation) => {
+      const challenge = challenges.find(c => c.id === participation.challenge_id);
+      if (!challenge) return null;
+      
+      const challengeType = challenge.duration_days <= 3 ? 'quick' : 'public';
+      
+      return {
+        type: challengeType,
+        challenge,
+        participation,
+        onLeave: async (challengeId: string) => {
+          return leaveChallenge(challengeId);
+        }
+      };
+    }).filter(Boolean)
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header with Create Button */}
@@ -76,7 +106,7 @@ export const UserChallengeParticipations: React.FC = () => {
           <Trophy className="h-5 w-5 text-yellow-500" />
           <h3 className="text-lg font-bold">My Challenges</h3>
           <Badge variant="secondary">
-            {userParticipations.length + challengesWithParticipation.length} active
+            {allActiveChallenges.length} active
           </Badge>
         </div>
         <Button size="sm" onClick={() => setShowCreateModal(true)}>
@@ -85,147 +115,174 @@ export const UserChallengeParticipations: React.FC = () => {
         </Button>
       </div>
 
-      {/* Private Challenges */}
-      {challengesWithParticipation.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-purple-600" />
-            <h4 className="font-semibold text-purple-600">Private Challenges</h4>
-            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-              {challengesWithParticipation.length} active
-            </Badge>
-          </div>
+      {/* Unified Challenge Cards - No separators or category headers */}
+      <div className="space-y-4">
+        {allActiveChallenges.map((item) => {
+          if (!item) return null;
           
-          <div className="space-y-3">
-            {challengesWithParticipation.map(({ participation, ...challenge }) => (
-              <PrivateChallengeCard
-                key={challenge.id}
-                challenge={challenge}
-                participation={participation!}
-                onUpdateProgress={updatePrivateProgress}
-                onLeave={async (challengeId) => {
-                  // Implement leave functionality for private challenges
-                  console.log('Leave private challenge:', challengeId);
-                  return true;
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+          const { type, challenge, participation, onLeave } = item;
+          
+          // Handle different participation types
+          const isCompleted = type === 'private' 
+            ? (participation as any).completion_pct === 100 
+            : (participation as any).is_completed || participation.completion_percentage === 100;
+          
+          const progressPercentage = type === 'private'
+            ? (participation as any).completion_pct || 0
+            : participation.completion_percentage || 0;
 
-      {/* Public Challenges */}
-      {userParticipations.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-600" />
-            <h4 className="font-semibold text-blue-600">Public Challenges</h4>
-            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-              {userParticipations.length} active
-            </Badge>
-          </div>
+          // Header gradient based on challenge type
+          const getHeaderClass = () => {
+            switch (type) {
+              case 'private':
+                return 'bg-gradient-to-r from-purple-600 to-pink-600';
+              case 'quick':
+                return 'bg-gradient-to-r from-orange-500 to-yellow-500';
+              case 'public':
+              default:
+                return 'bg-gradient-to-r from-blue-600 to-purple-600';
+            }
+          };
 
-          <div className="space-y-3">
-            {userParticipations.map((participation) => {
-              const challenge = challenges.find(c => c.id === participation.challenge_id);
-              if (!challenge) return null;
+          // Type badge
+          const getTypeBadge = () => {
+            switch (type) {
+              case 'private':
+                return { icon: '🔒', label: 'Private' };
+              case 'quick':
+                return { icon: '⚡', label: 'Quick' };
+              case 'public':
+              default:
+                return { icon: '🌐', label: 'Public' };
+            }
+          };
 
-              const isCompleted = participation.is_completed;
-              const progressPercentage = participation.completion_percentage;
+          const typeBadge = getTypeBadge();
+          const timeLeft = challenge.duration_days ? `${challenge.duration_days}d` : '∞';
 
-              // Determine challenge type based on duration for color coding
-              const getChallengeType = () => {
-                if (challenge.duration_days <= 3) return 'quick';
-                return 'global';
-              };
+          // Get challenge icon and description
+          const challengeIcon = type === 'private' 
+            ? (challenge as any).emoji_icon || '🎯'
+            : (challenge as any).badge_icon || '🎯';
+          
+          const challengeDescription = type === 'private'
+            ? (challenge as any).challenge_type || (challenge as any).description
+            : (challenge as any).goal_description || (challenge as any).description;
 
-              const challengeType = getChallengeType();
-              const getColorClass = () => {
-                if (challengeType === 'quick') return 'border-t-orange-500 bg-orange-500/5';
-                return 'border-t-blue-500 bg-blue-500/5';
-              };
+          // Get participant count
+          const participantCount = type === 'private'
+            ? (challenge as any).max_participants || 1
+            : (challenge as any).participant_count || 1;
 
-              return (
-                <div key={participation.id} className={`border-t-4 rounded-lg ${getColorClass()}`}>
-                  <Card className="border-0 bg-transparent">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        {/* Header */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-lg">{challenge.badge_icon}</span>
-                              <h4 className="font-semibold">{challenge.title}</h4>
-                              {isCompleted && <Trophy className="w-4 h-4 text-yellow-500" />}
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {challenge.goal_description}
-                            </p>
-                            
-                            {/* Status badges */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
-                                {challengeType === 'quick' ? '⚡ Quick' : '🌐 Public'}
-                              </Badge>
-                              
-                              <Badge 
-                                variant={isCompleted ? "default" : "secondary"}
-                                className={isCompleted ? "bg-green-500 text-white" : ""}
-                              >
-                                {isCompleted ? 'Completed' : `${Math.round(progressPercentage)}% Complete`}
-                              </Badge>
-                              
-                              {participation.streak_count > 0 && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Flame className="w-3 h-3 mr-1" />
-                                  {participation.streak_count} day streak
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Progress bar */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Group Progress</span>
-                            <span className="text-sm text-muted-foreground">
-                              {Math.round(progressPercentage)}%
-                            </span>
-                          </div>
-                          <Progress value={progressPercentage} className="h-2" />
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{challenge.participant_count} participants</span>
-                          </div>
-                        </div>
-
-                        {/* Main button */}
-                        <Button 
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to leave this challenge?')) {
-                              leaveChallenge(challenge.id);
-                            }
-                          }}
-                        >
-                          Joined
-                        </Button>
-
-                        {isCompleted && participation.completed_at && (
-                          <div className="text-xs text-muted-foreground pt-2 border-t">
-                            Completed on {new Date(participation.completed_at).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+          return (
+            <Card key={`${type}-${challenge.id}`} className="overflow-hidden border-0 bg-card/80 backdrop-blur">
+              {/* Header with gradient */}
+              <div className={`${getHeaderClass()} p-4 text-white`}>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                    {typeBadge.icon} {typeBadge.label}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Clock className="w-4 h-4" />
+                    <span>{timeLeft}</span>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <span className="text-2xl">{challengeIcon}</span>
+                    {challenge.title}
+                  </h3>
+                  <p className="text-white/90 text-sm">
+                    {challengeDescription}
+                  </p>
+                  {type === 'private' && (
+                    <p className="text-white/70 text-xs flex items-center gap-1">
+                      <span>📝</span>
+                      Created by {(challenge as any).creator_id === participation.user_id ? 'You' : 'Friend'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <CardContent className="p-4 space-y-4">
+                {/* Group Progress */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Group Progress</span>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(progressPercentage)}%
+                    </span>
+                  </div>
+                  <Progress value={progressPercentage} className="h-2" />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{participantCount} participants</span>
+                    {participation.streak_count > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Flame className="w-3 h-3" />
+                        {participation.streak_count} day streak
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Participant Avatars */}
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    {/* Mock avatars - replace with actual participant data */}
+                    {[1, 2, 3].slice(0, Math.min(3, participantCount)).map((i) => (
+                      <div 
+                        key={i}
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 border-2 border-background flex items-center justify-center text-white text-xs font-bold"
+                      >
+                        {i === 1 ? '🏆' : i === 2 ? '⭐' : '💪'}
+                      </div>
+                    ))}
+                  </div>
+                  {participantCount > 3 && (
+                    <span className="text-xs text-muted-foreground">
+                      +{participantCount - 3} more
+                    </span>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1 bg-primary hover:bg-primary/90"
+                    onClick={() => {
+                      if (confirm('Do you want to leave this challenge?')) {
+                        onLeave(challenge.id);
+                      }
+                    }}
+                  >
+                    Joined
+                  </Button>
+                  
+                  {type === 'private' && (
+                    <Button variant="outline" size="sm">
+                      <Users className="w-4 h-4 mr-1" />
+                      Invite
+                    </Button>
+                  )}
+                  
+                  <Button variant="outline" size="sm">
+                    <Users className="w-4 h-4 mr-1" />
+                    Chat
+                  </Button>
+                </div>
+
+                {isCompleted && participation.completed_at && (
+                  <div className="text-xs text-muted-foreground pt-2 border-t flex items-center gap-1">
+                    <Trophy className="w-3 h-3 text-yellow-500" />
+                    Completed on {new Date(participation.completed_at).toLocaleDateString()}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       {/* Creation Modal */}
       <PrivateChallengeCreationModal 
