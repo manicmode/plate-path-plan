@@ -63,13 +63,17 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
     challenges: publicChallenges = [],
     userParticipations = [],
     loading: publicLoading = false,
-    refreshData: refreshPublic
+    refreshData: refreshPublic,
+    updateProgress: updatePublicProgress,
+    joinChallenge: joinPublicChallenge,
+    leaveChallenge: leavePublicChallenge
   } = publicChallengesHook || {};
 
   const {
     challengesWithParticipation: privateChallenges = [],
     loading: privateLoading = false,
-    refreshData: refreshPrivate
+    refreshData: refreshPrivate,
+    updatePrivateProgress
   } = privateChallengesHook || {};
 
   // Initialize after auth is ready
@@ -268,25 +272,65 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
 
   const joinChallenge = useCallback(async (challengeId: string) => {
     try {
-      // Implementation will be added when needed
+      setError(null);
       console.log('Joining challenge:', challengeId);
+      
+      // Check if it's a public or private challenge
+      const isPublicChallenge = publicChallenges.some(c => c.id === challengeId);
+      
+      if (isPublicChallenge) {
+        const success = await joinPublicChallenge?.(challengeId);
+        if (success) {
+          refreshActiveChallenges();
+          return;
+        }
+      }
+      
+      // For private challenges, we need to accept an invitation
+      const { error: acceptError } = await supabase.rpc('accept_challenge_invitation', {
+        invitation_id_param: challengeId // This would need to be the invitation ID, not challenge ID
+      });
+      
+      if (acceptError) throw acceptError;
+      
       refreshActiveChallenges();
     } catch (err) {
       console.error('Error joining challenge:', err);
       setError('Failed to join challenge');
     }
-  }, [refreshActiveChallenges]);
+  }, [publicChallenges, joinPublicChallenge, refreshActiveChallenges]);
 
   const leaveChallenge = useCallback(async (challengeId: string) => {
     try {
-      // Implementation will be added when needed
+      setError(null);
       console.log('Leaving challenge:', challengeId);
+      
+      // Check if it's a public challenge
+      const isPublicChallenge = publicChallenges.some(c => c.id === challengeId);
+      
+      if (isPublicChallenge) {
+        const success = await leavePublicChallenge?.(challengeId);
+        if (success) {
+          refreshActiveChallenges();
+          return;
+        }
+      }
+      
+      // For private challenges, remove participation
+      const { error: leaveError } = await supabase
+        .from('private_challenge_participations')
+        .delete()
+        .eq('user_id', user?.id)
+        .eq('private_challenge_id', challengeId);
+      
+      if (leaveError) throw leaveError;
+      
       refreshActiveChallenges();
     } catch (err) {
       console.error('Error leaving challenge:', err);
       setError('Failed to leave challenge');
     }
-  }, [refreshActiveChallenges]);
+  }, [publicChallenges, leavePublicChallenge, user?.id, refreshActiveChallenges]);
 
   const createChallenge = useCallback(async (challengeData: any) => {
     try {
@@ -302,6 +346,21 @@ export const ActiveChallengesProvider: React.FC<ActiveChallengesProviderProps> =
 
       console.log('Challenge created successfully:', data);
       refreshActiveChallenges();
+      
+      // Send notifications to invited users if it's a private challenge
+      if (challengeData.type === 'private' && challengeData.invitedFriends?.length > 0) {
+        await supabase.functions.invoke('challenge-notification-sender', {
+          body: {
+            notifications: challengeData.invitedFriends.map((friendId: string) => ({
+              user_id: friendId,
+              type: 'challenge_invite',
+              title: 'New Challenge Invitation',
+              message: `You've been invited to join "${challengeData.title}"`,
+              data: { challenge_id: data.challenge_id }
+            }))
+          }
+        });
+      }
     } catch (err) {
       console.error('Error creating challenge:', err);
       setError('Failed to create challenge');

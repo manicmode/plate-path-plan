@@ -1,158 +1,55 @@
+import React from 'react';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { CircleUserRound, CalendarClock, CheckCircle2, Flame, Users } from 'lucide-react';
+import { ChallengeContext } from '@/contexts/ChallengeContext';
+import { useChallenge } from '@/contexts/ChallengeContext';
+import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
+import { OptimizedChallengeList } from '@/components/analytics/OptimizedChallengeList';
+import { useActiveChallenges } from '@/contexts/ActiveChallengesContext';
+import { useChallengeRealtime } from '@/hooks/useChallengeRealtime';
 
-import React, { useState, useEffect } from 'react';
-import { useScrollToTop } from '@/hooks/useScrollToTop';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useSearchParams } from 'react-router-dom';
+interface AnalyticsProps {
+  // Add any props here
+}
 
-// Import new utility and components
-import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
-import { WeeklyProgressRing } from '@/components/analytics/WeeklyProgressRing';
-import { LoggingStreakTracker } from '@/components/analytics/LoggingStreakTracker';
-import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
-import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
-import { DailyAveragesSection } from '@/components/analytics/sections/DailyAveragesSection';
-import { MacrosHydrationSection } from '@/components/analytics/sections/MacrosHydrationSection';
-import { ActivityExerciseSection } from '@/components/analytics/sections/ActivityExerciseSection';
-import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
-import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
-import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
-import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
-import { DailyMealQualityTracker } from '@/components/analytics/DailyMealQualityTracker';
-import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
-import { MonthlyLeaderboard } from '@/components/analytics/MonthlyLeaderboard';
-import { AchievementBadges } from '@/components/analytics/AchievementBadges';
-import { WeeklySummaryViewer } from '@/components/analytics/WeeklySummaryViewer';
-import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
-import { TrophyPodium } from '@/components/TrophyPodium';
-import { useDailyScore } from '@/hooks/useDailyScore';
-
-const Analytics = () => {
-  const isMobile = useIsMobile();
-  const [animationDelay, setAnimationDelay] = useState(0);
-  const [searchParams] = useSearchParams();
-  const section = searchParams.get('section');
-  
-  
-  useScrollToTop();
-
-  useEffect(() => {
-    setAnimationDelay(100);
-  }, []);
-
-
-  // Get all calculated data using the custom hook
-  const {
-    progress,
-    weeklyAverage,
-    weeklyChartData,
-    hydrationWeeklyData,
-    stepsData,
-    exerciseCaloriesData,
-    macroData,
-    user
-  } = useAnalyticsCalculations();
-
-  // Get daily score data
-  const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
-
+export const Analytics: React.FC<AnalyticsProps> = ({ /* props */ }) => {
+  const { activeChallenges, refreshActiveChallenges } = useActiveChallenges();
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-20' : 'pb-8'}`}>
-      <div className="space-y-6 p-4 animate-fade-in">
-        {/* Simplified Header */}
-        <div className="text-center pt-4">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-            🏆 Your Progress Journey
-          </h1>
-          
-          {/* Weekly Progress Ring - Hero Element */}
-          <div className="mb-8">
-            <WeeklyProgressRing />
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <SectionHeader title="Analytics Dashboard" subtitle="Track your progress and stay motivated!" />
 
-        {/* Trophy Podium Section - Lifetime Achievement Showcase */}
-        <div className="mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              🏆 Your Lifetime Trophies
-            </h2>
-            <p className="text-muted-foreground">
-              Celebrating your monthly ranking achievements
-            </p>
-          </div>
-          <TrophyPodium />
-        </div>
-
-        {/* Daily Performance Score - Featured prominently */}
-        {!scoreLoading && scoreStats && (
-          <DailyScoreCard 
-            score={todayScore || 0}
-            weeklyAverage={scoreStats.weeklyAverage}
-            streak={scoreStats.streak}
-            bestScore={scoreStats.bestScore}
-            className="mb-6"
-          />
-        )}
-
-        {/* Daily Progress Cards - Enhanced with Real Data */}
-        <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
-
-        {/* Enhanced Daily Averages with Fixed Spacing */}
-        <DailyAveragesSection weeklyAverage={weeklyAverage} />
-
-        {/* Daily Meal Quality Tracker - Visual Chart */}
-        <DailyMealQualityTracker />
-
-        {/* Meal Quality Analytics - NEW */}
-        <MealQualityAnalyticsSection className="mt-8" />
-
-        {/* Weekly Summary Viewer - Performance Overview */}
-        <WeeklySummaryViewer />
-
-        {/* Monthly Summary Viewer - Long-term Progress */}
-        <MonthlySummaryViewer />
-
-        {/* Logging Consistency Tracker - Increased separation with visual distinction */}
-        <div className="mt-20 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <LoggingStreakTracker />
-        </div>
-
-        {/* Weekly Overview Chart - Enhanced */}
-        <div>
-          <WeeklyOverviewChart />
-        </div>
-
-        {/* Macros and Hydration - Enhanced */}
-        <MacrosHydrationSection macroData={macroData} progress={progress} />
-
-        {/* Activity Tracking - Enhanced */}
-        <ActivityExerciseSection 
-          stepsData={stepsData} 
-          exerciseCaloriesData={exerciseCaloriesData} 
-          weeklyAverage={weeklyAverage} 
+      {/* Active Challenges Section - Enhanced */}
+      <div className="space-y-4">
+        <SectionHeader 
+          title="My Active Challenges" 
+          subtitle={`${activeChallenges.length} active challenges`}
         />
-
-
-        {/* Achievement Badges - New gamification feature */}
-        {!scoreLoading && scoreStats && (
-          <AchievementBadges scoreStats={scoreStats} className="mb-6" />
-        )}
-
-        {/* Achievements & Streaks - Enhanced */}
-        <AchievementsSection />
-
-        {/* Monthly Leaderboard - Competitive element */}
-        <MonthlyLeaderboard />
-
-        {/* Smart Insights - Enhanced */}
-        <SmartInsightsSection />
-
-        {/* Future Gamification - Enhanced */}
-        <GamificationSection />
+        
+        <OptimizedChallengeList 
+          challenges={activeChallenges.map(challenge => ({
+            id: challenge.id,
+            name: challenge.name,
+            type: challenge.type,
+            progress: challenge.progress,
+            streakCount: challenge.streakCount,
+            durationDays: challenge.durationDays,
+            endDate: challenge.endDate,
+            participants: challenge.participants
+          }))}
+          onUpdateProgress={(challengeId, progress) => {
+            console.log('Challenge progress updated:', challengeId, progress);
+            refreshActiveChallenges();
+          }}
+          onComplete={(challengeId) => {
+            console.log('Challenge completed:', challengeId);
+            refreshActiveChallenges();
+          }}
+        />
       </div>
     </div>
   );
 };
-
-export default Analytics;
