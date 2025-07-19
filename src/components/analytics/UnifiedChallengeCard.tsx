@@ -61,19 +61,10 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
 
   const getTypeColor = (type: ChallengeType) => {
     switch (type) {
-      case 'global': return 'border-t-blue-500/60 bg-gradient-to-br from-blue-500/5 to-blue-600/10 shadow-blue-500/10';
-      case 'friend': return 'border-t-purple-500/60 bg-gradient-to-br from-purple-500/5 to-purple-600/10 shadow-purple-500/10';
-      case 'quick': return 'border-t-orange-500/60 bg-gradient-to-br from-orange-500/5 to-orange-600/10 shadow-orange-500/10';
-      default: return 'border-t-muted bg-gradient-to-br from-muted/5 to-muted/10 shadow-muted/10';
-    }
-  };
-
-  const getTypeBadgeIcon = (type: ChallengeType) => {
-    switch (type) {
-      case 'global': return '🌍';
-      case 'friend': return '🔒';
-      case 'quick': return '⚡';
-      default: return '🎯';
+      case 'global': return 'border-t-blue-500 bg-blue-500/5';
+      case 'friend': return 'border-t-purple-500 bg-purple-500/5';
+      case 'quick': return 'border-t-orange-500 bg-orange-500/5';
+      default: return 'border-t-gray-500 bg-gray-500/5';
     }
   };
 
@@ -128,41 +119,30 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
   return (
     <>
       <Card className={cn(
-        "premium-challenge-card mx-auto w-full max-w-md",
-        "h-full min-h-[320px] transition-all duration-300 ease-out",
-        "hover:shadow-2xl hover:shadow-primary/20 hover:scale-[1.03]",
-        "border-0 rounded-2xl backdrop-blur-sm border-border/50",
-        "group relative overflow-hidden",
+        "h-full transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-t-4",
         getTypeColor(challengeType)
       )}>
-        {/* Type badge icon in top-left corner */}
-        <div className="absolute top-4 left-4 z-10">
-          <div className="w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
-            <span className="text-sm">{getTypeBadgeIcon(challengeType)}</span>
-          </div>
-        </div>
-
-        <CardHeader className="pb-4 pt-6 px-6">
+        <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 flex-1 ml-10">
-              <span className="text-3xl filter drop-shadow-sm">{badgeIcon}</span>
-              <div className="flex-1 space-y-2">
-                <CardTitle className="text-xl leading-tight font-semibold">{title}</CardTitle>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="text-xs bg-background/50 backdrop-blur-sm">
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-2xl">{badgeIcon}</span>
+              <div className="flex-1">
+                <CardTitle className="text-lg leading-tight">{title}</CardTitle>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs">
                     {getTypeIcon(challengeType)}
                     <span className="ml-1">{getTypeLabel(challengeType)}</span>
                   </Badge>
                   
                   {isTrending && (
-                    <Badge variant="secondary" className="text-xs bg-orange-500/15 text-orange-700 border-orange-500/30">
+                    <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-700 border-orange-500/20">
                       <Flame className="w-3 h-3 mr-1" />
                       Trending
                     </Badge>
                   )}
                   
                   {isNew && (
-                    <Badge variant="secondary" className="text-xs bg-blue-500/15 text-blue-700 border-blue-500/30">
+                    <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/20">
                       <Star className="w-3 h-3 mr-1" />
                       New
                     </Badge>
@@ -175,40 +155,40 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
                   )}
 
                   {isCreator && (
-                    <Crown className="w-4 h-4 text-purple-500 filter drop-shadow-sm" />
+                    <Crown className="w-4 h-4 text-purple-500" />
                   )}
                 </div>
               </div>
             </div>
           </div>
           
-          <p className="text-sm text-muted-foreground mt-3 leading-relaxed px-1">
+          <p className="text-sm text-muted-foreground mt-2">
             {description}
           </p>
         </CardHeader>
 
-        <CardContent className="space-y-5 px-6 pb-6">
+        <CardContent className="space-y-4">
           {!showInMyActiveChallenges && (
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="flex flex-col items-center p-3 rounded-xl bg-background/60 backdrop-blur-sm border border-border/30 shadow-sm">
-                <Clock className="w-5 h-5 text-primary mb-2" />
-                <span className="text-sm font-semibold">{durationDays}</span>
+              <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+                <Clock className="w-4 h-4 text-muted-foreground mb-1" />
+                <span className="text-sm font-medium">{durationDays}</span>
                 <span className="text-xs text-muted-foreground">
                   {durationDays === 1 ? 'day' : 'days'}
                 </span>
               </div>
               
               {participantCount !== undefined && (
-                <div className="flex flex-col items-center p-3 rounded-xl bg-background/60 backdrop-blur-sm border border-border/30 shadow-sm">
-                  <Users className="w-5 h-5 text-primary mb-2" />
-                  <span className="text-sm font-semibold">{participantCount}</span>
+                <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+                  <Users className="w-4 h-4 text-muted-foreground mb-1" />
+                  <span className="text-sm font-medium">{participantCount}</span>
                   <span className="text-xs text-muted-foreground">joined</span>
                 </div>
               )}
               
-              <div className="flex flex-col items-center p-3 rounded-xl bg-background/60 backdrop-blur-sm border border-border/30 shadow-sm">
-                <Target className="w-5 h-5 text-primary mb-2" />
-                <span className="text-sm font-semibold">
+              <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+                <Target className="w-4 h-4 text-muted-foreground mb-1" />
+                <span className="text-sm font-medium">
                   {targetValue || 'Daily'}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -220,25 +200,17 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
 
           {isParticipating && showInMyActiveChallenges && (
             <>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">Group Progress</span>
-                  <span className="text-sm font-medium text-primary">
+                  <span className="text-sm font-medium">Group Progress</span>
+                  <span className="text-sm text-muted-foreground">
                     {Math.round(progressPercentage)}%
                   </span>
                 </div>
-                <div className="relative">
-                  <Progress 
-                    value={progressPercentage} 
-                    className="h-3 premium-progress-bar rounded-full shadow-inner bg-background/50" 
-                  />
-                  {progressPercentage > 0 && (
-                    <div className="absolute inset-y-0 left-0 w-full h-3 rounded-full premium-progress-glow opacity-60 animate-pulse" />
-                  )}
-                </div>
+                <Progress value={progressPercentage} className="h-2" />
               </div>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{participantCount || 2} participants</span>
                 {challengeType === 'friend' && <span>2 participants</span>}
               </div>
@@ -246,26 +218,18 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
           )}
 
           {isParticipating && !showInMyActiveChallenges && (
-            <div className="space-y-4 p-4 rounded-xl bg-background/60 backdrop-blur-sm border border-border/30 shadow-sm">
+            <div className="space-y-3 p-3 rounded-lg bg-muted/50">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">Your Progress</span>
+                <span className="text-sm font-medium">Your Progress</span>
                 <div className="flex items-center gap-2">
-                  {isCompleted && <Trophy className="w-4 h-4 text-yellow-500 filter drop-shadow-sm" />}
-                  <span className="text-sm font-medium text-primary">
+                  {isCompleted && <Trophy className="w-4 h-4 text-yellow-500" />}
+                  <span className="text-sm text-muted-foreground">
                     {Math.round(progressPercentage)}%
                   </span>
                 </div>
               </div>
               
-              <div className="relative">
-                <Progress 
-                  value={progressPercentage} 
-                  className="h-3 premium-progress-bar rounded-full shadow-inner bg-background/50" 
-                />
-                {progressPercentage > 0 && (
-                  <div className="absolute inset-y-0 left-0 w-full h-3 rounded-full premium-progress-glow opacity-60 animate-pulse" />
-                )}
-              </div>
+              <Progress value={progressPercentage} className="h-2" />
               
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Streak: {streakCount} days</span>
@@ -277,7 +241,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
           <Button 
             onClick={handleMainButtonClick}
             disabled={isLoading || isCompleted}
-            className="w-full h-11 text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+            className="w-full"
             variant={isParticipating ? "outline" : "default"}
           >
             {isLoading 
@@ -291,11 +255,11 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
           </Button>
 
           {showInMyActiveChallenges && challengeType === 'friend' && (
-            <div className="flex gap-3">
-              <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl font-medium">
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1">
                 Invite
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl font-medium">
+              <Button variant="outline" size="sm" className="flex-1">
                 Chat
               </Button>
             </div>
