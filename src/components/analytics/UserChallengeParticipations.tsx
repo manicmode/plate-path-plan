@@ -55,8 +55,8 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   }
 
-  // Separate challenges by type and limit to one per category
-  const publicChallenges = userParticipations.slice(0, 1).map((participation) => {
+  // Process all user participations and categorize them properly
+  const allPublicChallenges = userParticipations.map((participation) => {
     const challenge = challenges.find(c => c.id === participation.challenge_id);
     if (!challenge) return null;
     
@@ -70,7 +70,7 @@ export const UserChallengeParticipations: React.FC = () => {
     };
   }).filter(Boolean);
 
-  const privateChallenges = challengesWithParticipation.slice(0, 1).map(({ participation, ...challenge }) => ({
+  const privateChallenges = challengesWithParticipation.map(({ participation, ...challenge }) => ({
     type: 'private',
     challenge,
     participation: participation!,
@@ -80,8 +80,9 @@ export const UserChallengeParticipations: React.FC = () => {
     }
   }));
 
-  const quickChallenges = publicChallenges.filter(item => item?.type === 'quick');
-  const regularPublicChallenges = publicChallenges.filter(item => item?.type === 'public');
+  // Separate by type
+  const quickChallenges = allPublicChallenges.filter(item => item?.type === 'quick');
+  const regularPublicChallenges = allPublicChallenges.filter(item => item?.type === 'public');
 
   const handleShare = (challengeName: string) => {
     const shareText = `Join me in the "${challengeName}" challenge! 💪`;
