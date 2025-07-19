@@ -125,6 +125,23 @@ export const MyFriendsTab = () => {
         </p>
       </div>
 
+      {/* Create Challenge Section - Moved to top */}
+      <div className="text-center space-y-3 pb-4">
+        <div className="text-lg font-semibold text-foreground">
+          Motivate and grow together on your wellness journey
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Create challenges with your friends to stay motivated and achieve your goals together
+        </p>
+        <Button 
+          onClick={() => setShowCreateModal(true)}
+          className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
+        >
+          <Users className="w-5 h-5" />
+          Create New Challenge
+        </Button>
+      </div>
+
       <Tabs defaultValue="friends" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="friends" className="flex items-center gap-2">
@@ -144,22 +161,22 @@ export const MyFriendsTab = () => {
         <TabsContent value="friends" className="space-y-4">
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4 text-center">
+            <Card className="h-20">
+              <CardContent className="p-4 text-center h-full flex flex-col justify-center">
                 <div className="text-2xl font-bold text-primary">{friends.length}</div>
                 <div className="text-sm text-muted-foreground">Total Friends</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
+            <Card className="h-20">
+              <CardContent className="p-4 text-center h-full flex flex-col justify-center">
                 <div className="text-2xl font-bold text-emerald-600">
                   {friends.filter(f => (f as any).metadata?.activityStatus === 'recently_active').length}
                 </div>
                 <div className="text-sm text-muted-foreground">Active Today</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
+            <Card className="h-20">
+              <CardContent className="p-4 text-center h-full flex flex-col justify-center">
                 <div className="text-2xl font-bold text-blue-600">
                   {friends.filter(f => (f as any).metadata?.sharedChallenges > 0).length}
                 </div>
@@ -196,24 +213,6 @@ export const MyFriendsTab = () => {
             </div>
           </ScrollArea>
 
-          {/* Create Challenge Section */}
-          <div className="space-y-4 pt-6 border-t border-border/50">
-            <div className="text-center space-y-3">
-              <div className="text-lg font-semibold text-foreground">
-                Motivate and grow together on your wellness journey
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Create challenges with your friends to stay motivated and achieve your goals together
-              </p>
-              <Button 
-                onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center gap-2"
-              >
-                <Users className="w-5 h-5" />
-                Create New Challenge
-              </Button>
-            </div>
-          </div>
         </TabsContent>
 
         <TabsContent value="leaderboard">
