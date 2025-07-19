@@ -342,6 +342,17 @@ export const UserChallengeParticipations: React.FC = () => {
 
   return (
     <div className="space-y-8 bg-gray-900 min-h-screen">
+      {/* Centered Create Challenge Button */}
+      <div className="flex justify-center pt-4 pb-2">
+        <Button 
+          onClick={() => setShowCreateModal(true)}
+          className="bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-white px-8 py-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Create New Challenge
+        </Button>
+      </div>
+
       {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
         <SwipeableCarousel
