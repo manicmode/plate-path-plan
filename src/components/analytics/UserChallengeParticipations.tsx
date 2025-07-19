@@ -152,106 +152,95 @@ export const UserChallengeParticipations: React.FC = () => {
           : 10; // Default for public challenges
 
         return (
-          <div key={`${type}-${challenge.id}`} className="rounded-2xl overflow-hidden shadow-lg">
-            {/* Header Section - Matches second image exactly */}
-            <div className={`${getBackgroundGradient()} p-4 text-white relative`}>
-              {/* Top row with badges */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-white/20 text-white text-xs px-2 py-1 border-0">
-                    {typeBadge.icon} {typeBadge.label}
-                  </Badge>
-                  {progressPercentage > 70 && (
-                    <Badge className="bg-yellow-500/30 text-yellow-100 text-xs px-2 py-1 border-0">
-                      🔥 Trending
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-sm opacity-90">
-                  <Clock className="w-4 h-4" />
-                  <span>{timeLeft}</span>
-                </div>
-              </div>
-              
-              {/* Challenge title and subtitle */}
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold">{challenge.title} {challengeIcon}</h3>
-                <p className="text-sm opacity-90">{challengeIcon} {challengeSubtitle}</p>
-                {type === 'private' && (
-                  <div className="flex items-center gap-1 text-xs opacity-75">
-                    <span>📝</span>
-                    <span>Created by {(challenge as any).creator_id === participation.user_id ? 'You' : 'Friend'} ⭐</span>
+          <div key={`${type}-${challenge.id}`} className="w-full max-w-sm mx-auto">
+            <div className="bg-card rounded-2xl overflow-hidden shadow-lg">
+              {/* Header Section - Purple gradient like reference */}
+              <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 p-4 text-white">
+                {/* Top badges row */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 backdrop-blur rounded-full px-2 py-1 flex items-center gap-1">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                      <span className="text-xs font-medium">{typeBadge.label}</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Content Section - Clean white background */}
-            <div className="bg-card p-4 space-y-4">
-              {/* Group Progress */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">Group Progress</span>
-                  <span className="text-sm text-muted-foreground">{Math.round(progressPercentage)}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-emerald-500 h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${progressPercentage}%` }}
-                  ></div>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    <span>{participantCount} participants / {maxParticipants}</span>
+                  <div className="flex items-center gap-1 text-sm opacity-80">
+                    <Clock className="w-4 h-4" />
+                    <span>{timeLeft}</span>
                   </div>
-                  {participation.streak_count > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Flame className="w-3 h-3" />
-                      {participation.streak_count} day streak
-                    </span>
-                  )}
+                </div>
+                
+                {/* Title and subtitle */}
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold">{challenge.title} {challengeIcon}</h3>
+                  <p className="text-sm opacity-90">{challengeIcon} {challengeSubtitle}</p>
+                  <div className="flex items-center gap-1 text-xs opacity-75 mt-1">
+                    <span>📅</span>
+                    <span>Created by {type === 'private' && (challenge as any).creator_id === participation.user_id ? 'You' : 'Health Guru'} 😊</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Participant Avatars */}
-              <div className="flex -space-x-2">
-                {[1, 2, 3].slice(0, Math.min(3, participantCount)).map((i) => (
-                  <div 
-                    key={i}
-                    className="w-10 h-10 rounded-full border-2 border-card flex items-center justify-center text-white text-sm font-bold"
-                    style={{
-                      background: i === 1 ? 'linear-gradient(135deg, #10b981, #059669)' : 
-                                 i === 2 ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : 
-                                 'linear-gradient(135deg, #f59e0b, #d97706)'
+              {/* Content Section - Dark background matching reference */}
+              <div className="bg-slate-800 text-white p-4 space-y-4">
+                {/* Group Progress */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-white">Group Progress</span>
+                    <span className="text-sm text-slate-300">{Math.round(progressPercentage)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-700 rounded-full h-2">
+                    <div 
+                      className="bg-teal-400 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${progressPercentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Participants count */}
+                <div className="flex items-center gap-1 text-sm text-slate-300">
+                  <Users className="w-4 h-4" />
+                  <span>{participantCount} participants</span>
+                </div>
+
+                {/* Participant Avatars - Matching reference layout */}
+                <div className="flex gap-2">
+                  {[1, 2].slice(0, Math.min(2, participantCount)).map((i) => (
+                    <div 
+                      key={i}
+                      className="w-10 h-10 rounded-full border-2 border-slate-700 flex items-center justify-center text-white text-sm font-bold"
+                      style={{
+                        background: i === 1 ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                                   'linear-gradient(135deg, #f59e0b, #d97706)'
+                      }}
+                    >
+                      {i === 1 ? '😊' : '🔥'}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Action Buttons - Matching reference exact style */}
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm py-2 h-9"
+                    onClick={() => {
+                      // Invite functionality
                     }}
                   >
-                    {i === 1 ? '⭐' : i === 2 ? '❄️' : '🔥'}
-                  </div>
-                ))}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <Button 
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  onClick={() => {
-                    if (confirm('Do you want to leave this challenge?')) {
-                      onLeave(challenge.id);
-                    }
-                  }}
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Joined
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="border-muted-foreground text-foreground hover:bg-muted"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Share
-                </Button>
+                    📨 Invite
+                  </Button>
+                  
+                  <Button 
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm py-2 h-9"
+                    onClick={() => {
+                      if (confirm("Do you want to leave this challenge?")) {
+                        onLeave(challenge.id);
+                      }
+                    }}
+                  >
+                    💬 Chat
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
