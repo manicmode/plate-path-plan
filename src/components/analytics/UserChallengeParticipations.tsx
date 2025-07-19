@@ -186,21 +186,21 @@ export const UserChallengeParticipations: React.FC = () => {
               </div>
             </div>
 
-            {/* Content Section - Dark background like second image */}
-            <div className="bg-slate-800 text-white p-4 space-y-4">
+            {/* Content Section - Clean white background */}
+            <div className="bg-card p-4 space-y-4">
               {/* Group Progress */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-300">Group Progress</span>
-                  <span className="text-sm text-slate-400">{Math.round(progressPercentage)}%</span>
+                  <span className="text-sm font-medium text-foreground">Group Progress</span>
+                  <span className="text-sm text-muted-foreground">{Math.round(progressPercentage)}%</span>
                 </div>
-                <div className="w-full bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div 
                     className="bg-emerald-500 h-2 rounded-full transition-all duration-300" 
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-400">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
                     <span>{participantCount} participants / {maxParticipants}</span>
@@ -214,12 +214,12 @@ export const UserChallengeParticipations: React.FC = () => {
                 </div>
               </div>
 
-              {/* Participant Avatars - Exactly like second image */}
+              {/* Participant Avatars */}
               <div className="flex -space-x-2">
                 {[1, 2, 3].slice(0, Math.min(3, participantCount)).map((i) => (
                   <div 
                     key={i}
-                    className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center text-white text-sm font-bold"
+                    className="w-10 h-10 rounded-full border-2 border-card flex items-center justify-center text-white text-sm font-bold"
                     style={{
                       background: i === 1 ? 'linear-gradient(135deg, #10b981, #059669)' : 
                                  i === 2 ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : 
@@ -231,7 +231,7 @@ export const UserChallengeParticipations: React.FC = () => {
                 ))}
               </div>
 
-              {/* Action Buttons - Exactly like second image layout */}
+              {/* Action Buttons */}
               <div className="flex gap-3">
                 <Button 
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
@@ -247,7 +247,7 @@ export const UserChallengeParticipations: React.FC = () => {
                 
                 <Button 
                   variant="outline" 
-                  className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  className="border-muted-foreground text-foreground hover:bg-muted"
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Share

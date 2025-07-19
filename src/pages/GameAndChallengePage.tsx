@@ -935,72 +935,13 @@ function GameAndChallengeContent() {
             </TabsContent>
 
             <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
-              {/* User's Personal Challenges */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Star className="h-5 w-5 text-purple-600" />
                   <h2 className="text-lg font-bold">My Active Challenges</h2>
                 </div>
                 
-                {/* Public Challenge Participations */}
                 <UserChallengeParticipations />
-                
-                {/* Private Friend Challenges */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-600" />
-                    <h3 className="text-lg font-bold">Friend Challenges</h3>
-                  </div>
-                  
-                  {challenges.length > 0 ? (
-                    <div className="space-y-3">
-                      {challenges.map((challenge) => (
-                        <ChallengeCard 
-                          key={challenge.id} 
-                          challenge={challenge} 
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700">
-                      <CardContent className="text-center py-6">
-                        <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <h3 className="font-semibold mb-2">No Friend Challenges</h3>
-                        <p className="text-muted-foreground text-sm mb-3">
-                          Create or join challenges with your friends!
-                        </p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-
-                {/* Personal Micro-Challenges */}
-                {microChallenges.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-md font-semibold mb-3 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-yellow-500" />
-                      My Quick Challenges
-                    </h3>
-                    <div className="space-y-3">
-                      {microChallenges.map((challenge) => (
-                        <MicroChallengeCard 
-                          key={challenge.id} 
-                          challenge={challenge}
-                          onNudgeFriend={nudgeFriend}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Monthly Challenge Progress */}
-                <div className="mt-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Crown className="h-5 w-5 text-yellow-500" />
-                    <h2 className="text-lg font-bold">Monthly Challenge</h2>
-                  </div>
-                  <MonthlyTrophyPodium />
-                </div>
               </div>
             </TabsContent>
 
