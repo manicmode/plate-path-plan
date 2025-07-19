@@ -568,6 +568,14 @@ function GameAndChallengeContent() {
     ));
   };
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    const scrollContainer = document.getElementById('mobile-chat-scroll');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  }, [messages]);
+
   const quickEmojis = ['😆', '🔥', '👏', '🥦', '🍩', '💪', '🚀', '⭐'];
 
   const navigationItems = [
@@ -975,7 +983,7 @@ function GameAndChallengeContent() {
                     <Button 
                       onClick={() => setShowMicroChallengeModal(true)}
                       size="sm"
-                      className="h-8 px-3 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                      className="h-8 px-3 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg"
                     >
                       <Sparkles className="h-3 w-3 mr-1" />
                       Create
@@ -1024,9 +1032,9 @@ function GameAndChallengeContent() {
             </TabsContent>
 
             <TabsContent value="chat" className="mt-4 pb-32">
-              {/* Mobile-optimized chat */}
-              <Card className="h-[60vh] flex flex-col">
-                <CardHeader className="pb-2">
+              {/* Fixed Mobile Chat Container */}
+              <Card className="h-[70vh] flex flex-col overflow-hidden">
+                <CardHeader className="pb-2 flex-shrink-0">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <MessageCircle className="h-5 w-5" />
                     Group Chat
@@ -1034,14 +1042,24 @@ function GameAndChallengeContent() {
                   </CardTitle>
                 </CardHeader>
                 
-                <CardContent className="flex-1 flex flex-col p-0">
-                  <ScrollArea className="flex-1 p-3">
-                    <div className="space-y-3">
-                      {messages.map((msg) => (
+                <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+                  {/* Messages Container - Flexible height with proper scroll */}
+                  <div 
+                    className="flex-1 overflow-y-auto px-3 py-2 space-y-3" 
+                    id="mobile-chat-scroll"
+                  >
+                    {messages.length === 0 ? (
+                      <div className="text-center py-8">
+                        <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-muted-foreground">No messages yet</p>
+                        <p className="text-sm text-muted-foreground">Start the conversation!</p>
+                      </div>
+                    ) : (
+                      messages.map((msg) => (
                         <div key={msg.id} className={cn(
                           "p-2 rounded-lg text-sm",
                           msg.isBot 
-                            ? "bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-200 mx-auto text-center" 
+                            ? "bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 mx-auto text-center" 
                             : "bg-muted/50"
                         )}>
                           <div className="flex items-center gap-2 mb-1">
@@ -1059,13 +1077,13 @@ function GameAndChallengeContent() {
                             </div>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                      ))
+                    )}
+                  </div>
                   
-                  {/* Sticky Mobile Chat Input */}
-                  <div className="p-3 border-t bg-background/95 backdrop-blur-sm">
-                    <div className="flex gap-1 mb-2 overflow-x-auto">
+                  {/* Fixed Quick Emoji Bar */}
+                  <div className="px-3 py-2 border-t bg-background/95 backdrop-blur-sm flex-shrink-0">
+                    <div className="flex gap-1 overflow-x-auto">
                       {quickEmojis.map((emoji) => (
                         <Button
                           key={emoji}
@@ -1078,15 +1096,24 @@ function GameAndChallengeContent() {
                         </Button>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Fixed Input Area */}
+                  <div className="px-3 py-3 border-t bg-background/95 backdrop-blur-sm flex-shrink-0">
                     <div className="flex gap-2">
                       <Input
                         placeholder="Type message..."
                         value={chatMessage}
                         onChange={(e) => setChatMessage(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        className="text-sm"
+                        className="text-sm flex-1"
                       />
-                      <Button onClick={sendMessage} size="sm" className="h-10 w-10 p-0">
+                      <Button 
+                        onClick={sendMessage} 
+                        size="sm" 
+                        className="h-10 w-10 p-0 flex-shrink-0"
+                        disabled={!chatMessage.trim()}
+                      >
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
