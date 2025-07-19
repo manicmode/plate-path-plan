@@ -95,6 +95,47 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_progress_logs: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          id: string
+          log_date: string
+          notes: string | null
+          participation_id: string | null
+          progress_value: number
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          participation_id?: string | null
+          progress_value: number
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          participation_id?: string | null
+          progress_value?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_progress_logs_participation_id_fkey"
+            columns: ["participation_id"]
+            isOneToOne: false
+            referencedRelation: "user_challenge_participations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_nutrition_targets: {
         Row: {
           calculated_at: string
@@ -430,6 +471,75 @@ export type Database = {
         }
         Relationships: []
       }
+      public_challenges: {
+        Row: {
+          badge_icon: string
+          category: string
+          challenge_type: string
+          created_at: string
+          description: string
+          difficulty_level: string
+          duration_days: number
+          goal_description: string
+          id: string
+          is_active: boolean
+          is_limited_time: boolean
+          is_new: boolean
+          is_trending: boolean
+          limited_time_end: string | null
+          participant_count: number
+          target_metric: string | null
+          target_unit: string | null
+          target_value: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge_icon?: string
+          category: string
+          challenge_type?: string
+          created_at?: string
+          description: string
+          difficulty_level?: string
+          duration_days: number
+          goal_description: string
+          id?: string
+          is_active?: boolean
+          is_limited_time?: boolean
+          is_new?: boolean
+          is_trending?: boolean
+          limited_time_end?: string | null
+          participant_count?: number
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          badge_icon?: string
+          category?: string
+          challenge_type?: string
+          created_at?: string
+          description?: string
+          difficulty_level?: string
+          duration_days?: number
+          goal_description?: string
+          id?: string
+          is_active?: boolean
+          is_limited_time?: boolean
+          is_new?: boolean
+          is_trending?: boolean
+          limited_time_end?: string | null
+          participant_count?: number
+          target_metric?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reminder_logs: {
         Row: {
           id: string
@@ -618,6 +728,68 @@ export type Database = {
             columns: ["badge_id"]
             isOneToOne: false
             referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_challenge_participations: {
+        Row: {
+          best_streak: number
+          challenge_id: string | null
+          completed_at: string | null
+          completion_percentage: number
+          current_progress: number
+          daily_completions: Json
+          end_date: string
+          id: string
+          is_completed: boolean
+          joined_at: string
+          last_progress_update: string | null
+          start_date: string
+          streak_count: number
+          total_target: number
+          user_id: string
+        }
+        Insert: {
+          best_streak?: number
+          challenge_id?: string | null
+          completed_at?: string | null
+          completion_percentage?: number
+          current_progress?: number
+          daily_completions?: Json
+          end_date: string
+          id?: string
+          is_completed?: boolean
+          joined_at?: string
+          last_progress_update?: string | null
+          start_date?: string
+          streak_count?: number
+          total_target: number
+          user_id: string
+        }
+        Update: {
+          best_streak?: number
+          challenge_id?: string | null
+          completed_at?: string | null
+          completion_percentage?: number
+          current_progress?: number
+          daily_completions?: Json
+          end_date?: string
+          id?: string
+          is_completed?: boolean
+          joined_at?: string
+          last_progress_update?: string | null
+          start_date?: string
+          streak_count?: number
+          total_target?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenge_participations_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "public_challenges"
             referencedColumns: ["id"]
           },
         ]
@@ -1083,6 +1255,10 @@ export type Database = {
       add_friend_from_contact: {
         Args: { contact_user_id: string }
         Returns: boolean
+      }
+      calculate_challenge_progress: {
+        Args: { participation_id_param: string }
+        Returns: undefined
       }
       calculate_next_trigger: {
         Args: { reminder_id: string }

@@ -45,6 +45,8 @@ import { ChallengeCard } from '@/components/analytics/ChallengeCard';
 import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
 import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 import { MysteryBox } from '@/components/analytics/MysteryBox';
+import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesBrowse';
+import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
@@ -929,121 +931,48 @@ function GameAndChallengeContent() {
             </TabsContent>
 
             <TabsContent value="challenges" className="mt-4 pb-32">
-              {/* Global/Public Challenges Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold flex items-center gap-2">
-                    <Target className="h-5 w-5 text-green-600" />
-                    Browse Challenges
-                  </h2>
-                  <Button 
-                    onClick={() => setShowChallengeModal(true)}
-                    size="sm"
-                    className="h-8 px-3 text-xs bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    New
-                  </Button>
-                </div>
-                
-                {/* Global Challenges Available to Join */}
-                <div className="space-y-3">
-                  <Card className="border-green-200 dark:border-green-800">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-green-700 dark:text-green-300">Global: Hydration Hero</h3>
-                          <p className="text-sm text-muted-foreground">Drink 8 glasses of water daily for 30 days</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="secondary">1,247 participants</Badge>
-                            <Badge variant="outline">30 days</Badge>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">Join</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="border-blue-200 dark:border-blue-800">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-blue-700 dark:text-blue-300">Global: Protein Power</h3>
-                          <p className="text-sm text-muted-foreground">Hit your protein goal 21 days this month</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="secondary">892 participants</Badge>
-                            <Badge variant="outline">30 days</Badge>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">Join</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Micro-Challenges Section */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-yellow-500" />
-                      Quick Challenges
-                    </h2>
-                    <Button 
-                      onClick={() => setShowMicroChallengeModal(true)}
-                      size="sm"
-                      className="h-8 px-3 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg"
-                    >
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      Create
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Card className="border-yellow-200 dark:border-yellow-800">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-yellow-700 dark:text-yellow-300">7-Day Veggie Challenge</h3>
-                            <p className="text-sm text-muted-foreground">Eat 5 servings of vegetables daily</p>
-                            <Badge variant="secondary" className="mt-2">347 joined today</Badge>
-                          </div>
-                          <Button size="sm" variant="outline">Join</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </div>
+              <PublicChallengesBrowse />
             </TabsContent>
 
             <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
               {/* User's Personal Challenges */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Star className="h-5 w-5 text-purple-600" />
                   <h2 className="text-lg font-bold">My Active Challenges</h2>
                 </div>
                 
-                {challenges.length > 0 ? (
-                  <div className="space-y-3">
-                    {challenges.map((challenge) => (
-                      <ChallengeCard 
-                        key={challenge.id} 
-                        challenge={challenge} 
-                      />
-                    ))}
+                {/* Public Challenge Participations */}
+                <UserChallengeParticipations />
+                
+                {/* Private Friend Challenges */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    <h3 className="text-lg font-bold">Friend Challenges</h3>
                   </div>
-                ) : (
-                  <Card className="border-2 border-dashed border-purple-300 dark:border-purple-700">
-                    <CardContent className="text-center py-6">
-                      <Star className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                      <h3 className="font-semibold mb-2">No Active Challenges</h3>
-                      <p className="text-muted-foreground text-sm mb-3">
-                        Join a challenge from the Browse tab!
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+                  
+                  {challenges.length > 0 ? (
+                    <div className="space-y-3">
+                      {challenges.map((challenge) => (
+                        <ChallengeCard 
+                          key={challenge.id} 
+                          challenge={challenge} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700">
+                      <CardContent className="text-center py-6">
+                        <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                        <h3 className="font-semibold mb-2">No Friend Challenges</h3>
+                        <p className="text-muted-foreground text-sm mb-3">
+                          Create or join challenges with your friends!
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
 
                 {/* Personal Micro-Challenges */}
                 {microChallenges.length > 0 && (
