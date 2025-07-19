@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { CalendarIcon, Plus, X, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
+import { useFriendTagging } from '@/hooks/useFriendTagging';
 
 interface PrivateChallengeCreationModalProps {
   isOpen: boolean;
@@ -38,20 +40,12 @@ const durationOptions = [
   { days: 30, label: '1 Month' }
 ];
 
-// Mock friends data - in real app this would come from friends API
-const mockFriends = [
-  { id: '1', name: 'Sarah Chen', avatar: '👩‍💻' },
-  { id: '2', name: 'Mike Johnson', avatar: '👨‍🍳' },
-  { id: '3', name: 'Emma Wilson', avatar: '👩‍🎨' },
-  { id: '4', name: 'Alex Rodriguez', avatar: '👨‍⚕️' },
-  { id: '5', name: 'Lisa Park', avatar: '👩‍🏫' },
-];
-
 export const PrivateChallengeCreationModal: React.FC<PrivateChallengeCreationModalProps> = ({
   isOpen,
   onClose,
 }) => {
   const { createPrivateChallenge } = usePrivateChallenges();
+  const { friends } = useFriendTagging(false); // Use regular friends data
   const [selectedPreset, setSelectedPreset] = useState<typeof challengePresets[0] | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,6 +54,7 @@ export const PrivateChallengeCreationModal: React.FC<PrivateChallengeCreationMod
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePresetSelect = (preset: typeof challengePresets[0]) => {
     setSelectedPreset(preset);
@@ -75,38 +70,66 @@ export const PrivateChallengeCreationModal: React.FC<PrivateChallengeCreationMod
     );
   };
 
+  const validateUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
   const handleCreate = async () => {
-    if (!selectedPreset || !title.trim()) return;
+    if (!selectedPreset || !title.trim()) {
+      setError('Please select a challenge type and enter a title');
+      return;
+    }
+
+    // Validate selected friend IDs are proper UUIDs
+    const invalidFriendIds = selectedFriends.filter(id => !validateUUID(id));
+    if (invalidFriendIds.length > 0) {
+      console.warn('Invalid friend IDs detected, proceeding without them:', invalidFriendIds);
+      // Filter out invalid IDs instead of failing
+      const validFriendIds = selectedFriends.filter(id => validateUUID(id));
+      setSelectedFriends(validFriendIds);
+    }
 
     setIsCreating(true);
+    setError(null);
     
-    const success = await createPrivateChallenge({
-      title: title.trim(),
-      description: description.trim(),
-      category: selectedPreset.type,
-      challenge_type: 'habit',
-      target_metric: selectedPreset.metric,
-      target_value: selectedPreset.defaultValue,
-      target_unit: selectedPreset.unit,
-      duration_days: duration,
-      start_date: startDate.toISOString().split('T')[0],
-      max_participants: maxParticipants,
-      invited_user_ids: selectedFriends,
-      badge_icon: selectedPreset.emoji,
-    });
+    try {
+      const validInvitedIds = selectedFriends.filter(id => validateUUID(id));
+      
+      const success = await createPrivateChallenge({
+        title: title.trim(),
+        description: description.trim(),
+        category: selectedPreset.type,
+        challenge_type: 'habit',
+        target_metric: selectedPreset.metric,
+        target_value: selectedPreset.defaultValue,
+        target_unit: selectedPreset.unit,
+        duration_days: duration,
+        start_date: startDate.toISOString().split('T')[0],
+        max_participants: maxParticipants,
+        invited_user_ids: validInvitedIds,
+        badge_icon: selectedPreset.emoji,
+      });
 
-    setIsCreating(false);
-    
-    if (success) {
-      onClose();
-      // Reset form
-      setSelectedPreset(null);
-      setTitle('');
-      setDescription('');
-      setDuration(7);
-      setMaxParticipants(10);
-      setStartDate(new Date());
-      setSelectedFriends([]);
+      if (success) {
+        onClose();
+        // Reset form
+        setSelectedPreset(null);
+        setTitle('');
+        setDescription('');
+        setDuration(7);
+        setMaxParticipants(10);
+        setStartDate(new Date());
+        setSelectedFriends([]);
+        setError(null);
+      } else {
+        setError('Failed to create challenge. Please try again.');
+      }
+    } catch (err) {
+      console.error('Challenge creation error:', err);
+      setError('An error occurred while creating the challenge.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -122,6 +145,12 @@ export const PrivateChallengeCreationModal: React.FC<PrivateChallengeCreationMod
 
         <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
           <div className="space-y-6">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
             {/* Challenge Type Selection */}
             <div className="space-y-3">
               <h3 className="font-semibold">Choose Challenge Type</h3>
@@ -236,28 +265,36 @@ export const PrivateChallengeCreationModal: React.FC<PrivateChallengeCreationMod
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                    {mockFriends.map((friend) => (
-                      <div
-                        key={friend.id}
-                        onClick={() => toggleFriend(friend.id)}
-                        className={cn(
-                          "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors",
-                          selectedFriends.includes(friend.id)
-                            ? "border-primary bg-primary/5"
-                            : "border-muted hover:border-primary/50"
-                        )}
-                      >
-                        <span className="text-lg">{friend.avatar}</span>
-                        <span className="text-sm font-medium">{friend.name}</span>
-                        {selectedFriends.includes(friend.id) && (
-                          <Badge variant="secondary" className="ml-auto text-xs">
-                            Invited
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  {friends.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                      {friends.map((friend) => (
+                        <div
+                          key={friend.id}
+                          onClick={() => toggleFriend(friend.id)}
+                          className={cn(
+                            "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors",
+                            selectedFriends.includes(friend.id)
+                              ? "border-primary bg-primary/5"
+                              : "border-muted hover:border-primary/50"
+                          )}
+                        >
+                          <span className="text-lg">👤</span>
+                          <span className="text-sm font-medium">{friend.name}</span>
+                          {selectedFriends.includes(friend.id) && (
+                            <Badge variant="secondary" className="ml-auto text-xs">
+                              Invited
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No friends available to invite</p>
+                      <p className="text-xs">You can still create the challenge and invite friends later</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Selected Friends Summary */}
@@ -266,11 +303,11 @@ export const PrivateChallengeCreationModal: React.FC<PrivateChallengeCreationMod
                     <label className="text-sm font-medium">Selected Invitees</label>
                     <div className="flex flex-wrap gap-2">
                       {selectedFriends.map((friendId) => {
-                        const friend = mockFriends.find(f => f.id === friendId);
+                        const friend = friends.find(f => f.id === friendId);
                         if (!friend) return null;
                         return (
                           <Badge key={friendId} variant="secondary" className="flex items-center gap-1">
-                            <span>{friend.avatar}</span>
+                            <span>👤</span>
                             <span>{friend.name}</span>
                             <X 
                               className="w-3 h-3 cursor-pointer hover:text-destructive" 
