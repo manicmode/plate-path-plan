@@ -934,81 +934,14 @@ function GameAndChallengeContent() {
               <PublicChallengesBrowse />
             </TabsContent>
 
-            <TabsContent value="my-challenges" className="mt-4 pb-32">
+            <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">My Challenges</h2>
-                  <Button 
-                    size="sm" 
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    onClick={() => setShowChallengeModal(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Challenge
-                  </Button>
+                <div className="flex items-center gap-2 mb-4">
+                  <Star className="h-5 w-5 text-purple-600" />
+                  <h2 className="text-lg font-bold">My Active Challenges</h2>
                 </div>
-
-                {/* Active Challenges */}
-                <div className="grid gap-4">
-                  {challenges.slice(0, 3).map((challenge) => (
-                    <Card key={challenge.id} className="overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Target className="h-5 w-5 text-blue-600" />
-                            <span className="font-semibold">{challenge.name}</span>
-                          </div>
-                          <Badge variant="secondary">
-                            <Users className="h-3 w-3 mr-1" />
-                            {challenge.participants?.length || 0} participants
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {challenge.customGoal || challenge.goalType.replace('-', ' ').toUpperCase()}
-                        </p>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>Days Active</span>
-                            <span>{Math.max(0, Math.floor((new Date().getTime() - new Date(challenge.startDate).getTime()) / (1000 * 3600 * 24)))} days</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            Ends {new Date(challenge.endDate).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center gap-1 text-sm text-amber-600">
-                            <Trophy className="h-4 w-4" />
-                            Glory & Achievement
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                  
-                  {challenges.length === 0 && (
-                    <Card className="p-8 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <Target className="h-12 w-12 text-muted-foreground/50" />
-                        <div>
-                          <p className="text-lg font-semibold mb-1">No Active Challenges</p>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Join or create a challenge to start competing with friends!
-                          </p>
-                          <Button 
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                            onClick={() => setShowChallengeModal(true)}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Your First Challenge
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </div>
+                
+                <UserChallengeParticipations />
               </div>
             </TabsContent>
 
