@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
-import { ChallengeProvider } from '@/contexts/ChallengeContext';
+import { OptimizedChallengeProvider } from '@/contexts/OptimizedChallengeProvider';
 import { RewardsProvider } from '@/contexts/RewardsContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { useChatModal } from '@/contexts/ChatModalContext';
@@ -53,7 +53,7 @@ import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesB
 import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { MyFriendsTab } from '@/components/social/MyFriendsTab';
-import { useChallenge } from '@/contexts/ChallengeContext';
+import { useActiveChallenges } from '@/contexts/OptimizedChallengeProvider';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
@@ -490,16 +490,16 @@ export default function GameAndChallengePage() {
   return (
     <RewardsProvider>
       <ChatProvider>
-        <ChallengeProvider>
+        <OptimizedChallengeProvider>
           <GameAndChallengeContent />
-        </ChallengeProvider>
+        </OptimizedChallengeProvider>
       </ChatProvider>
     </RewardsProvider>
   );
 }
 
 function GameAndChallengeContent() {
-  const { challenges, microChallenges, nudgeFriend } = useChallenge();
+  const { activeChallenges, microChallenges } = useActiveChallenges();
   const { setIsChatModalOpen } = useChatModal();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
@@ -1061,13 +1061,17 @@ function GameAndChallengeContent() {
                 </CardHeader>
                 
                 <CardContent className="p-6">
-                  {challenges.length > 0 ? (
+                  {activeChallenges.length > 0 ? (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {challenges.map((challenge) => (
-                        <ChallengeCard 
-                          key={challenge.id} 
-                          challenge={challenge} 
-                        />
+                      {activeChallenges.map((challenge) => (
+                        <Card key={challenge.id} className="p-4">
+                          <h3 className="font-semibold">{challenge.name}</h3>
+                          <p className="text-sm text-muted-foreground">{challenge.goalDescription}</p>
+                          <div className="mt-2">
+                            <div className="text-sm">Progress: {challenge.progress}%</div>
+                            <div className="text-sm">Streak: {challenge.streakCount} days</div>
+                          </div>
+                        </Card>
                       ))}
                     </div>
                   ) : (
@@ -1115,11 +1119,14 @@ function GameAndChallengeContent() {
                 {microChallenges.length > 0 ? (
                   <div className="flex gap-4 overflow-x-auto pb-4">
                     {microChallenges.map((challenge) => (
-                      <MicroChallengeCard 
-                        key={challenge.id} 
-                        challenge={challenge}
-                        onNudgeFriend={nudgeFriend}
-                      />
+                      <Card key={challenge.id} className="min-w-[300px] p-4">
+                        <h3 className="font-semibold">{challenge.name}</h3>
+                        <p className="text-sm text-muted-foreground">{challenge.goalDescription}</p>
+                        <div className="mt-2">
+                          <div className="text-sm">Progress: {challenge.progress}%</div>
+                          <div className="text-sm">Days left: {challenge.durationDays}</div>
+                        </div>
+                      </Card>
                     ))}
                   </div>
                 ) : (
