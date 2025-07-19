@@ -12,7 +12,7 @@ import { BadgeProvider } from '@/contexts/BadgeContext';
 import { AuthProvider } from '@/contexts/auth';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
-import LoadingScreen from '@/components/LoadingScreen';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Lazy load components
