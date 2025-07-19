@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSmartTiming } from '@/contexts/SmartTimingContext';
 
 interface AccountabilityBuddy {
   buddy_user_id: string;
@@ -19,6 +20,7 @@ export const useTeamUpPrompts = () => {
   const [currentPrompt, setCurrentPrompt] = useState<AccountabilityBuddy | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { shouldShowTeamUpPrompt, registerDismissal } = useSmartTiming();
 
   const checkPromptAlreadyShown = async (buddyUserId: string, challengeId: string): Promise<boolean> => {
     try {
@@ -70,10 +72,12 @@ export const useTeamUpPrompts = () => {
 
       setPotentialBuddies(filteredBuddies);
 
-      // Show the first buddy as a prompt if available and from same ranking group
-      const topBuddy = filteredBuddies.find(buddy => buddy.shared_ranking_group);
-      if (topBuddy && !currentPrompt) {
-        setCurrentPrompt(topBuddy);
+      // Only show prompt if timing conditions are met
+      if (shouldShowTeamUpPrompt()) {
+        const topBuddy = filteredBuddies.find(buddy => buddy.shared_ranking_group);
+        if (topBuddy && !currentPrompt) {
+          setCurrentPrompt(topBuddy);
+        }
       }
     } catch (error) {
       console.error('Error loading potential buddies:', error);
@@ -125,6 +129,9 @@ export const useTeamUpPrompts = () => {
 
   const dismissPrompt = async (buddy: AccountabilityBuddy) => {
     try {
+      // Register dismissal for timing control
+      registerDismissal();
+
       // Record the dismissal
       await supabase.rpc('record_team_up_prompt_action', {
         buddy_user_id_param: buddy.buddy_user_id,
@@ -136,12 +143,14 @@ export const useTeamUpPrompts = () => {
       setCurrentPrompt(null);
       setPotentialBuddies(prev => prev.filter(b => b.buddy_user_id !== buddy.buddy_user_id));
 
-      // Show next available prompt from same ranking group
-      const nextBuddy = potentialBuddies.find(
-        b => b.buddy_user_id !== buddy.buddy_user_id && b.shared_ranking_group
-      );
-      if (nextBuddy) {
-        setCurrentPrompt(nextBuddy);
+      // Only show next prompt if timing conditions allow it
+      if (shouldShowTeamUpPrompt()) {
+        const nextBuddy = potentialBuddies.find(
+          b => b.buddy_user_id !== buddy.buddy_user_id && b.shared_ranking_group
+        );
+        if (nextBuddy) {
+          setCurrentPrompt(nextBuddy);
+        }
       }
     } catch (error) {
       console.error('Error dismissing prompt:', error);
@@ -155,11 +164,30 @@ export const useTeamUpPrompts = () => {
   useEffect(() => {
     loadPotentialBuddies();
     
-    // Check for new potential buddies every 5 minutes
-    const interval = setInterval(loadPotentialBuddies, 5 * 60 * 1000);
+    // Check for new potential buddies and timing constraints every 30 seconds
+    const interval = setInterval(() => {
+      // Only check if timing allows showing prompts
+      if (shouldShowTeamUpPrompt()) {
+        loadPotentialBuddies();
+      }
+    }, 30000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldShowTeamUpPrompt]);
+
+  // Separate effect to monitor timing changes and show/hide prompt accordingly
+  useEffect(() => {
+    if (!shouldShowTeamUpPrompt() && currentPrompt) {
+      // Hide current prompt if timing no longer allows it
+      setCurrentPrompt(null);
+    } else if (shouldShowTeamUpPrompt() && !currentPrompt && potentialBuddies.length > 0) {
+      // Show prompt if timing allows and we have available buddies
+      const topBuddy = potentialBuddies.find(buddy => buddy.shared_ranking_group);
+      if (topBuddy) {
+        setCurrentPrompt(topBuddy);
+      }
+    }
+  }, [shouldShowTeamUpPrompt, currentPrompt, potentialBuddies]);
 
   return {
     potentialBuddies,

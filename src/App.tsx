@@ -11,6 +11,7 @@ import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { AuthProvider } from '@/contexts/auth';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
+import { SmartTimingProvider } from '@/contexts/SmartTimingContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -53,11 +54,12 @@ function App() {
           <ThemeProvider>
             <TooltipProvider>
               <AuthProvider>
-                <NutritionProvider>
-                  <NotificationProvider>
-                    <IngredientAlertProvider>
-                      <BadgeProvider>
-                        <ChatModalProvider>
+                <SmartTimingProvider>
+                  <NutritionProvider>
+                    <NotificationProvider>
+                      <IngredientAlertProvider>
+                        <BadgeProvider>
+                          <ChatModalProvider>
                           <Layout>
                             <Suspense fallback={<LoadingScreen />}>
                               <Routes>
@@ -90,7 +92,8 @@ function App() {
                     </IngredientAlertProvider>
                   </NotificationProvider>
                 </NutritionProvider>
-              </AuthProvider>
+              </SmartTimingProvider>
+            </AuthProvider>
             </TooltipProvider>
           </ThemeProvider>
         </ErrorBoundary>

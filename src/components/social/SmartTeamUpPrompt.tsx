@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useTeamUpPrompts } from '@/hooks/useTeamUpPrompts';
+import { useSmartTiming } from '@/contexts/SmartTimingContext';
 
 export const SmartTeamUpPrompt = () => {
   const { 
@@ -13,10 +14,15 @@ export const SmartTeamUpPrompt = () => {
     dismissPrompt 
   } = useTeamUpPrompts();
   
+  const { shouldShowTeamUpPrompt, timingState } = useSmartTiming();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
 
-  if (!currentPrompt) return null;
+  // Only show if timing conditions are met and we have a prompt
+  if (!currentPrompt || !shouldShowTeamUpPrompt()) {
+    return null;
+  }
 
   const handleSendRequest = async () => {
     setIsLoading(true);
