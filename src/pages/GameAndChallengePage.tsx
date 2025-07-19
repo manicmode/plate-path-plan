@@ -1016,7 +1016,7 @@ function GameAndChallengeContent() {
               </div>
             </TabsContent>
 
-            <TabsContent value="my-challenges" className="mt-4 pb-32">
+            <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
               {/* User's Personal Challenges */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
