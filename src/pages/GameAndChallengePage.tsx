@@ -616,17 +616,16 @@ function GameAndChallengeContent() {
               
               {/* Mobile horizontal scroll tabs */}
               <ScrollArea className="w-full">
-                <div className="flex space-x-2 pb-3 pt-1">
+                <div className="flex justify-between w-full pb-3 pt-1 px-2">
                   {navigationItems.map(({ id, label, icon: Icon }) => (
                     <Button
                       key={id}
                       variant={activeSection === id ? "default" : "ghost"}
                       onClick={() => scrollToSection(id)}
-                      className="flex items-center gap-1 whitespace-nowrap h-9 px-3 text-xs py-2"
+                      className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
                       size="sm"
                     >
-                      <Icon className="h-4 w-4" />
-                      {isMobile ? '' : label}
+                      <Icon className="h-6 w-6" />
                     </Button>
                   ))}
                 </div>
