@@ -9,6 +9,7 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
 import { useToast } from '@/hooks/use-toast';
+import { VirtualizedChallengeList } from './VirtualizedChallengeList';
 
 export const UserChallengeParticipations: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -285,8 +286,8 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   });
 
-  // Memoized Vertical Stack Section Component
-  const VerticalStack = memo(({ 
+  // Memoized Vertical Stack Section Component with Virtualization
+  const VirtualizedStack = memo(({ 
     title, 
     icon: Icon, 
     iconColor, 
@@ -297,6 +298,9 @@ export const UserChallengeParticipations: React.FC = () => {
     iconColor: string;
     challenges: any[];
   }) => {
+    // Challenge card renderer for virtualization
+    const renderChallengeCard = (item: any) => <ChallengeCard item={item} />;
+
     return (
       <div className="space-y-6">
         <h2 className="text-xl font-bold flex items-center justify-center gap-2 px-4">
@@ -304,11 +308,14 @@ export const UserChallengeParticipations: React.FC = () => {
           {title}
         </h2>
         
-        <div className="space-y-6 px-4">
-          {challenges.map((item, index) => (
-            <ChallengeCard key={`${title}-${index}`} item={item} />
-          ))}
-        </div>
+        <VirtualizedChallengeList
+          challenges={challenges}
+          renderItem={renderChallengeCard}
+          layout="list"
+          itemHeight={400}
+          height={500}
+          threshold={3}
+        />
       </div>
     );
   });
@@ -343,7 +350,7 @@ export const UserChallengeParticipations: React.FC = () => {
 
       {/* My Public Challenges Section */}
       {regularPublicChallenges.length > 0 && (
-        <VerticalStack
+        <VirtualizedStack
           title="My Public Challenges"
           icon={Users}
           iconColor="text-blue-500"
@@ -353,7 +360,7 @@ export const UserChallengeParticipations: React.FC = () => {
 
       {/* My Quick Challenges Section */}
       {quickChallenges.length > 0 && (
-        <VerticalStack
+        <VirtualizedStack
           title="My Quick Challenges"
           icon={Flame}
           iconColor="text-orange-500"
@@ -363,7 +370,7 @@ export const UserChallengeParticipations: React.FC = () => {
 
       {/* My Private Challenges Section */}
       {privateChallenges.length > 0 && (
-        <VerticalStack
+        <VirtualizedStack
           title="My Private Challenges"
           icon={Lock}
           iconColor="text-purple-500"
