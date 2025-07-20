@@ -132,12 +132,19 @@ const Home = () => {
         
         <div className="grid gap-6 md:grid-cols-2">
           <DailyProgressCard 
-            nutrition={totals}
-            hydration={{ current: totalHydration, target: dailyTargets.hydration_ml }}
-            supplements={{ current: totalSupplements, target: dailyTargets.supplement_count }}
-            targets={dailyTargets}
+            title="Daily Progress"
+            value={totals.calories}
+            target={dailyTargets.calories || 2000}
+            unit="cal"
+            icon={<span>🔥</span>}
+            color="orange"
           />
-          <DailyScoreCard />
+          <DailyScoreCard 
+            score={85}
+            weeklyAverage={78}
+            streak={5}
+            bestScore={92}
+          />
         </div>
 
         <HomeAIInsights />

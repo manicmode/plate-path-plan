@@ -90,9 +90,12 @@ interface NutritionContextType {
   getHydrationGoal: () => number;
   getSupplementGoal: () => number;
   currentDay: any;
-  currentCoachCta: any;
+  currentCoachCta: string | null;
   clearCoachCta: () => void;
   weeklyData: any[];
+  // Coach CTA properties
+  addCoachCta: (message: string) => void;
+  coachCtaQueue: string[];
 }
 
 const NutritionContext = createContext<NutritionContextType | undefined>(undefined);
@@ -130,13 +133,15 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
   });
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [coachCtaQueue, setCoachCtaQueue] = useState<string[]>([]);
+  const [currentCoachCta, setCurrentCoachCta] = useState<string | null>(null);
 
   const { user } = useAuth();
 
-  // Load data function with timing diagnostics
+  // Optimized load data function with batch query
   const loadTodaysData = async (targetDate: string) => {
     const loadStartTime = performance.now();
-    console.log('🔍 NutritionProvider: Starting data load at', loadStartTime.toFixed(2) + 'ms for date:', targetDate);
+    console.log('🔍 NutritionProvider: Starting batch load at', loadStartTime.toFixed(2) + 'ms for date:', targetDate);
 
     if (!user) {
       console.log('🔍 NutritionProvider: No user, skipping data load');
@@ -147,59 +152,116 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
     try {
       setLoading(true);
       
-      // Load from localStorage as fallback
-      const localKey = `nutrition_${user.id}_${targetDate}`;
-      const localStartTime = performance.now();
-      const localData = safeGetJSON(localKey, null);
-      console.log('🔍 NutritionProvider: Local storage check completed in', (performance.now() - localStartTime).toFixed(2) + 'ms');
+      // Phase 1: Batch query optimization - single RPC call
+      const batchStartTime = performance.now();
+      const { data: batchData, error: batchError } = await supabase
+        .rpc('batch_load_nutrition_data', {
+          user_id_param: user.id,
+          date_param: targetDate
+        });
+
+      const batchEndTime = performance.now();
+      console.log(`🎯 NutritionProvider: Batch query completed in ${(batchEndTime - batchStartTime).toFixed(2)}ms`);
+
+      if (batchError) {
+        console.error('🔍 Error in batch load:', batchError);
+        throw batchError;
+      }
+
+      if (batchData) {
+        // Phase 2: Load foods first for immediate rendering
+        const foodsTransformStart = performance.now();
+        const batchDataTyped = batchData as any;
+        const transformedFoods: FoodItem[] = (batchDataTyped.foods || []).map((item: any) => ({
+          id: item.id,
+          name: item.food_name,
+          calories: item.calories || 0,
+          protein: Number(item.protein) || 0,
+          carbs: Number(item.carbs) || 0,
+          fat: Number(item.fat) || 0,
+          fiber: Number(item.fiber) || 0,
+          sugar: Number(item.sugar) || 0,
+          sodium: Number(item.sodium) || 0,
+          image: item.image_url || undefined,
+          confidence: item.confidence || undefined,
+          timestamp: new Date(item.created_at),
+          confirmed: true
+        }));
+        
+        setFoods(transformedFoods);
+        console.log(`🎯 NutritionProvider: Foods loaded (${transformedFoods.length} items) in ${(performance.now() - foodsTransformStart).toFixed(2)}ms`);
+
+        // Phase 2: Defer hydration and supplements loading
+        setTimeout(() => {
+          const deferredStartTime = performance.now();
+          
+          const transformedHydration: HydrationItem[] = (batchDataTyped.hydration || []).map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            volume: item.volume,
+            type: item.type as 'water' | 'other',
+            image: item.image_url || undefined,
+            timestamp: new Date(item.created_at)
+          }));
+
+          const transformedSupplements: SupplementItem[] = (batchDataTyped.supplements || []).map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            dosage: Number(item.dosage),
+            unit: item.unit,
+            frequency: item.frequency || undefined,
+            notifications: [],
+            image: item.image_url || undefined,
+            timestamp: new Date(item.created_at)
+          }));
+          
+          setHydration(transformedHydration);
+          setSupplements(transformedSupplements);
+          
+          console.log(`🎯 NutritionProvider: Deferred load completed - hydration (${transformedHydration.length}) & supplements (${transformedSupplements.length}) in ${(performance.now() - deferredStartTime).toFixed(2)}ms`);
+        }, 0);
+
+        // Load targets if available
+        if (batchDataTyped.targets) {
+          const targetsData = batchDataTyped.targets;
+          setTargets({
+            calories: targetsData.calories || 2000,
+            protein: targetsData.protein || 150,
+            carbs: targetsData.carbs || 250,
+            fat: targetsData.fat || 65,
+            fiber: targetsData.fiber || 25,
+            sugar: targetsData.sugar || null,
+            sodium: targetsData.sodium || null,
+            saturated_fat: targetsData.saturated_fat || null,
+            hydration_ml: targetsData.hydration_ml || 2000,
+            supplement_count: targetsData.supplement_count || 0
+          });
+        }
+
+        // Update localStorage cache
+        const cacheStartTime = performance.now();
+        const localKey = `nutrition_${user.id}_${targetDate}`;
+        const cacheData = { 
+          foods: transformedFoods, 
+          hydration: batchDataTyped.hydration || [], 
+          supplements: batchDataTyped.supplements || [],
+          targets: batchDataTyped.targets
+        };
+        safeSetJSON(localKey, cacheData);
+        console.log('🔍 NutritionProvider: Cache update completed in', (performance.now() - cacheStartTime).toFixed(2) + 'ms');
+      }
+
+    } catch (error) {
+      console.error('Error in batch load:', error);
       
-      // Load foods from nutrition_logs
-      const foodsStartTime = performance.now();
-      const { data: foodsData, error: foodsError } = await supabase
-        .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', `${targetDate}T00:00:00.000Z`)
-        .lt('created_at', `${targetDate}T23:59:59.999Z`)
-        .order('created_at', { ascending: true });
-
-      console.log('🔍 NutritionProvider: Foods query completed in', (performance.now() - foodsStartTime).toFixed(2) + 'ms');
-
-      if (foodsError) throw foodsError;
-
-      // Load hydration from hydration_logs
-      const hydrationStartTime = performance.now();
-      const { data: hydrationData, error: hydrationError } = await supabase
-        .from('hydration_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', `${targetDate}T00:00:00.000Z`)
-        .lt('created_at', `${targetDate}T23:59:59.999Z`)
-        .order('created_at', { ascending: true });
-
-      console.log('🔍 NutritionProvider: Hydration query completed in', (performance.now() - hydrationStartTime).toFixed(2) + 'ms');
-
-      if (hydrationError) throw hydrationError;
-
-      // Load supplements from supplement_logs
-      const supplementsStartTime = performance.now();
-      const { data: supplementsData, error: supplementsError } = await supabase
-        .from('supplement_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', `${targetDate}T00:00:00.000Z`)
-        .lt('created_at', `${targetDate}T23:59:59.999Z`)
-        .order('created_at', { ascending: true });
-
-      console.log('🔍 NutritionProvider: Supplements query completed in', (performance.now() - supplementsStartTime).toFixed(2) + 'ms');
-
-      if (supplementsError) throw supplementsError;
-
-      // Transform database data to context format
-      const transformStartTime = performance.now();
-      const transformedFoods: FoodItem[] = (foodsData || []).map(item => ({
+      // Fallback to localStorage if available
+      const fallbackStartTime = performance.now();
+      const localKey = `nutrition_${user.id}_${targetDate}`;
+      const localData = safeGetJSON(localKey, { foods: [], hydration: [], supplements: [] });
+      
+      const transformedFoods: FoodItem[] = (localData.foods || []).map((item: any) => ({
         id: item.id,
-        name: item.food_name,
+        name: item.name,
         calories: item.calories || 0,
         protein: Number(item.protein) || 0,
         carbs: Number(item.carbs) || 0,
@@ -207,109 +269,28 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
         fiber: Number(item.fiber) || 0,
         sugar: Number(item.sugar) || 0,
         sodium: Number(item.sodium) || 0,
-        image: item.image_url || undefined,
+        image: item.image || undefined,
         confidence: item.confidence || undefined,
-        timestamp: new Date(item.created_at),
+        timestamp: new Date(item.timestamp),
         confirmed: true
       }));
-
-      const transformedHydration: HydrationItem[] = (hydrationData || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        volume: item.volume,
-        type: item.type as 'water' | 'other',
-        image: item.image_url || undefined,
-        timestamp: new Date(item.created_at)
-      }));
-
-      const transformedSupplements: SupplementItem[] = (supplementsData || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        dosage: Number(item.dosage),
-        unit: item.unit,
-        frequency: item.frequency || undefined,
-        notifications: [], // Empty for now, notifications are handled separately
-        image: item.image_url || undefined,
-        timestamp: new Date(item.created_at)
-      }));
-
-      console.log('🔍 NutritionProvider: Data transformation completed in', (performance.now() - transformStartTime).toFixed(2) + 'ms');
-
-      setFoods(transformedFoods);
-      setHydration(transformedHydration);
-      setSupplements(transformedSupplements);
-
-      // Update localStorage cache
-      const cacheStartTime = performance.now();
-      const cacheData = { 
-        foods: transformedFoods, 
-        hydration: transformedHydration, 
-        supplements: transformedSupplements 
-      };
-      safeSetJSON(localKey, cacheData);
-      console.log('🔍 NutritionProvider: Cache update completed in', (performance.now() - cacheStartTime).toFixed(2) + 'ms');
-
-    } catch (error) {
-      console.error('Error loading nutrition data:', error);
       
-      // Fallback to localStorage if available
-      const fallbackStartTime = performance.now();
-      const localKey = `nutrition_${user.id}_${targetDate}`;
-      const localData = safeGetJSON(localKey, { foods: [], hydration: [], supplements: [] });
-      setFoods(localData.foods || []);
+      setFoods(transformedFoods);
       setHydration(localData.hydration || []);
       setSupplements(localData.supplements || []);
       console.log('🔍 NutritionProvider: Fallback data loaded in', (performance.now() - fallbackStartTime).toFixed(2) + 'ms');
     } finally {
       setLoading(false);
       const totalLoadTime = performance.now() - loadStartTime;
-      console.log('🔍 NutritionProvider: TOTAL DATA LOAD COMPLETED in', totalLoadTime.toFixed(2) + 'ms');
+      console.log(`🔍 NutritionProvider: Full load time ${totalLoadTime.toFixed(2)}ms`);
     }
   };
 
-  // Load daily targets with timing diagnostics
+  // Load daily targets - now handled in batch load
   const loadDailyTargets = async () => {
-    const targetsStartTime = performance.now();
-    console.log('🔍 NutritionProvider: Starting targets load at', targetsStartTime.toFixed(2) + 'ms');
-
-    if (!user) return;
-
-    try {
-      const { data: targetsData, error: targetsError } = await supabase
-        .from('daily_nutrition_targets')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', date)
-        .single();
-
-      if (targetsError && targetsError.code !== 'PGRST116') {
-        console.error('Error loading targets:', targetsError);
-        return;
-      }
-
-      if (targetsData) {
-        const loadedTargets = {
-          calories: targetsData.calories || 2000,
-          protein: targetsData.protein || 150,
-          carbs: targetsData.carbs || 250,
-          fat: targetsData.fat || 65,
-          fiber: targetsData.fiber || 25,
-          sugar: targetsData.sugar || null,
-          sodium: targetsData.sodium || null,
-          saturated_fat: targetsData.saturated_fat || null,
-          hydration_ml: targetsData.hydration_ml || 2000,
-          supplement_count: targetsData.supplement_count || 0
-        };
-        
-        setTargets(loadedTargets);
-        console.log('🎯 Loaded daily targets for NutritionContext:', loadedTargets);
-      }
-    } catch (error) {
-      console.error('Error loading daily targets:', error);
-    } finally {
-      const targetsEndTime = performance.now();
-      console.log('🔍 NutritionProvider: Targets load completed in', (targetsEndTime - targetsStartTime).toFixed(2) + 'ms');
-    }
+    console.log('🔍 NutritionProvider: Targets now loaded via batch query');
+    // Skip individual targets loading since we batch load in loadTodaysData
+    return;
   };
 
   // Set up subscription with timing diagnostics
@@ -597,6 +578,25 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
   const getHydrationGoal = () => targets.hydration_ml;
   const getSupplementGoal = () => targets.supplement_count;
 
+  // Coach CTA functions
+  const addCoachCta = (message: string) => {
+    setCoachCtaQueue(prev => [...prev, message]);
+    if (!currentCoachCta) {
+      setCurrentCoachCta(message);
+    }
+  };
+
+  const clearCoachCta = () => {
+    setCurrentCoachCta(null);
+    setCoachCtaQueue(prev => {
+      const newQueue = prev.slice(1);
+      if (newQueue.length > 0) {
+        setCurrentCoachCta(newQueue[0]);
+      }
+      return newQueue;
+    });
+  };
+
   const value = {
     foods,
     hydration,
@@ -618,9 +618,11 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
     getHydrationGoal,
     getSupplementGoal,
     currentDay: null, // Placeholder
-    currentCoachCta: null, // Placeholder  
-    clearCoachCta: () => {}, // Placeholder
-    weeklyData: [] // Placeholder
+    currentCoachCta,
+    clearCoachCta,
+    weeklyData: [], // Placeholder
+    addCoachCta,
+    coachCtaQueue
   };
 
   const contextEndTime = performance.now();
