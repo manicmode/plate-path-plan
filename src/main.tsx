@@ -59,25 +59,6 @@ console.log('App initialization starting...', {
   timestamp: new Date().toISOString()
 });
 
-// Add orientation change listener to force portrait
-const handleOrientationChange = () => {
-  console.log('Orientation changed to:', (window.screen.orientation as any)?.angle || 'unknown');
-  // Force portrait mode if possible
-  if (window.screen.orientation && (window.screen.orientation as any).lock) {
-    (window.screen.orientation as any).lock('portrait').catch((err: any) => {
-      console.log('Could not lock orientation:', err);
-    });
-  }
-};
-
-window.addEventListener('orientationchange', handleOrientationChange);
-
-// Lock orientation on load
-if (window.screen.orientation && (window.screen.orientation as any).lock) {
-  (window.screen.orientation as any).lock('portrait').catch((err: any) => {
-    console.log('Could not lock orientation on load:', err);
-  });
-}
 
 // Additional mobile-specific checks
 if (isMobile) {

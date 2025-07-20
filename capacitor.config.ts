@@ -27,11 +27,13 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'never',
+    orientation: 'portrait',
     webViewConfiguration: {
       allowsInlineMediaPlaybook: true
     }
   },
   android: {
+    orientation: 'portrait',
     buildOptions: {
       keystorePath: undefined,
       keystoreAlias: undefined,
