@@ -798,19 +798,6 @@ const Home = () => {
         ))}
       </div>
 
-      {/* Daily Performance Score Card - Featured prominently */}
-      <div className="px-2 sm:px-4 mt-8">
-        {!scoreLoading && scoreStats && (
-          <DailyScoreCard 
-            score={todayScore || 0}
-            weeklyAverage={scoreStats.weeklyAverage}
-            streak={scoreStats.streak}
-            bestScore={scoreStats.bestScore}
-            className="mb-6"
-          />
-        )}
-      </div>
-
       {/* Enhanced Logging Actions Section with proper spacing */}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         {/* Primary Action: Log Food - Full Width */}
@@ -1192,6 +1179,19 @@ const Home = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Daily Performance Score Card - Featured prominently */}
+      <div className="px-2 sm:px-4 mt-8">
+        {!scoreLoading && scoreStats && (
+          <DailyScoreCard 
+            score={todayScore || 0}
+            weeklyAverage={scoreStats.weeklyAverage}
+            streak={scoreStats.streak}
+            bestScore={scoreStats.bestScore}
+            className="mb-6"
+          />
+        )}
       </div>
 
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
