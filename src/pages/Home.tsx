@@ -54,7 +54,7 @@ const Home = () => {
       try {
         const today = new Date().toISOString().split('T')[0];
         const { data: targetsData, error } = await supabase
-          .from('daily_targets')
+          .from('daily_nutrition_targets')
           .select('*')
           .eq('user_id', user.id)
           .eq('date', today)

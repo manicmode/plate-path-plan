@@ -78,6 +78,21 @@ interface NutritionContextType {
   removeHydration: (id: string) => Promise<void>;
   removeSupplement: (id: string) => Promise<void>;
   loadTodaysData: (date: string) => Promise<void>;
+  // Missing properties that components expect
+  getTodaysProgress: () => {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    hydration: number;
+    supplements: number;
+  };
+  getHydrationGoal: () => number;
+  getSupplementGoal: () => number;
+  currentDay: any;
+  currentCoachCta: any;
+  clearCoachCta: () => void;
+  weeklyData: any[];
 }
 
 const NutritionContext = createContext<NutritionContextType | undefined>(undefined);
@@ -261,7 +276,7 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
 
     try {
       const { data: targetsData, error: targetsError } = await supabase
-        .from('daily_targets')
+        .from('daily_nutrition_targets')
         .select('*')
         .eq('user_id', user.id)
         .eq('date', date)
@@ -569,6 +584,19 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
 
   const totals = calculateTotals(foods);
 
+  // Helper functions that components expect
+  const getTodaysProgress = () => ({
+    calories: totals.calories,
+    protein: totals.protein,
+    carbs: totals.carbs,
+    fat: totals.fat,
+    hydration: hydration.reduce((sum, item) => sum + item.volume, 0),
+    supplements: supplements.length
+  });
+
+  const getHydrationGoal = () => targets.hydration_ml;
+  const getSupplementGoal = () => targets.supplement_count;
+
   const value = {
     foods,
     hydration,
@@ -586,6 +614,13 @@ export const NutritionProvider: React.FC<NutritionProviderProps> = ({ children }
     removeHydration,
     removeSupplement,
     loadTodaysData,
+    getTodaysProgress,
+    getHydrationGoal,
+    getSupplementGoal,
+    currentDay: null, // Placeholder
+    currentCoachCta: null, // Placeholder  
+    clearCoachCta: () => {}, // Placeholder
+    weeklyData: [] // Placeholder
   };
 
   const contextEndTime = performance.now();
