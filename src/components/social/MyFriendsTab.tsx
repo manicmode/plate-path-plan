@@ -117,7 +117,7 @@ export const MyFriendsTab = () => {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {/* Header */}
       <div className="text-center">
         <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
@@ -126,7 +126,7 @@ export const MyFriendsTab = () => {
         </h1>
       </div>
 
-      <Tabs defaultValue="friends" className="space-y-2">
+      <Tabs defaultValue="friends" className="space-y-1">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -142,7 +142,7 @@ export const MyFriendsTab = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="friends" className="space-y-2">
+        <TabsContent value="friends" className="space-y-1">
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4 mb-1">
             <Card className="h-20">
@@ -170,7 +170,7 @@ export const MyFriendsTab = () => {
           </div>
 
           {/* Friends List */}
-          <ScrollArea className="h-[400px] bg-muted/30 rounded-lg p-3">
+          <ScrollArea className="h-[400px] bg-background/80 border rounded-lg p-3">
             <div className="space-y-3">
               {isLoading ? (
                 <div className="text-center py-8">
