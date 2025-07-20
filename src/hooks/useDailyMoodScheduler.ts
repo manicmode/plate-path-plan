@@ -1,0 +1,144 @@
+import { useEffect, useState } from 'react';
+import { useNotification } from '@/contexts/NotificationContext';
+import { useAuth } from '@/contexts/auth';
+
+interface MoodSchedulerState {
+  showMoodModal: boolean;
+  setShowMoodModal: (show: boolean) => void;
+}
+
+export const useDailyMoodScheduler = (): MoodSchedulerState => {
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const { preferences, addNotification } = useNotification();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user || !preferences.dailyMoodCheckin) {
+      return;
+    }
+
+    const scheduleNotification = () => {
+      const now = new Date();
+      const targetTime = new Date();
+      targetTime.setHours(20, 30, 0, 0); // 8:30 PM
+
+      // If it's past 8:30 PM today, schedule for tomorrow
+      if (now > targetTime) {
+        targetTime.setDate(targetTime.getDate() + 1);
+      }
+
+      const timeUntilNotification = targetTime.getTime() - now.getTime();
+
+      // Schedule the notification
+      const timeoutId = setTimeout(() => {
+        // Check if user is within quiet hours
+        const currentHour = new Date().getHours();
+        const isQuietTime = 
+          preferences.quietHoursStart <= preferences.quietHoursEnd
+            ? currentHour >= preferences.quietHoursStart || currentHour < preferences.quietHoursEnd
+            : currentHour >= preferences.quietHoursStart && currentHour < preferences.quietHoursEnd;
+
+        if (!isQuietTime) {
+          // Check if user has already logged mood today
+          checkIfMoodLoggedToday().then((hasLogged) => {
+            if (!hasLogged) {
+              triggerMoodNotification();
+            }
+          });
+        }
+      }, timeUntilNotification);
+
+      return timeoutId;
+    };
+
+    const checkIfMoodLoggedToday = async (): Promise<boolean> => {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data } = await supabase
+          .from('mood_logs')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .maybeSingle();
+
+        return !!data;
+      } catch (error) {
+        console.error('Error checking mood log:', error);
+        return false;
+      }
+    };
+
+    const triggerMoodNotification = () => {
+      // Show notification based on delivery preference
+      if (preferences.deliveryMode === 'toast' || preferences.deliveryMode === 'both') {
+        addNotification({
+          title: '🌙 Time for your daily check-in!',
+          body: 'How are you feeling today? Log your mood and wellness.',
+          type: 'mood_checkin',
+          action: () => setShowMoodModal(true),
+        });
+      }
+
+      // For push notifications, we would typically send this through the backend
+      // For now, we'll handle it as a toast notification when the app is open
+    };
+
+    const timeoutId = scheduleNotification();
+
+    // Clean up timeout on unmount or when dependencies change
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [user, preferences.dailyMoodCheckin, preferences.quietHoursStart, preferences.quietHoursEnd, preferences.deliveryMode, addNotification]);
+
+  // Also check if we should show the modal on app startup (for missed notifications)
+  useEffect(() => {
+    if (!user || !preferences.dailyMoodCheckin) {
+      return;
+    }
+
+    const checkMissedMoodLog = async () => {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const currentHour = now.getHours();
+
+        // Only check if it's after 8:30 PM and before midnight
+        if (currentHour >= 20 && currentHour < 24) {
+          const { data } = await supabase
+            .from('mood_logs')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('date', today)
+            .maybeSingle();
+
+          // If no mood log for today, show a gentle reminder
+          if (!data) {
+            setTimeout(() => {
+              addNotification({
+                title: '💭 Daily reflection reminder',
+                body: 'Don\'t forget to log your mood and wellness for today!',
+                type: 'mood_reminder',
+                action: () => setShowMoodModal(true),
+              });
+            }, 2000); // Small delay to avoid overwhelming on startup
+          }
+        }
+      } catch (error) {
+        console.error('Error checking missed mood log:', error);
+      }
+    };
+
+    checkMissedMoodLog();
+  }, [user, preferences.dailyMoodCheckin, addNotification]);
+
+  return {
+    showMoodModal,
+    setShowMoodModal,
+  };
+};

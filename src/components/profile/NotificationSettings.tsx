@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -44,6 +44,12 @@ export const NotificationSettings = () => {
       label: 'Weekly Progress Reflection', 
       description: 'Sunday reminders to review your weekly progress',
       icon: Calendar
+    },
+    { 
+      key: 'dailyMoodCheckin', 
+      label: 'Daily Mood & Wellness Check-in', 
+      description: 'Nightly reminders at 8:30 PM to log your mood and wellness',
+      icon: Moon
     },
   ];
 

@@ -592,6 +592,45 @@ export type Database = {
         }
         Relationships: []
       }
+      mood_logs: {
+        Row: {
+          ai_detected_tags: string[] | null
+          created_at: string
+          date: string
+          energy: number | null
+          id: string
+          journal_text: string | null
+          mood: number | null
+          updated_at: string
+          user_id: string
+          wellness: number | null
+        }
+        Insert: {
+          ai_detected_tags?: string[] | null
+          created_at?: string
+          date?: string
+          energy?: number | null
+          id?: string
+          journal_text?: string | null
+          mood?: number | null
+          updated_at?: string
+          user_id: string
+          wellness?: number | null
+        }
+        Update: {
+          ai_detected_tags?: string[] | null
+          created_at?: string
+          date?: string
+          energy?: number | null
+          id?: string
+          journal_text?: string | null
+          mood?: number | null
+          updated_at?: string
+          user_id?: string
+          wellness?: number | null
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null

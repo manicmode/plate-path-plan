@@ -14,6 +14,8 @@ import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
+import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -45,21 +47,14 @@ const queryClient = new QueryClient({
   },
 });
 
-function App() {
+function AppContent() {
+  const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <ThemeProvider>
-            <TooltipProvider>
-              <NutritionProvider>
-                <NotificationProvider>
-                  <IngredientAlertProvider>
-                    <BadgeProvider>
-                      <ChatModalProvider>
-                        <Layout>
-                          <Suspense fallback={<LoadingScreen />}>
-                            <Routes>
+    <>
+      <Layout>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
                               <Route path="/" element={<Index />} />
                               <Route path="/home" element={
                                 <ProtectedRoute>
@@ -148,10 +143,31 @@ function App() {
                               } />
                               <Route path="/404" element={<NotFound />} />
                               <Route path="*" element={<Navigate to="/404" replace />} />
-                            </Routes>
-                          </Suspense>
-                        </Layout>
-                        <Toaster />
+          </Routes>
+        </Suspense>
+      </Layout>
+      <DailyMoodModal 
+        isOpen={showMoodModal} 
+        onClose={() => setShowMoodModal(false)} 
+      />
+      <Toaster />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <TooltipProvider>
+              <NutritionProvider>
+                <NotificationProvider>
+                  <IngredientAlertProvider>
+                    <BadgeProvider>
+                      <ChatModalProvider>
+                        <AppContent />
                       </ChatModalProvider>
                     </BadgeProvider>
                   </IngredientAlertProvider>

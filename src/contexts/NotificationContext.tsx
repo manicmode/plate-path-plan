@@ -8,6 +8,7 @@ interface NotificationPreferences {
   consistencyPraise: boolean;
   coachCheckins: boolean;
   progressReflection: boolean;
+  dailyMoodCheckin: boolean;
   reminders: boolean;
   milestones: boolean;
   progressSuggestions: boolean;
@@ -38,6 +39,7 @@ const defaultPreferences: NotificationPreferences = {
   consistencyPraise: true,
   coachCheckins: true,
   progressReflection: true,
+  dailyMoodCheckin: true,
   reminders: true,
   milestones: true,
   progressSuggestions: true,
