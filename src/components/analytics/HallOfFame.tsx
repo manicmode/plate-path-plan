@@ -74,9 +74,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
           </div>
           
           <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3 relative z-10">
-            <Trophy className="h-8 w-8 text-amber-600 animate-bounce" />
+            <Trophy className="h-8 w-8 text-amber-600" />
             🏆 Hall of Fame
-            <Trophy className="h-8 w-8 text-amber-600 animate-bounce" />
+            <Trophy className="h-8 w-8 text-amber-600" />
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
             Legends who made their mark in nutrition history
@@ -84,7 +84,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
         </CardHeader>
         
         <CardContent className="p-6">
-          {/* Horizontally Scrollable Gallery */}
           <ScrollArea className="w-full">
             <div className="flex gap-6 pb-4 min-w-max">
               {previewChampions.map((champion, index) => (
@@ -215,7 +214,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
         </CardContent>
       </Card>
 
-      {/* Full Hall of Fame Modal */}
       <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
         <DialogContent className="max-w-6xl max-h-[80vh]">
           <DialogHeader>
