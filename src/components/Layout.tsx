@@ -133,7 +133,7 @@ const Layout = ({ children }: LayoutProps) => {
                         : 'h-20 w-24 px-4'
                     } rounded-2xl transition-all duration-300 ${
                       isActive 
-                        ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
+                        ? 'bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 text-white shadow-2xl scale-110 ring-4 ring-blue-400/30 ring-offset-2 ring-offset-white dark:ring-offset-gray-900' 
                         : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
                     } ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => handleNavigation(path)}
