@@ -28,7 +28,7 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'never',
     webViewConfiguration: {
-      allowsInlineMediaPlayback: true
+      allowsInlineMediaPlaybook: true
     }
   },
   android: {
@@ -37,7 +37,6 @@ const config: CapacitorConfig = {
       keystoreAlias: undefined,
     }
   }
-}
 };
 
 export default config;
