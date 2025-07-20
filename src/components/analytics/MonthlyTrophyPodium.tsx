@@ -102,10 +102,10 @@ export const MonthlyTrophyPodium: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Enhanced Header with Month Navigation */}
-      <div className="flex items-center justify-between mb-10 pb-4 border-b border-border/50">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mt-6 mb-12 pb-6 border-b border-border/50">
+        <div className="flex items-center gap-6">
           <div 
-            className="text-3xl transition-transform duration-300 hover:scale-110 flex items-center justify-center" 
+            className="text-4xl transition-transform duration-300 hover:scale-110 flex items-center justify-center" 
             style={{ 
               animation: 'bounce 0.6s ease-in-out 3', 
               animationDelay: '0.5s'
@@ -113,7 +113,7 @@ export const MonthlyTrophyPodium: React.FC = () => {
           >
             🏆
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent leading-tight">
             Champion's Circle
           </h2>
           {shouldShowMonthlyPodium() && (
@@ -123,16 +123,16 @@ export const MonthlyTrophyPodium: React.FC = () => {
           )}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleMonthChange('prev')}
-            className="h-9 w-9 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
+            className="h-10 w-10 p-0 rounded-lg border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
           >
             ←
           </Button>
-          <div className="flex items-center gap-2 text-sm font-semibold min-w-32 justify-center px-4 py-2 rounded-full bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
+          <div className="flex items-center gap-3 text-sm font-semibold min-w-40 justify-center px-6 py-3 rounded-lg bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
             <Calendar className="h-4 w-4" />
             {formatMonthYear(currentMonth)}
           </div>
@@ -141,7 +141,7 @@ export const MonthlyTrophyPodium: React.FC = () => {
             size="sm"
             onClick={() => handleMonthChange('next')}
             disabled={currentMonth >= new Date()}
-            className="h-9 w-9 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 disabled:opacity-50"
+            className="h-10 w-10 p-0 rounded-lg border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 disabled:opacity-50"
           >
             →
           </Button>
@@ -149,28 +149,28 @@ export const MonthlyTrophyPodium: React.FC = () => {
       </div>
 
       <Tabs defaultValue="podium" className="space-y-8">
-        <div className="mt-4 mb-8">
-          <TabsList className="grid w-full grid-cols-3 h-16 bg-muted/50 backdrop-blur-sm border border-border rounded-xl p-1.5 gap-1">
+        <div className="mt-8 mb-8">
+          <TabsList className="grid w-full grid-cols-3 h-18 bg-muted/50 backdrop-blur-sm border border-border rounded-xl p-2 gap-2">
             <TabsTrigger 
               value="podium" 
-              className="flex items-center justify-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
+              className="flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
             >
               <span className="text-base shrink-0">🏆</span>
-              <span className="truncate min-w-0">Champion's Circle</span>
+              <span className="truncate min-w-0" title="Champion's Circle">Champion's Circle</span>
             </TabsTrigger>
             <TabsTrigger 
               value="challenges" 
-              className="flex items-center justify-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
+              className="flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
             >
               <span className="text-base shrink-0">📋</span>
-              <span className="truncate min-w-0">Select Challenge</span>
+              <span className="truncate min-w-0" title="Select Challenge">Select Challenge</span>
             </TabsTrigger>
             <TabsTrigger 
               value="achievements" 
-              className="flex items-center justify-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
+              className="flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
             >
               <span className="text-base shrink-0">🏅</span>
-              <span className="truncate min-w-0">Personal Accolades</span>
+              <span className="truncate min-w-0" title="Personal Accolades">Personal Accolades</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -291,7 +291,6 @@ export const MonthlyTrophyPodium: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
 
         <TabsContent value="achievements" className="mt-6">
           <TrophyShelf />
