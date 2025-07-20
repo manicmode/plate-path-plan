@@ -149,26 +149,31 @@ export const MonthlyTrophyPodium: React.FC = () => {
       </div>
 
       <Tabs defaultValue="podium" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-3 h-16 bg-muted/50 backdrop-blur-sm border border-border rounded-xl p-2 shadow-sm">
-          <TabsTrigger 
-            value="podium" 
-            className="relative text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-400/25 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground"
-          >
-            🏆 Champion's Circle
-          </TabsTrigger>
-          <TabsTrigger 
-            value="challenges" 
-            className="relative text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-400/25 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground"
-          >
-            📋 Select Challenge
-          </TabsTrigger>
-          <TabsTrigger 
-            value="achievements" 
-            className="relative text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-400/25 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground"
-          >
-            🏅 Personal Accolades
-          </TabsTrigger>
-        </TabsList>
+        <div className="mt-4 mb-8">
+          <TabsList className="grid w-full grid-cols-3 h-16 bg-muted/50 backdrop-blur-sm border border-border rounded-xl p-1.5 gap-1">
+            <TabsTrigger 
+              value="podium" 
+              className="flex items-center justify-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
+            >
+              <span className="text-base shrink-0">🏆</span>
+              <span className="truncate min-w-0">Champion's Circle</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="challenges" 
+              className="flex items-center justify-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
+            >
+              <span className="text-base shrink-0">📋</span>
+              <span className="truncate min-w-0">Select Challenge</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="achievements" 
+              className="flex items-center justify-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-all duration-300 whitespace-nowrap overflow-hidden data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:shadow-yellow-400/20 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground text-center"
+            >
+              <span className="text-base shrink-0">🏅</span>
+              <span className="truncate min-w-0">Personal Accolades</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="podium" className="mt-6">
           {selectedChallenge && winners.length > 0 ? (
