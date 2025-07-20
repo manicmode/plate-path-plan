@@ -117,9 +117,9 @@ export const MyFriendsTab = () => {
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 -mt-2">
       {/* Header */}
-      <div className="text-center">
+      <div className="text-center -mb-1">
         <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
           <Users className="h-6 w-6" />
           My Friends
