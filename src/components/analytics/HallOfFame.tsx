@@ -381,13 +381,34 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                 />
                 <div className="flex justify-between items-center">
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="h-8 px-2">
-                      😊
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 px-2 transition-transform hover:scale-110" 
+                      onClick={() => {
+                        setNewTribute(prev => prev + "🚀");
+                      }}
+                    >
+                      🚀
                     </Button>
-                    <Button size="sm" variant="outline" className="h-8 px-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 px-2 transition-transform hover:scale-110" 
+                      onClick={() => {
+                        setNewTribute(prev => prev + "🎉");
+                      }}
+                    >
                       🎉
                     </Button>
-                    <Button size="sm" variant="outline" className="h-8 px-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 px-2 transition-transform hover:scale-110" 
+                      onClick={() => {
+                        setNewTribute(prev => prev + "👏");
+                      }}
+                    >
                       👏
                     </Button>
                   </div>
