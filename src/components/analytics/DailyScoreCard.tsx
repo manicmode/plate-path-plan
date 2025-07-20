@@ -52,7 +52,7 @@ export const DailyScoreCard: React.FC<DailyScoreCardProps> = ({
             <Trophy className="h-5 w-5 text-primary" />
             Today's Performance
           </span>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs bg-black text-white flex items-center justify-center h-8 px-3">
             Daily Score
           </Badge>
         </CardTitle>
