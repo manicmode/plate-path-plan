@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to analyze mood/wellness patterns
+// Enhanced mood pattern analysis with AI tags
 function analyzeMoodPatterns(moodLogs: any[], nutritionLogs: any[], supplementLogs: any[]) {
   const insights: string[] = [];
   
@@ -18,12 +18,44 @@ function analyzeMoodPatterns(moodLogs: any[], nutritionLogs: any[], supplementLo
   const energyAvg = moodLogs.reduce((sum, log) => sum + (log.energy || 0), 0) / moodLogs.length;
   const wellnessAvg = moodLogs.reduce((sum, log) => sum + (log.wellness || 0), 0) / moodLogs.length;
 
+  // Analyze AI-detected tags for patterns
+  const allTags: string[] = [];
+  const tagsByDate: Record<string, string[]> = {};
+  
+  moodLogs.forEach(log => {
+    if (log.ai_detected_tags && Array.isArray(log.ai_detected_tags)) {
+      allTags.push(...log.ai_detected_tags);
+      tagsByDate[log.date] = log.ai_detected_tags;
+    }
+  });
+
+  // Find most common tags
+  const tagFrequency: Record<string, number> = {};
+  allTags.forEach(tag => {
+    tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
+  });
+
+  const commonTags = Object.entries(tagFrequency)
+    .filter(([_, count]) => count >= 3)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
+
+  // Report on common patterns
+  commonTags.forEach(([tag, count]) => {
+    const tagDisplayName = tag.replace(/_/g, ' ');
+    if (count >= 5) {
+      insights.push(`You mentioned "${tagDisplayName}" ${count} times this month - might be worth discussing with a healthcare provider.`);
+    } else if (count >= 3) {
+      insights.push(`"${tagDisplayName}" appeared ${count} times in your logs.`);
+    }
+  });
+
   // Identify low energy/mood days
   const lowEnergyDays = moodLogs.filter(log => (log.energy || 0) <= 4);
   const lowMoodDays = moodLogs.filter(log => (log.mood || 0) <= 4);
   const lowWellnessDays = moodLogs.filter(log => (log.wellness || 0) <= 4);
 
-  // Analyze breakfast patterns on low energy days
+  // Enhanced breakfast analysis with AI tags
   if (lowEnergyDays.length >= 3) {
     const breakfastMissedCount = lowEnergyDays.filter(moodLog => {
       const date = moodLog.date;
@@ -38,20 +70,25 @@ function analyzeMoodPatterns(moodLogs: any[], nutritionLogs: any[], supplementLo
     if (breakfastMissedCount >= Math.floor(lowEnergyDays.length * 0.6)) {
       insights.push(`You logged low energy on ${lowEnergyDays.length} days. On ${breakfastMissedCount} of those, you skipped breakfast.`);
     }
+
+    // Check if fatigue tag correlates with skipped breakfast
+    const fatigueOnLowEnergyDays = lowEnergyDays.filter(log => 
+      log.ai_detected_tags?.includes('fatigue') || log.ai_detected_tags?.includes('tired')
+    ).length;
+    
+    if (fatigueOnLowEnergyDays >= 2) {
+      insights.push(`Fatigue was specifically mentioned ${fatigueOnLowEnergyDays} times on low energy days.`);
+    }
   }
 
-  // Analyze supplement patterns with digestive issues
+  // Enhanced supplement analysis with AI tags
+  const digestiveIssueTags = ['bloating', 'stomach_ache', 'nausea', 'digestive_issues', 'acid_reflux', 'indigestion'];
   const digestiveIssues = moodLogs.filter(log => 
-    log.ai_detected_tags?.some((tag: string) => 
-      tag.toLowerCase().includes('stomach') || 
-      tag.toLowerCase().includes('digestive') ||
-      tag.toLowerCase().includes('nausea') ||
-      tag.toLowerCase().includes('bloated')
-    )
+    log.ai_detected_tags?.some((tag: string) => digestiveIssueTags.includes(tag))
   );
 
   if (digestiveIssues.length >= 3) {
-    // Find common supplements on those days
+    // Find common supplements on digestive issue days
     const supplementCounts: Record<string, number> = {};
     digestiveIssues.forEach(moodLog => {
       const date = moodLog.date;
@@ -65,14 +102,38 @@ function analyzeMoodPatterns(moodLogs: any[], nutritionLogs: any[], supplementLo
 
     for (const [suppName, count] of Object.entries(supplementCounts)) {
       if (count >= Math.floor(digestiveIssues.length * 0.7)) {
-        insights.push(`Stomach discomfort was mentioned ${digestiveIssues.length} times, ${count} times after taking ${suppName}.`);
+        insights.push(`Digestive discomfort was mentioned ${digestiveIssues.length} times, ${count} times after taking ${suppName}.`);
       }
     }
   }
 
-  // Analyze positive patterns - high protein early in day
+  // Analyze stress patterns
+  const stressTags = ['stressed', 'anxious', 'overwhelmed', 'work_pressure'];
+  const stressfulDays = moodLogs.filter(log => 
+    log.ai_detected_tags?.some((tag: string) => stressTags.includes(tag))
+  );
+
+  if (stressfulDays.length >= 4) {
+    const avgMoodOnStressfulDays = stressfulDays.reduce((sum, log) => sum + (log.mood || 0), 0) / stressfulDays.length;
+    if (avgMoodOnStressfulDays < moodAvg - 1) {
+      insights.push(`Stress-related feelings appeared ${stressfulDays.length} times and correlated with lower mood scores.`);
+    }
+  }
+
+  // Analyze positive patterns - high energy/mood days
   const highEnergyDays = moodLogs.filter(log => (log.energy || 0) >= 8);
+  const positiveTags = ['happy', 'grateful', 'motivated', 'content', 'energetic', 'refreshed'];
+  
   if (highEnergyDays.length >= 3) {
+    const positiveTagsOnGoodDays = highEnergyDays.filter(log =>
+      log.ai_detected_tags?.some((tag: string) => positiveTags.includes(tag))
+    ).length;
+
+    if (positiveTagsOnGoodDays >= 2) {
+      insights.push(`Great job! Positive feelings were noted ${positiveTagsOnGoodDays} times on your high-energy days.`);
+    }
+
+    // Check protein patterns on high energy days
     const proteinMorningCount = highEnergyDays.filter(moodLog => {
       const date = moodLog.date;
       const morningMeals = nutritionLogs.filter(nutLog => {
@@ -90,6 +151,19 @@ function analyzeMoodPatterns(moodLogs: any[], nutritionLogs: any[], supplementLo
 
     if (proteinMorningCount >= Math.floor(highEnergyDays.length * 0.7)) {
       insights.push(`You feel best when protein is logged early in the day — keep that up!`);
+    }
+  }
+
+  // Sleep pattern analysis
+  const sleepTags = ['insomnia', 'restless_sleep', 'sleep_quality_poor', 'tired'];
+  const poorSleepDays = moodLogs.filter(log => 
+    log.ai_detected_tags?.some((tag: string) => sleepTags.includes(tag))
+  );
+
+  if (poorSleepDays.length >= 4) {
+    const avgEnergyOnPoorSleepDays = poorSleepDays.reduce((sum, log) => sum + (log.energy || 0), 0) / poorSleepDays.length;
+    if (avgEnergyOnPoorSleepDays < energyAvg - 1) {
+      insights.push(`Sleep issues were mentioned ${poorSleepDays.length} times and strongly correlated with low energy.`);
     }
   }
 
@@ -144,15 +218,21 @@ function generateEnhancedMessage(
       message += `• ${insight}\n`;
     });
     
-    // Add recommendations based on insights
+    // Add personalized recommendations based on insights
     if (moodInsights.some(insight => insight.includes('skipped breakfast'))) {
       message += '\n💡 Try setting a breakfast reminder to boost your energy levels.';
     }
-    if (moodInsights.some(insight => insight.includes('Stomach discomfort'))) {
-      message += '\n💡 Consider trying without that supplement for a few days to see if symptoms improve.';
+    if (moodInsights.some(insight => insight.includes('digestive discomfort'))) {
+      message += '\n💡 Consider tracking which supplements correlate with digestive issues.';
     }
     if (moodInsights.some(insight => insight.includes('protein is logged early'))) {
       message += '\n🌟 Your morning protein routine is working great!';
+    }
+    if (moodInsights.some(insight => insight.includes('Sleep issues'))) {
+      message += '\n💡 Consider establishing a consistent bedtime routine.';
+    }
+    if (moodInsights.some(insight => insight.includes('Stress-related feelings'))) {
+      message += '\n💡 Stress management techniques might help improve your overall mood.';
     }
   }
 
@@ -309,9 +389,9 @@ Deno.serve(async (req) => {
     // Calculate days in current month so far
     const daysInMonth = today.getDate();
 
-    // Analyze mood/wellness patterns
+    // Analyze mood/wellness patterns with enhanced AI tag analysis
     const moodInsights = analyzeMoodPatterns(moodLogs || [], nutritionLogs || [], supplementLogs || []);
-    console.log(`🧠 Mood insights generated:`, moodInsights);
+    console.log(`🧠 Enhanced mood insights generated:`, moodInsights);
 
     // Generate personalized message based on performance and mood insights
     const message = generateEnhancedMessage(
@@ -346,7 +426,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`✅ Generated monthly summary: ${message}`);
+    console.log(`✅ Generated enhanced monthly summary: ${message}`);
 
     return new Response(JSON.stringify({
       message: 'Monthly summary generated successfully',
