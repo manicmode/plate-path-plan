@@ -487,7 +487,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
       </Card>
 
       {/* Tributes & Comments Section - Standardized padding */}
-      <Card className="mt-8">
+      <Card>
         <CardHeader className="p-6">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <MessageCircle className="h-6 w-6 text-primary" />
