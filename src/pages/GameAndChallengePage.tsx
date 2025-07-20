@@ -862,7 +862,7 @@ function GameAndChallengeContent() {
             }
           }} className="w-full flex flex-col">
 
-            <TabsContent value="ranking" className="mt-4 pb-32">
+            <TabsContent value="ranking" className="mt-4 pb-20">
               {/* Mobile Ranking Section */}
               <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
@@ -956,17 +956,17 @@ function GameAndChallengeContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="challenges" className="mt-4 pb-32">
+            <TabsContent value="challenges" className="mt-4 pb-20">
               <PublicChallengesBrowse />
             </TabsContent>
 
-            <TabsContent value="my-challenges" className="mt-4 pb-32 overflow-x-hidden w-full max-w-full">
+            <TabsContent value="my-challenges" className="mt-4 pb-20 overflow-x-hidden w-full max-w-full">
               <div className="space-y-8">
                 <UserChallengeParticipations />
               </div>
             </TabsContent>
 
-            <TabsContent value="chat" className="mt-0 pb-32 -mt-4">
+            <TabsContent value="chat" className="mt-0 pb-20 -mt-4">
               {/* Chat is now handled by ChatroomManager */}
               <div className="text-center py-12">
                 <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -984,15 +984,15 @@ function GameAndChallengeContent() {
               </div>
             </TabsContent>
 
-            <TabsContent value="winners" className="mt-4 pb-32">
+            <TabsContent value="winners" className="mt-4 pb-20">
               <MonthlyTrophyPodium />
             </TabsContent>
 
-            <TabsContent value="my-friends" className="mt-4 pb-32">
+            <TabsContent value="my-friends" className="mt-4 pb-20">
               <MyFriendsTab />
             </TabsContent>
 
-            <TabsContent value="hall-of-fame" className="mt-4 pb-32">
+            <TabsContent value="hall-of-fame" className="mt-4 pb-20">
               <HallOfFame champions={optimizedHallOfFame} />
             </TabsContent>
             

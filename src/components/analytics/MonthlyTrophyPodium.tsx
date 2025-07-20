@@ -100,52 +100,56 @@ export const MonthlyTrophyPodium: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header with Month Navigation - Reduced padding */}
-      <Card className="bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="text-2xl">🏆</div>
-              <CardTitle className="text-lg">Trophy Podium Ceremony</CardTitle>
-              {shouldShowMonthlyPodium() && (
-                <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">🔥 Live Results</Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleMonthChange('prev')}
-              >
-                ←
-              </Button>
-              <div className="flex items-center gap-1 text-sm font-medium min-w-32 justify-center">
-                <Calendar className="h-4 w-4" />
-                {formatMonthYear(currentMonth)}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleMonthChange('next')}
-                disabled={currentMonth >= new Date()}
-              >
-                →
-              </Button>
-            </div>
+    <div className="space-y-2">
+      {/* Compact Header with Month Navigation */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="text-2xl animate-pulse">🏆</div>
+          <h2 className="text-xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
+            Winners' Podium
+          </h2>
+          {shouldShowMonthlyPodium() && (
+            <Badge className="ml-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 animate-pulse">
+              🔥 Live
+            </Badge>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleMonthChange('prev')}
+            className="h-8 w-8 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10"
+          >
+            ←
+          </Button>
+          <div className="flex items-center gap-1 text-sm font-semibold min-w-28 justify-center px-3 py-1 rounded-full bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
+            <Calendar className="h-3 w-3" />
+            {formatMonthYear(currentMonth)}
           </div>
-        </CardHeader>
-      </Card>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleMonthChange('next')}
+            disabled={currentMonth >= new Date()}
+            className="h-8 w-8 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10"
+          >
+            →
+          </Button>
+        </div>
+      </div>
 
-      <Tabs defaultValue="challenges" className="space-y-3">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="challenges">Select Challenge</TabsTrigger>
-          <TabsTrigger value="podium" disabled={!selectedChallenge}>
-            🏆 Trophy Podium
+      <Tabs defaultValue="challenges" className="space-y-2">
+        <TabsList className="grid w-full grid-cols-3 bg-slate-800 border border-yellow-400/30">
+          <TabsTrigger value="challenges" className="text-sm data-[state=active]:bg-yellow-500 data-[state=active]:text-slate-900">
+            Select Challenge
           </TabsTrigger>
-          <TabsTrigger value="achievements">
-            🏅 My Trophy Shelf
+          <TabsTrigger value="podium" disabled={!selectedChallenge} className="text-sm data-[state=active]:bg-yellow-500 data-[state=active]:text-slate-900">
+            🏆 Winners' Podium
+          </TabsTrigger>
+          <TabsTrigger value="achievements" className="text-sm data-[state=active]:bg-yellow-500 data-[state=active]:text-slate-900">
+            🏅 Personal Accolades
           </TabsTrigger>
         </TabsList>
 

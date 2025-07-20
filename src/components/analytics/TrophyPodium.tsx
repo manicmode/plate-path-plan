@@ -163,47 +163,80 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
     );
   };
 
-  const renderPodiumSlot = (winner: PodiumWinner | undefined, displayPosition: number) => {
-    if (!winner) return <div className="flex-1" />; // Empty slot
-    
+  // Enhanced podium slot renderer for the new realistic design
+  const renderEnhancedPodiumSlot = (winner: PodiumWinner, position: 'left' | 'center' | 'right') => {
     const isRevealed = revealedPositions.has(winner.podiumPosition);
-    const { icon: TrophyIcon, emoji, color } = getTrophyIcon(winner.podiumPosition);
-    const podiumHeight = getPodiumHeight(winner.podiumPosition);
+    const { emoji } = getTrophyIcon(winner.podiumPosition);
     
+    // Enhanced podium heights for realistic appearance
+    const getEnhancedHeight = () => {
+      switch (winner.podiumPosition) {
+        case 1: return 'h-40'; // Gold - tallest
+        case 2: return 'h-32'; // Silver - medium  
+        case 3: return 'h-24'; // Bronze - shortest
+        default: return 'h-20';
+      }
+    };
+
+    const getGradientColors = () => {
+      switch (winner.podiumPosition) {
+        case 1: return 'from-yellow-500 via-yellow-400 to-yellow-600'; // Gold
+        case 2: return 'from-gray-400 via-gray-300 to-gray-500'; // Silver
+        case 3: return 'from-amber-600 via-amber-500 to-amber-700'; // Bronze
+        default: return 'from-gray-500 to-gray-600';
+      }
+    };
+
+    const getRingColor = () => {
+      switch (winner.podiumPosition) {
+        case 1: return 'ring-yellow-400 ring-4'; 
+        case 2: return 'ring-gray-300 ring-4';
+        case 3: return 'ring-amber-500 ring-4';
+        default: return 'ring-gray-400 ring-2';
+      }
+    };
+
     return (
-      <div className="flex-1 flex flex-col items-center">
-        {/* Winner Avatar and Info */}
-        <div className={`mb-4 transition-all duration-500 ${
+      <div className="flex-1 flex flex-col items-center max-w-32">
+        {/* Winner Info Above Podium */}
+        <div className={`mb-3 transition-all duration-500 ${
           isRevealed 
             ? 'animate-scale-in opacity-100 translate-y-0' 
             : 'opacity-0 translate-y-4'
         }`}>
-          <div className="text-center">
-            <Avatar className={`h-16 w-16 mx-auto mb-2 ring-4 ${
-              winner.podiumPosition === 1 
-                ? 'ring-yellow-400' 
-                : winner.podiumPosition === 2 
-                ? 'ring-gray-300' 
-                : 'ring-amber-500'
-            }`}>
-              <AvatarFallback className="text-lg font-bold">
-                {winner.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+          <div className="text-center relative">
+            {/* Glowing Avatar */}
+            <div className="relative">
+              <Avatar className={`h-20 w-20 mx-auto mb-2 ${getRingColor()} shadow-2xl`}>
+                <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-slate-700 to-slate-800 text-white">
+                  {winner.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {/* Glowing ring effect */}
+              <div className={`absolute inset-0 rounded-full ${
+                winner.podiumPosition === 1 ? 'shadow-yellow-400/50' :
+                winner.podiumPosition === 2 ? 'shadow-gray-300/50' : 'shadow-amber-500/50'
+              } shadow-2xl animate-pulse`} />
+            </div>
             
-            <div className={`text-4xl mb-1 ${animationState === 'celebrating' ? 'animate-bounce' : ''}`}>
+            {/* Large Trophy/Medal */}
+            <div className={`text-6xl mb-2 drop-shadow-lg ${
+              animationState === 'celebrating' ? 'animate-bounce' : ''
+            } ${winner.podiumPosition === 1 ? 'filter drop-shadow-yellow-glow' : ''}`}>
               {emoji}
             </div>
             
-            <h3 className="font-bold text-sm">{winner.displayName}</h3>
-            <p className="text-xs text-muted-foreground">@{winner.username}</p>
+            {/* Winner Name */}
+            <h3 className="font-bold text-sm text-yellow-100 mb-1">{winner.displayName}</h3>
+            <p className="text-xs text-yellow-300/60">@{winner.username}</p>
             
+            {/* Score Badges */}
             <div className="mt-2 space-y-1">
-              <Badge variant="secondary" className="text-xs">
+              <Badge className="text-xs bg-yellow-500/20 text-yellow-200 border-yellow-400/30">
                 Score: {Math.round(winner.finalScore)}
               </Badge>
               {winner.finalStreak > 0 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs border-orange-400/50 text-orange-300">
                   🔥 {winner.finalStreak} streak
                 </Badge>
               )}
@@ -211,21 +244,27 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
           </div>
         </div>
         
-        {/* Podium Base */}
-        <div className={`w-20 ${podiumHeight} transition-all duration-700 ${
+        {/* Enhanced Realistic Podium Step */}
+        <div className={`w-24 ${getEnhancedHeight()} transition-all duration-700 relative ${
           animationState === 'building' || isRevealed
-            ? `bg-gradient-to-t ${
-                winner.podiumPosition === 1 
-                  ? 'from-yellow-500 to-yellow-300' 
-                  : winner.podiumPosition === 2 
-                  ? 'from-gray-400 to-gray-200' 
-                  : 'from-amber-600 to-amber-400'
-              } translate-y-0` 
-            : 'bg-muted translate-y-8'
-        } rounded-t-lg flex items-end justify-center pb-2 shadow-lg`}>
-          <div className="text-white font-bold text-lg">
-            {winner.podiumPosition}
+            ? `bg-gradient-to-t ${getGradientColors()} translate-y-0 shadow-2xl` 
+            : 'bg-slate-600 translate-y-8'
+        } rounded-t-xl border-2 border-white/20`}>
+          
+          {/* Podium Number */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+            <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-slate-800 font-bold text-lg">{winner.podiumPosition}</span>
+            </div>
           </div>
+          
+          {/* Metallic shine effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-t-xl animate-pulse" />
+          
+          {/* Glow effect for 1st place */}
+          {winner.podiumPosition === 1 && (
+            <div className="absolute -inset-1 bg-gradient-to-t from-yellow-400/30 to-transparent blur-sm rounded-t-xl animate-pulse" />
+          )}
         </div>
       </div>
     );
@@ -234,41 +273,71 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
   if (!isVisible) return null;
 
   return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-950/20 dark:via-amber-950/20 dark:to-orange-950/20 border-2 border-yellow-200 shadow-2xl">
-      <CardContent className="p-6">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="text-3xl animate-bounce">🏆</div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-              Challenge Champions
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-yellow-400/30 shadow-2xl">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-yellow-900/20 via-transparent to-orange-900/20 animate-pulse" />
+      
+      {/* Star field background */}
+      <div className="absolute inset-0">
+        {Array.from({ length: 50 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-yellow-400 rounded-full animate-ping"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${2 + Math.random() * 2}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative z-10 p-6">
+        {/* Glowing Header */}
+        <div className="text-center mb-8">
+          <div className="relative">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent drop-shadow-lg">
+              🏆 CHAMPIONS PODIUM 🏆
             </h2>
-            <div className="text-3xl animate-bounce" style={{ animationDelay: '0.1s' }}>🏆</div>
+            <div className="absolute -inset-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 blur-xl rounded-lg animate-pulse" />
           </div>
-          <p className="text-muted-foreground font-medium">{challengeName}</p>
-          <p className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Championship Results
-          </p>
+          <p className="text-yellow-200/80 font-semibold mt-2">{challengeName}</p>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+            <p className="text-sm text-yellow-300/60">
+              {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Results
+            </p>
+            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+          </div>
         </div>
 
-        {/* Podium Display */}
-        <div className="relative min-h-72 mb-6">
-          {/* Stage/Platform Base */}
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-4/5 h-4 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 rounded-lg shadow-lg" />
+        {/* Realistic 3-Step Podium */}
+        <div className="relative min-h-80 mb-6">
+          {/* Dramatic Stage Platform */}
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full h-6 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-lg shadow-2xl" />
+          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-11/12 h-4 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded-lg" />
           
-          <div className="flex items-end justify-center gap-6 h-full relative z-10">
-            {podiumOrder.map((winner, index) => 
-              renderPodiumSlot(winner, index)
-            )}
+          {/* Podium Steps Container */}
+          <div className="flex items-end justify-center gap-4 h-full relative z-10 px-8">
+            {/* 2nd Place - Left */}
+            {second && renderEnhancedPodiumSlot(second, 'left')}
+            
+            {/* 1st Place - Center (Tallest) */}
+            {first && renderEnhancedPodiumSlot(first, 'center')}
+            
+            {/* 3rd Place - Right */}
+            {third && renderEnhancedPodiumSlot(third, 'right')}
           </div>
+          
           {renderConfetti()}
           
-          {/* Spotlight effects */}
+          {/* Dramatic Spotlight Effects */}
           {animationState === 'celebrating' && (
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-0 left-1/4 w-32 h-32 bg-yellow-400/20 rounded-full blur-3xl animate-pulse" />
-              <div className="absolute top-0 right-1/4 w-32 h-32 bg-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-40 bg-yellow-300/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute top-0 left-1/4 w-40 h-60 bg-yellow-400/30 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute top-0 right-1/4 w-40 h-60 bg-orange-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-48 h-80 bg-yellow-300/40 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
             </div>
           )}
         </div>
@@ -332,7 +401,7 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
