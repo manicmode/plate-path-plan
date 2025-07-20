@@ -37,6 +37,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [showAllTributes, setShowAllTributes] = useState(false);
   const [newTribute, setNewTribute] = useState('');
+  const [celebratingCard, setCelebratingCard] = useState<number | null>(null);
 
   // Get the first (current year) champion for trophy showcase and tributes
   const currentChampion = champions.find(c => c.trophy === 'gold') || champions[0];
@@ -124,6 +125,14 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
     }
   };
 
+  const handleCardCelebration = (championId: number) => {
+    setCelebratingCard(championId);
+    // Clear celebration after animation
+    setTimeout(() => {
+      setCelebratingCard(null);
+    }, 3000);
+  };
+
   const handleSubmitTribute = async () => {
     if (!newTribute.trim()) {
       toast({
@@ -181,6 +190,89 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const unpinnedTributes = tributes.filter(t => !t.isPinned);
   const sortedTributes = [...pinnedTributes, ...unpinnedTributes];
 
+  const renderCelebrationAnimation = (championId: number) => {
+    if (celebratingCard !== championId) return null;
+    
+    const celebrationEmojis = ['🎉', '🎇', '✨', '🏆', '⭐', '🌟', '💫', '🎊', '🥇', '🎈'];
+    
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-50">
+        {/* Large floating emojis */}
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={`celebration-${i}`}
+            className="absolute text-3xl animate-bounce"
+            style={{
+              left: `${Math.random() * 80 + 10}%`,
+              top: `${Math.random() * 80 + 10}%`,
+              animationDelay: `${Math.random() * 1}s`,
+              animationDuration: `${1.5 + Math.random()}s`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+              opacity: 0.9,
+              filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.6))',
+            }}
+          >
+            {celebrationEmojis[Math.floor(Math.random() * celebrationEmojis.length)]}
+          </div>
+        ))}
+        
+        {/* Golden sparkles */}
+        {Array.from({ length: 30 }).map((_, i) => (
+          <div
+            key={`sparkle-${i}`}
+            className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 2}s`,
+              animationDuration: `${0.5 + Math.random() * 0.5}s`,
+              boxShadow: '0 0 10px rgba(255, 215, 0, 0.8)',
+            }}
+          />
+        ))}
+        
+        {/* Rising stars from center */}
+        {Array.from({ length: 15 }).map((_, i) => (
+          <div
+            key={`rising-star-${i}`}
+            className="absolute text-2xl animate-bounce"
+            style={{
+              left: '50%',
+              top: '50%',
+              transform: `translate(-50%, -50%) translateY(${-50 - i * 20}px) rotate(${Math.random() * 360}deg)`,
+              animationDelay: `${i * 0.1}s`,
+              animationDuration: `${2 + Math.random()}s`,
+              opacity: 0.8,
+              filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.7))',
+            }}
+          >
+            ⭐
+          </div>
+        ))}
+        
+        {/* Border sparkles */}
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={`border-sparkle-${i}`}
+            className="absolute text-xl animate-pulse"
+            style={{
+              ...(i < 3 ? { top: '5%', left: `${20 + i * 20}%` } :
+                  i < 6 ? { right: '5%', top: `${20 + (i - 3) * 20}%` } :
+                  i < 9 ? { bottom: '5%', right: `${20 + (i - 6) * 20}%` } :
+                  { left: '5%', bottom: `${20 + (i - 9) * 20}%` }),
+              animationDelay: `${i * 0.2}s`,
+              animationDuration: `${1 + Math.random() * 0.5}s`,
+              color: '#ffd700',
+              filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.9))',
+            }}
+          >
+            ✨
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Main Hall of Fame Card */}
@@ -217,6 +309,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                   )}
                   onMouseEnter={() => setHoveredCard(champion.id)}
                   onMouseLeave={() => setHoveredCard(null)}
+                  onClick={() => handleCardCelebration(champion.id)}
                   style={{
                     animation: `slideInFromRight 0.8s ease-out ${index * 150}ms both`,
                   }}
@@ -293,6 +386,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                       <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-amber-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '1.5s' }} />
                     </div>
                   )}
+
+                  {/* Celebration Animation */}
+                  {renderCelebrationAnimation(champion.id)}
                 </div>
               ))}
 
