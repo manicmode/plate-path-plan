@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,9 +75,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
           </div>
           
           <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3 relative z-10">
-            <Trophy className="h-8 w-8 text-amber-600" />
             🏆 Hall of Fame
-            <Trophy className="h-8 w-8 text-amber-600" />
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
             Legends who made their mark in nutrition history
