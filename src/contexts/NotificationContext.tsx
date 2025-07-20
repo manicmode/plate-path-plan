@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -69,39 +70,32 @@ interface NotificationProviderProps {
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-  const notificationStartTime = performance.now();
-  console.log('🔍 NotificationProvider: Starting initialization at', notificationStartTime.toFixed(2) + 'ms');
+  console.log('NotificationProvider initializing...');
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const effectStartTime = performance.now();
-    console.log('🔍 NotificationProvider: Effect running at', effectStartTime.toFixed(2) + 'ms');
+    console.log('NotificationProvider effect running...');
     
     try {
       // Load preferences from localStorage
-      const storageStartTime = performance.now();
       const savedPreferences = localStorage.getItem('notification_preferences');
       if (savedPreferences) {
         const parsed = JSON.parse(savedPreferences);
         setPreferences({ ...defaultPreferences, ...parsed });
       }
-      console.log('🔍 NotificationProvider: Storage load completed in', (performance.now() - storageStartTime).toFixed(2) + 'ms');
       
-      console.log('🔍 NotificationProvider: Initialized successfully');
+      console.log('NotificationProvider initialized successfully');
       setIsInitialized(true);
-      
-      const effectEndTime = performance.now();
-      console.log('🔍 NotificationProvider: TOTAL EFFECT COMPLETED in', (effectEndTime - effectStartTime).toFixed(2) + 'ms');
     } catch (error) {
-      console.error('🔍 NotificationProvider: Initialization failed:', error);
+      console.error('NotificationProvider initialization failed:', error);
       setIsInitialized(true);
     }
 
     return () => {
-      console.log('🔍 NotificationProvider: Cleanup completed');
+      console.log('NotificationProvider cleanup');
     };
   }, []);
 
@@ -167,9 +161,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     recordCoachInteraction,
   };
 
-  const contextEndTime = performance.now();
-  const totalNotificationTime = contextEndTime - notificationStartTime;
-  console.log('🔍 NotificationProvider: TOTAL INITIALIZATION COMPLETED in', totalNotificationTime.toFixed(2) + 'ms');
+  console.log('NotificationProvider rendering with context value');
 
   return (
     <NotificationContext.Provider value={contextValue}>

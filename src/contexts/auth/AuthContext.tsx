@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
@@ -15,25 +16,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
-  // Diagnostic timing
-  const authStartTime = performance.now();
-  console.log('🔍 AuthProvider: Starting initialization at', authStartTime.toFixed(2) + 'ms');
-
   const updateUserWithProfile = async (supabaseUser: any) => {
-    const profileStartTime = performance.now();
-    console.log('🔍 AuthProvider: Starting profile creation at', profileStartTime.toFixed(2) + 'ms');
-    
     try {
       console.log('Creating extended user profile...');
       const extendedUser = await createExtendedUser(supabaseUser);
       setUser(extendedUser);
-      
-      const profileEndTime = performance.now();
-      console.log('🔍 AuthProvider: Profile creation completed in', (profileEndTime - profileStartTime).toFixed(2) + 'ms');
       console.log('Extended user profile created successfully');
     } catch (error) {
-      const profileErrorTime = performance.now();
-      console.log('🔍 AuthProvider: Profile creation failed after', (profileErrorTime - profileStartTime).toFixed(2) + 'ms');
       console.error('Error creating extended user:', error);
       // Set basic user info even if profile creation fails
       setUser({
@@ -76,18 +65,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     let mounted = true;
-    const effectStartTime = performance.now();
-    console.log('🔍 AuthProvider: Main useEffect started at', effectStartTime.toFixed(2) + 'ms');
     
     console.log('🔐 Starting auth initialization...');
     
     // Set up auth state listener first
-    const listenerStartTime = performance.now();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      const eventTime = performance.now();
-      console.log('🔍 AuthProvider: Auth state changed:', event, 'at', eventTime.toFixed(2) + 'ms', session?.user?.id);
+      console.log('Auth state changed:', event, session?.user?.id);
       
       if (event === 'SIGNED_OUT') {
         console.log('🔓 Auth state: SIGNED_OUT');
@@ -95,45 +80,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         setSigningOut(false);
         setLoading(false);
-        console.log('🔍 AuthProvider: SIGNED_OUT processing completed at', performance.now().toFixed(2) + 'ms');
         return;
       }
       
       setSession(session);
       
       if (session?.user && event === 'SIGNED_IN') {
-        console.log('🔍 AuthProvider: Starting deferred profile loading for SIGNED_IN');
         // Defer profile loading to prevent deadlocks
         setTimeout(async () => {
           if (mounted) {
-            const deferredStartTime = performance.now();
-            console.log('🔍 AuthProvider: Deferred profile loading started at', deferredStartTime.toFixed(2) + 'ms');
             await updateUserWithProfile(session.user);
             setLoading(false);
-            const deferredEndTime = performance.now();
-            console.log('🔍 AuthProvider: Deferred profile loading completed at', deferredEndTime.toFixed(2) + 'ms');
           }
         }, 0);
       } else if (!session?.user) {
         setUser(null);
         setLoading(false);
-        console.log('🔍 AuthProvider: No user session, loading completed at', performance.now().toFixed(2) + 'ms');
       }
     });
-    
-    console.log('🔍 AuthProvider: Auth listener setup completed in', (performance.now() - listenerStartTime).toFixed(2) + 'ms');
 
     // Initialize session check with timeout
     const initializeSession = async () => {
-      const sessionCheckStartTime = performance.now();
-      console.log('🔍 AuthProvider: Session check started at', sessionCheckStartTime.toFixed(2) + 'ms');
-      
       try {
         console.log('📋 Checking for existing session...');
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        const sessionCheckEndTime = performance.now();
-        console.log('🔍 AuthProvider: Session check completed in', (sessionCheckEndTime - sessionCheckStartTime).toFixed(2) + 'ms');
         
         if (error) {
           console.error('Session check error:', error);
@@ -146,30 +116,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (currentSession?.user) {
           console.log('✅ Found existing session');
           setSession(currentSession);
-          const profileStartTime = performance.now();
           await updateUserWithProfile(currentSession.user);
-          console.log('🔍 AuthProvider: Existing session profile loading completed in', (performance.now() - profileStartTime).toFixed(2) + 'ms');
         } else {
           console.log('❌ No existing session found');
         }
         
         setLoading(false);
-        const totalAuthTime = performance.now() - authStartTime;
-        console.log('🔍 AuthProvider: TOTAL AUTH INITIALIZATION COMPLETED in', totalAuthTime.toFixed(2) + 'ms');
       } catch (error) {
         console.error('Session initialization error:', error);
         cleanupAuthState();
         setLoading(false);
-        const errorTime = performance.now() - authStartTime;
-        console.log('🔍 AuthProvider: Auth initialization failed after', errorTime.toFixed(2) + 'ms');
       }
     };
 
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (loading && mounted) {
-        const timeoutTime = performance.now() - authStartTime;
-        console.warn('⏰ Auth initialization timeout after', timeoutTime.toFixed(2) + 'ms - forcing completion');
+        console.warn('⏰ Auth initialization timeout - forcing completion');
         setLoading(false);
       }
     }, 5000);
@@ -180,8 +143,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       mounted = false;
       subscription.unsubscribe();
       clearTimeout(timeoutId);
-      const cleanupTime = performance.now() - authStartTime;
-      console.log('🔍 AuthProvider: Cleanup completed after', cleanupTime.toFixed(2) + 'ms');
     };
   }, []);
 

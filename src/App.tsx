@@ -1,5 +1,5 @@
 
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -46,33 +46,6 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const appStartTime = performance.now();
-  console.log('🔍 App: Starting initialization at', appStartTime.toFixed(2) + 'ms');
-
-  useEffect(() => {
-    const interactivityCheckTime = performance.now();
-    console.log('🔍 App: UI becoming interactive at', interactivityCheckTime.toFixed(2) + 'ms');
-    
-    // Check when the DOM is fully interactive
-    const checkInteractivity = () => {
-      if (document.readyState === 'complete') {
-        const fullyLoadedTime = performance.now();
-        console.log('🔍 App: DOM FULLY LOADED at', fullyLoadedTime.toFixed(2) + 'ms');
-        console.log('🔍 App: TOTAL APP LOAD TIME:', (fullyLoadedTime - appStartTime).toFixed(2) + 'ms');
-      }
-    };
-
-    if (document.readyState === 'complete') {
-      checkInteractivity();
-    } else {
-      window.addEventListener('load', checkInteractivity);
-    }
-
-    return () => {
-      window.removeEventListener('load', checkInteractivity);
-    };
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

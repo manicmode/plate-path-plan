@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect } from 'react';
 
-export const HomeAIInsights = () => {
+const HomeAIInsights = () => {
   const { user } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal } = useNutrition();
   const navigate = useNavigate();
