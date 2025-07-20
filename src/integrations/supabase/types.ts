@@ -323,6 +323,33 @@ export type Database = {
         }
         Relationships: []
       }
+      hall_of_fame_winners: {
+        Row: {
+          created_at: string | null
+          final_score: number
+          group_id: number
+          id: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          final_score: number
+          group_id: number
+          id?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          final_score?: number
+          group_id?: number
+          id?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       hydration_logs: {
         Row: {
           created_at: string
@@ -1266,6 +1293,7 @@ export type Database = {
           food_allergies: Json | null
           foods_to_avoid: string | null
           gender: string | null
+          hall_of_fame_winner: boolean | null
           health_conditions: string[] | null
           health_monitoring_preferences: string[] | null
           height_cm: number | null
@@ -1344,6 +1372,7 @@ export type Database = {
           food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
+          hall_of_fame_winner?: boolean | null
           health_conditions?: string[] | null
           health_monitoring_preferences?: string[] | null
           height_cm?: number | null
@@ -1422,6 +1451,7 @@ export type Database = {
           food_allergies?: Json | null
           foods_to_avoid?: string | null
           gender?: string | null
+          hall_of_fame_winner?: boolean | null
           health_conditions?: string[] | null
           health_monitoring_preferences?: string[] | null
           height_cm?: number | null
@@ -1798,6 +1828,10 @@ export type Database = {
       get_user_private_challenge_access: {
         Args: { challenge_id_param: string }
         Returns: boolean
+      }
+      process_yearly_hall_of_fame: {
+        Args: { target_year: number }
+        Returns: Json
       }
       record_team_up_prompt_action: {
         Args: {
