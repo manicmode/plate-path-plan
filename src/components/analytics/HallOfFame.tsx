@@ -87,6 +87,30 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
     }
   };
 
+  const getBadgeTypeStyle = (rarity: string) => {
+    switch (rarity) {
+      case 'legendary':
+        return {
+          border: 'border-yellow-400',
+          background: 'from-yellow-400/20 to-orange-500/20',
+          badgeClass: 'bg-yellow-400 text-black border-yellow-500'
+        };
+      case 'rare':
+        return {
+          border: 'border-blue-400',
+          background: 'from-blue-400/20 to-cyan-500/20',
+          badgeClass: 'bg-blue-400 text-white border-blue-500'
+        };
+      case 'common':
+      default:
+        return {
+          border: 'border-gray-400',
+          background: 'from-gray-400/20 to-gray-500/20',
+          badgeClass: 'bg-gray-400 text-white border-gray-500'
+        };
+    }
+  };
+
   const handleSubmitTribute = async () => {
     if (!newTribute.trim()) return;
     
@@ -256,44 +280,79 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
       </Card>
 
       {/* Trophy Showcase Section */}
-      {yearlyTrophies.length > 0 && (
-        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
-              <Trophy className="h-6 w-6 text-yellow-400" />
-              Trophy Showcase 2024
-            </CardTitle>
-            <p className="text-center text-muted-foreground">
-              All badges and trophies earned this year
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {yearlyTrophies.map((trophy) => (
-                <div
-                  key={trophy.id}
-                  className={cn(
-                    "p-4 rounded-lg border-2 bg-gradient-to-br text-center transition-all duration-300 hover:scale-105 cursor-pointer",
-                    getTrophyRarityColor(trophy.rarity)
-                  )}
-                >
-                  <div className="text-3xl mb-2">{trophy.icon}</div>
-                  <h4 className="font-semibold text-white text-sm mb-1">{trophy.name}</h4>
-                  <Badge 
-                    variant="secondary" 
-                    className="text-xs mb-2"
-                  >
-                    {trophy.rarity}
-                  </Badge>
-                  <p className="text-xs text-white/70">
-                    {new Date(trophy.dateEarned).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
+      <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
+            <Trophy className="h-6 w-6 text-yellow-400" />
+            🏆 Trophy Showcase {new Date().getFullYear()}
+          </CardTitle>
+          <p className="text-center text-muted-foreground">
+            All badges and trophies earned this year
+          </p>
+        </CardHeader>
+        <CardContent>
+          {yearlyTrophies.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Trophy className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg font-medium mb-2">No trophies yet for this year</p>
+              <p className="text-sm">Keep grinding 💪</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {yearlyTrophies.map((trophy) => {
+                const badgeTypeStyle = getBadgeTypeStyle(trophy.rarity);
+                
+                return (
+                  <div
+                    key={trophy.id}
+                    className={cn(
+                      "p-6 rounded-lg border-2 bg-gradient-to-br text-center transition-all duration-300 hover:scale-105 cursor-pointer relative overflow-hidden",
+                      badgeTypeStyle.border,
+                      badgeTypeStyle.background
+                    )}
+                  >
+                    {/* Shine animation for legendary badges */}
+                    {trophy.rarity === 'legendary' && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] animate-[shine_3s_ease-in-out_infinite]" />
+                    )}
+                    
+                    {/* Large badge icon */}
+                    <div className="text-6xl mb-4">{trophy.icon}</div>
+                    
+                    {/* Badge name */}
+                    <h4 className="font-bold text-white text-lg mb-2">{trophy.name}</h4>
+                    
+                    {/* Badge type */}
+                    <div className="mb-3">
+                      <Badge 
+                        variant="secondary" 
+                        className={cn("text-xs font-semibold", badgeTypeStyle.badgeClass)}
+                      >
+                        {trophy.rarity.toUpperCase()}
+                      </Badge>
+                    </div>
+                    
+                    {/* Challenge name if available */}
+                    {trophy.badgeType && (
+                      <p className="text-sm text-white/80 mb-2 font-medium">
+                        {trophy.badgeType}
+                      </p>
+                    )}
+                    
+                    {/* Earned date */}
+                    <p className="text-xs text-white/60">
+                      {new Date(trophy.dateEarned).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Tributes & Comments Section */}
       <Card>
