@@ -7,35 +7,6 @@ import { AuthProvider } from "./contexts/auth";
 import { NutritionProvider } from "./contexts/NutritionContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
-// Add CSS to lock orientation
-const orientationLockStyle = document.createElement('style');
-orientationLockStyle.textContent = `
-  @media screen and (orientation: landscape) {
-    body {
-      transform: rotate(90deg);
-      transform-origin: center;
-    }
-  }
-  
-  /* Force portrait orientation using CSS */
-  html, body {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-  
-  /* Prevent rotation on mobile */
-  @media screen and (max-width: 768px) {
-    body {
-      -webkit-transform: rotate(0deg);
-      -moz-transform: rotate(0deg);
-      transform: rotate(0deg);
-    }
-  }
-`;
-document.head.appendChild(orientationLockStyle);
-
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -58,7 +29,6 @@ console.log('App initialization starting...', {
   url: window.location.href,
   timestamp: new Date().toISOString()
 });
-
 
 // Additional mobile-specific checks
 if (isMobile) {
