@@ -100,32 +100,40 @@ export const MonthlyTrophyPodium: React.FC = () => {
   };
 
   return (
-    <div className="space-y-2">
-      {/* Compact Header with Month Navigation */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="text-2xl animate-pulse">🏆</div>
-          <h2 className="text-xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
+    <div className="space-y-4">
+      {/* Enhanced Header with Month Navigation */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div 
+            className="text-3xl transition-transform duration-300 hover:scale-110" 
+            style={{ 
+              animation: 'bounce 0.6s ease-in-out 3', 
+              animationDelay: '0.5s'
+            }}
+          >
+            🏆
+          </div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
             Winners' Podium
           </h2>
           {shouldShowMonthlyPodium() && (
-            <Badge className="ml-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 animate-pulse">
+            <Badge className="ml-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 animate-pulse">
               🔥 Live
             </Badge>
           )}
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleMonthChange('prev')}
-            className="h-8 w-8 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10"
+            className="h-9 w-9 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
           >
             ←
           </Button>
-          <div className="flex items-center gap-1 text-sm font-semibold min-w-28 justify-center px-3 py-1 rounded-full bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
-            <Calendar className="h-3 w-3" />
+          <div className="flex items-center gap-2 text-sm font-semibold min-w-32 justify-center px-4 py-2 rounded-full bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
+            <Calendar className="h-4 w-4" />
             {formatMonthYear(currentMonth)}
           </div>
           <Button
@@ -133,69 +141,79 @@ export const MonthlyTrophyPodium: React.FC = () => {
             size="sm"
             onClick={() => handleMonthChange('next')}
             disabled={currentMonth >= new Date()}
-            className="h-8 w-8 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10"
+            className="h-9 w-9 p-0 rounded-full border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 disabled:opacity-50"
           >
             →
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="challenges" className="space-y-2">
-        <TabsList className="grid w-full grid-cols-3 bg-slate-800 border border-yellow-400/30">
-          <TabsTrigger value="challenges" className="text-sm data-[state=active]:bg-yellow-500 data-[state=active]:text-slate-900">
+      <Tabs defaultValue="challenges" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 h-12 bg-slate-800/50 backdrop-blur-sm border border-yellow-400/30 rounded-xl p-1 shadow-lg">
+          <TabsTrigger 
+            value="challenges" 
+            className="relative text-sm font-medium px-4 py-2 rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg hover:bg-yellow-400/10 data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-1/2 data-[state=active]:after:transform data-[state=active]:after:-translate-x-1/2 data-[state=active]:after:w-8 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-yellow-600 data-[state=active]:after:rounded-full data-[state=active]:after:glow"
+          >
             Select Challenge
           </TabsTrigger>
-          <TabsTrigger value="podium" disabled={!selectedChallenge} className="text-sm data-[state=active]:bg-yellow-500 data-[state=active]:text-slate-900">
-            🏆 Winners' Podium
+          <TabsTrigger 
+            value="podium" 
+            disabled={!selectedChallenge} 
+            className="relative text-sm font-medium px-4 py-2 rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg hover:bg-yellow-400/10 disabled:opacity-50 data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-1/2 data-[state=active]:after:transform data-[state=active]:after:-translate-x-1/2 data-[state=active]:after:w-8 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-yellow-600 data-[state=active]:after:rounded-full data-[state=active]:after:glow"
+          >
+            Winners' Podium
           </TabsTrigger>
-          <TabsTrigger value="achievements" className="text-sm data-[state=active]:bg-yellow-500 data-[state=active]:text-slate-900">
-            🏅 Personal Accolades
+          <TabsTrigger 
+            value="achievements" 
+            className="relative text-sm font-medium px-4 py-2 rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg hover:bg-yellow-400/10 data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-1/2 data-[state=active]:after:transform data-[state=active]:after:-translate-x-1/2 data-[state=active]:after:w-8 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-yellow-600 data-[state=active]:after:rounded-full data-[state=active]:after:glow"
+          >
+            Personal Accolades
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="challenges" className="space-y-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Completed Challenges</CardTitle>
+        <TabsContent value="challenges" className="space-y-4">
+          <Card className="border border-slate-200/50 dark:border-slate-800/50 shadow-md rounded-lg backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Completed Challenges</CardTitle>
               <p className="text-sm text-muted-foreground">
                 Choose a challenge to view the month's champions
               </p>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-6 pb-6">
               {isLoading ? (
-                <div className="text-center py-6">
+                <div className="text-center py-8">
                   <div className="inline-flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                     Loading challenges...
                   </div>
                 </div>
               ) : completedChallenges.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <div className="text-4xl mb-3">🏆</div>
-                  <p className="font-medium">No completed challenges found for {formatMonthYear(currentMonth)}</p>
-                  <p className="text-xs mt-1 opacity-70">
+                <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-6xl mb-4 transition-transform duration-300 hover:scale-110">🏆</div>
+                  <p className="font-medium text-base mb-2">No completed challenges found for {formatMonthYear(currentMonth)}</p>
+                  <p className="text-sm opacity-70">
                     Challenges need at least 2 participants to qualify for the podium
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-2">
+                <div className="grid gap-3">
                   {completedChallenges.map((challenge) => (
                     <Card 
                       key={challenge.challengeId} 
-                      className={`cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
+                      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border rounded-lg ${
                         selectedChallenge?.challengeId === challenge.challengeId 
-                          ? 'ring-2 ring-primary bg-gradient-to-r from-primary/10 to-secondary/10' 
-                          : ''
+                          ? 'ring-2 ring-yellow-400/50 bg-gradient-to-r from-yellow-50/50 to-orange-50/50 border-yellow-300 dark:from-yellow-900/20 dark:to-orange-900/20 dark:border-yellow-600' 
+                          : 'border-slate-200 dark:border-slate-700 hover:border-yellow-300 dark:hover:border-yellow-600'
                       }`}
                       onClick={() => handleChallengeSelect(challenge)}
                     >
-                      <CardContent className="p-3">
+                      <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h3 className="font-medium text-sm">
+                            <h3 className="font-semibold text-sm mb-1">
                               Challenge {challenge.challengeId.slice(0, 8)}...
                             </h3>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
                                 {challenge.participantCount} participants
@@ -209,9 +227,9 @@ export const MonthlyTrophyPodium: React.FC = () => {
                           
                           <div className="flex items-center gap-2">
                             {challenge.participantCount >= 5 && (
-                              <Badge variant="secondary" className="text-xs">Popular</Badge>
+                              <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Popular</Badge>
                             )}
-                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                            <ExternalLink className="h-4 w-4 text-muted-foreground transition-colors hover:text-yellow-500" />
                           </div>
                         </div>
                       </CardContent>

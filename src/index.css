@@ -492,6 +492,11 @@
     background: var(--gradient-glass);
   }
 
+  /* Enhanced Trophy Tab Glow Effects */
+  .glow {
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.6), 0 0 25px rgba(255, 193, 7, 0.4);
+  }
+
   .glass-card {
     background: var(--glass-white);
     backdrop-filter: blur(20px);
