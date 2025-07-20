@@ -1208,20 +1208,20 @@ function GameAndChallengeContent() {
           onOpenChange={setShowMicroChallengeModal}
         />
 
-        {/* Mobile-Optimized Mystery Reward Box - Fixed positioning */}
+        {/* Mobile-Optimized Mystery Reward Box */}
         <div className={cn(
-          "fixed z-50",
+          "fixed z-40",
           isMobile 
-            ? "bottom-20 right-4" 
+            ? "bottom-4 right-4" 
             : "bottom-6 right-6"
         )}>
           <Button
             onClick={() => setShowRewardBox(!showRewardBox)}
             className={cn(
-              "rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-2xl transition-all duration-300",
+              "rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-2xl",
               isMobile 
-                ? "w-12 h-12 animate-pulse hover:scale-110" 
-                : "w-16 h-16 animate-bounce hover:scale-110"
+                ? "w-12 h-12 animate-pulse" 
+                : "w-16 h-16 animate-bounce"
             )}
             size="sm"
           >
