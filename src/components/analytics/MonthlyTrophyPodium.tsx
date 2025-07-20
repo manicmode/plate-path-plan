@@ -102,8 +102,8 @@ export const MonthlyTrophyPodium: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Enhanced Header with Month Navigation */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-10 pb-4 border-b border-border/50">
+        <div className="flex items-center gap-4">
           <div 
             className="text-3xl transition-transform duration-300 hover:scale-110 flex items-center justify-center" 
             style={{ 
@@ -113,11 +113,11 @@ export const MonthlyTrophyPodium: React.FC = () => {
           >
             🏆
           </div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent flex items-center">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
             Champion's Circle
           </h2>
           {shouldShowMonthlyPodium() && (
-            <Badge className="ml-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 animate-pulse">
+            <Badge className="ml-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 animate-pulse">
               🔥 Live
             </Badge>
           )}
@@ -148,25 +148,25 @@ export const MonthlyTrophyPodium: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="podium" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 h-14 bg-slate-800/50 backdrop-blur-sm border border-yellow-400/30 rounded-xl p-1.5 shadow-lg">
+      <Tabs defaultValue="podium" className="space-y-8">
+        <TabsList className="grid w-full grid-cols-3 h-16 bg-muted/50 backdrop-blur-sm border border-border rounded-xl p-2 shadow-sm">
           <TabsTrigger 
             value="podium" 
-            className="relative text-sm font-medium px-6 py-3 rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-[0_0_20px_rgba(250,204,21,0.4)] hover:bg-yellow-400/10 data-[state=active]:border data-[state=active]:border-yellow-300"
+            className="relative text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-400/25 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground"
           >
-            Champion's Circle
+            🏆 Champion's Circle
           </TabsTrigger>
           <TabsTrigger 
             value="challenges" 
-            className="relative text-sm font-medium px-6 py-3 rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-[0_0_20px_rgba(250,204,21,0.4)] hover:bg-yellow-400/10 data-[state=active]:border data-[state=active]:border-yellow-300"
+            className="relative text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-400/25 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground"
           >
-            Select Challenge
+            📋 Select Challenge
           </TabsTrigger>
           <TabsTrigger 
             value="achievements" 
-            className="relative text-sm font-medium px-6 py-3 rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-[0_0_20px_rgba(250,204,21,0.4)] hover:bg-yellow-400/10 data-[state=active]:border data-[state=active]:border-yellow-300"
+            className="relative text-sm font-medium px-4 py-3 rounded-lg transition-all duration-300 whitespace-nowrap data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-900 data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-400/25 hover:bg-accent/50 data-[state=inactive]:text-muted-foreground"
           >
-            Personal Accolades
+            🏅 Personal Accolades
           </TabsTrigger>
         </TabsList>
 
