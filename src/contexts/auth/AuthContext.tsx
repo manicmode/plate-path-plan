@@ -222,9 +222,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading: loading || signingOut,
     isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
-    login: loginUser,
+    login: async (email: string, password: string) => {
+      try {
+        await loginUser(email, password);
+        return { error: null };
+      } catch (error: any) {
+        return { error };
+      }
+    },
     register: registerUser,
-    resendEmailConfirmation,
+    resendEmailConfirmation: async (email: string) => {
+      try {
+        const result = await resendEmailConfirmation(email);
+        return result;
+      } catch (error: any) {
+        return { success: false, error };
+      }
+    },
     signOut: handleSignOut,
     logout: handleSignOut,
     updateProfile,

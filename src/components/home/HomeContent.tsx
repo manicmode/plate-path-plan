@@ -1,17 +1,17 @@
 
-import { Suspense, lazy } from 'react';
+import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Target } from 'lucide-react';
 import { useHomeData } from './HomeDataProvider';
 import { useHomePreferences } from './HomePreferences';
 
-// Lazy load heavy components
-const HomeAIInsights = lazy(() => import('@/components/HomeAIInsights'));
-const HomeCtaTicker = lazy(() => import('@/components/HomeCtaTicker'));
-const DailyScoreCard = lazy(() => import('@/components/analytics/DailyScoreCard'));
-const DailyProgressCard = lazy(() => import('@/components/analytics/DailyProgressCard'));
+// Import components directly to avoid lazy loading issues
+import HomeAIInsights from '@/components/HomeAIInsights';
+import { HomeCtaTicker } from '@/components/HomeCtaTicker';
+import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
+import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 
 const LoadingSkeleton = () => (
   <div className="space-y-6">
@@ -35,7 +35,7 @@ const ErrorFallback = ({ error, onRetry }: { error: string; onRetry: () => void 
 );
 
 export const HomeContent = () => {
-  const { loading, error, refreshData } = useHomeData();
+  const { loading, error, refreshData, dailyScore } = useHomeData();
   const { preferences, loading: prefsLoading } = useHomePreferences();
 
   if (prefsLoading || loading) {
@@ -48,22 +48,19 @@ export const HomeContent = () => {
 
   return (
     <div className="space-y-6">
-      <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-        {preferences.showAIInsights && <HomeAIInsights />}
-      </Suspense>
-
-      <Suspense fallback={<Skeleton className="h-16 w-full" />}>
-        {preferences.showTicker && <HomeCtaTicker />}
-      </Suspense>
+      {preferences.showAIInsights && <HomeAIInsights />}
+      {preferences.showTicker && <HomeCtaTicker />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <DailyScoreCard />
-        </Suspense>
-        
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <DailyProgressCard />
-        </Suspense>
+        <DailyScoreCard score={dailyScore} />
+        <DailyProgressCard 
+          title="Daily Progress"
+          value={dailyScore}
+          target={100}
+          unit="score"
+          icon={<Target className="h-6 w-6" />}
+          color="#10B981"
+        />
       </div>
     </div>
   );

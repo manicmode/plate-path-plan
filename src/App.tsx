@@ -14,7 +14,7 @@ import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));

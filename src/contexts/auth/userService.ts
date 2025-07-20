@@ -52,7 +52,11 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
 
   return {
     ...supabaseUser,
-    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
+    first_name: profile?.first_name,
+    last_name: profile?.last_name,
+    name: profile?.first_name && profile?.last_name 
+      ? `${profile.first_name} ${profile.last_name}`
+      : supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
     targetCalories: 2000,
     targetProtein: 150,
     targetCarbs: 200,

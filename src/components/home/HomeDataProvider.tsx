@@ -29,8 +29,8 @@ export const HomeDataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   
-  const { dailyScore, loading: scoreLoading } = useDailyScore();
-  const { averages: dailyAverages, loading: averagesLoading } = useDailyMealAverages();
+  const scores = useDailyScore();
+  const averages = useDailyMealAverages();
 
   const { data: recentLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
     queryKey: ['recent-logs', user?.id],
@@ -56,7 +56,7 @@ export const HomeDataProvider = ({ children }: { children: ReactNode }) => {
     enabled: !!user?.id,
   });
 
-  const loading = scoreLoading || averagesLoading || logsLoading;
+  const loading = scores.loading || averages.loading || logsLoading;
 
   const refreshData = async () => {
     setError(null);
@@ -73,8 +73,8 @@ export const HomeDataProvider = ({ children }: { children: ReactNode }) => {
   return (
     <HomeDataContext.Provider
       value={{
-        dailyScore: dailyScore || 0,
-        dailyAverages,
+        dailyScore: scores.todayScore || 0,
+        dailyAverages: averages.todaysAverage,
         recentLogs,
         loading,
         error,
