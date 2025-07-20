@@ -419,8 +419,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         </CardContent>
       </Card>
 
-      {/* Trophy Showcase Section - Standardized padding */}
-      <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
+      {/* Trophy Showcase Section - Reduced top margin */}
+      <Card className="-mt-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
         <CardHeader className="p-6">
           <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
             🏆 Trophy Showcase {new Date().getFullYear()}
