@@ -684,9 +684,174 @@ function GameAndChallengeContent() {
       {/* Main Content */}
       <div className={cn(
         "container mx-auto space-y-6 sm:space-y-12",
-        isMobile ? "px-2 py-4 pb-24" : "px-4 py-8 pb-20"
+        isMobile ? "px-2 py-4" : "px-4 py-8 pb-20"
       )}>
         
+        {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
+        {!isMobile && (
+          <section id="ranking" className="animate-fade-in">
+          <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
+            <CardHeader className={cn(
+              "bg-gradient-to-r from-primary/10 to-secondary/10",
+              isMobile ? "p-4" : "p-6"
+            )}>
+              <div className={cn(
+                "flex items-center",
+                isMobile ? "flex-col space-y-2" : "justify-between"
+              )}>
+                <CardTitle className={cn(
+                  "font-bold flex items-center gap-2",
+                  isMobile ? "text-xl text-center" : "text-3xl gap-3"
+                )}>
+                  <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                  Live Rankings Arena
+                  <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                </CardTitle>
+                
+                {/* Create Challenge Button */}
+                <Button 
+                  onClick={() => setShowChallengeModal(true)}
+                  className={cn(
+                    "flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg",
+                    isMobile ? "h-8 px-3 text-xs w-full" : ""
+                  )}
+                  size={isMobile ? "sm" : "default"}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className={isMobile ? "text-xs" : ""}>Create Challenge</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
+              <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
+                {optimizedLeaderboard.map((user, index) => (
+                  <div
+                    key={user.id}
+                    className={cn(
+                      "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
+                      isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
+                      user.isCurrentUser 
+                        ? "border-primary bg-primary/5 shadow-lg shadow-primary/20 ring-2 ring-primary/30" 
+                        : "border-muted bg-muted/30 hover:border-primary/40"
+                    )}
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setIsUserStatsOpen(true);
+                    }}
+                  >
+                    {user.isCurrentUser && (
+                      <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-bold">
+                        YOU
+                      </div>
+                    )}
+                    
+                    <div className={cn(
+                      "flex items-center",
+                      isMobile ? "flex-col space-y-2" : "justify-between"
+                    )}>
+                      <div className={cn(
+                        "flex items-center",
+                        isMobile ? "w-full justify-between" : "gap-4"
+                      )}>
+                        <div className={cn(
+                          "font-bold text-muted-foreground",
+                          isMobile ? "text-lg w-8" : "text-2xl w-8"
+                        )}>
+                          #{user.rank}
+                        </div>
+                        
+                        {/* Enhanced Progress Avatar */}
+                        <ProgressAvatar 
+                          avatar={user.avatar}
+                          nickname={user.nickname}
+                          weeklyProgress={user.weeklyProgress}
+                          dailyStreak={user.dailyStreak}
+                          weeklyStreak={user.weeklyStreak}
+                          size={isMobile ? "sm" : "md"}
+                        />
+                        
+                        {!isMobile && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                              <span className="text-green-700 dark:text-green-400 font-medium">
+                                {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              Score: {user.score}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className={cn(
+                        "flex items-center",
+                        isMobile ? "w-full justify-between text-xs" : "gap-6"
+                      )}>
+                        {/* Mobile: Compact display */}
+                        {isMobile ? (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs px-1">
+                              🥇{user.gold}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs px-1">
+                              Score: {user.score}
+                            </Badge>
+                            <div className="flex items-center gap-1 text-green-600">
+                              {user.improvement > 0 ? (
+                                <>
+                                  <TrendingUp className="h-3 w-3" />
+                                  <span className="text-xs">+{user.improvement}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <TrendingDown className="h-3 w-3" />
+                                  <span className="text-xs">{user.improvement}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Desktop: Full display */}
+                            <div className="flex gap-2">
+                              <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
+                                🥇 {user.gold}
+                              </Badge>
+                              <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
+                                🥈 {user.silver}
+                              </Badge>
+                              <Badge variant="secondary" className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                                🥉 {user.bronze}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {user.improvement > 0 ? (
+                                <div className="flex items-center gap-1 text-green-600">
+                                  <TrendingUp className="h-4 w-4" />
+                                  <span className="text-sm font-medium">+{user.improvement}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-red-500">
+                                  <TrendingDown className="h-4 w-4" />
+                                  <span className="text-sm font-medium">{user.improvement}</span>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+        )}
+
         {/* Mobile-Optimized Tabs for All Sections */}
         {isMobile ? (
           <Tabs value={activeSection} onValueChange={(value) => {
@@ -697,7 +862,7 @@ function GameAndChallengeContent() {
             }
           }} className="w-full flex flex-col">
 
-            <TabsContent value="ranking" className="mt-4 pb-24">
+            <TabsContent value="ranking" className="mt-4 pb-20">
               {/* Mobile Ranking Section */}
               <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
@@ -791,17 +956,17 @@ function GameAndChallengeContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="challenges" className="mt-4 pb-24">
+            <TabsContent value="challenges" className="mt-4 pb-20">
               <PublicChallengesBrowse />
             </TabsContent>
 
-            <TabsContent value="my-challenges" className="mt-4 pb-24 overflow-x-hidden w-full max-w-full">
+            <TabsContent value="my-challenges" className="mt-4 pb-20 overflow-x-hidden w-full max-w-full">
               <div className="space-y-8">
                 <UserChallengeParticipations />
               </div>
             </TabsContent>
 
-            <TabsContent value="chat" className="mt-0 pb-24 -mt-4">
+            <TabsContent value="chat" className="mt-0 pb-20 -mt-4">
               {/* Chat is now handled by ChatroomManager */}
               <div className="text-center py-12">
                 <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -819,78 +984,56 @@ function GameAndChallengeContent() {
               </div>
             </TabsContent>
 
-            <TabsContent value="winners" className="mt-4 pb-24">
+            <TabsContent value="winners" className="mt-4 pb-20">
               <MonthlyTrophyPodium />
             </TabsContent>
 
-            <TabsContent value="my-friends" className="mt-4 pb-24">
+            <TabsContent value="my-friends" className="mt-4 pb-20">
               <MyFriendsTab />
             </TabsContent>
 
-            <TabsContent value="hall-of-fame" className="mt-4 pb-24">
+            <TabsContent value="hall-of-fame" className="mt-4 pb-20">
               <HallOfFame champions={optimizedHallOfFame} />
             </TabsContent>
             
-            {/* Enhanced Bottom Navigation Tabs with Fixed Positioning */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black/90 via-black/70 to-transparent backdrop-blur-xl border-t border-white/10">
-              <div className="safe-area-bottom">
-                <TabsList className="grid w-full grid-cols-7 h-16 bg-transparent border-0 rounded-none p-0">
-                  <TabsTrigger 
-                    value="ranking" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                  >
-                    <Trophy className="h-5 w-5" />
-                    <span className="font-medium">Rank</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="my-friends" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                  >
-                    <Users className="h-5 w-5" />
-                    <span className="font-medium">Friends</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="challenges" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                  >
-                    <Target className="h-5 w-5" />
-                    <span className="font-medium">Browse</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="my-challenges" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                  >
-                    <Star className="h-5 w-5" />
-                    <span className="font-medium">Mine</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="chat" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                    onClick={() => setIsChatroomManagerOpen(true)}
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                    <span className="font-medium">Chat</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="winners" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                  >
-                    <Crown className="h-5 w-5" />
-                    <span className="font-medium">Winners</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="hall-of-fame" 
-                    className="text-[10px] py-3 px-2 flex flex-col items-center gap-0.5 data-[state=active]:bg-white/10 data-[state=active]:text-white hover:bg-white/5 transition-all duration-200 hover:scale-105"
-                  >
-                    <Medal className="h-5 w-5" />
-                    <span className="font-medium">Fame</span>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </div>
+            {/* Bottom Navigation Tabs */}
+            <TabsList className="grid w-full grid-cols-7 h-12 mt-auto sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mx-2 mb-2 shadow-lg">
+              <TabsTrigger value="ranking" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Trophy className="h-4 w-4" />
+                <span>Rank</span>
+              </TabsTrigger>
+              <TabsTrigger value="my-friends" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>Friends</span>
+              </TabsTrigger>
+              <TabsTrigger value="challenges" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Target className="h-4 w-4" />
+                <span>Browse</span>
+              </TabsTrigger>
+              <TabsTrigger value="my-challenges" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Star className="h-4 w-4" />
+                <span>Mine</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="chat" 
+                className="text-xs py-2 flex flex-col items-center gap-1"
+                onClick={() => setIsChatroomManagerOpen(true)}
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>Chat</span>
+              </TabsTrigger>
+              <TabsTrigger value="winners" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Crown className="h-4 w-4" />
+                <span>Winners</span>
+              </TabsTrigger>
+              <TabsTrigger value="hall-of-fame" className="text-xs py-2 flex flex-col items-center gap-1">
+                <Medal className="h-4 w-4" />
+                <span>Fame</span>
+              </TabsTrigger>
+            </TabsList>
           </Tabs>
         ) : (
-          // Desktop sections
+          // Desktop sections (existing code)
           <>
             {/* Active Challenges Section */}
             <section id="challenges" className="animate-fade-in">
@@ -1069,7 +1212,7 @@ function GameAndChallengeContent() {
         <div className={cn(
           "fixed z-40",
           isMobile 
-            ? "bottom-20 right-4" 
+            ? "bottom-4 right-4" 
             : "bottom-6 right-6"
         )}>
           <Button
