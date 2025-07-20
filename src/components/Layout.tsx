@@ -41,10 +41,9 @@ const Layout = ({ children }: LayoutProps) => {
   const handleNavigation = useCallback((path: string) => {
     if (isNavigating) return;
     
-    setIsNavigating(true);
-    
     // For camera/log tab, always navigate to main camera page and reset any sub-tab state
     if (path === '/camera') {
+      setIsNavigating(true);
       // Use URL search parameter to signal camera reset, then navigate normally
       navigate('/camera?reset=true', { replace: true });
       setTimeout(() => {
@@ -54,16 +53,17 @@ const Layout = ({ children }: LayoutProps) => {
       return;
     }
     
-    // Always scroll to top when any tab is clicked, even if it's the current route
-    scrollToTop();
+    // For other paths, only navigate if not already there
+    if (location.pathname === path) return;
     
-    // Navigate to the path if not already there
-    if (location.pathname !== path) {
-      navigate(path);
-    }
+    setIsNavigating(true);
     
-    // Reset navigation state after a small delay
+    // Navigate first
+    navigate(path);
+    
+    // Then scroll to top after a small delay
     setTimeout(() => {
+      scrollToTop();
       setIsNavigating(false);
     }, 150);
   }, [navigate, location.pathname, isNavigating, scrollToTop]);
@@ -71,15 +71,6 @@ const Layout = ({ children }: LayoutProps) => {
   // Reset navigation state when location changes
   useEffect(() => {
     setIsNavigating(false);
-  }, [location.pathname]);
-
-  // Enhanced active state check that includes sub-routes
-  const isTabActive = useCallback((path: string) => {
-    if (path === '/explore') {
-      // Make explore tab active for both /explore and /game-and-challenge
-      return location.pathname === '/explore' || location.pathname === '/game-and-challenge';
-    }
-    return location.pathname === path;
   }, [location.pathname]);
 
   // Show only header for unauthenticated users on non-auth pages
@@ -129,7 +120,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl rounded-3xl px-3 sm:px-6 py-4 sm:py-5 shadow-2xl border-2 border-white/60 dark:border-gray-700/60">
             <div className={`flex ${isMobile ? 'justify-between gap-1' : 'space-x-4'}`}>
               {navItems.map(({ path, icon: Icon, label }) => {
-                const isActive = isTabActive(path);
+                const isActive = location.pathname === path;
                 return (
                   <Button
                     key={path}
@@ -142,7 +133,7 @@ const Layout = ({ children }: LayoutProps) => {
                         : 'h-20 w-24 px-4'
                     } rounded-2xl transition-all duration-300 ${
                       isActive 
-                        ? '!bg-gradient-to-br !from-blue-500 !via-purple-500 !to-indigo-600 !text-white !shadow-2xl !scale-110 !ring-4 !ring-blue-400/30 !ring-offset-2 !ring-offset-white dark:!ring-offset-gray-900' 
+                        ? 'gradient-primary text-white neon-glow scale-105 shadow-lg' 
                         : 'glass-button text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:scale-105'
                     } ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => handleNavigation(path)}
