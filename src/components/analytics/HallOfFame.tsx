@@ -9,6 +9,7 @@ import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRigh
 import { cn } from '@/lib/utils';
 import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/hooks/useHallOfFame';
 import { useAuth } from '@/contexts/auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface HallOfFameEntry {
   id: number;
@@ -31,6 +32,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   champions
 }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showAllModal, setShowAllModal] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [showAllTributes, setShowAllTributes] = useState(false);
@@ -39,6 +41,17 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   // Get the first (current year) champion for trophy showcase and tributes
   const currentChampion = champions.find(c => c.trophy === 'gold') || champions[0];
   const championUserId = currentChampion?.user_id;
+  
+  // Debug logging to help identify issues
+  console.log('Current champion:', currentChampion);
+  console.log('Champion user ID:', championUserId);
+  
+  // Show warning if championUserId is missing
+  React.useEffect(() => {
+    if (currentChampion && !championUserId) {
+      console.warn('Champion found but user_id is missing:', currentChampion);
+    }
+  }, [currentChampion, championUserId]);
   
   const { 
     trophies: yearlyTrophies, 
@@ -112,11 +125,52 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   };
 
   const handleSubmitTribute = async () => {
-    if (!newTribute.trim()) return;
+    if (!newTribute.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a tribute message",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!championUserId) {
+      toast({
+        title: "Error",
+        description: "Cannot post tribute - champion not found",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        title: "Error", 
+        description: "You must be logged in to post tributes",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log('Attempting to post tribute:', {
+      championUserId,
+      message: newTribute,
+      user: user.id
+    });
     
     const success = await postTribute(newTribute);
     if (success) {
       setNewTribute('');
+      toast({
+        title: "Success",
+        description: "Your tribute has been posted!",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to post tribute. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -366,64 +420,72 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Add new tribute form */}
-          <div className="bg-muted/30 rounded-lg p-4">
-            <div className="flex gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback>YOU</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-3">
-                <textarea
-                  placeholder="Leave a congratulatory message..."
-                  value={newTribute}
-                  onChange={(e) => setNewTribute(e.target.value)}
-                  className="w-full p-3 rounded-lg border bg-background resize-none min-h-[80px]"
-                />
-                <div className="flex justify-between items-center">
-                  <div className="flex gap-2">
+          {/* Add new tribute form - Only show if we have a valid champion */}
+          {championUserId ? (
+            <div className="bg-muted/30 rounded-lg p-4">
+              <div className="flex gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback>YOU</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-3">
+                  <textarea
+                    placeholder="Leave a congratulatory message..."
+                    value={newTribute}
+                    onChange={(e) => setNewTribute(e.target.value)}
+                    className="w-full p-3 rounded-lg border bg-background resize-none min-h-[80px]"
+                  />
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2 transition-transform hover:scale-110" 
+                        onClick={() => {
+                          setNewTribute(prev => prev + "🚀");
+                        }}
+                      >
+                        🚀
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2 transition-transform hover:scale-110" 
+                        onClick={() => {
+                          setNewTribute(prev => prev + "🎉");
+                        }}
+                      >
+                        🎉
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2 transition-transform hover:scale-110" 
+                        onClick={() => {
+                          setNewTribute(prev => prev + "👏");
+                        }}
+                      >
+                        👏
+                      </Button>
+                    </div>
                     <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 px-2 transition-transform hover:scale-110" 
-                      onClick={() => {
-                        setNewTribute(prev => prev + "🚀");
-                      }}
+                      size="sm"
+                      disabled={!newTribute.trim() || loading}
+                      onClick={handleSubmitTribute}
                     >
-                      🚀
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 px-2 transition-transform hover:scale-110" 
-                      onClick={() => {
-                        setNewTribute(prev => prev + "🎉");
-                      }}
-                    >
-                      🎉
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 px-2 transition-transform hover:scale-110" 
-                      onClick={() => {
-                        setNewTribute(prev => prev + "👏");
-                      }}
-                    >
-                      👏
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Post Tribute
                     </Button>
                   </div>
-                  <Button 
-                    size="sm"
-                    disabled={!newTribute.trim() || loading}
-                    onClick={handleSubmitTribute}
-                  >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Post Tribute
-                  </Button>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-muted/30 rounded-lg p-4 text-center">
+              <p className="text-muted-foreground">
+                Champion information not available for tributes
+              </p>
+            </div>
+          )}
 
           {/* Tributes list */}
           <div className="space-y-4">

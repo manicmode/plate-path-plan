@@ -31,11 +31,18 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
   const [tributes, setTributes] = useState<Tribute[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Debug logging
+  console.log('useHallOfFame called with:', { championUserId, year });
+
   // Fetch yearly trophies for champion
   const fetchTrophies = async () => {
-    if (!championUserId) return;
+    if (!championUserId) {
+      console.log('No championUserId provided, skipping trophy fetch');
+      return;
+    }
 
     try {
+      console.log('Fetching trophies for user:', championUserId);
       const { data: badges, error } = await supabase
         .from('user_badges')
         .select(`
@@ -56,7 +63,12 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
         .lt('unlocked_at', `${year + 1}-01-01`)
         .order('unlocked_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching trophies:', error);
+        throw error;
+      }
+
+      console.log('Fetched badges:', badges);
 
       const trophyData: Trophy[] = badges?.map(badge => ({
         id: badge.id,
@@ -76,9 +88,13 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
 
   // Fetch tributes for champion
   const fetchTributes = async () => {
-    if (!championUserId) return;
+    if (!championUserId) {
+      console.log('No championUserId provided, skipping tributes fetch');
+      return;
+    }
 
     try {
+      console.log('Fetching tributes for champion:', championUserId, 'year:', year);
       // First get tributes
       const { data: tributesData, error } = await supabase
         .from('hall_of_fame_tributes')
@@ -95,7 +111,12 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching tributes:', error);
+        throw error;
+      }
+
+      console.log('Fetched tributes:', tributesData);
 
       // Then get user profiles separately
       const userIds = tributesData?.map(t => t.user_id) || [];
@@ -103,6 +124,8 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
         .from('user_profiles')
         .select('user_id, first_name, last_name')
         .in('user_id', userIds);
+
+      console.log('Fetched profiles:', profiles);
 
       const formattedTributes: Tribute[] = tributesData?.map(tribute => {
         const profile = profiles?.find(p => p.user_id === tribute.user_id);
@@ -132,6 +155,7 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
         };
       }) || [];
 
+      console.log('Formatted tributes:', formattedTributes);
       setTributes(formattedTributes);
     } catch (error) {
       console.error('Error fetching tributes:', error);
@@ -140,10 +164,20 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
 
   // Post new tribute
   const postTribute = async (message: string) => {
-    if (!user || !championUserId || !message.trim()) return false;
+    if (!user || !championUserId || !message.trim()) {
+      console.warn('Cannot post tribute:', { user: !!user, championUserId, message: message.trim() });
+      return false;
+    }
 
     try {
-      const { error } = await supabase
+      console.log('Posting tribute:', {
+        user_id: user.id,
+        champion_user_id: championUserId,
+        champion_year: year,
+        message: message.trim()
+      });
+
+      const { data, error } = await supabase
         .from('hall_of_fame_tributes')
         .insert({
           user_id: user.id,
@@ -151,9 +185,15 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
           champion_year: year,
           message: message.trim(),
           reactions: []
-        });
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error posting tribute:', error);
+        throw error;
+      }
+
+      console.log('Successfully posted tribute:', data);
 
       toast({
         title: "Tribute Posted",
@@ -265,8 +305,10 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
     };
 
     if (championUserId) {
+      console.log('Loading data for champion:', championUserId);
       loadData();
     } else {
+      console.log('No championUserId, skipping data load');
       setLoading(false);
     }
   }, [championUserId, year]);

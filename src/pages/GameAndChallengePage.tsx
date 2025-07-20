@@ -458,16 +458,126 @@ const mockPodiumWinners = [
 ];
 
 const mockHallOfFame = [
-  { id: 1, nickname: "Alex 🦄", avatar: "🦄", month: "December", year: "2024", score: 2850, quote: "Beast Mode Activated 💪", achievement: "🏆 December 2024 Champion", trophy: "gold" as const },
-  { id: 2, nickname: "Luna 🌙", avatar: "🌙", month: "November", year: "2024", score: 2720, quote: "Consistency is Key 🗝️", achievement: "🏆 November 2024 Champion", trophy: "gold" as const },
-  { id: 3, nickname: "Phoenix 🔥", avatar: "🔥", month: "October", year: "2024", score: 2650, quote: "Rise from the Ashes 🔥", achievement: "🏆 October 2024 Champion", trophy: "gold" as const },
-  { id: 4, nickname: "Storm ⚡", avatar: "⚡", month: "September", year: "2024", score: 2580, quote: "Electrifying Performance ⚡", achievement: "🏆 September 2024 Champion", trophy: "gold" as const },
-  { id: 5, nickname: "Zen Master 🧘", avatar: "🧘", month: "August", year: "2024", score: 2320, quote: "Mind over matter, always", achievement: "🥈 Most Consistent in August", trophy: "silver" as const },
-  { id: 6, nickname: "Iron Will 💪", avatar: "💪", month: "July", year: "2024", score: 2145, quote: "Every rep counts!", achievement: "🥉 Most Improved in July", trophy: "bronze" as const },
-  { id: 7, nickname: "Green Goddess 🌱", avatar: "🌱", month: "June", year: "2024", score: 2890, quote: "Plants are power!", achievement: "🏆 June 2024 Champion", trophy: "gold" as const },
-  { id: 8, nickname: "Sunshine ☀️", avatar: "☀️", month: "May", year: "2024", score: 2076, quote: "Bright days ahead!", achievement: "⭐ Positivity Award May", trophy: "special" as const },
-  { id: 9, nickname: "Ocean Wave 🌊", avatar: "🌊", month: "April", year: "2024", score: 2234, quote: "Flow like water", achievement: "🥈 Hydration Hero April", trophy: "silver" as const },
-  { id: 10, nickname: "Mountain Peak ⛰️", avatar: "⛰️", month: "March", year: "2024", score: 2567, quote: "Reach new heights!", achievement: "🏆 March 2024 Champion", trophy: "gold" as const },
+  { 
+    id: 1, 
+    nickname: "Alex 🦄", 
+    avatar: "🦄", 
+    month: "December", 
+    year: "2024", 
+    score: 2850, 
+    quote: "Beast Mode Activated 💪", 
+    achievement: "🏆 December 2024 Champion", 
+    trophy: "gold" as const,
+    user_id: "123e4567-e89b-12d3-a456-426614174000" // Added user_id
+  },
+  { 
+    id: 2, 
+    nickname: "Luna 🌙", 
+    avatar: "🌙", 
+    month: "November", 
+    year: "2024", 
+    score: 2720, 
+    quote: "Consistency is Key 🗝️", 
+    achievement: "🏆 November 2024 Champion", 
+    trophy: "gold" as const,
+    user_id: "223e4567-e89b-12d3-a456-426614174001" // Added user_id
+  },
+  { 
+    id: 3, 
+    nickname: "Phoenix 🔥", 
+    avatar: "🔥", 
+    month: "October", 
+    year: "2024", 
+    score: 2650, 
+    quote: "Rise from the Ashes 🔥", 
+    achievement: "🏆 October 2024 Champion", 
+    trophy: "gold" as const,
+    user_id: "323e4567-e89b-12d3-a456-426614174002" // Added user_id
+  },
+  { 
+    id: 4, 
+    nickname: "Storm ⚡", 
+    avatar: "⚡", 
+    month: "September", 
+    year: "2024", 
+    score: 2580, 
+    quote: "Electrifying Performance ⚡", 
+    achievement: "🏆 September 2024 Champion", 
+    trophy: "gold" as const,
+    user_id: "423e4567-e89b-12d3-a456-426614174003" // Added user_id
+  },
+  { 
+    id: 5, 
+    nickname: "Zen Master 🧘", 
+    avatar: "🧘", 
+    month: "August", 
+    year: "2024", 
+    score: 2320, 
+    quote: "Mind over matter, always", 
+    achievement: "🥈 Most Consistent in August", 
+    trophy: "silver" as const,
+    user_id: "523e4567-e89b-12d3-a456-426614174004" // Added user_id
+  },
+  { 
+    id: 6, 
+    nickname: "Iron Will 💪", 
+    avatar: "💪", 
+    month: "July", 
+    year: "2024", 
+    score: 2145, 
+    quote: "Every rep counts!", 
+    achievement: "🥉 Most Improved in July", 
+    trophy: "bronze" as const,
+    user_id: "623e4567-e89b-12d3-a456-426614174005" // Added user_id
+  },
+  { 
+    id: 7, 
+    nickname: "Green Goddess 🌱", 
+    avatar: "🌱", 
+    month: "June", 
+    year: "2024", 
+    score: 2890, 
+    quote: "Plants are power!", 
+    achievement: "🏆 June 2024 Champion", 
+    trophy: "gold" as const,
+    user_id: "723e4567-e89b-12d3-a456-426614174006" // Added user_id
+  },
+  { 
+    id: 8, 
+    nickname: "Sunshine ☀️", 
+    avatar: "☀️", 
+    month: "May", 
+    year: "2024", 
+    score: 2076, 
+    quote: "Bright days ahead!", 
+    achievement: "⭐ Positivity Award May", 
+    trophy: "special" as const,
+    user_id: "823e4567-e89b-12d3-a456-426614174007" // Added user_id
+  },
+  { 
+    id: 9, 
+    nickname: "Ocean Wave 🌊", 
+    avatar: "🌊", 
+    month: "April", 
+    year: "2024", 
+    score: 2234, 
+    quote: "Flow like water", 
+    achievement: "🥈 Hydration Hero April", 
+    trophy: "silver" as const,
+    user_id: "923e4567-e89b-12d3-a456-426614174008" // Added user_id
+  },
+  { 
+    id: 10, 
+    nickname: "Mountain Peak ⛰️", 
+    avatar: "⛰️", 
+    month: "March", 
+    year: "2024", 
+    score: 2567, 
+    quote: "Reach new heights!", 
+    achievement: "🏆 March 2024 Champion", 
+    trophy: "gold" as const,
+    user_id: "a23e4567-e89b-12d3-a456-426614174009" // Added user_id
+  },
 ];
 
 const mockFriends = [
