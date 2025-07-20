@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2, AlertCircle, Coffee } from 'lucide-react';
+import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/hooks/useHallOfFame';
 import { useAuth } from '@/contexts/auth';
@@ -43,16 +43,10 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const currentChampion = champions.find(c => c.trophy === 'gold') || champions[0];
   const championUserId = currentChampion?.user_id;
   
-  // Check if we have champions or tributes functionality available
-  const hasChampions = champions.length > 0;
-  const canPostTributes = hasChampions && championUserId;
-  
   // Debug logging
   console.log('Current champion:', currentChampion);
   console.log('Champion user ID:', championUserId);
   console.log('Champions array:', champions);
-  console.log('Has champions:', hasChampions);
-  console.log('Can post tributes:', canPostTributes);
   
   const { 
     trophies: yearlyTrophies, 
@@ -201,6 +195,10 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const unpinnedTributes = tributes.filter(t => !t.isPinned);
   const sortedTributes = [...pinnedTributes, ...unpinnedTributes];
 
+  // Check if we have champions or tributes functionality available
+  const hasChampions = champions.length > 0;
+  const canPostTributes = hasChampions && championUserId;
+
   return (
     <div className="space-y-8">
       {/* Main Hall of Fame Card */}
@@ -215,7 +213,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
           </div>
           
           <CardTitle className="text-3xl font-bold text-center relative z-10 flex items-center justify-center gap-3">
-            <Coffee className="h-8 w-8 text-amber-600" />
+            <Trophy className="h-8 w-8 text-amber-600" />
             Hall of Fame
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
@@ -364,8 +362,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         </CardContent>
       </Card>
 
-      {/* Trophy Showcase Section - Always show when champions exist */}
-      {hasChampions && (
+      {/* Trophy Showcase Section */}
+      {canPostTributes && (
         <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
@@ -440,176 +438,186 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         </Card>
       )}
 
-      {/* Tributes & Comments Section - Always show when champions exist */}
-      {hasChampions && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              <MessageCircle className="h-6 w-6 text-primary" />
-              Tributes & Comments
-              <Badge variant="outline">{tributes.length}</Badge>
-            </CardTitle>
-            <p className="text-muted-foreground">
-              Congratulatory messages from the community
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Add new tribute form */}
-            <div className="bg-muted/30 rounded-lg p-4">
-              <div className="flex gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback>YOU</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-3">
-                  <textarea
-                    placeholder="Leave a congratulatory message..."
-                    value={newTribute}
-                    onChange={(e) => setNewTribute(e.target.value)}
-                    className="w-full p-3 rounded-lg border bg-background resize-none min-h-[80px]"
-                    disabled={isPostingTribute}
-                  />
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
+      {/* Tributes & Comments Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
+            <MessageCircle className="h-6 w-6 text-primary" />
+            Tributes & Comments
+            <Badge variant="outline">{tributes.length}</Badge>
+          </CardTitle>
+          <p className="text-muted-foreground">
+            {canPostTributes ? "Congratulatory messages from the community" : "Tribute section will be available when champions are announced"}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {canPostTributes ? (
+            <>
+              {/* Add new tribute form */}
+              <div className="bg-muted/30 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>YOU</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-3">
+                    <textarea
+                      placeholder="Leave a congratulatory message..."
+                      value={newTribute}
+                      onChange={(e) => setNewTribute(e.target.value)}
+                      className="w-full p-3 rounded-lg border bg-background resize-none min-h-[80px]"
+                      disabled={isPostingTribute}
+                    />
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2 transition-transform hover:scale-110" 
+                          onClick={() => {
+                            setNewTribute(prev => prev + "🚀");
+                          }}
+                          disabled={isPostingTribute}
+                        >
+                          🚀
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2 transition-transform hover:scale-110" 
+                          onClick={() => {
+                            setNewTribute(prev => prev + "🎉");
+                          }}
+                          disabled={isPostingTribute}
+                        >
+                          🎉
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2 transition-transform hover:scale-110" 
+                          onClick={() => {
+                            setNewTribute(prev => prev + "👏");
+                          }}
+                          disabled={isPostingTribute}
+                        >
+                          👏
+                        </Button>
+                      </div>
                       <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-8 px-2 transition-transform hover:scale-110" 
-                        onClick={() => {
-                          setNewTribute(prev => prev + "🚀");
-                        }}
-                        disabled={isPostingTribute}
+                        size="sm"
+                        disabled={!newTribute.trim() || isPostingTribute}
+                        onClick={handleSubmitTribute}
                       >
-                        🚀
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-8 px-2 transition-transform hover:scale-110" 
-                        onClick={() => {
-                          setNewTribute(prev => prev + "🎉");
-                        }}
-                        disabled={isPostingTribute}
-                      >
-                        🎉
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-8 px-2 transition-transform hover:scale-110" 
-                        onClick={() => {
-                          setNewTribute(prev => prev + "👏");
-                        }}
-                        disabled={isPostingTribute}
-                      >
-                        👏
+                        {isPostingTribute ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Post Tribute
                       </Button>
                     </div>
-                    <Button 
-                      size="sm"
-                      disabled={!newTribute.trim() || isPostingTribute}
-                      onClick={handleSubmitTribute}
-                    >
-                      {isPostingTribute ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Post Tribute
-                    </Button>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Tributes list */}
-            <div className="space-y-4">
-              {tributes.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-lg font-medium mb-2">No tributes yet</p>
-                  <p className="text-sm">Be the first to leave a congratulatory message!</p>
-                </div>
-              ) : (
-                (showAllTributes ? sortedTributes : sortedTributes.slice(0, 3)).map((tribute) => (
-                  <div 
-                    key={tribute.id} 
-                    className={cn(
-                      "p-4 rounded-lg border transition-all duration-200",
-                      tribute.isPinned 
-                        ? "bg-primary/5 border-primary/20 relative" 
-                        : "bg-background hover:bg-muted/30"
-                    )}
-                  >
-                    {tribute.isPinned && (
-                      <div className="absolute top-2 right-2">
-                        <Pin className="h-4 w-4 text-primary" />
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback>{tribute.authorAvatar}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{tribute.authorName}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {new Date(tribute.timestamp).toLocaleDateString()}
-                          </span>
-                           {!tribute.isPinned && user?.id === championUserId && (
+              {/* Tributes list */}
+              <div className="space-y-4">
+                {tributes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-lg font-medium mb-2">No tributes yet</p>
+                    <p className="text-sm">Be the first to leave a congratulatory message!</p>
+                  </div>
+                ) : (
+                  (showAllTributes ? sortedTributes : sortedTributes.slice(0, 3)).map((tribute) => (
+                    <div 
+                      key={tribute.id} 
+                      className={cn(
+                        "p-4 rounded-lg border transition-all duration-200",
+                        tribute.isPinned 
+                          ? "bg-primary/5 border-primary/20 relative" 
+                          : "bg-background hover:bg-muted/30"
+                      )}
+                    >
+                      {tribute.isPinned && (
+                        <div className="absolute top-2 right-2">
+                          <Pin className="h-4 w-4 text-primary" />
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>{tribute.authorAvatar}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{tribute.authorName}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(tribute.timestamp).toLocaleDateString()}
+                            </span>
+                             {!tribute.isPinned && user?.id === championUserId && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 ml-auto"
+                                onClick={() => handlePinTributeFromHook(tribute.id)}
+                              >
+                                <Pin className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-sm leading-relaxed">{tribute.message}</p>
+                          
+                          {/* Reactions */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {tribute.reactions.map((reaction, index) => (
+                              <Button
+                                key={index}
+                                size="sm"
+                                variant={reaction.userReacted ? "secondary" : "ghost"}
+                                className="h-7 px-2 text-xs"
+                                onClick={() => handleReactionFromHook(tribute.id, reaction.emoji)}
+                              >
+                                {reaction.emoji} {reaction.count}
+                              </Button>
+                            ))}
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-6 px-2 ml-auto"
-                              onClick={() => handlePinTributeFromHook(tribute.id)}
-                            >
-                              <Pin className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-sm leading-relaxed">{tribute.message}</p>
-                        
-                        {/* Reactions */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {tribute.reactions.map((reaction, index) => (
-                            <Button
-                              key={index}
-                              size="sm"
-                              variant={reaction.userReacted ? "secondary" : "ghost"}
                               className="h-7 px-2 text-xs"
-                              onClick={() => handleReactionFromHook(tribute.id, reaction.emoji)}
+                              onClick={() => handleReactionFromHook(tribute.id, '👏')}
                             >
-                              {reaction.emoji} {reaction.count}
+                              +
                             </Button>
-                          ))}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleReactionFromHook(tribute.id, '👏')}
-                          >
-                            +
-                          </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Show more/less button */}
-            {tributes.length > 3 && (
-              <div className="text-center">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAllTributes(!showAllTributes)}
-                  className="flex items-center gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  {showAllTributes ? 'Show Less' : `View All ${tributes.length} Comments`}
-                </Button>
+                  ))
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              {/* Show more/less button */}
+              {tributes.length > 3 && (
+                <div className="text-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAllTributes(!showAllTributes)}
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    {showAllTributes ? 'Show Less' : `View All ${tributes.length} Comments`}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <AlertCircle className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <h3 className="text-lg font-medium mb-2">Tributes Coming Soon</h3>
+              <p className="text-sm">
+                The tribute section will be available once Hall of Fame champions are announced.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
         <DialogContent className="max-w-6xl max-h-[80vh]">
