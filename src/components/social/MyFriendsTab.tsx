@@ -117,7 +117,7 @@ export const MyFriendsTab = () => {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Header */}
       <div className="text-center">
         <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
@@ -126,7 +126,7 @@ export const MyFriendsTab = () => {
         </h1>
       </div>
 
-      <Tabs defaultValue="friends" className="space-y-3">
+      <Tabs defaultValue="friends" className="space-y-2">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -142,7 +142,7 @@ export const MyFriendsTab = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="friends" className="space-y-4">
+        <TabsContent value="friends" className="space-y-2">
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4">
             <Card className="h-20">
@@ -178,7 +178,7 @@ export const MyFriendsTab = () => {
                   <p className="text-sm text-muted-foreground mt-2">Loading friends...</p>
                 </div>
                ) : friends.length === 0 ? (
-                <div className="text-center py-8 space-y-6">
+                <div className="text-center py-4 space-y-3">
                   <div>
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="font-medium mb-2">No friends yet</h3>
@@ -188,7 +188,7 @@ export const MyFriendsTab = () => {
                   </div>
                   
                   {/* Motivational section moved here */}
-                  <div className="space-y-6 pt-4 border-t border-border/50">
+                  <div className="space-y-3 pt-2 border-t border-border/50">
                     <div className="flex justify-center">
                       <Button 
                         onClick={() => setShowCreateModal(true)}
@@ -199,7 +199,7 @@ export const MyFriendsTab = () => {
                       </Button>
                     </div>
                     
-                     <div className="text-center space-y-2 pt-4">
+                     <div className="text-center space-y-2 pt-2">
                        <div className="text-lg font-semibold text-foreground">
                          Motivate and grow together on your wellness journey
                        </div>
