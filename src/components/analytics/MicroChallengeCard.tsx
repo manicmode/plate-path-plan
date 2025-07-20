@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -160,14 +159,13 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
         </div>
       </CardContent>
 
-      {/* Challenge Chat Modal - Using real challenge ID */}
+      {/* Challenge Chat Modal */}
       <ChallengeChatModal
         open={showChat}
         onOpenChange={setShowChat}
         challengeId={challenge.id}
         challengeName={challenge.name}
         participantCount={challenge.participants.length}
-        challengeParticipants={challenge.participants}
       />
     </Card>
   );

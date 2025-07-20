@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { ChatroomSelector } from './ChatroomSelector';
-import { usePublicChallenges } from '@/hooks/usePublicChallenges';
-import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
+import { useChallenge } from '@/contexts/ChallengeContext';
 
 interface Chatroom {
   id: string;
@@ -20,49 +19,49 @@ interface ChatroomManagerProps {
 }
 
 export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) => {
-  const { 
-    userParticipations: publicParticipations, 
-    challenges: publicChallenges, 
-    loading: publicLoading 
-  } = usePublicChallenges();
-  
-  const { 
-    userActiveChallenges: privateChallenges, 
-    loading: privateLoading 
-  } = usePrivateChallenges();
-
+  const { challenges, microChallenges, activeUserChallenges } = useChallenge();
   const [activeChatroomId, setActiveChatroomId] = useState<string | null>(null);
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
 
   // Build chatrooms list from user's challenge participations
   useEffect(() => {
-    if (publicLoading || privateLoading) return;
-
     const availableChatrooms: Chatroom[] = [];
 
     // Add public challenges the user is participating in
-    publicParticipations?.forEach(participation => {
-      const challenge = publicChallenges?.find(c => c.id === participation.challenge_id);
-      if (challenge) {
+    activeUserChallenges?.forEach(challenge => {
+      if (challenge.type === 'public') {
         availableChatrooms.push({
           id: challenge.id,
-          name: challenge.title,
+          name: challenge.name,
           type: 'public',
-          participantCount: challenge.participant_count,
-          participantIds: [], // Public challenges don't expose participant IDs
+          participantCount: challenge.participants.length,
+          participantIds: challenge.participants,
         });
       }
     });
 
-    // Add private challenges the user is participating in
-    privateChallenges?.forEach(challenge => {
+    // Add micro-challenges (treating them as mini chatrooms)
+    microChallenges?.forEach(challenge => {
       availableChatrooms.push({
         id: challenge.id,
-        name: challenge.title,
-        type: 'private',
-        participantCount: challenge.invited_user_ids.length + 1, // Include creator
-        participantIds: [...challenge.invited_user_ids, challenge.creator_id],
+        name: challenge.name,
+        type: 'public',
+        participantCount: challenge.participants.length,
+        participantIds: challenge.participants,
       });
+    });
+
+    // Add private challenges the user is participating in
+    activeUserChallenges?.forEach(challenge => {
+      if (challenge.type === 'private') {
+        availableChatrooms.push({
+          id: challenge.id,
+          name: challenge.name,
+          type: 'private',
+          participantCount: challenge.participants.length,
+          participantIds: challenge.participants,
+        });
+      }
     });
 
     setChatrooms(availableChatrooms);
@@ -71,7 +70,7 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
     if (availableChatrooms.length > 0 && !activeChatroomId) {
       setActiveChatroomId(availableChatrooms[0].id);
     }
-  }, [publicChallenges, privateChallenges, publicParticipations, activeChatroomId, publicLoading, privateLoading]);
+  }, [challenges, microChallenges, activeUserChallenges, activeChatroomId]);
 
   const handleSelectChatroom = (chatroomId: string) => {
     setActiveChatroomId(chatroomId);
@@ -80,18 +79,6 @@ export const ChatroomManager = ({ isOpen, onOpenChange }: ChatroomManagerProps) 
   const activeChatroom = chatrooms.find(room => room.id === activeChatroomId);
 
   if (!isOpen) return null;
-
-  // Show loading state if data is still being fetched
-  if (publicLoading || privateLoading) {
-    return (
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-sm text-muted-foreground">Loading chatrooms...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>

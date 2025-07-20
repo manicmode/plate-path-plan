@@ -46,6 +46,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const canJoin = challenge.type === 'public' && !isParticipant && 
     (!challenge.maxParticipants || challenge.participants.length < challenge.maxParticipants);
 
+  // Calculate time remaining
   useEffect(() => {
     const updateTimeLeft = () => {
       const now = new Date();
@@ -139,6 +140,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     }
   };
 
+  // Calculate average progress
   const progressValues = Object.values(challenge.progress);
   const averageProgress = progressValues.length > 0 
     ? progressValues.reduce((sum, progress) => sum + progress, 0) / progressValues.length
@@ -151,12 +153,14 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
         challenge.trending && "ring-2 ring-yellow-400 ring-opacity-50",
         isParticipant && "border-primary/50 bg-primary/5"
       )}>
+        {/* Header with gradient background */}
         <CardHeader className={cn(
           "relative overflow-hidden",
           challenge.type === 'public' 
             ? "bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30"
             : "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30"
         )}>
+          {/* Trending badge */}
           {challenge.trending && (
             <div className="absolute top-2 right-2">
               <Badge className="bg-yellow-500 text-yellow-900 font-bold animate-pulse">
@@ -165,6 +169,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             </div>
           )}
 
+          {/* Challenge type indicator */}
           <div className="flex items-center gap-2 mb-2">
             {challenge.type === 'public' ? (
               <Badge variant="secondary" className="flex items-center gap-1">
@@ -183,6 +188,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             </Badge>
           </div>
 
+          {/* Challenge title and goal */}
           <div className="space-y-2">
             <h3 className="font-bold text-lg leading-tight">{challenge.name}</h3>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -197,6 +203,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
         </CardHeader>
 
         <CardContent className="p-4 space-y-4">
+          {/* Progress Overview */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Group Progress</span>
@@ -205,6 +212,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             <Progress value={averageProgress} className="h-2" />
           </div>
 
+          {/* Participants */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -216,6 +224,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
               </div>
             </div>
 
+            {/* Participant Avatars with Progress */}
             <div className="flex flex-wrap gap-3">
               {challenge.participants.slice(0, 6).map((participantId) => {
                 const participant = challenge.participantDetails[participantId];
@@ -223,6 +232,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                 
                 return (
                   <div key={participantId} className="relative group">
+                    {/* Progress Ring */}
                     <div className="relative w-12 h-12">
                       <svg className="w-12 h-12 transform -rotate-90">
                         <circle
@@ -248,6 +258,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                         />
                       </svg>
                       
+                      {/* Avatar */}
                       <div className="absolute inset-0 flex items-center justify-center">
                         <Avatar className="h-8 w-8 text-lg border-2 border-background">
                           <AvatarFallback className="text-lg bg-gradient-to-br from-primary/20 to-secondary/20">
@@ -257,6 +268,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                       </div>
                     </div>
 
+                    {/* Tooltip on hover */}
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border rounded-lg p-2 text-xs whitespace-nowrap shadow-lg z-10">
                       <div className="font-medium">{participant?.name || 'Unknown'}</div>
                       <div className="text-muted-foreground">{progress}% complete</div>
@@ -273,6 +285,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
             {canJoin && (
               <Button 
@@ -367,15 +380,16 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           </div>
         </CardContent>
 
+        {/* Challenge Chat Modal */}
         <ChallengeChatModal
           open={showChat}
           onOpenChange={setShowChat}
           challengeId={challenge.id}
           challengeName={challenge.name}
           participantCount={challenge.participants.length}
-          challengeParticipants={challenge.participants}
         />
 
+        {/* Floating progress indicator for current user */}
         {isParticipant && (
           <div className="absolute top-4 left-4">
             <Badge className="bg-primary/90 text-primary-foreground font-bold">
