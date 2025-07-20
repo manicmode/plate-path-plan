@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
@@ -15,13 +16,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const [initializationAttempts, setInitializationAttempts] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const updateUserWithProfile = async (supabaseUser: any) => {
     try {
       const extendedUser = await createExtendedUser(supabaseUser);
       setUser(extendedUser);
+      setError(null);
     } catch (error) {
       console.error('Error creating extended user:', error);
+      setError('Failed to load user profile');
       // Set basic user info even if profile creation fails
       setUser({
         id: supabaseUser.id,
@@ -44,15 +48,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setTimeout(() => initializeAuth(retryCount + 1), 1000);
           return;
         }
+        setError('Failed to initialize authentication');
       } else if (initialSession?.user) {
         setSession(initialSession);
-        await updateUserWithProfile(initialSession.user);
+        // Defer profile loading to prevent deadlocks
+        setTimeout(() => {
+          updateUserWithProfile(initialSession.user);
+        }, 0);
       }
       
       setLoading(false);
       setInitializationAttempts(retryCount + 1);
     } catch (error) {
       console.error('Auth initialization error:', error);
+      setError('Authentication initialization failed');
       if (retryCount < 2) {
         setTimeout(() => initializeAuth(retryCount + 1), 1000);
       } else {
@@ -65,6 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleSignOut = async () => {
     try {
       setSigningOut(true);
+      setError(null);
       
       // Immediately clear local state
       setUser(null);
@@ -77,6 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
     } catch (error) {
       console.error('Sign out error:', error);
+      setError('Failed to sign out');
     } finally {
       setSigningOut(false);
     }
@@ -94,6 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleAppForeground = () => {
     console.log('App came to foreground - refreshing auth state');
     if (loading && initializationAttempts > 0) {
+      setError(null);
       initializeAuth();
     }
   };
@@ -121,6 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(null);
         setUser(null);
         setSigningOut(false);
+        setError(null);
         return;
       }
       
@@ -140,9 +153,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Initialize auth with timeout
     const initTimeout = setTimeout(() => {
-      if (loading) {
+      if (loading && mounted) {
         console.warn('Auth initialization timeout - forcing completion');
         setLoading(false);
+        setError('Authentication initialization timed out');
       }
     }, 10000);
 
@@ -153,7 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscription.unsubscribe();
       clearTimeout(initTimeout);
     };
-  }, []);
+  }, []); // Fixed: removed dependencies that could cause infinite loops
 
   const updateProfile = (profileData: Partial<ExtendedUser>) => {
     if (user) {
@@ -161,32 +175,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(updatedUser);
       
       // Trigger daily score calculation when profile is updated
-      triggerDailyScoreCalculation(user.id);
-      
-      // Also regenerate daily targets if significant profile changes occurred
-      const significantFields = ['weight', 'age', 'gender', 'activity_level', 'weight_goal_type', 'health_conditions', 'main_health_goal'];
-      const hasSignificantChanges = significantFields.some(field => profileData[field as keyof ExtendedUser] !== undefined);
-      
-      if (hasSignificantChanges) {
-        console.log('Significant profile changes detected, regenerating daily targets...');
-        triggerDailyTargetsGeneration(user.id);
-      }
+      setTimeout(() => {
+        triggerDailyScoreCalculation(user.id);
+        
+        // Also regenerate daily targets if significant profile changes occurred
+        const significantFields = ['weight', 'age', 'gender', 'activity_level', 'weight_goal_type', 'health_conditions', 'main_health_goal'];
+        const hasSignificantChanges = significantFields.some(field => profileData[field as keyof ExtendedUser] !== undefined);
+        
+        if (hasSignificantChanges) {
+          console.log('Significant profile changes detected, regenerating daily targets...');
+          triggerDailyTargetsGeneration(user.id);
+        }
+      }, 0);
     }
   };
 
   const updateSelectedTrackers = async (trackers: string[]) => {
     if (!user) return;
     
-    await updateUserTrackers(user.id, trackers);
-    updateProfile({ selectedTrackers: trackers });
+    try {
+      await updateUserTrackers(user.id, trackers);
+      updateProfile({ selectedTrackers: trackers });
+    } catch (error) {
+      console.error('Error updating trackers:', error);
+      setError('Failed to update trackers');
+    }
   };
 
   const refreshUser = async () => {
     if (!session?.user) return;
     
-    console.log('[DEBUG] AuthContext: Refreshing user profile...');
-    await updateUserWithProfile(session.user);
-    console.log('[DEBUG] AuthContext: User profile refresh complete');
+    try {
+      console.log('[DEBUG] AuthContext: Refreshing user profile...');
+      await updateUserWithProfile(session.user);
+      console.log('[DEBUG] AuthContext: User profile refresh complete');
+      setError(null);
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      setError('Failed to refresh user data');
+    }
   };
 
   const contextValue: AuthContextType = {
@@ -203,6 +230,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
     updateSelectedTrackers,
     refreshUser,
+    error,
   };
 
   return (
