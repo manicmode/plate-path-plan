@@ -117,17 +117,17 @@ export const MyFriendsTab = () => {
   }
 
   return (
-    <div className="space-y-1 -mt-6">
+    <div className="space-y-4 -mt-6">
       {/* Header */}
-      <div className="text-center -mb-1">
+      <div className="text-center mb-3">
         <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
           <Users className="h-6 w-6" />
           My Friends
         </h1>
       </div>
 
-      <Tabs defaultValue="friends" className="space-y-1">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="friends" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Friends
@@ -142,7 +142,7 @@ export const MyFriendsTab = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="friends" className="space-y-1">
+        <TabsContent value="friends" className="space-y-1 mt-4">
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4 mb-1">
             <Card className="h-20">
