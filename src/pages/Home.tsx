@@ -8,7 +8,7 @@ import { Camera, Plus, Zap, Droplets, Activity, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
 import { LoggingStreakTracker } from '@/components/analytics/LoggingStreakTracker';
-import { HomeAIInsights } from '@/components/HomeAIInsights';
+import HomeAIInsights from '@/components/HomeAIInsights';
 import { HomeCtaTicker } from '@/components/HomeCtaTicker';
 import { useDailyScore } from '@/hooks/useDailyScore';
 
@@ -24,7 +24,7 @@ const Home = () => {
     protein: currentDay.foods.reduce((sum, food) => sum + (food.protein || 0), 0),
     carbs: currentDay.foods.reduce((sum, food) => sum + (food.carbs || 0), 0),
     fat: currentDay.foods.reduce((sum, food) => sum + (food.fat || 0), 0),
-    hydration: currentDay.hydration
+    hydration: currentDay.hydration.reduce((sum, item) => sum + item.volume, 0)
   };
 
   // Calculate weekly averages
@@ -33,8 +33,7 @@ const Home = () => {
     protein: weeklyData.reduce((sum, day) => sum + day.foods.reduce((daySum, food) => daySum + (food.protein || 0), 0), 0) / Math.max(weeklyData.length, 1),
     carbs: weeklyData.reduce((sum, day) => sum + day.foods.reduce((daySum, food) => daySum + (food.carbs || 0), 0), 0) / Math.max(weeklyData.length, 1),
     fat: weeklyData.reduce((sum, day) => sum + day.foods.reduce((daySum, food) => daySum + (food.fat || 0), 0), 0) / Math.max(weeklyData.length, 1),
-    hydration: weeklyData.reduce((sum, day) => sum + day.hydration, 0) / Math.max(weeklyData.length, 1),
-    steps: weeklyData.reduce((sum, day) => sum + (day.steps || 0), 0) / Math.max(weeklyData.length, 1)
+    hydration: weeklyData.reduce((sum, day) => sum + day.hydration.reduce((hydSum, item) => hydSum + item.volume, 0), 0) / Math.max(weeklyData.length, 1)
   };
 
   const handleQuickLog = () => {
