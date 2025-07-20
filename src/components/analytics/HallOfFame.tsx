@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2, AlertCircle } from 'lucide-react';
+import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2, AlertCircle, Coffee } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/hooks/useHallOfFame';
 import { useAuth } from '@/contexts/auth';
@@ -215,7 +215,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
           </div>
           
           <CardTitle className="text-3xl font-bold text-center relative z-10 flex items-center justify-center gap-3">
-            <Trophy className="h-8 w-8 text-amber-600" />
+            <Coffee className="h-8 w-8 text-amber-600" />
             Hall of Fame
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
