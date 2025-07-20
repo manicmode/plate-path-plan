@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Clock, Users, Target, Trophy, Flame, Star, Globe, Lock, Zap, Crown, Share, MessageCircle, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ChallengeChatModal } from './ChallengeChatModal';
 
 export type ChallengeType = 'global' | 'friend' | 'quick';
 
@@ -58,6 +59,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const getTypeColor = (type: ChallengeType) => {
     switch (type) {
@@ -135,7 +137,6 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
         "backdrop-blur-sm",
         getTypeColor(challengeType)
       )}>
-        {/* Top badges row */}
         <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Badge className="challenge-type-badge text-xs font-medium px-3 py-1 rounded-full bg-black/30 text-white backdrop-blur-sm border-0">
@@ -183,7 +184,6 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
         </CardHeader>
 
         <CardContent className="space-y-4 px-6 pb-6 bg-background/95 backdrop-blur-sm">
-          {/* Progress Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-foreground">
@@ -201,7 +201,6 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
             </div>
           </div>
 
-          {/* Participants Section */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="w-4 h-4" />
@@ -209,7 +208,6 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
             </div>
           </div>
 
-          {/* Participant Avatars */}
           <div className="flex items-center gap-2">
             {[...Array(Math.min(participantCount || 3, 3))].map((_, i) => (
               <div key={i} className="w-8 h-8 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center">
@@ -220,7 +218,6 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
             ))}
           </div>
 
-          {/* Action Buttons */}
           <div className="space-y-3 pt-2">
             <Button 
               onClick={handleMainButtonClick}
@@ -242,7 +239,6 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
               }
             </Button>
 
-            {/* Secondary Action Buttons */}
             <div className="flex gap-3">
               <Button 
                 variant="outline" 
@@ -256,6 +252,7 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
                 variant="outline" 
                 size="sm" 
                 className="flex-1 h-10 rounded-xl font-medium bg-muted/50 hover:bg-muted"
+                onClick={() => setShowChat(true)}
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
                 {challengeType === 'friend' ? 'Chat' : 'Chat'}
@@ -264,6 +261,15 @@ export const UnifiedChallengeCard: React.FC<UnifiedChallengeCardProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      <ChallengeChatModal
+        open={showChat}
+        onOpenChange={setShowChat}
+        challengeId={id}
+        challengeName={title}
+        participantCount={participantCount || 0}
+        challengeParticipants={[]} // Will be populated by the modal itself
+      />
 
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <DialogContent>
