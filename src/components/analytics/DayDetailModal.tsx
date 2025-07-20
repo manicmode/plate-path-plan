@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { format } from 'date-fns';
+import { TriggerTagSelector } from '@/components/analytics/TriggerTagSelector';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -32,6 +33,7 @@ interface DayDetailData {
     quality_score: number;
     created_at: string;
     image_url?: string;
+    trigger_tags?: string[];
   }>;
   supplements: Array<{
     id: string;
@@ -40,6 +42,7 @@ interface DayDetailData {
     unit: string;
     created_at: string;
     image_url?: string;
+    trigger_tags?: string[];
   }>;
   hydration: Array<{
     id: string;
@@ -47,6 +50,7 @@ interface DayDetailData {
     volume: number;
     type: string;
     created_at: string;
+    trigger_tags?: string[];
   }>;
   mood?: {
     id: string;
@@ -56,6 +60,7 @@ interface DayDetailData {
     journal_text?: string;
     ai_detected_tags?: string[];
     created_at: string;
+    trigger_tags?: string[];
   };
 }
 
@@ -77,6 +82,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
   const { user } = useAuth();
   const [data, setData] = useState<DayDetailData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [openSections, setOpenSections] = useState({
     meals: true,
     supplements: true,
@@ -88,7 +94,11 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
     if (isOpen && selectedDate && user) {
       loadDayData();
     }
-  }, [isOpen, selectedDate, user]);
+  }, [isOpen, selectedDate, user, refreshTrigger]);
+
+  const handleTagsUpdate = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   const loadDayData = async () => {
     if (!user) return;
@@ -253,6 +263,12 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                   <span>{formatTime(meal.created_at)}</span>
                                 </span>
                               </div>
+                              <TriggerTagSelector
+                                existingTags={meal.trigger_tags || []}
+                                onTagsUpdate={handleTagsUpdate}
+                                itemId={meal.id}
+                                itemType="nutrition"
+                              />
                             </div>
                             <div className="flex items-center space-x-2">
                               {onEditMeal && (
@@ -317,7 +333,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                       <div className="space-y-3">
                         {data.supplements.map((supplement) => (
                           <div key={supplement.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                            <div>
+                            <div className="flex-1">
                               <h4 className="font-medium">{supplement.name}</h4>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                                 <span>{supplement.dosage}{supplement.unit}</span>
@@ -326,6 +342,12 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                   <span>{formatTime(supplement.created_at)}</span>
                                 </span>
                               </div>
+                              <TriggerTagSelector
+                                existingTags={supplement.trigger_tags || []}
+                                onTagsUpdate={handleTagsUpdate}
+                                itemId={supplement.id}
+                                itemType="supplement"
+                              />
                             </div>
                           </div>
                         ))}

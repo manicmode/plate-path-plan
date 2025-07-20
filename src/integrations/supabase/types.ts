@@ -392,6 +392,7 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          trigger_tags: string[] | null
           type: string
           user_id: string
           volume: number
@@ -401,6 +402,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          trigger_tags?: string[] | null
           type?: string
           user_id: string
           volume: number
@@ -410,6 +412,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          trigger_tags?: string[] | null
           type?: string
           user_id?: string
           volume?: number
@@ -601,6 +604,7 @@ export type Database = {
           id: string
           journal_text: string | null
           mood: number | null
+          trigger_tags: string[] | null
           updated_at: string
           user_id: string
           wellness: number | null
@@ -613,6 +617,7 @@ export type Database = {
           id?: string
           journal_text?: string | null
           mood?: number | null
+          trigger_tags?: string[] | null
           updated_at?: string
           user_id: string
           wellness?: number | null
@@ -625,6 +630,7 @@ export type Database = {
           id?: string
           journal_text?: string | null
           mood?: number | null
+          trigger_tags?: string[] | null
           updated_at?: string
           user_id?: string
           wellness?: number | null
@@ -652,6 +658,7 @@ export type Database = {
           sodium: number | null
           source: string | null
           sugar: number | null
+          trigger_tags: string[] | null
           user_id: string | null
         }
         Insert: {
@@ -674,6 +681,7 @@ export type Database = {
           sodium?: number | null
           source?: string | null
           sugar?: number | null
+          trigger_tags?: string[] | null
           user_id?: string | null
         }
         Update: {
@@ -696,6 +704,7 @@ export type Database = {
           sodium?: number | null
           source?: string | null
           sugar?: number | null
+          trigger_tags?: string[] | null
           user_id?: string | null
         }
         Relationships: []
@@ -1040,6 +1049,7 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          trigger_tags: string[] | null
           unit: string
           user_id: string
         }
@@ -1050,6 +1060,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          trigger_tags?: string[] | null
           unit: string
           user_id: string
         }
@@ -1060,6 +1071,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          trigger_tags?: string[] | null
           unit?: string
           user_id?: string
         }
