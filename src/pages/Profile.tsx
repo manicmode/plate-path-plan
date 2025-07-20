@@ -21,6 +21,7 @@ import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { DailyTargetsCard } from '@/components/profile/DailyTargetsCard';
 import { BackfillTargetsButton } from '@/components/profile/BackfillTargetsButton';
+import { MoodLogTester } from '@/components/mood/MoodLogTester';
 import { DailyTargetsTestSuite } from '@/components/debug/DailyTargetsTestSuite';
 import { NutritionTargetsTestComponent } from '@/components/debug/NutritionTargetsTestComponent';
 import { TargetsTestButton } from '@/components/debug/TargetsTestButton';
@@ -328,12 +329,15 @@ const ProfileContent = () => {
 
       {/* Admin: Backfill Targets for All Users */}
       {user?.email === 'ashkan_e2000@yahoo.com' && (
-        <>
+        <div className="space-y-4">
           <BackfillTargetsButton />
           <TargetsTestButton />
           <DailyTargetsTestSuite />
           <NutritionTargetsTestComponent />
-        </>
+          
+          {/* Mood Logging Test Component */}
+          <MoodLogTester />
+        </div>
       )}
 
       {/* Tracker Selection */}
