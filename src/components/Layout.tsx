@@ -74,7 +74,8 @@ const Layout = ({ children }: LayoutProps) => {
   }, [location.pathname]);
 
   // Show only header for unauthenticated users on non-auth pages
-  const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
+  // Hide navigation on game page to prevent conflicts with game-specific tabs
+  const shouldShowNavigation = isAuthenticated && location.pathname !== '/' && location.pathname !== '/game-and-challenge';
 
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
