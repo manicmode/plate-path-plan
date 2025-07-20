@@ -323,6 +323,42 @@ export type Database = {
         }
         Relationships: []
       }
+      hall_of_fame_tributes: {
+        Row: {
+          champion_user_id: string
+          champion_year: number
+          created_at: string
+          id: string
+          is_pinned: boolean
+          message: string
+          reactions: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          champion_user_id: string
+          champion_year?: number
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          message: string
+          reactions?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          champion_user_id?: string
+          champion_year?: number
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          message?: string
+          reactions?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       hall_of_fame_winners: {
         Row: {
           created_at: string | null

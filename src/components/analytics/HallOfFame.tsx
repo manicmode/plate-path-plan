@@ -5,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye } from 'lucide-react';
+import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/hooks/useHallOfFame';
+import { useAuth } from '@/contexts/auth';
 
 interface HallOfFameEntry {
   id: number;
@@ -18,43 +20,34 @@ interface HallOfFameEntry {
   quote: string;
   score: number;
   trophy: 'gold' | 'silver' | 'bronze' | 'special';
-}
-
-interface Trophy {
-  id: string;
-  name: string;
-  icon: string;
-  rarity: 'common' | 'rare' | 'legendary';
-  description: string;
-  dateEarned: string;
-}
-
-interface Tribute {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar: string;
-  message: string;
-  timestamp: string;
-  reactions: { emoji: string; count: number; userReacted: boolean }[];
-  isPinned?: boolean;
+  user_id?: string; // Add user_id for real champion data
 }
 
 interface HallOfFameProps {
   champions: HallOfFameEntry[];
-  yearlyTrophies?: Trophy[];
-  tributes?: Tribute[];
 }
 
 export const HallOfFame: React.FC<HallOfFameProps> = ({ 
-  champions, 
-  yearlyTrophies = [],
-  tributes = []
+  champions
 }) => {
+  const { user } = useAuth();
   const [showAllModal, setShowAllModal] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [showAllTributes, setShowAllTributes] = useState(false);
   const [newTribute, setNewTribute] = useState('');
+
+  // Get the first (current year) champion for trophy showcase and tributes
+  const currentChampion = champions.find(c => c.trophy === 'gold') || champions[0];
+  const championUserId = currentChampion?.user_id;
+  
+  const { 
+    trophies: yearlyTrophies, 
+    tributes, 
+    loading, 
+    postTribute, 
+    handleReaction: handleReactionFromHook, 
+    handlePinTribute: handlePinTributeFromHook 
+  } = useHallOfFame(championUserId);
 
   const getTrophyIcon = (trophy: string) => {
     switch (trophy) {
@@ -94,14 +87,13 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
     }
   };
 
-  const handleReaction = (tributeId: string, emoji: string) => {
-    // Handle reaction logic here
-    console.log(`Reacted to tribute ${tributeId} with ${emoji}`);
-  };
-
-  const handlePinTribute = (tributeId: string) => {
-    // Handle pin tribute logic here
-    console.log(`Pinned tribute ${tributeId}`);
+  const handleSubmitTribute = async () => {
+    if (!newTribute.trim()) return;
+    
+    const success = await postTribute(newTribute);
+    if (success) {
+      setNewTribute('');
+    }
   };
 
   // Show first 6 in the preview
@@ -343,12 +335,10 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                   </div>
                   <Button 
                     size="sm"
-                    disabled={!newTribute.trim()}
-                    onClick={() => {
-                      // Handle submit
-                      setNewTribute('');
-                    }}
+                    disabled={!newTribute.trim() || loading}
+                    onClick={handleSubmitTribute}
                   >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Post Tribute
                   </Button>
                 </div>
@@ -358,71 +348,79 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
 
           {/* Tributes list */}
           <div className="space-y-4">
-            {(showAllTributes ? sortedTributes : sortedTributes.slice(0, 3)).map((tribute) => (
-              <div 
-                key={tribute.id} 
-                className={cn(
-                  "p-4 rounded-lg border transition-all duration-200",
-                  tribute.isPinned 
-                    ? "bg-primary/5 border-primary/20 relative" 
-                    : "bg-background hover:bg-muted/30"
-                )}
-              >
-                {tribute.isPinned && (
-                  <div className="absolute top-2 right-2">
-                    <Pin className="h-4 w-4 text-primary" />
-                  </div>
-                )}
-                
-                <div className="flex gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback>{tribute.authorAvatar}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{tribute.authorName}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(tribute.timestamp).toLocaleDateString()}
-                      </span>
-                      {!tribute.isPinned && (
+            {tributes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-lg font-medium mb-2">No tributes yet</p>
+                <p className="text-sm">Be the first to leave a congratulatory message!</p>
+              </div>
+            ) : (
+              (showAllTributes ? sortedTributes : sortedTributes.slice(0, 3)).map((tribute) => (
+                <div 
+                  key={tribute.id} 
+                  className={cn(
+                    "p-4 rounded-lg border transition-all duration-200",
+                    tribute.isPinned 
+                      ? "bg-primary/5 border-primary/20 relative" 
+                      : "bg-background hover:bg-muted/30"
+                  )}
+                >
+                  {tribute.isPinned && (
+                    <div className="absolute top-2 right-2">
+                      <Pin className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>{tribute.authorAvatar}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{tribute.authorName}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(tribute.timestamp).toLocaleDateString()}
+                        </span>
+                         {!tribute.isPinned && user?.id === championUserId && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 ml-auto"
+                            onClick={() => handlePinTributeFromHook(tribute.id)}
+                          >
+                            <Pin className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-sm leading-relaxed">{tribute.message}</p>
+                      
+                      {/* Reactions */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {tribute.reactions.map((reaction, index) => (
+                          <Button
+                            key={index}
+                            size="sm"
+                            variant={reaction.userReacted ? "secondary" : "ghost"}
+                            className="h-7 px-2 text-xs"
+                            onClick={() => handleReactionFromHook(tribute.id, reaction.emoji)}
+                          >
+                            {reaction.emoji} {reaction.count}
+                          </Button>
+                        ))}
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 px-2 ml-auto"
-                          onClick={() => handlePinTribute(tribute.id)}
-                        >
-                          <Pin className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-sm leading-relaxed">{tribute.message}</p>
-                    
-                    {/* Reactions */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {tribute.reactions.map((reaction, index) => (
-                        <Button
-                          key={index}
-                          size="sm"
-                          variant={reaction.userReacted ? "secondary" : "ghost"}
                           className="h-7 px-2 text-xs"
-                          onClick={() => handleReaction(tribute.id, reaction.emoji)}
+                          onClick={() => handleReactionFromHook(tribute.id, '👏')}
                         >
-                          {reaction.emoji} {reaction.count}
+                          +
                         </Button>
-                      ))}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleReaction(tribute.id, '👏')}
-                      >
-                        +
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Show more/less button */}
