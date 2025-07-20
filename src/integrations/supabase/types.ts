@@ -1662,6 +1662,10 @@ export type Database = {
         Args: { challenge_id_param: string; team_size_param?: number }
         Returns: number
       }
+      batch_load_nutrition_data: {
+        Args: { user_id_param: string; date_param: string }
+        Returns: Json
+      }
       calculate_challenge_progress: {
         Args: { participation_id_param: string }
         Returns: undefined
