@@ -1107,40 +1107,21 @@ function GameAndChallengeContent() {
             </TabsContent>
             
             {/* Bottom Navigation Tabs */}
-            <TabsList className="grid w-full grid-cols-7 h-12 mt-auto sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mx-auto mb-2 shadow-lg max-w-sm">
-              <TabsTrigger value="ranking" className="text-xs py-2 flex flex-col items-center gap-1">
-                <Trophy className="h-4 w-4" />
-                <span>Rank</span>
-              </TabsTrigger>
-              <TabsTrigger value="my-friends" className="text-xs py-2 flex flex-col items-center gap-1">
-                <Users className="h-4 w-4" />
-                <span>Friends</span>
-              </TabsTrigger>
-              <TabsTrigger value="challenges" className="text-xs py-2 flex flex-col items-center gap-1">
-                <Target className="h-4 w-4" />
-                <span>Browse</span>
-              </TabsTrigger>
-              <TabsTrigger value="my-challenges" className="text-xs py-2 flex flex-col items-center gap-1">
-                <Star className="h-4 w-4" />
-                <span>Mine</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="chat" 
-                className="text-xs py-2 flex flex-col items-center gap-1"
-                onClick={() => setIsChatroomManagerOpen(true)}
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>Chat</span>
-              </TabsTrigger>
-              <TabsTrigger value="winners" className="text-xs py-2 flex flex-col items-center gap-1">
-                <Crown className="h-4 w-4" />
-                <span>Winners</span>
-              </TabsTrigger>
-              <TabsTrigger value="hall-of-fame" className="text-xs py-2 flex flex-col items-center gap-1">
-                <Medal className="h-4 w-4" />
-                <span>Fame</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mx-auto mb-2 shadow-lg max-w-sm">
+              <div className="flex justify-between w-full pb-3 pt-1 px-2">
+                {navigationItems.map(({ id, icon: Icon }) => (
+                  <Button
+                    key={id}
+                    variant={activeSection === id ? "default" : "ghost"}
+                    onClick={() => scrollToSection(id)}
+                    className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
+                    size="sm"
+                  >
+                    <Icon className="h-6 w-6" />
+                  </Button>
+                ))}
+              </div>
+            </div>
           </Tabs>
         ) : (
           // Desktop sections (existing code)
