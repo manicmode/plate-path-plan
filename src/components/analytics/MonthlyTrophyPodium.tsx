@@ -101,52 +101,40 @@ export const MonthlyTrophyPodium: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Header with Month Navigation */}
-      <div className="pt-8 mb-12 pb-6 border-b border-border/50">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div 
-              className="text-4xl transition-transform duration-300 hover:scale-110 flex items-center justify-center" 
-              style={{ 
-                animation: 'bounce 0.6s ease-in-out 3', 
-                animationDelay: '0.5s'
-              }}
-            >
-              🏆
-            </div>
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent leading-tight">
-              Champion's Circle
-            </h2>
-            {shouldShowMonthlyPodium() && (
-              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 animate-pulse">
-                🔥 Live
-              </Badge>
-            )}
+      {/* Enhanced Header with AWARDS Title */}
+      <div className="pt-8 mb-12 flex flex-col items-center gap-6">
+        {/* Centered Title with Trophy Emojis */}
+        <div className="flex items-center gap-3">
+          <div className="text-2xl animate-bounce hover:scale-110 transition-transform duration-300">🏆</div>
+          <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
+            AWARDS
+          </h1>
+          <div className="text-2xl animate-bounce hover:scale-110 transition-transform duration-300">🏆</div>
+        </div>
+        
+        {/* Centered Calendar Toggle */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleMonthChange('prev')}
+            className="h-10 w-10 p-0 rounded-xl border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
+          >
+            ←
+          </Button>
+          <div className="flex items-center gap-3 text-sm font-semibold px-6 py-3 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
+            <Calendar className="h-4 w-4" />
+            📅 {formatMonthYear(currentMonth)}
           </div>
-          
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleMonthChange('prev')}
-              className="h-10 w-10 p-0 rounded-lg border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
-            >
-              ←
-            </Button>
-            <div className="flex items-center gap-3 text-sm font-semibold min-w-40 justify-center px-6 py-3 h-10 rounded-lg bg-gradient-to-r from-slate-800 to-slate-900 text-yellow-400 border border-yellow-400/30">
-              <Calendar className="h-4 w-4" />
-              {formatMonthYear(currentMonth)}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleMonthChange('next')}
-              disabled={currentMonth >= new Date()}
-              className="h-10 w-10 p-0 rounded-lg border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 disabled:opacity-50"
-            >
-              →
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleMonthChange('next')}
+            disabled={currentMonth >= new Date()}
+            className="h-10 w-10 p-0 rounded-xl border-2 border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 disabled:opacity-50"
+          >
+            →
+          </Button>
         </div>
       </div>
 

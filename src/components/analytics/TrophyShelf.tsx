@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trophy, Star, Medal, Award, Calendar, Target, Zap } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Trophy, Star, Medal, Award, Calendar, Target, Zap, ChevronDown, Filter } from 'lucide-react';
 import { useBadges } from '@/contexts/BadgeContext';
 
 interface TrophyDetail {
@@ -17,16 +18,23 @@ interface TrophyDetail {
   challengeName?: string;
   rank?: number;
   achievementType: string;
+  category: 'public' | 'private' | 'quick';
 }
+
+type CategoryFilter = 'public' | 'private' | 'quick';
 
 export const TrophyShelf: React.FC = () => {
   const { badges, userBadges, userStreaks, loading } = useBadges();
   const [selectedTrophy, setSelectedTrophy] = useState<TrophyDetail | null>(null);
-  const [filter, setFilter] = useState<'all' | 'recent' | 'rare'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter | null>(null);
 
-  // Convert user badges to trophy details
+  // Convert user badges to trophy details with categories
   const trophies: TrophyDetail[] = userBadges.map(userBadge => {
     const badge = badges.find(b => b.id === userBadge.badge_id);
+    // Determine category based on badge type (mock logic - replace with actual categorization)
+    const category: CategoryFilter = badge?.tracker_type === 'hydration' ? 'public' : 
+                                   badge?.tracker_type === 'calories' ? 'private' : 'quick';
+    
     return {
       name: badge?.name || 'unknown',
       title: badge?.title || 'Achievement',
@@ -36,25 +44,47 @@ export const TrophyShelf: React.FC = () => {
       unlockedAt: userBadge.unlocked_at,
       challengeName: `${badge?.tracker_type} Challenge`,
       rank: 1, // Could be enhanced with actual rank data
-      achievementType: badge?.requirement_type || 'general'
+      achievementType: badge?.requirement_type || 'general',
+      category: category
     };
   });
 
-  // Filter trophies
-  const filteredTrophies = trophies.filter(trophy => {
-    const now = new Date();
-    const unlockedDate = new Date(trophy.unlockedAt);
-    const daysAgo = (now.getTime() - unlockedDate.getTime()) / (1000 * 60 * 60 * 24);
-    
-    switch (filter) {
-      case 'recent':
-        return daysAgo <= 30; // Last 30 days
-      case 'rare':
-        return trophy.rarity === 'legendary' || trophy.rarity === 'epic';
-      default:
-        return true;
+  // Determine which categories have awards and set initial selection
+  useEffect(() => {
+    if (trophies.length > 0 && selectedCategory === null) {
+      const categoriesWithAwards = {
+        public: trophies.filter(t => t.category === 'public').length > 0,
+        private: trophies.filter(t => t.category === 'private').length > 0,
+        quick: trophies.filter(t => t.category === 'quick').length > 0
+      };
+
+      // Apply hierarchy: public > private > quick
+      if (categoriesWithAwards.public) {
+        setSelectedCategory('public');
+      } else if (categoriesWithAwards.private) {
+        setSelectedCategory('private');
+      } else if (categoriesWithAwards.quick) {
+        setSelectedCategory('quick');
+      }
     }
-  });
+  }, [trophies, selectedCategory]);
+
+  // Filter trophies by category and sort by most recent first
+  const filteredTrophies = trophies
+    .filter(trophy => selectedCategory ? trophy.category === selectedCategory : true)
+    .sort((a, b) => new Date(b.unlockedAt).getTime() - new Date(a.unlockedAt).getTime());
+
+  // Get available categories with counts
+  const availableCategories = [
+    { key: 'public' as CategoryFilter, label: 'Public Challenges', count: trophies.filter(t => t.category === 'public').length },
+    { key: 'private' as CategoryFilter, label: 'Private Challenges', count: trophies.filter(t => t.category === 'private').length },
+    { key: 'quick' as CategoryFilter, label: 'Quick Challenges', count: trophies.filter(t => t.category === 'quick').length }
+  ].filter(cat => cat.count > 0);
+
+  const getCurrentCategoryLabel = () => {
+    const category = availableCategories.find(cat => cat.key === selectedCategory);
+    return category ? category.label : 'Select Category';
+  };
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -96,36 +126,43 @@ export const TrophyShelf: React.FC = () => {
   return (
     <>
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl border border-yellow-400/30 p-4">
-        {/* Compact Header */}
+        {/* Header with Dropdown */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="text-xl animate-pulse">🏅</div>
             <h3 className="text-lg font-bold bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">
               Personal Accolades
             </h3>
-            <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-400/30 text-xs">
-              {trophies.length} Earned
-            </Badge>
           </div>
           
-          <div className="flex flex-row gap-2 items-center justify-center">
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 text-xs rounded-full ${filter === 'all' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
-            >
-              {trophies.length} Earned
-            </Button>
-            <Button
-              variant={filter === 'recent' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('recent')}
-              className={`px-4 py-2 text-xs rounded-full ${filter === 'recent' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
-            >
-              Recent
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 px-4 py-2 text-xs rounded-full border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10 min-w-[140px] justify-between"
+              >
+                <div className="flex items-center gap-1">
+                  <Filter className="h-3 w-3" />
+                  <span>{getCurrentCategoryLabel()}</span>
+                </div>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {availableCategories.map((category) => (
+                <DropdownMenuItem
+                  key={category.key}
+                  onClick={() => setSelectedCategory(category.key)}
+                  className="flex items-center justify-between"
+                >
+                  <span>{category.label}</span>
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {category.count}
+                  </Badge>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
         {/* Content Area */}
@@ -134,12 +171,12 @@ export const TrophyShelf: React.FC = () => {
             <div className="text-center py-6">
               <div className="text-4xl mb-3 opacity-50">🏆</div>
               <h3 className="font-medium mb-2 text-yellow-200">
-                {filter === 'all' ? 'No trophies yet' : `No ${filter} trophies`}
+                {selectedCategory ? `No ${getCurrentCategoryLabel()} trophies yet` : 'No trophies yet'}
               </h3>
               <p className="text-sm text-yellow-300/60">
-                {filter === 'all' 
-                  ? 'Complete challenges and maintain streaks to earn your first trophy!'
-                  : `Complete more challenges to earn ${filter} trophies!`
+                {selectedCategory 
+                  ? `Complete more ${getCurrentCategoryLabel().toLowerCase()} to earn trophies!`
+                  : 'Complete challenges and maintain streaks to earn your first trophy!'
                 }
               </p>
             </div>
