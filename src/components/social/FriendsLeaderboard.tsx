@@ -105,12 +105,12 @@ export const FriendsLeaderboard = ({ friends }: FriendsLeaderboardProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="text-center space-y-3">
         <h2 className="text-xl font-bold flex items-center justify-center gap-2">
           <Trophy className="h-5 w-5" />
           Friends Leaderboard
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground">
           See how you and your friends are performing this week
         </p>
       </div>
