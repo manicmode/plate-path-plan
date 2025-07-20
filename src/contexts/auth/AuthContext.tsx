@@ -1,11 +1,12 @@
+
 import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, resendEmailConfirmation, signOutUser, setSignOutNavigationCallback } from './authService';
 import { createExtendedUser, updateUserTrackers } from './userService';
 import { Session } from '@supabase/supabase-js';
 import { triggerDailyScoreCalculation, triggerDailyTargetsGeneration } from '@/lib/dailyScoreUtils';
+import { cleanupAuthState } from '@/lib/authUtils';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -14,12 +15,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
-  const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   const updateUserWithProfile = async (supabaseUser: any) => {
     try {
+      console.log('Creating extended user profile...');
       const extendedUser = await createExtendedUser(supabaseUser);
       setUser(extendedUser);
+      console.log('Extended user profile created successfully');
     } catch (error) {
       console.error('Error creating extended user:', error);
       // Set basic user info even if profile creation fails
@@ -29,35 +31,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         created_at: supabaseUser.created_at,
         selectedTrackers: ['calories', 'hydration', 'supplements']
       } as ExtendedUser);
-    }
-  };
-
-  const initializeAuth = async (retryCount = 0) => {
-    try {
-      console.log(`Auth initialization attempt ${retryCount + 1}`);
-      
-      const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error getting initial session:', error);
-        if (retryCount < 2) {
-          setTimeout(() => initializeAuth(retryCount + 1), 1000);
-          return;
-        }
-      } else if (initialSession?.user) {
-        setSession(initialSession);
-        await updateUserWithProfile(initialSession.user);
-      }
-      
-      setLoading(false);
-      setInitializationAttempts(retryCount + 1);
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      if (retryCount < 2) {
-        setTimeout(() => initializeAuth(retryCount + 1), 1000);
-      } else {
-        setLoading(false);
-      }
     }
   };
 
@@ -90,25 +63,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, []);
 
-  // App lifecycle callbacks
-  const handleAppForeground = () => {
-    console.log('App came to foreground - refreshing auth state');
-    if (loading && initializationAttempts > 0) {
-      initializeAuth();
-    }
-  };
-
-  const handleAppBackground = () => {
-    console.log('App went to background');
-  };
-
-  useAppLifecycle({
-    onForeground: handleAppForeground,
-    onBackground: handleAppBackground,
-  });
-
   useEffect(() => {
     let mounted = true;
+    
+    console.log('🔐 Starting auth initialization...');
     
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -121,6 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(null);
         setUser(null);
         setSigningOut(false);
+        setLoading(false);
         return;
       }
       
@@ -131,27 +90,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setTimeout(async () => {
           if (mounted) {
             await updateUserWithProfile(session.user);
+            setLoading(false);
           }
         }, 0);
       } else if (!session?.user) {
         setUser(null);
+        setLoading(false);
       }
     });
 
-    // Initialize auth with timeout
-    const initTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn('Auth initialization timeout - forcing completion');
+    // Initialize session check with timeout
+    const initializeSession = async () => {
+      try {
+        console.log('📋 Checking for existing session...');
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session check error:', error);
+          // Clear any corrupted auth state
+          cleanupAuthState();
+          setLoading(false);
+          return;
+        }
+
+        if (currentSession?.user) {
+          console.log('✅ Found existing session');
+          setSession(currentSession);
+          await updateUserWithProfile(currentSession.user);
+        } else {
+          console.log('❌ No existing session found');
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Session initialization error:', error);
+        cleanupAuthState();
         setLoading(false);
       }
-    }, 10000);
+    };
 
-    initializeAuth();
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading && mounted) {
+        console.warn('⏰ Auth initialization timeout - forcing completion');
+        setLoading(false);
+      }
+    }, 5000);
+
+    initializeSession();
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearTimeout(initTimeout);
+      clearTimeout(timeoutId);
     };
   }, []);
 

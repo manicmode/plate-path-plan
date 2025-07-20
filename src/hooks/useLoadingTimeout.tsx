@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from 'react';
+import { cleanupAuthState } from '@/lib/authUtils';
 
 interface UseLoadingTimeoutOptions {
   timeoutMs?: number;
@@ -10,7 +11,7 @@ export const useLoadingTimeout = (
   isLoading: boolean,
   options: UseLoadingTimeoutOptions = {}
 ) => {
-  const { timeoutMs = 10000, onTimeout } = options;
+  const { timeoutMs = 5000, onTimeout } = options;
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
 
@@ -22,7 +23,7 @@ export const useLoadingTimeout = (
     }
 
     const timeoutId = setTimeout(() => {
-      console.warn('Loading timeout reached');
+      console.warn('⏰ Loading timeout reached');
       setHasTimedOut(true);
       setShowRecovery(true);
       onTimeout?.();
@@ -32,13 +33,23 @@ export const useLoadingTimeout = (
   }, [isLoading, timeoutMs, onTimeout]);
 
   const retry = () => {
+    console.log('🔄 Retrying loading...');
     setHasTimedOut(false);
     setShowRecovery(false);
+  };
+
+  const forceSkip = () => {
+    console.log('⏭️ Force skipping loading...');
+    cleanupAuthState();
+    setHasTimedOut(false);
+    setShowRecovery(false);
+    window.location.reload();
   };
 
   return {
     hasTimedOut,
     showRecovery,
     retry,
+    forceSkip,
   };
 };
