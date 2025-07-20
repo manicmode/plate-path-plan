@@ -174,6 +174,53 @@ export type Database = {
           },
         ]
       }
+      challenge_teams: {
+        Row: {
+          challenge_id: string | null
+          created_at: string
+          creator_id: string
+          current_score: number
+          id: string
+          member_ids: string[]
+          name: string
+          team_rank: number | null
+          total_progress: number
+          updated_at: string
+        }
+        Insert: {
+          challenge_id?: string | null
+          created_at?: string
+          creator_id: string
+          current_score?: number
+          id?: string
+          member_ids?: string[]
+          name: string
+          team_rank?: number | null
+          total_progress?: number
+          updated_at?: string
+        }
+        Update: {
+          challenge_id?: string | null
+          created_at?: string
+          creator_id?: string
+          current_score?: number
+          id?: string
+          member_ids?: string[]
+          name?: string
+          team_rank?: number | null
+          total_progress?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_teams_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_nutrition_targets: {
         Row: {
           calculated_at: string
@@ -401,6 +448,48 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_rankings: {
+        Row: {
+          completion_date: string
+          created_at: string
+          display_name: string
+          final_score: number
+          final_streak: number
+          id: string
+          month_year: string
+          podium_position: number
+          total_interactions: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          completion_date: string
+          created_at?: string
+          display_name: string
+          final_score?: number
+          final_streak?: number
+          id?: string
+          month_year: string
+          podium_position: number
+          total_interactions?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string
+          display_name?: string
+          final_score?: number
+          final_streak?: number
+          id?: string
+          month_year?: string
+          podium_position?: number
+          total_interactions?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       monthly_summaries: {
         Row: {
           average_score: number | null
@@ -522,6 +611,7 @@ export type Database = {
           private_challenge_id: string | null
           progress_value: number
           streak_count: number
+          team_id: string | null
           user_id: string
         }
         Insert: {
@@ -536,6 +626,7 @@ export type Database = {
           private_challenge_id?: string | null
           progress_value?: number
           streak_count?: number
+          team_id?: string | null
           user_id: string
         }
         Update: {
@@ -550,6 +641,7 @@ export type Database = {
           private_challenge_id?: string | null
           progress_value?: number
           streak_count?: number
+          team_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -560,10 +652,18 @@ export type Database = {
             referencedRelation: "private_challenges"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "private_challenge_participations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_teams"
+            referencedColumns: ["id"]
+          },
         ]
       }
       private_challenges: {
         Row: {
+          auto_team_enabled: boolean | null
           badge_icon: string
           category: string
           challenge_type: string
@@ -573,16 +673,20 @@ export type Database = {
           duration_days: number
           id: string
           invited_user_ids: string[]
+          is_team_challenge: boolean
           max_participants: number
           start_date: string
           status: string
           target_metric: string | null
           target_unit: string | null
           target_value: number | null
+          team_ranking_basis: string | null
+          team_size: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          auto_team_enabled?: boolean | null
           badge_icon?: string
           category: string
           challenge_type?: string
@@ -592,16 +696,20 @@ export type Database = {
           duration_days: number
           id?: string
           invited_user_ids?: string[]
+          is_team_challenge?: boolean
           max_participants?: number
           start_date: string
           status?: string
           target_metric?: string | null
           target_unit?: string | null
           target_value?: number | null
+          team_ranking_basis?: string | null
+          team_size?: number | null
           title: string
           updated_at?: string
         }
         Update: {
+          auto_team_enabled?: boolean | null
           badge_icon?: string
           category?: string
           challenge_type?: string
@@ -611,12 +719,15 @@ export type Database = {
           duration_days?: number
           id?: string
           invited_user_ids?: string[]
+          is_team_challenge?: boolean
           max_participants?: number
           start_date?: string
           status?: string
           target_metric?: string | null
           target_unit?: string | null
           target_value?: number | null
+          team_ranking_basis?: string | null
+          team_size?: number | null
           title?: string
           updated_at?: string
         }
@@ -771,6 +882,48 @@ export type Database = {
           last_triggered_at?: string | null
           next_trigger_at?: string | null
           reminder_time?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      social_boosts: {
+        Row: {
+          challenge_id: string | null
+          challenge_name: string | null
+          created_at: string
+          friend_id: string
+          friend_name: string
+          id: string
+          shown: boolean
+          triggered_at: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id?: string | null
+          challenge_name?: string | null
+          created_at?: string
+          friend_id: string
+          friend_name: string
+          id?: string
+          shown?: boolean
+          triggered_at?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string | null
+          challenge_name?: string | null
+          created_at?: string
+          friend_id?: string
+          friend_name?: string
+          id?: string
+          shown?: boolean
+          triggered_at?: string
           type?: string
           updated_at?: string
           user_id?: string
@@ -1047,6 +1200,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          message: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           activity_level: string | null
@@ -1284,6 +1473,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ranking_history: {
+        Row: {
+          id: string
+          new_rank: number
+          old_rank: number
+          rank_change: number
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          new_rank: number
+          old_rank: number
+          rank_change: number
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          new_rank?: number
+          old_rank?: number
+          rank_change?: number
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weekly_summaries: {
         Row: {
           average_score: number | null
@@ -1441,6 +1657,10 @@ export type Database = {
       add_friend_from_contact: {
         Args: { contact_user_id: string }
         Returns: boolean
+      }
+      auto_assign_teams: {
+        Args: { challenge_id_param: string; team_size_param?: number }
+        Returns: number
       }
       calculate_challenge_progress: {
         Args: { participation_id_param: string }
@@ -1603,6 +1823,10 @@ export type Database = {
       }
       update_private_challenge_status: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_team_scores: {
+        Args: { challenge_id_param: string }
         Returns: undefined
       }
     }
