@@ -1098,7 +1098,7 @@ function GameAndChallengeContent() {
             </TabsContent>
             
             {/* Bottom Navigation Tabs */}
-            <div className="sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mx-auto mb-2 shadow-lg max-w-sm">
+            <div className="sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mb-2 shadow-lg w-full">
               <div className="flex justify-between w-full pb-3 pt-1 px-2">
                 {navigationItems.map(({ id, icon: Icon }) => (
                   <Button
