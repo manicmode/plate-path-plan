@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight } from 'lucide-react';
+import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface HallOfFameEntry {
@@ -21,13 +20,41 @@ interface HallOfFameEntry {
   trophy: 'gold' | 'silver' | 'bronze' | 'special';
 }
 
-interface HallOfFameProps {
-  champions: HallOfFameEntry[];
+interface Trophy {
+  id: string;
+  name: string;
+  icon: string;
+  rarity: 'common' | 'rare' | 'legendary';
+  description: string;
+  dateEarned: string;
 }
 
-export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
+interface Tribute {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  message: string;
+  timestamp: string;
+  reactions: { emoji: string; count: number; userReacted: boolean }[];
+  isPinned?: boolean;
+}
+
+interface HallOfFameProps {
+  champions: HallOfFameEntry[];
+  yearlyTrophies?: Trophy[];
+  tributes?: Tribute[];
+}
+
+export const HallOfFame: React.FC<HallOfFameProps> = ({ 
+  champions, 
+  yearlyTrophies = [],
+  tributes = []
+}) => {
   const [showAllModal, setShowAllModal] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const [showAllTributes, setShowAllTributes] = useState(false);
+  const [newTribute, setNewTribute] = useState('');
 
   const getTrophyIcon = (trophy: string) => {
     switch (trophy) {
@@ -59,11 +86,34 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
     }
   };
 
+  const getTrophyRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case 'legendary': return 'from-yellow-400 to-orange-500 border-yellow-400';
+      case 'rare': return 'from-blue-400 to-cyan-500 border-blue-400';
+      default: return 'from-gray-400 to-gray-500 border-gray-400';
+    }
+  };
+
+  const handleReaction = (tributeId: string, emoji: string) => {
+    // Handle reaction logic here
+    console.log(`Reacted to tribute ${tributeId} with ${emoji}`);
+  };
+
+  const handlePinTribute = (tributeId: string) => {
+    // Handle pin tribute logic here
+    console.log(`Pinned tribute ${tributeId}`);
+  };
+
   // Show first 6 in the preview
   const previewChampions = champions.slice(0, 6);
+  const displayedTributes = showAllTributes ? tributes : tributes.slice(0, 3);
+  const pinnedTributes = tributes.filter(t => t.isPinned);
+  const unpinnedTributes = tributes.filter(t => !t.isPinned);
+  const sortedTributes = [...pinnedTributes, ...unpinnedTributes];
 
   return (
-    <>
+    <div className="space-y-8">
+      {/* Main Hall of Fame Card */}
       <Card className="overflow-hidden border-2 border-amber-200 shadow-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/20 dark:via-yellow-950/20 dark:to-orange-950/20">
         <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden">
           {/* Floating sparkles background */}
@@ -213,6 +263,184 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
         </CardContent>
       </Card>
 
+      {/* Trophy Showcase Section */}
+      {yearlyTrophies.length > 0 && (
+        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
+              <Trophy className="h-6 w-6 text-yellow-400" />
+              Trophy Showcase 2024
+            </CardTitle>
+            <p className="text-center text-muted-foreground">
+              All badges and trophies earned this year
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {yearlyTrophies.map((trophy) => (
+                <div
+                  key={trophy.id}
+                  className={cn(
+                    "p-4 rounded-lg border-2 bg-gradient-to-br text-center transition-all duration-300 hover:scale-105 cursor-pointer",
+                    getTrophyRarityColor(trophy.rarity)
+                  )}
+                >
+                  <div className="text-3xl mb-2">{trophy.icon}</div>
+                  <h4 className="font-semibold text-white text-sm mb-1">{trophy.name}</h4>
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs mb-2"
+                  >
+                    {trophy.rarity}
+                  </Badge>
+                  <p className="text-xs text-white/70">
+                    {new Date(trophy.dateEarned).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tributes & Comments Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
+            <MessageCircle className="h-6 w-6 text-primary" />
+            Tributes & Comments
+            <Badge variant="outline">{tributes.length}</Badge>
+          </CardTitle>
+          <p className="text-muted-foreground">
+            Congratulatory messages from the community
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Add new tribute form */}
+          <div className="bg-muted/30 rounded-lg p-4">
+            <div className="flex gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback>YOU</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-3">
+                <textarea
+                  placeholder="Leave a congratulatory message..."
+                  value={newTribute}
+                  onChange={(e) => setNewTribute(e.target.value)}
+                  className="w-full p-3 rounded-lg border bg-background resize-none min-h-[80px]"
+                />
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="h-8 px-2">
+                      😊
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-2">
+                      🎉
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 px-2">
+                      👏
+                    </Button>
+                  </div>
+                  <Button 
+                    size="sm"
+                    disabled={!newTribute.trim()}
+                    onClick={() => {
+                      // Handle submit
+                      setNewTribute('');
+                    }}
+                  >
+                    Post Tribute
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tributes list */}
+          <div className="space-y-4">
+            {(showAllTributes ? sortedTributes : sortedTributes.slice(0, 3)).map((tribute) => (
+              <div 
+                key={tribute.id} 
+                className={cn(
+                  "p-4 rounded-lg border transition-all duration-200",
+                  tribute.isPinned 
+                    ? "bg-primary/5 border-primary/20 relative" 
+                    : "bg-background hover:bg-muted/30"
+                )}
+              >
+                {tribute.isPinned && (
+                  <div className="absolute top-2 right-2">
+                    <Pin className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>{tribute.authorAvatar}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{tribute.authorName}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(tribute.timestamp).toLocaleDateString()}
+                      </span>
+                      {!tribute.isPinned && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 ml-auto"
+                          onClick={() => handlePinTribute(tribute.id)}
+                        >
+                          <Pin className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-sm leading-relaxed">{tribute.message}</p>
+                    
+                    {/* Reactions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {tribute.reactions.map((reaction, index) => (
+                        <Button
+                          key={index}
+                          size="sm"
+                          variant={reaction.userReacted ? "secondary" : "ghost"}
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleReaction(tribute.id, reaction.emoji)}
+                        >
+                          {reaction.emoji} {reaction.count}
+                        </Button>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleReaction(tribute.id, '👏')}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Show more/less button */}
+          {tributes.length > 3 && (
+            <div className="text-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowAllTributes(!showAllTributes)}
+                className="flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                {showAllTributes ? 'Show Less' : `View All ${tributes.length} Comments`}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
         <DialogContent className="max-w-6xl max-h-[80vh]">
           <DialogHeader>
@@ -264,6 +492,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ champions }) => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 };
