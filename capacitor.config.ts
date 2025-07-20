@@ -24,18 +24,6 @@ const config: CapacitorConfig = {
       androidScaleType: 'CENTER_CROP',
       showSpinner: false
     }
-  },
-  ios: {
-    contentInset: 'never',
-    webViewConfiguration: {
-      allowsInlineMediaPlaybook: true
-    }
-  },
-  android: {
-    buildOptions: {
-      keystorePath: undefined,
-      keystoreAlias: undefined,
-    }
   }
 };
 
