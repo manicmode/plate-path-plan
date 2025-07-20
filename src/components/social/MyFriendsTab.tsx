@@ -144,7 +144,7 @@ export const MyFriendsTab = () => {
 
         <TabsContent value="friends" className="space-y-2">
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 mb-1">
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
                 <div className="text-2xl font-bold text-primary">{friends.length}</div>
@@ -170,7 +170,7 @@ export const MyFriendsTab = () => {
           </div>
 
           {/* Friends List */}
-          <ScrollArea className="h-[400px]">
+          <ScrollArea className="h-[400px] bg-muted/30 rounded-lg p-3">
             <div className="space-y-3">
               {isLoading ? (
                 <div className="text-center py-8">
