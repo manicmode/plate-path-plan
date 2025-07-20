@@ -185,8 +185,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
     <div className="space-y-8">
       {/* Main Hall of Fame Card */}
       <Card className="overflow-hidden border-2 border-amber-200 shadow-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/20 dark:via-yellow-950/20 dark:to-orange-950/20">
-        <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden">
-          {/* Floating sparkles background */}
+        <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden p-6">
           <div className="absolute inset-0">
             <div className="absolute top-4 left-8 text-yellow-400 animate-pulse">⭐</div>
             <div className="absolute top-4 right-8 text-amber-400 animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
@@ -222,7 +221,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     animation: `slideInFromRight 0.8s ease-out ${index * 150}ms both`,
                   }}
                 >
-                  {/* Tilt effect background */}
                   <div className={cn(
                     "absolute inset-0 bg-gradient-to-br opacity-5 transition-opacity duration-300",
                     champion.trophy === 'gold' && "from-yellow-400 to-orange-400",
@@ -232,7 +230,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     hoveredCard === champion.id && "opacity-20"
                   )} />
 
-                  {/* Confetti for hovered cards */}
                   {hoveredCard === champion.id && (
                     <div className="absolute inset-0 pointer-events-none">
                       <div className="absolute top-4 left-4 text-yellow-400 animate-bounce">🎊</div>
@@ -241,7 +238,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     </div>
                   )}
 
-                  {/* Trophy Badge */}
                   <div className="flex justify-between items-start mb-4 relative z-10">
                     <Badge className={cn("flex items-center gap-2 text-sm font-bold", getTrophyBadgeColor(champion.trophy))}>
                       {getTrophyIcon(champion.trophy)}
@@ -253,7 +249,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     </div>
                   </div>
 
-                  {/* Avatar */}
                   <div className="flex justify-center mb-4 relative z-10">
                     <div className={cn(
                       "relative transition-transform duration-300",
@@ -265,14 +260,12 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                         </AvatarFallback>
                       </Avatar>
                       
-                      {/* Glow effect for gold champions */}
                       {champion.trophy === 'gold' && (
                         <div className="absolute inset-0 rounded-full bg-yellow-400/20 animate-ping" />
                       )}
                     </div>
                   </div>
 
-                  {/* Champion Info */}
                   <div className="text-center mb-4 relative z-10">
                     <h3 className="font-bold text-lg mb-2">{champion.nickname}</h3>
                     <div className="text-sm font-semibold text-primary mb-2">
@@ -283,7 +276,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     </Badge>
                   </div>
 
-                  {/* Quote */}
                   <div className="relative z-10">
                     <div className="bg-muted/50 rounded-lg p-4 relative">
                       <Quote className="h-4 w-4 text-muted-foreground absolute top-2 left-2" />
@@ -293,7 +285,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     </div>
                   </div>
 
-                  {/* Sparkle trails for special effects */}
                   {hoveredCard === champion.id && champion.trophy === 'gold' && (
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                       <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full animate-ping opacity-75" />
@@ -305,7 +296,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                 </div>
               ))}
 
-              {/* See All Button Card */}
               <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-muted bg-muted/20 hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center min-h-[400px]">
                 <div className="text-center space-y-4">
                   <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
@@ -333,9 +323,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         </CardContent>
       </Card>
 
-      {/* Trophy Showcase Section */}
+      {/* Trophy Showcase Section - Standardized padding */}
       <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
-        <CardHeader>
+        <CardHeader className="p-6">
           <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
             🏆 Trophy Showcase {new Date().getFullYear()}
           </CardTitle>
@@ -343,7 +333,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
             All badges and trophies earned this year
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {yearlyTrophies.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Trophy className="h-16 w-16 mx-auto mb-4 opacity-30" />
@@ -364,18 +354,13 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                       badgeTypeStyle.background
                     )}
                   >
-                    {/* Shine animation for legendary badges */}
                     {trophy.rarity === 'legendary' && (
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] animate-[shine_3s_ease-in-out_infinite]" />
                     )}
                     
-                    {/* Large badge icon */}
                     <div className="text-6xl mb-4">{trophy.icon}</div>
-                    
-                    {/* Badge name */}
                     <h4 className="font-bold text-white text-lg mb-2">{trophy.name}</h4>
                     
-                    {/* Badge type */}
                     <div className="mb-3">
                       <Badge 
                         variant="secondary" 
@@ -385,14 +370,12 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                       </Badge>
                     </div>
                     
-                    {/* Challenge name if available */}
                     {trophy.badgeType && (
                       <p className="text-sm text-white/80 mb-2 font-medium">
                         {trophy.badgeType}
                       </p>
                     )}
                     
-                    {/* Earned date */}
                     <p className="text-xs text-white/60">
                       {new Date(trophy.dateEarned).toLocaleDateString('en-US', { 
                         month: 'short', 
@@ -407,9 +390,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         </CardContent>
       </Card>
 
-      {/* Tributes & Comments Section */}
+      {/* Tributes & Comments Section - Standardized padding */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-6">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <MessageCircle className="h-6 w-6 text-primary" />
             Tributes & Comments
@@ -419,7 +402,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
             Congratulatory messages from the community
           </p>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-6">
           {/* Add new tribute form - Only show if we have a valid champion */}
           {championUserId ? (
             <div className="bg-muted/30 rounded-lg p-4">
@@ -535,7 +518,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                       </div>
                       <p className="text-sm leading-relaxed">{tribute.message}</p>
                       
-                      {/* Reactions */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {tribute.reactions.map((reaction, index) => (
                           <Button
@@ -580,6 +562,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         </CardContent>
       </Card>
 
+      {/* Dialog for viewing all champions */}
       <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
         <DialogContent className="max-w-6xl max-h-[80vh]">
           <DialogHeader>
