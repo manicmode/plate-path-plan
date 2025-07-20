@@ -24,6 +24,7 @@ import { AchievementBadges } from '@/components/analytics/AchievementBadges';
 import { WeeklySummaryViewer } from '@/components/analytics/WeeklySummaryViewer';
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
 import { TrophyPodium } from '@/components/TrophyPodium';
+import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
 import { useDailyScore } from '@/hooks/useDailyScore';
 
 const Analytics = () => {
@@ -103,6 +104,9 @@ const Analytics = () => {
 
         {/* Daily Meal Quality Tracker - Visual Chart */}
         <DailyMealQualityTracker />
+
+        {/* Mood & Wellness Trends - NEW */}
+        <MoodWellnessTrendChart />
 
         {/* Meal Quality Analytics - NEW */}
         <MealQualityAnalyticsSection className="mt-8" />
