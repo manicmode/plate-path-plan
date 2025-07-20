@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useState, useEffect } from 'react';
+import { DayDetailModal } from '@/components/analytics/DayDetailModal';
+import { useChartDrillDown } from '@/hooks/useChartDrillDown';
+import { format, subDays } from 'date-fns';
 
 const ProgressProtein = () => {
   const navigate = useNavigate();
@@ -15,6 +18,7 @@ const ProgressProtein = () => {
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const { selectedDate, showDayDetail, handleChartClick, closeDayDetail, handleEditMeal, handleViewDay } = useChartDrillDown();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -22,28 +26,28 @@ const ProgressProtein = () => {
   const targetProtein = user?.targetProtein || 150;
   const todayProgress = getTodaysProgress();
   
-  // Mock data for different time periods
+  // Mock data for different time periods with dates
   const dailyData = [
-    { name: 'Mon', value: 120, target: targetProtein },
-    { name: 'Tue', value: 140, target: targetProtein },
-    { name: 'Wed', value: 130, target: targetProtein },
-    { name: 'Thu', value: 150, target: targetProtein },
-    { name: 'Fri', value: 125, target: targetProtein },
-    { name: 'Sat', value: 135, target: targetProtein },
-    { name: 'Today', value: Math.round(todayProgress.protein), target: targetProtein },
+    { name: 'Mon', value: 120, target: targetProtein, date: format(subDays(new Date(), 6), 'yyyy-MM-dd') },
+    { name: 'Tue', value: 140, target: targetProtein, date: format(subDays(new Date(), 5), 'yyyy-MM-dd') },
+    { name: 'Wed', value: 130, target: targetProtein, date: format(subDays(new Date(), 4), 'yyyy-MM-dd') },
+    { name: 'Thu', value: 150, target: targetProtein, date: format(subDays(new Date(), 3), 'yyyy-MM-dd') },
+    { name: 'Fri', value: 125, target: targetProtein, date: format(subDays(new Date(), 2), 'yyyy-MM-dd') },
+    { name: 'Sat', value: 135, target: targetProtein, date: format(subDays(new Date(), 1), 'yyyy-MM-dd') },
+    { name: 'Today', value: Math.round(todayProgress.protein), target: targetProtein, date: format(new Date(), 'yyyy-MM-dd') },
   ];
 
   const weeklyData = [
-    { name: 'Week 1', value: 132, target: targetProtein },
-    { name: 'Week 2', value: 145, target: targetProtein },
-    { name: 'Week 3', value: 128, target: targetProtein },
-    { name: 'Week 4', value: 138, target: targetProtein },
+    { name: 'Week 1', value: 132, target: targetProtein, date: format(subDays(new Date(), 21), 'yyyy-MM-dd') },
+    { name: 'Week 2', value: 145, target: targetProtein, date: format(subDays(new Date(), 14), 'yyyy-MM-dd') },
+    { name: 'Week 3', value: 128, target: targetProtein, date: format(subDays(new Date(), 7), 'yyyy-MM-dd') },
+    { name: 'Week 4', value: 138, target: targetProtein, date: format(new Date(), 'yyyy-MM-dd') },
   ];
 
   const monthlyData = [
-    { name: 'Jan', value: 135, target: targetProtein },
-    { name: 'Feb', value: 142, target: targetProtein },
-    { name: 'Mar', value: 148, target: targetProtein },
+    { name: 'Jan', value: 135, target: targetProtein, date: '2024-01-01' },
+    { name: 'Feb', value: 142, target: targetProtein, date: '2024-02-01' },
+    { name: 'Mar', value: 148, target: targetProtein, date: '2024-03-01' },
   ];
 
   const getCurrentData = () => {
@@ -77,9 +81,10 @@ const ProgressProtein = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border">
+        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border cursor-pointer">
           <p className="font-medium">{`${label}: ${payload[0].value}g`}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">{`Target: ${targetProtein}g`}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">👆 Tap to see details</p>
         </div>
       );
     }
@@ -161,7 +166,11 @@ const ProgressProtein = () => {
         <CardContent>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getCurrentData()}>
+              <LineChart 
+                data={getCurrentData()}
+                onClick={handleChartClick}
+                style={{ cursor: 'pointer' }}
+              >
                 <XAxis 
                   dataKey="name" 
                   tick={{ fontSize: 12, fill: 'currentColor' }}
@@ -185,8 +194,8 @@ const ProgressProtein = () => {
                   dataKey="value" 
                   stroke="#10B981" 
                   strokeWidth={3}
-                  dot={{ fill: '#10B981', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#10B981', strokeWidth: 2 }}
+                  dot={{ fill: '#10B981', strokeWidth: 2, r: 6, cursor: 'pointer' }}
+                  activeDot={{ r: 8, stroke: '#10B981', strokeWidth: 2, cursor: 'pointer' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -232,6 +241,15 @@ const ProgressProtein = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Day Detail Modal */}
+      <DayDetailModal
+        isOpen={showDayDetail}
+        onClose={closeDayDetail}
+        selectedDate={selectedDate}
+        onEditMeal={handleEditMeal}
+        onViewDay={handleViewDay}
+      />
     </div>
   );
 };

@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isValid } from 'date-fns';
+import { DayDetailModal } from '@/components/analytics/DayDetailModal';
 
 type ViewMode = 'daily' | '7day' | 'monthly';
 
@@ -47,6 +48,8 @@ export const MoodWellnessTrendChart: React.FC = () => {
   const [moodLogs, setMoodLogs] = useState<MoodLogData[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiPatterns, setAiPatterns] = useState<AIPattern[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [showDayDetail, setShowDayDetail] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -252,12 +255,22 @@ export const MoodWellnessTrendChart: React.FC = () => {
     return processedData.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [moodLogs, viewMode, aiPatterns]);
 
+  const handleChartClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const clickedData = data.activePayload[0].payload as ChartDataPoint;
+      if (clickedData.date) {
+        setSelectedDate(clickedData.date);
+        setShowDayDetail(true);
+      }
+    }
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint;
       
       return (
-        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer">
           <p className="font-semibold text-gray-900 dark:text-white">{data.formattedDate}</p>
           <div className="space-y-1 mt-2">
             <div className="flex items-center space-x-2">
@@ -273,6 +286,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
               <span className="text-sm">Wellness: {payload.find((p: any) => p.dataKey === 'wellness')?.value}/10</span>
             </div>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">👆 Tap to see details</p>
           {data.hasPattern && (
             <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-800">
               <div className="flex items-start space-x-1">
@@ -408,7 +422,12 @@ export const MoodWellnessTrendChart: React.FC = () => {
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <LineChart 
+              data={chartData} 
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              onClick={handleChartClick}
+              style={{ cursor: 'pointer' }}
+            >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="formattedDate" 
@@ -428,7 +447,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 dataKey="mood"
                 stroke="#EC4899"
                 strokeWidth={2}
-                dot={{ fill: '#EC4899', strokeWidth: 2, r: 4 }}
+                dot={{ fill: '#EC4899', strokeWidth: 2, r: 4, cursor: 'pointer' }}
                 name="Mood"
                 connectNulls={false}
               />
@@ -437,7 +456,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 dataKey="energy"
                 stroke="#F59E0B"
                 strokeWidth={2}
-                dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }}
+                dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4, cursor: 'pointer' }}
                 name="Energy"
                 connectNulls={false}
               />
@@ -446,7 +465,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 dataKey="wellness"
                 stroke="#10B981"
                 strokeWidth={2}
-                dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+                dot={{ fill: '#10B981', strokeWidth: 2, r: 4, cursor: 'pointer' }}
                 name="Wellness"
                 connectNulls={false}
               />
@@ -492,6 +511,20 @@ export const MoodWellnessTrendChart: React.FC = () => {
           )}
         </div>
       </CardContent>
+
+      {/* Day Detail Modal */}
+      <DayDetailModal
+        isOpen={showDayDetail}
+        onClose={() => setShowDayDetail(false)}
+        selectedDate={selectedDate}
+        onEditMeal={(mealId) => {
+          console.log('Edit meal:', mealId);
+        }}
+        onViewDay={(date) => {
+          console.log('View full day:', date);
+          setShowDayDetail(false);
+        }}
+      />
     </Card>
   );
 };
