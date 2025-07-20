@@ -134,13 +134,13 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
         <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden">
           {/* Floating sparkles background */}
           <div className="absolute inset-0">
-            <div className="absolute top-4 left-8 text-yellow-400 animate-pulse">✨</div>
-            <div className="absolute top-8 right-12 text-amber-400 animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
-            <div className="absolute bottom-4 left-16 text-orange-400 animate-pulse" style={{ animationDelay: '2s' }}>💫</div>
-            <div className="absolute bottom-8 right-8 text-yellow-500 animate-pulse" style={{ animationDelay: '1.5s' }}>✨</div>
+            <div className="absolute top-4 left-8 text-yellow-400 animate-pulse">⭐</div>
+            <div className="absolute top-4 right-8 text-amber-400 animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
+            <div className="absolute bottom-6 left-12 text-orange-400 animate-pulse" style={{ animationDelay: '2s' }}>✨</div>
+            <div className="absolute top-1/2 right-16 text-yellow-500 animate-pulse" style={{ animationDelay: '1.5s' }}>✨</div>
           </div>
           
-          <CardTitle className="text-3xl font-bold flex items-center justify-center gap-3 relative z-10">
+          <CardTitle className="text-3xl font-bold text-center relative z-10">
             🏆 Hall of Fame
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
@@ -283,7 +283,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
       <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
-            <Trophy className="h-6 w-6 text-yellow-400" />
             🏆 Trophy Showcase {new Date().getFullYear()}
           </CardTitle>
           <p className="text-center text-muted-foreground">
