@@ -662,18 +662,9 @@ function GameAndChallengeContent() {
       return;
     }
     
-    // Get the target element
-    const element = document.getElementById(sectionId);
-    if (!element) return;
-    
-    // Calculate offset for sticky header (approximate height)
-    const headerOffset = isMobile ? 120 : 140; // Adjust based on header height
-    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-    const offsetPosition = elementPosition - headerOffset;
-    
-    // Smooth scroll to the calculated position
+    // Always scroll to the top of the page for consistency
     window.scrollTo({
-      top: offsetPosition,
+      top: 0,
       behavior: 'smooth'
     });
   };
