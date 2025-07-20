@@ -10,8 +10,17 @@ import { AchievementsSection } from '@/components/analytics/sections/Achievement
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
+import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 
 export default function Analytics() {
+  const {
+    progress,
+    weeklyAverage,
+    macroData,
+    stepsData,
+    exerciseCaloriesData
+  } = useAnalyticsCalculations();
+
   return (
     <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="text-center">
@@ -19,13 +28,13 @@ export default function Analytics() {
         <p className="text-gray-600 dark:text-gray-400 mt-2">Track your nutrition progress and patterns</p>
       </div>
 
-      <DailyProgressSection />
-      <DailyAveragesSection />
+      <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
+      <DailyAveragesSection weeklyAverage={weeklyAverage} />
       <MealQualityAnalyticsSection />
       <SmartInsightsSection />
       <TagInsightsSection />
-      <MacrosHydrationSection />
-      <ActivityExerciseSection />
+      <MacrosHydrationSection macroData={macroData} progress={progress} />
+      <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} />
       <AchievementsSection />
       <GamificationSection />
       <MonthlySummaryViewer />
