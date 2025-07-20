@@ -108,30 +108,22 @@ export const TrophyShelf: React.FC = () => {
             </Badge>
           </div>
           
-          <div className="flex gap-1">
+          <div className="flex flex-row gap-2 items-center justify-center">
             <Button
               variant={filter === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilter('all')}
-              className={`h-7 px-3 text-xs ${filter === 'all' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
+              className={`px-4 py-2 text-xs rounded-full ${filter === 'all' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
             >
-              All
+              {trophies.length} Earned
             </Button>
             <Button
               variant={filter === 'recent' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilter('recent')}
-              className={`h-7 px-3 text-xs ${filter === 'recent' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
+              className={`px-4 py-2 text-xs rounded-full ${filter === 'recent' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
             >
               Recent
-            </Button>
-            <Button
-              variant={filter === 'rare' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('rare')}
-              className={`h-7 px-3 text-xs ${filter === 'rare' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10'}`}
-            >
-              Rare
             </Button>
           </div>
         </div>
