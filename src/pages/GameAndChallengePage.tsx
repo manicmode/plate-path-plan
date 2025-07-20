@@ -997,7 +997,7 @@ function GameAndChallengeContent() {
             </TabsContent>
             
             {/* Bottom Navigation Tabs */}
-            <TabsList className="grid w-full grid-cols-7 h-12 mt-auto sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mx-2 mb-2 shadow-lg">
+            <TabsList className="grid w-full grid-cols-7 h-12 mt-auto sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mx-auto mb-2 shadow-lg max-w-sm">
               <TabsTrigger value="ranking" className="text-xs py-2 flex flex-col items-center gap-1">
                 <Trophy className="h-4 w-4" />
                 <span>Rank</span>
