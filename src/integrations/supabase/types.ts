@@ -1674,6 +1674,10 @@ export type Database = {
         Args: { participation_id_param: string }
         Returns: undefined
       }
+      check_and_award_all_badges: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
       check_social_badges: {
         Args: { target_user_id: string }
         Returns: undefined
