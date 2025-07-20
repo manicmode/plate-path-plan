@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, Trophy, Users, Clock, ExternalLink } from 'lucide-react';
 import { TrophyPodium, PodiumWinner } from './TrophyPodium';
+import { TrophyShelf } from './TrophyShelf';
 import { useTrophyPodium, CompletedChallenge } from '@/hooks/useTrophyPodium';
 import { useToast } from '@/hooks/use-toast';
 
@@ -99,16 +100,16 @@ export const MonthlyTrophyPodium: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header with Month Navigation */}
-      <Card>
-        <CardHeader>
+    <div className="space-y-4">
+      {/* Header with Month Navigation - Reduced padding */}
+      <Card className="bg-gradient-to-r from-primary/5 to-secondary/5">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Trophy className="h-6 w-6 text-yellow-500" />
-              <CardTitle>Trophy Podium Ceremony</CardTitle>
+              <div className="text-2xl">🏆</div>
+              <CardTitle className="text-lg">Trophy Podium Ceremony</CardTitle>
               {shouldShowMonthlyPodium() && (
-                <Badge variant="secondary" className="ml-2">🔥 Live Results</Badge>
+                <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">🔥 Live Results</Badge>
               )}
             </div>
             
@@ -137,57 +138,60 @@ export const MonthlyTrophyPodium: React.FC = () => {
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="challenges" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="challenges" className="space-y-3">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="challenges">Select Challenge</TabsTrigger>
           <TabsTrigger value="podium" disabled={!selectedChallenge}>
-            Trophy Podium
+            🏆 Trophy Podium
+          </TabsTrigger>
+          <TabsTrigger value="achievements">
+            🏅 My Trophy Shelf
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="challenges" className="space-y-4">
+        <TabsContent value="challenges" className="space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Completed Challenges</CardTitle>
-              <p className="text-muted-foreground">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Completed Challenges</CardTitle>
+              <p className="text-sm text-muted-foreground">
                 Choose a challenge to view the month's champions
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {isLoading ? (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <div className="inline-flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                     Loading challenges...
                   </div>
                 </div>
               ) : completedChallenges.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No completed challenges found for {formatMonthYear(currentMonth)}</p>
-                  <p className="text-sm mt-2">
+                <div className="text-center py-6 text-muted-foreground">
+                  <div className="text-4xl mb-3">🏆</div>
+                  <p className="font-medium">No completed challenges found for {formatMonthYear(currentMonth)}</p>
+                  <p className="text-xs mt-1 opacity-70">
                     Challenges need at least 2 participants to qualify for the podium
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-3">
+                <div className="grid gap-2">
                   {completedChallenges.map((challenge) => (
                     <Card 
                       key={challenge.challengeId} 
-                      className={`cursor-pointer transition-all hover:shadow-md ${
+                      className={`cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
                         selectedChallenge?.challengeId === challenge.challengeId 
-                          ? 'ring-2 ring-primary bg-primary/5' 
+                          ? 'ring-2 ring-primary bg-gradient-to-r from-primary/10 to-secondary/10' 
                           : ''
                       }`}
                       onClick={() => handleChallengeSelect(challenge)}
                     >
-                      <CardContent className="p-4">
+                      <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h3 className="font-medium">
+                            <h3 className="font-medium text-sm">
                               Challenge {challenge.challengeId.slice(0, 8)}...
                             </h3>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
                                 {challenge.participantCount} participants
@@ -201,7 +205,7 @@ export const MonthlyTrophyPodium: React.FC = () => {
                           
                           <div className="flex items-center gap-2">
                             {challenge.participantCount >= 5 && (
-                              <Badge variant="secondary">Popular</Badge>
+                              <Badge variant="secondary" className="text-xs">Popular</Badge>
                             )}
                             <ExternalLink className="h-4 w-4 text-muted-foreground" />
                           </div>
@@ -215,7 +219,7 @@ export const MonthlyTrophyPodium: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="podium" className="space-y-4">
+        <TabsContent value="podium" className="space-y-3">
           {selectedChallenge && winners.length > 0 ? (
             <TrophyPodium
               winners={winners}
@@ -236,8 +240,8 @@ export const MonthlyTrophyPodium: React.FC = () => {
             />
           ) : selectedChallenge ? (
             <Card>
-              <CardContent className="p-8 text-center">
-                <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <CardContent className="p-6 text-center">
+                <div className="text-4xl mb-3">🏆</div>
                 <p className="text-muted-foreground">
                   No winners found for this challenge in {formatMonthYear(currentMonth)}
                 </p>
@@ -245,14 +249,18 @@ export const MonthlyTrophyPodium: React.FC = () => {
             </Card>
           ) : (
             <Card>
-              <CardContent className="p-8 text-center">
-                <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <CardContent className="p-6 text-center">
+                <div className="text-4xl mb-3 opacity-50">🏆</div>
                 <p className="text-muted-foreground">
                   Select a challenge to view the trophy podium
                 </p>
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="achievements" className="space-y-3">
+          <TrophyShelf />
         </TabsContent>
       </Tabs>
     </div>

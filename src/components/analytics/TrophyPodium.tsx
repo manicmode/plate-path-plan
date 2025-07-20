@@ -126,21 +126,38 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
   const renderConfetti = () => {
     if (animationState !== 'celebrating' && animationState !== 'complete') return null;
     
+    const confettiItems = ['🎉', '🎊', '✨', '⭐', '🏆', '🥇', '🎇', '🌟', '💫', '🎈'];
+    
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 30 }).map((_, i) => (
           <div
             key={i}
-            className={`absolute text-2xl animate-bounce`}
+            className={`absolute text-xl animate-bounce`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${1.5 + Math.random() * 2}s`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+            }}
+          >
+            {confettiItems[Math.floor(Math.random() * confettiItems.length)]}
+          </div>
+        ))}
+        
+        {/* Sparkle effects */}
+        {Array.from({ length: 15 }).map((_, i) => (
+          <div
+            key={`sparkle-${i}`}
+            className="absolute w-1 h-1 bg-yellow-400 rounded-full animate-ping"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
               animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 2}s`
+              animationDuration: `${1 + Math.random()}s`,
             }}
-          >
-            {['🎉', '🎊', '✨', '⭐', '🏆'][Math.floor(Math.random() * 5)]}
-          </div>
+          />
         ))}
       </div>
     );
@@ -217,45 +234,63 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
   if (!isVisible) return null;
 
   return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20">
+    <Card className="relative overflow-hidden bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-950/20 dark:via-amber-950/20 dark:to-orange-950/20 border-2 border-yellow-200 shadow-2xl">
       <CardContent className="p-6">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Trophy className="h-6 w-6 text-yellow-500" />
-            <h2 className="text-xl font-bold">Challenge Champions</h2>
-            <Trophy className="h-6 w-6 text-yellow-500" />
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="text-3xl animate-bounce">🏆</div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+              Challenge Champions
+            </h2>
+            <div className="text-3xl animate-bounce" style={{ animationDelay: '0.1s' }}>🏆</div>
           </div>
-          <p className="text-muted-foreground">{challengeName}</p>
+          <p className="text-muted-foreground font-medium">{challengeName}</p>
           <p className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Results
+            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Championship Results
           </p>
         </div>
 
         {/* Podium Display */}
-        <div className="relative min-h-64 mb-6">
-          <div className="flex items-end justify-center gap-4 h-full">
+        <div className="relative min-h-72 mb-6">
+          {/* Stage/Platform Base */}
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-4/5 h-4 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 rounded-lg shadow-lg" />
+          
+          <div className="flex items-end justify-center gap-6 h-full relative z-10">
             {podiumOrder.map((winner, index) => 
               renderPodiumSlot(winner, index)
             )}
           </div>
           {renderConfetti()}
+          
+          {/* Spotlight effects */}
+          {animationState === 'celebrating' && (
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-0 left-1/4 w-32 h-32 bg-yellow-400/20 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute top-0 right-1/4 w-32 h-32 bg-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-40 bg-yellow-300/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            </div>
+          )}
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-between">
+        {/* Enhanced Controls */}
+        <div className="flex items-center justify-between bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setSoundEnabled(!soundEnabled)}
+              className="bg-white/80 dark:bg-gray-700/80"
             >
               {soundEnabled ? (
-                <Volume2 className="h-4 w-4" />
+                <Volume2 className="h-4 w-4 text-green-600" />
               ) : (
-                <VolumeX className="h-4 w-4" />
+                <VolumeX className="h-4 w-4 text-gray-400" />
               )}
             </Button>
+            <span className="text-xs text-muted-foreground">
+              {soundEnabled ? 'Sound On' : 'Sound Off'}
+            </span>
           </div>
           
           <Button
@@ -264,22 +299,36 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
               startAnimation();
               onReplay();
             }}
-            variant="secondary"
-            className="gap-2"
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg gap-2"
           >
             <Play className="h-4 w-4" />
-            🎬 Replay Podium Ceremony
+            🎬 Replay Ceremony
           </Button>
         </div>
 
-        {/* Animation Status */}
+        {/* Enhanced Animation Status */}
         {animationState !== 'complete' && (
           <div className="mt-4 text-center">
-            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
-              {animationState === 'building' && 'Building podium...'}
-              {animationState === 'revealing' && 'Revealing winners...'}
-              {animationState === 'celebrating' && 'Celebrating champions! 🎉'}
+            <div className="inline-flex items-center gap-3 text-sm bg-white/60 dark:bg-gray-800/60 px-4 py-2 rounded-full backdrop-blur-sm border border-yellow-200">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent"></div>
+              <span className="font-medium">
+                {animationState === 'building' && '🏗️ Building the stage...'}
+                {animationState === 'revealing' && '🎭 Revealing champions...'}
+                {animationState === 'celebrating' && '🎉 Celebrating our heroes!'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Victory Message */}
+        {animationState === 'complete' && (
+          <div className="mt-4 text-center">
+            <div className="inline-flex items-center gap-2 text-sm bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 px-4 py-2 rounded-full border border-yellow-300">
+              <span className="text-lg">👑</span>
+              <span className="font-medium text-yellow-800 dark:text-yellow-200">
+                Congratulations to our champions!
+              </span>
+              <span className="text-lg">👑</span>
             </div>
           </div>
         )}
