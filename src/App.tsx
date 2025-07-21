@@ -33,6 +33,7 @@ const ProgressFat = lazy(() => import('@/pages/ProgressFat'));
 const ProgressHydration = lazy(() => import('@/pages/ProgressHydration'));
 const ProgressSupplements = lazy(() => import('@/pages/ProgressSupplements'));
 const MyReports = lazy(() => import('@/pages/MyReports'));
+const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
@@ -137,6 +138,11 @@ function AppContent() {
                               <Route path="/my-reports" element={
                                 <ProtectedRoute>
                                   <MyReports />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/report/:reportId" element={
+                                <ProtectedRoute>
+                                  <ReportViewer />
                                 </ProtectedRoute>
                               } />
                               <Route path="/firebase-setup" element={

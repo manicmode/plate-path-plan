@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,13 +46,20 @@ const chartConfig = {
 
 export default function ReportViewer() {
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get report data from navigation state or use defaults
+  const reportData = location.state || {};
+  const reportTitle = reportData.title || "Weekly Nutrition Report";
+  const reportDate = reportData.date || "January – Week 3 (01/15/2025 - 01/21/2025)";
+  const reportType = reportData.tabType || "weekly";
 
   const moodEmojis = ["😊", "😌", "🙂", "😊", "😄", "😐", "🙂"];
   const averageMood = "😊";
   const averageSleep = 7.2;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 animate-fade-in">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-4">
@@ -67,10 +74,10 @@ export default function ReportViewer() {
               Back to Reports
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">Weekly Nutrition Report</h1>
+              <h1 className="text-2xl font-bold">{reportTitle}</h1>
               <p className="text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                January – Week 3 (01/15/2025 - 01/21/2025)
+                {reportDate}
               </p>
             </div>
             <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -82,7 +89,7 @@ export default function ReportViewer() {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* 1. Weekly Score Summary */}
-        <Card className="visible-card section-spacing bg-gradient-to-r from-primary/5 to-secondary/5">
+        <Card className="animate-scale-in bg-gradient-to-r from-primary/5 to-secondary/5 hover:shadow-lg transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
               📊 Weekly Score Summary
@@ -104,7 +111,7 @@ export default function ReportViewer() {
         </Card>
 
         {/* 2. Nutrition Trends */}
-        <Card className="visible-card section-spacing">
+        <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.1s' }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               🍽️ Nutrition Trends
@@ -161,7 +168,7 @@ export default function ReportViewer() {
         </Card>
 
         {/* 3. Mood & Wellness */}
-        <Card className="visible-card section-spacing">
+        <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.2s' }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               🧠 Mood & Wellness
@@ -194,7 +201,7 @@ export default function ReportViewer() {
         </Card>
 
         {/* 4. Exercise Activity */}
-        <Card className="visible-card section-spacing">
+        <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.3s' }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               💪 Exercise Activity
@@ -230,7 +237,7 @@ export default function ReportViewer() {
         </Card>
 
         {/* 5. Progress Forecast */}
-        <Card className="visible-card section-spacing bg-gradient-to-r from-green-50 to-blue-50">
+        <Card className="animate-scale-in bg-gradient-to-r from-green-50 to-blue-50 hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.4s' }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               ⏳ Progress Forecast
@@ -262,7 +269,7 @@ export default function ReportViewer() {
         </Card>
 
         {/* 6. Coach Tips for Next Week */}
-        <Card className="visible-card section-spacing">
+        <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.5s' }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               🌟 Coach Tips for Next Week

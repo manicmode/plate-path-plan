@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -80,7 +81,21 @@ const formatReportDate = (dateStr: string, type: 'weekly' | 'monthly' | 'yearly'
   }
 };
 
-const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'monthly' | 'yearly' }) => (
+const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'monthly' | 'yearly' }) => {
+  const navigate = useNavigate();
+  
+  const handleViewReport = () => {
+    navigate(`/report/${report.id}`, { 
+      state: { 
+        report, 
+        tabType,
+        title: report.title,
+        date: formatReportDate(report.date, tabType, report.week)
+      } 
+    });
+  };
+
+  return (
   <Card className="group hover:shadow-xl hover:scale-[1.02] transition-all duration-300 bg-gradient-to-br from-background to-muted/20 border-0 shadow-md">
     <CardHeader className="pb-3">
       <div className="flex items-start justify-between">
@@ -111,7 +126,7 @@ const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'mon
           variant="outline" 
           size="sm" 
           className="flex items-center gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
-          onClick={() => alert('View functionality coming soon!')}
+          onClick={handleViewReport}
         >
           <Eye className="h-4 w-4" />
           View
@@ -128,7 +143,8 @@ const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'mon
       </div>
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default function MyReportsPage() {
   const [activeTab, setActiveTab] = useState("weekly");
