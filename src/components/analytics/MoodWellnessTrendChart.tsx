@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Heart, Zap, Shield, AlertTriangle, Calendar, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
@@ -51,14 +52,11 @@ export const MoodWellnessTrendChart: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showDayDetail, setShowDayDetail] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadMoodData();
-    }
-  }, [user, viewMode]);
+  // Stabilize the user ID dependency
+  const userId = user?.id;
 
-  const loadMoodData = async () => {
-    if (!user) return;
+  const loadMoodData = useCallback(async () => {
+    if (!userId) return;
 
     setLoading(true);
     try {
@@ -77,10 +75,12 @@ export const MoodWellnessTrendChart: React.FC = () => {
           startDate = subDays(endDate, 14);
       }
 
+      console.log('[MoodChart] Loading mood data for user:', userId, 'viewMode:', viewMode);
+
       const { data, error } = await supabase
         .from('mood_logs')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .gte('date', startDate.toISOString().split('T')[0])
         .lte('date', endDate.toISOString().split('T')[0])
         .order('date', { ascending: true });
@@ -90,6 +90,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
         return;
       }
 
+      console.log('[MoodChart] Loaded mood data:', data?.length || 0, 'entries');
       setMoodLogs(data || []);
       
       // Analyze patterns
@@ -101,9 +102,15 @@ export const MoodWellnessTrendChart: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, viewMode]);
 
-  const analyzePatterns = async (logs: MoodLogData[]) => {
+  useEffect(() => {
+    if (userId) {
+      loadMoodData();
+    }
+  }, [loadMoodData, userId]);
+
+  const analyzePatterns = useCallback(async (logs: MoodLogData[]) => {
     const patterns: AIPattern[] = [];
 
     // Simple pattern detection
@@ -162,7 +169,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
     }
 
     setAiPatterns(patterns);
-  };
+  }, []);
 
   const chartData = useMemo(() => {
     if (!moodLogs.length) return [];
@@ -255,7 +262,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
     return processedData.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [moodLogs, viewMode, aiPatterns]);
 
-  const handleChartClick = (data: any) => {
+  const handleChartClick = useCallback((data: any) => {
     if (data && data.activePayload && data.activePayload[0]) {
       const clickedData = data.activePayload[0].payload as ChartDataPoint;
       if (clickedData.date) {
@@ -263,9 +270,9 @@ export const MoodWellnessTrendChart: React.FC = () => {
         setShowDayDetail(true);
       }
     }
-  };
+  }, []);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = useCallback(({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint;
       
@@ -299,9 +306,9 @@ export const MoodWellnessTrendChart: React.FC = () => {
       );
     }
     return null;
-  };
+  }, []);
 
-  const CustomDot = (props: any) => {
+  const CustomDot = useCallback((props: any) => {
     const { cx, cy, payload } = props;
     if (payload?.hasPattern) {
       return (
@@ -331,7 +338,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
       );
     }
     return null;
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -421,8 +428,10 @@ export const MoodWellnessTrendChart: React.FC = () => {
 
       <CardContent>
         <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full h-full">
             <LineChart 
+              width={800} 
+              height={320} 
               data={chartData} 
               margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               onClick={handleChartClick}
@@ -470,7 +479,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 connectNulls={false}
               />
               
-{/* Pattern indicators - using scatter plot for warning icons */}
+              {/* Pattern indicators - using scatter plot for warning icons */}
               {viewMode === 'daily' && chartData.some(point => point.hasPattern) && (
                 <Line
                   type="monotone"
@@ -486,7 +495,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 />
               )}
             </LineChart>
-          </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Chart Legend */}

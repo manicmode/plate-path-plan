@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Zap, Droplets } from 'lucide-react';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { CustomTooltip } from '@/components/analytics/ui/CustomTooltip';
@@ -38,8 +38,8 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
           <CardContent>
             <div className="flex justify-center mb-4">
               <div className="relative">
-                <ResponsiveContainer width={200} height={200}>
-                  <PieChart>
+                <div className="w-[200px] h-[200px]">
+                  <PieChart width={200} height={200}>
                     <Pie
                       data={macroData}
                       cx="50%"
@@ -56,7 +56,7 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
-                </ResponsiveContainer>
+                </div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-900 dark:text-white">
