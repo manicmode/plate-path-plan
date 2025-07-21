@@ -16,6 +16,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Load user profile in background
   const loadExtendedProfile = async (supabaseUser: any) => {
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       setProfileLoading(true);
+      setProfileError(null);
       console.log('Loading extended user profile...');
       
       const extendedUser = await createExtendedUser(supabaseUser);
@@ -30,6 +32,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Extended user profile loaded successfully');
     } catch (error) {
       console.error('Error loading extended user profile:', error);
+      setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
       // Set basic user info even if profile creation fails
       setUser({
         id: supabaseUser.id,
@@ -78,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🔐 Starting auth initialization...');
     
     // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       
       console.log('Auth state changed:', event, session?.user?.id);
@@ -93,10 +96,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
       
-      // Update session immediately
+      // Update session and user immediately
       setSession(session);
       
-      // Handle user authentication
       if (session?.user) {
         // Set basic user info immediately
         const basicUser = {
@@ -108,11 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         setUser(basicUser);
         setLoading(false);
-        
-        // Load extended profile in background if this is a sign-in event
-        if (event === 'SIGNED_IN') {
-          loadExtendedProfile(session.user);
-        }
       } else {
         setUser(null);
         setLoading(false);
@@ -148,9 +145,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           setUser(basicUser);
           setLoading(false);
-          
-          // Load extended profile in background
-          loadExtendedProfile(currentSession.user);
         } else {
           console.log('❌ No existing session found');
           if (mounted) {
@@ -183,15 +177,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [loading]);
 
-  // Separate effect for profile updates
+  // Load extended profile when session is established
   useEffect(() => {
-    if (user && session?.user && !profileLoading) {
-      // Load any missing profile data
-      if (!user.onboardingCompleted && !user.main_health_goal) {
+    if (session?.user && !profileLoading) {
+      try {
         loadExtendedProfile(session.user);
+      } catch (error) {
+        console.error('Failed to initiate profile loading:', error);
+        setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
       }
     }
-  }, [user, session, profileLoading]);
+  }, [session, profileLoading]);
 
   const updateProfile = (profileData: Partial<ExtendedUser>) => {
     if (user) {
