@@ -352,7 +352,7 @@ export default function MyReports() {
     <div className="min-h-screen gradient-main">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header Section (Top 10% height) */}
-        <header className="h-[10vh] flex items-center justify-between mb-8 sticky top-0 z-10 bg-background/80 backdrop-blur-lg rounded-2xl px-6 py-4 border border-border/50">
+        <header className="sticky top-0 z-10 flex flex-col gap-1 px-4 pt-4 pb-2 bg-background/80 backdrop-blur mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">📄 My Reports</h1>
             <p className="text-muted-foreground mt-1">
