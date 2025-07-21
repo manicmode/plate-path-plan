@@ -3,7 +3,7 @@ import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, resendEmailConfirmation, signOutUser, setSignOutNavigationCallback } from './authService';
-import { createExtendedUser, updateUserTrackers } from './userService';
+import { createExtendedUser, updateUserTrackers, loadUserProfile } from './userService';
 import { Session } from '@supabase/supabase-js';
 import { triggerDailyScoreCalculation, triggerDailyTargetsGeneration } from '@/lib/dailyScoreUtils';
 import { cleanupAuthState } from '@/lib/authUtils';
@@ -15,15 +15,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  const updateUserWithProfile = async (supabaseUser: any) => {
+  // Load user profile in background
+  const loadExtendedProfile = async (supabaseUser: any) => {
+    if (!supabaseUser) return;
+    
     try {
-      console.log('Creating extended user profile...');
+      setProfileLoading(true);
+      console.log('Loading extended user profile...');
+      
       const extendedUser = await createExtendedUser(supabaseUser);
       setUser(extendedUser);
-      console.log('Extended user profile created successfully');
+      console.log('Extended user profile loaded successfully');
     } catch (error) {
-      console.error('Error creating extended user:', error);
+      console.error('Error loading extended user profile:', error);
       // Set basic user info even if profile creation fails
       setUser({
         id: supabaseUser.id,
@@ -31,6 +37,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         created_at: supabaseUser.created_at,
         selectedTrackers: ['calories', 'hydration', 'supplements']
       } as ExtendedUser);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -63,6 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, []);
 
+  // Main auth initialization effect
   useEffect(() => {
     let mounted = true;
     
@@ -74,6 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('Auth state changed:', event, session?.user?.id);
       
+      // Handle sign out
       if (event === 'SIGNED_OUT') {
         console.log('🔓 Auth state: SIGNED_OUT');
         setSession(null);
@@ -83,23 +93,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
       
+      // Update session immediately
       setSession(session);
       
-      if (session?.user && event === 'SIGNED_IN') {
-        // Defer profile loading to prevent deadlocks
-        setTimeout(async () => {
-          if (mounted) {
-            await updateUserWithProfile(session.user);
-            setLoading(false);
-          }
-        }, 0);
-      } else if (!session?.user) {
+      // Handle user authentication
+      if (session?.user) {
+        // Set basic user info immediately
+        const basicUser = {
+          id: session.user.id,
+          email: session.user.email,
+          created_at: session.user.created_at,
+          selectedTrackers: ['calories', 'hydration', 'supplements']
+        } as ExtendedUser;
+        
+        setUser(basicUser);
+        setLoading(false);
+        
+        // Load extended profile in background if this is a sign-in event
+        if (event === 'SIGNED_IN') {
+          loadExtendedProfile(session.user);
+        }
+      } else {
         setUser(null);
         setLoading(false);
       }
     });
 
-    // Initialize session check with timeout
+    // Initialize session check with extended timeout
     const initializeSession = async () => {
       try {
         console.log('📋 Checking for existing session...');
@@ -107,35 +127,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (error) {
           console.error('Session check error:', error);
-          // Clear any corrupted auth state
           cleanupAuthState();
-          setLoading(false);
+          if (mounted) {
+            setLoading(false);
+          }
           return;
         }
 
-        if (currentSession?.user) {
+        if (currentSession?.user && mounted) {
           console.log('✅ Found existing session');
           setSession(currentSession);
-          await updateUserWithProfile(currentSession.user);
+          
+          // Set basic user info immediately
+          const basicUser = {
+            id: currentSession.user.id,
+            email: currentSession.user.email,
+            created_at: currentSession.user.created_at,
+            selectedTrackers: ['calories', 'hydration', 'supplements']
+          } as ExtendedUser;
+          
+          setUser(basicUser);
+          setLoading(false);
+          
+          // Load extended profile in background
+          loadExtendedProfile(currentSession.user);
         } else {
           console.log('❌ No existing session found');
+          if (mounted) {
+            setLoading(false);
+          }
         }
-        
-        setLoading(false);
       } catch (error) {
         console.error('Session initialization error:', error);
         cleanupAuthState();
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
-    // Add timeout to prevent infinite loading
+    // Extended timeout to 12 seconds
     const timeoutId = setTimeout(() => {
       if (loading && mounted) {
         console.warn('⏰ Auth initialization timeout - forcing completion');
         setLoading(false);
       }
-    }, 5000);
+    }, 12000);
 
     initializeSession();
 
@@ -144,7 +181,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscription.unsubscribe();
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [loading]);
+
+  // Separate effect for profile updates
+  useEffect(() => {
+    if (user && session?.user && !profileLoading) {
+      // Load any missing profile data
+      if (!user.onboardingCompleted && !user.main_health_goal) {
+        loadExtendedProfile(session.user);
+      }
+    }
+  }, [user, session, profileLoading]);
 
   const updateProfile = (profileData: Partial<ExtendedUser>) => {
     if (user) {
@@ -176,7 +223,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!session?.user) return;
     
     console.log('[DEBUG] AuthContext: Refreshing user profile...');
-    await updateUserWithProfile(session.user);
+    await loadExtendedProfile(session.user);
     console.log('[DEBUG] AuthContext: User profile refresh complete');
   };
 
