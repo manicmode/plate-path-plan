@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Brain, MessageCircle, BarChart3, Calendar, Sparkles } from 'lucide-react';
@@ -16,8 +17,7 @@ const HomeAIInsights = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
-  const [currentTabIndex, setCurrentTabIndex] = useState(0);
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [fadeState, setFadeState] = useState('fade-in');
   const [moodPrediction, setMoodPrediction] = useState(null);
   const [weeklyReview, setWeeklyReview] = useState(null);
@@ -212,37 +212,24 @@ const HomeAIInsights = () => {
       });
     }
 
-    // AI Coach Daily Tips
-    const coachTips = [];
-
-    if (progressPercentage < 30 && timeOfDay === 'morning') {
-      coachTips.push(`Rise and fuel, ${userName}! Your body needs energy to start the day strong. A protein-rich breakfast will set you up for success.`);
-    } else if (progressPercentage >= 100) {
-      coachTips.push(`Outstanding work, ${userName}! You've hit your calorie goal. Focus on quality nutrients and staying hydrated for the rest of the day.`);
-    } else if (progressPercentage >= 80) {
-      coachTips.push(`You're in the home stretch, ${userName}! Just ${Math.round(totalCalories - currentCalories)} calories to go. Choose something nutritious and satisfying.`);
-    } else if (timeOfDay === 'afternoon' && progressPercentage < 50) {
-      coachTips.push(`Midday boost needed, ${userName}! Your body is asking for fuel. A balanced lunch with protein and complex carbs will energize your afternoon.`);
-    } else if (timeOfDay === 'evening' && progressPercentage < 70) {
-      coachTips.push(`Evening nourishment time, ${userName}! Don't skip dinner - your body needs consistent fuel for recovery and tomorrow's energy.`);
-    }
-
-    // Health goal specific tips
-    if (user?.main_health_goal === 'weight_loss') {
-      coachTips.push(`Weight loss tip: Focus on high-volume, low-calorie foods like vegetables and lean proteins to stay satisfied while hitting your goals.`);
-    } else if (user?.main_health_goal === 'muscle_gain') {
-      coachTips.push(`Muscle building tip: Aim for protein with every meal! Your muscles need consistent amino acids throughout the day for optimal growth.`);
-    }
-
-    // General wellness tips
-    coachTips.push(
+    // AI Coach Daily Tips - Fixed rotation instead of random
+    const coachTips = [
+      `Rise and fuel, ${userName}! Your body needs energy to start the day strong. A protein-rich breakfast will set you up for success.`,
+      `Outstanding work, ${userName}! You've hit your calorie goal. Focus on quality nutrients and staying hydrated for the rest of the day.`,
+      `You're in the home stretch, ${userName}! Just ${Math.round(totalCalories - currentCalories)} calories to go. Choose something nutritious and satisfying.`,
+      `Midday boost needed, ${userName}! Your body is asking for fuel. A balanced lunch with protein and complex carbs will energize your afternoon.`,
+      `Evening nourishment time, ${userName}! Don't skip dinner - your body needs consistent fuel for recovery and tomorrow's energy.`,
+      `Weight loss tip: Focus on high-volume, low-calorie foods like vegetables and lean proteins to stay satisfied while hitting your goals.`,
+      `Muscle building tip: Aim for protein with every meal! Your muscles need consistent amino acids throughout the day for optimal growth.`,
       `Hydration check! Your brain is 75% water - stay sharp by sipping consistently throughout the day.`,
       `Sleep quality affects everything - aim for 7-9 hours to optimize your mood, energy, and metabolism.`,
       `Small wins add up! Every healthy choice you make is building the stronger, healthier version of yourself.`,
       `Mindful eating tip: Slow down and savor your food. It takes 20 minutes for your brain to register fullness.`
-    );
+    ];
 
-    const selectedTip = coachTips[Math.floor(Math.random() * coachTips.length)];
+    // Use a consistent tip based on time to avoid random changes
+    const tipIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % coachTips.length;
+    const selectedTip = coachTips[tipIndex];
     
     messages.push({
       type: 'coach',
@@ -258,7 +245,65 @@ const HomeAIInsights = () => {
 
   const aiMessages = generateAIMessages();
 
-  // Define tabs
+  // Define sequence items (4 total items, each gets 10 seconds)
+  const sequenceItems = [
+    {
+      type: 'daily',
+      subType: 'mood',
+      title: 'Daily Tips',
+      icon: Brain,
+      content: aiMessages[0], // AI Mood Prediction
+      tabIndex: 0,
+      messageIndex: 0
+    },
+    {
+      type: 'daily',
+      subType: 'coach',
+      title: 'Daily Tips',
+      icon: Brain,
+      content: aiMessages[1], // AI Coach Daily Tip
+      tabIndex: 0,
+      messageIndex: 1
+    },
+    {
+      type: 'weekly',
+      title: 'Weekly Review',
+      emoji: '📊',
+      icon: BarChart3,
+      content: weeklyReview,
+      tabIndex: 1,
+      messageIndex: 0
+    },
+    {
+      type: 'monthly',
+      title: 'Monthly Review',
+      emoji: '🧠',
+      icon: Calendar,
+      content: monthlyReview,
+      tabIndex: 2,
+      messageIndex: 0
+    }
+  ];
+
+  // Unified timer system - single master timer
+  useEffect(() => {
+    const masterTimer = () => {
+      setFadeState('fade-out');
+      setTimeout(() => {
+        setCurrentSequenceIndex((prev) => (prev + 1) % sequenceItems.length);
+        setFadeState('fade-in');
+      }, 300);
+    };
+
+    const interval = setInterval(masterTimer, 10000); // 10 seconds per item
+    return () => clearInterval(interval);
+  }, [sequenceItems.length]);
+
+  const currentItem = sequenceItems[currentSequenceIndex];
+  const currentTabIndex = currentItem.tabIndex;
+  const currentMessageIndex = currentItem.messageIndex;
+
+  // Define tabs for display
   const tabs = [
     {
       type: 'daily',
@@ -275,46 +320,14 @@ const HomeAIInsights = () => {
     },
     {
       type: 'monthly',
-      title: 'Monthly Review', 
+      title: 'Monthly Review',
       emoji: '🧠',
       icon: Calendar,
       content: monthlyReview
     }
   ];
 
-  // Tab rotation logic
-  useEffect(() => {
-    const rotateTab = () => {
-      setFadeState('fade-out');
-      setTimeout(() => {
-        setCurrentTabIndex((prev) => (prev + 1) % 3); // Always 3 tabs
-        setCurrentMessageIndex(0); // Reset message index when changing tabs
-        setFadeState('fade-in');
-      }, 300);
-    };
-
-    const interval = setInterval(rotateTab, 10000); // 10 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  // Message rotation within daily tips tab
-  useEffect(() => {
-    if (currentTabIndex === 0 && aiMessages.length > 1) {
-      const rotateMessage = () => {
-        setFadeState('fade-out');
-        setTimeout(() => {
-          setCurrentMessageIndex((prev) => (prev + 1) % aiMessages.length);
-          setFadeState('fade-in');
-        }, 300);
-      };
-
-      const interval = setInterval(rotateMessage, 10000); // Changed from 7000 to 10000
-      return () => clearInterval(interval);
-    }
-  }, [currentTabIndex, aiMessages.length]);
-
   const currentTab = tabs[currentTabIndex];
-  const currentContent = currentTab.type === 'daily' ? aiMessages[currentMessageIndex] : currentTab.content;
 
   return (
     <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl ${isMobile ? 'mx-2' : 'mx-4'}`}>
@@ -341,12 +354,15 @@ const HomeAIInsights = () => {
                 index === currentTabIndex ? 'opacity-100' : 'opacity-40'
               }`}
               onClick={() => {
-                setFadeState('fade-out');
-                setTimeout(() => {
-                  setCurrentTabIndex(index);
-                  setCurrentMessageIndex(0);
-                  setFadeState('fade-in');
-                }, 300);
+                // Find the first sequence item for this tab
+                const targetSequenceIndex = sequenceItems.findIndex(item => item.tabIndex === index);
+                if (targetSequenceIndex !== -1) {
+                  setFadeState('fade-out');
+                  setTimeout(() => {
+                    setCurrentSequenceIndex(targetSequenceIndex);
+                    setFadeState('fade-in');
+                  }, 300);
+                }
               }}
             >
               <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
@@ -362,40 +378,40 @@ const HomeAIInsights = () => {
         {/* Content Area */}
         <div className={`min-h-[140px] ${isMobile ? 'mb-6' : 'mb-8'}`}>
           <div className={`transition-all duration-300 ${fadeState === 'fade-in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}>
-            {currentTab.type === 'daily' && currentContent && (
+            {currentTab.type === 'daily' && currentItem.content && (
               <div className="flex items-start space-x-4">
-                <div className="text-3xl flex-shrink-0 mt-1">{currentContent.emoji}</div>
+                <div className="text-3xl flex-shrink-0 mt-1">{currentItem.content.emoji}</div>
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-3">
                     <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
-                      {currentContent.title}
+                      {currentItem.content.title}
                     </h4>
                     <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-1 rounded-full">
-                      {currentContent.confidence}
+                      {currentItem.content.confidence}
                     </span>
                   </div>
                   <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
-                    {currentContent.message}
+                    {currentItem.content.message}
                   </p>
                 </div>
               </div>
             )}
             
-            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && currentContent && (
+            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && currentItem.content && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <div className="text-3xl">{currentTab.emoji}</div>
                   <div>
                     <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
-                      {currentContent.title}
+                      {currentItem.content.title}
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Past {currentContent.period}
+                      Past {currentItem.content.period}
                     </p>
                   </div>
                 </div>
                 <div className="space-y-3 max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-                  {currentContent.insights.map((insight, index) => (
+                  {currentItem.content.insights.map((insight, index) => (
                     <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
                       {insight}
                     </p>
@@ -404,7 +420,7 @@ const HomeAIInsights = () => {
               </div>
             )}
 
-            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && !currentContent && (
+            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && !currentItem.content && (
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
                   <div className="text-3xl mb-2">{currentTab.emoji}</div>
@@ -417,33 +433,31 @@ const HomeAIInsights = () => {
           </div>
         </div>
 
-        {/* Message Progress Indicators for Daily Tips */}
-        {currentTab.type === 'daily' && aiMessages.length > 1 && (
-          <div className="flex justify-center space-x-3 mb-6">
-            {aiMessages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex flex-col items-center space-y-1 cursor-pointer transition-all duration-300 ${
-                  index === currentMessageIndex ? 'opacity-100' : 'opacity-40'
-                }`}
-                onClick={() => {
-                  setFadeState('fade-out');
-                  setTimeout(() => {
-                    setCurrentMessageIndex(index);
-                    setFadeState('fade-in');
-                  }, 300);
-                }}
-              >
-                <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  index === currentMessageIndex ? 'bg-blue-500 scale-125' : 'bg-gray-300 dark:bg-gray-600'
-                }`} />
-                <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                  {message.type}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Progress Indicators - Show current position in sequence */}
+        <div className="flex justify-center space-x-3 mb-6">
+          {sequenceItems.map((item, index) => (
+            <div
+              key={index}
+              className={`flex flex-col items-center space-y-1 cursor-pointer transition-all duration-300 ${
+                index === currentSequenceIndex ? 'opacity-100' : 'opacity-40'
+              }`}
+              onClick={() => {
+                setFadeState('fade-out');
+                setTimeout(() => {
+                  setCurrentSequenceIndex(index);
+                  setFadeState('fade-in');
+                }, 300);
+              }}
+            >
+              <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                index === currentSequenceIndex ? 'bg-blue-500 scale-125' : 'bg-gray-300 dark:bg-gray-600'
+              }`} />
+              <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                {item.subType || item.type}
+              </span>
+            </div>
+          ))}
+        </div>
 
         {/* Action Button */}
         <Button
