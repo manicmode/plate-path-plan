@@ -70,7 +70,7 @@ export const useAnalyticsCalculations = () => {
       
       const avgHydration = dataToUse.reduce((sum, day) => {
         const hydration = 'hydration' in day ? day.hydration : ('totalHydration' in day ? day.totalHydration : 0);
-        return sum + (hydration || 0);
+        return sum + (typeof hydration === 'number' ? hydration : 0);
       }, 0) / dataToUse.length;
       
       // Use real supplement data even in fallback mode

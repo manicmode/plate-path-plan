@@ -17,10 +17,7 @@ import {
   Calendar,
   Award
 } from 'lucide-react';
-import { MealLoggingModal } from '@/components/MealLoggingModal';
-import { HydrationModal } from '@/components/HydrationModal';
-import { SupplementListModal } from '@/components/SupplementListModal';
-import { ExerciseModal } from '@/components/ExerciseModal';
+import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -29,11 +26,10 @@ export default function Home() {
   const { user } = useAuth();
   const { 
     currentDay, 
-    addMeal, 
+    addFood, 
     addHydration, 
-    saveSupplement, 
-    getTodaysProgress,
-    dailyTargets 
+    addSupplement, 
+    getTodaysProgress
   } = useNutrition();
   
   const { 
@@ -53,7 +49,7 @@ export default function Home() {
   const progress = getTodaysProgress();
 
   const handleMealLog = (mealData: any) => {
-    addMeal(selectedMealType, mealData);
+    addFood(mealData);
     setShowMealModal(false);
     toast({
       title: "Meal logged!",
@@ -62,7 +58,7 @@ export default function Home() {
   };
 
   const handleHydrationLog = (amount: number) => {
-    addHydration(amount);
+    addHydration({ name: 'Water', volume: amount, type: 'water' });
     setShowHydrationModal(false);
     toast({
       title: "Hydration logged!",
@@ -87,7 +83,7 @@ export default function Home() {
       if (error) throw error;
 
       // Also update local context for immediate UI update
-      saveSupplement(supplementData);
+      addSupplement(supplementData);
       
       toast({
         title: "Supplement logged!",
@@ -118,19 +114,19 @@ export default function Home() {
   };
 
   const getCalorieGoal = () => {
-    return user?.targetCalories || dailyTargets?.calories || 2000;
+    return user?.targetCalories || 2000;
   };
 
   const getProteinGoal = () => {
-    return user?.targetProtein || dailyTargets?.protein || 120;
+    return user?.targetProtein || 120;
   };
 
   const getHydrationGoal = () => {
-    return user?.targetHydration || dailyTargets?.hydration || 8;
+    return user?.targetHydration || 8;
   };
 
   const getSupplementGoal = () => {
-    return user?.targetSupplements || dailyTargets?.supplement_count || 3;
+    return user?.targetSupplements || 3;
   };
 
   const calorieGoal = getCalorieGoal();
@@ -163,7 +159,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.full_name?.split(' ')[0] || 'there'}!
+                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.name?.split(' ')[0] || 'there'}!
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 {formatDate(new Date())}
@@ -332,7 +328,7 @@ export default function Home() {
                     {mealType}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {currentDay.meals[mealType]?.length || 0} items
+                    {currentDay.foods?.length || 0} items
                   </p>
                 </CardContent>
               </Card>
@@ -487,40 +483,14 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Meal Modal */}
-      {showMealModal && (
-        <MealLoggingModal
-          isOpen={showMealModal}
-          onClose={() => setShowMealModal(false)}
-          onMealLog={handleMealLog}
-          mealType={selectedMealType}
-        />
-      )}
-
-      {/* Hydration Modal */}
-      {showHydrationModal && (
-        <HydrationModal
-          isOpen={showHydrationModal}
-          onClose={() => setShowHydrationModal(false)}
-          onHydrationLog={handleHydrationLog}
-        />
-      )}
-
       {/* Supplement Modal */}
       {showSupplementModal && (
         <SupplementListModal
           isOpen={showSupplementModal}
           onClose={() => setShowSupplementModal(false)}
-          onSupplementLog={handleSupplementLog}
-        />
-      )}
-
-      {/* Exercise Modal */}
-      {showExerciseModal && (
-        <ExerciseModal
-          isOpen={showExerciseModal}
-          onClose={() => setShowExerciseModal(false)}
-          onExerciseLog={handleExerciseLog}
+          categoryName="Daily Supplements"
+          supplements={[]}
+          onSupplementSelect={handleSupplementLog}
         />
       )}
     </div>
