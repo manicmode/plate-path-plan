@@ -1,0 +1,21 @@
+# Supabase Edge Functions Cron Configuration
+# This file defines scheduled execution of edge functions
+
+jobs:
+  # Generate weekly reports every Sunday at 9:00 AM UTC
+  - name: "generate-weekly-reports"
+    schedule: "0 9 * * 0"  # Sunday at 9:00 AM UTC
+    function: "generate-weekly-reports"
+    payload: {}
+    
+  # Generate monthly reports on the 1st of each month at 9:00 AM UTC
+  - name: "generate-monthly-reports"
+    schedule: "0 9 1 * *"  # 1st day of month at 9:00 AM UTC
+    function: "generate-monthly-reports"
+    payload: {}
+    
+  # Generate yearly reports on January 1st at 9:00 AM UTC
+  - name: "generate-yearly-reports"
+    schedule: "0 9 1 1 *"  # January 1st at 9:00 AM UTC
+    function: "generate-yearly-reports"
+    payload: {}
