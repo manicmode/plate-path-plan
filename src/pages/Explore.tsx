@@ -31,7 +31,7 @@ const Explore = () => {
     } else if (tileId === 'influencers') {
       setIsComingSoonOpen(true);
     } else if (tileId === 'my-reports') {
-      navigate('/reports');
+      navigate('/my-reports');
     } else if (tileId === 'profile') {
       handleProfileClick();
     }
