@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Flame, TrendingUp, TrendingDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -109,7 +110,7 @@ const ProgressCalories = () => {
         <Button 
           variant="ghost" 
           size="icon"
-          onClick={() => navigate('/progress')}
+          onClick={() => navigate('/analytics')}
           className="rounded-full"
         >
           <ArrowLeft className="h-5 w-5" />

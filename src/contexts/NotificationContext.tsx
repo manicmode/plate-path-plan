@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 
 interface NotificationPreferences {
@@ -101,25 +101,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
   }, []);
 
-  const addNotification = useCallback((notification: any) => {
+  const addNotification = (notification: any) => {
     try {
-      // Check for duplicate notifications of the same type/title
-      setNotifications(prev => {
-        const isDuplicate = prev.some(existing => 
-          existing.title === notification.title && 
-          existing.type === notification.type &&
-          Date.now() - new Date(existing.timestamp || existing.id).getTime() < 30000 // Within 30 seconds
-        );
-        
-        if (isDuplicate) {
-          console.log('[Toast] Prevented duplicate notification:', notification.title);
-          return prev;
-        }
-        
-        console.log('[Toast] Added notification:', notification.title);
-        const newNotification = { ...notification, id: notification.id || Date.now().toString(), timestamp: new Date() };
-        return [...prev, newNotification];
-      });
+      console.log('Adding notification:', notification);
+      setNotifications(prev => [...prev, { ...notification, id: Date.now().toString() }]);
       
       if (notification.title && notification.body) {
         toast.success(notification.title, {
@@ -129,7 +114,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     } catch (error) {
       console.error('Failed to add notification:', error);
     }
-  }, []);
+  };
 
   const markAsRead = (id: string) => {
     try {
