@@ -649,6 +649,7 @@ export type Database = {
           predicted_mood: number
           prediction_date: string
           user_id: string
+          user_rating: number | null
         }
         Insert: {
           confidence?: string
@@ -661,6 +662,7 @@ export type Database = {
           predicted_mood: number
           prediction_date: string
           user_id: string
+          user_rating?: number | null
         }
         Update: {
           confidence?: string
@@ -673,6 +675,7 @@ export type Database = {
           predicted_mood?: number
           prediction_date?: string
           user_id?: string
+          user_rating?: number | null
         }
         Relationships: []
       }
