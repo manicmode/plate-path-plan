@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useStableAuth } from '@/hooks/useStableAuth';
 import { useReportsState } from '@/hooks/useReportsState';
 import { useDebouncedFetch } from '@/hooks/useDebouncedFetch';
+import { cn } from '@/lib/utils';
 
 interface ReportFile {
   name: string;
@@ -19,7 +20,10 @@ interface ReportFile {
   metadata: Record<string, any>;
   publicUrl: string;
   weekEndDate: string;
+  type: 'weekly' | 'monthly' | 'yearly';
 }
+
+type ReportTabType = 'weekly' | 'monthly' | 'yearly';
 
 const LoadingSkeleton = () => (
   <div className="space-y-8 animate-fade-in">
@@ -118,6 +122,9 @@ export default function MyReports() {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const fetchingRef = useRef(false);
+  
+  // Tab state management
+  const [activeTab, setActiveTab] = useState<ReportTabType>('weekly');
 
   // Stable utility functions
   const formatDate = useCallback((dateString: string) => {
@@ -165,12 +172,28 @@ export default function MyReports() {
             .getPublicUrl(`${stableUserId}/${file.name}`);
 
           const weekEndMatch = file.name.match(/weekly-report-(\d{4}-\d{2}-\d{2})\.pdf/);
-          const weekEndDate = weekEndMatch ? weekEndMatch[1] : '';
+          const monthlyMatch = file.name.match(/monthly-report-(\d{4}-\d{2})\.pdf/);
+          const yearlyMatch = file.name.match(/yearly-report-(\d{4})\.pdf/);
+          
+          let reportType: 'weekly' | 'monthly' | 'yearly' = 'weekly';
+          let weekEndDate = '';
+
+          if (weekEndMatch) {
+            reportType = 'weekly';
+            weekEndDate = weekEndMatch[1];
+          } else if (monthlyMatch) {
+            reportType = 'monthly';
+            weekEndDate = monthlyMatch[1] + '-01'; // Use first day of month
+          } else if (yearlyMatch) {
+            reportType = 'yearly';
+            weekEndDate = yearlyMatch[1] + '-01-01'; // Use first day of year
+          }
 
           return {
             ...file,
             publicUrl: urlData.publicUrl,
-            weekEndDate
+            weekEndDate,
+            type: reportType
           };
         })
       );
@@ -302,7 +325,7 @@ export default function MyReports() {
   }, [getWeekRange, toast]);
 
   const openPreview = useCallback((report: ReportFile) => {
-    actions.setSelectedReport(report);
+    actions.setSelectedReport(report as any);
     actions.setShowPreview(true);
   }, [actions]);
 
@@ -319,15 +342,17 @@ export default function MyReports() {
   }, [actions, userReady, stableUserId, debouncedFetch]);
 
   // Memoized computed values
-  const { mostRecentReport, previousReports } = useMemo(() => {
-    if (state.reports.length === 0) {
-      return { mostRecentReport: null, previousReports: [] };
-    }
-    return {
-      mostRecentReport: state.reports[0],
-      previousReports: state.reports.slice(1)
-    };
-  }, [state.reports]);
+  const filteredReports = useMemo(() => {
+    return (state.reports as ReportFile[])
+      .filter(report => report.type === activeTab)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [state.reports, activeTab]);
+
+  const reportTabs: { key: ReportTabType; label: string; emoji: string }[] = [
+    { key: 'weekly', label: 'Weekly Reports', emoji: '📅' },
+    { key: 'monthly', label: 'Monthly Reports', emoji: '📊' },
+    { key: 'yearly', label: 'Yearly Reports', emoji: '📈' }
+  ];
 
   // Don't render anything until user is ready
   if (!userReady || !stableUserId || state.isLoading) {
@@ -383,86 +408,95 @@ export default function MyReports() {
         {/* Reports Content */}
         {!state.isLoading && !state.error && state.reports.length > 0 && (
           <div className="space-y-8 animate-fade-in">
-            {/* Most Recent Report Card (Prominent + Beautiful) */}
-            {mostRecentReport && (
-              <section className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">Latest Report</h2>
-                  <p className="text-sm text-muted-foreground">Your most recent weekly health summary</p>
-                </div>
-                
-                <Card className="modern-tracker-card p-6 bg-gradient-to-br from-primary/5 via-background to-secondary/10 border-primary/20 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-4 bg-primary/15 rounded-2xl">
-                        <FileText className="w-8 h-8 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-foreground">📅 {getWeekRange(mostRecentReport.weekEndDate)}</h3>
-                        <p className="text-muted-foreground flex items-center space-x-2 mt-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>Weekly Health Report</span>
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-3 py-1">
-                      🟢 Latest
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Generated on {formatDate(mostRecentReport.created_at)}
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => openPreview(mostRecentReport)}
-                        className="shadow-md hover:shadow-lg transition-all duration-300"
-                      >
-                        🖥️ <Eye className="w-4 h-4 ml-2" />
-                        View Report
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDownload(mostRecentReport)}
-                        className="shadow-md hover:shadow-lg transition-all duration-300"
-                      >
-                        ⬇️ <Download className="w-4 h-4 ml-2" />
-                        Download
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleShare(mostRecentReport)}
-                        className="shadow-md hover:shadow-lg transition-all duration-300"
-                      >
-                        📤 <Share2 className="w-4 h-4 ml-2" />
-                        Share
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </section>
-            )}
+            {/* Report Type Tabs */}
+            <div className="flex justify-center gap-2 mt-6">
+              {reportTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "px-6 py-3 rounded-xl font-medium transition-all duration-300 shadow-md hover:shadow-lg",
+                    activeTab === tab.key
+                      ? "bg-primary text-primary-foreground shadow-xl scale-105"
+                      : "bg-background/80 backdrop-blur-sm hover:bg-background/90 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span className="mr-2">{tab.emoji}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-            {/* Previous Reports List (Compact Scrollable) */}
-            {previousReports.length > 0 && (
-              <section className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">📚 Previous Reports</h2>
-                  <p className="text-sm text-muted-foreground">Your report history</p>
-                </div>
-                
-                 <div className="overflow-y-auto max-h-[60vh] scrollbar-thin px-2 py-2 space-y-4">
-                   {previousReports.map((report) => (
-                     <div key={report.id} className="modern-action-card">
-                       <div className="text-white">📅 {getWeekRange(report.weekEndDate)}</div>
-                       <div className="text-sm text-neutral-300">{formatDate(report.created_at)}</div>
-                     </div>
-                   ))}
-                 </div>
-              </section>
-            )}
+            {/* Filtered Reports Display */}
+            <div className="mt-8 space-y-4">
+              {filteredReports.length === 0 ? (
+                <Card className="text-center py-12 modern-action-card">
+                  <CardContent>
+                    <div className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl inline-block mb-4">
+                      <FileText className="w-12 h-12 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">No {activeTab} reports yet</h3>
+                    <p className="text-muted-foreground">
+                      Generate your first {activeTab} report to start tracking your progress.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredReports.map((report, index) => (
+                  <div key={report.id} className="modern-action-card p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center space-x-4">
+                        <div className="p-3 bg-primary/10 rounded-xl">
+                          <FileText className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">
+                            {reportTabs.find(tab => tab.key === activeTab)?.emoji} {' '}
+                            {activeTab === 'weekly' && getWeekRange(report.weekEndDate)}
+                            {activeTab === 'monthly' && new Date(report.weekEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                            {activeTab === 'yearly' && new Date(report.weekEndDate).getFullYear()}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            Generated on {formatDate(report.created_at)}
+                            {index === 0 && (
+                              <Badge className="ml-2 bg-emerald-100 text-emerald-800 border-emerald-200 px-2 py-1 text-xs">
+                                Latest
+                              </Badge>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openPreview(report)}
+                          className="hover:shadow-md transition-all duration-200"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload(report)}
+                          className="hover:shadow-md transition-all duration-200"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleShare(report)}
+                          className="hover:shadow-md transition-all duration-200"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
@@ -492,14 +526,14 @@ export default function MyReports() {
             <div className="flex justify-end space-x-2 pt-4">
               <Button 
                 variant="outline"
-                onClick={() => state.selectedReport && handleDownload(state.selectedReport)}
+                onClick={() => state.selectedReport && handleDownload(state.selectedReport as ReportFile)}
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download
               </Button>
               <Button 
                 variant="outline"
-                onClick={() => state.selectedReport && handleShare(state.selectedReport)}
+                onClick={() => state.selectedReport && handleShare(state.selectedReport as ReportFile)}
               >
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
