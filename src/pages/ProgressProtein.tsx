@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Target, TrendingUp, TrendingDown } from 'lucide-react';
@@ -6,9 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
-import { useRealNutritionData } from '@/hooks/useRealNutritionData';
+import { useNutrition } from '@/contexts/NutritionContext';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DayDetailModal } from '@/components/analytics/DayDetailModal';
 import { useChartDrillDown } from '@/hooks/useChartDrillDown';
 import { format, subDays } from 'date-fns';
@@ -17,6 +16,7 @@ const ProgressProtein = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const { getTodaysProgress } = useNutrition();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const { selectedDate, showDayDetail, handleChartClick, closeDayDetail, handleEditMeal, handleViewDay } = useChartDrillDown();
   
@@ -24,59 +24,42 @@ const ProgressProtein = () => {
   useScrollToTop();
   
   const targetProtein = user?.targetProtein || 150;
+  const todayProgress = getTodaysProgress();
   
-  // Real data from Supabase
-  const { data: dailyData, loading: dailyLoading } = useRealNutritionData(7);
-  const { data: weeklyData, loading: weeklyLoading } = useRealNutritionData(28);
-  const { data: monthlyData, loading: monthlyLoading } = useRealNutritionData(90);
+  // Mock data for different time periods with dates
+  const dailyData = [
+    { name: 'Mon', value: 120, target: targetProtein, date: format(subDays(new Date(), 6), 'yyyy-MM-dd') },
+    { name: 'Tue', value: 140, target: targetProtein, date: format(subDays(new Date(), 5), 'yyyy-MM-dd') },
+    { name: 'Wed', value: 130, target: targetProtein, date: format(subDays(new Date(), 4), 'yyyy-MM-dd') },
+    { name: 'Thu', value: 150, target: targetProtein, date: format(subDays(new Date(), 3), 'yyyy-MM-dd') },
+    { name: 'Fri', value: 125, target: targetProtein, date: format(subDays(new Date(), 2), 'yyyy-MM-dd') },
+    { name: 'Sat', value: 135, target: targetProtein, date: format(subDays(new Date(), 1), 'yyyy-MM-dd') },
+    { name: 'Today', value: Math.round(todayProgress.protein), target: targetProtein, date: format(new Date(), 'yyyy-MM-dd') },
+  ];
+
+  const weeklyData = [
+    { name: 'Week 1', value: 132, target: targetProtein, date: format(subDays(new Date(), 21), 'yyyy-MM-dd') },
+    { name: 'Week 2', value: 145, target: targetProtein, date: format(subDays(new Date(), 14), 'yyyy-MM-dd') },
+    { name: 'Week 3', value: 128, target: targetProtein, date: format(subDays(new Date(), 7), 'yyyy-MM-dd') },
+    { name: 'Week 4', value: 138, target: targetProtein, date: format(new Date(), 'yyyy-MM-dd') },
+  ];
+
+  const monthlyData = [
+    { name: 'Jan', value: 135, target: targetProtein, date: '2024-01-01' },
+    { name: 'Feb', value: 142, target: targetProtein, date: '2024-02-01' },
+    { name: 'Mar', value: 148, target: targetProtein, date: '2024-03-01' },
+  ];
 
   const getCurrentData = () => {
     switch (viewMode) {
-      case 'weekly':
-        const weeks = [];
-        for (let i = 0; i < 4; i++) {
-          const weekData = weeklyData.slice(i * 7, (i + 1) * 7);
-          const avgProtein = weekData.length > 0 
-            ? weekData.reduce((sum, day) => sum + day.protein, 0) / weekData.length 
-            : 0;
-          weeks.push({
-            name: `Week ${i + 1}`,
-            value: Math.round(avgProtein),
-            target: targetProtein,
-            date: format(subDays(new Date(), (3 - i) * 7), 'yyyy-MM-dd')
-          });
-        }
-        return weeks;
-      case 'monthly':
-        const months = [];
-        for (let i = 0; i < 3; i++) {
-          const monthData = monthlyData.slice(i * 30, (i + 1) * 30);
-          const avgProtein = monthData.length > 0 
-            ? monthData.reduce((sum, day) => sum + day.protein, 0) / monthData.length 
-            : 0;
-          months.push({
-            name: ['Jan', 'Feb', 'Mar'][i] || `Month ${i + 1}`,
-            value: Math.round(avgProtein),
-            target: targetProtein,
-            date: format(subDays(new Date(), (2 - i) * 30), 'yyyy-MM-dd')
-          });
-        }
-        return months;
-      default:
-        return dailyData.map((day, index) => ({
-          name: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-          value: Math.round(day.protein),
-          target: targetProtein,
-          date: format(subDays(new Date(), 6 - index), 'yyyy-MM-dd')
-        }));
+      case 'weekly': return weeklyData;
+      case 'monthly': return monthlyData;
+      default: return dailyData;
     }
   };
 
-  const data = getCurrentData();
-  const isLoading = dailyLoading || weeklyLoading || monthlyLoading;
-
   const getAverageIntake = () => {
-    if (data.length === 0) return 0;
+    const data = getCurrentData();
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return Math.round(total / data.length);
   };
@@ -107,17 +90,6 @@ const ProgressProtein = () => {
     }
     return null;
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your progress...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -195,7 +167,7 @@ const ProgressProtein = () => {
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart 
-                data={data}
+                data={getCurrentData()}
                 onClick={handleChartClick}
                 style={{ cursor: 'pointer' }}
               >
@@ -244,7 +216,7 @@ const ProgressProtein = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {data.length > 0 ? Math.max(...data.map(d => d.value)) : 0}g
+              {Math.max(...getCurrentData().map(d => d.value))}g
             </p>
           </CardContent>
         </Card>
@@ -254,7 +226,7 @@ const ProgressProtein = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {data.length > 0 ? Math.min(...data.map(d => d.value)) : 0}g
+              {Math.min(...getCurrentData().map(d => d.value))}g
             </p>
           </CardContent>
         </Card>
