@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Droplets, TrendingUp, TrendingDown } from 'lucide-react';
@@ -22,10 +21,10 @@ const ProgressHydration = () => {
   useScrollToTop();
   
   const targetHydration = user?.targetHydration || 8; // glasses
-  const hydrationTargetMl = targetHydration * 250; // Convert glasses to ml (250ml per glass)
+  const hydrationTargetMl = (targetHydration || 8) * 250; // Convert glasses to ml (250ml per glass)
   
   // Calculate today's hydration progress percentage
-  const todayProgressPercentage = Math.min((todayTotal / hydrationTargetMl) * 100, 100);
+  const hydrationProgressPercent = Math.min((todayTotal / hydrationTargetMl) * 100, 100);
   
   // Get current data based on view mode
   const getCurrentData = () => {
@@ -55,12 +54,13 @@ const ProgressHydration = () => {
   };
 
   const getGoalPercentage = () => {
-    const average = getAverageIntake();
-    return Math.round((average / targetHydration) * 100);
+    const averageGlasses = getAverageIntake();
+    const averageMl = averageGlasses * 250; // Convert glasses to ml
+    return Math.round((averageMl / hydrationTargetMl) * 100);
   };
 
   const getTodayStatusMessage = () => {
-    const percentage = todayProgressPercentage;
+    const percentage = hydrationProgressPercent;
     if (percentage >= 95) return { message: "Great hydration today!", color: "text-green-600", icon: "🟢" };
     if (percentage >= 75) return { message: "Good progress!", color: "text-blue-600", icon: "💧" };
     if (percentage >= 50) return { message: "Keep drinking!", color: "text-yellow-600", icon: "🟡" };
@@ -152,7 +152,7 @@ const ProgressHydration = () => {
                 <span>{todayStatus.message}</span>
               </p>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                {todayTotal}ml / {hydrationTargetMl}ml ({Math.round(todayProgressPercentage)}%)
+                {todayTotal}ml / {hydrationTargetMl}ml ({Math.round(hydrationProgressPercent)}%)
               </p>
             </div>
             <div className="flex items-center justify-center">
