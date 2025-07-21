@@ -63,6 +63,3 @@ verify_jwt = false
 
 [functions.calculate-daily-score]
 verify_jwt = false
-
-[functions.generate-weekly-reports]
-verify_jwt = false
