@@ -4,12 +4,14 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/auth';
 import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
+import { useRealSupplementData } from '@/hooks/useRealSupplementData';
 
 export const useAnalyticsCalculations = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   const { dailyData, weeklyData: realWeeklyData, isLoading } = useRealNutritionHistory();
   const { summary: exerciseSummary, weeklyChartData: exerciseWeeklyData } = useRealExerciseData('7d');
+  const { todayCount: supplementsTodayCount, weeklyData: supplementWeeklyData } = useRealSupplementData('7d');
   
   const progress = getTodaysProgress();
   
@@ -29,6 +31,11 @@ export const useAnalyticsCalculations = () => {
       const avgCarbs = realWeeklyData.reduce((sum, day) => sum + day.carbs, 0) / realWeeklyData.length;
       const avgFat = realWeeklyData.reduce((sum, day) => sum + day.fat, 0) / realWeeklyData.length;
       
+      // Calculate real supplement average from supplement data
+      const avgSupplements = supplementWeeklyData.length > 0 
+        ? supplementWeeklyData.reduce((sum, day) => sum + day.count, 0) / supplementWeeklyData.length
+        : supplementsTodayCount;
+      
       return {
         calories: avgCalories,
         protein: avgProtein,
@@ -37,34 +44,39 @@ export const useAnalyticsCalculations = () => {
         hydration: progress.hydration, // Use current day's hydration
         steps: exerciseSummary.todaySteps || 0,
         exerciseMinutes: exerciseSummary.todayDuration || 0,
-        supplements: progress.supplements || 0,
+        supplements: avgSupplements,
       };
     } else {
       // Fall back to existing logic for legacy data
       const avgCalories = dataToUse.reduce((sum, day) => {
-        const calories = 'totalCalories' in day ? day.totalCalories : day.calories;
+        const calories = 'calories' in day ? day.calories : ('totalCalories' in day ? day.totalCalories : 0);
         return sum + (calories || 0);
       }, 0) / dataToUse.length;
+      
       const avgProtein = dataToUse.reduce((sum, day) => {
-        const protein = 'totalProtein' in day ? day.totalProtein : day.protein;
+        const protein = 'protein' in day ? day.protein : ('totalProtein' in day ? day.totalProtein : 0);
         return sum + (protein || 0);
       }, 0) / dataToUse.length;
+      
       const avgCarbs = dataToUse.reduce((sum, day) => {
-        const carbs = 'totalCarbs' in day ? day.totalCarbs : day.carbs;
+        const carbs = 'carbs' in day ? day.carbs : ('totalCarbs' in day ? day.totalCarbs : 0);
         return sum + (carbs || 0);
       }, 0) / dataToUse.length;
+      
       const avgFat = dataToUse.reduce((sum, day) => {
-        const fat = 'totalFat' in day ? day.totalFat : day.fat;
+        const fat = 'fat' in day ? day.fat : ('totalFat' in day ? day.totalFat : 0);
         return sum + (fat || 0);
       }, 0) / dataToUse.length;
+      
       const avgHydration = dataToUse.reduce((sum, day) => {
-        const hydration = 'totalHydration' in day ? day.totalHydration : 0;
+        const hydration = 'hydration' in day ? day.hydration : ('totalHydration' in day ? day.totalHydration : 0);
         return sum + (hydration || 0);
       }, 0) / dataToUse.length;
-      const avgSupplements = dataToUse.reduce((sum, day) => {
-        const supplements = 'supplements' in day ? day.supplements.length : 0;
-        return sum + (supplements || 0);
-      }, 0) / dataToUse.length;
+      
+      // Use real supplement data even in fallback mode
+      const avgSupplements = supplementWeeklyData.length > 0 
+        ? supplementWeeklyData.reduce((sum, day) => sum + day.count, 0) / supplementWeeklyData.length
+        : supplementsTodayCount;
       
       return {
         calories: avgCalories,
@@ -77,7 +89,7 @@ export const useAnalyticsCalculations = () => {
         supplements: avgSupplements,
       };
     }
-  }, [weeklyData, currentDay, progress, realWeeklyData, exerciseSummary]);
+  }, [weeklyData, currentDay, progress, realWeeklyData, exerciseSummary, supplementWeeklyData, supplementsTodayCount]);
 
   // Memoize chart data using real data when available
   const weeklyChartData = useMemo(() => {
@@ -95,10 +107,10 @@ export const useAnalyticsCalculations = () => {
       // Use existing nutrition context data
       return weeklyData.slice(-7).map((day, index) => ({
         day: `Day ${index + 1}`,
-        calories: day.totalCalories,
-        protein: day.totalProtein,
-        carbs: day.totalCarbs,
-        fat: day.totalFat,
+        calories: 'calories' in day ? day.calories : ('totalCalories' in day ? day.totalCalories : 0),
+        protein: 'protein' in day ? day.protein : ('totalProtein' in day ? day.totalProtein : 0),
+        carbs: 'carbs' in day ? day.carbs : ('totalCarbs' in day ? day.totalCarbs : 0),
+        fat: 'fat' in day ? day.fat : ('totalFat' in day ? day.totalFat : 0),
         target: user?.targetCalories || 2000
       }));
     } else {
@@ -145,7 +157,10 @@ export const useAnalyticsCalculations = () => {
   ], [progress.protein, progress.carbs, progress.fat]);
 
   return {
-    progress,
+    progress: {
+      ...progress,
+      supplements: supplementsTodayCount // Use real supplement count for today
+    },
     weeklyAverage,
     weeklyChartData,
     hydrationWeeklyData,

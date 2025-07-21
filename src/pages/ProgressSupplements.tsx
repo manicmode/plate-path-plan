@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Pill, TrendingUp, TrendingDown } from 'lucide-react';
@@ -5,8 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
+import { useRealSupplementData } from '@/hooks/useRealSupplementData';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const ProgressSupplements = () => {
   const navigate = useNavigate();
@@ -17,43 +19,68 @@ const ProgressSupplements = () => {
   // Use the scroll-to-top hook
   useScrollToTop();
   
-  const targetSupplements = user?.targetSupplements || 3;
-  const currentSupplements = 2; // Mock current value
+  // Get real supplement data
+  const { 
+    todayCount, 
+    weeklyData, 
+    monthlyData, 
+    isLoading 
+  } = useRealSupplementData(viewMode === 'monthly' ? '30d' : '7d');
   
-  // Mock data for different time periods
-  const dailyData = [
-    { name: 'Mon', value: 3, target: targetSupplements },
-    { name: 'Tue', value: 2, target: targetSupplements },
-    { name: 'Wed', value: 3, target: targetSupplements },
-    { name: 'Thu', value: 3, target: targetSupplements },
-    { name: 'Fri', value: 1, target: targetSupplements },
-    { name: 'Sat', value: 3, target: targetSupplements },
-    { name: 'Today', value: currentSupplements, target: targetSupplements },
-  ];
-
-  const weeklyData = [
-    { name: 'Week 1', value: 2.7, target: targetSupplements },
-    { name: 'Week 2', value: 2.9, target: targetSupplements },
-    { name: 'Week 3', value: 2.4, target: targetSupplements },
-    { name: 'Week 4', value: 2.6, target: targetSupplements },
-  ];
-
-  const monthlyData = [
-    { name: 'Jan', value: 2.6, target: targetSupplements },
-    { name: 'Feb', value: 2.8, target: targetSupplements },
-    { name: 'Mar', value: 2.9, target: targetSupplements },
-  ];
+  const targetSupplements = user?.targetSupplements || 3;
+  
+  // Process data for different time periods
+  const processDataForChart = (data: typeof weeklyData, period: 'daily' | 'weekly' | 'monthly') => {
+    if (period === 'daily') {
+      return data.slice(-7).map((day, index) => ({
+        name: index === data.length - 1 ? 'Today' : `Day ${index + 1}`,
+        value: day.count,
+        target: targetSupplements
+      }));
+    } else if (period === 'weekly') {
+      // Group by weeks
+      const weeklyGroups: { [key: string]: number[] } = {};
+      data.forEach((day, index) => {
+        const weekIndex = Math.floor(index / 7);
+        if (!weeklyGroups[weekIndex]) weeklyGroups[weekIndex] = [];
+        weeklyGroups[weekIndex].push(day.count);
+      });
+      
+      return Object.entries(weeklyGroups).map(([weekIndex, counts]) => ({
+        name: `Week ${parseInt(weekIndex) + 1}`,
+        value: Math.round((counts.reduce((sum, count) => sum + count, 0) / counts.length) * 10) / 10,
+        target: targetSupplements
+      }));
+    } else {
+      // Monthly view - group by month
+      const monthlyGroups: { [key: string]: number[] } = {};
+      data.forEach(day => {
+        const date = new Date(day.date);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        if (!monthlyGroups[monthKey]) monthlyGroups[monthKey] = [];
+        monthlyGroups[monthKey].push(day.count);
+      });
+      
+      return Object.entries(monthlyGroups).map(([monthKey, counts], index) => {
+        const [year, month] = monthKey.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return {
+          name: monthNames[parseInt(month)],
+          value: Math.round((counts.reduce((sum, count) => sum + count, 0) / counts.length) * 10) / 10,
+          target: targetSupplements
+        };
+      });
+    }
+  };
 
   const getCurrentData = () => {
-    switch (viewMode) {
-      case 'weekly': return weeklyData;
-      case 'monthly': return monthlyData;
-      default: return dailyData;
-    }
+    const dataToUse = viewMode === 'monthly' ? monthlyData : weeklyData;
+    return processDataForChart(dataToUse, viewMode);
   };
 
   const getAverageIntake = () => {
     const data = getCurrentData();
+    if (data.length === 0) return 0;
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return Math.round((total / data.length) * 10) / 10;
   };
@@ -71,18 +98,50 @@ const ProgressSupplements = () => {
   };
 
   const status = getStatusMessage();
+  const chartData = getCurrentData();
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border">
-          <p className="font-medium">{`${label}: ${payload[0].value} pills`}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{`Target: ${targetSupplements} pills`}</p>
+          <p className="font-medium">{`${label}: ${payload[0].value} supplements`}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{`Target: ${targetSupplements} supplements`}</p>
         </div>
       );
     }
     return null;
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in pb-8">
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate('/analytics')}
+            className="rounded-full"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-pink-400 to-rose-500 rounded-xl flex items-center justify-center">
+              <Pill className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                Supplements Progress
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">Loading supplement data...</p>
+            </div>
+          </div>
+        </div>
+        <div className="h-64 flex items-center justify-center">
+          <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -120,13 +179,13 @@ const ProgressSupplements = () => {
                 <span>{status.message}</span>
               </p>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Average: {getAverageIntake()} pills ({getGoalPercentage()}% of goal)
+                Average: {getAverageIntake()} supplements ({getGoalPercentage()}% of goal)
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600 dark:text-gray-400">Daily Target</p>
               <p className="text-2xl font-bold text-pink-600 dark:text-pink-400">{targetSupplements}</p>
-              <p className="text-xs text-gray-500">pills</p>
+              <p className="text-xs text-gray-500">supplements</p>
             </div>
           </div>
         </CardContent>
@@ -158,36 +217,45 @@ const ProgressSupplements = () => {
         </CardHeader>
         <CardContent>
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getCurrentData()}>
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 12, fill: 'currentColor' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: 'currentColor' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine 
-                  y={targetSupplements} 
-                  stroke="#EC4899" 
-                  strokeDasharray="5 5" 
-                  strokeWidth={2}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#EC4899" 
-                  strokeWidth={3}
-                  dot={{ fill: '#EC4899', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#EC4899', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <ReferenceLine 
+                    y={targetSupplements} 
+                    stroke="#EC4899" 
+                    strokeDasharray="5 5" 
+                    strokeWidth={2}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#EC4899" 
+                    strokeWidth={3}
+                    dot={{ fill: '#EC4899', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#EC4899', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center text-gray-500 dark:text-gray-400">
+                  <p>No supplement data available</p>
+                  <p className="text-sm">Start logging supplements to see your progress</p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-center items-center space-x-2 mt-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="w-4 h-0.5 bg-pink-500"></div>
@@ -205,7 +273,7 @@ const ProgressSupplements = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {Math.max(...getCurrentData().map(d => d.value))} pills
+              {chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : 0} supplements
             </p>
           </CardContent>
         </Card>
@@ -215,7 +283,7 @@ const ProgressSupplements = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {Math.min(...getCurrentData().map(d => d.value))} pills
+              {chartData.length > 0 ? Math.min(...chartData.map(d => d.value)) : 0} supplements
             </p>
           </CardContent>
         </Card>
@@ -223,9 +291,9 @@ const ProgressSupplements = () => {
         <Card className="visible-card shadow-md">
           <CardContent className="p-4 text-center">
             <Pill className="h-8 w-8 text-pink-500 mx-auto mb-2" />
-            <h4 className="font-semibold text-gray-900 dark:text-white">Average</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-white">Today</h4>
             <p className="text-xl font-bold text-pink-600">
-              {getAverageIntake()} pills
+              {todayCount} supplements
             </p>
           </CardContent>
         </Card>
