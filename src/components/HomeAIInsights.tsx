@@ -1,7 +1,6 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Brain, MessageCircle, BarChart3, Calendar, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
@@ -411,13 +410,13 @@ const HomeAIInsights = () => {
                     </p>
                   </div>
                 </div>
-                <ScrollArea className={`space-y-3 ${isMobile ? 'h-36' : 'h-40'} backdrop-blur-sm`}>
+                <div className="space-y-3 max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
                   {currentItem.content.insights.map((insight, index) => (
                     <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
                       {insight}
                     </p>
                   ))}
-                </ScrollArea>
+                </div>
               </div>
             )}
 
