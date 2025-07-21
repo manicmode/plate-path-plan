@@ -1,12 +1,13 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, MessageCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { Brain, MessageCircle, BarChart3, Calendar, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useReviewNotifications } from '@/hooks/useReviewNotifications';
 
 const HomeAIInsights = () => {
   const { user } = useAuth();
@@ -14,17 +15,22 @@ const HomeAIInsights = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
+  const [currentTabIndex, setCurrentTabIndex] = useState(0);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [fadeState, setFadeState] = useState('fade-in');
   const [moodPrediction, setMoodPrediction] = useState(null);
+  const [weeklyReview, setWeeklyReview] = useState(null);
+  const [monthlyReview, setMonthlyReview] = useState(null);
+  const { scheduleReviewNotifications } = useReviewNotifications();
 
-  // Fetch mood prediction
+  // Fetch mood prediction and reviews
   useEffect(() => {
-    const fetchMoodPrediction = async () => {
+    const fetchData = async () => {
       if (!user?.id) return;
       
+      // Fetch mood prediction
       const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase
+      const { data: moodData } = await supabase
         .from('mood_predictions')
         .select('*')
         .eq('user_id', user.id)
@@ -33,11 +39,140 @@ const HomeAIInsights = () => {
         .limit(1)
         .single();
       
-      setMoodPrediction(data);
+      setMoodPrediction(moodData);
+
+      // Generate weekly review
+      const weeklyData = await generateWeeklyReview();
+      setWeeklyReview(weeklyData);
+
+      // Generate monthly review
+      const monthlyData = await generateMonthlyReview();
+      setMonthlyReview(monthlyData);
+
+      // Schedule notifications for reviews
+      scheduleReviewNotifications();
     };
 
-    fetchMoodPrediction();
+    fetchData();
   }, [user?.id]);
+
+  // Generate weekly review
+  const generateWeeklyReview = async () => {
+    if (!user?.id) return null;
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+    // Fetch data from past 7 days
+    const [nutritionData, hydrationData, supplementData, moodData] = await Promise.all([
+      supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
+      supabase.from('hydration_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
+      supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
+      supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr)
+    ]);
+
+    const insights = [];
+    
+    // Hydration analysis
+    const hydrationDays = new Set(hydrationData.data?.map(h => h.created_at.split('T')[0])).size || 0;
+    if (hydrationDays >= 5) {
+      insights.push(`💧 You met your hydration goal ${hydrationDays}/7 days, well done!`);
+    } else if (hydrationDays >= 3) {
+      insights.push(`💧 Hydration tracked ${hydrationDays}/7 days - room for improvement!`);
+    }
+
+    // Supplement analysis
+    const supplementDays = new Set(supplementData.data?.map(s => s.created_at.split('T')[0])).size || 0;
+    if (supplementDays < 4) {
+      insights.push(`💊 Supplements were missed on several days. Want to try a reminder system?`);
+    }
+
+    // Mood patterns
+    const moodEntries = moodData.data || [];
+    const avgMood = moodEntries.length > 0 ? moodEntries.reduce((sum, m) => sum + (m.mood || 5), 0) / moodEntries.length : 0;
+    if (avgMood >= 7) {
+      insights.push(`😊 Great week for mood! Average rating: ${avgMood.toFixed(1)}/10`);
+    } else if (avgMood < 5) {
+      insights.push(`🤗 Mood averaged ${avgMood.toFixed(1)}/10 - consider reviewing your patterns`);
+    }
+
+    // Default insight if no data
+    if (insights.length === 0) {
+      insights.push(`📊 Start logging more consistently to unlock personalized weekly insights!`);
+    }
+
+    return {
+      title: 'Weekly Review',
+      insights: insights.slice(0, 3),
+      period: '7 days'
+    };
+  };
+
+  // Generate monthly review
+  const generateMonthlyReview = async () => {
+    if (!user?.id) return null;
+
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    const monthAgoStr = monthAgo.toISOString().split('T')[0];
+
+    const [nutritionData, supplementData, moodData] = await Promise.all([
+      supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
+      supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
+      supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr)
+    ]);
+
+    const insights = [];
+    
+    // Consistency score
+    const logDays = new Set([
+      ...(nutritionData.data?.map(n => n.created_at.split('T')[0]) || []),
+      ...(supplementData.data?.map(s => s.created_at.split('T')[0]) || []),
+      ...(moodData.data?.map(m => m.created_at.split('T')[0]) || [])
+    ]).size;
+    
+    const consistencyScore = Math.round((logDays / 30) * 100);
+    if (consistencyScore >= 80) {
+      insights.push(`⭐ This month's consistency score: ${consistencyScore}% — impressive commitment!`);
+    } else {
+      insights.push(`📈 Consistency score: ${consistencyScore}% — aim for 80%+ next month!`);
+    }
+
+    // Top supplement
+    const supplementCounts: Record<string, number> = {};
+    supplementData.data?.forEach(s => {
+      supplementCounts[s.name] = (supplementCounts[s.name] || 0) + 1;
+    });
+    const topSupplement = Object.entries(supplementCounts).sort(([,a], [,b]) => (b as number) - (a as number))[0];
+    if (topSupplement) {
+      insights.push(`💊 Top supplement: ${topSupplement[0]} (logged ${topSupplement[1]} times)`);
+    }
+
+    // Mood improvements
+    const moodEntries = moodData.data || [];
+    if (moodEntries.length >= 10) {
+      const recentMoods = moodEntries.slice(-10).map(m => m.mood || 5);
+      const earlierMoods = moodEntries.slice(0, 10).map(m => m.mood || 5);
+      const recentAvg = recentMoods.reduce((sum, m) => sum + m, 0) / recentMoods.length;
+      const earlierAvg = earlierMoods.reduce((sum, m) => sum + m, 0) / earlierMoods.length;
+      
+      if (recentAvg > earlierAvg) {
+        const improvement = Math.round(((recentAvg - earlierAvg) / earlierAvg) * 100);
+        insights.push(`🧠 Mood improved by ${improvement}% this month — great progress!`);
+      }
+    }
+
+    if (insights.length === 0) {
+      insights.push(`🌟 Keep tracking to unlock detailed monthly insights!`);
+    }
+
+    return {
+      title: 'Monthly Review',
+      insights: insights.slice(0, 3),
+      period: '30 days'
+    };
+  };
 
   // Generate AI messages (mood prediction + coach tips)
   const generateAIMessages = () => {
@@ -128,85 +263,192 @@ const HomeAIInsights = () => {
 
   const aiMessages = generateAIMessages();
 
-  // Rotation logic with fade animation
+  // Define tabs
+  const tabs = [
+    {
+      type: 'daily',
+      title: 'Daily Tips',
+      icon: Brain,
+      content: aiMessages
+    },
+    {
+      type: 'weekly',
+      title: 'Weekly Review',
+      emoji: '📊',
+      icon: BarChart3,
+      content: weeklyReview
+    },
+    {
+      type: 'monthly',
+      title: 'Monthly Review', 
+      emoji: '🧠',
+      icon: Calendar,
+      content: monthlyReview
+    }
+  ];
+
+  // Tab rotation logic
   useEffect(() => {
-    const rotateMessages = () => {
+    const rotateTab = () => {
       setFadeState('fade-out');
       setTimeout(() => {
-        setCurrentMessageIndex((prev) => (prev + 1) % aiMessages.length);
+        setCurrentTabIndex((prev) => (prev + 1) % 3); // Always 3 tabs
+        setCurrentMessageIndex(0); // Reset message index when changing tabs
         setFadeState('fade-in');
       }, 300);
     };
 
-    const interval = setInterval(rotateMessages, 7000); // 7 seconds
+    const interval = setInterval(rotateTab, 10000); // 10 seconds
     return () => clearInterval(interval);
-  }, [aiMessages.length]);
+  }, []);
 
-  const currentMessage = aiMessages[currentMessageIndex];
+  // Message rotation within daily tips tab
+  useEffect(() => {
+    if (currentTabIndex === 0 && aiMessages.length > 1) {
+      const rotateMessage = () => {
+        setFadeState('fade-out');
+        setTimeout(() => {
+          setCurrentMessageIndex((prev) => (prev + 1) % aiMessages.length);
+          setFadeState('fade-in');
+        }, 300);
+      };
+
+      const interval = setInterval(rotateMessage, 7000); // 7 seconds
+      return () => clearInterval(interval);
+    }
+  }, [currentTabIndex, aiMessages.length]);
+
+  const currentTab = tabs[currentTabIndex];
+  const currentContent = currentTab.type === 'daily' ? aiMessages[currentMessageIndex] : currentTab.content;
 
   return (
     <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl ${isMobile ? 'mx-2' : 'mx-4'}`}>
       <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
-        {/* Header */}
-        <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-8'}`}>
+        {/* Header with Tab Navigation */}
+        <div className={`flex items-center justify-between ${isMobile ? 'mb-4' : 'mb-6'}`}>
           <div className={`flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'}`}>
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} gradient-primary rounded-full flex items-center justify-center shadow-lg ai-glow`}>
-              <currentMessage.icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+              <currentTab.icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
             <div>
               <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>AI Insights</h3>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>Intelligent & Adaptive</p>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>{currentTab.title}</p>
             </div>
           </div>
         </div>
 
-        {/* Rotating AI Message */}
-        <div className={`min-h-[120px] ${isMobile ? 'mb-6' : 'mb-8'}`}>
-          <div className={`transition-all duration-300 ${fadeState === 'fade-in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}>
-            <div className="flex items-start space-x-4">
-              <div className="text-3xl flex-shrink-0 mt-1">{currentMessage.emoji}</div>
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-3">
-                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
-                    {currentMessage.title}
-                  </h4>
-                  <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-1 rounded-full">
-                    {currentMessage.confidence}
-                  </span>
-                </div>
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
-                  {currentMessage.message}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Message Progress Indicators */}
-        <div className="flex justify-center space-x-3 mb-6">
-          {aiMessages.map((message, index) => (
+        {/* Tab Indicators */}
+        <div className="flex justify-center space-x-4 mb-6">
+          {tabs.map((tab, index) => (
             <div
               key={index}
               className={`flex flex-col items-center space-y-1 cursor-pointer transition-all duration-300 ${
-                index === currentMessageIndex ? 'opacity-100' : 'opacity-40'
+                index === currentTabIndex ? 'opacity-100' : 'opacity-40'
               }`}
               onClick={() => {
                 setFadeState('fade-out');
                 setTimeout(() => {
-                  setCurrentMessageIndex(index);
+                  setCurrentTabIndex(index);
+                  setCurrentMessageIndex(0);
                   setFadeState('fade-in');
                 }, 300);
               }}
             >
               <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                index === currentMessageIndex ? 'bg-blue-500 scale-125' : 'bg-gray-300 dark:bg-gray-600'
+                index === currentTabIndex ? 'bg-blue-500 scale-125' : 'bg-gray-300 dark:bg-gray-600'
               }`} />
-              <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {message.type}
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {tab.title.split(' ')[0]}
               </span>
             </div>
           ))}
         </div>
+
+        {/* Content Area */}
+        <div className={`min-h-[140px] ${isMobile ? 'mb-6' : 'mb-8'}`}>
+          <div className={`transition-all duration-300 ${fadeState === 'fade-in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}>
+            {currentTab.type === 'daily' && currentContent && (
+              <div className="flex items-start space-x-4">
+                <div className="text-3xl flex-shrink-0 mt-1">{currentContent.emoji}</div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
+                      {currentContent.title}
+                    </h4>
+                    <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-1 rounded-full">
+                      {currentContent.confidence}
+                    </span>
+                  </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
+                    {currentContent.message}
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && currentContent && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="text-3xl">{currentTab.emoji}</div>
+                  <div>
+                    <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
+                      {currentContent.title}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Past {currentContent.period}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3 max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                  {currentContent.insights.map((insight, index) => (
+                    <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
+                      {insight}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && !currentContent && (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="text-3xl mb-2">{currentTab.emoji}</div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400`}>
+                    Generating {currentTab.title.toLowerCase()}...
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Message Progress Indicators for Daily Tips */}
+        {currentTab.type === 'daily' && aiMessages.length > 1 && (
+          <div className="flex justify-center space-x-3 mb-6">
+            {aiMessages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex flex-col items-center space-y-1 cursor-pointer transition-all duration-300 ${
+                  index === currentMessageIndex ? 'opacity-100' : 'opacity-40'
+                }`}
+                onClick={() => {
+                  setFadeState('fade-out');
+                  setTimeout(() => {
+                    setCurrentMessageIndex(index);
+                    setFadeState('fade-in');
+                  }, 300);
+                }}
+              >
+                <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  index === currentMessageIndex ? 'bg-blue-500 scale-125' : 'bg-gray-300 dark:bg-gray-600'
+                }`} />
+                <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                  {message.type}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Action Button */}
         <Button
