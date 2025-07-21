@@ -3,11 +3,13 @@ import { useMemo } from 'react';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/auth';
 import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
+import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 
 export const useAnalyticsCalculations = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   const { dailyData, weeklyData: realWeeklyData, isLoading } = useRealNutritionHistory();
+  const { summary: exerciseSummary, weeklyChartData: exerciseWeeklyData } = useRealExerciseData('7d');
   
   const progress = getTodaysProgress();
   
@@ -33,8 +35,8 @@ export const useAnalyticsCalculations = () => {
         carbs: avgCarbs,
         fat: avgFat,
         hydration: progress.hydration, // Use current day's hydration
-        steps: progress.hydration > 0 ? 7500 + (progress.hydration / 100) : 6000,
-        exerciseMinutes: progress.calories > 1000 ? 25 + Math.round(progress.calories / 100) : 15,
+        steps: exerciseSummary.todaySteps || 0,
+        exerciseMinutes: exerciseSummary.todayDuration || 0,
         supplements: progress.supplements || 0,
       };
     } else {
@@ -70,12 +72,12 @@ export const useAnalyticsCalculations = () => {
         carbs: avgCarbs,
         fat: avgFat,
         hydration: avgHydration,
-        steps: progress.hydration > 0 ? 7500 + (progress.hydration / 100) : 6000,
-        exerciseMinutes: progress.calories > 1000 ? 25 + Math.round(progress.calories / 100) : 15,
+        steps: exerciseSummary.todaySteps || 0,
+        exerciseMinutes: exerciseSummary.todayDuration || 0,
         supplements: avgSupplements,
       };
     }
-  }, [weeklyData, currentDay, progress, realWeeklyData]);
+  }, [weeklyData, currentDay, progress, realWeeklyData, exerciseSummary]);
 
   // Memoize chart data using real data when available
   const weeklyChartData = useMemo(() => {
@@ -111,29 +113,29 @@ export const useAnalyticsCalculations = () => {
     return [];
   }, []);
 
-  // Memoize steps data
+  // Use real steps data from exercise hook
   const stepsData = useMemo(() => {
-    const baseSteps = weeklyAverage.steps;
-    
-    return Array.from({ length: 7 }, (_, index) => {
-      return {
-        day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-        steps: index === 6 ? Math.round(baseSteps) : Math.round(baseSteps + (Math.random() - 0.5) * 2000),
-      };
-    });
-  }, [weeklyAverage.steps]);
+    if (exerciseWeeklyData.length > 0) {
+      return exerciseWeeklyData.map(day => ({
+        day: day.day,
+        steps: day.steps,
+      }));
+    }
+    // Return empty array if no data available
+    return [];
+  }, [exerciseWeeklyData]);
 
-  // Memoize exercise calories data
+  // Use real exercise calories data from exercise hook  
   const exerciseCaloriesData = useMemo(() => {
-    const baseCalories = weeklyAverage.exerciseMinutes * 8;
-    
-    return Array.from({ length: 7 }, (_, index) => {
-      return {
-        day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-        calories: index === 6 ? Math.round(baseCalories) : Math.round(baseCalories + (Math.random() - 0.5) * 100),
-      };
-    });
-  }, [weeklyAverage.exerciseMinutes]);
+    if (exerciseWeeklyData.length > 0) {
+      return exerciseWeeklyData.map(day => ({
+        day: day.day,
+        calories: day.calories,
+      }));
+    }
+    // Return empty array if no data available
+    return [];
+  }, [exerciseWeeklyData]);
 
   // Memoize macro data using real progress
   const macroData = useMemo(() => [

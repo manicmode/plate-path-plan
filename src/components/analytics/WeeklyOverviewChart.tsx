@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/auth';
 import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
+import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 
 type MetricType = 'calories' | 'protein' | 'carbs' | 'fat' | 'hydration' | 'steps' | 'exercise';
@@ -13,6 +14,7 @@ export const WeeklyOverviewChart = () => {
   const { weeklyData } = useNutrition();
   const { user } = useAuth();
   const { dailyData, isLoading } = useRealNutritionHistory();
+  const { weeklyChartData: exerciseWeeklyData, isLoading: exerciseLoading } = useRealExerciseData('7d');
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('calories');
 
   // Convert targetHydration (glasses) to ml for hydration metric
@@ -31,7 +33,7 @@ export const WeeklyOverviewChart = () => {
   const currentMetric = metricOptions.find(m => m.value === selectedMetric);
 
   const chartData = React.useMemo(() => {
-    if (isLoading) return [];
+    if (isLoading || exerciseLoading) return [];
 
     if (dailyData.length > 0 && ['calories', 'protein', 'carbs', 'fat'].includes(selectedMetric)) {
       // Use real nutrition data for nutrition metrics
@@ -52,8 +54,25 @@ export const WeeklyOverviewChart = () => {
           target: currentMetric?.target || 0
         };
       });
+    } else if (exerciseWeeklyData.length > 0 && ['steps', 'exercise'].includes(selectedMetric)) {
+      // Use real exercise data for exercise metrics
+      return exerciseWeeklyData.map((day) => {
+        const getValue = () => {
+          switch (selectedMetric) {
+            case 'steps': return day.steps;
+            case 'exercise': return day.duration;
+            default: return 0;
+          }
+        };
+
+        return {
+          day: day.day,
+          value: getValue(),
+          target: currentMetric?.target || 0
+        };
+      });
     } else if (weeklyData.length > 0) {
-      // Use existing data for other metrics or as fallback
+      // Use existing data for hydration or as fallback
       return weeklyData.slice(-7).map((day, index) => {
         const getValue = () => {
           switch (selectedMetric) {
@@ -62,8 +81,6 @@ export const WeeklyOverviewChart = () => {
             case 'carbs': return day.totalCarbs;
             case 'fat': return day.totalFat;
             case 'hydration': return day.totalHydration;
-            case 'steps': return 8500 + Math.random() * 2000; // Mock data
-            case 'exercise': return 20 + Math.random() * 40; // Mock data
             default: return 0;
           }
         };
@@ -78,7 +95,7 @@ export const WeeklyOverviewChart = () => {
       // Return empty array instead of mock data
       return [];
     }
-  }, [dailyData, weeklyData, selectedMetric, currentMetric?.target, isLoading]);
+  }, [dailyData, exerciseWeeklyData, weeklyData, selectedMetric, currentMetric?.target, isLoading, exerciseLoading]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -97,7 +114,7 @@ export const WeeklyOverviewChart = () => {
     return null;
   };
 
-  if (isLoading) {
+  if (isLoading || exerciseLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg">
         <CardHeader>
