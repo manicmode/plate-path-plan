@@ -3,20 +3,21 @@ import React from 'react';
 import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 import { Flame, Zap, Droplets, Activity } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
+import { useRealNutritionData } from '@/hooks/useRealNutritionData';
+import { useRealHydrationData } from '@/hooks/useRealHydrationData';
+import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 
-interface DailyProgressSectionProps {
-  progress: any;
-  weeklyAverage: any;
-}
-
-export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressSectionProps) => {
+export const DailyProgressSection = () => {
   const { user } = useAuth();
+  const { todayTotal: nutritionToday } = useRealNutritionData(1);
+  const { todayTotal: hydrationToday } = useRealHydrationData(1);
+  const { todayTotal: exerciseToday } = useRealExerciseData(1);
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <DailyProgressCard
         title="Calories"
-        value={progress.calories}
+        value={nutritionToday.calories}
         target={user?.targetCalories || 2000}
         unit="kcal"
         icon={<Flame className="h-6 w-6" />}
@@ -24,7 +25,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Protein"
-        value={progress.protein}
+        value={nutritionToday.protein}
         target={user?.targetProtein || 120}
         unit="g"
         icon={<Zap className="h-6 w-6" />}
@@ -32,7 +33,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Hydration"
-        value={progress.hydration}
+        value={hydrationToday}
         target={user?.targetHydration || 2000}
         unit="ml"
         icon={<Droplets className="h-6 w-6" />}
@@ -40,7 +41,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
       />
       <DailyProgressCard
         title="Steps"
-        value={Math.round(weeklyAverage.steps)}
+        value={exerciseToday.steps}
         target={10000}
         unit="steps"
         icon={<Activity className="h-6 w-6" />}

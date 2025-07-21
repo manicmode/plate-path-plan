@@ -1,117 +1,92 @@
 
 import { useMemo } from 'react';
-import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/auth';
-
-// Deterministic random function based on seed
-const seededRandom = (seed: number) => {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
-};
-
-// Generate stable data based on date and user
-const generateStableData = (baseValue: number, seed: number, variation: number) => {
-  return Math.max(0, baseValue + (seededRandom(seed) - 0.5) * variation);
-};
+import { useRealNutritionData } from '@/hooks/useRealNutritionData';
+import { useRealHydrationData } from '@/hooks/useRealHydrationData';
+import { useRealSupplementData } from '@/hooks/useRealSupplementData';
+import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 
 export const useAnalyticsCalculations = () => {
-  const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
-  
-  const progress = getTodaysProgress();
-  
-  // Memoize weekly averages to prevent recalculation
+  const { todayTotal: nutritionToday, data: nutritionWeekly } = useRealNutritionData(7);
+  const { todayTotal: hydrationToday, data: hydrationWeekly } = useRealHydrationData(7);
+  const { todayTotal: supplementsToday, data: supplementsWeekly } = useRealSupplementData(7);
+  const { todayTotal: exerciseToday, data: exerciseWeekly } = useRealExerciseData(7);
+
+  // Real progress data from today's totals
+  const progress = useMemo(() => ({
+    calories: nutritionToday.calories,
+    protein: nutritionToday.protein,
+    carbs: nutritionToday.carbs,
+    fat: nutritionToday.fat,
+    hydration: hydrationToday,
+    supplements: supplementsToday
+  }), [nutritionToday, hydrationToday, supplementsToday]);
+
+  // Real weekly averages calculated from actual data
   const weeklyAverage = useMemo(() => {
-    const dataToUse = weeklyData.length > 0 ? weeklyData.slice(-7) : [currentDay];
-    
-    const avgCalories = dataToUse.reduce((sum, day) => sum + day.totalCalories, 0) / dataToUse.length;
-    const avgProtein = dataToUse.reduce((sum, day) => sum + day.totalProtein, 0) / dataToUse.length;
-    const avgCarbs = dataToUse.reduce((sum, day) => sum + day.totalCarbs, 0) / dataToUse.length;
-    const avgFat = dataToUse.reduce((sum, day) => sum + day.totalFat, 0) / dataToUse.length;
-    const avgHydration = dataToUse.reduce((sum, day) => sum + day.totalHydration, 0) / dataToUse.length;
-    const avgSupplements = dataToUse.reduce((sum, day) => sum + day.supplements.length, 0) / dataToUse.length;
-    
-    return {
-      calories: avgCalories,
-      protein: avgProtein,
-      carbs: avgCarbs,
-      fat: avgFat,
-      hydration: avgHydration,
-      steps: progress.hydration > 0 ? 7500 + (progress.hydration / 100) : 6000,
-      exerciseMinutes: progress.calories > 1000 ? 25 + Math.round(progress.calories / 100) : 15,
-      supplements: avgSupplements,
+    const nutritionAvg = {
+      calories: nutritionWeekly.reduce((sum, day) => sum + day.calories, 0) / 7,
+      protein: nutritionWeekly.reduce((sum, day) => sum + day.protein, 0) / 7,
+      carbs: nutritionWeekly.reduce((sum, day) => sum + day.carbs, 0) / 7,
+      fat: nutritionWeekly.reduce((sum, day) => sum + day.fat, 0) / 7,
     };
-  }, [weeklyData, currentDay, progress]);
 
-  // Memoize chart data with stable generation
-  const weeklyChartData = useMemo(() => {
-    const today = new Date().toDateString();
-    const userId = user?.id || 'default';
-    const seedBase = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    return weeklyData.length > 0 ? 
-      weeklyData.slice(-7).map((day, index) => ({
-        day: `Day ${index + 1}`,
-        calories: day.totalCalories,
-        protein: day.totalProtein,
-        carbs: day.totalCarbs,
-        fat: day.totalFat,
-        target: user?.targetCalories || 2000
-      })) :
-      Array.from({ length: 7 }, (_, index) => ({
-        day: `Day ${index + 1}`,
-        calories: generateStableData(progress.calories, seedBase + index, 400),
-        protein: generateStableData(progress.protein, seedBase + index + 100, 20),
-        carbs: generateStableData(progress.carbs, seedBase + index + 200, 50),
-        fat: generateStableData(progress.fat, seedBase + index + 300, 15),
-        target: user?.targetCalories || 2000
-      }));
-  }, [weeklyData, progress, user?.targetCalories, user?.id]);
+    const hydrationAvg = hydrationWeekly.reduce((sum, day) => sum + day, 0) / 7;
+    const supplementsAvg = supplementsWeekly.reduce((sum, day) => sum + day, 0) / 7;
+    const stepsAvg = exerciseWeekly.reduce((sum, day) => sum + day.steps, 0) / 7;
+    const exerciseAvg = exerciseWeekly.reduce((sum, day) => sum + day.duration, 0) / 7;
 
-  // Memoize hydration data
-  const hydrationWeeklyData = useMemo(() => {
-    const today = new Date().toDateString();
-    const seedBase = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    return Array.from({ length: 7 }, (_, index) => {
-      const baseHydration = progress.hydration || 0;
-      return {
-        day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-        amount: index === 6 ? baseHydration : generateStableData(baseHydration, seedBase + index, 600),
-        target: user?.targetHydration || 2000,
-      };
-    });
-  }, [progress.hydration, user?.targetHydration]);
+    return {
+      calories: nutritionAvg.calories,
+      protein: nutritionAvg.protein,
+      carbs: nutritionAvg.carbs,
+      fat: nutritionAvg.fat,
+      hydration: hydrationAvg,
+      steps: stepsAvg,
+      exerciseMinutes: exerciseAvg,
+      supplements: supplementsAvg,
+    };
+  }, [nutritionWeekly, hydrationWeekly, supplementsWeekly, exerciseWeekly]);
 
-  // Memoize steps data
-  const stepsData = useMemo(() => {
-    const today = new Date().toDateString();
-    const seedBase = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    return Array.from({ length: 7 }, (_, index) => {
-      const baseSteps = weeklyAverage.steps;
-      return {
-        day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-        steps: index === 6 ? Math.round(baseSteps) : Math.round(generateStableData(baseSteps, seedBase + index, 2000)),
-      };
-    });
-  }, [weeklyAverage.steps]);
+  // Real chart data for nutrition
+  const weeklyChartData = useMemo(() => 
+    nutritionWeekly.map((day, index) => ({
+      day: `Day ${index + 1}`,
+      calories: day.calories,
+      protein: day.protein,
+      carbs: day.carbs,
+      fat: day.fat,
+      target: user?.targetCalories || 2000
+    }))
+  , [nutritionWeekly, user?.targetCalories]);
 
-  // Memoize exercise calories data
-  const exerciseCaloriesData = useMemo(() => {
-    const today = new Date().toDateString();
-    const seedBase = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    return Array.from({ length: 7 }, (_, index) => {
-      const baseCalories = weeklyAverage.exerciseMinutes * 8;
-      return {
-        day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-        calories: index === 6 ? Math.round(baseCalories) : Math.round(generateStableData(baseCalories, seedBase + index, 100)),
-      };
-    });
-  }, [weeklyAverage.exerciseMinutes]);
+  // Real hydration chart data
+  const hydrationWeeklyData = useMemo(() => 
+    hydrationWeekly.map((amount, index) => ({
+      day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
+      amount: amount,
+      target: user?.targetHydration || 2000,
+    }))
+  , [hydrationWeekly, user?.targetHydration]);
 
-  // Memoize macro data
+  // Real steps chart data
+  const stepsData = useMemo(() => 
+    exerciseWeekly.map((exercise, index) => ({
+      day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
+      steps: exercise.steps,
+    }))
+  , [exerciseWeekly]);
+
+  // Real exercise calories chart data
+  const exerciseCaloriesData = useMemo(() => 
+    exerciseWeekly.map((exercise, index) => ({
+      day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
+      calories: exercise.calories,
+    }))
+  , [exerciseWeekly]);
+
+  // Real macro data from today's nutrition
   const macroData = useMemo(() => [
     { name: 'Protein', value: progress.protein, color: '#10B981', percentage: 30 },
     { name: 'Carbs', value: progress.carbs, color: '#F59E0B', percentage: 45 },
