@@ -1,6 +1,9 @@
 
 project_id = "uzoiiijqtahohfafqirm"
 
+[functions.generate-weekly-health-report]
+verify_jwt = false
+
 [functions.assign-monthly-rankings]
 
 [functions.generate-monthly-summary]
