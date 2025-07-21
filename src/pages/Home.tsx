@@ -20,6 +20,7 @@ import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
 import { useToxinDetections } from '@/hooks/useToxinDetections';
+import { useRealToxinData } from '@/hooks/useRealToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
@@ -71,7 +72,8 @@ const Home = () => {
     hydration_ml: null,
     supplement_count: null
   });
-  const { toxinData, loading: toxinLoading, detectToxinsForFood } = useToxinDetections();
+  const { toxinData: realToxinData, todayFlaggedCount, isLoading: toxinLoading } = useRealToxinData();
+  const { detectToxinsForFood } = useToxinDetections(); // Keep for automatic detection
   
   // Enable automatic toxin detection for new food logs
   useAutomaticToxinDetection();
@@ -1458,7 +1460,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
-                {toxinData.map((item, index) => {
+                {realToxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (

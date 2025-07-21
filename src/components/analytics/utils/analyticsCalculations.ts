@@ -4,12 +4,14 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useAuth } from '@/contexts/auth';
 import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
+import { useRealToxinData } from '@/hooks/useRealToxinData';
 
 export const useAnalyticsCalculations = () => {
   const { currentDay, weeklyData, getTodaysProgress } = useNutrition();
   const { user } = useAuth();
   const { dailyData, weeklyData: realWeeklyData, isLoading } = useRealNutritionHistory();
   const { summary: exerciseSummary, weeklyChartData: exerciseWeeklyData } = useRealExerciseData('7d');
+  const { todayFlaggedCount, isLoading: toxinLoading } = useRealToxinData();
   
   const progress = getTodaysProgress();
   
@@ -38,6 +40,7 @@ export const useAnalyticsCalculations = () => {
         steps: exerciseSummary.todaySteps || 0,
         exerciseMinutes: exerciseSummary.todayDuration || 0,
         supplements: progress.supplements || 0,
+        toxins: todayFlaggedCount || 0, // Use real toxin/flagged ingredient count
       };
     } else {
       // Fall back to existing logic for legacy data
@@ -154,6 +157,7 @@ export const useAnalyticsCalculations = () => {
     macroData,
     user,
     hydrationTargetMl,
-    isLoading // Export loading state for components that need it
+    todayFlaggedCount, // Export toxin count for components that need it
+    isLoading: isLoading || toxinLoading // Export combined loading state
   };
 };
