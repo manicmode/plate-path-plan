@@ -26,7 +26,6 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/home', icon: Home, label: 'Home' },
     { path: '/camera', icon: Camera, label: 'Log' },
     { path: '/analytics', icon: BarChart3, label: 'Progress' },
-    { path: '/my-reports', icon: FileText, label: 'My Reports' },
     { path: '/coach', icon: MessageCircle, label: 'Coach' },
     { path: '/explore', icon: Compass, label: 'Explore' },
   ];
