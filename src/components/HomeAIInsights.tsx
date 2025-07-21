@@ -1,328 +1,211 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Zap, Sparkles, ChefHat, Target, TrendingUp, Clock, RefreshCw } from 'lucide-react';
+import { Brain, MessageCircle, RefreshCw, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const HomeAIInsights = () => {
   const { user } = useAuth();
-  const { getTodaysProgress, getHydrationGoal, getSupplementGoal } = useNutrition();
+  const { getTodaysProgress } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
-  const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [fadeState, setFadeState] = useState('fade-in');
+  const [moodPrediction, setMoodPrediction] = useState(null);
 
-  const totalCalories = user?.targetCalories || 2000;
-  const currentCalories = progress.calories;
-  const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
-  const hydrationGoal = getHydrationGoal();
-  const hydrationPercentage = Math.min((progress.hydration / hydrationGoal) * 100, 100);
-  const supplementGoal = getSupplementGoal();
-  const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
-
-  // Get current time context
-  const currentHour = new Date().getHours();
-  const timeOfDay = currentHour < 12 ? 'morning' : currentHour < 17 ? 'afternoon' : 'evening';
-
-  // Generate dynamic insights based on user data and context
-  const generateInsights = () => {
-    const insights = [];
-    const userName = user?.name?.split(' ')[0] || 'there';
-
-    // Progress-based insights
-    if (progressPercentage >= 100) {
-      insights.push({
-        icon: '🎯',
-        title: 'Calorie Goal Crushed!',
-        message: `Amazing work, ${userName}! You've hit your daily calorie target. Your consistency is paying off!`,
-        type: 'achievement'
-      });
-    } else if (progressPercentage >= 80) {
-      insights.push({
-        icon: '🔥',
-        title: 'Almost There!',
-        message: `You're at ${Math.round(progressPercentage)}% of your calorie goal. Just ${Math.round(totalCalories - currentCalories)} calories to go!`,
-        type: 'progress'
-      });
-    } else if (progressPercentage >= 50) {
-      insights.push({
-        icon: '💪',
-        title: 'Halfway Champion!',
-        message: `Great momentum, ${userName}! You're halfway to your daily goal. Keep this energy going!`,
-        type: 'encouragement'
-      });
-    }
-
-    // Hydration insights
-    if (hydrationPercentage >= 100) {
-      insights.push({
-        icon: '💧',
-        title: 'Hydration Hero!',
-        message: `Excellent hydration today! Your body is thanking you for staying so well hydrated.`,
-        type: 'achievement'
-      });
-    } else if (hydrationPercentage < 50) {
-      insights.push({
-        icon: '🚰',
-        title: 'Hydration Reminder',
-        message: `Time to drink up! You're at ${Math.round(hydrationPercentage)}% of your hydration goal. Your body needs more water.`,
-        type: 'reminder'
-      });
-    }
-
-    // Time-based contextual insights
-    if (timeOfDay === 'morning' && progressPercentage < 25) {
-      insights.push({
-        icon: '🌅',
-        title: 'Morning Fuel Needed',
-        message: `Good morning, ${userName}! Start your day strong with a nutritious breakfast to fuel your goals.`,
-        type: 'timing'
-      });
-    } else if (timeOfDay === 'afternoon' && progressPercentage < 60) {
-      insights.push({
-        icon: '☀️',
-        title: 'Afternoon Energy Boost',
-        message: `Perfect time for a healthy lunch! You're doing great - keep nourishing your body.`,
-        type: 'timing'
-      });
-    } else if (timeOfDay === 'evening' && progressPercentage > 90) {
-      insights.push({
-        icon: '🌙',
-        title: 'Evening Balance',
-        message: `You've had a fantastic nutrition day! Consider a light, protein-rich evening snack if needed.`,
-        type: 'timing'
-      });
-    }
-
-    // Macro balance insights
-    const proteinPercentage = Math.min((progress.protein / (user?.targetProtein || 150)) * 100, 100);
-    if (proteinPercentage < 50 && progressPercentage > 50) {
-      insights.push({
-        icon: '🥩',
-        title: 'Protein Power Up',
-        message: `Your protein intake is at ${Math.round(proteinPercentage)}%. Consider adding lean protein to reach your strength goals!`,
-        type: 'macro'
-      });
-    }
-
-    // Health goal specific insights
-    if (user?.main_health_goal === 'weight_loss' && progressPercentage > 110) {
-      insights.push({
-        icon: '⚖️',
-        title: 'Weight Loss Focus',
-        message: `You're slightly over your calorie goal. Tomorrow, try focusing on high-volume, low-calorie foods to stay satisfied.`,
-        type: 'goal'
-      });
-    } else if (user?.main_health_goal === 'muscle_gain' && proteinPercentage < 70) {
-      insights.push({
-        icon: '💪',
-        title: 'Muscle Building Tip',
-        message: `For muscle gain, aim for more protein! You're at ${Math.round(proteinPercentage)}% of your protein target.`,
-        type: 'goal'
-      });
-    }
-
-    // Default motivational insights
-    if (insights.length === 0) {
-      insights.push({
-        icon: '✨',
-        title: 'You\'re Doing Great!',
-        message: `Every healthy choice you make is an investment in your future self. Keep up the amazing work, ${userName}!`,
-        type: 'motivation'
-      });
-    }
-
-    return insights;
-  };
-
-  // Generate personalized recipe hints based on user profile
-  const generateRecipeHints = () => {
-    const hints = [];
-    const dietStyles = user?.diet_styles || [];
-    const healthGoal = user?.main_health_goal;
-    const foodsToAvoid = user?.foods_to_avoid || '';
-
-    // Base recipe suggestions
-    if (dietStyles.includes('vegetarian') || dietStyles.includes('vegan')) {
-      hints.push({
-        title: 'Plant-Powered Protein Bowl',
-        description: 'Quinoa, chickpeas, and colorful veggies with tahini dressing',
-        benefits: 'High protein, fiber-rich, and perfectly balanced for your plant-based lifestyle',
-        emoji: '🌱'
-      });
-    }
-
-    if (dietStyles.includes('keto') || dietStyles.includes('low_carb')) {
-      hints.push({
-        title: 'Keto Salmon & Avocado Delight',
-        description: 'Pan-seared salmon with creamy avocado and leafy greens',
-        benefits: 'High healthy fats, zero carbs, perfect for ketosis',
-        emoji: '🥑'
-      });
-    }
-
-    if (healthGoal === 'muscle_gain') {
-      hints.push({
-        title: 'Muscle-Building Power Smoothie',
-        description: 'Protein powder, banana, oats, and almond butter blend',
-        benefits: 'Post-workout recovery with 35g protein and complex carbs',
-        emoji: '💪'
-      });
-    }
-
-    if (healthGoal === 'weight_loss') {
-      hints.push({
-        title: 'Metabolism-Boosting Soup',
-        description: 'Spicy vegetable soup with lean turkey and plenty of fiber',
-        benefits: 'Low calorie, high volume, keeps you full for hours',
-        emoji: '🔥'
-      });
-    }
-
-    // Time-based suggestions
-    if (timeOfDay === 'morning') {
-      hints.push({
-        title: 'Morning Glory Breakfast',
-        description: 'Greek yogurt parfait with berries and granola',
-        benefits: 'Perfect protein start to fuel your day ahead',
-        emoji: '🌅'
-      });
-    }
-
-    // Default suggestion
-    if (hints.length === 0) {
-      hints.push({
-        title: 'Balanced Rainbow Bowl',
-        description: 'Colorful mix of proteins, grains, and fresh vegetables',
-        benefits: 'Perfectly balanced nutrition tailored to your goals',
-        emoji: '🌈'
-      });
-    }
-
-    return hints[Math.floor(Math.random() * hints.length)];
-  };
-
-  const insights = generateInsights();
-  const recipeHint = generateRecipeHints();
-
-  // Rotate insights every 10 seconds
+  // Fetch mood prediction
   useEffect(() => {
-    if (insights.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentInsightIndex((prev) => (prev + 1) % insights.length);
-      }, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [insights.length]);
+    const fetchMoodPrediction = async () => {
+      if (!user?.id) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('mood_predictions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('prediction_date', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      setMoodPrediction(data);
+    };
 
-  // Manual refresh function
-  const handleRefresh = () => {
-    setLastRefresh(Date.now());
-    setCurrentInsightIndex(0);
+    fetchMoodPrediction();
+  }, [user?.id]);
+
+  // Generate AI messages (mood prediction + coach tips)
+  const generateAIMessages = () => {
+    const userName = user?.name?.split(' ')[0] || 'there';
+    const totalCalories = user?.targetCalories || 2000;
+    const currentCalories = progress.calories;
+    const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
+    const currentHour = new Date().getHours();
+    const timeOfDay = currentHour < 12 ? 'morning' : currentHour < 17 ? 'afternoon' : 'evening';
+
+    const messages = [];
+
+    // AI Mood Prediction Message
+    if (moodPrediction) {
+      let moodEmoji = '😊';
+      let energyLevel = 'moderate';
+      
+      if (moodPrediction.predicted_mood >= 7) moodEmoji = '😄';
+      else if (moodPrediction.predicted_mood >= 4) moodEmoji = '😊';
+      else moodEmoji = '😔';
+
+      if (moodPrediction.predicted_energy >= 7) energyLevel = 'high';
+      else if (moodPrediction.predicted_energy >= 4) energyLevel = 'moderate';
+      else energyLevel = 'low';
+
+      messages.push({
+        type: 'mood',
+        icon: Brain,
+        emoji: '🧠',
+        title: 'AI Mood Prediction',
+        message: `Based on your patterns, I predict you'll feel ${moodEmoji} with ${energyLevel} energy today. ${moodPrediction.message || 'Stay mindful of your habits to maintain positive momentum!'}`,
+        confidence: moodPrediction.confidence || 'Medium'
+      });
+    } else {
+      messages.push({
+        type: 'mood',
+        icon: Brain,
+        emoji: '🧠',
+        title: 'AI Mood Prediction',
+        message: `Good ${timeOfDay}, ${userName}! I'm analyzing your patterns to predict your mood and energy. Keep logging to get personalized insights!`,
+        confidence: 'Learning'
+      });
+    }
+
+    // AI Coach Daily Tips
+    const coachTips = [];
+
+    if (progressPercentage < 30 && timeOfDay === 'morning') {
+      coachTips.push(`Rise and fuel, ${userName}! Your body needs energy to start the day strong. A protein-rich breakfast will set you up for success.`);
+    } else if (progressPercentage >= 100) {
+      coachTips.push(`Outstanding work, ${userName}! You've hit your calorie goal. Focus on quality nutrients and staying hydrated for the rest of the day.`);
+    } else if (progressPercentage >= 80) {
+      coachTips.push(`You're in the home stretch, ${userName}! Just ${Math.round(totalCalories - currentCalories)} calories to go. Choose something nutritious and satisfying.`);
+    } else if (timeOfDay === 'afternoon' && progressPercentage < 50) {
+      coachTips.push(`Midday boost needed, ${userName}! Your body is asking for fuel. A balanced lunch with protein and complex carbs will energize your afternoon.`);
+    } else if (timeOfDay === 'evening' && progressPercentage < 70) {
+      coachTips.push(`Evening nourishment time, ${userName}! Don't skip dinner - your body needs consistent fuel for recovery and tomorrow's energy.`);
+    }
+
+    // Health goal specific tips
+    if (user?.main_health_goal === 'weight_loss') {
+      coachTips.push(`Weight loss tip: Focus on high-volume, low-calorie foods like vegetables and lean proteins to stay satisfied while hitting your goals.`);
+    } else if (user?.main_health_goal === 'muscle_gain') {
+      coachTips.push(`Muscle building tip: Aim for protein with every meal! Your muscles need consistent amino acids throughout the day for optimal growth.`);
+    }
+
+    // General wellness tips
+    coachTips.push(
+      `Hydration check! Your brain is 75% water - stay sharp by sipping consistently throughout the day.`,
+      `Sleep quality affects everything - aim for 7-9 hours to optimize your mood, energy, and metabolism.`,
+      `Small wins add up! Every healthy choice you make is building the stronger, healthier version of yourself.`,
+      `Mindful eating tip: Slow down and savor your food. It takes 20 minutes for your brain to register fullness.`
+    );
+
+    const selectedTip = coachTips[Math.floor(Math.random() * coachTips.length)];
+    
+    messages.push({
+      type: 'coach',
+      icon: MessageCircle,
+      emoji: '💬',
+      title: 'AI Coach Daily Tip',
+      message: selectedTip,
+      confidence: 'Expert'
+    });
+
+    return messages;
   };
 
-  const currentInsight = insights[currentInsightIndex] || insights[0];
+  const aiMessages = generateAIMessages();
+
+  // Rotation logic with fade animation
+  useEffect(() => {
+    const rotateMessages = () => {
+      setFadeState('fade-out');
+      setTimeout(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % aiMessages.length);
+        setFadeState('fade-in');
+      }, 300);
+    };
+
+    const interval = setInterval(rotateMessages, 7000); // 7 seconds
+    return () => clearInterval(interval);
+  }, [aiMessages.length]);
+
+  const currentMessage = aiMessages[currentMessageIndex];
 
   return (
     <Card className={`modern-action-card ai-insights-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl ${isMobile ? 'mx-2' : 'mx-4'}`}>
       <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
-        {/* Header with refresh button */}
-        <div className={`flex items-center justify-between ${isMobile ? 'mb-4' : 'mb-6'}`}>
+        {/* Header */}
+        <div className={`flex items-center justify-between ${isMobile ? 'mb-6' : 'mb-8'}`}>
           <div className={`flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'}`}>
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} gradient-primary rounded-full flex items-center justify-center shadow-lg ai-glow`}>
-              <Zap className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
+              <currentMessage.icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
             </div>
             <div>
               <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>AI Insights</h3>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>Live & Personalized</p>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>Intelligent & Adaptive</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <RefreshCw className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-          </Button>
         </div>
 
-        {/* Current Insight */}
-        <div className={`space-y-4 ${isMobile ? 'mb-6' : 'mb-8'}`}>
-          <div className="flex items-start space-x-3">
-            <div className="text-2xl flex-shrink-0 mt-1">{currentInsight?.icon}</div>
-            <div className="flex-1">
-              <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white mb-2`}>
-                {currentInsight?.title}
-              </h4>
-              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300`}>
-                {currentInsight?.message}
-              </p>
-            </div>
-          </div>
-          
-          {/* Progress indicators if multiple insights */}
-          {insights.length > 1 && (
-            <div className="flex justify-center space-x-2 mt-4">
-              {insights.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    index === currentInsightIndex ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Personalized Recipe Hint Section */}
-        <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-2xl p-4 sm:p-6 mb-6">
-          <div className="flex items-center space-x-2 mb-3">
-            <ChefHat className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-orange-600 dark:text-orange-400`} />
-            <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
-              Personalized Recipe Hint
-            </h4>
-            <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-100">
-              Coming Soon
-            </Badge>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3">
-              <div className="text-2xl flex-shrink-0">{recipeHint.emoji}</div>
+        {/* Rotating AI Message */}
+        <div className={`min-h-[120px] ${isMobile ? 'mb-6' : 'mb-8'}`}>
+          <div className={`transition-all duration-300 ${fadeState === 'fade-in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}>
+            <div className="flex items-start space-x-4">
+              <div className="text-3xl flex-shrink-0 mt-1">{currentMessage.emoji}</div>
               <div className="flex-1">
-                <h5 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-900 dark:text-white mb-1`}>
-                  {recipeHint.title}
-                </h5>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 mb-2`}>
-                  {recipeHint.description}
+                <div className="flex items-center space-x-2 mb-3">
+                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
+                    {currentMessage.title}
+                  </h4>
+                  <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-1 rounded-full">
+                    {currentMessage.confidence}
+                  </span>
+                </div>
+                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
+                  {currentMessage.message}
                 </p>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-orange-700 dark:text-orange-300 font-medium`}>
-                  💡 {recipeHint.benefits}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="h-4 w-4 text-orange-500" />
-                <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                  Tailored to your goals & preferences
-                </span>
-              </div>
-              <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
-                <Clock className="h-3 w-3" />
-                <span>Updates daily</span>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Message Progress Indicators */}
+        <div className="flex justify-center space-x-3 mb-6">
+          {aiMessages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex flex-col items-center space-y-1 cursor-pointer transition-all duration-300 ${
+                index === currentMessageIndex ? 'opacity-100' : 'opacity-40'
+              }`}
+              onClick={() => {
+                setFadeState('fade-out');
+                setTimeout(() => {
+                  setCurrentMessageIndex(index);
+                  setFadeState('fade-in');
+                }, 300);
+              }}
+            >
+              <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                index === currentMessageIndex ? 'bg-blue-500 scale-125' : 'bg-gray-300 dark:bg-gray-600'
+              }`} />
+              <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                {message.type}
+              </span>
+            </div>
+          ))}
         </div>
 
         {/* Action Button */}
