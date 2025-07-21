@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Zap, TrendingUp, TrendingDown } from 'lucide-react';
@@ -93,7 +94,7 @@ const ProgressCarbs = () => {
         <Button 
           variant="ghost" 
           size="icon"
-          onClick={() => navigate('/analytics')}
+          onClick={() => navigate('/progress')}
           className="rounded-full"
         >
           <ArrowLeft className="h-5 w-5" />

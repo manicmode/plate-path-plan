@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -22,6 +23,7 @@ const Analytics = lazy(() => import('@/pages/Analytics'));
 const Coach = lazy(() => import('@/pages/Coach'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
+const Progress = lazy(() => import('@/pages/Progress'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
 const Supplements = lazy(() => import('@/pages/Supplements'));
@@ -81,6 +83,11 @@ function AppContent() {
                               <Route path="/profile" element={
                                 <ProtectedRoute>
                                   <Profile />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/progress" element={
+                                <ProtectedRoute>
+                                  <Progress />
                                 </ProtectedRoute>
                               } />
                               <Route path="/game-and-challenge" element={
