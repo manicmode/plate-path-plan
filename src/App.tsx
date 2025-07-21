@@ -32,6 +32,7 @@ const ProgressCarbs = lazy(() => import('@/pages/ProgressCarbs'));
 const ProgressFat = lazy(() => import('@/pages/ProgressFat'));
 const ProgressHydration = lazy(() => import('@/pages/ProgressHydration'));
 const ProgressSupplements = lazy(() => import('@/pages/ProgressSupplements'));
+const MyReports = lazy(() => import('@/pages/MyReports'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
@@ -131,6 +132,11 @@ function AppContent() {
                               <Route path="/progress/supplements" element={
                                 <ProtectedRoute>
                                   <ProgressSupplements />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/my-reports" element={
+                                <ProtectedRoute>
+                                  <MyReports />
                                 </ProtectedRoute>
                               } />
                               <Route path="/firebase-setup" element={
