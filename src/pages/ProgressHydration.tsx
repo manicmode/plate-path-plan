@@ -21,7 +21,7 @@ const ProgressHydration = () => {
   useScrollToTop();
   
   const targetHydration = user?.targetHydration || 8; // glasses
-  const hydrationTargetMl = (targetHydration || 8) * 250; // Convert glasses to ml (250ml per glass)
+  const hydrationTargetMl = targetHydration * 250; // Convert glasses to ml (250ml per glass)
   
   // Calculate today's hydration progress percentage
   const hydrationProgressPercent = Math.min((todayTotal / hydrationTargetMl) * 100, 100);
