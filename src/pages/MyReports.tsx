@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, TrendingUp, Activity, FileText, Download, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, TrendingUp, Activity, FileText, Share, Eye, ChevronDown, ChevronUp } from "lucide-react";
 
 // Enhanced mock data for reports (12 per category)
 const mockReports = {
@@ -120,9 +120,10 @@ const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'mon
           variant="outline" 
           size="sm" 
           className="flex items-center gap-2 hover:bg-secondary hover:text-secondary-foreground transition-colors"
+          onClick={() => alert('Share link: https://nutricoach.app/shared/report/' + report.id + '\n\nLink copied to clipboard!')}
         >
-          <Download className="h-4 w-4" />
-          Download
+          <Share className="h-4 w-4" />
+          Share
         </Button>
       </div>
     </CardContent>
