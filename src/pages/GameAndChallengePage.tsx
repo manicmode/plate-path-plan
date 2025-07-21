@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
 import { RewardsProvider } from '@/contexts/RewardsContext';
@@ -713,6 +715,19 @@ function GameAndChallengeContent() {
 
   return (
     <div className="overflow-x-hidden w-full max-w-full min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
+      {/* Back Arrow */}
+      <div className="fixed top-4 left-4 z-50">
+        <Link to="/explore">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-10 h-10 p-0 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90 shadow-md"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+      </div>
+
       {/* Mystery Boxes - Hidden on mobile for performance */}
       {!isMobile && (
         <>
