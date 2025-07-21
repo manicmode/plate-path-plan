@@ -330,20 +330,10 @@ export default function MyReports() {
   }, [state.reports]);
 
   // Don't render anything until user is ready
-  if (!userReady || !stableUserId) {
+  if (!userReady || !stableUserId || state.isLoading) {
     return (
-      <div className="min-h-screen gradient-main">
-        <div className="max-w-5xl mx-auto px-6 py-8">
-          {/* Header Skeleton */}
-          <div className="h-[10vh] flex items-center justify-between mb-8">
-            <div>
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-5 w-64 mt-2" />
-            </div>
-            <Skeleton className="h-11 w-48" />
-          </div>
-          <LoadingSkeleton />
-        </div>
+      <div className="gradient-main min-h-screen flex items-center justify-center">
+        <div className="text-white text-lg animate-pulse">Loading your reports...</div>
       </div>
     );
   }
