@@ -4,6 +4,12 @@ project_id = "uzoiiijqtahohfafqirm"
 [functions.generate-weekly-health-report]
 verify_jwt = false
 
+[functions.generate-monthly-reports]
+verify_jwt = false
+
+[functions.generate-yearly-reports]
+verify_jwt = false
+
 [functions.generate-and-save-weekly-health-pdf]
 verify_jwt = false
 

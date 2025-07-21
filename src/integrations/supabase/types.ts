@@ -592,6 +592,45 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_reports: {
+        Row: {
+          created_at: string
+          id: string
+          month_end_date: string
+          month_start_date: string
+          overall_score: number | null
+          report_data: Json
+          summary_text: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month_end_date: string
+          month_start_date: string
+          overall_score?: number | null
+          report_data?: Json
+          summary_text?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month_end_date?: string
+          month_start_date?: string
+          overall_score?: number | null
+          report_data?: Json
+          summary_text?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_summaries: {
         Row: {
           average_score: number | null
@@ -1818,6 +1857,45 @@ export type Database = {
           username?: string
           year?: number
           yearly_score?: number
+        }
+        Relationships: []
+      }
+      yearly_reports: {
+        Row: {
+          created_at: string
+          id: string
+          overall_score: number | null
+          report_data: Json
+          summary_text: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          year_end_date: string
+          year_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          report_data?: Json
+          summary_text?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          year_end_date: string
+          year_start_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          report_data?: Json
+          summary_text?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          year_end_date?: string
+          year_start_date?: string
         }
         Relationships: []
       }
