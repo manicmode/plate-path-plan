@@ -349,24 +349,25 @@ export default function MyReports() {
               View and download your weekly health reports
             </p>
           </div>
-          <Button 
-            onClick={generateNewReport} 
-            disabled={state.isGenerating}
-            size="lg"
-            className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300"
-          >
-            {state.isGenerating ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <FileText className="w-5 h-5 mr-2" />
-                📄 Generate New Report
-              </>
-            )}
-          </Button>
+          <div className="w-full flex justify-center sm:justify-end mt-8 px-4">
+            <button
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition duration-200 shadow-md"
+              onClick={generateNewReport}
+              disabled={state.isGenerating}
+            >
+              {state.isGenerating ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5 mr-2" />
+                  📄 Generate New Report
+                </>
+              )}
+            </button>
+          </div>
         </header>
 
         {/* Loading State */}
