@@ -1,12 +1,9 @@
-
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { NutritionProvider } from '@/contexts/NutritionContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
@@ -162,17 +159,13 @@ function App() {
         <ErrorBoundary>
           <ThemeProvider>
             <TooltipProvider>
-              <NutritionProvider>
-                <NotificationProvider>
-                  <IngredientAlertProvider>
-                    <BadgeProvider>
-                      <ChatModalProvider>
-                        <AppContent />
-                      </ChatModalProvider>
-                    </BadgeProvider>
-                  </IngredientAlertProvider>
-                </NotificationProvider>
-              </NutritionProvider>
+              <IngredientAlertProvider>
+                <BadgeProvider>
+                  <ChatModalProvider>
+                    <AppContent />
+                  </ChatModalProvider>
+                </BadgeProvider>
+              </IngredientAlertProvider>
             </TooltipProvider>
           </ThemeProvider>
         </ErrorBoundary>
