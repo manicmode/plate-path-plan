@@ -410,7 +410,7 @@ const HomeAIInsights = () => {
                     </p>
                   </div>
                 </div>
-                <div className="space-y-3 max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                <div className={`space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 ${isMobile ? 'h-36' : 'h-40'}`}>
                   {currentItem.content.insights.map((insight, index) => (
                     <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
                       {insight}
