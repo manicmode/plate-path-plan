@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,6 +94,15 @@ const chartConfig = {
   },
 };
 
+// Mobile-optimized chart wrapper component
+const MobileChartWrapper = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`w-full overflow-hidden ${className}`}>
+    <div className="w-full min-w-0 max-w-full">
+      {children}
+    </div>
+  </div>
+);
+
 export default function ReportViewer() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -126,13 +136,16 @@ export default function ReportViewer() {
     { name: "B-Complex", taken: 5, scheduled: 7, compliance: 71 }
   ];
 
-  const chartHeight = isMobile ? "h-[150px]" : "h-[200px]";
-  const containerPadding = isMobile ? "px-2" : "px-4";
+  const chartHeight = isMobile ? "h-[180px]" : "h-[220px]";
+  const containerPadding = isMobile ? "px-3" : "px-4";
+  const chartMargins = isMobile 
+    ? { top: 10, right: 25, left: 25, bottom: 25 } 
+    : { top: 20, right: 30, left: 20, bottom: 5 };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 animate-fade-in">
       {/* Mobile-Optimized Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
         <div className={`container mx-auto ${containerPadding} py-3`}>
           <div className="flex items-start gap-3">
             <Button 
@@ -225,79 +238,85 @@ export default function ReportViewer() {
             </CardTitle>
           </CardHeader>
           <CardContent className={`space-y-4 ${isMobile ? 'p-4 pt-0' : ''}`}>
-            <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'} gap-4`}>
-              <div>
+            <div className="space-y-4">
+              <div className="w-full">
                 <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}>
                   🥩 Protein Intake Progress
                   <Badge variant="secondary" className={`bg-green-100 text-green-800 ${isMobile ? 'text-xs' : ''}`}>
                     Goal: 120g daily
                   </Badge>
                 </h4>
-                <ChartContainer config={chartConfig} className={chartHeight}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={proteinData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="day" 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <YAxis 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="goal" 
-                        stroke="#94a3b8" 
-                        strokeDasharray="5 5"
-                        strokeWidth={isMobile ? 1.5 : 2}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="protein" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={isMobile ? 2 : 3}
-                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 1, r: isMobile ? 3 : 5 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <MobileChartWrapper>
+                  <ChartContainer config={chartConfig} className={chartHeight}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={proteinData} margin={chartMargins}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="day" 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                        />
+                        <YAxis 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                          width={isMobile ? 35 : 50}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line 
+                          type="monotone" 
+                          dataKey="goal" 
+                          stroke="#94a3b8" 
+                          strokeDasharray="5 5"
+                          strokeWidth={isMobile ? 1 : 2}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="protein" 
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={isMobile ? 1.5 : 3}
+                          dot={{ fill: "hsl(var(--primary))", strokeWidth: 1, r: isMobile ? 2 : 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </MobileChartWrapper>
               </div>
 
-              <div>
+              <div className="w-full">
                 <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}>
                   ⭐ Daily Meal Quality Scores
                   <Badge variant="secondary" className={`bg-blue-100 text-blue-800 ${isMobile ? 'text-xs' : ''}`}>
                     Avg: 7.8/10
                   </Badge>
                 </h4>
-                <ChartContainer config={chartConfig} className={chartHeight}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mealQualityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="day" 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <YAxis 
-                        domain={[0, 10]} 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="breakfast" fill="hsl(43, 74%, 66%)" radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="lunch" fill="hsl(27, 87%, 67%)" radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="dinner" fill="hsl(12, 76%, 61%)" radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <MobileChartWrapper>
+                  <ChartContainer config={chartConfig} className={chartHeight}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={mealQualityData} margin={chartMargins}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="day" 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                        />
+                        <YAxis 
+                          domain={[0, 10]} 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                          width={isMobile ? 25 : 50}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="breakfast" fill="hsl(43, 74%, 66%)" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="lunch" fill="hsl(27, 87%, 67%)" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="dinner" fill="hsl(12, 76%, 61%)" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </MobileChartWrapper>
               </div>
             </div>
             
-            <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-3'} gap-3`}>
+            <div className="space-y-3">
               <div className={`bg-green-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-green-200`}>
                 <h5 className={`font-semibold text-green-800 mb-2 flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}>
                   ✅ Nutrition Wins
@@ -360,47 +379,50 @@ export default function ReportViewer() {
             </CardTitle>
           </CardHeader>
           <CardContent className={`space-y-4 ${isMobile ? 'p-4 pt-0' : ''}`}>
-            <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'} gap-4`}>
-              <div>
+            <div className="space-y-4">
+              <div className="w-full">
                 <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}>
                   😊 Weekly Mood Trends
                   <Badge className={`bg-purple-100 text-purple-800 ${isMobile ? 'text-xs' : ''}`}>
                     Avg: {avgMood}/10
                   </Badge>
                 </h4>
-                <ChartContainer config={chartConfig} className={chartHeight}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={moodData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="day" 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <YAxis 
-                        domain={[0, 10]} 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="mood" 
-                        stroke="hsl(262, 83%, 58%)" 
-                        strokeWidth={isMobile ? 2 : 3}
-                        dot={{ fill: "hsl(262, 83%, 58%)", strokeWidth: 1, r: isMobile ? 3 : 5 }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="energy" 
-                        stroke="hsl(346, 77%, 49%)" 
-                        strokeWidth={isMobile ? 1.5 : 2}
-                        strokeDasharray="3 3"
-                        dot={{ fill: "hsl(346, 77%, 49%)", strokeWidth: 1, r: isMobile ? 2 : 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <MobileChartWrapper>
+                  <ChartContainer config={chartConfig} className={chartHeight}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={moodData} margin={chartMargins}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="day" 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                        />
+                        <YAxis 
+                          domain={[0, 10]} 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                          width={isMobile ? 25 : 50}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line 
+                          type="monotone" 
+                          dataKey="mood" 
+                          stroke="hsl(262, 83%, 58%)" 
+                          strokeWidth={isMobile ? 1.5 : 3}
+                          dot={{ fill: "hsl(262, 83%, 58%)", strokeWidth: 1, r: isMobile ? 2 : 5 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="energy" 
+                          stroke="hsl(346, 77%, 49%)" 
+                          strokeWidth={isMobile ? 1 : 2}
+                          strokeDasharray="3 3"
+                          dot={{ fill: "hsl(346, 77%, 49%)", strokeWidth: 1, r: isMobile ? 2 : 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </MobileChartWrapper>
                 <div className={`flex justify-center gap-4 mt-2 ${isMobile ? 'text-xs' : ''}`}>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-purple-500 rounded"></div>
@@ -416,8 +438,8 @@ export default function ReportViewer() {
               <div className="space-y-4">
                 <div className="text-center">
                   <h4 className={`font-semibold mb-3 ${isMobile ? 'text-sm' : ''}`}>Daily Mood Journey</h4>
-                  <div className={`grid ${isMobile ? 'grid-cols-4' : 'grid-cols-7'} gap-2`}>
-                    {moodData.slice(0, isMobile ? 4 : 7).map((day, index) => (
+                  <div className="grid grid-cols-4 gap-2">
+                    {moodData.slice(0, 4).map((day, index) => (
                       <div key={index} className="text-center">
                         <div className={`${isMobile ? 'text-lg' : 'text-2xl'} mb-1`}>{moodEmojis[index]}</div>
                         <div className="text-xs text-muted-foreground">{day.day}</div>
@@ -425,17 +447,15 @@ export default function ReportViewer() {
                       </div>
                     ))}
                   </div>
-                  {isMobile && moodData.length > 4 && (
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {moodData.slice(4).map((day, index) => (
-                        <div key={index + 4} className="text-center">
-                          <div className="text-lg mb-1">{moodEmojis[index + 4]}</div>
-                          <div className="text-xs text-muted-foreground">{day.day}</div>
-                          <div className="text-xs font-semibold">{day.mood}/10</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {moodData.slice(4).map((day, index) => (
+                      <div key={index + 4} className="text-center">
+                        <div className="text-lg mb-1">{moodEmojis[index + 4]}</div>
+                        <div className="text-xs text-muted-foreground">{day.day}</div>
+                        <div className="text-xs font-semibold">{day.mood}/10</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className={`bg-gradient-to-r from-purple-50 to-pink-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-purple-200`}>
@@ -482,7 +502,7 @@ export default function ReportViewer() {
             </CardTitle>
           </CardHeader>
           <CardContent className={`space-y-4 ${isMobile ? 'p-4 pt-0' : ''}`}>
-            <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-4`}>
+            <div className="space-y-4">
               <div className={`text-center space-y-3 bg-gradient-to-br from-orange-50 to-red-50 ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-orange-200`}>
                 <h4 className={`font-semibold text-orange-800 ${isMobile ? 'text-sm' : ''}`}>💥 Workouts Completed</h4>
                 <div className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold text-orange-600`}>{totalWorkouts}</div>
@@ -505,66 +525,67 @@ export default function ReportViewer() {
               </div>
             </div>
 
-            <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'} gap-4`}>
-              <div>
+            <div className="space-y-4">
+              <div className="w-full">
                 <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}>
                   📊 Daily Step Count
                   <Badge className={`bg-green-100 text-green-800 ${isMobile ? 'text-xs' : ''}`}>
                     Best: Sat (18.7k)
                   </Badge>
                 </h4>
-                <ChartContainer config={chartConfig} className={chartHeight}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={exerciseData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="day" 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <YAxis 
-                        fontSize={isMobile ? 10 : 12}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="steps" 
-                        fill="hsl(173, 58%, 39%)" 
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <MobileChartWrapper>
+                  <ChartContainer config={chartConfig} className={chartHeight}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={exerciseData} margin={chartMargins}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="day" 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                        />
+                        <YAxis 
+                          fontSize={isMobile ? 8 : 12}
+                          tick={{ fontSize: isMobile ? 8 : 12 }}
+                          width={isMobile ? 40 : 50}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar 
+                          dataKey="steps" 
+                          fill="hsl(173, 58%, 39%)" 
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </MobileChartWrapper>
               </div>
 
-              <div>
-                <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}>
+              <div className="space-y-3">
+                <h4 className={`font-semibold ${isMobile ? 'text-sm' : ''}`}>
                   🔥 Weekly Activity Breakdown
                 </h4>
-                <div className="space-y-3">
-                  <div className={`bg-orange-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-orange-200`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`font-medium text-orange-800 ${isMobile ? 'text-sm' : ''}`}>🏃 Cardio Sessions</span>
-                      <span className={`text-orange-600 font-bold ${isMobile ? 'text-sm' : ''}`}>3</span>
-                    </div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-orange-700`}>Mon, Thu, Sat • Avg: 52 min</div>
+                <div className={`bg-orange-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-orange-200`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`font-medium text-orange-800 ${isMobile ? 'text-sm' : ''}`}>🏃 Cardio Sessions</span>
+                    <span className={`text-orange-600 font-bold ${isMobile ? 'text-sm' : ''}`}>3</span>
                   </div>
-                  
-                  <div className={`bg-blue-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-blue-200`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`font-medium text-blue-800 ${isMobile ? 'text-sm' : ''}`}>🏋️ Strength Training</span>
-                      <span className={`text-blue-600 font-bold ${isMobile ? 'text-sm' : ''}`}>2</span>
-                    </div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-blue-700`}>Tue, Fri • Avg: 45 min</div>
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-orange-700`}>Mon, Thu, Sat • Avg: 52 min</div>
+                </div>
+                
+                <div className={`bg-blue-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-blue-200`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`font-medium text-blue-800 ${isMobile ? 'text-sm' : ''}`}>🏋️ Strength Training</span>
+                    <span className={`text-blue-600 font-bold ${isMobile ? 'text-sm' : ''}`}>2</span>
                   </div>
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-blue-700`}>Tue, Fri • Avg: 45 min</div>
+                </div>
 
-                  <div className={`bg-purple-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-purple-200`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`font-medium text-purple-800 ${isMobile ? 'text-sm' : ''}`}>🧘 Active Recovery</span>
-                      <span className={`text-purple-600 font-bold ${isMobile ? 'text-sm' : ''}`}>2</span>
-                    </div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-purple-700`}>Wed, Sun • Rest days well taken!</div>
+                <div className={`bg-purple-50 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border border-purple-200`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`font-medium text-purple-800 ${isMobile ? 'text-sm' : ''}`}>🧘 Active Recovery</span>
+                    <span className={`text-purple-600 font-bold ${isMobile ? 'text-sm' : ''}`}>2</span>
                   </div>
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-purple-700`}>Wed, Sun • Rest days well taken!</div>
                 </div>
               </div>
             </div>
@@ -590,7 +611,7 @@ export default function ReportViewer() {
                 </span>
               </div>
               
-              <div className={`grid ${isMobile ? 'grid-cols-1' : 'md:grid-cols-3'} gap-3`}>
+              <div className="space-y-3">
                 <div className={`bg-white/80 ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-emerald-200 shadow-sm`}>
                   <div className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-emerald-700 mb-2`}>4</div>
                   <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-emerald-600 font-medium`}>weeks to lean mass goal</div>
@@ -617,7 +638,7 @@ export default function ReportViewer() {
                 <div className={`${isMobile ? 'text-base' : 'text-lg'} text-emerald-600 mb-4`}>
                   Based on this week's consistency, you're <strong>15% ahead</strong> of your original timeline
                 </div>
-                <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-3 text-center`}>
+                <div className={`grid grid-cols-2 gap-3 text-center`}>
                   <div>
                     <div className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-gray-700`}>91%</div>
                     <div className="text-xs text-gray-600">Habit adherence</div>
