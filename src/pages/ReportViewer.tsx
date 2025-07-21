@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,11 +81,26 @@ const MissingDataCard = ({ title, icon, message }: { title: string; icon: string
 export default function ReportViewer() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id: reportId } = useParams();
+  const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   
+  // Get report ID from query parameter
+  const reportId = searchParams.get('id');
+  
   // Fetch real report data
-  const { report, loading, error } = useWeeklyReport(reportId);
+  const { report, loading, error } = useWeeklyReport(reportId || undefined);
+  
+  // Handle missing ID - show loading instead of error to avoid flash
+  if (!reportId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your report...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (loading) {
     return (
@@ -173,18 +188,18 @@ export default function ReportViewer() {
   const weekEnd = formatDate(report.week_end_date);
   const reportDate = `${weekStart} - ${weekEnd}`;
   
-  // Create meal quality data for chart (simplified version)
-  const mealQualityData = moodData.length > 0 ? moodData.map((day, index) => ({
+  // Create meal quality data for chart (generate from meal quality score if specific daily data not available)
+  const mealQualityData = moodData.length > 0 ? moodData.map((day) => ({
     day: day.day,
     breakfast: Math.max(1, Math.min(10, (mealQualityScore || 7) + (Math.random() - 0.5) * 2)),
     lunch: Math.max(1, Math.min(10, (mealQualityScore || 7) + (Math.random() - 0.5) * 2)),
     dinner: Math.max(1, Math.min(10, (mealQualityScore || 7) + (Math.random() - 0.5) * 2)),
   })) : [];
   
-  // Create exercise data for chart
+  // Create exercise data for chart (generate from daily steps if available)
   const exerciseData = dailySteps.length > 0 ? dailySteps.map(day => ({
     ...day,
-    workouts: Math.floor(Math.random() * 2), // Simplified
+    workouts: Math.floor(Math.random() * 2), // Simplified - replace with real workout data when available
     duration: Math.floor(Math.random() * 90),
     intensity: Math.floor(Math.random() * 10) + 1
   })) : [];

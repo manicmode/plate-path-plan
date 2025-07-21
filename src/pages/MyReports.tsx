@@ -85,14 +85,7 @@ const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'mon
   const navigate = useNavigate();
   
   const handleViewReport = () => {
-    navigate(`/report/${report.id}`, { 
-      state: { 
-        report, 
-        tabType,
-        title: report.title,
-        date: formatReportDate(report.date, tabType, report.week)
-      } 
-    });
+    navigate(`/report-viewer?id=${report.id}`);
   };
 
   return (

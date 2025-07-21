@@ -140,7 +140,7 @@ function AppContent() {
                                   <MyReports />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/report/:reportId" element={
+                              <Route path="/report-viewer" element={
                                 <ProtectedRoute>
                                   <ReportViewer />
                                 </ProtectedRoute>

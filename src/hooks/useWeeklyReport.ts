@@ -45,31 +45,31 @@ export const useWeeklyReport = (reportId?: string) => {
         return;
       }
 
+      // Only fetch if reportId is provided
+      if (!reportId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        let query = supabase
+        const { data, error: fetchError } = await supabase
           .from('weekly_reports')
           .select('*')
-          .eq('user_id', user.id);
-
-        if (reportId) {
-          query = query.eq('id', reportId);
-        } else {
-          // Get the most recent report closest to last Sunday
-          const lastSunday = getLastSunday();
-          query = query
-            .lte('week_start_date', lastSunday)
-            .order('week_start_date', { ascending: false })
-            .limit(1);
-        }
-
-        const { data, error: fetchError } = await query.maybeSingle();
+          .eq('user_id', user.id)
+          .eq('id', reportId)
+          .maybeSingle();
 
         if (fetchError) {
           console.error('Error fetching weekly report:', fetchError);
           setError('Failed to load report data');
+          return;
+        }
+
+        if (!data) {
+          setError('Report not found');
           return;
         }
 
@@ -87,13 +87,3 @@ export const useWeeklyReport = (reportId?: string) => {
 
   return { report, loading, error };
 };
-
-// Helper function to get last Sunday's date
-function getLastSunday(): string {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const daysToSubtract = dayOfWeek === 0 ? 7 : dayOfWeek; // If today is Sunday, get previous Sunday
-  const lastSunday = new Date(today);
-  lastSunday.setDate(today.getDate() - daysToSubtract);
-  return lastSunday.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
-}
