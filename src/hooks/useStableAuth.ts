@@ -6,30 +6,33 @@ export const useStableAuth = () => {
   const { user, loading: authLoading } = useAuth();
   const [userReady, setUserReady] = useState(false);
   const userIdRef = useRef<string | null>(null);
-  const profileLoadedRef = useRef(false);
+  const initializationRef = useRef(false);
 
   useEffect(() => {
-    // Reset if user changes
-    if (user?.id !== userIdRef.current) {
-      userIdRef.current = user?.id || null;
-      profileLoadedRef.current = false;
-      setUserReady(false);
-    }
-
-    // User is ready when:
-    // 1. Auth is not loading
-    // 2. User exists
-    // 3. User has email confirmed
-    // 4. Profile has loaded at least once
-    if (!authLoading && user?.id && user.email && !profileLoadedRef.current) {
-      profileLoadedRef.current = true;
+    // Only initialize once when we have a stable user
+    if (!initializationRef.current && !authLoading && user?.id) {
+      initializationRef.current = true;
+      userIdRef.current = user.id;
       setUserReady(true);
     }
-  }, [user?.id, user?.email, authLoading]);
+    
+    // Reset if user changes (logout/login)
+    if (user?.id !== userIdRef.current) {
+      userIdRef.current = user?.id || null;
+      initializationRef.current = false;
+      setUserReady(false);
+      
+      // Set ready again if we have a new user
+      if (!authLoading && user?.id) {
+        initializationRef.current = true;
+        setUserReady(true);
+      }
+    }
+  }, [user?.id, authLoading]);
 
   return {
     user,
-    userReady,
+    userReady: userReady && !authLoading,
     authLoading,
     stableUserId: userIdRef.current
   };
