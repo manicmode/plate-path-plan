@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -95,9 +96,9 @@ const Explore = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col p-4 pb-32">
-      {/* Main 2x3 Grid - Takes most of the screen */}
-      <div className="flex-1 grid grid-cols-2 grid-rows-3 gap-4 mb-6">
+    <div className="min-h-screen flex flex-col p-4 pb-16">
+      {/* Main 2x3 Grid - Natural sizing instead of flex-1 */}
+      <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-6">
         {tiles.map((tile) => {
           return (
             <Button
@@ -105,7 +106,7 @@ const Explore = () => {
               onClick={() => handleTileClick(tile.id)}
               variant="ghost"
               className={`
-                group relative h-full min-h-[120px] p-6 rounded-3xl 
+                group relative h-full min-h-[90px] p-6 rounded-3xl 
                 transition-all duration-500 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95 active:rotate-1
@@ -139,7 +140,6 @@ const Explore = () => {
           );
         })}
       </div>
-
 
       {/* Health Check Modal */}
       <HealthCheckModal 
