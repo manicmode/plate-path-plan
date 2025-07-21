@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNotification } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/auth';
 
@@ -11,11 +11,76 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
   const [showMoodModal, setShowMoodModal] = useState(false);
   const { preferences, addNotification } = useNotification();
   const { user } = useAuth();
+  
+  // Refs to track state and prevent duplicates
+  const scheduledTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const startupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasTriggeredTodayRef = useRef<string | null>(null);
+  const isSchedulingRef = useRef(false);
 
-  useEffect(() => {
-    if (!user || !preferences.dailyMoodCheckin) {
+  // Clear all timeouts function
+  const clearAllTimeouts = useCallback(() => {
+    if (scheduledTimeoutRef.current) {
+      clearTimeout(scheduledTimeoutRef.current);
+      scheduledTimeoutRef.current = null;
+    }
+    if (startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
+  }, []);
+
+  const checkIfMoodLoggedToday = async (): Promise<boolean> => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data } = await supabase
+        .from('mood_logs')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      return !!data;
+    } catch (error) {
+      console.error('Error checking mood log:', error);
+      return false;
+    }
+  };
+
+  const triggerMoodNotification = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Prevent duplicate notifications on the same day
+    if (hasTriggeredTodayRef.current === today) {
+      console.log('[Toast] Prevented duplicate mood reminder for today');
       return;
     }
+    
+    hasTriggeredTodayRef.current = today;
+    console.log('[Toast] Scheduled reminder');
+    
+    // Show notification based on delivery preference
+    if (preferences.deliveryMode === 'toast' || preferences.deliveryMode === 'both') {
+      addNotification({
+        title: 'Daily reflection reminder',
+        body: 'How are you feeling today? Log your mood and wellness.',
+        type: 'mood_checkin',
+        action: () => setShowMoodModal(true),
+      });
+    }
+  }, [addNotification, preferences.deliveryMode]);
+
+  useEffect(() => {
+    // Clear any existing timeouts first
+    clearAllTimeouts();
+    
+    if (!user || !preferences.dailyMoodCheckin || isSchedulingRef.current) {
+      return;
+    }
+
+    isSchedulingRef.current = true;
 
     const scheduleNotification = () => {
       const now = new Date();
@@ -30,7 +95,7 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
       const timeUntilNotification = targetTime.getTime() - now.getTime();
 
       // Schedule the notification
-      const timeoutId = setTimeout(() => {
+      scheduledTimeoutRef.current = setTimeout(() => {
         // Check if user is within quiet hours
         const currentHour = new Date().getHours();
         const isQuietTime = 
@@ -46,54 +111,18 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
             }
           });
         }
+        isSchedulingRef.current = false;
       }, timeUntilNotification);
-
-      return timeoutId;
     };
 
-    const checkIfMoodLoggedToday = async (): Promise<boolean> => {
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-        const today = new Date().toISOString().split('T')[0];
-        
-        const { data } = await supabase
-          .from('mood_logs')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('date', today)
-          .maybeSingle();
-
-        return !!data;
-      } catch (error) {
-        console.error('Error checking mood log:', error);
-        return false;
-      }
-    };
-
-    const triggerMoodNotification = () => {
-      // Show notification based on delivery preference
-      if (preferences.deliveryMode === 'toast' || preferences.deliveryMode === 'both') {
-        addNotification({
-          title: '🌙 Time for your daily check-in!',
-          body: 'How are you feeling today? Log your mood and wellness.',
-          type: 'mood_checkin',
-          action: () => setShowMoodModal(true),
-        });
-      }
-
-      // For push notifications, we would typically send this through the backend
-      // For now, we'll handle it as a toast notification when the app is open
-    };
-
-    const timeoutId = scheduleNotification();
+    scheduleNotification();
 
     // Clean up timeout on unmount or when dependencies change
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      clearAllTimeouts();
+      isSchedulingRef.current = false;
     };
-  }, [user, preferences.dailyMoodCheckin, preferences.quietHoursStart, preferences.quietHoursEnd, preferences.deliveryMode, addNotification]);
+  }, [user, preferences.dailyMoodCheckin, preferences.quietHoursStart, preferences.quietHoursEnd, preferences.deliveryMode, triggerMoodNotification, clearAllTimeouts]);
 
   // Also check if we should show the modal on app startup (for missed notifications)
   useEffect(() => {
@@ -119,13 +148,8 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
 
           // If no mood log for today, show a gentle reminder
           if (!data) {
-            setTimeout(() => {
-              addNotification({
-                title: '💭 Daily reflection reminder',
-                body: 'Don\'t forget to log your mood and wellness for today!',
-                type: 'mood_reminder',
-                action: () => setShowMoodModal(true),
-              });
+            startupTimeoutRef.current = setTimeout(() => {
+              triggerMoodNotification();
             }, 2000); // Small delay to avoid overwhelming on startup
           }
         }
@@ -135,7 +159,14 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
     };
 
     checkMissedMoodLog();
-  }, [user, preferences.dailyMoodCheckin, addNotification]);
+
+    return () => {
+      if (startupTimeoutRef.current) {
+        clearTimeout(startupTimeoutRef.current);
+        startupTimeoutRef.current = null;
+      }
+    };
+  }, [user, preferences.dailyMoodCheckin, triggerMoodNotification]);
 
   return {
     showMoodModal,
