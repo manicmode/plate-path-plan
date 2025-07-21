@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useReviewNotifications } from '@/hooks/useReviewNotifications';
+import { calculateConsistencyScores, ConsistencyScore } from '@/utils/consistencyCalculations';
 
 const HomeAIInsights = () => {
   const { user } = useAuth();
@@ -60,52 +61,45 @@ const HomeAIInsights = () => {
   const generateWeeklyReview = async () => {
     if (!user?.id) return null;
 
+    // Get consistency scores for the past 7 days
+    const consistencyScores = await calculateConsistencyScores(user.id, 7);
+    const insights = [];
+
+    // Add consistency scores as insights
+    insights.push('📊 Consistency Scores:');
+    consistencyScores.forEach(score => {
+      const emoji = score.percentage >= 90 ? '🔥' : score.percentage >= 70 ? '💪' : score.percentage >= 50 ? '📈' : '⚠️';
+      insights.push(`${emoji} ${score.label}: ${score.percentage}%`);
+      
+      // Add motivational message if it exists and score is below 70%
+      if (score.motivationalMessage && score.percentage < 70) {
+        insights.push(score.motivationalMessage);
+      }
+    });
+
+    // Additional insights based on patterns
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
-    // Fetch data from past 7 days
-    const [nutritionData, hydrationData, supplementData, moodData] = await Promise.all([
-      supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
-      supabase.from('hydration_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
-      supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr),
+    const [moodData] = await Promise.all([
       supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr)
     ]);
-
-    const insights = [];
-    
-    // Hydration analysis
-    const hydrationDays = new Set(hydrationData.data?.map(h => h.created_at.split('T')[0])).size || 0;
-    if (hydrationDays >= 5) {
-      insights.push(`💧 You met your hydration goal ${hydrationDays}/7 days, well done!`);
-    } else if (hydrationDays >= 3) {
-      insights.push(`💧 Hydration tracked ${hydrationDays}/7 days - room for improvement!`);
-    }
-
-    // Supplement analysis
-    const supplementDays = new Set(supplementData.data?.map(s => s.created_at.split('T')[0])).size || 0;
-    if (supplementDays < 4) {
-      insights.push(`💊 Supplements were missed on several days. Want to try a reminder system?`);
-    }
 
     // Mood patterns
     const moodEntries = moodData.data || [];
     const avgMood = moodEntries.length > 0 ? moodEntries.reduce((sum, m) => sum + (m.mood || 5), 0) / moodEntries.length : 0;
     if (avgMood >= 7) {
       insights.push(`😊 Great week for mood! Average rating: ${avgMood.toFixed(1)}/10`);
-    } else if (avgMood < 5) {
+    } else if (avgMood < 5 && moodEntries.length > 0) {
       insights.push(`🤗 Mood averaged ${avgMood.toFixed(1)}/10 - consider reviewing your patterns`);
-    }
-
-    // Default insight if no data
-    if (insights.length === 0) {
-      insights.push(`📊 Start logging more consistently to unlock personalized weekly insights!`);
     }
 
     return {
       title: 'Weekly Review',
-      insights: insights.slice(0, 3),
-      period: '7 days'
+      insights: insights.slice(0, 6), // Show more insights to include consistency scores
+      period: '7 days',
+      consistencyScores
     };
   };
 
@@ -113,31 +107,31 @@ const HomeAIInsights = () => {
   const generateMonthlyReview = async () => {
     if (!user?.id) return null;
 
+    // Get consistency scores for the past 30 days
+    const consistencyScores = await calculateConsistencyScores(user.id, 30);
+    const insights = [];
+
+    // Add consistency scores as insights
+    insights.push('📊 Monthly Consistency Scores:');
+    consistencyScores.forEach(score => {
+      const emoji = score.percentage >= 90 ? '🔥' : score.percentage >= 70 ? '💪' : score.percentage >= 50 ? '📈' : '⚠️';
+      insights.push(`${emoji} ${score.label}: ${score.percentage}%`);
+      
+      // Add motivational message for top and bottom performers
+      if (score.motivationalMessage && (score.percentage >= 90 || score.percentage < 60)) {
+        insights.push(score.motivationalMessage);
+      }
+    });
+
+    // Additional monthly insights
     const monthAgo = new Date();
     monthAgo.setDate(monthAgo.getDate() - 30);
     const monthAgoStr = monthAgo.toISOString().split('T')[0];
 
-    const [nutritionData, supplementData, moodData] = await Promise.all([
-      supabase.from('nutrition_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
+    const [supplementData, moodData] = await Promise.all([
       supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
       supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr)
     ]);
-
-    const insights = [];
-    
-    // Consistency score
-    const logDays = new Set([
-      ...(nutritionData.data?.map(n => n.created_at.split('T')[0]) || []),
-      ...(supplementData.data?.map(s => s.created_at.split('T')[0]) || []),
-      ...(moodData.data?.map(m => m.created_at.split('T')[0]) || [])
-    ]).size;
-    
-    const consistencyScore = Math.round((logDays / 30) * 100);
-    if (consistencyScore >= 80) {
-      insights.push(`⭐ This month's consistency score: ${consistencyScore}% — impressive commitment!`);
-    } else {
-      insights.push(`📈 Consistency score: ${consistencyScore}% — aim for 80%+ next month!`);
-    }
 
     // Top supplement
     const supplementCounts: Record<string, number> = {};
@@ -169,8 +163,9 @@ const HomeAIInsights = () => {
 
     return {
       title: 'Monthly Review',
-      insights: insights.slice(0, 3),
-      period: '30 days'
+      insights: insights.slice(0, 8), // Show more insights to include consistency scores
+      period: '30 days',
+      consistencyScores
     };
   };
 
