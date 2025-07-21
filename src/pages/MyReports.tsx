@@ -1,6 +1,6 @@
 
-import { useEffect, useMemo, useCallback, useRef } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,6 +10,7 @@ import { FileText, Download, Eye, Calendar, Loader2, Share2, Plus } from 'lucide
 import { supabase } from '@/integrations/supabase/client';
 import { useStableAuth } from '@/hooks/useStableAuth';
 import { useReportsState } from '@/hooks/useReportsState';
+import { useDebouncedFetch } from '@/hooks/useDebouncedFetch';
 
 interface ReportFile {
   name: string;
@@ -21,62 +22,94 @@ interface ReportFile {
 }
 
 const LoadingSkeleton = () => (
-  <div className="space-y-6">
+  <div className="space-y-8 animate-fade-in">
+    {/* Latest Report Skeleton */}
     <div className="space-y-4">
-      <Skeleton className="h-6 w-32" />
-      <div className="modern-tracker-card p-6">
+      <div>
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-4 w-48 mt-2" />
+      </div>
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-xl" />
+            <Skeleton className="h-16 w-16 rounded-xl" />
             <div>
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-28 mt-2" />
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32 mt-2" />
             </div>
           </div>
           <Skeleton className="h-6 w-16" />
         </div>
         <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-32" />
-          <div className="flex space-x-3">
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-4 w-36" />
+          <div className="flex items-center space-x-3">
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-20" />
           </div>
         </div>
+      </Card>
+    </div>
+    
+    {/* Previous Reports Skeleton */}
+    <div className="space-y-4">
+      <div>
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-4 w-32 mt-2" />
+      </div>
+      <div className="space-y-3">
+        {[1, 2].map((i) => (
+          <Card key={i} className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Skeleton className="h-10 w-10 rounded-lg" />
+                <div>
+                  <Skeleton className="h-5 w-36" />
+                  <Skeleton className="h-4 w-24 mt-1" />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   </div>
 );
 
 const EmptyState = ({ onGenerateFirst, isGenerating }: { onGenerateFirst: () => void; isGenerating: boolean }) => (
-  <div className="text-center py-12">
-    <div className="modern-action-card max-w-md mx-auto p-8">
-      <div className="p-6 bg-primary/10 rounded-2xl inline-block mb-4">
-        <FileText className="w-12 h-12 text-primary" />
+  <Card className="text-center py-16 modern-action-card">
+    <CardContent>
+      <div className="p-8 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl inline-block mb-6">
+        <FileText className="w-16 h-16 text-primary" />
       </div>
-      <h3 className="text-lg font-semibold mb-2">No reports yet</h3>
-      <p className="text-muted-foreground mb-6">
-        Generate your first weekly health report to start tracking your progress.
+      <h3 className="text-xl font-semibold mb-3">No reports yet</h3>
+      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+        Generate your first weekly health report to start tracking your progress and insights.
       </p>
       <Button 
         onClick={onGenerateFirst} 
         disabled={isGenerating}
-        className="shadow-lg hover:shadow-xl"
+        size="lg"
+        className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl"
       >
         {isGenerating ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Generating...
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Generating First Report...
           </>
         ) : (
           <>
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-5 h-5 mr-2" />
             Generate First Report
           </>
         )}
       </Button>
-    </div>
-  </div>
+    </CardContent>
+  </Card>
 );
 
 export default function MyReports() {
@@ -86,7 +119,7 @@ export default function MyReports() {
   const isMountedRef = useRef(true);
   const fetchingRef = useRef(false);
 
-  // Utility functions
+  // Stable utility functions
   const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -102,7 +135,7 @@ export default function MyReports() {
     return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   }, []);
 
-  // Fetch reports function
+  // Stable fetch function
   const fetchReports = useCallback(async () => {
     if (!stableUserId || fetchingRef.current) return;
     
@@ -118,9 +151,13 @@ export default function MyReports() {
           sortBy: { column: 'created_at', order: 'desc' }
         });
 
-      if (listError) throw listError;
+      if (listError) {
+        throw listError;
+      }
+
       if (!isMountedRef.current) return;
 
+      // Process files with async URL generation
       const processedReports = await Promise.all(
         (fileList || []).map(async (file) => {
           const { data: urlData } = supabase.storage
@@ -156,12 +193,19 @@ export default function MyReports() {
     }
   }, [stableUserId, actions, toast]);
 
-  // Effect for fetching reports
+  // Debounced fetch to prevent rapid calls
+  const { debouncedFetch, cleanup } = useDebouncedFetch(fetchReports, 200);
+
+  // Single effect with stable dependencies
   useEffect(() => {
     if (userReady && stableUserId && !state.initialized) {
-      fetchReports();
+      debouncedFetch();
     }
-  }, [userReady, stableUserId, state.initialized, fetchReports]);
+
+    return () => {
+      cleanup();
+    };
+  }, [userReady, stableUserId, state.initialized, debouncedFetch, cleanup]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -170,7 +214,7 @@ export default function MyReports() {
     };
   }, []);
 
-  // Action handlers
+  // Stable action handlers
   const generateNewReport = useCallback(async () => {
     if (!stableUserId) return;
     
@@ -191,6 +235,7 @@ export default function MyReports() {
         duration: 5000
       });
 
+      // Refresh reports after generation
       await fetchReports();
     } catch (error) {
       console.error('Error generating report:', error);
@@ -266,6 +311,13 @@ export default function MyReports() {
     actions.setShowPreview(false);
   }, [actions]);
 
+  const handleRetry = useCallback(() => {
+    actions.resetState();
+    if (userReady && stableUserId) {
+      debouncedFetch();
+    }
+  }, [actions, userReady, stableUserId, debouncedFetch]);
+
   // Memoized computed values
   const { mostRecentReport, previousReports } = useMemo(() => {
     if (state.reports.length === 0) {
@@ -277,17 +329,18 @@ export default function MyReports() {
     };
   }, [state.reports]);
 
-  // Don't render until user is ready
-  if (!userReady) {
+  // Don't render anything until user is ready
+  if (!userReady || !stableUserId) {
     return (
-      <div className="min-h-screen gradient-main">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-8">
+      <div className="min-h-screen bg-gradient-main">
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          {/* Header Skeleton */}
+          <div className="h-[10vh] flex items-center justify-between mb-8">
             <div>
               <Skeleton className="h-8 w-48" />
               <Skeleton className="h-5 w-64 mt-2" />
             </div>
-            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-11 w-48" />
           </div>
           <LoadingSkeleton />
         </div>
@@ -296,10 +349,10 @@ export default function MyReports() {
   }
 
   return (
-    <div className="min-h-screen gradient-main">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-gradient-main">
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        {/* Header Section (Top 10% height) */}
+        <header className="h-[10vh] flex items-center justify-between mb-8 sticky top-0 z-10 bg-background/80 backdrop-blur-lg rounded-2xl px-6 py-4 border border-border/50">
           <div>
             <h1 className="text-3xl font-bold text-foreground">📄 My Reports</h1>
             <p className="text-muted-foreground mt-1">
@@ -309,67 +362,59 @@ export default function MyReports() {
           <Button 
             onClick={generateNewReport} 
             disabled={state.isGenerating}
-            className="shrink-0 shadow-lg hover:shadow-xl"
+            size="lg"
+            className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300"
           >
             {state.isGenerating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Generating...
               </>
             ) : (
               <>
-                <FileText className="w-4 h-4 mr-2" />
+                <FileText className="w-5 h-5 mr-2" />
                 📄 Generate New Report
               </>
             )}
           </Button>
-        </div>
+        </header>
 
         {/* Loading State */}
         {state.isLoading && <LoadingSkeleton />}
 
-        {/* Error State */}
-        {state.error && (
-          <div className="text-center py-12">
-            <div className="modern-action-card max-w-md mx-auto p-8">
-              <p className="text-destructive mb-4">{state.error}</p>
-              <Button onClick={() => fetchReports()} variant="outline">
-                Try Again
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Empty State */}
         {!state.isLoading && !state.error && state.reports.length === 0 && state.initialized && (
-          <EmptyState onGenerateFirst={generateNewReport} isGenerating={state.isGenerating} />
+          <div className="animate-fade-in">
+            <EmptyState onGenerateFirst={generateNewReport} isGenerating={state.isGenerating} />
+          </div>
         )}
 
         {/* Reports Content */}
         {!state.isLoading && !state.error && state.reports.length > 0 && (
           <div className="space-y-8 animate-fade-in">
-            {/* Latest Report */}
+            {/* Most Recent Report Card (Prominent + Beautiful) */}
             {mostRecentReport && (
               <section className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">Latest Report</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Latest Report</h2>
+                  <p className="text-sm text-muted-foreground">Your most recent weekly health summary</p>
+                </div>
                 
-                <div className="modern-tracker-card p-6 bg-gradient-to-br from-primary/5 to-secondary/5">
-                  <div className="flex items-center justify-between mb-4">
+                <Card className="modern-tracker-card p-6 bg-gradient-to-br from-primary/5 via-background to-secondary/10 border-primary/20 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-primary/15 rounded-xl">
-                        <FileText className="w-6 h-6 text-primary" />
+                      <div className="p-4 bg-primary/15 rounded-2xl">
+                        <FileText className="w-8 h-8 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-foreground">
-                          📅 {getWeekRange(mostRecentReport.weekEndDate)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground flex items-center space-x-2">
+                        <h3 className="text-xl font-bold text-foreground">📅 {getWeekRange(mostRecentReport.weekEndDate)}</h3>
+                        <p className="text-muted-foreground flex items-center space-x-2 mt-1">
                           <Calendar className="w-4 h-4" />
                           <span>Weekly Health Report</span>
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-3 py-1">
                       🟢 Latest
                     </Badge>
                   </div>
@@ -378,49 +423,55 @@ export default function MyReports() {
                     <div className="text-sm text-muted-foreground">
                       Generated on {formatDate(mostRecentReport.created_at)}
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex items-center space-x-3">
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => openPreview(mostRecentReport)}
+                        className="shadow-md hover:shadow-lg transition-all duration-300"
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        🖥️ View
+                        🖥️ <Eye className="w-4 h-4 ml-2" />
+                        View Report
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handleDownload(mostRecentReport)}
+                        className="shadow-md hover:shadow-lg transition-all duration-300"
                       >
-                        <Download className="w-4 h-4 mr-1" />
-                        ⬇️ Download
+                        ⬇️ <Download className="w-4 h-4 ml-2" />
+                        Download
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handleShare(mostRecentReport)}
+                        className="shadow-md hover:shadow-lg transition-all duration-300"
                       >
-                        <Share2 className="w-4 h-4 mr-1" />
-                        📤 Share
+                        📤 <Share2 className="w-4 h-4 ml-2" />
+                        Share
                       </Button>
                     </div>
                   </div>
-                </div>
+                </Card>
               </section>
             )}
 
-            {/* Previous Reports */}
+            {/* Previous Reports List (Compact Scrollable) */}
             {previousReports.length > 0 && (
               <section className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">📚 Previous Reports</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">📚 Previous Reports</h2>
+                  <p className="text-sm text-muted-foreground">Your report history</p>
+                </div>
                 
-                <div className="max-h-96 overflow-y-auto space-y-3">
+                <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/20">
                   {previousReports.map((report, index) => (
-                    <div key={`${report.id}-${index}`} className="modern-nutrient-card p-4">
+                    <Card 
+                      key={`${report.id}-${index}`} 
+                      className="modern-nutrient-card p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 border-border/50"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="p-2 bg-primary/10 rounded-lg">
-                            <FileText className="w-4 h-4 text-primary" />
+                            <FileText className="w-5 h-5 text-primary" />
                           </div>
                           <div>
                             <div className="font-medium text-foreground">
@@ -432,11 +483,12 @@ export default function MyReports() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex items-center space-x-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => openPreview(report)}
+                            className="hover:bg-primary/10 transition-colors"
                           >
                             <Eye className="w-4 h-4 mr-1" />
                             View
@@ -445,13 +497,14 @@ export default function MyReports() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDownload(report)}
+                            className="hover:bg-primary/10 transition-colors"
                           >
                             <Download className="w-4 h-4 mr-1" />
                             Download
                           </Button>
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </section>
@@ -461,7 +514,7 @@ export default function MyReports() {
 
         {/* PDF Preview Modal */}
         <Dialog open={state.showPreview} onOpenChange={closePreview}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden modern-tracker-card">
             <DialogHeader>
               <DialogTitle className="flex items-center space-x-2">
                 <FileText className="w-5 h-5" />
@@ -477,7 +530,7 @@ export default function MyReports() {
               {state.selectedReport && (
                 <iframe
                   src={state.selectedReport.publicUrl}
-                  className="w-full h-[70vh] border rounded-lg"
+                  className="w-full h-[70vh] border border-border rounded-lg"
                   title="PDF Preview"
                 />
               )}
