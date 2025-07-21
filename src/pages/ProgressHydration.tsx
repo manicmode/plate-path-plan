@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Droplets, TrendingUp, TrendingDown } from 'lucide-react';
@@ -8,18 +9,23 @@ import { useAuth } from '@/contexts/auth';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useState } from 'react';
 import { useRealHydrationData } from '@/hooks/useRealHydrationData';
+import { CircularProgress } from '@/components/analytics/ui/CircularProgress';
 
 const ProgressHydration = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const { weeklyChartData, weeklyAverage, isLoading } = useRealHydrationData();
+  const { weeklyChartData, weeklyAverage, isLoading, todayTotal } = useRealHydrationData();
   
   // Use the scroll-to-top hook
   useScrollToTop();
   
-  const targetHydration = user?.targetHydration || 8;
+  const targetHydration = user?.targetHydration || 8; // glasses
+  const hydrationTargetMl = targetHydration * 250; // Convert glasses to ml (250ml per glass)
+  
+  // Calculate today's hydration progress percentage
+  const todayProgressPercentage = Math.min((todayTotal / hydrationTargetMl) * 100, 100);
   
   // Get current data based on view mode
   const getCurrentData = () => {
@@ -40,7 +46,7 @@ const ProgressHydration = () => {
     }
   };
 
-  const currentData = getCurrentData();
+  const getCurrentData = getCurrentData();
 
   const getAverageIntake = () => {
     if (currentData.length === 0) return 0;
@@ -53,15 +59,16 @@ const ProgressHydration = () => {
     return Math.round((average / targetHydration) * 100);
   };
 
-  const getStatusMessage = () => {
-    const percentage = getGoalPercentage();
-    if (percentage >= 95 && percentage <= 105) return { message: "Well hydrated!", color: "text-green-600", icon: "🟢" };
-    if (percentage >= 80 && percentage <= 120) return { message: "Slightly off target", color: "text-yellow-600", icon: "🟡" };
+  const getTodayStatusMessage = () => {
+    const percentage = todayProgressPercentage;
+    if (percentage >= 95) return { message: "Great hydration today!", color: "text-green-600", icon: "🟢" };
+    if (percentage >= 75) return { message: "Good progress!", color: "text-blue-600", icon: "💧" };
+    if (percentage >= 50) return { message: "Keep drinking!", color: "text-yellow-600", icon: "🟡" };
     if (percentage === 0) return { message: "Stay hydrated!", color: "text-blue-600", icon: "💧" };
-    return { message: "Needs attention!", color: "text-red-600", icon: "🔴" };
+    return { message: "Need more water!", color: "text-orange-600", icon: "🟠" };
   };
 
-  const status = getStatusMessage();
+  const todayStatus = getTodayStatusMessage();
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -134,18 +141,41 @@ const ProgressHydration = () => {
         </div>
       </div>
 
-      {/* Status Card */}
+      {/* Today's Hydration Progress */}
       <Card className="visible-card shadow-lg">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Current Status</h3>
-              <p className={`text-2xl font-bold ${status.color} flex items-center space-x-2 mt-2`}>
-                <span>{status.icon}</span>
-                <span>{status.message}</span>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Today's Hydration</h3>
+              <p className={`text-2xl font-bold ${todayStatus.color} flex items-center space-x-2 mt-2`}>
+                <span>{todayStatus.icon}</span>
+                <span>{todayStatus.message}</span>
               </p>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Average: {getAverageIntake()} glasses ({getGoalPercentage()}% of goal)
+                {todayTotal}ml / {hydrationTargetMl}ml ({Math.round(todayProgressPercentage)}%)
+              </p>
+            </div>
+            <div className="flex items-center justify-center">
+              <CircularProgress 
+                value={todayTotal}
+                max={hydrationTargetMl}
+                color="#3B82F6"
+                size={120}
+                strokeWidth={10}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Status Card - Weekly Average */}
+      <Card className="visible-card shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Average</h3>
+              <p className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+                {getAverageIntake()} glasses ({getGoalPercentage()}% of goal)
               </p>
             </div>
             <div className="text-right">
