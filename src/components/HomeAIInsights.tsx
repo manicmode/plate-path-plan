@@ -1,7 +1,7 @@
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Brain, MessageCircle, BarChart3, Calendar, Sparkles, ChevronDown } from 'lucide-react';
+import { Brain, MessageCircle, BarChart3, Calendar, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNavigate } from 'react-router-dom';
@@ -410,29 +410,12 @@ const HomeAIInsights = () => {
                     </p>
                   </div>
                 </div>
-                
-                {/* Enhanced Scrollable Area */}
-                <div className="relative">
-                  <ScrollArea className={`${isMobile ? 'h-36' : 'h-40'} w-full rounded-md border bg-muted/30 backdrop-blur-sm p-4`}>
-                    <div className="space-y-3 pr-4">
-                      {currentItem.content.insights.map((insight, index) => (
-                        <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
-                          {insight}
-                        </p>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  
-                  {/* Scroll Indicator */}
-                  {currentItem.content.insights.length > 4 && (
-                    <div className="absolute bottom-2 right-2 flex items-center space-x-1 text-xs text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded-full backdrop-blur-sm">
-                      <ChevronDown className="h-3 w-3 animate-bounce" />
-                      <span>scroll</span>
-                    </div>
-                  )}
-                  
-                  {/* Gradient Fade Effect */}
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/80 to-transparent dark:from-gray-950/80 pointer-events-none rounded-b-md" />
+                <div className="space-y-3 max-h-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                  {currentItem.content.insights.map((insight, index) => (
+                    <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
+                      {insight}
+                    </p>
+                  ))}
                 </div>
               </div>
             )}
