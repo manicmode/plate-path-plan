@@ -78,10 +78,10 @@ const Explore = () => {
       id: 'my-reports',
       title: 'My Reports',
       emoji: '📄',
-      color: 'from-emerald-500 via-teal-400 to-teal-500',
+      color: 'from-emerald-600 via-emerald-400 to-teal-400',
       shadowColor: 'shadow-emerald-500/30',
       glowColor: 'hover:shadow-emerald-400/50',
-      animatedGradient: 'bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500',
+      animatedGradient: 'bg-gradient-to-br from-emerald-600 via-emerald-400 to-teal-400',
     },
     {
       id: 'profile',
