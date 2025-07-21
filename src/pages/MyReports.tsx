@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Download, Eye, Calendar, Loader2, Share2, AlertCircle, RefreshCw } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, Loader2, Share2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useStableAuth } from '@/hooks/useStableAuth';
 import { useReportsState } from '@/hooks/useReportsState';
@@ -21,52 +21,95 @@ interface ReportFile {
   weekEndDate: string;
 }
 
-const ReportSkeleton = () => (
-  <div className="space-y-6 animate-fade-in">
+const LoadingSkeleton = () => (
+  <div className="space-y-8 animate-fade-in">
+    {/* Latest Report Skeleton */}
     <div className="space-y-4">
       <div>
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-64 mt-2" />
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-4 w-48 mt-2" />
       </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Skeleton className="h-12 w-12 rounded-lg" />
-              <div>
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-24 mt-1" />
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-16 w-16 rounded-xl" />
+            <div>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32 mt-2" />
+            </div>
+          </div>
+          <Skeleton className="h-6 w-16" />
+        </div>
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-36" />
+          <div className="flex items-center space-x-3">
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-20" />
+          </div>
+        </div>
+      </Card>
+    </div>
+    
+    {/* Previous Reports Skeleton */}
+    <div className="space-y-4">
+      <div>
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-4 w-32 mt-2" />
+      </div>
+      <div className="space-y-3">
+        {[1, 2].map((i) => (
+          <Card key={i} className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Skeleton className="h-10 w-10 rounded-lg" />
+                <div>
+                  <Skeleton className="h-5 w-36" />
+                  <Skeleton className="h-4 w-24 mt-1" />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-20" />
               </div>
             </div>
-            <Skeleton className="h-6 w-12" />
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-4 w-32" />
-            <div className="flex items-center space-x-2">
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-8 w-20" />
-              <Skeleton className="h-8 w-16" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </Card>
+        ))}
+      </div>
     </div>
   </div>
 );
 
-const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
-  <div className="flex items-center justify-center min-h-[400px] animate-fade-in">
-    <div className="text-center space-y-4">
-      <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-      <p className="text-destructive">{error}</p>
-      <Button onClick={onRetry} variant="outline">
-        <RefreshCw className="w-4 h-4 mr-2" />
-        Try Again
+const EmptyState = ({ onGenerateFirst, isGenerating }: { onGenerateFirst: () => void; isGenerating: boolean }) => (
+  <Card className="text-center py-16 modern-action-card">
+    <CardContent>
+      <div className="p-8 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl inline-block mb-6">
+        <FileText className="w-16 h-16 text-primary" />
+      </div>
+      <h3 className="text-xl font-semibold mb-3">No reports yet</h3>
+      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+        Generate your first weekly health report to start tracking your progress and insights.
+      </p>
+      <Button 
+        onClick={onGenerateFirst} 
+        disabled={isGenerating}
+        size="lg"
+        className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl"
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Generating First Report...
+          </>
+        ) : (
+          <>
+            <Plus className="w-5 h-5 mr-2" />
+            Generate First Report
+          </>
+        )}
       </Button>
-    </div>
-  </div>
+    </CardContent>
+  </Card>
 );
 
 export default function MyReports() {
@@ -289,173 +332,154 @@ export default function MyReports() {
   // Don't render anything until user is ready
   if (!userReady || !stableUserId) {
     return (
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
-        <div className="flex justify-between items-start">
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-5 w-64 mt-2" />
+      <div className="min-h-screen bg-gradient-main">
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          {/* Header Skeleton */}
+          <div className="h-[10vh] flex items-center justify-between mb-8">
+            <div>
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-5 w-64 mt-2" />
+            </div>
+            <Skeleton className="h-11 w-48" />
           </div>
-          <Skeleton className="h-10 w-40" />
+          <LoadingSkeleton />
         </div>
-        <ReportSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold">📄 My Reports</h1>
-          <p className="text-muted-foreground mt-1">
-            View and download your weekly health reports
-          </p>
-        </div>
-        <Button 
-          onClick={generateNewReport} 
-          disabled={state.isGenerating}
-          className="bg-primary hover:bg-primary/90"
-        >
-          {state.isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <FileText className="w-4 h-4 mr-2" />
-              Generate New Report
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Loading State */}
-      {state.isLoading && <ReportSkeleton />}
-
-      {/* Error State */}
-      {state.error && !state.isLoading && (
-        <ErrorDisplay error={state.error} onRetry={handleRetry} />
-      )}
-
-      {/* No Reports State */}
-      {!state.isLoading && !state.error && state.reports.length === 0 && state.initialized && (
-        <Card className="text-center py-12 animate-fade-in">
-          <CardContent>
-            <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No reports available yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Your first summary will appear here soon.
+    <div className="min-h-screen bg-gradient-main">
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        {/* Header Section (Top 10% height) */}
+        <header className="h-[10vh] flex items-center justify-between mb-8 sticky top-0 z-10 bg-background/80 backdrop-blur-lg rounded-2xl px-6 py-4 border border-border/50">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">📄 My Reports</h1>
+            <p className="text-muted-foreground mt-1">
+              View and download your weekly health reports
             </p>
-            <Button onClick={generateNewReport} disabled={state.isGenerating}>
-              {state.isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Generate First Report'
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          <Button 
+            onClick={generateNewReport} 
+            disabled={state.isGenerating}
+            size="lg"
+            className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {state.isGenerating ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText className="w-5 h-5 mr-2" />
+                📄 Generate New Report
+              </>
+            )}
+          </Button>
+        </header>
 
-      {/* Reports Content */}
-      {!state.isLoading && !state.error && state.reports.length > 0 && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Most Recent Report */}
-          {mostRecentReport && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-semibold">Most Recent Report</h2>
-                <p className="text-sm text-muted-foreground">Your latest weekly health summary</p>
-              </div>
-              
-              <Card className="hover:shadow-lg transition-all duration-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-3 bg-primary/10 rounded-lg">
-                        <FileText className="w-6 h-6 text-primary" />
+        {/* Loading State */}
+        {state.isLoading && <LoadingSkeleton />}
+
+        {/* Empty State */}
+        {!state.isLoading && !state.error && state.reports.length === 0 && state.initialized && (
+          <div className="animate-fade-in">
+            <EmptyState onGenerateFirst={generateNewReport} isGenerating={state.isGenerating} />
+          </div>
+        )}
+
+        {/* Reports Content */}
+        {!state.isLoading && !state.error && state.reports.length > 0 && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Most Recent Report Card (Prominent + Beautiful) */}
+            {mostRecentReport && (
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Latest Report</h2>
+                  <p className="text-sm text-muted-foreground">Your most recent weekly health summary</p>
+                </div>
+                
+                <Card className="modern-tracker-card p-6 bg-gradient-to-br from-primary/5 via-background to-secondary/10 border-primary/20 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-4 bg-primary/15 rounded-2xl">
+                        <FileText className="w-8 h-8 text-primary" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">
-                          Weekly Health Report
-                        </CardTitle>
-                        <CardDescription className="flex items-center space-x-2">
+                        <h3 className="text-xl font-bold text-foreground">📅 {getWeekRange(mostRecentReport.weekEndDate)}</h3>
+                        <p className="text-muted-foreground flex items-center space-x-2 mt-1">
                           <Calendar className="w-4 h-4" />
-                          <span>{getWeekRange(mostRecentReport.weekEndDate)}</span>
-                        </CardDescription>
+                          <span>Weekly Health Report</span>
+                        </p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      Latest
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-3 py-1">
+                      🟢 Latest
                     </Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-0">
+                  
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
                       Generated on {formatDate(mostRecentReport.created_at)}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => openPreview(mostRecentReport)}
+                        className="shadow-md hover:shadow-lg transition-all duration-300"
                       >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View PDF
+                        🖥️ <Eye className="w-4 h-4 ml-2" />
+                        View Report
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handleDownload(mostRecentReport)}
+                        className="shadow-md hover:shadow-lg transition-all duration-300"
                       >
-                        <Download className="w-4 h-4 mr-2" />
+                        ⬇️ <Download className="w-4 h-4 ml-2" />
                         Download
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => handleShare(mostRecentReport)}
+                        className="shadow-md hover:shadow-lg transition-all duration-300"
                       >
-                        <Share2 className="w-4 h-4 mr-2" />
+                        📤 <Share2 className="w-4 h-4 ml-2" />
                         Share
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                </Card>
+              </section>
+            )}
 
-          {/* Previous Reports */}
-          {previousReports.length > 0 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-semibold">Previous Reports</h2>
-                <p className="text-sm text-muted-foreground">Your report history</p>
-              </div>
-              
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {previousReports.map((report, index) => (
-                  <Card key={`${report.id}-${index}`} className="hover:shadow-md transition-all duration-200">
-                    <CardContent className="py-4">
+            {/* Previous Reports List (Compact Scrollable) */}
+            {previousReports.length > 0 && (
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">📚 Previous Reports</h2>
+                  <p className="text-sm text-muted-foreground">Your report history</p>
+                </div>
+                
+                <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/20">
+                  {previousReports.map((report, index) => (
+                    <Card 
+                      key={`${report.id}-${index}`} 
+                      className="modern-nutrient-card p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 border-border/50"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="p-2 bg-primary/10 rounded-lg">
-                            <FileText className="w-4 h-4 text-primary" />
+                            <FileText className="w-5 h-5 text-primary" />
                           </div>
                           <div>
-                            <div className="font-medium">
-                              Weekly Health Report
+                            <div className="font-medium text-foreground">
+                              📅 {getWeekRange(report.weekEndDate)}
                             </div>
                             <div className="text-sm text-muted-foreground flex items-center space-x-2">
                               <Calendar className="w-3 h-3" />
-                              <span>{getWeekRange(report.weekEndDate)}</span>
+                              <span>{formatDate(report.created_at)}</span>
                             </div>
                           </div>
                         </div>
@@ -464,6 +488,7 @@ export default function MyReports() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openPreview(report)}
+                            className="hover:bg-primary/10 transition-colors"
                           >
                             <Eye className="w-4 h-4 mr-1" />
                             View
@@ -472,65 +497,66 @@ export default function MyReports() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDownload(report)}
+                            className="hover:bg-primary/10 transition-colors"
                           >
                             <Download className="w-4 h-4 mr-1" />
                             Download
                           </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* PDF Preview Modal */}
-      <Dialog open={state.showPreview} onOpenChange={closePreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <FileText className="w-5 h-5" />
-              <span>Weekly Health Report Preview</span>
-              {state.selectedReport?.weekEndDate && (
-                <Badge variant="outline">
-                  {getWeekRange(state.selectedReport.weekEndDate)}
-                </Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden">
-            {state.selectedReport && (
-              <iframe
-                src={state.selectedReport.publicUrl}
-                className="w-full h-[70vh] border border-border rounded-lg"
-                title="PDF Preview"
-              />
+                    </Card>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline"
-              onClick={() => state.selectedReport && handleDownload(state.selectedReport)}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => state.selectedReport && handleShare(state.selectedReport)}
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
-            </Button>
-            <Button onClick={closePreview}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        )}
+
+        {/* PDF Preview Modal */}
+        <Dialog open={state.showPreview} onOpenChange={closePreview}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden modern-tracker-card">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <FileText className="w-5 h-5" />
+                <span>Weekly Health Report Preview</span>
+                {state.selectedReport?.weekEndDate && (
+                  <Badge variant="outline">
+                    {getWeekRange(state.selectedReport.weekEndDate)}
+                  </Badge>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden">
+              {state.selectedReport && (
+                <iframe
+                  src={state.selectedReport.publicUrl}
+                  className="w-full h-[70vh] border border-border rounded-lg"
+                  title="PDF Preview"
+                />
+              )}
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline"
+                onClick={() => state.selectedReport && handleDownload(state.selectedReport)}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => state.selectedReport && handleShare(state.selectedReport)}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+              <Button onClick={closePreview}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
