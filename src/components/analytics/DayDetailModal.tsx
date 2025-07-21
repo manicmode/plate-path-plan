@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { format } from 'date-fns';
 import { TriggerTagSelector } from '@/components/analytics/TriggerTagSelector';
+import { SmartTriggerSuggestion } from '@/components/analytics/SmartTriggerSuggestion';
+import { useSmartTriggerSuggestions } from '@/hooks/useSmartTriggerSuggestions';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -199,6 +201,14 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
     return '🌟';
   };
 
+  const getTimeOfDay = (dateString: string): 'morning' | 'afternoon' | 'evening' | 'night' => {
+    const hour = new Date(dateString).getHours();
+    if (hour < 6) return 'night';
+    if (hour < 12) return 'morning';
+    if (hour < 18) return 'afternoon';
+    return 'evening';
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -242,34 +252,57 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                   <CardContent className="pt-0">
                     {data?.meals.length ? (
                       <div className="space-y-3">
-                        {data.meals.map((meal) => (
-                          <div key={meal.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <h4 className="font-medium">{meal.food_name}</h4>
-                                {meal.quality_score && (
-                                  <Badge variant={meal.quality_score >= 7 ? 'default' : meal.quality_score >= 5 ? 'secondary' : 'destructive'}>
-                                    {meal.quality_score}/10
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
-                                <span>{Math.round(meal.calories)} kcal</span>
-                                <span>{Math.round(meal.protein)}g protein</span>
-                                <span>{Math.round(meal.carbs)}g carbs</span>
-                                <span>{Math.round(meal.fat)}g fat</span>
-                                <span className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatTime(meal.created_at)}</span>
-                                </span>
-                              </div>
-                              <TriggerTagSelector
-                                existingTags={meal.trigger_tags || []}
-                                onTagsUpdate={handleTagsUpdate}
+                        {data.meals.map((meal) => {
+                          const MealSmartSuggestion = () => {
+                            const { suggestions, loading } = useSmartTriggerSuggestions({
+                              itemName: meal.food_name,
+                              itemType: 'nutrition',
+                              timeOfDay: getTimeOfDay(meal.created_at)
+                            });
+
+                            return (
+                              <SmartTriggerSuggestion
+                                suggestions={suggestions}
+                                loading={loading}
                                 itemId={meal.id}
                                 itemType="nutrition"
+                                existingTags={meal.trigger_tags || []}
+                                onTagsUpdate={handleTagsUpdate}
                               />
-                            </div>
+                            );
+                          };
+
+                          return (
+                            <div key={meal.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <h4 className="font-medium">{meal.food_name}</h4>
+                                  {meal.quality_score && (
+                                    <Badge variant={meal.quality_score >= 7 ? 'default' : meal.quality_score >= 5 ? 'secondary' : 'destructive'}>
+                                      {meal.quality_score}/10
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
+                                  <span>{Math.round(meal.calories)} kcal</span>
+                                  <span>{Math.round(meal.protein)}g protein</span>
+                                  <span>{Math.round(meal.carbs)}g carbs</span>
+                                  <span>{Math.round(meal.fat)}g fat</span>
+                                  <span className="flex items-center space-x-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{formatTime(meal.created_at)}</span>
+                                  </span>
+                                </div>
+                                <div className="space-y-2 mt-2">
+                                  <MealSmartSuggestion />
+                                  <TriggerTagSelector
+                                    existingTags={meal.trigger_tags || []}
+                                    onTagsUpdate={handleTagsUpdate}
+                                    itemId={meal.id}
+                                    itemType="nutrition"
+                                  />
+                                </div>
+                              </div>
                             <div className="flex items-center space-x-2">
                               {onEditMeal && (
                                 <Button
@@ -288,9 +321,10 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                               >
                                 <Eye className="h-3 w-3" />
                               </Button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         <div className="pt-2 border-t">
                           <div className="text-sm text-muted-foreground">
                             Total: {Math.round(data.meals.reduce((sum, meal) => sum + meal.calories, 0))} kcal, {' '}
@@ -331,26 +365,50 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                   <CardContent className="pt-0">
                     {data?.supplements.length ? (
                       <div className="space-y-3">
-                        {data.supplements.map((supplement) => (
-                          <div key={supplement.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                            <div className="flex-1">
-                              <h4 className="font-medium">{supplement.name}</h4>
-                              <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
-                                <span>{supplement.dosage}{supplement.unit}</span>
-                                <span className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatTime(supplement.created_at)}</span>
-                                </span>
-                              </div>
-                              <TriggerTagSelector
-                                existingTags={supplement.trigger_tags || []}
-                                onTagsUpdate={handleTagsUpdate}
+                        {data.supplements.map((supplement) => {
+                          const SupplementSmartSuggestion = () => {
+                            const { suggestions, loading } = useSmartTriggerSuggestions({
+                              itemName: supplement.name,
+                              itemType: 'supplement',
+                              timeOfDay: getTimeOfDay(supplement.created_at)
+                            });
+
+                            return (
+                              <SmartTriggerSuggestion
+                                suggestions={suggestions}
+                                loading={loading}
                                 itemId={supplement.id}
                                 itemType="supplement"
+                                existingTags={supplement.trigger_tags || []}
+                                onTagsUpdate={handleTagsUpdate}
                               />
+                            );
+                          };
+
+                          return (
+                            <div key={supplement.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{supplement.name}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
+                                  <span>{supplement.dosage}{supplement.unit}</span>
+                                  <span className="flex items-center space-x-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{formatTime(supplement.created_at)}</span>
+                                  </span>
+                                </div>
+                                <div className="space-y-2 mt-2">
+                                  <SupplementSmartSuggestion />
+                                  <TriggerTagSelector
+                                    existingTags={supplement.trigger_tags || []}
+                                    onTagsUpdate={handleTagsUpdate}
+                                    itemId={supplement.id}
+                                    itemType="supplement"
+                                  />
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-muted-foreground text-center py-4">No supplements logged this day</p>
@@ -385,21 +443,51 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                   <CardContent className="pt-0">
                     {data?.hydration.length ? (
                       <div className="space-y-3">
-                        {data.hydration.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                            <div>
-                              <h4 className="font-medium">{item.name}</h4>
-                              <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
-                                <span>{item.volume}ml</span>
-                                <span className="capitalize">{item.type}</span>
-                                <span className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatTime(item.created_at)}</span>
-                                </span>
+                        {data.hydration.map((item) => {
+                          const HydrationSmartSuggestion = () => {
+                            const { suggestions, loading } = useSmartTriggerSuggestions({
+                              itemName: item.name,
+                              itemType: 'hydration',
+                              timeOfDay: getTimeOfDay(item.created_at)
+                            });
+
+                            return (
+                              <SmartTriggerSuggestion
+                                suggestions={suggestions}
+                                loading={loading}
+                                itemId={item.id}
+                                itemType="hydration"
+                                existingTags={item.trigger_tags || []}
+                                onTagsUpdate={handleTagsUpdate}
+                              />
+                            );
+                          };
+
+                          return (
+                            <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{item.name}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
+                                  <span>{item.volume}ml</span>
+                                  <span className="capitalize">{item.type}</span>
+                                  <span className="flex items-center space-x-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{formatTime(item.created_at)}</span>
+                                  </span>
+                                </div>
+                                <div className="space-y-2 mt-2">
+                                  <HydrationSmartSuggestion />
+                                  <TriggerTagSelector
+                                    existingTags={item.trigger_tags || []}
+                                    onTagsUpdate={handleTagsUpdate}
+                                    itemId={item.id}
+                                    itemType="hydration"
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         <div className="pt-2 border-t">
                           <div className="text-sm text-muted-foreground">
                             Total: {data.hydration.reduce((sum, item) => sum + item.volume, 0)}ml
@@ -479,6 +567,40 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                             </div>
                           </div>
                         )}
+                        
+                        {/* Mood Smart Suggestions and Manual Tags */}
+                        <div className="p-3 rounded-lg border bg-card">
+                          {(() => {
+                            const MoodSmartSuggestion = () => {
+                              const { suggestions, loading } = useSmartTriggerSuggestions({
+                                itemName: data.mood?.journal_text || 'mood entry',
+                                itemType: 'mood',
+                                timeOfDay: getTimeOfDay(data.mood?.created_at || selectedDate)
+                              });
+
+                              return (
+                                <SmartTriggerSuggestion
+                                  suggestions={suggestions}
+                                  loading={loading}
+                                  itemId={data.mood?.id || ''}
+                                  itemType="mood"
+                                  existingTags={data.mood?.trigger_tags || []}
+                                  onTagsUpdate={handleTagsUpdate}
+                                />
+                              );
+                            };
+                            
+                            return <MoodSmartSuggestion />;
+                          })()}
+                          <div className="mt-2">
+                            <TriggerTagSelector
+                              existingTags={data.mood.trigger_tags || []}
+                              onTagsUpdate={handleTagsUpdate}
+                              itemId={data.mood.id}
+                              itemType="mood"
+                            />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-muted-foreground text-center py-4">No mood data logged this day</p>
