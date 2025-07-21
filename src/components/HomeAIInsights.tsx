@@ -308,7 +308,7 @@ const HomeAIInsights = () => {
         }, 300);
       };
 
-      const interval = setInterval(rotateMessage, 7000); // 7 seconds
+      const interval = setInterval(rotateMessage, 10000); // Changed from 7000 to 10000
       return () => clearInterval(interval);
     }
   }, [currentTabIndex, aiMessages.length]);
