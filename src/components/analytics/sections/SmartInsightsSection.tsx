@@ -6,6 +6,9 @@ import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMoodPrediction } from '@/hooks/useMoodPrediction';
+import { Badge } from '@/components/ui/badge';
+import { TrendingUp } from 'lucide-react';
 
 interface Insight {
   type: 'positive' | 'warning' | 'tip';
@@ -17,6 +20,7 @@ export const SmartInsightsSection = () => {
   const { user } = useAuth();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
+  const { prediction: moodPrediction } = useMoodPrediction();
 
   useEffect(() => {
     const generateSmartInsights = async () => {
@@ -224,7 +228,52 @@ export const SmartInsightsSection = () => {
       <SectionHeader icon={Brain} title="Smart Insights" subtitle="Personalized recommendations" />
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
         <CardContent className="p-6">
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* Tomorrow's Mood Forecast */}
+            {moodPrediction && (
+              <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border-l-4 border-purple-500 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-purple-700 dark:text-purple-300 font-semibold flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Tomorrow's Mood Forecast {moodPrediction.emoji}
+                  </div>
+                  <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
+                    {moodPrediction.confidence} confidence
+                  </Badge>
+                </div>
+                <div className="text-gray-900 dark:text-gray-100 text-sm">
+                  {moodPrediction.message}
+                </div>
+                <div className="flex items-center space-x-4 mt-3">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Mood</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white">{moodPrediction.predicted_mood}/10</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                      <div 
+                        className="bg-gradient-to-r from-purple-400 to-purple-600 h-1.5 rounded-full"
+                        style={{ width: `${(moodPrediction.predicted_mood / 10) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Energy</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white">{moodPrediction.predicted_energy}/10</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                      <div 
+                        className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-1.5 rounded-full"
+                        style={{ width: `${(moodPrediction.predicted_energy / 10) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Regular Insights */}
             {insights.map((insight, index) => {
               const styles = getInsightStyles(insight.type);
               return (

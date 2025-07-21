@@ -51,6 +51,12 @@ export const NotificationSettings = () => {
       description: 'Nightly reminders at 8:30 PM to log your mood and wellness',
       icon: Moon
     },
+    { 
+      key: 'moodPredictions', 
+      label: 'AI Mood Predictions', 
+      description: 'Tomorrow\'s mood and energy forecasts based on your patterns',
+      icon: Brain
+    },
   ];
 
   const generalNotifications = [

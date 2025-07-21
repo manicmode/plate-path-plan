@@ -29,6 +29,7 @@ import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
+import { MoodForecastCard } from '@/components/MoodForecastCard';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1197,6 +1198,11 @@ const Home = () => {
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
       <div className="-mt-12">
         <HomeAIInsights />
+      </div>
+
+      {/* Tomorrow's Mood Forecast */}
+      <div className="px-2 sm:px-4">
+        <MoodForecastCard />
       </div>
 
       {/* Today's Nutrients Section - Collapsible */}

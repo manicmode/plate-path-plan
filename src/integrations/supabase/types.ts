@@ -637,6 +637,45 @@ export type Database = {
         }
         Relationships: []
       }
+      mood_predictions: {
+        Row: {
+          confidence: string
+          created_at: string
+          emoji: string
+          factors: string[]
+          id: string
+          message: string
+          predicted_energy: number
+          predicted_mood: number
+          prediction_date: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: string
+          created_at?: string
+          emoji?: string
+          factors?: string[]
+          id?: string
+          message: string
+          predicted_energy: number
+          predicted_mood: number
+          prediction_date: string
+          user_id: string
+        }
+        Update: {
+          confidence?: string
+          created_at?: string
+          emoji?: string
+          factors?: string[]
+          id?: string
+          message?: string
+          predicted_energy?: number
+          predicted_mood?: number
+          prediction_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nutrition_logs: {
         Row: {
           calories: number | null
