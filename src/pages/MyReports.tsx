@@ -332,7 +332,7 @@ export default function MyReports() {
   // Don't render anything until user is ready
   if (!userReady || !stableUserId) {
     return (
-      <div className="min-h-screen bg-gradient-main">
+      <div className="min-h-screen gradient-main">
         <div className="max-w-5xl mx-auto px-6 py-8">
           {/* Header Skeleton */}
           <div className="h-[10vh] flex items-center justify-between mb-8">
@@ -349,7 +349,7 @@ export default function MyReports() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-main">
+    <div className="min-h-screen gradient-main">
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header Section (Top 10% height) */}
         <header className="h-[10vh] flex items-center justify-between mb-8 sticky top-0 z-10 bg-background/80 backdrop-blur-lg rounded-2xl px-6 py-4 border border-border/50">
