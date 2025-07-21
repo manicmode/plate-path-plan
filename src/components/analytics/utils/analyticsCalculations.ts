@@ -39,12 +39,30 @@ export const useAnalyticsCalculations = () => {
       };
     } else {
       // Fall back to existing logic for legacy data
-      const avgCalories = dataToUse.reduce((sum, day) => sum + day.totalCalories, 0) / dataToUse.length;
-      const avgProtein = dataToUse.reduce((sum, day) => sum + day.totalProtein, 0) / dataToUse.length;
-      const avgCarbs = dataToUse.reduce((sum, day) => sum + day.totalCarbs, 0) / dataToUse.length;
-      const avgFat = dataToUse.reduce((sum, day) => sum + day.totalFat, 0) / dataToUse.length;
-      const avgHydration = dataToUse.reduce((sum, day) => sum + day.totalHydration, 0) / dataToUse.length;
-      const avgSupplements = dataToUse.reduce((sum, day) => sum + day.supplements.length, 0) / dataToUse.length;
+      const avgCalories = dataToUse.reduce((sum, day) => {
+        const calories = 'totalCalories' in day ? day.totalCalories : day.calories;
+        return sum + (calories || 0);
+      }, 0) / dataToUse.length;
+      const avgProtein = dataToUse.reduce((sum, day) => {
+        const protein = 'totalProtein' in day ? day.totalProtein : day.protein;
+        return sum + (protein || 0);
+      }, 0) / dataToUse.length;
+      const avgCarbs = dataToUse.reduce((sum, day) => {
+        const carbs = 'totalCarbs' in day ? day.totalCarbs : day.carbs;
+        return sum + (carbs || 0);
+      }, 0) / dataToUse.length;
+      const avgFat = dataToUse.reduce((sum, day) => {
+        const fat = 'totalFat' in day ? day.totalFat : day.fat;
+        return sum + (fat || 0);
+      }, 0) / dataToUse.length;
+      const avgHydration = dataToUse.reduce((sum, day) => {
+        const hydration = 'totalHydration' in day ? day.totalHydration : 0;
+        return sum + (hydration || 0);
+      }, 0) / dataToUse.length;
+      const avgSupplements = dataToUse.reduce((sum, day) => {
+        const supplements = 'supplements' in day ? day.supplements.length : 0;
+        return sum + (supplements || 0);
+      }, 0) / dataToUse.length;
       
       return {
         calories: avgCalories,
