@@ -144,8 +144,8 @@ export default function ReportViewer() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 animate-fade-in">
-      {/* Mobile-Optimized Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b shadow-sm">
         <div className={`container mx-auto ${containerPadding} py-3`}>
           <div className="flex items-start gap-3">
             <Button 
