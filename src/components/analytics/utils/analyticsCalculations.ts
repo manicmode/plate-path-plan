@@ -68,20 +68,11 @@ export const useAnalyticsCalculations = () => {
       }));
   }, [weeklyData, progress, user?.targetCalories, user?.id]);
 
-  // Memoize hydration data
+  // Real hydration data - will be replaced with real data hook
   const hydrationWeeklyData = useMemo(() => {
-    const today = new Date().toDateString();
-    const seedBase = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    return Array.from({ length: 7 }, (_, index) => {
-      const baseHydration = progress.hydration || 0;
-      return {
-        day: index === 6 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-        amount: index === 6 ? baseHydration : generateStableData(baseHydration, seedBase + index, 600),
-        target: user?.targetHydration || 2000,
-      };
-    });
-  }, [progress.hydration, user?.targetHydration]);
+    // Return empty array for now - this will use real data from useRealHydrationData hook
+    return [];
+  }, []);
 
   // Memoize steps data
   const stepsData = useMemo(() => {

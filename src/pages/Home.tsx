@@ -30,6 +30,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
 import { MoodForecastCard } from '@/components/MoodForecastCard';
+import { useRealHydrationData } from '@/hooks/useRealHydrationData';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -49,6 +50,7 @@ const loadUserPreferences = () => {
 const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
+  const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useRealHydrationData();
   const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -183,7 +185,8 @@ const Home = () => {
   const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
 
   const hydrationGoal = getHydrationGoal();
-  const hydrationPercentage = Math.min((progress.hydration / hydrationGoal) * 100, 100);
+  const actualHydration = realHydrationToday || 0;
+  const hydrationPercentage = Math.min((actualHydration / hydrationGoal) * 100, 100);
 
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
@@ -284,7 +287,7 @@ const Home = () => {
     },
     hydration: {
       name: 'Hydration',
-      current: Math.round(progress.hydration),
+      current: Math.round(actualHydration),
       target: Math.round(hydrationGoal),
       unit: 'ml',
       color: 'from-cyan-500/20 via-blue-500/15 to-indigo-500/10',
