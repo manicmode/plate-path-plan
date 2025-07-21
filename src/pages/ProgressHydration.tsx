@@ -46,7 +46,7 @@ const ProgressHydration = () => {
     }
   };
 
-  const getCurrentData = getCurrentData();
+  const currentData = getCurrentData();
 
   const getAverageIntake = () => {
     if (currentData.length === 0) return 0;
