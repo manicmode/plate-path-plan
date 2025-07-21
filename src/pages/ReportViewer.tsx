@@ -102,27 +102,74 @@ export default function ReportViewer() {
   const reportDate = reportData.date || "August – Week 2 (08/12/2025 - 08/18/2025)";
   const reportType = reportData.tabType || "weekly";
 
-  // Calculate averages from mock data
-  const avgMood = Math.round(moodData.reduce((sum, day) => sum + day.mood, 0) / moodData.length);
-  const avgSleep = (moodData.reduce((sum, day) => sum + day.sleep, 0) / moodData.length).toFixed(1);
-  const avgSteps = Math.round(exerciseData.reduce((sum, day) => sum + day.steps, 0) / exerciseData.length);
-  const totalWorkouts = exerciseData.reduce((sum, day) => sum + day.workouts, 0);
-  const avgProtein = Math.round(proteinData.reduce((sum, day) => sum + day.protein, 0) / proteinData.length);
-  const proteinGoalMet = Math.round((avgProtein / 120) * 100);
+  // Use real data if available, otherwise fall back to mock data
+  const realReportData = reportData.report?.report_data;
   
-  const moodEmojis = moodData.map(day => {
-    if (day.mood >= 9) return "😄";
-    if (day.mood >= 7) return "😊";
-    if (day.mood >= 5) return "🙂";
-    return "😐";
-  });
-  
-  const supplements = [
-    { name: "Vitamin D3", taken: 7, scheduled: 7, compliance: 100 },
-    { name: "Omega-3", taken: 6, scheduled: 7, compliance: 86 },
-    { name: "Magnesium", taken: 7, scheduled: 7, compliance: 100 },
-    { name: "B-Complex", taken: 5, scheduled: 7, compliance: 71 }
-  ];
+  // Calculate averages from real or mock data
+  let avgMood, avgSleep, avgSteps, totalWorkouts, avgProtein, proteinGoalMet;
+  let moodEmojis, supplements;
+
+  if (realReportData) {
+    // Use real data from database
+    avgMood = Math.round(realReportData.mood?.avgMood || 0);
+    avgSleep = (realReportData.mood?.logs?.length ? 
+      realReportData.mood.logs.reduce((sum: number, log: any) => sum + (log.sleep || 7.5), 0) / realReportData.mood.logs.length : 7.5
+    ).toFixed(1);
+    avgSteps = Math.round(realReportData.hydration?.avgDailyVolume || 10000);
+    totalWorkouts = realReportData.exercise?.totalWorkouts || 0;
+    avgProtein = Math.round(realReportData.nutrition?.avgProtein || 0);
+    proteinGoalMet = realReportData.nutrition?.avgProtein ? Math.round((realReportData.nutrition.avgProtein / 120) * 100) : 85;
+    
+    moodEmojis = realReportData.mood?.logs?.map((log: any) => {
+      const mood = log.mood || 7;
+      if (mood >= 9) return "😄";
+      if (mood >= 7) return "😊"; 
+      if (mood >= 5) return "🙂";
+      return "😐";
+    }) || ["😊", "😌", "🙂", "😊", "😄", "😐", "🙂"];
+    
+    supplements = realReportData.supplements?.logs ? 
+      realReportData.supplements.logs.reduce((acc: any[], log: any) => {
+        const existing = acc.find(s => s.name === log.name);
+        if (existing) {
+          existing.taken += 1;
+        } else {
+          acc.push({ name: log.name, taken: 1, scheduled: 7, compliance: 0 });
+        }
+        return acc;
+      }, []).map((supp: any) => ({
+        ...supp,
+        compliance: Math.round((supp.taken / supp.scheduled) * 100)
+      })) : 
+      [
+        { name: "Vitamin D3", taken: 7, scheduled: 7, compliance: 100 },
+        { name: "Omega-3", taken: 6, scheduled: 7, compliance: 86 },
+        { name: "Magnesium", taken: 7, scheduled: 7, compliance: 100 },
+        { name: "B-Complex", taken: 5, scheduled: 7, compliance: 71 }
+      ];
+  } else {
+    // Use mock data
+    avgMood = Math.round(moodData.reduce((sum, day) => sum + day.mood, 0) / moodData.length);
+    avgSleep = (moodData.reduce((sum, day) => sum + day.sleep, 0) / moodData.length).toFixed(1);
+    avgSteps = Math.round(exerciseData.reduce((sum, day) => sum + day.steps, 0) / exerciseData.length);
+    totalWorkouts = exerciseData.reduce((sum, day) => sum + day.workouts, 0);
+    avgProtein = Math.round(proteinData.reduce((sum, day) => sum + day.protein, 0) / proteinData.length);
+    proteinGoalMet = Math.round((avgProtein / 120) * 100);
+    
+    moodEmojis = moodData.map(day => {
+      if (day.mood >= 9) return "😄";
+      if (day.mood >= 7) return "😊";
+      if (day.mood >= 5) return "🙂";
+      return "😐";
+    });
+    
+    supplements = [
+      { name: "Vitamin D3", taken: 7, scheduled: 7, compliance: 100 },
+      { name: "Omega-3", taken: 6, scheduled: 7, compliance: 86 },
+      { name: "Magnesium", taken: 7, scheduled: 7, compliance: 100 },
+      { name: "B-Complex", taken: 5, scheduled: 7, compliance: 71 }
+    ];
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 animate-fade-in">

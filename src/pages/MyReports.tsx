@@ -4,53 +4,19 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, TrendingUp, Activity, FileText, Share, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, TrendingUp, Activity, FileText, Share, Eye, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-// Enhanced mock data for reports (12 per category)
-const mockReports = {
-  weekly: [
-    { id: 1, title: "Weekly Nutrition Summary", date: "2025-08-12", type: "Nutrition", status: "Complete", insights: "85% of protein goal met", week: 2 },
-    { id: 2, title: "Weekly Exercise Report", date: "2025-08-05", type: "Exercise", status: "Complete", insights: "4 workout sessions completed", week: 1 },
-    { id: 3, title: "Weekly Mood Analysis", date: "2025-07-29", type: "Mood", status: "Complete", insights: "Overall mood trending positive", week: 4 },
-    { id: 4, title: "Weekly Sleep Quality", date: "2025-07-22", type: "Wellness", status: "Complete", insights: "Average 7.5 hours quality sleep", week: 3 },
-    { id: 5, title: "Weekly Hydration Report", date: "2025-07-15", type: "Nutrition", status: "Complete", insights: "Daily water goal achieved 6/7 days", week: 2 },
-    { id: 6, title: "Weekly Activity Summary", date: "2025-07-08", type: "Exercise", status: "Complete", insights: "12,000 average daily steps", week: 1 },
-    { id: 7, title: "Weekly Stress Levels", date: "2025-07-01", type: "Mood", status: "Complete", insights: "Stress levels decreased by 15%", week: 4 },
-    { id: 8, title: "Weekly Meal Planning", date: "2025-06-24", type: "Nutrition", status: "Complete", insights: "5 healthy home-cooked meals", week: 3 },
-    { id: 9, title: "Weekly Strength Training", date: "2025-06-17", type: "Exercise", status: "Complete", insights: "3 strength sessions completed", week: 2 },
-    { id: 10, title: "Weekly Mindfulness", date: "2025-06-10", type: "Wellness", status: "Complete", insights: "Daily meditation streak: 7 days", week: 1 },
-    { id: 11, title: "Weekly Energy Levels", date: "2025-06-03", type: "Mood", status: "Complete", insights: "Energy increased by 20%", week: 4 },
-    { id: 12, title: "Weekly Supplement Tracking", date: "2025-05-27", type: "Nutrition", status: "Complete", insights: "100% supplement adherence", week: 3 }
-  ],
-  monthly: [
-    { id: 13, title: "Monthly Health Overview", date: "2025-08-01", type: "Wellness", status: "Complete", insights: "Significant improvement in sleep quality" },
-    { id: 14, title: "Monthly Nutrition Trends", date: "2025-07-01", type: "Nutrition", status: "Complete", insights: "Increased vegetable intake by 30%" },
-    { id: 15, title: "Monthly Fitness Progress", date: "2025-06-01", type: "Exercise", status: "Complete", insights: "15% increase in strength metrics" },
-    { id: 16, title: "Monthly Weight Management", date: "2025-05-01", type: "Wellness", status: "Complete", insights: "Lost 3lbs through healthy habits" },
-    { id: 17, title: "Monthly Mood Patterns", date: "2025-04-01", type: "Mood", status: "Complete", insights: "Mood stability improved by 25%" },
-    { id: 18, title: "Monthly Calorie Balance", date: "2025-03-01", type: "Nutrition", status: "Complete", insights: "Maintained caloric deficit of 300/day" },
-    { id: 19, title: "Monthly Cardio Performance", date: "2025-02-01", type: "Exercise", status: "Complete", insights: "Endurance increased by 18%" },
-    { id: 20, title: "Monthly Supplement Review", date: "2025-01-01", type: "Nutrition", status: "Complete", insights: "Optimized vitamin D and B12 intake" },
-    { id: 21, title: "Monthly Activity Goals", date: "2024-12-01", type: "Exercise", status: "Complete", insights: "Exceeded step goals 28/31 days" },
-    { id: 22, title: "Monthly Stress Management", date: "2024-11-01", type: "Mood", status: "Complete", insights: "Implemented successful coping strategies" },
-    { id: 23, title: "Monthly Hydration Analysis", date: "2024-10-01", type: "Wellness", status: "Complete", insights: "Increased water intake by 40%" },
-    { id: 24, title: "Monthly Meal Prep Success", date: "2024-09-01", type: "Nutrition", status: "Complete", insights: "Prepared 85% of meals at home" }
-  ],
-  yearly: [
-    { id: 25, title: "2024 Annual Health Report", date: "2024-12-31", type: "Wellness", status: "Complete", insights: "Achieved 90% of annual health goals" },
-    { id: 26, title: "2024 Nutrition Year in Review", date: "2024-12-31", type: "Nutrition", status: "Complete", insights: "Maintained consistent healthy eating habits" },
-    { id: 27, title: "2024 Fitness Achievements", date: "2024-12-31", type: "Exercise", status: "Complete", insights: "Completed first marathon and 3 triathlons" },
-    { id: 28, title: "2023 Annual Health Report", date: "2023-12-31", type: "Wellness", status: "Complete", insights: "Successfully improved overall wellness score by 35%" },
-    { id: 29, title: "2023 Weight Loss Journey", date: "2023-12-31", type: "Nutrition", status: "Complete", insights: "Lost 25lbs and maintained healthy BMI" },
-    { id: 30, title: "2023 Mental Health Progress", date: "2023-12-31", type: "Mood", status: "Complete", insights: "Reduced anxiety levels by 40%" },
-    { id: 31, title: "2022 Strength Training Gains", date: "2022-12-31", type: "Exercise", status: "Complete", insights: "Increased overall strength by 50%" },
-    { id: 32, title: "2022 Nutrition Optimization", date: "2022-12-31", type: "Nutrition", status: "Complete", insights: "Achieved optimal macro balance" },
-    { id: 33, title: "2022 Sleep Quality Improvement", date: "2022-12-31", type: "Wellness", status: "Complete", insights: "Improved sleep efficiency to 95%" },
-    { id: 34, title: "2021 Habit Formation Success", date: "2021-12-31", type: "Mood", status: "Complete", insights: "Established 8 lasting healthy habits" },
-    { id: 35, title: "2021 Cardiovascular Health", date: "2021-12-31", type: "Exercise", status: "Complete", insights: "Lowered resting heart rate by 12 BPM" },
-    { id: 36, title: "2021 Mindful Eating Journey", date: "2021-12-31", type: "Nutrition", status: "Complete", insights: "Developed mindful eating practices" }
-  ]
-};
+interface WeeklyReport {
+  id: string;
+  title: string;
+  week_start_date: string;
+  week_end_date: string;
+  summary_text: string;
+  overall_score: number;
+  report_data: any;
+  created_at: string;
+}
 
 const getReportIcon = (type: string) => {
   switch (type) {
@@ -67,30 +33,32 @@ const getReportIcon = (type: string) => {
   }
 };
 
-const formatReportDate = (dateStr: string, type: 'weekly' | 'monthly' | 'yearly', week?: number) => {
-  const date = new Date(dateStr);
+const formatReportDate = (weekStartDate: string, weekEndDate: string) => {
+  const start = new Date(weekStartDate);
+  const end = new Date(weekEndDate);
   const monthNames = ["January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"];
   
-  if (type === 'weekly' && week) {
-    return `${monthNames[date.getMonth()]} – Week ${week} (${date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })})`;
-  } else if (type === 'monthly') {
-    return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-  } else {
-    return `${date.getFullYear()} Annual Report`;
-  }
+  const month = monthNames[start.getMonth()];
+  const weekNumber = Math.ceil(start.getDate() / 7);
+  
+  return `${month} – Week ${weekNumber} (${start.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })})`;
 };
 
-const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'monthly' | 'yearly' }) => {
+const ReportCard = ({ report }: { report: WeeklyReport }) => {
   const navigate = useNavigate();
   
   const handleViewReport = () => {
     navigate(`/report/${report.id}`, { 
       state: { 
-        report, 
-        tabType,
+        report: {
+          ...report,
+          type: "Nutrition", // Default type for now
+          status: "Complete"
+        },
+        tabType: "weekly",
         title: report.title,
-        date: formatReportDate(report.date, tabType, report.week)
+        date: formatReportDate(report.week_start_date, report.week_end_date)
       } 
     });
   };
@@ -101,26 +69,31 @@ const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'mon
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
-            {getReportIcon(report.type)}
+            {getReportIcon("Nutrition")}
           </div>
           <div>
             <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
               {report.title}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1 font-medium">
-              {formatReportDate(report.date, tabType, report.week)}
+              {formatReportDate(report.week_start_date, report.week_end_date)}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full border border-emerald-200">
-            ✓ {report.status}
+            ✓ Complete
           </span>
+          {report.overall_score && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+              {Math.round(report.overall_score)}/100
+            </span>
+          )}
         </div>
       </div>
     </CardHeader>
     <CardContent>
-      <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{report.insights}</p>
+      <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{report.summary_text || 'No summary available'}</p>
       <div className="flex gap-3">
         <Button 
           variant="outline" 
@@ -148,6 +121,9 @@ const ReportCard = ({ report, tabType }: { report: any; tabType: 'weekly' | 'mon
 
 export default function MyReportsPage() {
   const [activeTab, setActiveTab] = useState("weekly");
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showOlderReports, setShowOlderReports] = useState<{[key: string]: boolean}>({
     weekly: false,
     monthly: false,
@@ -155,17 +131,48 @@ export default function MyReportsPage() {
   });
 
   useEffect(() => {
-    console.log("MyReports page loaded - tab layout active");
+    console.log("MyReports page loaded - fetching weekly reports");
+    fetchWeeklyReports();
   }, []);
 
-  const getVisibleReports = (tabType: keyof typeof mockReports) => {
-    const reports = mockReports[tabType];
-    const showOlder = showOlderReports[tabType];
-    return showOlder ? reports : reports.slice(0, 5);
+  const fetchWeeklyReports = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data: reports, error: fetchError } = await supabase
+        .from('weekly_reports')
+        .select('*')
+        .order('week_start_date', { ascending: false })
+        .limit(20);
+
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+
+      setWeeklyReports(reports || []);
+    } catch (err) {
+      console.error('Error fetching weekly reports:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch reports');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const hasOlderReports = (tabType: keyof typeof mockReports) => {
-    return mockReports[tabType].length > 5;
+  const getVisibleReports = (tabType: string) => {
+    if (tabType === 'weekly') {
+      const showOlder = showOlderReports[tabType];
+      return showOlder ? weeklyReports : weeklyReports.slice(0, 5);
+    }
+    // For now, monthly and yearly will show empty until we implement them
+    return [];
+  };
+
+  const hasOlderReports = (tabType: string) => {
+    if (tabType === 'weekly') {
+      return weeklyReports.length > 5;
+    }
+    return false;
   };
 
   const toggleOlderReports = (tabType: string) => {
@@ -173,6 +180,29 @@ export default function MyReportsPage() {
       ...prev,
       [tabType]: !prev[tabType]
     }));
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('generate-weekly-reports');
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      console.log('Report generation triggered:', data);
+      
+      // Refresh the reports after generation
+      await fetchWeeklyReports();
+      
+    } catch (err) {
+      console.error('Error generating report:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate report');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -186,6 +216,16 @@ export default function MyReportsPage() {
           <p className="text-lg text-muted-foreground font-medium">
             Your personalized health and wellness insights
           </p>
+          <div className="flex justify-center gap-3">
+            <Button 
+              onClick={handleGenerateReport} 
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Generate New Report
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -211,105 +251,91 @@ export default function MyReportsPage() {
           </TabsList>
 
           <TabsContent value="weekly" className="space-y-6">
-            <div className="space-y-4">
-              {getVisibleReports('weekly').map((report) => (
-                <ReportCard key={report.id} report={report} tabType="weekly" />
-              ))}
-            </div>
-            {hasOlderReports('weekly') && (
-              <div className="text-center">
-                <Button 
-                  variant="outline" 
-                  onClick={() => toggleOlderReports('weekly')}
-                  className="bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/80 hover:to-secondary border-2 border-secondary/20 hover:border-secondary/40 transition-all duration-300 px-6 py-3 rounded-xl font-medium"
-                >
-                  {showOlderReports.weekly ? (
-                    <>
-                      <ChevronUp className="h-4 w-4 mr-2" />
-                      Show Fewer Reports
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="h-4 w-4 mr-2" />
-                      Show Older Reports ({mockReports.weekly.length - 5} more)
-                    </>
-                  )}
-                </Button>
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading reports...</p>
               </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <div className="bg-red-50 p-4 rounded-lg max-w-md mx-auto">
+                  <p className="text-red-800 font-medium">Error loading reports</p>
+                  <p className="text-red-600 text-sm mt-1">{error}</p>
+                  <Button onClick={fetchWeeklyReports} className="mt-3">
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            ) : getVisibleReports('weekly').length === 0 ? (
+              <div className="text-center py-16">
+                <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-2xl p-8 max-w-md mx-auto">
+                  <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No Weekly Reports Available</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Generate your first weekly report to see your health insights.
+                  </p>
+                  <Button onClick={handleGenerateReport} disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Generate Report
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  {getVisibleReports('weekly').map((report) => (
+                    <ReportCard key={report.id} report={report} />
+                  ))}
+                </div>
+                {hasOlderReports('weekly') && (
+                  <div className="text-center">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => toggleOlderReports('weekly')}
+                      className="bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/80 hover:to-secondary border-2 border-secondary/20 hover:border-secondary/40 transition-all duration-300 px-6 py-3 rounded-xl font-medium"
+                    >
+                      {showOlderReports.weekly ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-2" />
+                          Show Fewer Reports
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                          Show Older Reports ({weeklyReports.length - 5} more)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
           <TabsContent value="monthly" className="space-y-6">
-            <div className="space-y-4">
-              {getVisibleReports('monthly').map((report) => (
-                <ReportCard key={report.id} report={report} tabType="monthly" />
-              ))}
-            </div>
-            {hasOlderReports('monthly') && (
-              <div className="text-center">
-                <Button 
-                  variant="outline" 
-                  onClick={() => toggleOlderReports('monthly')}
-                  className="bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/80 hover:to-secondary border-2 border-secondary/20 hover:border-secondary/40 transition-all duration-300 px-6 py-3 rounded-xl font-medium"
-                >
-                  {showOlderReports.monthly ? (
-                    <>
-                      <ChevronUp className="h-4 w-4 mr-2" />
-                      Show Fewer Reports
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="h-4 w-4 mr-2" />
-                      Show Older Reports ({mockReports.monthly.length - 5} more)
-                    </>
-                  )}
-                </Button>
+            <div className="text-center py-16">
+              <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-2xl p-8 max-w-md mx-auto">
+                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
+                <p className="text-muted-foreground">
+                  Monthly reports will be available in a future update.
+                </p>
               </div>
-            )}
+            </div>
           </TabsContent>
 
           <TabsContent value="yearly" className="space-y-6">
-            <div className="space-y-4">
-              {getVisibleReports('yearly').map((report) => (
-                <ReportCard key={report.id} report={report} tabType="yearly" />
-              ))}
-            </div>
-            {hasOlderReports('yearly') && (
-              <div className="text-center">
-                <Button 
-                  variant="outline" 
-                  onClick={() => toggleOlderReports('yearly')}
-                  className="bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/80 hover:to-secondary border-2 border-secondary/20 hover:border-secondary/40 transition-all duration-300 px-6 py-3 rounded-xl font-medium"
-                >
-                  {showOlderReports.yearly ? (
-                    <>
-                      <ChevronUp className="h-4 w-4 mr-2" />
-                      Show Fewer Reports
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="h-4 w-4 mr-2" />
-                      Show Older Reports ({mockReports.yearly.length - 5} more)
-                    </>
-                  )}
-                </Button>
+            <div className="text-center py-16">
+              <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-2xl p-8 max-w-md mx-auto">
+                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
+                <p className="text-muted-foreground">
+                  Yearly reports will be available in a future update.
+                </p>
               </div>
-            )}
+            </div>
           </TabsContent>
         </Tabs>
-
-        {/* Empty state for when no reports exist */}
-        {mockReports[activeTab as keyof typeof mockReports].length === 0 && (
-          <div className="text-center py-16">
-            <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-2xl p-8 max-w-md mx-auto">
-              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Reports Available</h3>
-              <p className="text-muted-foreground">
-                No {activeTab} reports have been generated yet.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
