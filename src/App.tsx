@@ -19,7 +19,6 @@ import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 const Index = lazy(() => import('@/pages/Index'));
 const Home = lazy(() => import('@/pages/Home'));
 const Camera = lazy(() => import('@/pages/Camera'));
-const Analytics = lazy(() => import('@/pages/Analytics'));
 const Coach = lazy(() => import('@/pages/Coach'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
@@ -63,11 +62,6 @@ function AppContent() {
                               <Route path="/camera" element={
                                 <ProtectedRoute>
                                   <Camera />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/analytics" element={
-                                <ProtectedRoute>
-                                  <Analytics />
                                 </ProtectedRoute>
                               } />
                               <Route path="/coach" element={
