@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
@@ -348,7 +349,13 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     };
   };
 
-  const getHydrationGoal = () => dailyTargets.hydration_ml || 2000; // Use daily targets or 2L default
+  // Use proper ml conversion from user profile or daily targets
+  const getHydrationGoal = () => {
+    if (dailyTargets.hydration_ml) return dailyTargets.hydration_ml;
+    // Convert targetHydration (glasses) to ml
+    return (user?.targetHydration || 8) * 250;
+  };
+  
   const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default
 
   // Coach CTA functions

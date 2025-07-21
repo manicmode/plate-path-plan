@@ -20,6 +20,9 @@ export const useAnalyticsCalculations = () => {
   
   const progress = getTodaysProgress();
   
+  // Convert targetHydration (glasses) to ml
+  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+  
   // Memoize weekly averages to prevent recalculation
   const weeklyAverage = useMemo(() => {
     const dataToUse = weeklyData.length > 0 ? weeklyData.slice(-7) : [currentDay];
@@ -117,6 +120,7 @@ export const useAnalyticsCalculations = () => {
     stepsData,
     exerciseCaloriesData,
     macroData,
-    user
+    user,
+    hydrationTargetMl // Export this for components that need it
   };
 };

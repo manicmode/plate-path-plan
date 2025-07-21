@@ -13,12 +13,15 @@ export const WeeklyOverviewChart = () => {
   const { user } = useAuth();
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('calories');
 
+  // Convert targetHydration (glasses) to ml for hydration metric
+  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+
   const metricOptions = [
     { value: 'calories', label: 'Calories', color: '#3B82F6', target: user?.targetCalories || 2000 },
     { value: 'protein', label: 'Protein (g)', color: '#10B981', target: user?.targetProtein || 120 },
     { value: 'carbs', label: 'Carbs (g)', color: '#F59E0B', target: user?.targetCarbs || 250 },
     { value: 'fat', label: 'Fat (g)', color: '#8B5CF6', target: user?.targetFat || 65 },
-    { value: 'hydration', label: 'Hydration (ml)', color: '#06B6D4', target: user?.targetHydration || 2000 },
+    { value: 'hydration', label: 'Hydration (ml)', color: '#06B6D4', target: hydrationTargetMl },
     { value: 'steps', label: 'Steps', color: '#22C55E', target: 10000 },
     { value: 'exercise', label: 'Exercise (min)', color: '#F97316', target: 30 },
   ];

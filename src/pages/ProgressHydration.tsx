@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Droplets, TrendingUp, TrendingDown } from 'lucide-react';
@@ -20,6 +21,7 @@ const ProgressHydration = () => {
   // Use the scroll-to-top hook
   useScrollToTop();
   
+  // Convert targetHydration (glasses) to ml
   const targetHydration = user?.targetHydration || 8; // glasses
   const hydrationTargetMl = targetHydration * 250; // Convert glasses to ml (250ml per glass)
   
