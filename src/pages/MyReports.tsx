@@ -221,6 +221,7 @@ export default function MyReports() {
 
   // Single effect with stable dependencies
   useEffect(() => {
+    console.log("MyReports page loaded - tab layout active");
     if (userReady && stableUserId && !state.initialized) {
       debouncedFetch();
     }
