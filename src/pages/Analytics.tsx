@@ -33,7 +33,7 @@ export default function Analytics() {
       </div>
 
       <DailyProgressSection />
-      <DailyAveragesSection />
+      <DailyAveragesSection weeklyAverage={{}} />
       <MealQualityAnalyticsSection />
       <SmartInsightsSection />
       <TagInsightsSection />
