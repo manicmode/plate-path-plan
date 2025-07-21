@@ -7,6 +7,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useState, useEffect } from 'react';
+import { useRealSupplementData } from '@/hooks/useRealSupplementData';
 
 const ProgressSupplements = () => {
   const navigate = useNavigate();
@@ -17,32 +18,29 @@ const ProgressSupplements = () => {
   // Use the scroll-to-top hook
   useScrollToTop();
   
-  const targetSupplements = user?.targetSupplements || 3;
-  const currentSupplements = 2; // Mock current value
+  // Get real supplement data
+  const { todayCount, weeklyData: realWeeklyData, monthlyData: realMonthlyData, isLoading } = useRealSupplementData();
   
-  // Mock data for different time periods
-  const dailyData = [
-    { name: 'Mon', value: 3, target: targetSupplements },
-    { name: 'Tue', value: 2, target: targetSupplements },
-    { name: 'Wed', value: 3, target: targetSupplements },
-    { name: 'Thu', value: 3, target: targetSupplements },
-    { name: 'Fri', value: 1, target: targetSupplements },
-    { name: 'Sat', value: 3, target: targetSupplements },
-    { name: 'Today', value: currentSupplements, target: targetSupplements },
-  ];
+  const targetSupplements = user?.targetSupplements || 3;
+  
+  // Transform real data to chart format
+  const dailyData = realWeeklyData.map(item => ({
+    name: item.date,
+    value: item.count,
+    target: targetSupplements
+  }));
 
-  const weeklyData = [
-    { name: 'Week 1', value: 2.7, target: targetSupplements },
-    { name: 'Week 2', value: 2.9, target: targetSupplements },
-    { name: 'Week 3', value: 2.4, target: targetSupplements },
-    { name: 'Week 4', value: 2.6, target: targetSupplements },
-  ];
+  const weeklyData = realMonthlyData.map(item => ({
+    name: item.date,
+    value: item.count,
+    target: targetSupplements
+  }));
 
-  const monthlyData = [
-    { name: 'Jan', value: 2.6, target: targetSupplements },
-    { name: 'Feb', value: 2.8, target: targetSupplements },
-    { name: 'Mar', value: 2.9, target: targetSupplements },
-  ];
+  const monthlyData = realMonthlyData.map(item => ({
+    name: item.date,
+    value: item.count,
+    target: targetSupplements
+  }));
 
   const getCurrentData = () => {
     switch (viewMode) {
@@ -54,16 +52,20 @@ const ProgressSupplements = () => {
 
   const getAverageIntake = () => {
     const data = getCurrentData();
+    if (data.length === 0) return 0;
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return Math.round((total / data.length) * 10) / 10;
   };
 
   const getGoalPercentage = () => {
     const average = getAverageIntake();
-    return Math.round((average / targetSupplements) * 100);
+    return targetSupplements > 0 ? Math.round((average / targetSupplements) * 100) : 0;
   };
 
   const getStatusMessage = () => {
+    if (isLoading) return { message: "Loading...", color: "text-gray-600", icon: "⏳" };
+    if (getCurrentData().length === 0) return { message: "No data yet", color: "text-gray-600", icon: "📊" };
+    
     const percentage = getGoalPercentage();
     if (percentage >= 95 && percentage <= 105) return { message: "On track!", color: "text-green-600", icon: "🟢" };
     if (percentage >= 80 && percentage <= 120) return { message: "Slightly off target", color: "text-yellow-600", icon: "🟡" };
@@ -120,7 +122,11 @@ const ProgressSupplements = () => {
                 <span>{status.message}</span>
               </p>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Average: {getAverageIntake()} pills ({getGoalPercentage()}% of goal)
+                {getCurrentData().length > 0 ? (
+                  <>Average: {getAverageIntake()} pills ({getGoalPercentage()}% of goal)</>
+                ) : (
+                  <>Today: {todayCount} pills taken</>
+                )}
               </p>
             </div>
             <div className="text-right">
@@ -158,36 +164,53 @@ const ProgressSupplements = () => {
         </CardHeader>
         <CardContent>
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getCurrentData()}>
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 12, fill: 'currentColor' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: 'currentColor' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine 
-                  y={targetSupplements} 
-                  stroke="#EC4899" 
-                  strokeDasharray="5 5" 
-                  strokeWidth={2}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#EC4899" 
-                  strokeWidth={3}
-                  dot={{ fill: '#EC4899', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#EC4899', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600 dark:text-gray-400">Loading supplement data...</p>
+                </div>
+              </div>
+            ) : getCurrentData().length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Pill className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">No supplement data available</p>
+                  <p className="text-sm text-gray-500 mt-2">Start logging supplements to see your progress!</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={getCurrentData()}>
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <ReferenceLine 
+                    y={targetSupplements} 
+                    stroke="#EC4899" 
+                    strokeDasharray="5 5" 
+                    strokeWidth={2}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#EC4899" 
+                    strokeWidth={3}
+                    dot={{ fill: '#EC4899', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#EC4899', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <div className="flex justify-center items-center space-x-2 mt-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="w-4 h-0.5 bg-pink-500"></div>
@@ -205,7 +228,7 @@ const ProgressSupplements = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {Math.max(...getCurrentData().map(d => d.value))} pills
+              {getCurrentData().length > 0 ? Math.max(...getCurrentData().map(d => d.value)) : 0} pills
             </p>
           </CardContent>
         </Card>
@@ -215,7 +238,7 @@ const ProgressSupplements = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {Math.min(...getCurrentData().map(d => d.value))} pills
+              {getCurrentData().length > 0 ? Math.min(...getCurrentData().map(d => d.value)) : 0} pills
             </p>
           </CardContent>
         </Card>
