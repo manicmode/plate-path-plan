@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { toast } from 'sonner';
 
 interface NotificationPreferences {
@@ -101,9 +101,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
   }, []);
 
-  const addNotification = (notification: any) => {
+  const addNotification = useCallback((notification: any) => {
     try {
-      console.log('Adding notification:', notification);
+      console.log('[Toast] Adding notification:', notification);
+      
+      // Check for duplicate notifications of the same type
+      const isDuplicate = notifications.some(n => n.type === notification.type);
+      if (isDuplicate) {
+        console.log('[Toast] Prevented duplicate notification:', notification.type);
+        return;
+      }
+      
       setNotifications(prev => [...prev, { ...notification, id: Date.now().toString() }]);
       
       if (notification.title && notification.body) {
@@ -114,7 +122,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     } catch (error) {
       console.error('Failed to add notification:', error);
     }
-  };
+  }, [notifications]);
 
   const markAsRead = (id: string) => {
     try {
