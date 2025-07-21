@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, RefreshCw, Brain, TrendingUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sparkles, RefreshCw, Brain, TrendingUp, HelpCircle, Star } from 'lucide-react';
 import { useMoodPrediction } from '@/hooks/useMoodPrediction';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,7 +11,9 @@ import { toast } from 'sonner';
 
 export const MoodForecastCard = () => {
   const isMobile = useIsMobile();
-  const { prediction, loading, generating, generatePrediction } = useMoodPrediction();
+  const { prediction, loading, generating, generatePrediction, ratePrediction } = useMoodPrediction();
+  const [showWhyDialog, setShowWhyDialog] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
 
   const handleGeneratePrediction = async () => {
     try {
@@ -18,6 +21,18 @@ export const MoodForecastCard = () => {
       toast.success('Tomorrow\'s forecast updated!');
     } catch (error) {
       toast.error('Failed to generate forecast. Please try again.');
+    }
+  };
+
+  const handleRating = async (rating: number) => {
+    if (!prediction) return;
+    
+    try {
+      setUserRating(rating);
+      await ratePrediction(prediction.id, rating);
+      toast.success('Thank you for your feedback!');
+    } catch (error) {
+      toast.error('Failed to save rating. Please try again.');
     }
   };
 
@@ -162,25 +177,71 @@ export const MoodForecastCard = () => {
           {getMoodEnergyBars(prediction.predicted_mood, prediction.predicted_energy)}
         </div>
 
-        {/* Factors */}
-        {prediction.factors && prediction.factors.length > 0 && (
-          <div className="space-y-2">
-            <h4 className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider`}>
-              Key Factors
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {prediction.factors.slice(0, 3).map((factor, index) => (
-                <Badge 
-                  key={index} 
-                  variant="secondary" 
-                  className="text-xs bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300"
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Dialog open={showWhyDialog} onOpenChange={setShowWhyDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-xs">
+                  <HelpCircle className="h-3 w-3 mr-1" />
+                  Why?
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center space-x-2">
+                    <Brain className="h-5 w-5 text-purple-600" />
+                    <span>Prediction Analysis</span>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Key Contributing Factors:</h4>
+                    <div className="space-y-2">
+                      {prediction.factors.map((factor, index) => (
+                        <div key={index} className="flex items-center space-x-2 text-sm">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                          <span className="capitalize">{factor}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      This prediction is based on analysis of your recent mood logs, nutrition patterns, 
+                      hydration habits, supplement intake, and trigger tags from the past 7-10 days.
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <Badge className={`${getConfidenceColor(prediction.confidence)}`}>
+                      {prediction.confidence} confidence prediction
+                    </Badge>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* User Rating */}
+            <div className="flex items-center space-x-1">
+              <span className="text-xs text-gray-500">Rate accuracy:</span>
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button
+                  key={rating}
+                  onClick={() => handleRating(rating)}
+                  className="hover:scale-110 transition-transform"
                 >
-                  {factor}
-                </Badge>
+                  <Star 
+                    className={`h-3 w-3 ${
+                      userRating && rating <= userRating 
+                        ? 'text-yellow-500 fill-yellow-500' 
+                        : 'text-gray-300 hover:text-yellow-400'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -99,6 +99,29 @@ export const useMoodPrediction = () => {
     }
   };
 
+  // Rate prediction accuracy
+  const ratePrediction = async (predictionId: string, rating: number) => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('mood_predictions')
+        .update({ user_rating: rating })
+        .eq('id', predictionId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error rating prediction:', error);
+        throw error;
+      }
+
+      console.log('✅ Prediction rated successfully');
+    } catch (error) {
+      console.error('Error in ratePrediction:', error);
+      throw error;
+    }
+  };
+
   // Check if prediction should be auto-generated
   const shouldAutoGenerate = () => {
     if (!user?.id || prediction) return false;
@@ -136,6 +159,7 @@ export const useMoodPrediction = () => {
     generating,
     fetchPrediction,
     generatePrediction,
+    ratePrediction,
     hasPrediction: !!prediction
   };
 };
