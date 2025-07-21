@@ -452,51 +452,14 @@ export default function MyReports() {
                   <p className="text-sm text-muted-foreground">Your report history</p>
                 </div>
                 
-                <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/20">
-                  {previousReports.map((report, index) => (
-                    <Card 
-                      key={`${report.id}-${index}`} 
-                      className="modern-nutrient-card p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 border-border/50"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <FileText className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-foreground">
-                              📅 {getWeekRange(report.weekEndDate)}
-                            </div>
-                            <div className="text-sm text-muted-foreground flex items-center space-x-2">
-                              <Calendar className="w-3 h-3" />
-                              <span>{formatDate(report.created_at)}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openPreview(report)}
-                            className="hover:bg-primary/10 transition-colors"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownload(report)}
-                            className="hover:bg-primary/10 transition-colors"
-                          >
-                            <Download className="w-4 h-4 mr-1" />
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                 <div className="overflow-y-auto max-h-[60vh] scrollbar-thin px-2 py-2 space-y-4">
+                   {previousReports.map((report) => (
+                     <div key={report.id} className="modern-action-card">
+                       <div className="text-white">📅 {getWeekRange(report.weekEndDate)}</div>
+                       <div className="text-sm text-neutral-300">{formatDate(report.created_at)}</div>
+                     </div>
+                   ))}
+                 </div>
               </section>
             )}
           </div>
