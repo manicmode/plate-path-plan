@@ -1659,6 +1659,45 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_reports: {
+        Row: {
+          created_at: string
+          id: string
+          overall_score: number | null
+          report_data: Json
+          summary_text: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          report_data?: Json
+          summary_text?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          report_data?: Json
+          summary_text?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: []
+      }
       weekly_summaries: {
         Row: {
           average_score: number | null
