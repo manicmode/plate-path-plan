@@ -57,7 +57,10 @@ export const usePrivateChallenges = () => {
   const { toast } = useToast();
 
   const fetchPrivateChallenges = async () => {
-    if (!user) return;
+    if (!user) {
+      setPrivateChallenges([]);
+      return;
+    }
     
     try {
       const { data, error } = await supabase
@@ -65,10 +68,16 @@ export const usePrivateChallenges = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setPrivateChallenges(data || []);
+      if (error) {
+        console.error('Fetch private challenges error:', error);
+        setPrivateChallenges([]);
+        return;
+      }
+      
+      setPrivateChallenges(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching private challenges:', error);
+      setPrivateChallenges([]);
       toast({
         title: "Error",
         description: "Failed to load private challenges",
@@ -78,7 +87,10 @@ export const usePrivateChallenges = () => {
   };
 
   const fetchUserPrivateParticipations = async () => {
-    if (!user) return;
+    if (!user) {
+      setUserPrivateParticipations([]);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -86,15 +98,24 @@ export const usePrivateChallenges = () => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) throw error;
-      setUserPrivateParticipations(data || []);
+      if (error) {
+        console.error('Fetch user private participations error:', error);
+        setUserPrivateParticipations([]);
+        return;
+      }
+      
+      setUserPrivateParticipations(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching user private participations:', error);
+      setUserPrivateParticipations([]);
     }
   };
 
   const fetchPendingInvitations = async () => {
-    if (!user) return;
+    if (!user) {
+      setPendingInvitations([]);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -103,10 +124,16 @@ export const usePrivateChallenges = () => {
         .eq('invitee_id', user.id)
         .eq('status', 'pending');
 
-      if (error) throw error;
-      setPendingInvitations(data || []);
+      if (error) {
+        console.error('Fetch pending invitations error:', error);
+        setPendingInvitations([]);
+        return;
+      }
+      
+      setPendingInvitations(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching pending invitations:', error);
+      setPendingInvitations([]);
     }
   };
 
@@ -327,15 +354,20 @@ export const usePrivateChallenges = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
-      if (user) {
-        await Promise.all([
-          fetchPrivateChallenges(),
-          fetchUserPrivateParticipations(),
-          fetchPendingInvitations()
-        ]);
+      try {
+        setLoading(true);
+        if (user) {
+          await Promise.all([
+            fetchPrivateChallenges(),
+            fetchUserPrivateParticipations(),
+            fetchPendingInvitations()
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading private challenge data:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadData();
@@ -343,23 +375,27 @@ export const usePrivateChallenges = () => {
 
   // Get user's participation for a specific challenge
   const getUserPrivateParticipation = (challengeId: string) =>
-    userPrivateParticipations.find(p => p.private_challenge_id === challengeId);
+    Array.isArray(userPrivateParticipations) ? 
+      userPrivateParticipations.find(p => p && p.private_challenge_id === challengeId) : 
+      undefined;
 
   // Get challenges the user is participating in
-  const userActiveChallenges = privateChallenges.filter(challenge =>
-    userPrivateParticipations.some(p => p.private_challenge_id === challenge.id)
-  );
+  const userActiveChallenges = Array.isArray(privateChallenges) && Array.isArray(userPrivateParticipations) ?
+    privateChallenges.filter(challenge =>
+      challenge && userPrivateParticipations.some(p => p && p.private_challenge_id === challenge.id)
+    ) : [];
 
   // Get challenges with detailed participation info
-  const challengesWithParticipation = userActiveChallenges.map(challenge => ({
-    ...challenge,
-    participation: getUserPrivateParticipation(challenge.id)
-  }));
+  const challengesWithParticipation = Array.isArray(userActiveChallenges) ?
+    userActiveChallenges.map(challenge => ({
+      ...challenge,
+      participation: getUserPrivateParticipation(challenge?.id)
+    })) : [];
 
   return {
-    privateChallenges,
-    userPrivateParticipations,
-    pendingInvitations,
+    privateChallenges: Array.isArray(privateChallenges) ? privateChallenges : [],
+    userPrivateParticipations: Array.isArray(userPrivateParticipations) ? userPrivateParticipations : [],
+    pendingInvitations: Array.isArray(pendingInvitations) ? pendingInvitations : [],
     userActiveChallenges,
     challengesWithParticipation,
     loading,

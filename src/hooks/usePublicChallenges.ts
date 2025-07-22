@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
@@ -53,6 +54,7 @@ export const usePublicChallenges = () => {
 
   const fetchChallenges = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('public_challenges')
         .select('*')
@@ -61,20 +63,31 @@ export const usePublicChallenges = () => {
         .order('is_new', { ascending: false })
         .order('participant_count', { ascending: false });
 
-      if (error) throw error;
-      setChallenges(data || []);
+      if (error) {
+        console.error('Fetch challenges error:', error);
+        setChallenges([]);
+        return;
+      }
+      
+      setChallenges(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching challenges:', error);
+      setChallenges([]);
       toast({
         title: "Error",
         description: "Failed to load challenges",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchUserParticipations = async () => {
-    if (!user) return;
+    if (!user) {
+      setUserParticipations([]);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -82,10 +95,16 @@ export const usePublicChallenges = () => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) throw error;
-      setUserParticipations(data || []);
+      if (error) {
+        console.error('Fetch user participations error:', error);
+        setUserParticipations([]);
+        return;
+      }
+      
+      setUserParticipations(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching user participations:', error);
+      setUserParticipations([]);
     }
   };
 
@@ -252,37 +271,42 @@ export const usePublicChallenges = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
-      await fetchChallenges();
-      if (user) {
-        await fetchUserParticipations();
+      try {
+        setLoading(true);
+        await fetchChallenges();
+        if (user) {
+          await fetchUserParticipations();
+        }
+      } catch (error) {
+        console.error('Error loading challenge data:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadData();
   }, [user]);
 
-  // Filter challenges by category
-  const globalChallenges = challenges.filter(c => c.duration_days >= 7);
-  const quickChallenges = challenges.filter(c => c.duration_days <= 3);
-  const trendingChallenges = challenges.filter(c => c.is_trending);
-  const newChallenges = challenges.filter(c => c.is_new);
+  // Filter challenges by category with error handling
+  const globalChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.duration_days >= 7) : [];
+  const quickChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.duration_days <= 3) : [];
+  const trendingChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.is_trending) : [];
+  const newChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.is_new) : [];
 
   // Get user's participation status for each challenge
   const getUserParticipation = (challengeId: string) => 
-    userParticipations.find(p => p.challenge_id === challengeId);
+    Array.isArray(userParticipations) ? userParticipations.find(p => p && p.challenge_id === challengeId) : undefined;
 
   const isUserParticipating = (challengeId: string) => 
-    userParticipations.some(p => p.challenge_id === challengeId);
+    Array.isArray(userParticipations) ? userParticipations.some(p => p && p.challenge_id === challengeId) : false;
 
   return {
-    challenges,
+    challenges: Array.isArray(challenges) ? challenges : [],
     globalChallenges,
     quickChallenges,
     trendingChallenges,
     newChallenges,
-    userParticipations,
+    userParticipations: Array.isArray(userParticipations) ? userParticipations : [],
     loading,
     joinChallenge,
     updateProgress,
