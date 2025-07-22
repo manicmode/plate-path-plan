@@ -1579,6 +1579,24 @@ const Home = () => {
                 glowColor: 'hover:shadow-cyan-400/50',
                 animatedGradient: 'bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-500',
               },
+              {
+                id: 'exercise-hub',
+                title: 'Exercise Hub',
+                emoji: '💪',
+                color: 'from-blue-300 to-blue-600',
+                shadowColor: 'shadow-blue-500/30',
+                glowColor: 'hover:shadow-blue-400/50',
+                animatedGradient: 'bg-gradient-to-br from-blue-300 via-blue-500 to-blue-600',
+              },
+              {
+                id: 'my-reports',
+                title: 'My Reports',
+                emoji: '📄',
+                color: 'from-emerald-300 to-teal-600',
+                shadowColor: 'shadow-emerald-500/30',
+                glowColor: 'hover:shadow-emerald-400/50',
+                animatedGradient: 'bg-gradient-to-br from-emerald-300 via-emerald-500 to-teal-600',
+              },
             ];
 
             return exploreTiles.map((tile) => {
@@ -1591,6 +1609,10 @@ const Home = () => {
                   navigate('/game-and-challenge');
                 } else if (tileId === 'influencers') {
                   setIsComingSoonOpen(true);
+                } else if (tileId === 'exercise-hub') {
+                  setIsComingSoonOpen(true);
+                } else if (tileId === 'my-reports') {
+                  navigate('/my-reports');
                 }
               };
 
