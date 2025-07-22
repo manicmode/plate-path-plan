@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Target, TrendingUp, TrendingDown } from 'lucide-react';
@@ -7,7 +6,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useState, useEffect } from 'react';
 import { DayDetailModal } from '@/components/analytics/DayDetailModal';
@@ -19,7 +17,6 @@ const ProgressProtein = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
-  const { dailyData, weeklyData, monthlyData, isLoading } = useRealNutritionHistory();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const { selectedDate, showDayDetail, handleChartClick, closeDayDetail, handleEditMeal, handleViewDay } = useChartDrillDown();
   
@@ -28,50 +25,41 @@ const ProgressProtein = () => {
   
   const targetProtein = user?.targetProtein || 150;
   const todayProgress = getTodaysProgress();
+  
+  // Mock data for different time periods with dates
+  const dailyData = [
+    { name: 'Mon', value: 120, target: targetProtein, date: format(subDays(new Date(), 6), 'yyyy-MM-dd') },
+    { name: 'Tue', value: 140, target: targetProtein, date: format(subDays(new Date(), 5), 'yyyy-MM-dd') },
+    { name: 'Wed', value: 130, target: targetProtein, date: format(subDays(new Date(), 4), 'yyyy-MM-dd') },
+    { name: 'Thu', value: 150, target: targetProtein, date: format(subDays(new Date(), 3), 'yyyy-MM-dd') },
+    { name: 'Fri', value: 125, target: targetProtein, date: format(subDays(new Date(), 2), 'yyyy-MM-dd') },
+    { name: 'Sat', value: 135, target: targetProtein, date: format(subDays(new Date(), 1), 'yyyy-MM-dd') },
+    { name: 'Today', value: Math.round(todayProgress.protein), target: targetProtein, date: format(new Date(), 'yyyy-MM-dd') },
+  ];
 
-  // Format data for charts with day names and real data
-  const getDailyChartData = () => {
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
-    return dailyData.map((data, index) => ({
-      name: index === 6 ? 'Today' : dayNames[index],
-      value: data.protein,
-      target: targetProtein,
-      date: data.date
-    }));
-  };
+  const weeklyData = [
+    { name: 'Week 1', value: 132, target: targetProtein, date: format(subDays(new Date(), 21), 'yyyy-MM-dd') },
+    { name: 'Week 2', value: 145, target: targetProtein, date: format(subDays(new Date(), 14), 'yyyy-MM-dd') },
+    { name: 'Week 3', value: 128, target: targetProtein, date: format(subDays(new Date(), 7), 'yyyy-MM-dd') },
+    { name: 'Week 4', value: 138, target: targetProtein, date: format(new Date(), 'yyyy-MM-dd') },
+  ];
 
-  const getWeeklyChartData = () => {
-    return weeklyData.map((data, index) => ({
-      name: `Week ${index + 1}`,
-      value: data.protein,
-      target: targetProtein,
-      date: data.date
-    }));
-  };
-
-  const getMonthlyChartData = () => {
-    const monthNames = ['Jan', 'Feb', 'Mar'];
-    return monthlyData.map((data, index) => ({
-      name: monthNames[index] || `Month ${index + 1}`,
-      value: data.protein,
-      target: targetProtein,
-      date: data.date
-    }));
-  };
+  const monthlyData = [
+    { name: 'Jan', value: 135, target: targetProtein, date: '2024-01-01' },
+    { name: 'Feb', value: 142, target: targetProtein, date: '2024-02-01' },
+    { name: 'Mar', value: 148, target: targetProtein, date: '2024-03-01' },
+  ];
 
   const getCurrentData = () => {
-    if (isLoading) return [];
-    
     switch (viewMode) {
-      case 'weekly': return getWeeklyChartData();
-      case 'monthly': return getMonthlyChartData();
-      default: return getDailyChartData();
+      case 'weekly': return weeklyData;
+      case 'monthly': return monthlyData;
+      default: return dailyData;
     }
   };
 
   const getAverageIntake = () => {
     const data = getCurrentData();
-    if (data.length === 0) return 0;
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return Math.round(total / data.length);
   };
@@ -102,16 +90,6 @@ const ProgressProtein = () => {
     }
     return null;
   };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-fade-in pb-8">
-        <div className="flex items-center justify-center p-8">
-          <div className="text-gray-600 dark:text-gray-400">Loading nutrition data...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -238,7 +216,7 @@ const ProgressProtein = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {Math.max(...getCurrentData().map(d => d.value), 0)}g
+              {Math.max(...getCurrentData().map(d => d.value))}g
             </p>
           </CardContent>
         </Card>
@@ -248,7 +226,7 @@ const ProgressProtein = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {Math.min(...getCurrentData().map(d => d.value), 0)}g
+              {Math.min(...getCurrentData().map(d => d.value))}g
             </p>
           </CardContent>
         </Card>

@@ -30,8 +30,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
 import { MoodForecastCard } from '@/components/MoodForecastCard';
-import { useRealHydrationData } from '@/hooks/useRealHydrationData';
-import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -51,7 +49,6 @@ const loadUserPreferences = () => {
 const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
-  const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useRealHydrationData();
   const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -104,9 +101,8 @@ const Home = () => {
   // Exercise tracking state
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [showExerciseReminder, setShowExerciseReminder] = useState(false);
-  
-  // Use real exercise data
-  const { summary: exerciseSummary } = useRealExerciseData('7d');
+  const [todaysExercise, setTodaysExercise] = useState({ calories: 0, duration: 0 });
+  const [todaysSteps, setTodaysSteps] = useState(3731); // Mock data - will be replaced with real data later
   const [isNutrientsExpanded, setIsNutrientsExpanded] = useState(false);
   const [isMicronutrientsExpanded, setIsMicronutrientsExpanded] = useState(false);
   const [isToxinsExpanded, setIsToxinsExpanded] = useState(false);
@@ -187,8 +183,7 @@ const Home = () => {
   const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
 
   const hydrationGoal = getHydrationGoal();
-  const actualHydration = realHydrationToday || 0;
-  const hydrationPercentage = Math.min((actualHydration / hydrationGoal) * 100, 100);
+  const hydrationPercentage = Math.min((progress.hydration / hydrationGoal) * 100, 100);
 
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
@@ -289,7 +284,7 @@ const Home = () => {
     },
     hydration: {
       name: 'Hydration',
-      current: Math.round(actualHydration),
+      current: Math.round(progress.hydration),
       target: Math.round(hydrationGoal),
       unit: 'ml',
       color: 'from-cyan-500/20 via-blue-500/15 to-indigo-500/10',
@@ -602,36 +597,17 @@ const Home = () => {
     setSelectedFood(null);
   };
 
-  const handleExerciseLog = async (exerciseData: ExerciseData) => {
-    try {
-      // Insert exercise log into database
-      const { error } = await supabase
-        .from('exercise_logs')
-        .insert({
-          user_id: user?.id,
-          activity_type: exerciseData.type,
-          duration_minutes: exerciseData.duration,
-          intensity_level: exerciseData.intensity,
-          calories_burned: exerciseData.caloriesBurned,
-        });
-
-      if (error) {
-        console.error('Error logging exercise:', error);
-        toast({
-          title: "Error logging exercise",
-          description: "Please try again",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error logging exercise:', error);
-    }
+  const handleExerciseLog = (exerciseData: ExerciseData) => {
+    setTodaysExercise(prev => ({
+      calories: prev.calories + exerciseData.caloriesBurned,
+      duration: prev.duration + exerciseData.duration,
+    }));
   };
 
   // Calculate net calories (goal - food intake + burned calories)
-  const netCalories = totalCalories - currentCalories + exerciseSummary.todayCalories;
+  const netCalories = totalCalories - currentCalories + todaysExercise.calories;
   const stepsGoal = 10000;
-  const stepsPercentage = Math.min((exerciseSummary.todaySteps / stepsGoal) * 100, 100);
+  const stepsPercentage = Math.min((todaysSteps / stepsGoal) * 100, 100);
 
   // Emergency recovery handler
   const handleEmergencyRecovery = () => {
@@ -1091,7 +1067,7 @@ const Home = () => {
                     <span className="text-red-500 text-lg">🔥</span>
                   </div>
                   <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
-                    {exerciseSummary.todayCalories}
+                    {todaysExercise.calories}
                   </p>
                   <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
                     Burned
@@ -1103,7 +1079,7 @@ const Home = () => {
                     <span className="text-green-500 text-lg">🎯</span>
                   </div>
                   <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-900 dark:text-white`}>
-                    {totalCalories - currentCalories + exerciseSummary.todayCalories}
+                    {totalCalories - currentCalories + todaysExercise.calories}
                   </p>
                   <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
                     Remaining
@@ -1137,7 +1113,7 @@ const Home = () => {
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">
-                    {exerciseSummary.todaySteps.toLocaleString()}
+                    {todaysSteps.toLocaleString()}
                   </div>
                   <div className="text-sm text-white/70">
                     Goal: {stepsGoal.toLocaleString()}
@@ -1181,7 +1157,7 @@ const Home = () => {
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">
-                    {exerciseSummary.todayCalories}
+                    {todaysExercise.calories}
                   </div>
                   <div className="text-sm text-white/70">
                     calories burned
@@ -1190,13 +1166,13 @@ const Home = () => {
                 
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm text-white/80">
-                    <span>{Math.floor(exerciseSummary.todayDuration / 60)}h {exerciseSummary.todayDuration % 60}m</span>
+                    <span>{Math.floor(todaysExercise.duration / 60)}h {todaysExercise.duration % 60}m</span>
                     <span>Duration</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-1.5">
                     <div 
                       className="bg-white h-1.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.min((exerciseSummary.todayDuration / 60) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((todaysExercise.duration / 60) * 100, 100)}%` }}
                     ></div>
                   </div>
                 </div>

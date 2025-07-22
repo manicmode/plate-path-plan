@@ -46,7 +46,7 @@ export const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
           <div className="text-xl font-bold text-gray-900 dark:text-white">{Math.round(percentage)}%</div>
-          <div className="text-xs text-gray-600 dark:text-gray-300">{value}ml/{max}ml</div>
+          <div className="text-xs text-gray-600 dark:text-gray-300">{value}/{max}</div>
         </div>
       </div>
     </div>

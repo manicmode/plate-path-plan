@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Zap, TrendingUp, TrendingDown } from 'lucide-react';
@@ -7,7 +6,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useState, useEffect } from 'react';
 
@@ -16,7 +14,6 @@ const ProgressCarbs = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
-  const { dailyData, weeklyData, monthlyData, isLoading } = useRealNutritionHistory();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   // Use the scroll-to-top hook
@@ -24,50 +21,41 @@ const ProgressCarbs = () => {
   
   const targetCarbs = user?.targetCarbs || 200;
   const todayProgress = getTodaysProgress();
+  
+  // Mock data for different time periods
+  const dailyData = [
+    { name: 'Mon', value: 180, target: targetCarbs },
+    { name: 'Tue', value: 210, target: targetCarbs },
+    { name: 'Wed', value: 195, target: targetCarbs },
+    { name: 'Thu', value: 220, target: targetCarbs },
+    { name: 'Fri', value: 185, target: targetCarbs },
+    { name: 'Sat', value: 200, target: targetCarbs },
+    { name: 'Today', value: Math.round(todayProgress.carbs), target: targetCarbs },
+  ];
 
-  // Format data for charts with day names and real data
-  const getDailyChartData = () => {
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
-    return dailyData.map((data, index) => ({
-      name: index === 6 ? 'Today' : dayNames[index],
-      value: data.carbs,
-      target: targetCarbs,
-      date: data.date
-    }));
-  };
+  const weeklyData = [
+    { name: 'Week 1', value: 192, target: targetCarbs },
+    { name: 'Week 2', value: 205, target: targetCarbs },
+    { name: 'Week 3', value: 188, target: targetCarbs },
+    { name: 'Week 4', value: 198, target: targetCarbs },
+  ];
 
-  const getWeeklyChartData = () => {
-    return weeklyData.map((data, index) => ({
-      name: `Week ${index + 1}`,
-      value: data.carbs,
-      target: targetCarbs,
-      date: data.date
-    }));
-  };
-
-  const getMonthlyChartData = () => {
-    const monthNames = ['Jan', 'Feb', 'Mar'];
-    return monthlyData.map((data, index) => ({
-      name: monthNames[index] || `Month ${index + 1}`,
-      value: data.carbs,
-      target: targetCarbs,
-      date: data.date
-    }));
-  };
+  const monthlyData = [
+    { name: 'Jan', value: 195, target: targetCarbs },
+    { name: 'Feb', value: 202, target: targetCarbs },
+    { name: 'Mar', value: 208, target: targetCarbs },
+  ];
 
   const getCurrentData = () => {
-    if (isLoading) return [];
-    
     switch (viewMode) {
-      case 'weekly': return getWeeklyChartData();
-      case 'monthly': return getMonthlyChartData();
-      default: return getDailyChartData();
+      case 'weekly': return weeklyData;
+      case 'monthly': return monthlyData;
+      default: return dailyData;
     }
   };
 
   const getAverageIntake = () => {
     const data = getCurrentData();
-    if (data.length === 0) return 0;
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return Math.round(total / data.length);
   };
@@ -97,16 +85,6 @@ const ProgressCarbs = () => {
     }
     return null;
   };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-fade-in pb-8">
-        <div className="flex items-center justify-center p-8">
-          <div className="text-gray-600 dark:text-gray-400">Loading nutrition data...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -229,7 +207,7 @@ const ProgressCarbs = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {Math.max(...getCurrentData().map(d => d.value), 0)}g
+              {Math.max(...getCurrentData().map(d => d.value))}g
             </p>
           </CardContent>
         </Card>
@@ -239,7 +217,7 @@ const ProgressCarbs = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {Math.min(...getCurrentData().map(d => d.value), 0)}g
+              {Math.min(...getCurrentData().map(d => d.value))}g
             </p>
           </CardContent>
         </Card>

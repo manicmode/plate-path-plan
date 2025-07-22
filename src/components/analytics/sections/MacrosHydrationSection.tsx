@@ -14,9 +14,6 @@ interface MacrosHydrationSectionProps {
 
 export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationSectionProps) => {
   const { user } = useAuth();
-  
-  // Convert targetHydration (glasses) to ml
-  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
 
   return (
     <div>
@@ -110,7 +107,7 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                     strokeWidth="10"
                     fill="none"
                     strokeDasharray={339.3}
-                    strokeDashoffset={339.3 - (progress.hydration / hydrationTargetMl) * 339.3}
+                    strokeDashoffset={339.3 - (progress.hydration / (user?.targetHydration || 2000)) * 339.3}
                     className="transition-all duration-[2s] ease-out"
                     strokeLinecap="round"
                   />
@@ -118,10 +115,10 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-900 dark:text-white">
-                      {Math.round((progress.hydration / hydrationTargetMl) * 100)}%
+                      {Math.round((progress.hydration / (user?.targetHydration || 2000)) * 100)}%
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-300">
-                      {progress.hydration}ml/{hydrationTargetMl}ml
+                      {progress.hydration}/{user?.targetHydration || 2000}
                     </div>
                   </div>
                 </div>
