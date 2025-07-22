@@ -168,27 +168,27 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <ThemeProvider>
-            <TooltipProvider>
-              <IngredientAlertProvider>
-                <BadgeProvider>
-                  <ChallengeProvider>
+    <ChallengeProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <ErrorBoundary>
+            <ThemeProvider>
+              <TooltipProvider>
+                <IngredientAlertProvider>
+                  <BadgeProvider>
                     <ChatProvider>
                       <ChatModalProvider>
                         <AppContent />
                       </ChatModalProvider>
                     </ChatProvider>
-                  </ChallengeProvider>
-                </BadgeProvider>
-              </IngredientAlertProvider>
-            </TooltipProvider>
-          </ThemeProvider>
-        </ErrorBoundary>
-      </BrowserRouter>
-    </QueryClientProvider>
+                  </BadgeProvider>
+                </IngredientAlertProvider>
+              </TooltipProvider>
+            </ThemeProvider>
+          </ErrorBoundary>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ChallengeProvider>
   );
 }
 
