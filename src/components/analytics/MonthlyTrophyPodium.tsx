@@ -9,7 +9,7 @@ import { TrophyShelf } from './TrophyShelf';
 import { useTrophyPodium, CompletedChallenge } from '@/hooks/useTrophyPodium';
 import { useToast } from '@/hooks/use-toast';
 
-export const MonthlyTrophyPodium: React.FC = React.memo(() => {
+export const MonthlyTrophyPodium: React.FC = () => {
   const [selectedChallenge, setSelectedChallenge] = useState<CompletedChallenge | null>(null);
   const [winners, setWinners] = useState<PodiumWinner[]>([]);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
@@ -27,23 +27,16 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log("[MonthlyTrophyPodium] useEffect triggered - loading challenges", { currentMonth });
     loadCompletedChallenges();
   }, [currentMonth]);
 
   useEffect(() => {
-    console.log("[MonthlyTrophyPodium] auto-show useEffect triggered", { 
-      shouldShow: shouldShowMonthlyPodium(), 
-      challengesCount: completedChallenges.length 
-    });
-    
     // Auto-show podium if it's end of month
     if (shouldShowMonthlyPodium() && completedChallenges.length > 0) {
       // Auto-select the most recent challenge with most participants
       const topChallenge = completedChallenges
         .sort((a, b) => b.participantCount - a.participantCount)[0];
       if (topChallenge) {
-        console.log("[MonthlyTrophyPodium] auto-selecting challenge", topChallenge);
         handleChallengeSelect(topChallenge);
       }
     }
@@ -112,11 +105,11 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
       <div className="pt-8 mb-12 flex flex-col items-center gap-6">
         {/* Centered Title with Trophy Emojis */}
         <div className="flex items-center gap-3">
-          <div className="text-2xl">🏆</div>
+          <div className="text-2xl animate-bounce hover:scale-110 transition-transform duration-300">🏆</div>
           <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
             AWARDS
           </h1>
-          <div className="text-2xl">🏆</div>
+          <div className="text-2xl animate-bounce hover:scale-110 transition-transform duration-300">🏆</div>
         </div>
         
         {/* Centered Calendar Toggle */}
@@ -231,7 +224,7 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
               {isLoading ? (
                 <div className="text-center py-8">
                   <div className="inline-flex items-center gap-2">
-                    <div className="rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                     Loading challenges...
                   </div>
                 </div>
@@ -295,4 +288,4 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
       </Tabs>
     </div>
   );
-});
+};

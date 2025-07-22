@@ -155,7 +155,7 @@ export function BadgeCarousel({ open, onOpenChange }: BadgeCarouselProps) {
                         {/* Selected Indicator */}
                         {isSelected && (
                           <div className="absolute top-2 right-2">
-                            <Sparkles className="h-5 w-5 text-primary" />
+                            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
                           </div>
                         )}
 

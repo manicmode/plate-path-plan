@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,7 +20,7 @@ import {
 import { FriendProfileView } from './FriendProfileView';
 import { FriendsLeaderboard } from './FriendsLeaderboard';
 import { GroupFeed } from './GroupFeed';
-import { useSmartFriendRecommendations } from '@/hooks/useSmartFriendRecommendations';
+import { useFriendTagging } from '@/hooks/useFriendTagging';
 import { PrivateChallengeCreationModal } from '@/components/analytics/PrivateChallengeCreationModal';
 import { FriendSearch } from './FriendSearch';
 import { PendingRequests } from './PendingRequests';
@@ -35,8 +34,7 @@ interface FriendCardProps {
 }
 
 const FriendCard = ({ friend, onClick }: FriendCardProps) => {
-  // Use real data from the friend object
-  const progressPercentage = Math.round((friend.metadata?.chatCount || 0) * 10 + (friend.metadata?.sharedChallenges || 0) * 15);
+  const progressPercentage = Math.round((friend.metadata?.chatCount || 0) * 10 + Math.random() * 30);
   const lastActiveText = friend.metadata?.lastInteraction 
     ? new Date(friend.metadata.lastInteraction).toLocaleDateString()
     : 'Recently';
@@ -104,17 +102,10 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
   );
 };
 
-export const MyFriendsTab = React.memo(() => {
-  console.count("FriendsTab renders");
-  
-  // Render counter for infinite loop detection
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  console.log(`🔄 MyFriendsTab render count: ${renderCountRef.current}`);
-  
+export const MyFriendsTab = () => {
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { friends, isLoading } = useSmartFriendRecommendations();
+  const { friends, isLoading } = useFriendTagging(true);
 
   if (selectedFriend) {
     return (
@@ -124,12 +115,6 @@ export const MyFriendsTab = React.memo(() => {
       />
     );
   }
-
-  // Calculate real stats from the friends data with safety checks
-  const safeFriends = Array.isArray(friends) ? friends : [];
-  const totalFriends = safeFriends.length;
-  const activeToday = safeFriends.filter(f => f && f.metadata?.activityStatus === 'recently_active').length;
-  const inChallenges = safeFriends.filter(f => f && (f.metadata?.sharedChallenges || 0) > 0).length;
 
   return (
     <div className="space-y-4 -mt-6">
@@ -162,19 +147,23 @@ export const MyFriendsTab = React.memo(() => {
           <div className="grid grid-cols-3 gap-4 mb-1">
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-primary">{totalFriends}</div>
+                <div className="text-2xl font-bold text-primary">{friends.length}</div>
                 <div className="text-sm text-muted-foreground">Total Friends</div>
               </CardContent>
             </Card>
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-emerald-600">{activeToday}</div>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {friends.filter(f => (f as any).metadata?.activityStatus === 'recently_active').length}
+                </div>
                 <div className="text-sm text-muted-foreground">Active Today</div>
               </CardContent>
             </Card>
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-blue-600">{inChallenges}</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {friends.filter(f => (f as any).metadata?.sharedChallenges > 0).length}
+                </div>
                 <div className="text-sm text-muted-foreground">In Challenges</div>
               </CardContent>
             </Card>
@@ -188,7 +177,7 @@ export const MyFriendsTab = React.memo(() => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="text-sm text-muted-foreground mt-2">Loading friends...</p>
                 </div>
-               ) : safeFriends.length === 0 ? (
+               ) : friends.length === 0 ? (
                 <div className="text-center py-4 space-y-3">
                   <div>
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -232,26 +221,26 @@ export const MyFriendsTab = React.memo(() => {
                      <InviteFriends />
                   </div>
                 </div>
-               ) : (
-                 safeFriends.map((friend) => (
-                   <FriendCard
-                     key={friend?.id || Math.random()}
-                     friend={friend}
-                     onClick={() => setSelectedFriend(friend)}
-                   />
-                 ))
-               )}
+              ) : (
+                friends.map((friend) => (
+                  <FriendCard
+                    key={friend.id}
+                    friend={friend}
+                    onClick={() => setSelectedFriend(friend)}
+                  />
+                ))
+              )}
             </div>
           </ScrollArea>
 
         </TabsContent>
 
         <TabsContent value="leaderboard">
-          <FriendsLeaderboard friends={safeFriends} />
+          <FriendsLeaderboard friends={friends} />
         </TabsContent>
 
         <TabsContent value="feed">
-          <GroupFeed friends={safeFriends} />
+          <GroupFeed friends={friends} />
         </TabsContent>
       </Tabs>
 
@@ -262,4 +251,4 @@ export const MyFriendsTab = React.memo(() => {
       />
     </div>
   );
-});
+};

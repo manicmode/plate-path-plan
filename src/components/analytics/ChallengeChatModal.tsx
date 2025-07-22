@@ -114,31 +114,25 @@ export const ChallengeChatModal = ({
 
   // Emoji cooldown timer
   useEffect(() => {
-    console.log("[ChallengeChatModal] emoji cooldown useEffect triggered", { 
-      open, 
-      activeChatroomId, 
-      canSendEmoji: canSendEmoji(activeChatroomId) 
-    });
-    
     if (!open || canSendEmoji(activeChatroomId)) {
       setEmojiCooldownTime(0);
       return;
     }
 
-    // COMMENTED OUT FOR TESTING - removing emoji cooldown timer intervals
-    // const interval = setInterval(() => {
-    //   const lastTime = getLastEmojiTime(activeChatroomId);
-    //   const cooldownEnd = lastTime + 10000; // 10 seconds
-    //   const remaining = Math.max(0, cooldownEnd - Date.now());
-    //   
-    //   setEmojiCooldownTime(remaining);
-    //   
-    //   if (remaining <= 0) {
-    //     clearInterval(interval);
-    //   }
-    // }, 100);
+    const interval = setInterval(() => {
+      const lastTime = getLastEmojiTime(activeChatroomId);
+      const cooldownEnd = lastTime + 10000; // 10 seconds
+      const remaining = Math.max(0, cooldownEnd - Date.now());
+      
+      setEmojiCooldownTime(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 100);
 
-  }, [open, activeChatroomId, canSendEmoji, getLastEmojiTime]);
+    return () => clearInterval(interval);
+  }, [open, activeChatroomId, getLastEmojiTime, canSendEmoji]);
 
   // Handle message send with tagging
   const handleSendMessage = (messageText: string, taggedUsers?: string[]) => {

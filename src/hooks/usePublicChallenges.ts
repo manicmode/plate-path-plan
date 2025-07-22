@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -52,9 +51,8 @@ export const usePublicChallenges = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchChallenges = useCallback(async () => {
+  const fetchChallenges = async () => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('public_challenges')
         .select('*')
@@ -63,31 +61,20 @@ export const usePublicChallenges = () => {
         .order('is_new', { ascending: false })
         .order('participant_count', { ascending: false });
 
-      if (error) {
-        console.error('Fetch challenges error:', error);
-        setChallenges([]);
-        return;
-      }
-      
-      setChallenges(Array.isArray(data) ? data : []);
+      if (error) throw error;
+      setChallenges(data || []);
     } catch (error) {
       console.error('Error fetching challenges:', error);
-      setChallenges([]);
       toast({
         title: "Error",
         description: "Failed to load challenges",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  }, [toast]);
+  };
 
-  const fetchUserParticipations = useCallback(async () => {
-    if (!user) {
-      setUserParticipations([]);
-      return;
-    }
+  const fetchUserParticipations = async () => {
+    if (!user) return;
 
     try {
       const { data, error } = await supabase
@@ -95,18 +82,12 @@ export const usePublicChallenges = () => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Fetch user participations error:', error);
-        setUserParticipations([]);
-        return;
-      }
-      
-      setUserParticipations(Array.isArray(data) ? data : []);
+      if (error) throw error;
+      setUserParticipations(data || []);
     } catch (error) {
       console.error('Error fetching user participations:', error);
-      setUserParticipations([]);
     }
-  }, [user]);
+  };
 
   const joinChallenge = async (challengeId: string): Promise<boolean> => {
     if (!user) {
@@ -270,59 +251,44 @@ export const usePublicChallenges = () => {
   };
 
   useEffect(() => {
-    console.log("🔍 usePublicChallenges useEffect triggered", { user: user?.id });
-    console.log("🔍 usePublicChallenges useEffect dependencies:", {
-      user: user?.id,
-      fetchChallenges: typeof fetchChallenges,
-      fetchUserParticipations: typeof fetchUserParticipations
-    });
-    
     const loadData = async () => {
-      try {
-        setLoading(true);
-        console.log("🔍 usePublicChallenges: Starting data load");
-        await fetchChallenges();
-        if (user) {
-          console.log("🔍 usePublicChallenges: Fetching user participations for user:", user.id);
-          await fetchUserParticipations();
-        }
-        console.log("🔍 usePublicChallenges: Data load completed");
-      } catch (error) {
-        console.error('Error loading challenge data:', error);
-      } finally {
-        setLoading(false);
+      setLoading(true);
+      await fetchChallenges();
+      if (user) {
+        await fetchUserParticipations();
       }
+      setLoading(false);
     };
 
     loadData();
-  }, [user, fetchChallenges, fetchUserParticipations]);
+  }, [user]);
 
-  // Filter challenges by category with error handling
-  const globalChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.duration_days >= 7) : [];
-  const quickChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.duration_days <= 3) : [];
-  const trendingChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.is_trending) : [];
-  const newChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.is_new) : [];
+  // Filter challenges by category
+  const globalChallenges = challenges.filter(c => c.duration_days >= 7);
+  const quickChallenges = challenges.filter(c => c.duration_days <= 3);
+  const trendingChallenges = challenges.filter(c => c.is_trending);
+  const newChallenges = challenges.filter(c => c.is_new);
 
   // Get user's participation status for each challenge
   const getUserParticipation = (challengeId: string) => 
-    Array.isArray(userParticipations) ? userParticipations.find(p => p && p.challenge_id === challengeId) : undefined;
+    userParticipations.find(p => p.challenge_id === challengeId);
 
   const isUserParticipating = (challengeId: string) => 
-    Array.isArray(userParticipations) ? userParticipations.some(p => p && p.challenge_id === challengeId) : false;
+    userParticipations.some(p => p.challenge_id === challengeId);
 
   return {
-    challenges: Array.isArray(challenges) ? challenges : [],
+    challenges,
     globalChallenges,
     quickChallenges,
     trendingChallenges,
     newChallenges,
-    userParticipations: Array.isArray(userParticipations) ? userParticipations : [],
+    userParticipations,
     loading,
     joinChallenge,
     updateProgress,
     leaveChallenge,
     getUserParticipation,
     isUserParticipating,
-    refreshData: useCallback(() => Promise.all([fetchChallenges(), fetchUserParticipations()]), [fetchChallenges, fetchUserParticipations]),
+    refreshData: () => Promise.all([fetchChallenges(), fetchUserParticipations()]),
   };
 };

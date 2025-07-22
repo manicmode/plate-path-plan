@@ -6,8 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
-import { ChallengeProvider } from '@/contexts/ChallengeContext';
-import { ChatProvider } from '@/contexts/ChatContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -168,27 +166,23 @@ function AppContent() {
 
 function App() {
   return (
-    <ChallengeProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <ErrorBoundary>
-            <ThemeProvider>
-              <TooltipProvider>
-                <IngredientAlertProvider>
-                  <BadgeProvider>
-                    <ChatProvider>
-                      <ChatModalProvider>
-                        <AppContent />
-                      </ChatModalProvider>
-                    </ChatProvider>
-                  </BadgeProvider>
-                </IngredientAlertProvider>
-              </TooltipProvider>
-            </ThemeProvider>
-          </ErrorBoundary>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </ChallengeProvider>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <TooltipProvider>
+              <IngredientAlertProvider>
+                <BadgeProvider>
+                  <ChatModalProvider>
+                    <AppContent />
+                  </ChatModalProvider>
+                </BadgeProvider>
+              </IngredientAlertProvider>
+            </TooltipProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

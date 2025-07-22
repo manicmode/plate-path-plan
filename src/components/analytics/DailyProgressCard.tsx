@@ -36,7 +36,7 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
             <div style={{ color }}>{icon}</div>
           </div>
           {shouldShowConfetti && (
-            <div className="text-2xl">🎉</div>
+            <div className="text-2xl animate-bounce">🎉</div>
           )}
         </div>
         

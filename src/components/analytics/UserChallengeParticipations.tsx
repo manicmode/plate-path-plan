@@ -1,271 +1,349 @@
 
-import React, { useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Clock, Users, Target, Zap, Globe, Lock, TrendingUp } from 'lucide-react';
+import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle, Zap } from 'lucide-react';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
-import { UnifiedChallengeCard } from './UnifiedChallengeCard';
+import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
+import { useToast } from '@/hooks/use-toast';
 
-export const UserChallengeParticipations: React.FC = React.memo(() => {
-  console.count("YourChallenges renders");
-  
-  // Render counter for infinite loop detection
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  console.log(`🔄 UserChallengeParticipations render count: ${renderCountRef.current}`);
+export const UserChallengeParticipations: React.FC = () => {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { toast } = useToast();
   
   const { 
-    userParticipations: publicParticipations, 
-    challenges: publicChallenges,
-    loading: publicLoading,
-    updateProgress: updatePublicProgress,
-    leaveChallenge: leavePublicChallenge
+    userParticipations, 
+    challenges,
+    updateProgress,
+    leaveChallenge,
+    loading: publicLoading 
   } = usePublicChallenges();
 
-  const { 
-    challengesWithParticipation: privateChallenges,
-    loading: privateLoading,
+  const {
+    challengesWithParticipation,
     updatePrivateProgress,
-    refreshData: refreshPrivateData
+    loading: privateLoading,
+    refreshData
   } = usePrivateChallenges();
-
-  // Combine and process real data with safety checks
-  const processedChallenges = useMemo(() => {
-    const safePublicParticipations = Array.isArray(publicParticipations) ? publicParticipations : [];
-    const safePublicChallenges = Array.isArray(publicChallenges) ? publicChallenges : [];
-    const safePrivateChallenges = Array.isArray(privateChallenges) ? privateChallenges : [];
-    
-    const publicActiveChallenges = safePublicParticipations.map(participation => {
-      const challenge = safePublicChallenges.find(c => c && c.id === participation?.challenge_id);
-      if (!challenge || !participation) return null;
-      
-      return {
-        id: challenge.id,
-        title: challenge.title,
-        description: challenge.description,
-        badgeIcon: challenge.badge_icon,
-        challengeType: 'global' as const,
-        durationDays: challenge.duration_days,
-        participantCount: challenge.participant_count,
-        targetValue: challenge.target_value,
-        targetUnit: challenge.target_unit,
-        isParticipating: true,
-        isCompleted: participation.is_completed,
-        progressPercentage: participation.completion_percentage,
-        streakCount: participation.streak_count,
-        bestStreak: participation.best_streak,
-        isTrending: challenge.is_trending,
-        isNew: challenge.is_new,
-        difficultyLevel: challenge.difficulty_level,
-        isCreator: false,
-        onJoin: async () => {},
-        onLeave: async () => {
-          await leavePublicChallenge(challenge.id);
-        },
-        showInMyActiveChallenges: true
-      };
-    }).filter(Boolean);
-
-    const privateActiveChallenges = safePrivateChallenges.map(({ participation, ...challenge }) => {
-      if (!participation || !challenge) return null;
-      
-      return {
-        id: challenge.id,
-        title: challenge.title,
-        description: challenge.description,
-        badgeIcon: challenge.badge_icon,
-        challengeType: 'friend' as const,
-        durationDays: challenge.duration_days,
-        participantCount: challenge.max_participants,
-        targetValue: challenge.target_value,
-        targetUnit: challenge.target_unit,
-        isParticipating: true,
-        isCompleted: !!participation.completed_at,
-        progressPercentage: participation.completion_percentage,
-        streakCount: participation.streak_count,
-        bestStreak: participation.streak_count, // Private challenges don't track best streak separately
-        isTrending: false,
-        isNew: false,
-        difficultyLevel: 'intermediate',
-        isCreator: participation.is_creator,
-        onJoin: async () => {},
-        onLeave: async () => {
-          await refreshPrivateData();
-        },
-        showInMyActiveChallenges: true
-      };
-    }).filter(Boolean);
-
-    return [...publicActiveChallenges, ...privateActiveChallenges];
-  }, [publicParticipations, publicChallenges, privateChallenges, leavePublicChallenge, refreshPrivateData]);
-
-  // Categorize challenges
-  const categorizedChallenges = useMemo(() => {
-    const active = processedChallenges.filter(c => !c.isCompleted);
-    const completed = processedChallenges.filter(c => c.isCompleted);
-    const trending = processedChallenges.filter(c => c.isTrending);
-    
-    return { active, completed, trending };
-  }, [processedChallenges]);
-
-  // Calculate real statistics
-  const stats = useMemo(() => {
-    const totalActive = categorizedChallenges.active.length;
-    const totalCompleted = categorizedChallenges.completed.length;
-    const averageProgress = categorizedChallenges.active.length > 0 
-      ? Math.round(categorizedChallenges.active.reduce((sum, c) => sum + c.progressPercentage, 0) / categorizedChallenges.active.length)
-      : 0;
-    const totalStreaks = categorizedChallenges.active.reduce((sum, c) => sum + c.streakCount, 0);
-    
-    return { totalActive, totalCompleted, averageProgress, totalStreaks };
-  }, [categorizedChallenges]);
 
   const loading = publicLoading || privateLoading;
 
+  // Auto-refresh on mount to get latest data after RLS fix
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      refreshData();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [refreshData]);
+
   if (loading) {
     return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="animate-pulse">
+            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-t-2xl h-20"></div>
+            <div className="bg-card/80 backdrop-blur rounded-b-2xl p-4 space-y-3">
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+              <div className="h-3 bg-muted rounded w-1/2"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Process all user participations and categorize them properly
+  const allPublicChallenges = userParticipations.map((participation) => {
+    const challenge = challenges.find(c => c.id === participation.challenge_id);
+    if (!challenge) return null;
+    
+    return {
+      type: challenge.duration_days <= 3 ? 'quick' : 'public',
+      challenge,
+      participation,
+      onLeave: async (challengeId: string) => {
+        return leaveChallenge(challengeId);
+      }
+    };
+  }).filter(Boolean);
+
+  const privateChallenges = challengesWithParticipation.map(({ participation, ...challenge }) => ({
+    type: 'private',
+    challenge,
+    participation: participation!,
+    onLeave: async (challengeId: string) => {
+      console.log('Leave private challenge:', challengeId);
+      return true;
+    }
+  }));
+
+  // Separate by type
+  const quickChallenges = allPublicChallenges.filter(item => item?.type === 'quick');
+  const regularPublicChallenges = allPublicChallenges.filter(item => item?.type === 'public');
+
+  const handleShare = (challengeName: string) => {
+    const shareText = `Join me in the "${challengeName}" challenge! 💪`;
+    if (navigator.share) {
+      navigator.share({
+        title: challengeName,
+        text: shareText,
+      });
+    } else {
+      navigator.clipboard.writeText(shareText);
+      toast({
+        title: "Challenge Link Copied! 🔗",
+        description: "Share this with your friends",
+      });
+    }
+  };
+
+  const ChallengeCard = ({ item }: { item: any }) => {
+    if (!item) return null;
+    
+    const { type, challenge, participation, onLeave } = item;
+    
+    const progressPercentage = type === 'private'
+      ? (participation as any).completion_percentage || 0
+      : participation.completion_percentage || 0;
+
+    // Get modern background gradient with glassmorphism
+    const getBackgroundGradient = () => {
+      switch (type) {
+        case 'private':
+          return 'bg-gradient-to-br from-purple-500/30 via-purple-600/25 to-purple-700/20 backdrop-blur-xl border border-purple-300/20';
+        case 'quick':
+          return 'bg-gradient-to-br from-orange-400/30 via-orange-500/25 to-orange-600/20 backdrop-blur-xl border border-orange-300/20';
+        case 'public':
+        default:
+          return 'bg-gradient-to-br from-blue-500/30 via-blue-600/25 to-purple-600/20 backdrop-blur-xl border border-blue-300/20';
+      }
+    };
+
+    // Get type badge info
+    const getTypeBadge = () => {
+      switch (type) {
+        case 'private':
+          return { icon: Lock, label: 'Private' };
+        case 'quick':
+          return { icon: Flame, label: 'Quick' };
+        case 'public':
+        default:
+          return { icon: Users, label: 'Public' };
+      }
+    };
+
+    const typeBadge = getTypeBadge();
+    const timeLeft = challenge.duration_days ? `${challenge.duration_days}d` : '∞';
+    
+    // Get challenge details
+    const challengeIcon = type === 'private' 
+      ? (challenge as any).badge_icon || '🧘'
+      : type === 'quick' 
+        ? (challenge as any).badge_icon || '🏃'
+        : (challenge as any).badge_icon || '🧘';
+    
+    const challengeTitle = challenge.title;
+    const challengeDescription = type === 'private'
+      ? (challenge as any).description
+      : (challenge as any).goal_description || (challenge as any).description;
+
+    const participantCount = type === 'private'
+      ? 1 // For now, private challenges show 1 participant
+      : (challenge as any).participant_count || 1;
+
+    return (
+      <Card className="w-full overflow-hidden bg-card/50 backdrop-blur-xl border border-border/30 shadow-2xl hover:shadow-3xl transition-all duration-300 mb-4">
+        {/* Header Section with Gradient - modern glassmorphism design */}
+        <div className={`${getBackgroundGradient()} p-6 text-white relative rounded-t-2xl h-32`}>
+          {/* Type badge and time in top row */}
+          <div className="flex items-center justify-between mb-4">
+            <Badge className="bg-white/25 text-white border-white/40 text-xs px-3 py-1 rounded-full backdrop-blur-sm">
+              <typeBadge.icon className="w-3 h-3 mr-1" />
+              {typeBadge.label}
+            </Badge>
+            <div className="flex items-center gap-2 text-sm bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+              <Clock className="w-4 h-4" />
+              <span className="font-medium">{timeLeft}</span>
+            </div>
+          </div>
+          
+          {/* Title with emoji */}
+          <h3 className="text-xl font-bold flex items-center gap-3 mb-2">
+            <span className="text-2xl">{challengeIcon}</span>
+            <span className="truncate">{challengeTitle}</span>
+          </h3>
+          
+          {/* Description */}
+          <p className="text-sm text-white/95 line-clamp-2">
+            {challengeDescription}
+          </p>
+        </div>
+
+        {/* Modern bottom section with glassmorphism */}
+        <div className="bg-card/80 backdrop-blur-xl p-6 space-y-5">
+          {/* Progress section with improved visibility */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-foreground font-semibold">Your Progress</span>
+              <span className="text-emerald-600 font-bold">{Math.round(progressPercentage)}%</span>
+            </div>
+            <div className="w-full bg-gradient-to-r from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-full h-3 overflow-hidden border border-emerald-300/30">
+              <div 
+                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-500 ease-out shadow-lg relative"
+                style={{ 
+                  width: progressPercentage > 0 ? `${progressPercentage}%` : '8%',
+                  minWidth: '8%',
+                  opacity: progressPercentage > 0 ? 1 : 0.6
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full animate-pulse opacity-50"></div>
+              </div>
+            </div>
+          </div>
+
+            {/* Participants count and status */}
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span className="font-medium">{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex items-center gap-2 text-green-600">
+                <Trophy className="w-4 h-4" />
+                <span className="font-semibold">Active</span>
+              </div>
+            </div>
+
+            {/* Participant avatar */}
+            <div className="flex gap-2">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+                <span className="text-xl">😊</span>
+              </div>
+            </div>
+
+            {/* Action buttons - modern design with better spacing */}
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => handleShare(challengeTitle)}
+                className="flex-1 bg-muted/50 border-border/50 hover:bg-muted/70 transition-all duration-200"
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 bg-muted/50 border-border/50 hover:bg-muted/70 transition-all duration-200"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat
+              </Button>
+
+              <Button 
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (confirm("Do you want to leave this challenge?")) {
+                    onLeave(challenge.id);
+                  }
+                }}
+                className="bg-red-500/80 hover:bg-red-500 backdrop-blur-sm transition-all duration-200"
+              >
+                Leave
+              </Button>
+            </div>
+          </div>
+        </Card>
+    );
+  };
+
+  // Vertical Stack Section Component
+  const VerticalStack = ({ 
+    title, 
+    icon: Icon, 
+    iconColor, 
+    challenges 
+  }: {
+    title: string;
+    icon: any;
+    iconColor: string;
+    challenges: any[];
+  }) => {
+    return (
       <div className="space-y-6">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground mt-2">Loading your challenges...</p>
+        <h2 className="text-xl font-bold flex items-center justify-center gap-2 px-4">
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+          {title}
+        </h2>
+        
+        <div className="space-y-6 px-4">
+          {challenges.map((item, index) => (
+            <ChallengeCard key={`${title}-${index}`} item={item} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const hasAnyChallenges = privateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
+
+  if (!hasAnyChallenges) {
+    return (
+      <div className="text-center py-12">
+        <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No Active Challenges</h3>
+        <p className="text-muted-foreground mb-6">
+          Browse public challenges or create a private one with friends!
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Button variant="outline">Browse Public</Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Private
+          </Button>
         </div>
       </div>
     );
   }
 
-  console.log("🔍 UserChallengeParticipations: Rendering main content");
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-          <Trophy className="w-6 h-6" />
-          My Active Challenges
-        </h2>
-        <p className="text-muted-foreground">
-          Track your progress and stay motivated with your ongoing challenges
-        </p>
-      </div>
+    <div className="space-y-8 min-h-screen">
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">{stats.totalActive}</div>
-            <div className="text-sm text-muted-foreground">Active Challenges</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-emerald-600">{stats.totalCompleted}</div>
-            <div className="text-sm text-muted-foreground">Completed</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.averageProgress}%</div>
-            <div className="text-sm text-muted-foreground">Avg Progress</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-orange-600">{stats.totalStreaks}</div>
-            <div className="text-sm text-muted-foreground">Total Streaks</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* My Public Challenges Section */}
+      {regularPublicChallenges.length > 0 && (
+        <VerticalStack
+          title="My Public Challenges"
+          icon={Users}
+          iconColor="text-blue-500"
+          challenges={regularPublicChallenges}
+        />
+      )}
 
-      <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active" className="flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            Active ({categorizedChallenges.active.length})
-          </TabsTrigger>
-          <TabsTrigger value="completed" className="flex items-center gap-2">
-            <Trophy className="w-4 h-4" />
-            Completed ({categorizedChallenges.completed.length})
-          </TabsTrigger>
-          <TabsTrigger value="trending" className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Trending ({categorizedChallenges.trending.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* My Quick Challenges Section */}
+      {quickChallenges.length > 0 && (
+        <VerticalStack
+          title="My Quick Challenges"
+          icon={Flame}
+          iconColor="text-orange-500"
+          challenges={quickChallenges}
+        />
+      )}
 
-        <TabsContent value="active" className="space-y-4">
-          {categorizedChallenges.active.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Active Challenges</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start your wellness journey by joining a challenge
-                </p>
-                <Button>
-                  Browse Challenges
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categorizedChallenges.active.map((challenge) => (
-                <UnifiedChallengeCard
-                  key={challenge.id}
-                  {...challenge}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
+      {/* My Private Challenges Section */}
+      {privateChallenges.length > 0 && (
+        <VerticalStack
+          title="My Private Challenges"
+          icon={Lock}
+          iconColor="text-purple-500"
+          challenges={privateChallenges}
+        />
+      )}
 
-        <TabsContent value="completed" className="space-y-4">
-          {categorizedChallenges.completed.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Completed Challenges</h3>
-                <p className="text-muted-foreground">
-                  Complete your first challenge to see it here
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categorizedChallenges.completed.map((challenge) => (
-                <UnifiedChallengeCard
-                  key={challenge.id}
-                  {...challenge}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="trending" className="space-y-4">
-          {categorizedChallenges.trending.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Trending Challenges</h3>
-                <p className="text-muted-foreground">
-                  Join trending challenges to see them here
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categorizedChallenges.trending.map((challenge) => (
-                <UnifiedChallengeCard
-                  key={challenge.id}
-                  {...challenge}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
-});
+};

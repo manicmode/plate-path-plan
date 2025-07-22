@@ -19,14 +19,13 @@ interface LeaderboardEntry {
   current_streak: number;
 }
 
-export const MonthlyLeaderboard: React.FC = React.memo(() => {
+export const MonthlyLeaderboard: React.FC = () => {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
   useEffect(() => {
-    console.log("[MonthlyLeaderboard] useEffect triggered - fetching leaderboard");
     fetchLeaderboard();
   }, []);
 
@@ -118,7 +117,7 @@ export const MonthlyLeaderboard: React.FC = React.memo(() => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <div className="rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </CardContent>
       </Card>
@@ -216,4 +215,4 @@ export const MonthlyLeaderboard: React.FC = React.memo(() => {
       </CardContent>
     </Card>
   );
-});
+};

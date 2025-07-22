@@ -191,19 +191,86 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const sortedTributes = [...pinnedTributes, ...unpinnedTributes];
 
   const renderCelebrationAnimation = (championId: number) => {
-    // ANIMATIONS DISABLED FOR LAYOUT DEBUG
-    return null;
-    /*
     if (celebratingCard !== championId) return null;
     
     const celebrationEmojis = ['🎉', '🎇', '✨', '🏆', '⭐', '🌟', '💫', '🎊', '🥇', '🎈'];
     
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-50">
-        // Animation content disabled
+        {/* Large floating emojis */}
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={`celebration-${i}`}
+            className="absolute text-3xl animate-bounce"
+            style={{
+              left: `${Math.random() * 80 + 10}%`,
+              top: `${Math.random() * 80 + 10}%`,
+              animationDelay: `${Math.random() * 1}s`,
+              animationDuration: `${1.5 + Math.random()}s`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+              opacity: 0.9,
+              filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.6))',
+            }}
+          >
+            {celebrationEmojis[Math.floor(Math.random() * celebrationEmojis.length)]}
+          </div>
+        ))}
+        
+        {/* Golden sparkles */}
+        {Array.from({ length: 30 }).map((_, i) => (
+          <div
+            key={`sparkle-${i}`}
+            className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 2}s`,
+              animationDuration: `${0.5 + Math.random() * 0.5}s`,
+              boxShadow: '0 0 10px rgba(255, 215, 0, 0.8)',
+            }}
+          />
+        ))}
+        
+        {/* Rising stars from center */}
+        {Array.from({ length: 15 }).map((_, i) => (
+          <div
+            key={`rising-star-${i}`}
+            className="absolute text-2xl animate-bounce"
+            style={{
+              left: '50%',
+              top: '50%',
+              transform: `translate(-50%, -50%) translateY(${-50 - i * 20}px) rotate(${Math.random() * 360}deg)`,
+              animationDelay: `${i * 0.1}s`,
+              animationDuration: `${2 + Math.random()}s`,
+              opacity: 0.8,
+              filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.7))',
+            }}
+          >
+            ⭐
+          </div>
+        ))}
+        
+        {/* Border sparkles */}
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={`border-sparkle-${i}`}
+            className="absolute text-xl animate-pulse"
+            style={{
+              ...(i < 3 ? { top: '5%', left: `${20 + i * 20}%` } :
+                  i < 6 ? { right: '5%', top: `${20 + (i - 3) * 20}%` } :
+                  i < 9 ? { bottom: '5%', right: `${20 + (i - 6) * 20}%` } :
+                  { left: '5%', bottom: `${20 + (i - 9) * 20}%` }),
+              animationDelay: `${i * 0.2}s`,
+              animationDuration: `${1 + Math.random() * 0.5}s`,
+              color: '#ffd700',
+              filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.9))',
+            }}
+          >
+            ✨
+          </div>
+        ))}
       </div>
     );
-    */
   };
 
   return (
@@ -212,11 +279,10 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
       <Card className="overflow-hidden border-2 border-amber-200 shadow-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/20 dark:via-yellow-950/20 dark:to-orange-950/20">
         <CardHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-center relative overflow-hidden p-6">
           <div className="absolute inset-0">
-            {/* ANIMATIONS DISABLED FOR DEBUG */}
-            {/* <div className="absolute top-4 left-8 text-yellow-400">⭐</div>
-            <div className="absolute top-4 right-8 text-amber-400">⭐</div>
-            <div className="absolute bottom-6 left-12 text-orange-400">✨</div>
-            <div className="absolute top-1/2 right-16 text-yellow-500">✨</div> */}
+            <div className="absolute top-4 left-8 text-yellow-400 animate-pulse">⭐</div>
+            <div className="absolute top-4 right-8 text-amber-400 animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
+            <div className="absolute bottom-6 left-12 text-orange-400 animate-pulse" style={{ animationDelay: '2s' }}>✨</div>
+            <div className="absolute top-1/2 right-16 text-yellow-500 animate-pulse" style={{ animationDelay: '1.5s' }}>✨</div>
           </div>
           
           <CardTitle className="text-3xl font-bold text-center relative z-10">
@@ -257,14 +323,13 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     hoveredCard === champion.id && "opacity-20"
                   )} />
 
-                  {/* HOVER ANIMATIONS DISABLED FOR DEBUG */}
-                  {/* {hoveredCard === champion.id && (
+                  {hoveredCard === champion.id && (
                     <div className="absolute inset-0 pointer-events-none">
-                      <div className="absolute top-4 left-4 text-yellow-400">🎊</div>
-                      <div className="absolute top-6 right-6 text-pink-400">🎉</div>
-                      <div className="absolute bottom-8 left-8 text-blue-400">⭐</div>
+                      <div className="absolute top-4 left-4 text-yellow-400 animate-bounce">🎊</div>
+                      <div className="absolute top-6 right-6 text-pink-400 animate-bounce" style={{ animationDelay: '0.2s' }}>🎉</div>
+                      <div className="absolute bottom-8 left-8 text-blue-400 animate-bounce" style={{ animationDelay: '0.4s' }}>⭐</div>
                     </div>
-                  )} */}
+                  )}
 
                   <div className="flex justify-between items-start mb-4 relative z-10">
                     <Badge className={cn("flex items-center gap-2 text-sm font-bold", getTrophyBadgeColor(champion.trophy))}>
@@ -288,10 +353,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                         </AvatarFallback>
                       </Avatar>
                       
-                      {/* GOLD TROPHY PING ANIMATION DISABLED FOR DEBUG */}
-                      {/* {champion.trophy === 'gold' && (
-                        <div className="absolute inset-0 rounded-full bg-yellow-400/20" />
-                      )} */}
+                      {champion.trophy === 'gold' && (
+                        <div className="absolute inset-0 rounded-full bg-yellow-400/20 animate-ping" />
+                      )}
                     </div>
                   </div>
 
@@ -314,15 +378,14 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                     </div>
                   </div>
 
-                  {/* GOLD HOVER PING ANIMATIONS DISABLED FOR DEBUG */}
-                  {/* {hoveredCard === champion.id && champion.trophy === 'gold' && (
+                  {hoveredCard === champion.id && champion.trophy === 'gold' && (
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                      <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full opacity-75" />
-                      <div className="absolute -top-2 -right-2 w-3 h-3 bg-orange-400 rounded-full opacity-75" />
-                      <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-yellow-500 rounded-full opacity-75" />
-                      <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-amber-400 rounded-full opacity-75" />
+                      <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full animate-ping opacity-75" />
+                      <div className="absolute -top-2 -right-2 w-3 h-3 bg-orange-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.5s' }} />
+                      <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-yellow-500 rounded-full animate-ping opacity-75" style={{ animationDelay: '1s' }} />
+                      <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-amber-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '1.5s' }} />
                     </div>
-                  )} */}
+                  )}
 
                   {/* Celebration Animation */}
                   {renderCelebrationAnimation(champion.id)}
@@ -332,7 +395,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
               <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-muted bg-muted/20 hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center min-h-[400px]">
                 <div className="text-center space-y-4">
                   <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                    <Sparkles className="h-10 w-10 text-primary" />
+                    <Sparkles className="h-10 w-10 text-primary animate-pulse" />
                   </div>
                   <div>
                     <h3 className="font-bold text-lg mb-2">View All Champions</h3>
@@ -387,10 +450,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                       badgeTypeStyle.background
                     )}
                   >
-                    {/* LEGENDARY SHINE ANIMATION DISABLED FOR DEBUG */}
-                    {/* {trophy.rarity === 'legendary' && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%]" />
-                    )} */}
+                    {trophy.rarity === 'legendary' && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] animate-[shine_3s_ease-in-out_infinite]" />
+                    )}
                     
                     <div className="text-6xl mb-4">{trophy.icon}</div>
                     <h4 className="font-bold text-white text-lg mb-2">{trophy.name}</h4>
@@ -489,7 +551,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
                       disabled={!newTribute.trim() || loading}
                       onClick={handleSubmitTribute}
                     >
-                      {loading ? <Loader2 className="h-4 w-4 mr-2" /> : null}
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       Post Tribute
                     </Button>
                   </div>

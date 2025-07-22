@@ -25,7 +25,7 @@ interface TrophyPodiumProps {
   autoPlay?: boolean;
 }
 
-export const TrophyPodium: React.FC<TrophyPodiumProps> = React.memo(({
+export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
   winners,
   challengeName,
   isVisible,
@@ -45,26 +45,24 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = React.memo(({
   const podiumOrder = [second, first, third].filter(Boolean);
 
   useEffect(() => {
-    console.log("[TrophyPodium] useEffect triggered", { isVisible, autoPlay, animationState });
     if (isVisible && autoPlay && animationState === 'waiting') {
       startAnimation();
     }
-  }, [isVisible, autoPlay, animationState]);
+  }, [isVisible, autoPlay]);
 
   const startAnimation = async () => {
     setAnimationState('building');
     setRevealedPositions(new Set());
     
-    // COMMENTED OUT FOR TESTING - removing setTimeout intervals that could cause rerender loops
     // Build podium animation
-    // await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     setAnimationState('revealing');
     
-    // Reveal winners one by one (3rd, 2nd, 1st) - ASYNC LOOPS DISABLED FOR TESTING
+    // Reveal winners one by one (3rd, 2nd, 1st)
     const revealOrder = [3, 2, 1];
     for (const position of revealOrder) {
-      // await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 800));
       setRevealedPositions(prev => new Set([...prev, position]));
       
       // Sound effect for each reveal
@@ -73,11 +71,11 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = React.memo(({
       }
     }
     
-    // await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
     setAnimationState('celebrating');
     
-    // Final celebration - DISABLED FOR TESTING
-    // await new Promise(resolve => setTimeout(resolve, 2000));
+    // Final celebration
+    await new Promise(resolve => setTimeout(resolve, 2000));
     setAnimationState('complete');
     onComplete?.();
   };
@@ -406,4 +404,4 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = React.memo(({
       </div>
     </div>
   );
-});
+};

@@ -82,7 +82,7 @@ export const FriendSelector = ({
   return (
     <Card 
       ref={selectorRef}
-      className="absolute z-50 w-64 max-h-60 overflow-y-auto shadow-lg"
+      className="absolute z-50 w-64 max-h-60 overflow-y-auto shadow-lg animate-fade-in"
       style={{ 
         top: position.top, 
         left: position.left,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -56,11 +56,8 @@ export const usePrivateChallenges = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchPrivateChallenges = useCallback(async () => {
-    if (!user) {
-      setPrivateChallenges([]);
-      return;
-    }
+  const fetchPrivateChallenges = async () => {
+    if (!user) return;
     
     try {
       const { data, error } = await supabase
@@ -68,29 +65,20 @@ export const usePrivateChallenges = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Fetch private challenges error:', error);
-        setPrivateChallenges([]);
-        return;
-      }
-      
-      setPrivateChallenges(Array.isArray(data) ? data : []);
+      if (error) throw error;
+      setPrivateChallenges(data || []);
     } catch (error) {
       console.error('Error fetching private challenges:', error);
-      setPrivateChallenges([]);
       toast({
         title: "Error",
         description: "Failed to load private challenges",
         variant: "destructive",
       });
     }
-  }, [user, toast]);
+  };
 
-  const fetchUserPrivateParticipations = useCallback(async () => {
-    if (!user) {
-      setUserPrivateParticipations([]);
-      return;
-    }
+  const fetchUserPrivateParticipations = async () => {
+    if (!user) return;
 
     try {
       const { data, error } = await supabase
@@ -98,24 +86,15 @@ export const usePrivateChallenges = () => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Fetch user private participations error:', error);
-        setUserPrivateParticipations([]);
-        return;
-      }
-      
-      setUserPrivateParticipations(Array.isArray(data) ? data : []);
+      if (error) throw error;
+      setUserPrivateParticipations(data || []);
     } catch (error) {
       console.error('Error fetching user private participations:', error);
-      setUserPrivateParticipations([]);
     }
-  }, [user]);
+  };
 
-  const fetchPendingInvitations = useCallback(async () => {
-    if (!user) {
-      setPendingInvitations([]);
-      return;
-    }
+  const fetchPendingInvitations = async () => {
+    if (!user) return;
 
     try {
       const { data, error } = await supabase
@@ -124,18 +103,12 @@ export const usePrivateChallenges = () => {
         .eq('invitee_id', user.id)
         .eq('status', 'pending');
 
-      if (error) {
-        console.error('Fetch pending invitations error:', error);
-        setPendingInvitations([]);
-        return;
-      }
-      
-      setPendingInvitations(Array.isArray(data) ? data : []);
+      if (error) throw error;
+      setPendingInvitations(data || []);
     } catch (error) {
       console.error('Error fetching pending invitations:', error);
-      setPendingInvitations([]);
     }
-  }, [user]);
+  };
 
   const createPrivateChallenge = async (challengeData: {
     title: string;
@@ -353,59 +326,40 @@ export const usePrivateChallenges = () => {
   };
 
   useEffect(() => {
-    console.log("🔍 usePrivateChallenges useEffect triggered", { user: user?.id });
-    console.log("🔍 usePrivateChallenges useEffect dependencies:", {
-      user: user?.id,
-      fetchPrivateChallenges: typeof fetchPrivateChallenges,
-      fetchUserPrivateParticipations: typeof fetchUserPrivateParticipations,
-      fetchPendingInvitations: typeof fetchPendingInvitations
-    });
-    
     const loadData = async () => {
-      try {
-        setLoading(true);
-        console.log("🔍 usePrivateChallenges: Starting data load");
-        if (user) {
-          await Promise.all([
-            fetchPrivateChallenges(),
-            fetchUserPrivateParticipations(),
-            fetchPendingInvitations()
-          ]);
-          console.log("🔍 usePrivateChallenges: Data load completed");
-        }
-      } catch (error) {
-        console.error('Error loading private challenge data:', error);
-      } finally {
-        setLoading(false);
+      setLoading(true);
+      if (user) {
+        await Promise.all([
+          fetchPrivateChallenges(),
+          fetchUserPrivateParticipations(),
+          fetchPendingInvitations()
+        ]);
       }
+      setLoading(false);
     };
 
     loadData();
-  }, [user, fetchPrivateChallenges, fetchUserPrivateParticipations, fetchPendingInvitations]);
+  }, [user]);
 
   // Get user's participation for a specific challenge
   const getUserPrivateParticipation = (challengeId: string) =>
-    Array.isArray(userPrivateParticipations) ? 
-      userPrivateParticipations.find(p => p && p.private_challenge_id === challengeId) : 
-      undefined;
+    userPrivateParticipations.find(p => p.private_challenge_id === challengeId);
 
   // Get challenges the user is participating in
-  const userActiveChallenges = Array.isArray(privateChallenges) && Array.isArray(userPrivateParticipations) ?
-    privateChallenges.filter(challenge =>
-      challenge && userPrivateParticipations.some(p => p && p.private_challenge_id === challenge.id)
-    ) : [];
+  const userActiveChallenges = privateChallenges.filter(challenge =>
+    userPrivateParticipations.some(p => p.private_challenge_id === challenge.id)
+  );
 
   // Get challenges with detailed participation info
-  const challengesWithParticipation = Array.isArray(userActiveChallenges) ?
-    userActiveChallenges.map(challenge => ({
-      ...challenge,
-      participation: getUserPrivateParticipation(challenge?.id)
-    })) : [];
+  const challengesWithParticipation = userActiveChallenges.map(challenge => ({
+    ...challenge,
+    participation: getUserPrivateParticipation(challenge.id)
+  }));
 
   return {
-    privateChallenges: Array.isArray(privateChallenges) ? privateChallenges : [],
-    userPrivateParticipations: Array.isArray(userPrivateParticipations) ? userPrivateParticipations : [],
-    pendingInvitations: Array.isArray(pendingInvitations) ? pendingInvitations : [],
+    privateChallenges,
+    userPrivateParticipations,
+    pendingInvitations,
     userActiveChallenges,
     challengesWithParticipation,
     loading,
@@ -414,10 +368,10 @@ export const usePrivateChallenges = () => {
     declineInvitation,
     updatePrivateProgress,
     getUserPrivateParticipation,
-    refreshData: useCallback(() => Promise.all([
+    refreshData: () => Promise.all([
       fetchPrivateChallenges(),
       fetchUserPrivateParticipations(),
       fetchPendingInvitations()
-    ]), [fetchPrivateChallenges, fetchUserPrivateParticipations, fetchPendingInvitations]),
+    ]),
   };
 };
