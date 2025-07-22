@@ -117,22 +117,22 @@ const Explore = () => {
                 transition-all duration-300 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95
-                shadow-xl shadow-inner shadow-[inset_0_4px_12px_rgba(255,255,255,0.2)] ${tile.shadowColor} hover:shadow-2xl
+                shadow-xl shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] ring-[1px] ring-inset ring-white/15 ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
                 flex flex-col items-center justify-center space-y-2
                 ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               {/* Emoji Icon */}
-              <div className={`${safeIsMobile ? 'text-[2.75rem]' : 'text-[3rem]'} 
-                group-active:animate-[bounce_0.5s_ease-in-out] group-active:scale-110 transition-transform duration-200
+              <div className={`${safeIsMobile ? 'text-[3rem]' : 'text-[3.25rem]'} 
+                group-hover:scale-105 group-active:scale-95 transition-transform duration-300 ease-out
                 filter drop-shadow-lg`}>
                 {tile.emoji}
               </div>
               {/* Title */}
               <span className={`${safeIsMobile ? 'text-sm' : 'text-base'} 
-                font-bold text-center leading-tight text-white/90
-                drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>
+                font-bold text-center leading-tight text-white
+                drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
                 {tile.title}
               </span>
             </Button>
@@ -151,7 +151,7 @@ const Explore = () => {
             transition-all duration-300 ease-out
             bg-gradient-to-br from-slate-500 to-slate-600 
             hover:scale-105 active:scale-95
-            shadow-xl shadow-inner shadow-[inset_0_4px_12px_rgba(255,255,255,0.2)] shadow-slate-500/20 hover:shadow-2xl
+            shadow-xl shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] ring-[1px] ring-inset ring-white/15 shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
             flex items-center justify-center space-x-3
             ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
@@ -165,7 +165,7 @@ const Explore = () => {
           </div>
           {/* Profile Text */}
           <span className={`${safeIsMobile ? 'text-lg' : 'text-xl'} 
-            font-bold text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>
+            font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
             Profile
           </span>
         </Button>
