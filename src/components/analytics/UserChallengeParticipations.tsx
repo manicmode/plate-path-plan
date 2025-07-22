@@ -10,7 +10,7 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { UnifiedChallengeCard } from './UnifiedChallengeCard';
 
-export const UserChallengeParticipations: React.FC = () => {
+export const UserChallengeParticipations: React.FC = React.memo(() => {
   console.count("YourChallenges renders");
   
   // Render counter for infinite loop detection
@@ -267,4 +267,4 @@ export const UserChallengeParticipations: React.FC = () => {
       </Tabs>
     </div>
   );
-};
+});

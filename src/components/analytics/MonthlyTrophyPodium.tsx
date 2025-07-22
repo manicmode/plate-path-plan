@@ -9,7 +9,7 @@ import { TrophyShelf } from './TrophyShelf';
 import { useTrophyPodium, CompletedChallenge } from '@/hooks/useTrophyPodium';
 import { useToast } from '@/hooks/use-toast';
 
-export const MonthlyTrophyPodium: React.FC = () => {
+export const MonthlyTrophyPodium: React.FC = React.memo(() => {
   const [selectedChallenge, setSelectedChallenge] = useState<CompletedChallenge | null>(null);
   const [winners, setWinners] = useState<PodiumWinner[]>([]);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
@@ -288,4 +288,4 @@ export const MonthlyTrophyPodium: React.FC = () => {
       </Tabs>
     </div>
   );
-};
+});

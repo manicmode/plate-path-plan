@@ -25,7 +25,7 @@ interface TrophyPodiumProps {
   autoPlay?: boolean;
 }
 
-export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
+export const TrophyPodium: React.FC<TrophyPodiumProps> = React.memo(({
   winners,
   challengeName,
   isVisible,
@@ -404,4 +404,4 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
       </div>
     </div>
   );
-};
+});

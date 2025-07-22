@@ -19,7 +19,7 @@ interface LeaderboardEntry {
   current_streak: number;
 }
 
-export const MonthlyLeaderboard: React.FC = () => {
+export const MonthlyLeaderboard: React.FC = React.memo(() => {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,4 +215,4 @@ export const MonthlyLeaderboard: React.FC = () => {
       </CardContent>
     </Card>
   );
-};
+});

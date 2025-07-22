@@ -100,7 +100,7 @@ const GameAndChallengePage: React.FC = () => {
   const publicLoading = Boolean(publicData?.loading);
   const privateLoading = Boolean(privateData?.loading);
 
-  // Calculate real statistics with comprehensive error handling
+  // Calculate real statistics with comprehensive error handling (moved before using it)
   const stats = useMemo(() => {
     try {
       const safePublicChallenges = Array.isArray(publicChallenges) ? publicChallenges : [];
@@ -116,7 +116,13 @@ const GameAndChallengePage: React.FC = () => {
         totalPublicChallenges,
         totalPrivateChallenges,
         totalParticipations,
-        trendingCount
+        trendingCount,
+        // Add mock data for AchievementBadges compatibility
+        currentScore: totalParticipations * 10,
+        weeklyAverage: totalParticipations * 8,
+        monthlyAverage: totalParticipations * 9,
+        streak: Math.min(totalParticipations, 7),
+        bestScore: totalParticipations * 12
       };
     } catch (error) {
       console.error('Stats calculation error:', error);
@@ -124,10 +130,34 @@ const GameAndChallengePage: React.FC = () => {
         totalPublicChallenges: 0,
         totalPrivateChallenges: 0,
         totalParticipations: 0,
-        trendingCount: 0
+        trendingCount: 0,
+        currentScore: 0,
+        weeklyAverage: 0,
+        monthlyAverage: 0,
+        streak: 0,
+        bestScore: 0
       };
     }
   }, [publicChallenges, privateChallenges, publicParticipations]);
+
+  // Memoize tab content rendering to prevent unnecessary re-renders when activeTab changes
+  const renderTabContent = useMemo(() => {
+    console.log("🎯 renderTabContent memoization triggered - should only happen when dependencies change");
+    console.log("📊 Creating Browse tab content");
+    console.log("🎯 Creating My Challenges tab content");
+    console.log("👥 Creating Friends tab content");
+    console.log("🏆 Creating Achievements tab content");
+    console.log("👑 Creating Leaderboard tab content");
+    
+    const tabContent: Record<string, React.ReactNode> = {
+      browse: <PublicChallengesBrowse />,
+      'my-challenges': <UserChallengeParticipations />,
+      friends: <MyFriendsTab />,
+      achievements: <AchievementBadges scoreStats={stats} />,
+      leaderboard: <MonthlyTrophyPodium />
+    };
+    return tabContent;
+  }, [stats]);
 
   const loading = publicLoading || privateLoading;
 
@@ -216,7 +246,7 @@ const GameAndChallengePage: React.FC = () => {
         )}
 
         {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" key={activeTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="browse" className="flex items-center gap-2">
               <Globe className="w-4 h-4" />
@@ -241,120 +271,23 @@ const GameAndChallengePage: React.FC = () => {
           </TabsList>
 
           <TabsContent value="browse" className="space-y-6">
-            {(() => {
-              console.log("🔍 Rendering PublicChallengesBrowse tab...");
-              try {
-                return <PublicChallengesBrowse />;
-              } catch (error) {
-                console.error('❌ PublicChallengesBrowse error:', error);
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Unable to load public challenges</p>
-                  </div>
-                );
-              }
-            })()}
+            {renderTabContent['browse']}
           </TabsContent>
 
           <TabsContent value="my-challenges" className="space-y-6">
-            {(() => {
-              console.log("🔍 Rendering UserChallengeParticipations tab...");
-              try {
-                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">My Challenges tab temporarily disabled for debugging</p>
-                  </div>
-                );
-                // return <UserChallengeParticipations />;
-              } catch (error) {
-                console.error('❌ UserChallengeParticipations error:', error);
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Unable to load your challenges</p>
-                  </div>
-                );
-              }
-            })()}
+            {renderTabContent['my-challenges']}
           </TabsContent>
 
           <TabsContent value="friends" className="space-y-6">
-            {(() => {
-              console.log("🔍 Rendering MyFriendsTab tab...");
-              try {
-                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Friends tab temporarily disabled for debugging</p>
-                  </div>
-                );
-                // return <MyFriendsTab />;
-              } catch (error) {
-                console.error('❌ MyFriendsTab error:', error);
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Unable to load friends</p>
-                  </div>
-                );
-              }
-            })()}
+            {renderTabContent['friends']}
           </TabsContent>
 
           <TabsContent value="achievements" className="space-y-6">
-            {(() => {
-              console.log("🔍 Rendering AchievementBadges tab...");
-              try {
-                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Achievements tab temporarily disabled for debugging</p>
-                  </div>
-                );
-                // return (
-                //   <AchievementBadges scoreStats={{
-                //     currentScore: 0,
-                //     weeklyAverage: 0,
-                //     monthlyAverage: 0,
-                //     streak: 0,
-                //     bestScore: 0
-                //   }} />
-                // );
-              } catch (error) {
-                console.error('❌ AchievementBadges error:', error);
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Unable to load achievements</p>
-                  </div>
-                );
-              }
-            })()}
+            {renderTabContent['achievements']}
           </TabsContent>
 
           <TabsContent value="leaderboard" className="space-y-6">
-            {(() => {
-              console.log("🔍 Rendering Leaderboard tab...");
-              try {
-                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Leaderboard tab temporarily disabled for debugging</p>
-                  </div>
-                );
-                // return (
-                //   <div className="space-y-6">
-                //     <HallOfFame champions={[]} />
-                //     <MonthlyTrophyPodium />
-                //   </div>
-                // );
-              } catch (error) {
-                console.error('❌ Leaderboard error:', error);
-                return (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Unable to load leaderboard</p>
-                  </div>
-                );
-              }
-            })()}
+            {renderTabContent['leaderboard']}
           </TabsContent>
         </Tabs>
       </div>

@@ -104,7 +104,7 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
   );
 };
 
-export const MyFriendsTab = () => {
+export const MyFriendsTab = React.memo(() => {
   console.count("FriendsTab renders");
   
   // Render counter for infinite loop detection
@@ -262,4 +262,4 @@ export const MyFriendsTab = () => {
       />
     </div>
   );
-};
+});

@@ -8,7 +8,7 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
-export const PublicChallengesBrowse: React.FC = () => {
+export const PublicChallengesBrowse: React.FC = React.memo(() => {
   console.count("PublicChallenges renders");
   
   // Render counter for infinite loop detection
@@ -252,4 +252,4 @@ export const PublicChallengesBrowse: React.FC = () => {
       </Card>
     </div>
   );
-};
+});

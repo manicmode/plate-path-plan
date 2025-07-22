@@ -39,7 +39,7 @@ interface AchievementBadgesProps {
   className?: string;
 }
 
-export const AchievementBadges: React.FC<AchievementBadgesProps> = ({ 
+export const AchievementBadges: React.FC<AchievementBadgesProps> = React.memo(({ 
   scoreStats, 
   className 
 }) => {
@@ -290,4 +290,4 @@ export const AchievementBadges: React.FC<AchievementBadgesProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
