@@ -117,7 +117,7 @@ const Explore = () => {
                 transition-all duration-300 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95
-                shadow-xl ${tile.shadowColor} hover:shadow-2xl
+                shadow-xl shadow-inner ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
                 flex flex-col items-center justify-center space-y-2
                 ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
@@ -125,14 +125,14 @@ const Explore = () => {
             >
               {/* Emoji Icon */}
               <div className={`${safeIsMobile ? 'text-3xl' : 'text-4xl'} 
-                group-hover:scale-110 transition-transform duration-200 animate-pulse
+                group-active:animate-bounce transition-transform duration-200
                 filter drop-shadow-lg`}>
                 {tile.emoji}
               </div>
               {/* Title */}
               <span className={`${safeIsMobile ? 'text-sm' : 'text-base'} 
                 font-bold text-center leading-tight text-white
-                drop-shadow-lg`}>
+                drop-shadow-md`}>
                 {tile.title}
               </span>
             </Button>
@@ -141,7 +141,7 @@ const Explore = () => {
       </div>
 
       {/* Profile Tab - Simplified and positioned correctly */}
-      <div className="w-full mb-20 relative z-30">
+      <div className="w-full mb-16 relative z-30">
         <Button
           onClick={() => handleTileClick('profile')}
           disabled={navigationInProgress}
@@ -159,13 +159,13 @@ const Explore = () => {
         >
           {/* Profile Icon */}
           <div className={`${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
-            group-hover:scale-110 transition-transform duration-200 animate-bounce
+            group-active:animate-bounce transition-transform duration-200
             filter drop-shadow-lg`}>
             👤
           </div>
           {/* Profile Text */}
           <span className={`${safeIsMobile ? 'text-lg' : 'text-xl'} 
-            font-bold text-white drop-shadow-lg`}>
+            font-bold text-white drop-shadow-md`}>
             Profile
           </span>
         </Button>
