@@ -58,42 +58,42 @@ const Explore = () => {
       id: 'exercise-hub',
       title: 'Exercise Hub',
       emoji: '💪',
-      color: 'from-blue-500 to-blue-600',
+      color: 'from-blue-300 to-blue-600',
       shadowColor: 'shadow-blue-500/20',
     },
     {
       id: 'game-challenge',
       title: 'Game & Challenge',
       emoji: '🏆',
-      color: 'from-yellow-500 to-orange-500',
+      color: 'from-yellow-300 to-orange-600',
       shadowColor: 'shadow-yellow-500/20',
     },
     {
       id: 'supplement-hub',
       title: 'Supplement Hub',
       emoji: '🧪',
-      color: 'from-purple-500 to-pink-500',
+      color: 'from-purple-300 to-pink-600',
       shadowColor: 'shadow-purple-500/20',
     },
     {
       id: 'influencers',
       title: 'Influencer Hub',
       emoji: '⭐️',
-      color: 'from-blue-500 to-cyan-500',
+      color: 'from-blue-300 to-cyan-600',
       shadowColor: 'shadow-blue-500/20',
     },
     {
       id: 'my-reports',
       title: 'My Reports',
       emoji: '📄',
-      color: 'from-emerald-500 to-teal-500',
+      color: 'from-emerald-300 to-teal-600',
       shadowColor: 'shadow-emerald-500/20',
     },
     {
       id: 'health-check',
       title: 'Health Scan',
       emoji: '❤️',
-      color: 'from-red-500 to-rose-500',
+      color: 'from-red-300 to-rose-600',
       shadowColor: 'shadow-red-500/20',
     },
   ];
@@ -149,7 +149,7 @@ const Explore = () => {
           className={`
             group relative w-full h-16 p-3 rounded-2xl 
             transition-all duration-300 ease-out
-            bg-gradient-to-br from-slate-400 to-slate-500 
+            bg-gradient-to-br from-slate-300 to-slate-600 
             hover:scale-105 active:scale-95
             shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
