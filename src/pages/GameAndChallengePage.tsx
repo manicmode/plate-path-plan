@@ -164,18 +164,26 @@ const GameAndChallengePage: React.FC = () => {
   // Wrap the entire render in try/catch
   try {
     return (
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-3">
-            <Trophy className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold">Gaming & Challenges</h1>
-            <Trophy className="w-8 h-8 text-primary" />
+      <div 
+        style={{
+          transform: 'translateZ(0)',
+          willChange: 'transform',
+          contain: 'layout paint style',
+          overflow: 'hidden'
+        }}
+      >
+        <div className="container mx-auto px-4 py-6 space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-3">
+              <Trophy className="w-8 h-8 text-primary" />
+              <h1 className="text-3xl font-bold">Gaming & Challenges</h1>
+              <Trophy className="w-8 h-8 text-primary" />
+            </div>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Join challenges, compete with friends, and unlock achievements on your wellness journey
+            </p>
           </div>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Join challenges, compete with friends, and unlock achievements on your wellness journey
-          </p>
-        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -270,26 +278,47 @@ const GameAndChallengePage: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="browse" className="space-y-6">
+          <TabsContent 
+            value="browse" 
+            className="space-y-6"
+            style={{ minHeight: '300px', transition: 'none' }}
+          >
             {renderTabContent['browse']}
           </TabsContent>
 
-          <TabsContent value="my-challenges" className="space-y-6">
+          <TabsContent 
+            value="my-challenges" 
+            className="space-y-6"
+            style={{ minHeight: '300px', transition: 'none' }}
+          >
             {renderTabContent['my-challenges']}
           </TabsContent>
 
-          <TabsContent value="friends" className="space-y-6">
+          <TabsContent 
+            value="friends" 
+            className="space-y-6"
+            style={{ minHeight: '300px', transition: 'none' }}
+          >
             {renderTabContent['friends']}
           </TabsContent>
 
-          <TabsContent value="achievements" className="space-y-6">
+          <TabsContent 
+            value="achievements" 
+            className="space-y-6"
+            style={{ minHeight: '300px', transition: 'none' }}
+          >
             {renderTabContent['achievements']}
           </TabsContent>
 
-          <TabsContent value="leaderboard" className="space-y-6">
+          <TabsContent 
+            value="leaderboard" 
+            className="space-y-6"
+            style={{ minHeight: '300px', transition: 'none' }}
+          >
             {renderTabContent['leaderboard']}
           </TabsContent>
         </Tabs>
+        </div>
       </div>
     );
   } catch (error) {
