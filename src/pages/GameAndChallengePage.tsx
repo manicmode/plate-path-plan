@@ -40,6 +40,14 @@ const GameAndChallengePage: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState('browse');
   console.log("🔍 useState for activeTab completed");
+  console.log("🎯 Active Tab State:", activeTab);
+  
+  // Track activeTab changes
+  const previousActiveTab = useRef(activeTab);
+  if (previousActiveTab.current !== activeTab) {
+    console.log("🎯 Tab changed from", previousActiveTab.current, "to", activeTab);
+    previousActiveTab.current = activeTab;
+  }
   
   // Move hook calls to top level to avoid conditional hook calls
   console.log("🔍 About to call useChallenge...");
@@ -52,6 +60,18 @@ const GameAndChallengePage: React.FC = () => {
     microChallenges: challengeContext?.microChallenges?.length,
     activeUserChallenges: challengeContext?.activeUserChallenges?.length
   });
+  
+  // Deep diagnostic on challenge context value stability
+  const challengeContextRef = useRef<typeof challengeContext>();
+  if (challengeContextRef.current !== challengeContext) {
+    console.log("🚨 ChallengeContext changed:", {
+      previous: challengeContextRef.current,
+      current: challengeContext,
+      challengesChanged: challengeContextRef.current?.challenges !== challengeContext?.challenges,
+      microChallengesChanged: challengeContextRef.current?.microChallenges !== challengeContext?.microChallenges
+    });
+    challengeContextRef.current = challengeContext;
+  }
   
   console.log("🔍 About to call usePublicChallenges...");
   const publicHookStart = performance.now();
@@ -77,31 +97,41 @@ const GameAndChallengePage: React.FC = () => {
   console.log("🔍 All hooks completed, starting render logic...");
 
   // Use hook results directly with stable references
-  const microChallenges = useMemo(() => 
-    Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [], 
-    [challengeContext?.microChallenges]
-  );
+  const microChallenges = useMemo(() => {
+    const result = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
+    console.log("🔄 microChallenges memoization - deps:", challengeContext?.microChallenges);
+    return result;
+  }, [challengeContext?.microChallenges]);
   
-  const publicChallenges = useMemo(() => 
-    Array.isArray(publicData?.challenges) ? publicData.challenges : [], 
-    [publicData?.challenges]
-  );
+  const publicChallenges = useMemo(() => {
+    const result = Array.isArray(publicData?.challenges) ? publicData.challenges : [];
+    console.log("🔄 publicChallenges memoization - deps:", publicData?.challenges);
+    return result;
+  }, [publicData?.challenges]);
   
-  const publicParticipations = useMemo(() => 
-    Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [], 
-    [publicData?.userParticipations]
-  );
+  const publicParticipations = useMemo(() => {
+    const result = Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [];
+    console.log("🔄 publicParticipations memoization - deps:", publicData?.userParticipations);
+    return result;
+  }, [publicData?.userParticipations]);
   
-  const privateChallenges = useMemo(() => 
-    Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [], 
-    [privateData?.userActiveChallenges]
-  );
+  const privateChallenges = useMemo(() => {
+    const result = Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [];
+    console.log("🔄 privateChallenges memoization - deps:", privateData?.userActiveChallenges);
+    return result;
+  }, [privateData?.userActiveChallenges]);
 
   const publicLoading = Boolean(publicData?.loading);
   const privateLoading = Boolean(privateData?.loading);
 
   // Calculate real statistics with comprehensive error handling (moved before using it)
   const stats = useMemo(() => {
+    console.log("🔄 stats memoization triggered - deps:", {
+      publicChallenges: publicChallenges?.length,
+      privateChallenges: privateChallenges?.length,
+      publicParticipations: publicParticipations?.length
+    });
+    
     try {
       const safePublicChallenges = Array.isArray(publicChallenges) ? publicChallenges : [];
       const safePrivateChallenges = Array.isArray(privateChallenges) ? privateChallenges : [];
@@ -112,7 +142,7 @@ const GameAndChallengePage: React.FC = () => {
       const totalParticipations = safePublicParticipations.length + safePrivateChallenges.length;
       const trendingCount = safePublicChallenges.filter(c => c?.is_trending === true).length;
       
-      return {
+      const result = {
         totalPublicChallenges,
         totalPrivateChallenges,
         totalParticipations,
@@ -124,6 +154,9 @@ const GameAndChallengePage: React.FC = () => {
         streak: Math.min(totalParticipations, 7),
         bestScore: totalParticipations * 12
       };
+      
+      console.log("📊 Stats calculated:", result);
+      return result;
     } catch (error) {
       console.error('Stats calculation error:', error);
       return {
@@ -148,6 +181,7 @@ const GameAndChallengePage: React.FC = () => {
     console.log("👥 Creating Friends tab content");
     console.log("🏆 Creating Achievements tab content");
     console.log("👑 Creating Leaderboard tab content");
+    console.log("🔄 renderTabContent deps - stats:", stats);
     
     const tabContent: Record<string, React.ReactNode> = {
       browse: <PublicChallengesBrowse />,
@@ -160,6 +194,36 @@ const GameAndChallengePage: React.FC = () => {
   }, [stats]);
 
   const loading = publicLoading || privateLoading;
+  
+  // Track dependency changes for all major dependencies
+  const depsRef = useRef<Record<string, any>>({});
+  const currentDeps = {
+    activeTab,
+    publicData,
+    privateData,
+    challengeContext,
+    stats,
+    loading
+  };
+  
+  Object.entries(currentDeps).forEach(([key, value]) => {
+    if (depsRef.current[key] !== value) {
+      console.log(`🔄 Dependency changed: ${key}`, {
+        previous: depsRef.current[key],
+        current: value
+      });
+      depsRef.current[key] = value;
+    }
+  });
+
+  console.log("🎯 Final render state:", {
+    activeTab,
+    loading,
+    microChallengesCount: microChallenges?.length,
+    publicChallengesCount: publicChallenges?.length,
+    privateChallengesCount: privateChallenges?.length,
+    statsCalculated: !!stats
+  });
 
   // Wrap the entire render in try/catch
   try {

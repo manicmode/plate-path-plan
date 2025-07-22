@@ -137,6 +137,7 @@ export const UserChallengeParticipations: React.FC = React.memo(() => {
     );
   }
 
+  console.log("🔍 UserChallengeParticipations: Rendering main content");
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">

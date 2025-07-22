@@ -50,6 +50,7 @@ export const PublicChallengesBrowse: React.FC = React.memo(() => {
     return <LoadingScreen />;
   }
 
+  console.log("🔍 PublicChallengesBrowse: Rendering main content");
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">

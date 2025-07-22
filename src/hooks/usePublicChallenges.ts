@@ -271,13 +271,22 @@ export const usePublicChallenges = () => {
 
   useEffect(() => {
     console.log("🔍 usePublicChallenges useEffect triggered", { user: user?.id });
+    console.log("🔍 usePublicChallenges useEffect dependencies:", {
+      user: user?.id,
+      fetchChallenges: typeof fetchChallenges,
+      fetchUserParticipations: typeof fetchUserParticipations
+    });
+    
     const loadData = async () => {
       try {
         setLoading(true);
+        console.log("🔍 usePublicChallenges: Starting data load");
         await fetchChallenges();
         if (user) {
+          console.log("🔍 usePublicChallenges: Fetching user participations for user:", user.id);
           await fetchUserParticipations();
         }
+        console.log("🔍 usePublicChallenges: Data load completed");
       } catch (error) {
         console.error('Error loading challenge data:', error);
       } finally {

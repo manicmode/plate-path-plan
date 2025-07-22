@@ -46,6 +46,9 @@ interface ChallengeProviderProps {
 }
 
 export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }) => {
+  console.count("ChallengeProvider renders");
+  console.log("🔍 ChallengeProvider render start");
+  
   const [challenges, setChallenges] = useState<Challenge[]>([
     // Mock data for demonstration
     {
@@ -248,6 +251,12 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     deleteChallenge,
     nudgeFriend,
   };
+  
+  console.log("🔍 ChallengeProvider context value created:", {
+    challengesCount: regularChallenges.length,
+    microChallengesCount: microChallenges.length,
+    activeUserChallengesCount: activeUserChallenges.length
+  });
 
   return (
     <ChallengeContext.Provider value={value}>

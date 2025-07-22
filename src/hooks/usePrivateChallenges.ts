@@ -354,15 +354,24 @@ export const usePrivateChallenges = () => {
 
   useEffect(() => {
     console.log("🔍 usePrivateChallenges useEffect triggered", { user: user?.id });
+    console.log("🔍 usePrivateChallenges useEffect dependencies:", {
+      user: user?.id,
+      fetchPrivateChallenges: typeof fetchPrivateChallenges,
+      fetchUserPrivateParticipations: typeof fetchUserPrivateParticipations,
+      fetchPendingInvitations: typeof fetchPendingInvitations
+    });
+    
     const loadData = async () => {
       try {
         setLoading(true);
+        console.log("🔍 usePrivateChallenges: Starting data load");
         if (user) {
           await Promise.all([
             fetchPrivateChallenges(),
             fetchUserPrivateParticipations(),
             fetchPendingInvitations()
           ]);
+          console.log("🔍 usePrivateChallenges: Data load completed");
         }
       } catch (error) {
         console.error('Error loading private challenge data:', error);
