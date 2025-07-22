@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
+import { useRealNutritionHistory } from '@/hooks/useRealNutritionHistory';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useState } from 'react';
 import { DayDetailModal } from '@/components/analytics/DayDetailModal';
@@ -18,6 +19,7 @@ const ProgressCalories = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { getTodaysProgress } = useNutrition();
+  const { dailyData, weeklyData, monthlyData, isLoading } = useRealNutritionHistory();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showDayDetail, setShowDayDetail] = useState(false);
@@ -27,41 +29,50 @@ const ProgressCalories = () => {
   
   const targetCalories = user?.targetCalories || 2000;
   const todayProgress = getTodaysProgress();
-  
-  // Mock data for different time periods with actual dates
-  const dailyData = [
-    { name: 'Mon', value: 1800, target: targetCalories, date: format(subDays(new Date(), 6), 'yyyy-MM-dd') },
-    { name: 'Tue', value: 2100, target: targetCalories, date: format(subDays(new Date(), 5), 'yyyy-MM-dd') },
-    { name: 'Wed', value: 1950, target: targetCalories, date: format(subDays(new Date(), 4), 'yyyy-MM-dd') },
-    { name: 'Thu', value: 2200, target: targetCalories, date: format(subDays(new Date(), 3), 'yyyy-MM-dd') },
-    { name: 'Fri', value: 1850, target: targetCalories, date: format(subDays(new Date(), 2), 'yyyy-MM-dd') },
-    { name: 'Sat', value: 2000, target: targetCalories, date: format(subDays(new Date(), 1), 'yyyy-MM-dd') },
-    { name: 'Today', value: Math.round(todayProgress.calories), target: targetCalories, date: format(new Date(), 'yyyy-MM-dd') },
-  ];
 
-  const weeklyData = [
-    { name: 'Week 1', value: 1920, target: targetCalories, date: format(subDays(new Date(), 21), 'yyyy-MM-dd') },
-    { name: 'Week 2', value: 1985, target: targetCalories, date: format(subDays(new Date(), 14), 'yyyy-MM-dd') },
-    { name: 'Week 3', value: 1876, target: targetCalories, date: format(subDays(new Date(), 7), 'yyyy-MM-dd') },
-    { name: 'Week 4', value: 2050, target: targetCalories, date: format(new Date(), 'yyyy-MM-dd') },
-  ];
+  // Format data for charts with day names and real data
+  const getDailyChartData = () => {
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
+    return dailyData.map((data, index) => ({
+      name: index === 6 ? 'Today' : dayNames[index],
+      value: data.calories,
+      target: targetCalories,
+      date: data.date
+    }));
+  };
 
-  const monthlyData = [
-    { name: 'Jan', value: 1890, target: targetCalories, date: '2024-01-01' },
-    { name: 'Feb', value: 1950, target: targetCalories, date: '2024-02-01' },
-    { name: 'Mar', value: 2020, target: targetCalories, date: '2024-03-01' },
-  ];
+  const getWeeklyChartData = () => {
+    return weeklyData.map((data, index) => ({
+      name: `Week ${index + 1}`,
+      value: data.calories,
+      target: targetCalories,
+      date: data.date
+    }));
+  };
+
+  const getMonthlyChartData = () => {
+    const monthNames = ['Jan', 'Feb', 'Mar'];
+    return monthlyData.map((data, index) => ({
+      name: monthNames[index] || `Month ${index + 1}`,
+      value: data.calories,
+      target: targetCalories,
+      date: data.date
+    }));
+  };
 
   const getCurrentData = () => {
+    if (isLoading) return [];
+    
     switch (viewMode) {
-      case 'weekly': return weeklyData;
-      case 'monthly': return monthlyData;
-      default: return dailyData;
+      case 'weekly': return getWeeklyChartData();
+      case 'monthly': return getMonthlyChartData();
+      default: return getDailyChartData();
     }
   };
 
   const getAverageIntake = () => {
     const data = getCurrentData();
+    if (data.length === 0) return 0;
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return Math.round(total / data.length);
   };
@@ -102,6 +113,16 @@ const ProgressCalories = () => {
     }
     return null;
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in pb-8">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-gray-600 dark:text-gray-400">Loading nutrition data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -228,7 +249,7 @@ const ProgressCalories = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {Math.max(...getCurrentData().map(d => d.value))} kcal
+              {Math.max(...getCurrentData().map(d => d.value), 0)} kcal
             </p>
           </CardContent>
         </Card>
@@ -238,7 +259,7 @@ const ProgressCalories = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {Math.min(...getCurrentData().map(d => d.value))} kcal
+              {Math.min(...getCurrentData().map(d => d.value), 0)} kcal
             </p>
           </CardContent>
         </Card>

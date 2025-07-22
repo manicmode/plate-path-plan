@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,16 +10,29 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 
 export const PublicChallengesBrowse: React.FC = () => {
   const {
-    globalChallenges,
-    quickChallenges,
-    trendingChallenges,
-    newChallenges,
+    challenges,
+    userParticipations,
     loading,
     joinChallenge,
     updateProgress,
     leaveChallenge,
     getUserParticipation,
   } = usePublicChallenges();
+
+  // Use real data with proper memoization
+  const categorizedChallenges = useMemo(() => {
+    const global = challenges.filter(c => c.duration_days >= 7);
+    const quick = challenges.filter(c => c.duration_days <= 3);
+    const trending = challenges.filter(c => c.is_trending);
+    const newChallenges = challenges.filter(c => c.is_new);
+
+    return { global, quick, trending, newChallenges };
+  }, [challenges]);
+
+  // Calculate real statistics
+  const totalParticipants = useMemo(() => {
+    return challenges.reduce((sum, c) => sum + c.participant_count, 0);
+  }, [challenges]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -65,13 +79,13 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {globalChallenges.length === 0 ? (
+              {categorizedChallenges.global.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No global challenges available right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {globalChallenges.map((challenge) => (
+                  {categorizedChallenges.global.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -99,13 +113,13 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {quickChallenges.length === 0 ? (
+              {categorizedChallenges.quick.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No quick challenges available right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {quickChallenges.map((challenge) => (
+                  {categorizedChallenges.quick.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -133,13 +147,13 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {trendingChallenges.length === 0 ? (
+              {categorizedChallenges.trending.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No trending challenges right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {trendingChallenges.map((challenge) => (
+                  {categorizedChallenges.trending.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -167,13 +181,13 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {newChallenges.length === 0 ? (
+              {categorizedChallenges.newChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No new challenges available right now
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {newChallenges.map((challenge) => (
+                  {categorizedChallenges.newChallenges.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -190,7 +204,7 @@ export const PublicChallengesBrowse: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Stats Section */}
+      {/* Stats Section with real data */}
       <Card>
         <CardHeader>
           <CardTitle className="text-center">Challenge Statistics</CardTitle>
@@ -199,26 +213,25 @@ export const PublicChallengesBrowse: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {globalChallenges.length}
+                {categorizedChallenges.global.length}
               </div>
               <div className="text-sm text-muted-foreground">Global Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {quickChallenges.length}
+                {categorizedChallenges.quick.length}
               </div>
               <div className="text-sm text-muted-foreground">Quick Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {trendingChallenges.length}
+                {categorizedChallenges.trending.length}
               </div>
               <div className="text-sm text-muted-foreground">Trending</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {globalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
-                 quickChallenges.reduce((sum, c) => sum + c.participant_count, 0)}
+                {totalParticipants}
               </div>
               <div className="text-sm text-muted-foreground">Total Participants</div>
             </div>

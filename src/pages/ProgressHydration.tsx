@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Droplets, TrendingUp, TrendingDown } from 'lucide-react';
@@ -6,83 +7,116 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useRealHydrationData } from '@/hooks/useRealHydrationData';
+import { CircularProgress } from '@/components/analytics/ui/CircularProgress';
 
 const ProgressHydration = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const { weeklyChartData, weeklyAverage, isLoading, todayTotal } = useRealHydrationData();
   
   // Use the scroll-to-top hook
   useScrollToTop();
   
-  const targetHydration = user?.targetHydration || 8;
-  const currentHydration = 5; // Mock current value
+  // Convert targetHydration (glasses) to ml
+  const targetHydration = user?.targetHydration || 8; // glasses
+  const hydrationTargetMl = targetHydration * 250; // Convert glasses to ml (250ml per glass)
   
-  // Mock data for different time periods
-  const dailyData = [
-    { name: 'Mon', value: 6, target: targetHydration },
-    { name: 'Tue', value: 8, target: targetHydration },
-    { name: 'Wed', value: 7, target: targetHydration },
-    { name: 'Thu', value: 9, target: targetHydration },
-    { name: 'Fri', value: 5, target: targetHydration },
-    { name: 'Sat', value: 7, target: targetHydration },
-    { name: 'Today', value: currentHydration, target: targetHydration },
-  ];
-
-  const weeklyData = [
-    { name: 'Week 1', value: 6.8, target: targetHydration },
-    { name: 'Week 2', value: 7.2, target: targetHydration },
-    { name: 'Week 3', value: 6.5, target: targetHydration },
-    { name: 'Week 4', value: 7.0, target: targetHydration },
-  ];
-
-  const monthlyData = [
-    { name: 'Jan', value: 6.9, target: targetHydration },
-    { name: 'Feb', value: 7.1, target: targetHydration },
-    { name: 'Mar', value: 7.3, target: targetHydration },
-  ];
-
+  // Calculate today's hydration progress percentage
+  const hydrationProgressPercent = Math.min((todayTotal / hydrationTargetMl) * 100, 100);
+  
+  // Get current data based on view mode
   const getCurrentData = () => {
     switch (viewMode) {
-      case 'weekly': return weeklyData;
-      case 'monthly': return monthlyData;
-      default: return dailyData;
+      case 'weekly':
+        // For weekly view, group the last 4 weeks (simplified to last 7 days for now)
+        return weeklyChartData.length > 0 ? [
+          { name: 'This Week', value: weeklyAverage / 250, ml: weeklyAverage, target: targetHydration }
+        ] : [];
+      case 'monthly':
+        // For monthly view, show average for current month (simplified)
+        return weeklyChartData.length > 0 ? [
+          { name: 'This Month', value: weeklyAverage / 250, ml: weeklyAverage, target: targetHydration }
+        ] : [];
+      default:
+        // Daily view - show last 7 days
+        return weeklyChartData;
     }
   };
 
+  const currentData = getCurrentData();
+
   const getAverageIntake = () => {
-    const data = getCurrentData();
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    return Math.round((total / data.length) * 10) / 10;
+    if (currentData.length === 0) return 0;
+    const total = currentData.reduce((sum, item) => sum + (item.value || 0), 0);
+    return Math.round((total / currentData.length) * 10) / 10;
   };
 
   const getGoalPercentage = () => {
-    const average = getAverageIntake();
-    return Math.round((average / targetHydration) * 100);
+    const averageGlasses = getAverageIntake();
+    const averageMl = averageGlasses * 250; // Convert glasses to ml
+    return Math.round((averageMl / hydrationTargetMl) * 100);
   };
 
-  const getStatusMessage = () => {
-    const percentage = getGoalPercentage();
-    if (percentage >= 95 && percentage <= 105) return { message: "Well hydrated!", color: "text-green-600", icon: "🟢" };
-    if (percentage >= 80 && percentage <= 120) return { message: "Slightly off target", color: "text-yellow-600", icon: "🟡" };
-    return { message: "Needs attention!", color: "text-red-600", icon: "🔴" };
+  const getTodayStatusMessage = () => {
+    const percentage = hydrationProgressPercent;
+    if (percentage >= 95) return { message: "Great hydration today!", color: "text-green-600", icon: "🟢" };
+    if (percentage >= 75) return { message: "Good progress!", color: "text-blue-600", icon: "💧" };
+    if (percentage >= 50) return { message: "Keep drinking!", color: "text-yellow-600", icon: "🟡" };
+    if (percentage === 0) return { message: "Stay hydrated!", color: "text-blue-600", icon: "💧" };
+    return { message: "Need more water!", color: "text-orange-600", icon: "🟠" };
   };
 
-  const status = getStatusMessage();
+  const todayStatus = getTodayStatusMessage();
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border">
           <p className="font-medium">{`${label}: ${payload[0].value} glasses`}</p>
+          {data.ml && <p className="text-sm text-gray-600 dark:text-gray-400">{`${data.ml}ml`}</p>}
           <p className="text-sm text-gray-600 dark:text-gray-400">{`Target: ${targetHydration} glasses`}</p>
         </div>
       );
     }
     return null;
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in pb-8">
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate('/analytics')}
+            className="rounded-full"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center">
+              <Droplets className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-white`}>
+                Hydration Progress
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">Loading your water intake data...</p>
+            </div>
+          </div>
+        </div>
+        <div className="animate-pulse space-y-4">
+          <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+          <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -109,18 +143,41 @@ const ProgressHydration = () => {
         </div>
       </div>
 
-      {/* Status Card */}
+      {/* Today's Hydration Progress */}
       <Card className="visible-card shadow-lg">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Current Status</h3>
-              <p className={`text-2xl font-bold ${status.color} flex items-center space-x-2 mt-2`}>
-                <span>{status.icon}</span>
-                <span>{status.message}</span>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Today's Hydration</h3>
+              <p className={`text-2xl font-bold ${todayStatus.color} flex items-center space-x-2 mt-2`}>
+                <span>{todayStatus.icon}</span>
+                <span>{todayStatus.message}</span>
               </p>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Average: {getAverageIntake()} glasses ({getGoalPercentage()}% of goal)
+                {todayTotal}ml / {hydrationTargetMl}ml ({Math.round(hydrationProgressPercent)}%)
+              </p>
+            </div>
+            <div className="flex items-center justify-center">
+              <CircularProgress 
+                value={todayTotal}
+                max={hydrationTargetMl}
+                color="#3B82F6"
+                size={120}
+                strokeWidth={10}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Status Card - Weekly Average */}
+      <Card className="visible-card shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Average</h3>
+              <p className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+                {getAverageIntake()} glasses ({getGoalPercentage()}% of goal)
               </p>
             </div>
             <div className="text-right">
@@ -158,36 +215,46 @@ const ProgressHydration = () => {
         </CardHeader>
         <CardContent>
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={getCurrentData()}>
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 12, fill: 'currentColor' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: 'currentColor' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine 
-                  y={targetHydration} 
-                  stroke="#3B82F6" 
-                  strokeDasharray="5 5" 
-                  strokeWidth={2}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#3B82F6" 
-                  strokeWidth={3}
-                  dot={{ fill: '#3B82F6', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#3B82F6', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {currentData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={currentData}>
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: 'currentColor' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <ReferenceLine 
+                    y={targetHydration} 
+                    stroke="#3B82F6" 
+                    strokeDasharray="5 5" 
+                    strokeWidth={2}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#3B82F6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3B82F6', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#3B82F6', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Droplets className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No hydration data yet</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Start logging your water intake!</p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-center items-center space-x-2 mt-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="w-4 h-0.5 bg-blue-500"></div>
@@ -205,7 +272,7 @@ const ProgressHydration = () => {
             <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Highest</h4>
             <p className="text-xl font-bold text-green-600">
-              {Math.max(...getCurrentData().map(d => d.value))} glasses
+              {currentData.length > 0 ? Math.max(...currentData.map(d => d.value)) : 0} glasses
             </p>
           </CardContent>
         </Card>
@@ -215,7 +282,7 @@ const ProgressHydration = () => {
             <TrendingDown className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <h4 className="font-semibold text-gray-900 dark:text-white">Lowest</h4>
             <p className="text-xl font-bold text-blue-600">
-              {Math.min(...getCurrentData().map(d => d.value))} glasses
+              {currentData.length > 0 ? Math.min(...currentData.map(d => d.value)) : 0} glasses
             </p>
           </CardContent>
         </Card>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,7 @@ import {
 import { FriendProfileView } from './FriendProfileView';
 import { FriendsLeaderboard } from './FriendsLeaderboard';
 import { GroupFeed } from './GroupFeed';
-import { useFriendTagging } from '@/hooks/useFriendTagging';
+import { useSmartFriendRecommendations } from '@/hooks/useSmartFriendRecommendations';
 import { PrivateChallengeCreationModal } from '@/components/analytics/PrivateChallengeCreationModal';
 import { FriendSearch } from './FriendSearch';
 import { PendingRequests } from './PendingRequests';
@@ -34,7 +35,8 @@ interface FriendCardProps {
 }
 
 const FriendCard = ({ friend, onClick }: FriendCardProps) => {
-  const progressPercentage = Math.round((friend.metadata?.chatCount || 0) * 10 + Math.random() * 30);
+  // Use real data from the friend object
+  const progressPercentage = Math.round((friend.metadata?.chatCount || 0) * 10 + (friend.metadata?.sharedChallenges || 0) * 15);
   const lastActiveText = friend.metadata?.lastInteraction 
     ? new Date(friend.metadata.lastInteraction).toLocaleDateString()
     : 'Recently';
@@ -105,7 +107,7 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
 export const MyFriendsTab = () => {
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { friends, isLoading } = useFriendTagging(true);
+  const { friends, isLoading } = useSmartFriendRecommendations();
 
   if (selectedFriend) {
     return (
@@ -115,6 +117,11 @@ export const MyFriendsTab = () => {
       />
     );
   }
+
+  // Calculate real stats from the friends data
+  const totalFriends = friends.length;
+  const activeToday = friends.filter(f => f.metadata?.activityStatus === 'recently_active').length;
+  const inChallenges = friends.filter(f => f.metadata?.sharedChallenges > 0).length;
 
   return (
     <div className="space-y-4 -mt-6">
@@ -147,23 +154,19 @@ export const MyFriendsTab = () => {
           <div className="grid grid-cols-3 gap-4 mb-1">
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-primary">{friends.length}</div>
+                <div className="text-2xl font-bold text-primary">{totalFriends}</div>
                 <div className="text-sm text-muted-foreground">Total Friends</div>
               </CardContent>
             </Card>
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-emerald-600">
-                  {friends.filter(f => (f as any).metadata?.activityStatus === 'recently_active').length}
-                </div>
+                <div className="text-2xl font-bold text-emerald-600">{activeToday}</div>
                 <div className="text-sm text-muted-foreground">Active Today</div>
               </CardContent>
             </Card>
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {friends.filter(f => (f as any).metadata?.sharedChallenges > 0).length}
-                </div>
+                <div className="text-2xl font-bold text-blue-600">{inChallenges}</div>
                 <div className="text-sm text-muted-foreground">In Challenges</div>
               </CardContent>
             </Card>

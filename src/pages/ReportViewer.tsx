@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { ArrowLeft, TrendingUp, Target, Calendar, Zap, AlertTriangle } from "luc
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useWeeklyReport } from "@/hooks/useWeeklyReport";
+import { useReport, ReportType, ReportData } from "@/hooks/useReport";
 
 
 const chartConfig = {
@@ -84,14 +84,16 @@ export default function ReportViewer() {
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   
-  // Get report ID from query parameter
+  // Get report ID and type from query parameters
   const reportId = searchParams.get('id');
+  const reportTypeParam = searchParams.get('type') as ReportType;
+  const [reportType, setReportType] = useState<ReportType>(reportTypeParam || 'weekly');
   
-  // Fetch real report data
-  const { report, loading, error } = useWeeklyReport(reportId || undefined);
+  // Fetch real report data based on type
+  const { report, loading, error } = useReport(reportType, reportId || undefined);
   
   // Handle missing ID - show loading instead of error to avoid flash
-  if (!reportId) {
+  if (!reportId && !reportTypeParam) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 flex items-center justify-center">
         <div className="text-center">
@@ -120,7 +122,7 @@ export default function ReportViewer() {
           <div className="text-6xl mb-4">📊</div>
           <h2 className="text-2xl font-bold mb-2">Report Not Found</h2>
           <p className="text-muted-foreground mb-6">
-            {error || "No weekly report data is available yet. Start logging your meals and activities to generate your first report!"}
+            {error || `No ${reportType} report data is available yet. Start logging your meals and activities to generate your first report!`}
           </p>
           <Button onClick={() => navigate("/my-reports")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -174,7 +176,7 @@ export default function ReportViewer() {
     return "😐";
   });
 
-  // Format dates
+  // Format dates and title based on report type
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', { 
       month: 'short', 
@@ -183,10 +185,44 @@ export default function ReportViewer() {
     });
   };
   
-  const reportTitle = report.title || "Weekly Health Report";
-  const weekStart = formatDate(report.week_start_date);
-  const weekEnd = formatDate(report.week_end_date);
-  const reportDate = `${weekStart} - ${weekEnd}`;
+  const getReportTitle = () => {
+    if (report.title) return report.title;
+    
+    switch (reportType) {
+      case 'weekly': return "Weekly Health Report";
+      case 'monthly': return "Monthly Health Report";
+      case 'yearly': return "Yearly Health Report";
+      default: return "Health Report";
+    }
+  };
+  
+  const getReportDate = () => {
+    const reportData = report as any;
+    
+    switch (reportType) {
+      case 'weekly':
+        if (reportData.week_start_date && reportData.week_end_date) {
+          return `${formatDate(reportData.week_start_date)} - ${formatDate(reportData.week_end_date)}`;
+        }
+        break;
+      case 'monthly':
+        if (reportData.month_start_date) {
+          const date = new Date(reportData.month_start_date);
+          return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        break;
+      case 'yearly':
+        if (reportData.year_start_date) {
+          const date = new Date(reportData.year_start_date);
+          return date.getFullYear().toString();
+        }
+        break;
+    }
+    return "Date not available";
+  };
+  
+  const reportTitle = getReportTitle();
+  const reportDate = getReportDate();
   
   // Create meal quality data for chart (generate from meal quality score if specific daily data not available)
   const mealQualityData = moodData.length > 0 ? moodData.map((day) => ({
@@ -227,20 +263,32 @@ export default function ReportViewer() {
             </Button>
             <div className="flex-1 min-w-0">
               <h1 className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent leading-tight`}>
-                {isMobile ? "Weekly Summary" : reportTitle}
+                {isMobile ? `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Summary` : reportTitle}
               </h1>
               <p className={`text-muted-foreground flex items-center gap-2 font-medium ${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
                 <Calendar className="h-3 w-3 flex-shrink-0" />
-                 <span className="truncate">
-                   {isMobile 
-                     ? `${formatDate(report.week_start_date).split(',')[0]} - ${formatDate(report.week_end_date).split(',')[0]}`
-                     : reportDate}
-                 </span>
+                <span className="truncate">
+                  {isMobile 
+                    ? reportDate.split(' - ')[0] || reportDate
+                    : reportDate}
+                </span>
               </p>
             </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-800 flex-shrink-0">
-              Complete
-            </Badge>
+            
+            {/* Report Type Selector */}
+            <div className="flex gap-1 flex-shrink-0">
+              {(['weekly', 'monthly', 'yearly'] as ReportType[]).map((type) => (
+                <Button
+                  key={type}
+                  variant={reportType === type ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setReportType(type)}
+                  className={`${isMobile ? 'text-xs px-2' : 'text-sm'} capitalize`}
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -253,7 +301,7 @@ export default function ReportViewer() {
               <div className={`${isMobile ? 'p-1.5' : 'p-2'} bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg text-white`}>
                 📊
               </div>
-              Weekly Health Score
+              {reportType.charAt(0).toUpperCase() + reportType.slice(1)} Health Score
             </CardTitle>
           </CardHeader>
           <CardContent className={isMobile ? "p-4 pt-0" : ""}>
@@ -287,7 +335,7 @@ export default function ReportViewer() {
 
               <div className={`bg-gradient-to-r from-emerald-100 to-blue-100 rounded-xl ${isMobile ? 'p-4' : 'p-6'} border border-emerald-200`}>
                 <p className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-emerald-800 mb-2`}>
-                  📝 Weekly Summary
+                  📝 {reportType.charAt(0).toUpperCase() + reportType.slice(1)} Summary
                 </p>
                 <p className={`${isMobile ? 'text-sm' : 'text-base'} text-emerald-700`}>
                   {summaryText}
