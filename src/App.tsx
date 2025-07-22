@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
+import { ChatProvider } from '@/contexts/ChatContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -175,9 +176,11 @@ function App() {
               <IngredientAlertProvider>
                 <BadgeProvider>
                   <ChallengeProvider>
-                    <ChatModalProvider>
-                      <AppContent />
-                    </ChatModalProvider>
+                    <ChatProvider>
+                      <ChatModalProvider>
+                        <AppContent />
+                      </ChatModalProvider>
+                    </ChatProvider>
                   </ChallengeProvider>
                 </BadgeProvider>
               </IngredientAlertProvider>

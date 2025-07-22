@@ -29,15 +29,18 @@ import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 const GameAndChallengePage: React.FC = () => {
   console.log("🧪 Game page successfully mounted");
-  const [activeTab, setActiveTab] = useState('browse');
+  console.log("🔍 Starting GameAndChallengePage component initialization...");
   
-  console.log("🔍 Starting hook initialization...");
+  const [activeTab, setActiveTab] = useState('browse');
+  console.log("🔍 useState for activeTab completed");
   
   // Safely access challenge context with comprehensive error handling
   let microChallenges: any[] = [];
   console.log("🔍 About to call useChallenge...");
   try {
+    console.log("HOOK START: useChallenge");
     const challengeContext = useChallenge();
+    console.log("HOOK END: useChallenge");
     console.log("✅ useChallenge successful:", challengeContext);
     microChallenges = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
   } catch (error) {
@@ -53,7 +56,9 @@ const GameAndChallengePage: React.FC = () => {
   
   console.log("🔍 About to call usePublicChallenges...");
   try {
+    console.log("HOOK START: usePublicChallenges");
     const publicData = usePublicChallenges();
+    console.log("HOOK END: usePublicChallenges");
     console.log("✅ usePublicChallenges successful:", publicData);
     publicChallenges = Array.isArray(publicData?.challenges) ? publicData.challenges : [];
     publicParticipations = Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [];
@@ -71,7 +76,9 @@ const GameAndChallengePage: React.FC = () => {
   
   console.log("🔍 About to call usePrivateChallenges...");
   try {
+    console.log("HOOK START: usePrivateChallenges");
     const privateData = usePrivateChallenges();
+    console.log("HOOK END: usePrivateChallenges");
     console.log("✅ usePrivateChallenges successful:", privateData);
     privateChallenges = Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [];
     privateLoading = Boolean(privateData?.loading);
