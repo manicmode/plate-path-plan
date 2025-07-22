@@ -21,6 +21,7 @@ const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Coach = lazy(() => import('@/pages/Coach'));
 const Explore = lazy(() => import('@/pages/Explore'));
+const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
@@ -78,6 +79,11 @@ function AppContent() {
                               <Route path="/explore" element={
                                 <ProtectedRoute>
                                   <Explore />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/exercise-hub" element={
+                                <ProtectedRoute>
+                                  <ExerciseHub />
                                 </ProtectedRoute>
                               } />
                               <Route path="/profile" element={

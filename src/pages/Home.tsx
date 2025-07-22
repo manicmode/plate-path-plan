@@ -1610,7 +1610,7 @@ const Home = () => {
                 } else if (tileId === 'influencers') {
                   setIsComingSoonOpen(true);
                 } else if (tileId === 'exercise-hub') {
-                  setIsComingSoonOpen(true);
+                  navigate('/exercise-hub');
                 } else if (tileId === 'my-reports') {
                   navigate('/my-reports');
                 }

@@ -38,7 +38,11 @@ const Explore = () => {
         setNavigationInProgress(true);
         navigate('/game-and-challenge');
         setTimeout(() => setNavigationInProgress(false), 300);
-      } else if (tileId === 'influencers' || tileId === 'exercise-hub') {
+      } else if (tileId === 'exercise-hub') {
+        setNavigationInProgress(true);
+        navigate('/exercise-hub');
+        setTimeout(() => setNavigationInProgress(false), 300);
+      } else if (tileId === 'influencers') {
         setIsComingSoonOpen(true);
       } else if (tileId === 'my-reports') {
         setNavigationInProgress(true);
