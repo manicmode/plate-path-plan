@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, TrendingUp, Target, Users, Activity } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { HomeCtaTicker } from '@/components/HomeCtaTicker';
-import { HomeAIInsights } from '@/components/HomeAIInsights';
+import HomeAIInsights from '@/components/HomeAIInsights';
 import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 
@@ -221,7 +221,8 @@ export default function Home() {
 
       <ComingSoonPopup 
         isOpen={showComingSoon} 
-        onClose={() => setShowComingSoon(false)} 
+        onClose={() => setShowComingSoon(false)}
+        feature="This"
       />
     </div>
   );
