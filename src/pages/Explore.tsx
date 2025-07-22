@@ -112,11 +112,11 @@ const Explore = () => {
               onClick={() => handleTileClick(tile.id)}
               disabled={navigationInProgress}
               variant="ghost"
-              className={`
+            className={`
                 group relative h-full min-h-[180px] p-6 rounded-2xl 
-                transition-all duration-300 ease-out
+                transition-all duration-500 ease-out
                 bg-gradient-to-br ${tile.color} 
-                hover:scale-105 active:scale-95
+                hover:scale-105 active:scale-95 active:rotate-1
                 shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
                 flex flex-col items-center justify-center space-y-5
@@ -125,7 +125,7 @@ const Explore = () => {
             >
               {/* Emoji Icon */}
               <div className={`${safeIsMobile ? 'text-[3.5rem]' : 'text-[4rem]'} 
-                group-hover:scale-105 group-active:scale-95 transition-transform duration-300 ease-out
+                group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
                 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]`}>
                 {tile.emoji}
               </div>
@@ -148,9 +148,9 @@ const Explore = () => {
           variant="ghost"
           className={`
             group relative w-full h-16 p-3 rounded-2xl 
-            transition-all duration-300 ease-out
+            transition-all duration-500 ease-out
             bg-gradient-to-br from-slate-300 to-slate-600 
-            hover:scale-105 active:scale-95
+            hover:scale-105 active:scale-95 active:rotate-1
             shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
             flex items-center justify-center space-x-3
@@ -159,7 +159,7 @@ const Explore = () => {
         >
           {/* Profile Icon */}
           <div className={`${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
-            group-active:animate-bounce transition-transform duration-200
+            group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
             filter drop-shadow-lg`}>
             👤
           </div>
