@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 
 export interface Challenge {
   id: string;
@@ -162,16 +162,18 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     },
   ]);
 
-  const createChallenge = (challengeData: Omit<Challenge, 'id' | 'isActive'>) => {
+  const createChallenge = useCallback((challengeData: Omit<Challenge, 'id' | 'isActive'>) => {
+    console.log("🔍 ChallengeProvider: createChallenge called");
     const newChallenge: Challenge = {
       ...challengeData,
       id: `challenge-${Date.now()}`,
       isActive: true,
     };
     setChallenges(prev => [...prev, newChallenge]);
-  };
+  }, []);
 
-  const joinChallenge = (challengeId: string, userId: string, userDetails: { name: string; avatar: string }) => {
+  const joinChallenge = useCallback((challengeId: string, userId: string, userDetails: { name: string; avatar: string }) => {
+    console.log("🔍 ChallengeProvider: joinChallenge called");
     setChallenges(prev => prev.map(challenge => {
       if (challenge.id === challengeId && !challenge.participants.includes(userId)) {
         return {
@@ -189,9 +191,10 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       }
       return challenge;
     }));
-  };
+  }, []);
 
-  const leaveChallenenge = (challengeId: string, userId: string) => {
+  const leaveChallenenge = useCallback((challengeId: string, userId: string) => {
+    console.log("🔍 ChallengeProvider: leaveChallenenge called");
     setChallenges(prev => prev.map(challenge => {
       if (challenge.id === challengeId) {
         const { [userId]: removedProgress, ...restProgress } = challenge.progress;
@@ -205,9 +208,10 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       }
       return challenge;
     }));
-  };
+  }, []);
 
-  const updateProgress = (challengeId: string, userId: string, progress: number) => {
+  const updateProgress = useCallback((challengeId: string, userId: string, progress: number) => {
+    console.log("🔍 ChallengeProvider: updateProgress called");
     setChallenges(prev => prev.map(challenge => {
       if (challenge.id === challengeId) {
         return {
@@ -220,28 +224,62 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       }
       return challenge;
     }));
-  };
+  }, []);
 
-  const deleteChallenge = (challengeId: string) => {
+  const deleteChallenge = useCallback((challengeId: string) => {
+    console.log("🔍 ChallengeProvider: deleteChallenge called");
     setChallenges(prev => prev.filter(challenge => challenge.id !== challengeId));
-  };
+  }, []);
 
-  const nudgeFriend = (challengeId: string, friendId: string) => {
+  const nudgeFriend = useCallback((challengeId: string, friendId: string) => {
+    console.log("🔍 ChallengeProvider: nudgeFriend called");
     // Simulate sending a nudge notification
     console.log(`Nudging friend ${friendId} for challenge ${challengeId}`);
-  };
+  }, []);
 
   // Get challenges where current user is participating
-  const activeUserChallenges = challenges.filter(challenge => 
-    challenge.participants.includes('current-user-id') && challenge.isActive
-  );
+  const activeUserChallenges = useMemo(() => 
+    challenges.filter(challenge => 
+      challenge.participants.includes('current-user-id') && challenge.isActive
+    ), [challenges]);
 
   // Separate micro challenges from regular challenges
-  const microChallenges = challenges.filter(c => c.type === 'micro' && c.isActive);
-  const regularChallenges = challenges.filter(c => c.type !== 'micro' && c.isActive);
+  const microChallenges = useMemo(() => 
+    challenges.filter(c => c.type === 'micro' && c.isActive), [challenges]);
+  const regularChallenges = useMemo(() => 
+    challenges.filter(c => c.type !== 'micro' && c.isActive), [challenges]);
 
-  const value: ChallengeContextType = {
-    challenges: regularChallenges,
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => {
+    const value: ChallengeContextType = {
+      challenges: regularChallenges,
+      microChallenges,
+      activeUserChallenges,
+      createChallenge,
+      joinChallenge,
+      leaveChallenenge,
+      updateProgress,
+      deleteChallenge,
+      nudgeFriend,
+    };
+    
+    console.log("🔍 ChallengeProvider: Context value memoized", {
+      challengesCount: regularChallenges.length,
+      microChallengesCount: microChallenges.length,
+      activeUserChallengesCount: activeUserChallenges.length,
+      functions: {
+        createChallenge: typeof createChallenge,
+        joinChallenge: typeof joinChallenge,
+        leaveChallenenge: typeof leaveChallenenge,
+        updateProgress: typeof updateProgress,
+        deleteChallenge: typeof deleteChallenge,
+        nudgeFriend: typeof nudgeFriend
+      }
+    });
+    
+    return value;
+  }, [
+    regularChallenges,
     microChallenges,
     activeUserChallenges,
     createChallenge,
@@ -249,17 +287,24 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     leaveChallenenge,
     updateProgress,
     deleteChallenge,
-    nudgeFriend,
-  };
+    nudgeFriend
+  ]);
   
-  console.log("🔍 ChallengeProvider context value created:", {
-    challengesCount: regularChallenges.length,
-    microChallengesCount: microChallenges.length,
-    activeUserChallengesCount: activeUserChallenges.length
-  });
+  // Track context value stability
+  const contextValueRef = React.useRef<ChallengeContextType>();
+  if (contextValueRef.current !== contextValue) {
+    console.log("🚨 ChallengeProvider: Context value changed!", {
+      previous: contextValueRef.current,
+      current: contextValue,
+      isFirstRender: !contextValueRef.current
+    });
+    contextValueRef.current = contextValue;
+  } else {
+    console.log("✅ ChallengeProvider: Context value is stable");
+  }
 
   return (
-    <ChallengeContext.Provider value={value}>
+    <ChallengeContext.Provider value={contextValue}>
       {children}
     </ChallengeContext.Provider>
   );
