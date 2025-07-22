@@ -99,8 +99,8 @@ const Explore = () => {
 
   return (
     <div className="min-h-screen flex flex-col p-4 pb-24 relative">
-      {/* Main 2x3 Grid */}
-      <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-6">
+      {/* Main 2x3 Grid - Reduced height for better spacing */}
+      <div className="grid grid-cols-2 grid-rows-3 gap-3 mb-6">
         {mainTiles.map((tile) => {
           return (
             <Button
@@ -108,13 +108,13 @@ const Explore = () => {
               onClick={() => handleTileClick(tile.id)}
               variant="ghost"
               className={`
-                group relative h-full min-h-[200px] p-6 rounded-3xl 
+                group relative h-full min-h-[150px] p-4 rounded-3xl 
                 transition-all duration-500 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95 active:rotate-1
                 shadow-2xl ${tile.shadowColor} ${tile.glowColor} hover:shadow-3xl
                 border-0 text-white hover:text-white
-                flex flex-col items-center justify-center space-y-3
+                flex flex-col items-center justify-center space-y-2
                 backdrop-blur-sm overflow-hidden
                 before:absolute before:inset-0 before:bg-gradient-to-br 
                 before:from-white/20 before:to-transparent before:opacity-0 
@@ -123,8 +123,8 @@ const Explore = () => {
                 after:from-black/5 after:to-transparent after:opacity-100
               `}
             >
-              {/* Large Emoji Icon */}
-              <div className={`${isMobile ? 'text-5xl' : 'text-6xl'} 
+              {/* Large Emoji Icon - Adjusted size for smaller tiles */}
+              <div className={`${isMobile ? 'text-4xl' : 'text-5xl'} 
                 group-hover:animate-bounce group-hover:scale-110 
                 transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
                 {tile.emoji}
@@ -143,8 +143,8 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tab - Full Width - Above Navigation */}
-      <div className="w-full mb-24 z-40 relative">
+      {/* Profile Tab - Full Width - Above Navigation with proper spacing */}
+      <div className="w-full mb-32 z-50 relative">
         <Button
           onClick={() => handleTileClick('profile')}
           variant="ghost"
