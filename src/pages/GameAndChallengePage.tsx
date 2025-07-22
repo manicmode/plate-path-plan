@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,38 +28,53 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 const GameAndChallengePage: React.FC = () => {
+  console.log("GameAndChallengePage rendered");
   console.log("🧪 Game page successfully mounted");
   console.log("🔍 Starting GameAndChallengePage component initialization...");
+  
+  // Render counter to track infinite renders
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  console.log(`🔄 GameAndChallengePage render count: ${renderCountRef.current}`);
   
   const [activeTab, setActiveTab] = useState('browse');
   console.log("🔍 useState for activeTab completed");
   
-  // Safely access challenge context with comprehensive error handling
-  let microChallenges: any[] = [];
+  // Track hook execution order and performance for infinite loop detection
   console.log("🔍 About to call useChallenge...");
+  const challengeHookStart = performance.now();
+  let microChallenges: any[] = [];
   try {
     console.log("HOOK START: useChallenge");
     const challengeContext = useChallenge();
-    console.log("HOOK END: useChallenge");
-    console.log("✅ useChallenge successful:", challengeContext);
+    const challengeHookTime = performance.now() - challengeHookStart;
+    console.log("HOOK END: useChallenge", `took ${challengeHookTime}ms`);
+    console.log("✅ useChallenge result:", {
+      challenges: challengeContext?.challenges?.length,
+      microChallenges: challengeContext?.microChallenges?.length,
+      activeUserChallenges: challengeContext?.activeUserChallenges?.length
+    });
     microChallenges = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
   } catch (error) {
     console.error('❌ ChallengeProvider error:', error);
     microChallenges = [];
   }
-  console.log("🔍 useChallenge completed, microChallenges:", microChallenges);
   
-  // Get real data from hooks with comprehensive error handling
+  console.log("🔍 About to call usePublicChallenges...");
+  const publicHookStart = performance.now();
   let publicChallenges: any[] = [];
   let publicParticipations: any[] = [];
   let publicLoading = false;
-  
-  console.log("🔍 About to call usePublicChallenges...");
   try {
     console.log("HOOK START: usePublicChallenges");
     const publicData = usePublicChallenges();
-    console.log("HOOK END: usePublicChallenges");
-    console.log("✅ usePublicChallenges successful:", publicData);
+    const publicHookTime = performance.now() - publicHookStart;
+    console.log("HOOK END: usePublicChallenges", `took ${publicHookTime}ms`);
+    console.log("✅ usePublicChallenges result:", {
+      challenges: publicData?.challenges?.length,
+      userParticipations: publicData?.userParticipations?.length,
+      loading: publicData?.loading
+    });
     publicChallenges = Array.isArray(publicData?.challenges) ? publicData.challenges : [];
     publicParticipations = Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [];
     publicLoading = Boolean(publicData?.loading);
@@ -69,7 +84,6 @@ const GameAndChallengePage: React.FC = () => {
     publicParticipations = [];
     publicLoading = false;
   }
-  console.log("🔍 usePublicChallenges completed");
 
   let privateChallenges: any[] = [];
   let privateLoading = false;

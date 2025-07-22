@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,13 @@ import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 export const PublicChallengesBrowse: React.FC = () => {
+  // Render counter for infinite loop detection
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  console.log(`🔄 PublicChallengesBrowse render count: ${renderCountRef.current}`);
+  
+  console.log("🔍 PublicChallengesBrowse: About to call usePublicChallenges...");
+  const hookStart = performance.now();
   const {
     challenges,
     userParticipations,
@@ -18,6 +25,7 @@ export const PublicChallengesBrowse: React.FC = () => {
     leaveChallenge,
     getUserParticipation,
   } = usePublicChallenges();
+  console.log(`🔍 PublicChallengesBrowse: usePublicChallenges took ${performance.now() - hookStart}ms`);
 
   // Use real data with proper memoization and safety checks
   const categorizedChallenges = useMemo(() => {

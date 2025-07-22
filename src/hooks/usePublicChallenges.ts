@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -270,6 +270,7 @@ export const usePublicChallenges = () => {
   };
 
   useEffect(() => {
+    console.log("🔍 usePublicChallenges useEffect triggered", { user: user?.id });
     const loadData = async () => {
       try {
         setLoading(true);
@@ -313,6 +314,6 @@ export const usePublicChallenges = () => {
     leaveChallenge,
     getUserParticipation,
     isUserParticipating,
-    refreshData: () => Promise.all([fetchChallenges(), fetchUserParticipations()]),
+    refreshData: useCallback(() => Promise.all([fetchChallenges(), fetchUserParticipations()]), []),
   };
 };

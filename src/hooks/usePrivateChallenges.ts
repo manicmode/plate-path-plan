@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -353,6 +353,7 @@ export const usePrivateChallenges = () => {
   };
 
   useEffect(() => {
+    console.log("🔍 usePrivateChallenges useEffect triggered", { user: user?.id });
     const loadData = async () => {
       try {
         setLoading(true);
@@ -404,10 +405,10 @@ export const usePrivateChallenges = () => {
     declineInvitation,
     updatePrivateProgress,
     getUserPrivateParticipation,
-    refreshData: () => Promise.all([
+    refreshData: useCallback(() => Promise.all([
       fetchPrivateChallenges(),
       fetchUserPrivateParticipations(),
       fetchPendingInvitations()
-    ]),
+    ]), []),
   };
 };
