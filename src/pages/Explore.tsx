@@ -34,19 +34,21 @@ const Explore = () => {
       navigate('/my-reports');
     } else if (tileId === 'profile') {
       handleProfileClick();
+    } else if (tileId === 'exercise-hub') {
+      setIsComingSoonOpen(true);
     }
     // Add other tile navigation here as needed
   };
 
-  const tiles = [
+  const mainTiles = [
     {
-      id: 'health-check',
-      title: 'Health Check',
-      emoji: '❤️',
-      color: 'from-red-500 via-rose-400 to-rose-500',
-      shadowColor: 'shadow-red-500/30',
-      glowColor: 'hover:shadow-red-400/50',
-      animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
+      id: 'exercise-hub',
+      title: 'Exercise Hub',
+      emoji: '💪',
+      color: 'from-blue-500 via-blue-400 to-blue-500',
+      shadowColor: 'shadow-blue-500/30',
+      glowColor: 'hover:shadow-blue-400/50',
+      animatedGradient: 'bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600',
     },
     {
       id: 'game-challenge',
@@ -68,7 +70,7 @@ const Explore = () => {
     },
     {
       id: 'influencers',
-      title: 'Influencers',
+      title: 'Influencer Hub',
       emoji: '⭐️',
       color: 'from-blue-500 via-cyan-400 to-cyan-500',
       shadowColor: 'shadow-blue-500/30',
@@ -85,21 +87,21 @@ const Explore = () => {
       animatedGradient: 'bg-gradient-to-br from-emerald-600 via-emerald-400 to-teal-400',
     },
     {
-      id: 'profile',
-      title: 'Profile',
-      emoji: '👤',
-      color: 'from-slate-500 via-slate-400 to-slate-500',
-      shadowColor: 'shadow-slate-500/30',
-      glowColor: 'hover:shadow-slate-400/50',
-      animatedGradient: 'bg-gradient-to-br from-slate-400 via-slate-500 to-slate-600',
+      id: 'health-check',
+      title: 'Health Scan',
+      emoji: '❤️',
+      color: 'from-red-500 via-rose-400 to-rose-500',
+      shadowColor: 'shadow-red-500/30',
+      glowColor: 'hover:shadow-red-400/50',
+      animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
     },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col p-4 pb-16">
-      {/* Main 2x3 Grid - Natural sizing instead of flex-1 */}
+    <div className="min-h-screen flex flex-col p-4 pb-24 relative">
+      {/* Main 2x3 Grid */}
       <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-6">
-        {tiles.map((tile) => {
+        {mainTiles.map((tile) => {
           return (
             <Button
               key={tile.id}
@@ -139,6 +141,27 @@ const Explore = () => {
             </Button>
           );
         })}
+      </div>
+
+      {/* Profile Tab - Full Width */}
+      <div className="w-full mb-4 z-10 relative">
+        <Button
+          onClick={() => handleTileClick('profile')}
+          variant="outline"
+          className={`
+            w-full h-16 rounded-xl transition-all duration-300 ease-out
+            bg-background/60 backdrop-blur-sm border border-border/50
+            hover:bg-background/80 hover:scale-[1.02] hover:shadow-lg
+            text-foreground hover:text-foreground
+            flex items-center justify-center space-x-3
+            shadow-sm hover:shadow-md
+          `}
+        >
+          <UserRound className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
+          <span className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>
+            Profile
+          </span>
+        </Button>
       </div>
 
       {/* Health Check Modal */}
