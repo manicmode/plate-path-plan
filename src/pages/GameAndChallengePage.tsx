@@ -225,6 +225,9 @@ const GameAndChallengePage: React.FC = () => {
     statsCalculated: !!stats
   });
 
+  // Add layout re-render tracking
+  console.count('⚠️ Layout Re-render');
+
   // Wrap the entire render in try/catch
   try {
     return (
@@ -232,7 +235,7 @@ const GameAndChallengePage: React.FC = () => {
         style={{
           transform: 'translateZ(0)',
           willChange: 'transform',
-          contain: 'layout paint style',
+          contain: 'layout paint size style',
           overflow: 'hidden'
         }}
       >

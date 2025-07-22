@@ -112,11 +112,11 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
       <div className="pt-8 mb-12 flex flex-col items-center gap-6">
         {/* Centered Title with Trophy Emojis */}
         <div className="flex items-center gap-3">
-          <div className="text-2xl animate-bounce hover:scale-110 transition-transform duration-300">🏆</div>
+          <div className="text-2xl">🏆</div>
           <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
             AWARDS
           </h1>
-          <div className="text-2xl animate-bounce hover:scale-110 transition-transform duration-300">🏆</div>
+          <div className="text-2xl">🏆</div>
         </div>
         
         {/* Centered Calendar Toggle */}
@@ -231,7 +231,7 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
               {isLoading ? (
                 <div className="text-center py-8">
                   <div className="inline-flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    <div className="rounded-full h-4 w-4 border-b-2 border-primary"></div>
                     Loading challenges...
                   </div>
                 </div>

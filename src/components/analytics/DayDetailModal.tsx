@@ -223,7 +223,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-pulse text-muted-foreground">Loading day data...</div>
+            <div className="text-muted-foreground">Loading day data...</div>
           </div>
         ) : (
           <div className="space-y-4">

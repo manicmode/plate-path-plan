@@ -166,7 +166,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           {/* Trending badge */}
           {challenge.trending && (
             <div className="absolute top-2 right-2">
-              <Badge className="bg-yellow-500 text-yellow-900 font-bold animate-pulse">
+              <Badge className="bg-yellow-500 text-yellow-900 font-bold">
                 🔥 Trending
               </Badge>
             </div>
