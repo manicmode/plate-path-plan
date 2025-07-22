@@ -1,10 +1,9 @@
 
 import { useNavigate } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 
@@ -13,129 +12,127 @@ const Explore = () => {
   const isMobile = useIsMobile();
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
+  const [navigationInProgress, setNavigationInProgress] = useState(false);
   
-  // Use the scroll-to-top hook
+  // Use the optimized scroll-to-top hook
   useScrollToTop();
 
-  const handleProfileClick = () => {
+  const handleProfileClick = useCallback(() => {
+    if (navigationInProgress) return;
+    setNavigationInProgress(true);
     navigate('/profile');
-  };
+    setTimeout(() => setNavigationInProgress(false), 300);
+  }, [navigate, navigationInProgress]);
 
-  const handleTileClick = (tileId: string) => {
-    if (tileId === 'supplement-hub') {
-      navigate('/supplement-hub');
-    } else if (tileId === 'health-check') {
-      setIsHealthCheckOpen(true);
-    } else if (tileId === 'game-challenge') {
-      navigate('/game-and-challenge');
-    } else if (tileId === 'influencers') {
-      setIsComingSoonOpen(true);
-    } else if (tileId === 'my-reports') {
-      navigate('/my-reports');
-    } else if (tileId === 'profile') {
-      handleProfileClick();
-    } else if (tileId === 'exercise-hub') {
-      setIsComingSoonOpen(true);
+  const handleTileClick = useCallback((tileId: string) => {
+    if (navigationInProgress) return;
+    
+    try {
+      if (tileId === 'supplement-hub') {
+        setNavigationInProgress(true);
+        navigate('/supplement-hub');
+        setTimeout(() => setNavigationInProgress(false), 300);
+      } else if (tileId === 'health-check') {
+        setIsHealthCheckOpen(true);
+      } else if (tileId === 'game-challenge') {
+        setNavigationInProgress(true);
+        navigate('/game-and-challenge');
+        setTimeout(() => setNavigationInProgress(false), 300);
+      } else if (tileId === 'influencers' || tileId === 'exercise-hub') {
+        setIsComingSoonOpen(true);
+      } else if (tileId === 'my-reports') {
+        setNavigationInProgress(true);
+        navigate('/my-reports');
+        setTimeout(() => setNavigationInProgress(false), 300);
+      } else if (tileId === 'profile') {
+        handleProfileClick();
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setNavigationInProgress(false);
     }
-    // Add other tile navigation here as needed
-  };
+  }, [navigate, navigationInProgress, handleProfileClick]);
 
   const mainTiles = [
     {
       id: 'exercise-hub',
       title: 'Exercise Hub',
       emoji: '💪',
-      color: 'from-blue-500 via-blue-400 to-blue-500',
-      shadowColor: 'shadow-blue-500/30',
-      glowColor: 'hover:shadow-blue-400/50',
-      animatedGradient: 'bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600',
+      color: 'from-blue-500 to-blue-600',
+      shadowColor: 'shadow-blue-500/20',
     },
     {
       id: 'game-challenge',
       title: 'Game & Challenge',
       emoji: '🏆',
-      color: 'from-yellow-500 via-orange-400 to-orange-500',
-      shadowColor: 'shadow-yellow-500/30',
-      glowColor: 'hover:shadow-yellow-400/50',
-      animatedGradient: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-orange-600',
+      color: 'from-yellow-500 to-orange-500',
+      shadowColor: 'shadow-yellow-500/20',
     },
     {
       id: 'supplement-hub',
       title: 'Supplement Hub',
       emoji: '🧪',
-      color: 'from-purple-500 via-purple-400 to-pink-500',
-      shadowColor: 'shadow-purple-500/30',
-      glowColor: 'hover:shadow-purple-400/50',
-      animatedGradient: 'bg-gradient-to-br from-purple-400 via-purple-500 to-pink-500',
+      color: 'from-purple-500 to-pink-500',
+      shadowColor: 'shadow-purple-500/20',
     },
     {
       id: 'influencers',
       title: 'Influencer Hub',
       emoji: '⭐️',
-      color: 'from-blue-500 via-cyan-400 to-cyan-500',
-      shadowColor: 'shadow-blue-500/30',
-      glowColor: 'hover:shadow-cyan-400/50',
-      animatedGradient: 'bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-500',
+      color: 'from-blue-500 to-cyan-500',
+      shadowColor: 'shadow-blue-500/20',
     },
     {
       id: 'my-reports',
       title: 'My Reports',
       emoji: '📄',
-      color: 'from-emerald-600 via-emerald-400 to-teal-400',
-      shadowColor: 'shadow-emerald-500/30',
-      glowColor: 'hover:shadow-emerald-400/50',
-      animatedGradient: 'bg-gradient-to-br from-emerald-600 via-emerald-400 to-teal-400',
+      color: 'from-emerald-500 to-teal-500',
+      shadowColor: 'shadow-emerald-500/20',
     },
     {
       id: 'health-check',
       title: 'Health Scan',
       emoji: '❤️',
-      color: 'from-red-500 via-rose-400 to-rose-500',
-      shadowColor: 'shadow-red-500/30',
-      glowColor: 'hover:shadow-red-400/50',
-      animatedGradient: 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-500',
+      color: 'from-red-500 to-rose-500',
+      shadowColor: 'shadow-red-500/20',
     },
   ];
 
+  // Safety check for mobile detection
+  const safeIsMobile = isMobile ?? false;
+
   return (
     <div className="min-h-screen flex flex-col p-4 pb-24 relative">
-      {/* Main 2x3 Grid - Reduced height for better spacing */}
-      <div className="grid grid-cols-2 grid-rows-3 gap-3 mb-6">
+      {/* Main 2x3 Grid with simplified styling */}
+      <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-6">
         {mainTiles.map((tile) => {
           return (
             <Button
               key={tile.id}
               onClick={() => handleTileClick(tile.id)}
+              disabled={navigationInProgress}
               variant="ghost"
               className={`
-                group relative h-full min-h-[170px] p-4 rounded-3xl 
-                transition-all duration-500 ease-out
+                group relative h-full min-h-[160px] p-4 rounded-2xl 
+                transition-all duration-300 ease-out
                 bg-gradient-to-br ${tile.color} 
-                hover:scale-105 active:scale-95 active:rotate-1
-                shadow-2xl ${tile.shadowColor} ${tile.glowColor} hover:shadow-3xl
+                hover:scale-105 active:scale-95
+                shadow-xl ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
                 flex flex-col items-center justify-center space-y-2
-                backdrop-blur-sm overflow-hidden
-                before:absolute before:inset-0 before:bg-gradient-to-br 
-                before:from-white/20 before:to-transparent before:opacity-0 
-                hover:before:opacity-100 before:transition-opacity before:duration-300
-                after:absolute after:inset-0 after:bg-gradient-to-t
-                after:from-black/5 after:to-transparent after:opacity-100
+                ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              {/* Large Emoji Icon - Adjusted size for smaller tiles */}
-              <div className={`${isMobile ? 'text-4xl' : 'text-5xl'} 
-                group-hover:animate-bounce group-hover:scale-110 
-                transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
+              {/* Emoji Icon */}
+              <div className={`${safeIsMobile ? 'text-3xl' : 'text-4xl'} 
+                group-hover:scale-110 transition-transform duration-200 
+                filter drop-shadow-lg`}>
                 {tile.emoji}
               </div>
-              {/* Clean Label */}
-              <span className={`${isMobile ? 'text-sm' : 'text-base'} 
-                font-black text-center leading-tight text-white z-10 relative
-                drop-shadow-2xl tracking-wide`}
-                style={{ 
-                  textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)' 
-                }}>
+              {/* Title */}
+              <span className={`${safeIsMobile ? 'text-sm' : 'text-base'} 
+                font-bold text-center leading-tight text-white
+                drop-shadow-lg`}>
                 {tile.title}
               </span>
             </Button>
@@ -143,56 +140,52 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tab - Full Width - Above Navigation with proper spacing */}
-      <div className="w-full mb-32 z-50 relative">
+      {/* Profile Tab - Simplified and positioned correctly */}
+      <div className="w-full mb-20 relative z-30">
         <Button
           onClick={() => handleTileClick('profile')}
+          disabled={navigationInProgress}
           variant="ghost"
           className={`
-            group relative w-full h-20 p-6 rounded-3xl 
-            transition-all duration-500 ease-out
-            bg-gradient-to-br from-slate-500 via-slate-400 to-slate-500 
-            hover:scale-105 active:scale-95 active:rotate-1
-            shadow-2xl shadow-slate-500/30 hover:shadow-slate-400/50 hover:shadow-3xl
+            group relative w-full h-16 p-4 rounded-2xl 
+            transition-all duration-300 ease-out
+            bg-gradient-to-br from-slate-500 to-slate-600 
+            hover:scale-105 active:scale-95
+            shadow-xl shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
-            flex items-center justify-start pl-8 space-y-0 space-x-3
-            backdrop-blur-sm overflow-hidden
-            before:absolute before:inset-0 before:bg-gradient-to-br 
-            before:from-white/20 before:to-transparent before:opacity-0 
-            hover:before:opacity-100 before:transition-opacity before:duration-300
-            after:absolute after:inset-0 after:bg-gradient-to-t
-            after:from-black/5 after:to-transparent after:opacity-100
+            flex items-center justify-start pl-8 space-x-3
+            ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
-          {/* 3D Style Blue Person Icon */}
-          <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} 
-            group-hover:scale-110 transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
+          {/* Profile Icon */}
+          <div className={`${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
+            group-hover:scale-110 transition-transform duration-200 
+            filter drop-shadow-lg`}>
             👤
           </div>
           {/* Profile Text */}
-          <span className={`${isMobile ? 'text-lg' : 'text-xl'} 
-            font-black text-center leading-tight text-white z-10 relative
-            drop-shadow-2xl tracking-wide`}
-            style={{ 
-              textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)' 
-            }}>
+          <span className={`${safeIsMobile ? 'text-lg' : 'text-xl'} 
+            font-bold text-white drop-shadow-lg`}>
             Profile
           </span>
         </Button>
       </div>
 
-      {/* Health Check Modal */}
-      <HealthCheckModal 
-        isOpen={isHealthCheckOpen} 
-        onClose={() => setIsHealthCheckOpen(false)} 
-      />
+      {/* Modals with proper error boundaries */}
+      {isHealthCheckOpen && (
+        <HealthCheckModal 
+          isOpen={isHealthCheckOpen} 
+          onClose={() => setIsHealthCheckOpen(false)} 
+        />
+      )}
       
-      {/* Coming Soon Popup */}
-      <ComingSoonPopup 
-        isOpen={isComingSoonOpen} 
-        onClose={() => setIsComingSoonOpen(false)}
-        feature="Influencers"
-      />
+      {isComingSoonOpen && (
+        <ComingSoonPopup 
+          isOpen={isComingSoonOpen} 
+          onClose={() => setIsComingSoonOpen(false)}
+          feature="This Feature"
+        />
+      )}
     </div>
   );
 };
