@@ -264,6 +264,69 @@ const ExerciseHub = () => {
                       </Card>
                     )}
                   </div>
+                ) : tab.id === 'my-routines' ? (
+                  /* My Routines Tab - Enhanced */
+                  <div className="space-y-6">
+                    {/* Create New Routine Button */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6">
+                        <Button
+                          onClick={() => setIsCreateRoutineModalOpen(true)}
+                          className="w-full h-14 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                          <Plus className="mr-2 h-5 w-5" />
+                          Create New Routine
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Your Saved Routines Header */}
+                    <div className="text-center mb-4">
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Saved Routines</h2>
+                      <p className="text-muted-foreground">Custom workout plans tailored for you</p>
+                    </div>
+
+                    {/* Routines Grid - 2x2 */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {mockRoutines.map((routine) => (
+                        <Card key={routine.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
+                          <CardContent className="p-0">
+                            <div className={`bg-gradient-to-r ${routine.gradient} p-1 rounded-t-lg`} />
+                            <div className="p-4">
+                              <div className="text-center space-y-3">
+                                {/* Emoji */}
+                                <div className="text-4xl">{routine.emoji}</div>
+                                
+                                {/* Title */}
+                                <h3 className="text-lg font-bold text-foreground leading-tight">{routine.title}</h3>
+                                
+                                {/* Description */}
+                                <p className="text-sm text-muted-foreground">{routine.description}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Empty State (if no routines) */}
+                    {mockRoutines.length === 0 && (
+                      <Card className="w-full shadow-lg border-border bg-card">
+                        <CardContent className="p-8 text-center">
+                          <div className="text-4xl mb-4">🧠</div>
+                          <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
+                          <p className="text-muted-foreground mb-6">Create your first custom workout routine!</p>
+                          <Button
+                            onClick={() => setIsCreateRoutineModalOpen(true)}
+                            className="bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white"
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Your First Routine
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 ) : (
                   /* Other Tabs - Keep Original Design */
                   <Card className="w-full shadow-lg border-border bg-card">
@@ -302,18 +365,18 @@ const ExerciseHub = () => {
         ))}
       </div>
 
-      {/* Add Workout Modal */}
-      <Dialog open={isAddWorkoutModalOpen} onOpenChange={setIsAddWorkoutModalOpen}>
+      {/* Create New Routine Modal */}
+      <Dialog open={isCreateRoutineModalOpen} onOpenChange={setIsCreateRoutineModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Add Workout</DialogTitle>
+            <DialogTitle className="text-center">Create New Routine</DialogTitle>
           </DialogHeader>
           <div className="text-center py-8">
-            <div className="text-4xl mb-4">🏋️‍♂️</div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Workout Entry Modal</h3>
+            <div className="text-4xl mb-4">🧠</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Routine Builder</h3>
             <p className="text-muted-foreground">Coming soon!</p>
             <Button 
-              onClick={() => setIsAddWorkoutModalOpen(false)}
+              onClick={() => setIsCreateRoutineModalOpen(false)}
               className="mt-6 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white"
             >
               Close
