@@ -1206,61 +1206,6 @@ const Home = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* New Action Cards: Exercise Hub & My Reports */}
-        <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
-          {/* Exercise Hub Action Card */}
-          <Card 
-            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'} shadow-lg hover:shadow-xl`}
-            onClick={() => setIsComingSoonOpen(true)}
-            style={{
-              background: 'linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%)',
-              boxShadow: '0 10px 30px -10px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)'
-            }}
-          >
-            <CardContent className="flex flex-col items-center justify-center h-full p-0">
-              <div className={`flex flex-col items-center space-y-3 ${isMobile ? 'p-4' : 'p-5'}`}>
-                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                  <span className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>💪</span>
-                </div>
-                <div className="text-center flex-shrink-0">
-                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white leading-tight`}>
-                    Exercise Hub
-                  </h4>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80 leading-relaxed`}>
-                    Workout programs
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* My Reports Action Card */}
-          <Card 
-            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'} shadow-lg hover:shadow-xl`}
-            onClick={() => navigate('/my-reports')}
-            style={{
-              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-              boxShadow: '0 10px 30px -10px rgba(16, 185, 129, 0.4), 0 0 40px rgba(16, 185, 129, 0.2)'
-            }}
-          >
-            <CardContent className="flex flex-col items-center justify-center h-full p-0">
-              <div className={`flex flex-col items-center space-y-3 ${isMobile ? 'p-4' : 'p-5'}`}>
-                <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                  <span className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>📄</span>
-                </div>
-                <div className="text-center flex-shrink-0">
-                  <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-white leading-tight`}>
-                    My Reports
-                  </h4>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-white/80 leading-relaxed`}>
-                    Health insights
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* Daily Performance Score Card - Featured prominently */}
