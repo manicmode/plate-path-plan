@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { safeSetJSON } from '@/lib/safeStorage';
 import { useMealScoring } from './useMealScoring';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 interface FoodItem {
   id: string;
@@ -148,8 +149,8 @@ export const useNutritionPersistence = () => {
       return data && data[0] ? data[0].id : null;
     } catch (error) {
       console.error('Error saving food:', error);
-      // Save to localStorage as fallback
-      const date = food.timestamp.toISOString().split('T')[0];
+      // Save to localStorage as fallback using local date
+      const date = getLocalDateString(food.timestamp);
       const localKey = `nutrition_${user.id}_${date}_backup`;
       const existing = JSON.parse(localStorage.getItem(localKey) || '{"foods":[]}');
       existing.foods.push(food);
@@ -177,8 +178,8 @@ export const useNutritionPersistence = () => {
       console.log('Hydration saved to database:', hydration.name);
     } catch (error) {
       console.error('Error saving hydration:', error);
-      // Save to localStorage as fallback
-      const date = hydration.timestamp.toISOString().split('T')[0];
+      // Save to localStorage as fallback using local date
+      const date = getLocalDateString(hydration.timestamp);
       const localKey = `nutrition_${user.id}_${date}_backup`;
       const existing = JSON.parse(localStorage.getItem(localKey) || '{"hydration":[]}');
       existing.hydration = existing.hydration || [];
@@ -207,8 +208,8 @@ export const useNutritionPersistence = () => {
       console.log('Supplement saved to database:', supplement.name);
     } catch (error) {
       console.error('Error saving supplement:', error);
-      // Save to localStorage as fallback
-      const date = supplement.timestamp.toISOString().split('T')[0];
+      // Save to localStorage as fallback using local date
+      const date = getLocalDateString(supplement.timestamp);
       const localKey = `nutrition_${user.id}_${date}_backup`;
       const existing = JSON.parse(localStorage.getItem(localKey) || '{"supplements":[]}');
       existing.supplements = existing.supplements || [];

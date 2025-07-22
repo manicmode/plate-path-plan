@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
@@ -6,6 +5,7 @@ import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 interface FoodItem {
   id: string;
@@ -100,7 +100,9 @@ interface NutritionProviderProps {
 }
 
 export const NutritionProvider = ({ children }: NutritionProviderProps) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
+  console.log(`🏠 NutritionProvider initializing with local date: ${today}`);
+  
   const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
   const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();
   const { user } = useAuth();
@@ -154,6 +156,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   useEffect(() => {
     if (!isLoading && loadedData) {
       const totals = calculateTotals(loadedData.foods, loadedData.hydration);
+      console.log(`📊 Setting current day data with totals:`, totals);
       setCurrentDay({
         date: today,
         foods: loadedData.foods,
@@ -182,14 +185,15 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     setWeeklyData([]);
   }, [currentDay]);
 
-  // App lifecycle awareness
+  // App lifecycle awareness with local date checking
   useAppLifecycle({
     onForeground: () => {
-      console.log('Nutrition context: App came to foreground');
-      // Check if date has changed while app was in background
-      const newToday = new Date().toISOString().split('T')[0];
+      console.log('🔄 Nutrition context: App came to foreground');
+      // Check if date has changed while app was in background using local time
+      const newToday = getLocalDateString();
+      console.log(`📅 Current local date: ${newToday}, Context date: ${currentDay.date}`);
       if (currentDay.date !== newToday) {
-        console.log('Date changed while app was in background, loading new day data');
+        console.log('🔄 Local date changed while app was in background, loading new day data');
         loadTodaysData(newToday);
       }
     },

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { getLocalDateString, getLocalDayBounds } from '@/lib/dateUtils';
 
 interface ChartDataPoint {
   label: string;
@@ -28,102 +29,94 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
       setLoading(true);
       setError(null);
 
-      const now = new Date();
-      let startDate: Date;
+      console.log(`📊 Fetching tracker data for ${trackerType} with view ${viewType} using local time`);
+
       let chartData: ChartDataPoint[] = [];
 
       switch (viewType) {
         case 'DAY':
-          startDate = new Date(now);
-          startDate.setDate(startDate.getDate() - 6); // Last 7 days
-          chartData = await fetchDailyData(startDate, now);
+          chartData = await fetchDailyData();
           break;
         case 'WEEK':
-          startDate = new Date(now);
-          startDate.setDate(startDate.getDate() - 27); // Last 4 weeks
-          chartData = await fetchWeeklyData(startDate, now);
+          chartData = await fetchWeeklyData();
           break;
         case 'MONTH':
-          startDate = new Date(now);
-          startDate.setMonth(startDate.getMonth() - 11); // Last 12 months
-          chartData = await fetchMonthlyData(startDate, now);
+          chartData = await fetchMonthlyData();
           break;
       }
 
       setData(chartData);
     } catch (err) {
-      console.error('Error fetching tracker data:', err);
+      console.error('❌ Error fetching tracker data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDailyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
+  const fetchDailyData = async (): Promise<ChartDataPoint[]> => {
     if (isNutritionTracker(trackerType)) {
-      return fetchNutritionDailyData(startDate, endDate);
+      return fetchNutritionDailyData();
     } else if (isToxinTracker(trackerType)) {
-      return fetchToxinDailyData(startDate, endDate);
+      return fetchToxinDailyData();
     } else if (trackerType === 'hydration') {
-      return fetchHydrationDailyData(startDate, endDate);
+      return fetchHydrationDailyData();
     } else if (trackerType === 'supplements') {
-      return fetchSupplementDailyData(startDate, endDate);
+      return fetchSupplementDailyData();
     }
     return [];
   };
 
-  const fetchWeeklyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
-    const dailyData = await fetchDailyData(startDate, endDate);
+  const fetchWeeklyData = async (): Promise<ChartDataPoint[]> => {
+    const dailyData = await fetchDailyData();
     return aggregateDataByWeeks(dailyData);
   };
 
-  const fetchMonthlyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
-    const dailyData = await fetchDailyData(startDate, endDate);
+  const fetchMonthlyData = async (): Promise<ChartDataPoint[]> => {
+    const dailyData = await fetchDailyData();
     return aggregateDataByMonths(dailyData);
   };
 
-  const fetchNutritionDailyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
-    const { data: nutritionData, error } = await supabase
-      .from('nutrition_logs')
-      .select('created_at, calories, protein, carbs, fat, fiber, sodium, sugar')
-      .eq('user_id', user!.id)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
-
-    if (error) throw error;
-
-    // Group by day and sum values
-    const dailyTotals: { [date: string]: number } = {};
+  const fetchNutritionDailyData = async (): Promise<ChartDataPoint[]> => {
+    console.log(`🍽️ Fetching nutrition data for ${trackerType} using local day bounds`);
     
-    nutritionData?.forEach(log => {
-      const date = new Date(log.created_at).toISOString().split('T')[0];
-      const value = getValueFromLog(log, trackerType);
-      
-      if (!dailyTotals[date]) {
-        dailyTotals[date] = 0;
-      }
-      dailyTotals[date] += value;
-    });
-
-    // Create chart data for last 7 days
+    // Create chart data for last 7 days using local date bounds
     const chartData: ChartDataPoint[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateString = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+      
+      console.log(`📅 Fetching ${trackerType} for ${localDateString} (${start} to ${end})`);
+
+      const { data: nutritionData, error } = await supabase
+        .from('nutrition_logs')
+        .select('created_at, calories, protein, carbs, fat, fiber, sodium, sugar')
+        .eq('user_id', user!.id)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const dailyTotal = (nutritionData || []).reduce((sum, log) => {
+        return sum + getValueFromLog(log, trackerType);
+      }, 0);
+
+      console.log(`📊 ${trackerType} total for ${localDateString}: ${dailyTotal}`);
       
       chartData.push({
         label: dayName,
-        value: Math.round(dailyTotals[dateString] || 0),
-        date: dateString,
+        value: Math.round(dailyTotal),
+        date: localDateString,
       });
     }
 
     return chartData;
   };
 
-  const fetchToxinDailyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
+  const fetchToxinDailyData = async (): Promise<ChartDataPoint[]> => {
     const toxinTypeMap = {
       'Inflammatory.F': 'inflammatory_foods',
       'Artificial.S': 'artificial_sweeteners',
@@ -136,117 +129,103 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
     const toxinKey = toxinTypeMap[trackerType as keyof typeof toxinTypeMap];
     if (!toxinKey) return [];
 
-    const { data: toxinData, error } = await supabase
-      .from('toxin_detections')
-      .select('created_at, serving_count')
-      .eq('user_id', user!.id)
-      .eq('toxin_type', toxinKey)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
+    console.log(`☢️ Fetching toxin data for ${toxinKey} using local day bounds`);
 
-    if (error) throw error;
-
-    // Group by day and sum servings
-    const dailyTotals: { [date: string]: number } = {};
-    
-    toxinData?.forEach(detection => {
-      const date = new Date(detection.created_at).toISOString().split('T')[0];
-      if (!dailyTotals[date]) {
-        dailyTotals[date] = 0;
-      }
-      dailyTotals[date] += Number(detection.serving_count);
-    });
-
-    // Create chart data for last 7 days
+    // Create chart data for last 7 days using local date bounds
     const chartData: ChartDataPoint[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateString = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const { data: toxinData, error } = await supabase
+        .from('toxin_detections')
+        .select('created_at, serving_count')
+        .eq('user_id', user!.id)
+        .eq('toxin_type', toxinKey)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const dailyTotal = (toxinData || []).reduce((sum, detection) => {
+        return sum + Number(detection.serving_count);
+      }, 0);
       
       chartData.push({
         label: dayName,
-        value: dailyTotals[dateString] || 0,
-        date: dateString,
+        value: dailyTotal,
+        date: localDateString,
       });
     }
 
     return chartData;
   };
 
-  const fetchHydrationDailyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
-    const { data: hydrationData, error } = await supabase
-      .from('hydration_logs')
-      .select('created_at, volume')
-      .eq('user_id', user!.id)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
-
-    if (error) throw error;
-
-    // Group by day and sum volume
-    const dailyTotals: { [date: string]: number } = {};
+  const fetchHydrationDailyData = async (): Promise<ChartDataPoint[]> => {
+    console.log(`💧 Fetching hydration data using local day bounds`);
     
-    hydrationData?.forEach(log => {
-      const date = new Date(log.created_at).toISOString().split('T')[0];
-      if (!dailyTotals[date]) {
-        dailyTotals[date] = 0;
-      }
-      dailyTotals[date] += log.volume;
-    });
-
-    // Create chart data for last 7 days
+    // Create chart data for last 7 days using local date bounds
     const chartData: ChartDataPoint[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateString = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const { data: hydrationData, error } = await supabase
+        .from('hydration_logs')
+        .select('created_at, volume')
+        .eq('user_id', user!.id)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const dailyTotal = (hydrationData || []).reduce((sum, log) => {
+        return sum + log.volume;
+      }, 0);
       
       chartData.push({
         label: dayName,
-        value: dailyTotals[dateString] || 0,
-        date: dateString,
+        value: dailyTotal,
+        date: localDateString,
       });
     }
 
     return chartData;
   };
 
-  const fetchSupplementDailyData = async (startDate: Date, endDate: Date): Promise<ChartDataPoint[]> => {
-    const { data: supplementData, error } = await supabase
-      .from('supplement_logs')
-      .select('created_at')
-      .eq('user_id', user!.id)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
-
-    if (error) throw error;
-
-    // Group by day and count supplements
-    const dailyTotals: { [date: string]: number } = {};
+  const fetchSupplementDailyData = async (): Promise<ChartDataPoint[]> => {
+    console.log(`💊 Fetching supplement data using local day bounds`);
     
-    supplementData?.forEach(log => {
-      const date = new Date(log.created_at).toISOString().split('T')[0];
-      if (!dailyTotals[date]) {
-        dailyTotals[date] = 0;
-      }
-      dailyTotals[date] += 1;
-    });
-
-    // Create chart data for last 7 days
+    // Create chart data for last 7 days using local date bounds
     const chartData: ChartDataPoint[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateString = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const { data: supplementData, error } = await supabase
+        .from('supplement_logs')
+        .select('created_at')
+        .eq('user_id', user!.id)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const dailyTotal = supplementData?.length || 0;
       
       chartData.push({
         label: dayName,
-        value: dailyTotals[dateString] || 0,
-        date: dateString,
+        value: dailyTotal,
+        date: localDateString,
       });
     }
 
@@ -275,7 +254,7 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
       weeklyData.unshift({
         label: `Week ${weeksToShow - weekIndex}`,
         value: average,
-        date: weekStart.toISOString().split('T')[0],
+        date: getLocalDateString(weekStart),
       });
     }
     

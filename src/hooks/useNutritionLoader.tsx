@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
+import { getLocalDateString, getLocalDayBounds } from '@/lib/dateUtils';
 
 interface FoodItem {
   id: string;
@@ -63,42 +65,60 @@ export const useNutritionLoader = () => {
     try {
       setIsLoading(true);
       
+      console.log(`🔄 Loading nutrition data for local date: ${date}`);
+      
+      // Get local day bounds for filtering
+      const { start, end } = getLocalDayBounds(date);
+      
+      console.log(`🔍 Querying nutrition logs between:`);
+      console.log(`  Start: ${start}`);
+      console.log(`  End: ${end}`);
+      
       // Load from localStorage as fallback
       const localKey = `nutrition_${user.id}_${date}`;
       const localData = safeGetJSON(localKey, null);
       
-      // Load foods from nutrition_logs
+      // Load foods from nutrition_logs using local day bounds
       const { data: foodsData, error: foodsError } = await supabase
         .from('nutrition_logs')
         .select('*')
         .eq('user_id', user.id)
-        .gte('created_at', `${date}T00:00:00.000Z`)
-        .lt('created_at', `${date}T23:59:59.999Z`)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .order('created_at', { ascending: true });
 
       if (foodsError) throw foodsError;
+      
+      console.log(`🍽️ Found ${foodsData?.length || 0} food logs for ${date}`);
+      if (foodsData && foodsData.length > 0) {
+        console.log('📋 Food logs:', foodsData.map(f => ({ name: f.food_name, created_at: f.created_at })));
+      }
 
-      // Load hydration from hydration_logs
+      // Load hydration from hydration_logs using local day bounds
       const { data: hydrationData, error: hydrationError } = await supabase
         .from('hydration_logs')
         .select('*')
         .eq('user_id', user.id)
-        .gte('created_at', `${date}T00:00:00.000Z`)
-        .lt('created_at', `${date}T23:59:59.999Z`)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .order('created_at', { ascending: true });
 
       if (hydrationError) throw hydrationError;
+      
+      console.log(`💧 Found ${hydrationData?.length || 0} hydration logs for ${date}`);
 
-      // Load supplements from supplement_logs
+      // Load supplements from supplement_logs using local day bounds
       const { data: supplementsData, error: supplementsError } = await supabase
         .from('supplement_logs')
         .select('*')
         .eq('user_id', user.id)
-        .gte('created_at', `${date}T00:00:00.000Z`)
-        .lt('created_at', `${date}T23:59:59.999Z`)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .order('created_at', { ascending: true });
 
       if (supplementsError) throw supplementsError;
+      
+      console.log(`💊 Found ${supplementsData?.length || 0} supplement logs for ${date}`);
 
       // Transform database data to context format
       const foods: FoodItem[] = (foodsData || []).map(item => ({
@@ -140,14 +160,18 @@ export const useNutritionLoader = () => {
       const loadedData = { foods, hydration, supplements };
       setData(loadedData);
 
+      // Calculate totals for debugging
+      const totalCalories = foods.reduce((sum, food) => sum + food.calories, 0);
+      console.log(`📊 Total calories loaded: ${totalCalories}`);
+
       // Update localStorage cache
       safeSetJSON(localKey, loadedData);
 
     } catch (error) {
-      console.error('Error loading nutrition data:', error);
+      console.error('❌ Error loading nutrition data:', error);
       
       // Fallback to localStorage if available
-      const localKey = `nutrition_${user.id}_${date}`;
+      const localKey = `nutrition_${user.id}_${date}_backup`;
       const localData = safeGetJSON(localKey, { foods: [], hydration: [], supplements: [] });
       setData(localData);
     } finally {
@@ -156,7 +180,9 @@ export const useNutritionLoader = () => {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    // Use local date string instead of UTC
+    const today = getLocalDateString();
+    console.log(`🚀 useNutritionLoader initializing for local date: ${today}`);
     loadTodaysData(today);
   }, [user]);
 
