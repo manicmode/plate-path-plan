@@ -12,6 +12,7 @@ const ExerciseHub = () => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
+  const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
@@ -47,6 +48,38 @@ const ExerciseHub = () => {
       startTime: "18:30",
       endTime: "18:55",
       gradient: "from-purple-300 to-pink-500"
+    }
+  ];
+
+  // Mock routine data
+  const mockRoutines = [
+    {
+      id: 1,
+      title: "Full Body Blast",
+      emoji: "💥",
+      description: "3-day strength circuit",
+      gradient: "from-red-400 to-orange-500"
+    },
+    {
+      id: 2,
+      title: "Cardio Power",
+      emoji: "🏃",
+      description: "High-intensity cardio",
+      gradient: "from-blue-400 to-cyan-500"
+    },
+    {
+      id: 3,
+      title: "Zen & Stretch",
+      emoji: "🧘",
+      description: "Flexibility & mindfulness",
+      gradient: "from-purple-400 to-pink-500"
+    },
+    {
+      id: 4,
+      title: "Core Crusher",
+      emoji: "🔥",
+      description: "Abs & core strengthening",
+      gradient: "from-yellow-400 to-red-500"
     }
   ];
 
