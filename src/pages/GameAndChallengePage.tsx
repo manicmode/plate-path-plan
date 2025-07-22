@@ -31,48 +31,58 @@ const GameAndChallengePage: React.FC = () => {
   console.log("🧪 Game page successfully mounted");
   const [activeTab, setActiveTab] = useState('browse');
   
+  console.log("🔍 Starting hook initialization...");
+  
   // Safely access challenge context with comprehensive error handling
   let microChallenges: any[] = [];
+  console.log("🔍 About to call useChallenge...");
   try {
     const challengeContext = useChallenge();
-    console.error("useChallenge hook result:", challengeContext);
+    console.log("✅ useChallenge successful:", challengeContext);
     microChallenges = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
   } catch (error) {
-    console.error('ChallengeProvider error:', error);
+    console.error('❌ ChallengeProvider error:', error);
     microChallenges = [];
   }
+  console.log("🔍 useChallenge completed, microChallenges:", microChallenges);
   
   // Get real data from hooks with comprehensive error handling
   let publicChallenges: any[] = [];
   let publicParticipations: any[] = [];
   let publicLoading = false;
   
+  console.log("🔍 About to call usePublicChallenges...");
   try {
     const publicData = usePublicChallenges();
-    console.error("usePublicChallenges hook result:", publicData);
+    console.log("✅ usePublicChallenges successful:", publicData);
     publicChallenges = Array.isArray(publicData?.challenges) ? publicData.challenges : [];
     publicParticipations = Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [];
     publicLoading = Boolean(publicData?.loading);
   } catch (error) {
-    console.error('usePublicChallenges error:', error);
+    console.error('❌ usePublicChallenges error:', error);
     publicChallenges = [];
     publicParticipations = [];
     publicLoading = false;
   }
+  console.log("🔍 usePublicChallenges completed");
 
   let privateChallenges: any[] = [];
   let privateLoading = false;
   
+  console.log("🔍 About to call usePrivateChallenges...");
   try {
     const privateData = usePrivateChallenges();
-    console.error("usePrivateChallenges hook result:", privateData);
+    console.log("✅ usePrivateChallenges successful:", privateData);
     privateChallenges = Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [];
     privateLoading = Boolean(privateData?.loading);
   } catch (error) {
-    console.error('usePrivateChallenges error:', error);
+    console.error('❌ usePrivateChallenges error:', error);
     privateChallenges = [];
     privateLoading = false;
   }
+  console.log("🔍 usePrivateChallenges completed");
+  
+  console.log("🔍 All hooks completed, starting render logic...");
 
   // Calculate real statistics with comprehensive error handling
   const stats = useMemo(() => {
@@ -216,10 +226,11 @@ const GameAndChallengePage: React.FC = () => {
 
           <TabsContent value="browse" className="space-y-6">
             {(() => {
+              console.log("🔍 Rendering PublicChallengesBrowse tab...");
               try {
                 return <PublicChallengesBrowse />;
               } catch (error) {
-                console.error('PublicChallengesBrowse error:', error);
+                console.error('❌ PublicChallengesBrowse error:', error);
                 return (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">Unable to load public challenges</p>
@@ -231,10 +242,17 @@ const GameAndChallengePage: React.FC = () => {
 
           <TabsContent value="my-challenges" className="space-y-6">
             {(() => {
+              console.log("🔍 Rendering UserChallengeParticipations tab...");
               try {
-                return <UserChallengeParticipations />;
+                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
+                return (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">My Challenges tab temporarily disabled for debugging</p>
+                  </div>
+                );
+                // return <UserChallengeParticipations />;
               } catch (error) {
-                console.error('UserChallengeParticipations error:', error);
+                console.error('❌ UserChallengeParticipations error:', error);
                 return (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">Unable to load your challenges</p>
@@ -246,10 +264,17 @@ const GameAndChallengePage: React.FC = () => {
 
           <TabsContent value="friends" className="space-y-6">
             {(() => {
+              console.log("🔍 Rendering MyFriendsTab tab...");
               try {
-                return <MyFriendsTab />;
+                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
+                return (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Friends tab temporarily disabled for debugging</p>
+                  </div>
+                );
+                // return <MyFriendsTab />;
               } catch (error) {
-                console.error('MyFriendsTab error:', error);
+                console.error('❌ MyFriendsTab error:', error);
                 return (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">Unable to load friends</p>
@@ -261,18 +286,25 @@ const GameAndChallengePage: React.FC = () => {
 
           <TabsContent value="achievements" className="space-y-6">
             {(() => {
+              console.log("🔍 Rendering AchievementBadges tab...");
               try {
+                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
                 return (
-                  <AchievementBadges scoreStats={{
-                    currentScore: 0,
-                    weeklyAverage: 0,
-                    monthlyAverage: 0,
-                    streak: 0,
-                    bestScore: 0
-                  }} />
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Achievements tab temporarily disabled for debugging</p>
+                  </div>
                 );
+                // return (
+                //   <AchievementBadges scoreStats={{
+                //     currentScore: 0,
+                //     weeklyAverage: 0,
+                //     monthlyAverage: 0,
+                //     streak: 0,
+                //     bestScore: 0
+                //   }} />
+                // );
               } catch (error) {
-                console.error('AchievementBadges error:', error);
+                console.error('❌ AchievementBadges error:', error);
                 return (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">Unable to load achievements</p>
@@ -284,15 +316,22 @@ const GameAndChallengePage: React.FC = () => {
 
           <TabsContent value="leaderboard" className="space-y-6">
             {(() => {
+              console.log("🔍 Rendering Leaderboard tab...");
               try {
+                // TEMPORARILY COMMENTED OUT TO ISOLATE CRASH
                 return (
-                  <div className="space-y-6">
-                    <HallOfFame champions={[]} />
-                    <MonthlyTrophyPodium />
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Leaderboard tab temporarily disabled for debugging</p>
                   </div>
                 );
+                // return (
+                //   <div className="space-y-6">
+                //     <HallOfFame champions={[]} />
+                //     <MonthlyTrophyPodium />
+                //   </div>
+                // );
               } catch (error) {
-                console.error('Leaderboard error:', error);
+                console.error('❌ Leaderboard error:', error);
                 return (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">Unable to load leaderboard</p>
