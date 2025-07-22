@@ -113,7 +113,7 @@ const Explore = () => {
               disabled={navigationInProgress}
               variant="ghost"
               className={`
-                group relative h-full min-h-[160px] p-4 rounded-2xl 
+                group relative h-full min-h-[180px] p-4 rounded-2xl 
                 transition-all duration-300 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95
@@ -125,7 +125,7 @@ const Explore = () => {
             >
               {/* Emoji Icon */}
               <div className={`${safeIsMobile ? 'text-3xl' : 'text-4xl'} 
-                group-hover:scale-110 transition-transform duration-200 
+                group-hover:scale-110 transition-transform duration-200 animate-pulse
                 filter drop-shadow-lg`}>
                 {tile.emoji}
               </div>
@@ -153,13 +153,13 @@ const Explore = () => {
             hover:scale-105 active:scale-95
             shadow-xl shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
-            flex items-center justify-start pl-8 space-x-3
+            flex items-center justify-center space-x-3
             ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
           {/* Profile Icon */}
           <div className={`${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
-            group-hover:scale-110 transition-transform duration-200 
+            group-hover:scale-110 transition-transform duration-200 animate-bounce
             filter drop-shadow-lg`}>
             👤
           </div>
