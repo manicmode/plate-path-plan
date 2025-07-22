@@ -13,6 +13,7 @@ const ExerciseHub = () => {
   const [activeTab, setActiveTab] = useState('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
+  const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
@@ -115,6 +116,38 @@ const ExerciseHub = () => {
       value: "16 days",
       gradient: "from-green-400 to-emerald-500",
       iconColor: "text-green-500"
+    }
+  ];
+
+  // Mock pre-made plans data
+  const mockPlans = [
+    {
+      id: 1,
+      name: "Strength Builder",
+      emoji: "🏋️‍♂️",
+      description: "4-week heavy lifting program",
+      gradient: "from-red-400 to-orange-600"
+    },
+    {
+      id: 2,
+      name: "Dance Fit",
+      emoji: "💃",
+      description: "Fun cardio through dance routines",
+      gradient: "from-pink-400 to-purple-600"
+    },
+    {
+      id: 3,
+      name: "Mind & Body Flow",
+      emoji: "🧘",
+      description: "Gentle yoga & breathwork for stress relief",
+      gradient: "from-green-400 to-teal-600"
+    },
+    {
+      id: 4,
+      name: "Endurance Challenge",
+      emoji: "🏔",
+      description: "Build stamina with uphill cardio",
+      gradient: "from-blue-400 to-indigo-600"
     }
   ];
 
@@ -440,6 +473,61 @@ const ExerciseHub = () => {
                       </CardContent>
                     </Card>
                   </div>
+                ) : tab.id === 'pre-made-plans' ? (
+                  /* Pre-Made Plans Tab - Enhanced */
+                  <div className="space-y-6">
+                    {/* Curated Plans Header */}
+                    <div className="text-center mb-6">
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Curated Workout Plans</h2>
+                      <p className="text-muted-foreground">Choose a plan and start training with confidence</p>
+                    </div>
+
+                    {/* Pre-Made Plans Grid - 2x2 */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      {mockPlans.map((plan) => (
+                        <Card key={plan.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
+                          <CardContent className="p-0">
+                            <div className={`bg-gradient-to-br ${plan.gradient} p-6 rounded-t-lg`}>
+                              <div className="text-center space-y-3 text-white">
+                                {/* Emoji */}
+                                <div className="text-4xl filter drop-shadow-lg">{plan.emoji}</div>
+                                
+                                {/* Plan Name */}
+                                <h3 className="text-lg font-bold leading-tight drop-shadow-md">{plan.name}</h3>
+                              </div>
+                            </div>
+                            <div className="p-4 bg-card">
+                              {/* Description */}
+                              <p className="text-sm text-muted-foreground text-center leading-relaxed">{plan.description}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Explore More Plans Button */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6">
+                        <Button
+                          onClick={() => setIsExploreMoreModalOpen(true)}
+                          className="w-full h-14 bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-500 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                          Explore More Plans
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Additional Info Card */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6 text-center">
+                        <div className="text-3xl mb-4">🧩</div>
+                        <h3 className="text-lg font-bold text-foreground mb-2">Personalized Recommendations</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Plans are tailored to different fitness levels and goals. Start where you feel comfortable!
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
                 ) : (
                   /* Other Tabs - Keep Original Design */
                   <Card className="w-full shadow-lg border-border bg-card">
@@ -478,19 +566,19 @@ const ExerciseHub = () => {
         ))}
       </div>
 
-      {/* Create New Routine Modal */}
-      <Dialog open={isCreateRoutineModalOpen} onOpenChange={setIsCreateRoutineModalOpen}>
+      {/* Explore More Plans Modal */}
+      <Dialog open={isExploreMoreModalOpen} onOpenChange={setIsExploreMoreModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Create New Routine</DialogTitle>
+            <DialogTitle className="text-center">Explore More Plans</DialogTitle>
           </DialogHeader>
           <div className="text-center py-8">
-            <div className="text-4xl mb-4">🧠</div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Routine Builder</h3>
+            <div className="text-4xl mb-4">🧩</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">More Workout Plans</h3>
             <p className="text-muted-foreground">Coming soon!</p>
             <Button 
-              onClick={() => setIsCreateRoutineModalOpen(false)}
-              className="mt-6 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white"
+              onClick={() => setIsExploreMoreModalOpen(false)}
+              className="mt-6 bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-500 hover:to-pink-700 text-white"
             >
               Close
             </Button>
