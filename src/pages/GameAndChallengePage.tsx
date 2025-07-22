@@ -174,6 +174,8 @@ const GameAndChallengePage: React.FC = () => {
   }, [publicChallenges, privateChallenges, publicParticipations]);
 
   // Memoize tab content rendering to prevent unnecessary re-renders when activeTab changes
+  // TEMPORARILY COMMENTED OUT FOR DEBUGGING
+  /*
   const renderTabContent = useMemo(() => {
     console.log("🎯 renderTabContent memoization triggered - should only happen when dependencies change");
     console.log("📊 Creating Browse tab content");
@@ -192,6 +194,7 @@ const GameAndChallengePage: React.FC = () => {
     };
     return tabContent;
   }, [stats]);
+  */
 
   const loading = publicLoading || privateLoading;
   
@@ -350,7 +353,9 @@ const GameAndChallengePage: React.FC = () => {
             className="space-y-6"
             style={{ minHeight: '300px', transition: 'none' }}
           >
-            {renderTabContent['browse']}
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem', background: 'rgba(0,0,0,0.8)' }}>
+              Browse Tab - Render Test (PublicChallengesBrowse commented out)
+            </div>
           </TabsContent>
 
           <TabsContent 
@@ -358,7 +363,9 @@ const GameAndChallengePage: React.FC = () => {
             className="space-y-6"
             style={{ minHeight: '300px', transition: 'none' }}
           >
-            {renderTabContent['my-challenges']}
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem', background: 'rgba(0,0,0,0.8)' }}>
+              My Challenges Tab - Render Test (UserChallengeParticipations commented out)
+            </div>
           </TabsContent>
 
           <TabsContent 
@@ -366,7 +373,9 @@ const GameAndChallengePage: React.FC = () => {
             className="space-y-6"
             style={{ minHeight: '300px', transition: 'none' }}
           >
-            {renderTabContent['friends']}
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem', background: 'rgba(0,0,0,0.8)' }}>
+              Friends Tab - Render Test (MyFriendsTab commented out)
+            </div>
           </TabsContent>
 
           <TabsContent 
@@ -374,7 +383,9 @@ const GameAndChallengePage: React.FC = () => {
             className="space-y-6"
             style={{ minHeight: '300px', transition: 'none' }}
           >
-            {renderTabContent['achievements']}
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem', background: 'rgba(0,0,0,0.8)' }}>
+              Achievements Tab - Render Test (AchievementBadges commented out)
+            </div>
           </TabsContent>
 
           <TabsContent 
@@ -382,7 +393,9 @@ const GameAndChallengePage: React.FC = () => {
             className="space-y-6"
             style={{ minHeight: '300px', transition: 'none' }}
           >
-            {renderTabContent['leaderboard']}
+            <div style={{ color: 'white', textAlign: 'center', padding: '2rem', background: 'rgba(0,0,0,0.8)' }}>
+              Leaderboard Tab - Render Test (MonthlyTrophyPodium commented out)
+            </div>
           </TabsContent>
         </Tabs>
         </div>
