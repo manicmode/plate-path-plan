@@ -113,26 +113,26 @@ const Explore = () => {
               disabled={navigationInProgress}
               variant="ghost"
               className={`
-                group relative h-full min-h-[180px] p-4 rounded-2xl 
+                group relative h-full min-h-[180px] p-6 rounded-2xl 
                 transition-all duration-300 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95
-                shadow-xl shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] ring-[1px] ring-inset ring-white/15 ${tile.shadowColor} hover:shadow-2xl
+                shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
-                flex flex-col items-center justify-center space-y-2
+                flex flex-col items-center justify-center space-y-4
                 ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               {/* Emoji Icon */}
-              <div className={`${safeIsMobile ? 'text-[3rem]' : 'text-[3.25rem]'} 
+              <div className={`${safeIsMobile ? 'text-[3.5rem]' : 'text-[4rem]'} 
                 group-hover:scale-105 group-active:scale-95 transition-transform duration-300 ease-out
-                filter drop-shadow-lg`}>
+                filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]`}>
                 {tile.emoji}
               </div>
               {/* Title */}
               <span className={`${safeIsMobile ? 'text-sm' : 'text-base'} 
                 font-bold text-center leading-tight text-white
-                drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
+                drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-shadow-[0_1px_2px_rgba(0,0,0,0.6)]`}>
                 {tile.title}
               </span>
             </Button>
