@@ -143,8 +143,8 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tab - Full Width */}
-      <div className="w-full mb-4 z-10 relative">
+      {/* Profile Tab - Full Width - Above Navigation */}
+      <div className="w-full mb-24 z-40 relative">
         <Button
           onClick={() => handleTileClick('profile')}
           variant="ghost"
