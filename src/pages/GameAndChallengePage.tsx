@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PublicChallengesTab from '@/components/challenges/PublicChallengesTab';
 
 export default function GameAndChallengePage() {
   const [activeTab, setActiveTab] = useState<'public' | 'your' | 'trending' | 'micro'>('public');
@@ -15,8 +16,10 @@ export default function GameAndChallengePage() {
       </div>
 
       <div style={{ marginTop: '40px' }}>
-        <p>Active Tab: {activeTab}</p>
-        <p>✅ Tab structure rendering successfully</p>
+        {activeTab === 'public' && <PublicChallengesTab />}
+        {activeTab === 'your' && <p>Placeholder for Your Challenges</p>}
+        {activeTab === 'trending' && <p>Placeholder for Trending</p>}
+        {activeTab === 'micro' && <p>Placeholder for Micro</p>}
       </div>
     </div>
   );
