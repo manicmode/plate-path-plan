@@ -119,7 +119,7 @@ const Explore = () => {
                 hover:scale-105 active:scale-95
                 shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
-                flex flex-col items-center justify-center space-y-4
+                flex flex-col items-center justify-center space-y-5
                 ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
@@ -149,9 +149,9 @@ const Explore = () => {
           className={`
             group relative w-full h-16 p-3 rounded-2xl 
             transition-all duration-300 ease-out
-            bg-gradient-to-br from-slate-500 to-slate-600 
+            bg-gradient-to-br from-slate-400 to-slate-500 
             hover:scale-105 active:scale-95
-            shadow-xl shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] ring-[1px] ring-inset ring-white/15 shadow-slate-500/20 hover:shadow-2xl
+            shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
             flex items-center justify-center space-x-3
             ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
