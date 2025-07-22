@@ -108,7 +108,7 @@ const Explore = () => {
               onClick={() => handleTileClick(tile.id)}
               variant="ghost"
               className={`
-                group relative h-full min-h-[150px] p-4 rounded-3xl 
+                group relative h-full min-h-[170px] p-4 rounded-3xl 
                 transition-all duration-500 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95 active:rotate-1
