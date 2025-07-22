@@ -1571,15 +1571,6 @@ const Home = () => {
                 animatedGradient: 'bg-gradient-to-br from-purple-400 via-purple-500 to-pink-500',
               },
               {
-                id: 'influencers',
-                title: 'Influencers',
-                emoji: '⭐️',
-                color: 'from-blue-500 via-cyan-400 to-cyan-500',
-                shadowColor: 'shadow-blue-500/30',
-                glowColor: 'hover:shadow-cyan-400/50',
-                animatedGradient: 'bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-500',
-              },
-              {
                 id: 'exercise-hub',
                 title: 'Exercise Hub',
                 emoji: '💪',
@@ -1587,6 +1578,15 @@ const Home = () => {
                 shadowColor: 'shadow-blue-500/30',
                 glowColor: 'hover:shadow-blue-400/50',
                 animatedGradient: 'bg-gradient-to-br from-blue-300 via-blue-500 to-blue-600',
+              },
+              {
+                id: 'influencers',
+                title: 'Influencers',
+                emoji: '⭐️',
+                color: 'from-blue-500 via-cyan-400 to-cyan-500',
+                shadowColor: 'shadow-blue-500/30',
+                glowColor: 'hover:shadow-cyan-400/50',
+                animatedGradient: 'bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-500',
               },
               {
                 id: 'my-reports',

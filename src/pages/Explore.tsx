@@ -55,11 +55,11 @@ const Explore = () => {
 
   const mainTiles = [
     {
-      id: 'exercise-hub',
-      title: 'Exercise Hub',
-      emoji: '💪',
-      color: 'from-blue-300 to-blue-600',
-      shadowColor: 'shadow-blue-500/20',
+      id: 'health-check',
+      title: 'Health Scan',
+      emoji: '❤️',
+      color: 'from-red-300 to-rose-600',
+      shadowColor: 'shadow-red-500/20',
     },
     {
       id: 'game-challenge',
@@ -76,6 +76,13 @@ const Explore = () => {
       shadowColor: 'shadow-purple-500/20',
     },
     {
+      id: 'exercise-hub',
+      title: 'Exercise Hub',
+      emoji: '💪',
+      color: 'from-blue-300 to-blue-600',
+      shadowColor: 'shadow-blue-500/20',
+    },
+    {
       id: 'influencers',
       title: 'Influencer Hub',
       emoji: '⭐️',
@@ -88,13 +95,6 @@ const Explore = () => {
       emoji: '📄',
       color: 'from-emerald-300 to-teal-600',
       shadowColor: 'shadow-emerald-500/20',
-    },
-    {
-      id: 'health-check',
-      title: 'Health Scan',
-      emoji: '❤️',
-      color: 'from-red-300 to-rose-600',
-      shadowColor: 'shadow-red-500/20',
     },
   ];
 
