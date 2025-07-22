@@ -117,22 +117,22 @@ const Explore = () => {
                 transition-all duration-300 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95
-                shadow-xl shadow-inner ${tile.shadowColor} hover:shadow-2xl
+                shadow-xl shadow-inner shadow-[inset_0_4px_12px_rgba(255,255,255,0.2)] ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
                 flex flex-col items-center justify-center space-y-2
                 ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               {/* Emoji Icon */}
-              <div className={`${safeIsMobile ? 'text-3xl' : 'text-4xl'} 
-                group-active:animate-bounce transition-transform duration-200
+              <div className={`${safeIsMobile ? 'text-[2.75rem]' : 'text-[3rem]'} 
+                group-active:animate-[bounce_0.5s_ease-in-out] group-active:scale-110 transition-transform duration-200
                 filter drop-shadow-lg`}>
                 {tile.emoji}
               </div>
               {/* Title */}
               <span className={`${safeIsMobile ? 'text-sm' : 'text-base'} 
-                font-bold text-center leading-tight text-white
-                drop-shadow-md`}>
+                font-bold text-center leading-tight text-white/90
+                drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>
                 {tile.title}
               </span>
             </Button>
@@ -147,11 +147,11 @@ const Explore = () => {
           disabled={navigationInProgress}
           variant="ghost"
           className={`
-            group relative w-full h-16 p-4 rounded-2xl 
+            group relative w-full h-16 p-3 rounded-2xl 
             transition-all duration-300 ease-out
             bg-gradient-to-br from-slate-500 to-slate-600 
             hover:scale-105 active:scale-95
-            shadow-xl shadow-slate-500/20 hover:shadow-2xl
+            shadow-xl shadow-inner shadow-[inset_0_4px_12px_rgba(255,255,255,0.2)] shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
             flex items-center justify-center space-x-3
             ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
@@ -165,7 +165,7 @@ const Explore = () => {
           </div>
           {/* Profile Text */}
           <span className={`${safeIsMobile ? 'text-lg' : 'text-xl'} 
-            font-bold text-white drop-shadow-md`}>
+            font-bold text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]`}>
             Profile
           </span>
         </Button>
