@@ -147,18 +147,35 @@ const Explore = () => {
       <div className="w-full mb-4 z-10 relative">
         <Button
           onClick={() => handleTileClick('profile')}
-          variant="outline"
+          variant="ghost"
           className={`
-            w-full h-16 rounded-xl transition-all duration-300 ease-out
-            bg-background/60 backdrop-blur-sm border border-border/50
-            hover:bg-background/80 hover:scale-[1.02] hover:shadow-lg
-            text-foreground hover:text-foreground
-            flex items-center justify-center space-x-3
-            shadow-sm hover:shadow-md
+            group relative w-full h-20 p-6 rounded-3xl 
+            transition-all duration-500 ease-out
+            bg-gradient-to-br from-slate-500 via-slate-400 to-slate-500 
+            hover:scale-105 active:scale-95 active:rotate-1
+            shadow-2xl shadow-slate-500/30 hover:shadow-slate-400/50 hover:shadow-3xl
+            border-0 text-white hover:text-white
+            flex items-center justify-center space-y-0 space-x-3
+            backdrop-blur-sm overflow-hidden
+            before:absolute before:inset-0 before:bg-gradient-to-br 
+            before:from-white/20 before:to-transparent before:opacity-0 
+            hover:before:opacity-100 before:transition-opacity before:duration-300
+            after:absolute after:inset-0 after:bg-gradient-to-t
+            after:from-black/5 after:to-transparent after:opacity-100
           `}
         >
-          <UserRound className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-          <span className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>
+          {/* 3D Style Blue Person Icon */}
+          <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} 
+            group-hover:scale-110 transition-all duration-300 z-10 relative filter drop-shadow-2xl`}>
+            👤
+          </div>
+          {/* Profile Text */}
+          <span className={`${isMobile ? 'text-lg' : 'text-xl'} 
+            font-black text-center leading-tight text-white z-10 relative
+            drop-shadow-2xl tracking-wide`}
+            style={{ 
+              textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)' 
+            }}>
             Profile
           </span>
         </Button>
