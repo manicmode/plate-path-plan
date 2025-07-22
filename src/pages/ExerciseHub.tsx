@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Clock, Flame, Timer } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -80,6 +80,41 @@ const ExerciseHub = () => {
       emoji: "🔥",
       description: "Abs & core strengthening",
       gradient: "from-yellow-400 to-red-500"
+    }
+  ];
+
+  // Mock progress data
+  const mockWeeklyData = [
+    { day: 'Mon', workouts: 2, height: '60%' },
+    { day: 'Tue', workouts: 1, height: '30%' },
+    { day: 'Wed', workouts: 3, height: '90%' },
+    { day: 'Thu', workouts: 0, height: '0%' },
+    { day: 'Fri', workouts: 2, height: '60%' },
+    { day: 'Sat', workouts: 1, height: '30%' },
+    { day: 'Sun', workouts: 2, height: '60%' }
+  ];
+
+  const mockStats = [
+    {
+      icon: Clock,
+      title: "Avg. Workout Duration",
+      value: "42 min",
+      gradient: "from-blue-400 to-cyan-500",
+      iconColor: "text-blue-500"
+    },
+    {
+      icon: Flame,
+      title: "Avg. Calories Burned",
+      value: "310 kcal",
+      gradient: "from-orange-400 to-red-500",
+      iconColor: "text-orange-500"
+    },
+    {
+      icon: Calendar,
+      title: "Workout Days This Month",
+      value: "16 days",
+      gradient: "from-green-400 to-emerald-500",
+      iconColor: "text-green-500"
     }
   ];
 
@@ -326,6 +361,84 @@ const ExerciseHub = () => {
                         </CardContent>
                       </Card>
                     )}
+                  </div>
+                ) : tab.id === 'progress-reports' ? (
+                  /* Progress & Reports Tab - Enhanced */
+                  <div className="space-y-6">
+                    {/* Progress Overview Header */}
+                    <div className="text-center mb-6">
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Progress Overview</h2>
+                      <p className="text-muted-foreground">Track your training consistency and performance over time</p>
+                    </div>
+
+                    {/* Weekly Workout Frequency Chart */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6">
+                        <h3 className="text-xl font-bold text-foreground mb-4">Weekly Workout Frequency</h3>
+                        
+                        {/* Mock Bar Chart */}
+                        <div className="flex items-end justify-between h-32 mb-4">
+                          {mockWeeklyData.map((day, index) => (
+                            <div key={day.day} className="flex flex-col items-center space-y-2 flex-1">
+                              <div className="w-full flex justify-center">
+                                <div 
+                                  className={`w-8 bg-gradient-to-t from-emerald-400 to-cyan-500 rounded-t-md transition-all duration-500 ease-out`}
+                                  style={{ height: day.height }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground font-medium">{day.day}</span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Chart Legend */}
+                        <div className="flex items-center justify-center space-x-4 text-sm text-muted-foreground">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-cyan-500 rounded"></div>
+                            <span>Workouts completed</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Stats Summary Section */}
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-bold text-foreground text-center">Performance Stats</h3>
+                      
+                      <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
+                        {mockStats.map((stat, index) => {
+                          const IconComponent = stat.icon;
+                          return (
+                            <Card key={index} className="shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300">
+                              <CardContent className="p-0">
+                                <div className={`bg-gradient-to-r ${stat.gradient} p-1 rounded-t-lg`} />
+                                <div className="p-6 text-center">
+                                  <div className="flex justify-center mb-3">
+                                    <IconComponent className={`h-8 w-8 ${stat.iconColor}`} />
+                                  </div>
+                                  <h4 className="text-sm font-medium text-muted-foreground mb-2">{stat.title}</h4>
+                                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Additional Progress Insights */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6 text-center">
+                        <div className="text-3xl mb-4">📈</div>
+                        <h3 className="text-lg font-bold text-foreground mb-2">Progress Insights</h3>
+                        <p className="text-muted-foreground text-sm">
+                          You're doing great! Keep up the consistency to reach your fitness goals.
+                        </p>
+                        <div className="mt-4 inline-flex items-center px-4 py-2 rounded-full bg-muted text-muted-foreground border border-border">
+                          <span className="text-sm font-medium">Detailed analytics coming soon</span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 ) : (
                   /* Other Tabs - Keep Original Design */
