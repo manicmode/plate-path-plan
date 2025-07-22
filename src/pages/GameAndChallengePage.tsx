@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PublicChallengesTab from '@/components/challenges/PublicChallengesTab';
 import YourChallengesTab from '@/components/challenges/YourChallengesTab';
 import TrendingChallengesTab from '@/components/challenges/TrendingChallengesTab';
+import MicroChallengesTab from '@/components/challenges/MicroChallengesTab';
 
 export default function GameAndChallengePage() {
   const [activeTab, setActiveTab] = useState<'public' | 'your' | 'trending' | 'micro'>('public');
@@ -21,7 +22,7 @@ export default function GameAndChallengePage() {
         {activeTab === 'public' && <PublicChallengesTab />}
         {activeTab === 'your' && <YourChallengesTab />}
         {activeTab === 'trending' && <TrendingChallengesTab />}
-        {activeTab === 'micro' && <p>Placeholder for Micro</p>}
+        {activeTab === 'micro' && <MicroChallengesTab />}
       </div>
     </div>
   );
