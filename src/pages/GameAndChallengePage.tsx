@@ -28,12 +28,14 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 const GameAndChallengePage: React.FC = () => {
+  console.log("🧪 Game page successfully mounted");
   const [activeTab, setActiveTab] = useState('browse');
   
   // Safely access challenge context with comprehensive error handling
   let microChallenges: any[] = [];
   try {
     const challengeContext = useChallenge();
+    console.error("useChallenge hook result:", challengeContext);
     microChallenges = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
   } catch (error) {
     console.error('ChallengeProvider error:', error);
@@ -47,6 +49,7 @@ const GameAndChallengePage: React.FC = () => {
   
   try {
     const publicData = usePublicChallenges();
+    console.error("usePublicChallenges hook result:", publicData);
     publicChallenges = Array.isArray(publicData?.challenges) ? publicData.challenges : [];
     publicParticipations = Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [];
     publicLoading = Boolean(publicData?.loading);
@@ -62,6 +65,7 @@ const GameAndChallengePage: React.FC = () => {
   
   try {
     const privateData = usePrivateChallenges();
+    console.error("usePrivateChallenges hook result:", privateData);
     privateChallenges = Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [];
     privateLoading = Boolean(privateData?.loading);
   } catch (error) {
@@ -301,16 +305,8 @@ const GameAndChallengePage: React.FC = () => {
       </div>
     );
   } catch (error) {
-    console.error('GameAndChallengePage render error:', error);
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="text-center py-8">
-          <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Gaming & Challenges</h2>
-          <p className="text-muted-foreground">Loading challenges...</p>
-        </div>
-      </div>
-    );
+    console.error("Game page render crash", error);
+    return <div style={{ padding: 20 }}>⚠️ Game page render error</div>;
   }
 };
 
