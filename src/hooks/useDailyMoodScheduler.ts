@@ -133,6 +133,7 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
     };
 
     scheduleNotification();
+    console.log('Mood scheduler initialized once per user/preferences change');
 
     // Cleanup function
     return () => {
@@ -141,7 +142,7 @@ export const useDailyMoodScheduler = (): MoodSchedulerState => {
         timeoutRef.current = null;
       }
     };
-  }, [user, preferences.dailyMoodCheckin, preferences.quietHoursStart, preferences.quietHoursEnd, preferences.deliveryMode, addNotification, checkIfMoodLoggedToday, triggerMoodNotification]);
+  }, [user?.id, preferences.dailyMoodCheckin, preferences.quietHoursStart, preferences.quietHoursEnd, preferences.deliveryMode]); // Removed callback dependencies that cause re-renders
 
   return {
     showMoodModal,
