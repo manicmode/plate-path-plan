@@ -28,6 +28,7 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 const GameAndChallengePage: React.FC = () => {
+  console.count("GameAndChallengePage renders");
   console.log("GameAndChallengePage rendered");
   console.log("🧪 Game page successfully mounted");
   console.log("🔍 Starting GameAndChallengePage component initialization...");
@@ -40,70 +41,64 @@ const GameAndChallengePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('browse');
   console.log("🔍 useState for activeTab completed");
   
-  // Track hook execution order and performance for infinite loop detection
+  // Move hook calls to top level to avoid conditional hook calls
   console.log("🔍 About to call useChallenge...");
   const challengeHookStart = performance.now();
-  let microChallenges: any[] = [];
-  try {
-    console.log("HOOK START: useChallenge");
-    const challengeContext = useChallenge();
-    const challengeHookTime = performance.now() - challengeHookStart;
-    console.log("HOOK END: useChallenge", `took ${challengeHookTime}ms`);
-    console.log("✅ useChallenge result:", {
-      challenges: challengeContext?.challenges?.length,
-      microChallenges: challengeContext?.microChallenges?.length,
-      activeUserChallenges: challengeContext?.activeUserChallenges?.length
-    });
-    microChallenges = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
-  } catch (error) {
-    console.error('❌ ChallengeProvider error:', error);
-    microChallenges = [];
-  }
+  const challengeContext = useChallenge();
+  const challengeHookTime = performance.now() - challengeHookStart;
+  console.log("HOOK END: useChallenge", `took ${challengeHookTime}ms`);
+  console.log("✅ useChallenge result:", {
+    challenges: challengeContext?.challenges?.length,
+    microChallenges: challengeContext?.microChallenges?.length,
+    activeUserChallenges: challengeContext?.activeUserChallenges?.length
+  });
   
   console.log("🔍 About to call usePublicChallenges...");
   const publicHookStart = performance.now();
-  let publicChallenges: any[] = [];
-  let publicParticipations: any[] = [];
-  let publicLoading = false;
-  try {
-    console.log("HOOK START: usePublicChallenges");
-    const publicData = usePublicChallenges();
-    const publicHookTime = performance.now() - publicHookStart;
-    console.log("HOOK END: usePublicChallenges", `took ${publicHookTime}ms`);
-    console.log("✅ usePublicChallenges result:", {
-      challenges: publicData?.challenges?.length,
-      userParticipations: publicData?.userParticipations?.length,
-      loading: publicData?.loading
-    });
-    publicChallenges = Array.isArray(publicData?.challenges) ? publicData.challenges : [];
-    publicParticipations = Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [];
-    publicLoading = Boolean(publicData?.loading);
-  } catch (error) {
-    console.error('❌ usePublicChallenges error:', error);
-    publicChallenges = [];
-    publicParticipations = [];
-    publicLoading = false;
-  }
+  const publicData = usePublicChallenges();
+  const publicHookTime = performance.now() - publicHookStart;
+  console.log("HOOK END: usePublicChallenges", `took ${publicHookTime}ms`);
+  console.log("✅ usePublicChallenges result:", {
+    challenges: publicData?.challenges?.length,
+    userParticipations: publicData?.userParticipations?.length,
+    loading: publicData?.loading
+  });
 
-  let privateChallenges: any[] = [];
-  let privateLoading = false;
-  
   console.log("🔍 About to call usePrivateChallenges...");
-  try {
-    console.log("HOOK START: usePrivateChallenges");
-    const privateData = usePrivateChallenges();
-    console.log("HOOK END: usePrivateChallenges");
-    console.log("✅ usePrivateChallenges successful:", privateData);
-    privateChallenges = Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [];
-    privateLoading = Boolean(privateData?.loading);
-  } catch (error) {
-    console.error('❌ usePrivateChallenges error:', error);
-    privateChallenges = [];
-    privateLoading = false;
-  }
-  console.log("🔍 usePrivateChallenges completed");
+  const privateHookStart = performance.now();
+  const privateData = usePrivateChallenges();
+  const privateHookTime = performance.now() - privateHookStart;
+  console.log("HOOK END: usePrivateChallenges", `took ${privateHookTime}ms`);
+  console.log("✅ usePrivateChallenges result:", {
+    userActiveChallenges: privateData?.userActiveChallenges?.length,
+    loading: privateData?.loading
+  });
   
   console.log("🔍 All hooks completed, starting render logic...");
+
+  // Use hook results directly with stable references
+  const microChallenges = useMemo(() => 
+    Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [], 
+    [challengeContext?.microChallenges]
+  );
+  
+  const publicChallenges = useMemo(() => 
+    Array.isArray(publicData?.challenges) ? publicData.challenges : [], 
+    [publicData?.challenges]
+  );
+  
+  const publicParticipations = useMemo(() => 
+    Array.isArray(publicData?.userParticipations) ? publicData.userParticipations : [], 
+    [publicData?.userParticipations]
+  );
+  
+  const privateChallenges = useMemo(() => 
+    Array.isArray(privateData?.userActiveChallenges) ? privateData.userActiveChallenges : [], 
+    [privateData?.userActiveChallenges]
+  );
+
+  const publicLoading = Boolean(publicData?.loading);
+  const privateLoading = Boolean(privateData?.loading);
 
   // Calculate real statistics with comprehensive error handling
   const stats = useMemo(() => {

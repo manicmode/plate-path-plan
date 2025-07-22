@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -43,6 +43,12 @@ export const AchievementBadges: React.FC<AchievementBadgesProps> = ({
   scoreStats, 
   className 
 }) => {
+  console.count("AchievementBadges renders");
+  
+  // Render counter for infinite loop detection
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  console.log(`🔄 AchievementBadges render count: ${renderCountRef.current}`);
   const achievements: Achievement[] = [
     // Score-based achievements
     {

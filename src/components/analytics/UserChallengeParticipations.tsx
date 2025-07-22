@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,6 +11,13 @@ import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { UnifiedChallengeCard } from './UnifiedChallengeCard';
 
 export const UserChallengeParticipations: React.FC = () => {
+  console.count("YourChallenges renders");
+  
+  // Render counter for infinite loop detection
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  console.log(`🔄 UserChallengeParticipations render count: ${renderCountRef.current}`);
+  
   const { 
     userParticipations: publicParticipations, 
     challenges: publicChallenges,

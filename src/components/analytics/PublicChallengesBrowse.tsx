@@ -9,6 +9,8 @@ import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 export const PublicChallengesBrowse: React.FC = () => {
+  console.count("PublicChallenges renders");
+  
   // Render counter for infinite loop detection
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;

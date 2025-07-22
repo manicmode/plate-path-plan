@@ -56,7 +56,7 @@ export const usePrivateChallenges = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchPrivateChallenges = async () => {
+  const fetchPrivateChallenges = useCallback(async () => {
     if (!user) {
       setPrivateChallenges([]);
       return;
@@ -84,9 +84,9 @@ export const usePrivateChallenges = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [user, toast]);
 
-  const fetchUserPrivateParticipations = async () => {
+  const fetchUserPrivateParticipations = useCallback(async () => {
     if (!user) {
       setUserPrivateParticipations([]);
       return;
@@ -109,9 +109,9 @@ export const usePrivateChallenges = () => {
       console.error('Error fetching user private participations:', error);
       setUserPrivateParticipations([]);
     }
-  };
+  }, [user]);
 
-  const fetchPendingInvitations = async () => {
+  const fetchPendingInvitations = useCallback(async () => {
     if (!user) {
       setPendingInvitations([]);
       return;
@@ -135,7 +135,7 @@ export const usePrivateChallenges = () => {
       console.error('Error fetching pending invitations:', error);
       setPendingInvitations([]);
     }
-  };
+  }, [user]);
 
   const createPrivateChallenge = async (challengeData: {
     title: string;
@@ -372,7 +372,7 @@ export const usePrivateChallenges = () => {
     };
 
     loadData();
-  }, [user]);
+  }, [user, fetchPrivateChallenges, fetchUserPrivateParticipations, fetchPendingInvitations]);
 
   // Get user's participation for a specific challenge
   const getUserPrivateParticipation = (challengeId: string) =>
@@ -409,6 +409,6 @@ export const usePrivateChallenges = () => {
       fetchPrivateChallenges(),
       fetchUserPrivateParticipations(),
       fetchPendingInvitations()
-    ]), []),
+    ]), [fetchPrivateChallenges, fetchUserPrivateParticipations, fetchPendingInvitations]),
   };
 };

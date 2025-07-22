@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -105,6 +105,13 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
 };
 
 export const MyFriendsTab = () => {
+  console.count("FriendsTab renders");
+  
+  // Render counter for infinite loop detection
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  console.log(`🔄 MyFriendsTab render count: ${renderCountRef.current}`);
+  
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { friends, isLoading } = useSmartFriendRecommendations();

@@ -52,7 +52,7 @@ export const usePublicChallenges = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchChallenges = async () => {
+  const fetchChallenges = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -81,9 +81,9 @@ export const usePublicChallenges = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchUserParticipations = async () => {
+  const fetchUserParticipations = useCallback(async () => {
     if (!user) {
       setUserParticipations([]);
       return;
@@ -106,7 +106,7 @@ export const usePublicChallenges = () => {
       console.error('Error fetching user participations:', error);
       setUserParticipations([]);
     }
-  };
+  }, [user]);
 
   const joinChallenge = async (challengeId: string): Promise<boolean> => {
     if (!user) {
@@ -286,7 +286,7 @@ export const usePublicChallenges = () => {
     };
 
     loadData();
-  }, [user]);
+  }, [user, fetchChallenges, fetchUserParticipations]);
 
   // Filter challenges by category with error handling
   const globalChallenges = Array.isArray(challenges) ? challenges.filter(c => c && c.duration_days >= 7) : [];
@@ -314,6 +314,6 @@ export const usePublicChallenges = () => {
     leaveChallenge,
     getUserParticipation,
     isUserParticipating,
-    refreshData: useCallback(() => Promise.all([fetchChallenges(), fetchUserParticipations()]), []),
+    refreshData: useCallback(() => Promise.all([fetchChallenges(), fetchUserParticipations()]), [fetchChallenges, fetchUserParticipations]),
   };
 };
