@@ -27,7 +27,7 @@ import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
-export const GameAndChallengePage: React.FC = () => {
+const GameAndChallengePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('browse');
   const { microChallenges } = useChallenge();
   
@@ -128,7 +128,6 @@ export const GameAndChallengePage: React.FC = () => {
                 <MicroChallengeCard 
                   key={challenge.id} 
                   challenge={challenge}
-                  onJoin={() => {}} // Will be handled by the card itself
                 />
               ))}
             </div>
@@ -174,12 +173,18 @@ export const GameAndChallengePage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="achievements" className="space-y-6">
-          <AchievementBadges />
+          <AchievementBadges scoreStats={{
+            currentScore: 0,
+            weeklyAverage: 0,
+            monthlyAverage: 0,
+            streak: 0,
+            bestScore: 0
+          }} />
         </TabsContent>
 
         <TabsContent value="leaderboard" className="space-y-6">
           <div className="space-y-6">
-            <HallOfFame />
+            <HallOfFame champions={[]} />
             <MonthlyTrophyPodium />
           </div>
         </TabsContent>
@@ -187,3 +192,5 @@ export const GameAndChallengePage: React.FC = () => {
     </div>
   );
 };
+
+export default GameAndChallengePage;
