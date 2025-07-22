@@ -4,20 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Globe, Zap, TrendingUp, Sparkles } from 'lucide-react';
-import { useSafePublicChallenges } from '@/hooks/useSafePublicChallenges';
+import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 export const PublicChallengesBrowse: React.FC = () => {
   const {
-    challenges = [],
-    userParticipations = [],
-    loading = false,
+    challenges,
+    userParticipations,
+    loading,
     joinChallenge,
     updateProgress,
     leaveChallenge,
     getUserParticipation,
-  } = useSafePublicChallenges();
+  } = usePublicChallenges();
 
   // Use real data with proper memoization and safety checks
   const categorizedChallenges = useMemo(() => {

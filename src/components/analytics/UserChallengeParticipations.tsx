@@ -6,25 +6,25 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Clock, Users, Target, Zap, Globe, Lock, TrendingUp } from 'lucide-react';
-import { useSafePublicChallenges } from '@/hooks/useSafePublicChallenges';
-import { useSafePrivateChallenges } from '@/hooks/useSafePrivateChallenges';
+import { usePublicChallenges } from '@/hooks/usePublicChallenges';
+import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { UnifiedChallengeCard } from './UnifiedChallengeCard';
 
 export const UserChallengeParticipations: React.FC = () => {
   const { 
-    userParticipations: publicParticipations = [], 
-    challenges: publicChallenges = [],
-    loading: publicLoading = false,
+    userParticipations: publicParticipations, 
+    challenges: publicChallenges,
+    loading: publicLoading,
     updateProgress: updatePublicProgress,
     leaveChallenge: leavePublicChallenge
-  } = useSafePublicChallenges();
+  } = usePublicChallenges();
 
   const { 
-    challengesWithParticipation: privateChallenges = [],
-    loading: privateLoading = false,
+    challengesWithParticipation: privateChallenges,
+    loading: privateLoading,
     updatePrivateProgress,
     refreshData: refreshPrivateData
-  } = useSafePrivateChallenges();
+  } = usePrivateChallenges();
 
   // Combine and process real data with safety checks
   const processedChallenges = useMemo(() => {

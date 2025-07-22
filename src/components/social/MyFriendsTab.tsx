@@ -21,7 +21,7 @@ import {
 import { FriendProfileView } from './FriendProfileView';
 import { FriendsLeaderboard } from './FriendsLeaderboard';
 import { GroupFeed } from './GroupFeed';
-import { useSafeFriendRecommendations } from '@/hooks/useSafeFriendRecommendations';
+import { useSmartFriendRecommendations } from '@/hooks/useSmartFriendRecommendations';
 import { PrivateChallengeCreationModal } from '@/components/analytics/PrivateChallengeCreationModal';
 import { FriendSearch } from './FriendSearch';
 import { PendingRequests } from './PendingRequests';
@@ -107,7 +107,7 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
 export const MyFriendsTab = () => {
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { friends = [], isLoading = false } = useSafeFriendRecommendations();
+  const { friends, isLoading } = useSmartFriendRecommendations();
 
   if (selectedFriend) {
     return (
