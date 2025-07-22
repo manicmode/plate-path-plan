@@ -12,25 +12,29 @@ import { UnifiedChallengeCard } from './UnifiedChallengeCard';
 
 export const UserChallengeParticipations: React.FC = () => {
   const { 
-    userParticipations: publicParticipations, 
-    challenges: publicChallenges,
-    loading: publicLoading,
+    userParticipations: publicParticipations = [], 
+    challenges: publicChallenges = [],
+    loading: publicLoading = false,
     updateProgress: updatePublicProgress,
     leaveChallenge: leavePublicChallenge
   } = usePublicChallenges();
 
   const { 
-    challengesWithParticipation: privateChallenges,
-    loading: privateLoading,
+    challengesWithParticipation: privateChallenges = [],
+    loading: privateLoading = false,
     updatePrivateProgress,
     refreshData: refreshPrivateData
   } = usePrivateChallenges();
 
-  // Combine and process real data
+  // Combine and process real data with safety checks
   const processedChallenges = useMemo(() => {
-    const publicActiveChallenges = publicParticipations.map(participation => {
-      const challenge = publicChallenges.find(c => c.id === participation.challenge_id);
-      if (!challenge) return null;
+    const safePublicParticipations = Array.isArray(publicParticipations) ? publicParticipations : [];
+    const safePublicChallenges = Array.isArray(publicChallenges) ? publicChallenges : [];
+    const safePrivateChallenges = Array.isArray(privateChallenges) ? privateChallenges : [];
+    
+    const publicActiveChallenges = safePublicParticipations.map(participation => {
+      const challenge = safePublicChallenges.find(c => c && c.id === participation?.challenge_id);
+      if (!challenge || !participation) return null;
       
       return {
         id: challenge.id,
@@ -59,8 +63,8 @@ export const UserChallengeParticipations: React.FC = () => {
       };
     }).filter(Boolean);
 
-    const privateActiveChallenges = privateChallenges.map(({ participation, ...challenge }) => {
-      if (!participation) return null;
+    const privateActiveChallenges = safePrivateChallenges.map(({ participation, ...challenge }) => {
+      if (!participation || !challenge) return null;
       
       return {
         id: challenge.id,

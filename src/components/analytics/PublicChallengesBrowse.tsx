@@ -10,28 +10,30 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 
 export const PublicChallengesBrowse: React.FC = () => {
   const {
-    challenges,
-    userParticipations,
-    loading,
+    challenges = [],
+    userParticipations = [],
+    loading = false,
     joinChallenge,
     updateProgress,
     leaveChallenge,
     getUserParticipation,
   } = usePublicChallenges();
 
-  // Use real data with proper memoization
+  // Use real data with proper memoization and safety checks
   const categorizedChallenges = useMemo(() => {
-    const global = challenges.filter(c => c.duration_days >= 7);
-    const quick = challenges.filter(c => c.duration_days <= 3);
-    const trending = challenges.filter(c => c.is_trending);
-    const newChallenges = challenges.filter(c => c.is_new);
+    const safeChallenges = Array.isArray(challenges) ? challenges : [];
+    const global = safeChallenges.filter(c => c && c.duration_days >= 7);
+    const quick = safeChallenges.filter(c => c && c.duration_days <= 3);
+    const trending = safeChallenges.filter(c => c && c.is_trending);
+    const newChallenges = safeChallenges.filter(c => c && c.is_new);
 
     return { global, quick, trending, newChallenges };
   }, [challenges]);
 
-  // Calculate real statistics
+  // Calculate real statistics safely
   const totalParticipants = useMemo(() => {
-    return challenges.reduce((sum, c) => sum + c.participant_count, 0);
+    const safeChallenges = Array.isArray(challenges) ? challenges : [];
+    return safeChallenges.reduce((sum, c) => sum + (c?.participant_count || 0), 0);
   }, [challenges]);
 
   if (loading) {

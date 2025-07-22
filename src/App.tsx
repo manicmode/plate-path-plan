@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
+import { ChallengeProvider } from '@/contexts/ChallengeContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -173,9 +174,11 @@ function App() {
             <TooltipProvider>
               <IngredientAlertProvider>
                 <BadgeProvider>
-                  <ChatModalProvider>
-                    <AppContent />
-                  </ChatModalProvider>
+                  <ChallengeProvider>
+                    <ChatModalProvider>
+                      <AppContent />
+                    </ChatModalProvider>
+                  </ChallengeProvider>
                 </BadgeProvider>
               </IngredientAlertProvider>
             </TooltipProvider>

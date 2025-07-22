@@ -29,26 +29,39 @@ import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 const GameAndChallengePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('browse');
-  const { microChallenges } = useChallenge();
   
-  // Get real data from hooks
+  // Safely access challenge context
+  let microChallenges: any[] = [];
+  try {
+    const challengeContext = useChallenge();
+    microChallenges = Array.isArray(challengeContext?.microChallenges) ? challengeContext.microChallenges : [];
+  } catch (error) {
+    console.warn('ChallengeProvider not available, using empty array for microChallenges');
+    microChallenges = [];
+  }
+  
+  // Get real data from hooks with safe fallbacks
   const { 
-    challenges: publicChallenges, 
-    userParticipations: publicParticipations,
-    loading: publicLoading
+    challenges: publicChallenges = [], 
+    userParticipations: publicParticipations = [],
+    loading: publicLoading = false
   } = usePublicChallenges();
   
   const { 
-    userActiveChallenges: privateChallenges,
-    loading: privateLoading
+    userActiveChallenges: privateChallenges = [],
+    loading: privateLoading = false
   } = usePrivateChallenges();
 
-  // Calculate real statistics
+  // Calculate real statistics with safe array operations
   const stats = useMemo(() => {
-    const totalPublicChallenges = publicChallenges.length;
-    const totalPrivateChallenges = privateChallenges.length;
-    const totalParticipations = publicParticipations.length + privateChallenges.length;
-    const trendingCount = publicChallenges.filter(c => c.is_trending).length;
+    const safePublicChallenges = Array.isArray(publicChallenges) ? publicChallenges : [];
+    const safePrivateChallenges = Array.isArray(privateChallenges) ? privateChallenges : [];
+    const safePublicParticipations = Array.isArray(publicParticipations) ? publicParticipations : [];
+    
+    const totalPublicChallenges = safePublicChallenges.length;
+    const totalPrivateChallenges = safePrivateChallenges.length;
+    const totalParticipations = safePublicParticipations.length + safePrivateChallenges.length;
+    const trendingCount = safePublicChallenges.filter(c => c?.is_trending).length;
     
     return {
       totalPublicChallenges,
@@ -103,7 +116,7 @@ const GameAndChallengePage: React.FC = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-orange-600">
-              {microChallenges.length}
+              {Array.isArray(microChallenges) ? microChallenges.length : 0}
             </div>
             <div className="text-sm text-muted-foreground">Micro Challenges</div>
           </CardContent>
@@ -111,7 +124,7 @@ const GameAndChallengePage: React.FC = () => {
       </div>
 
       {/* Micro Challenges Section */}
-      {microChallenges.length > 0 && (
+      {Array.isArray(microChallenges) && microChallenges.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -124,12 +137,12 @@ const GameAndChallengePage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {microChallenges.slice(0, 3).map((challenge) => (
+              {Array.isArray(microChallenges) ? microChallenges.slice(0, 3).map((challenge) => (
                 <MicroChallengeCard 
                   key={challenge.id} 
                   challenge={challenge}
                 />
-              ))}
+              )) : null}
             </div>
           </CardContent>
         </Card>

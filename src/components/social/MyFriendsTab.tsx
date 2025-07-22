@@ -107,7 +107,7 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
 export const MyFriendsTab = () => {
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { friends, isLoading } = useSmartFriendRecommendations();
+  const { friends = [], isLoading = false } = useSmartFriendRecommendations();
 
   if (selectedFriend) {
     return (
@@ -118,10 +118,11 @@ export const MyFriendsTab = () => {
     );
   }
 
-  // Calculate real stats from the friends data
-  const totalFriends = friends.length;
-  const activeToday = friends.filter(f => f.metadata?.activityStatus === 'recently_active').length;
-  const inChallenges = friends.filter(f => f.metadata?.sharedChallenges > 0).length;
+  // Calculate real stats from the friends data with safety checks
+  const safeFriends = Array.isArray(friends) ? friends : [];
+  const totalFriends = safeFriends.length;
+  const activeToday = safeFriends.filter(f => f && f.metadata?.activityStatus === 'recently_active').length;
+  const inChallenges = safeFriends.filter(f => f && (f.metadata?.sharedChallenges || 0) > 0).length;
 
   return (
     <div className="space-y-4 -mt-6">
@@ -180,7 +181,7 @@ export const MyFriendsTab = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="text-sm text-muted-foreground mt-2">Loading friends...</p>
                 </div>
-               ) : friends.length === 0 ? (
+               ) : safeFriends.length === 0 ? (
                 <div className="text-center py-4 space-y-3">
                   <div>
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -224,26 +225,26 @@ export const MyFriendsTab = () => {
                      <InviteFriends />
                   </div>
                 </div>
-              ) : (
-                friends.map((friend) => (
-                  <FriendCard
-                    key={friend.id}
-                    friend={friend}
-                    onClick={() => setSelectedFriend(friend)}
-                  />
-                ))
-              )}
+               ) : (
+                 safeFriends.map((friend) => (
+                   <FriendCard
+                     key={friend?.id || Math.random()}
+                     friend={friend}
+                     onClick={() => setSelectedFriend(friend)}
+                   />
+                 ))
+               )}
             </div>
           </ScrollArea>
 
         </TabsContent>
 
         <TabsContent value="leaderboard">
-          <FriendsLeaderboard friends={friends} />
+          <FriendsLeaderboard friends={safeFriends} />
         </TabsContent>
 
         <TabsContent value="feed">
-          <GroupFeed friends={friends} />
+          <GroupFeed friends={safeFriends} />
         </TabsContent>
       </Tabs>
 
