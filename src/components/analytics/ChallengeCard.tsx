@@ -48,6 +48,8 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 
   // Calculate time remaining
   useEffect(() => {
+    console.log("[ChallengeCard] useEffect triggered", { challengeId: challenge.id, endDate: challenge.endDate });
+    
     const updateTimeLeft = () => {
       const now = new Date();
       const timeDiff = challenge.endDate.getTime() - now.getTime();
@@ -60,7 +62,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
       const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-
+      
       if (days > 0) {
         setTimeLeft(`${days}d ${hours}h`);
       } else if (hours > 0) {
@@ -71,10 +73,11 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     };
 
     updateTimeLeft();
-    const interval = setInterval(updateTimeLeft, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, [challenge.endDate]);
+    
+    // COMMENTED OUT FOR TESTING - removing timer intervals
+    // const interval = setInterval(updateTimeLeft, 60000); // Update every minute
+    // return () => clearInterval(interval);
+  }, [challenge.endDate, challenge.id]);
 
   const handleJoinChallenge = () => {
     joinChallenge(challenge.id, currentUserId, { name: 'Current User 👤', avatar: '👤' });

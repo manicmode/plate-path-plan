@@ -26,6 +26,7 @@ export const MonthlyLeaderboard: React.FC = React.memo(() => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
   useEffect(() => {
+    console.log("[MonthlyLeaderboard] useEffect triggered - fetching leaderboard");
     fetchLeaderboard();
   }, []);
 

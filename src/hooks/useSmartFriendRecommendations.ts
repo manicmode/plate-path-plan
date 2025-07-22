@@ -78,6 +78,7 @@ export const useSmartFriendRecommendations = (limit?: number) => {
   }, [user, limit]);
 
   useEffect(() => {
+    console.log("[useSmartFriendRecommendations] useEffect triggered", { userId: user?.id });
     loadRecommendations();
   }, [loadRecommendations]);
 

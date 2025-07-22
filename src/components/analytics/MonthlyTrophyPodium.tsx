@@ -27,16 +27,23 @@ export const MonthlyTrophyPodium: React.FC = React.memo(() => {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log("[MonthlyTrophyPodium] useEffect triggered - loading challenges", { currentMonth });
     loadCompletedChallenges();
   }, [currentMonth]);
 
   useEffect(() => {
+    console.log("[MonthlyTrophyPodium] auto-show useEffect triggered", { 
+      shouldShow: shouldShowMonthlyPodium(), 
+      challengesCount: completedChallenges.length 
+    });
+    
     // Auto-show podium if it's end of month
     if (shouldShowMonthlyPodium() && completedChallenges.length > 0) {
       // Auto-select the most recent challenge with most participants
       const topChallenge = completedChallenges
         .sort((a, b) => b.participantCount - a.participantCount)[0];
       if (topChallenge) {
+        console.log("[MonthlyTrophyPodium] auto-selecting challenge", topChallenge);
         handleChallengeSelect(topChallenge);
       }
     }
