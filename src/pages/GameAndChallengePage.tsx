@@ -228,7 +228,7 @@ const GameAndChallengePage: React.FC = () => {
   // Add layout re-render tracking
   console.count('⚠️ Layout Re-render');
 
-  // Wrap the entire render in try/catch
+  // Wrap the entire render in try/catch with proper error boundary
   try {
     return (
       <div 
@@ -388,9 +388,18 @@ const GameAndChallengePage: React.FC = () => {
         </div>
       </div>
     );
-  } catch (error) {
-    console.error("Game page render crash", error);
-    return <div style={{ padding: 20 }}>⚠️ Game page render error</div>;
+  } catch (err) {
+    console.error('GameAndChallengePage crashed:', err);
+    console.error('Stack trace:', err?.stack);
+    console.error('Component state:', {
+      activeTab,
+      loading,
+      microChallengesCount: microChallenges?.length,
+      publicChallengesCount: publicChallenges?.length,
+      privateChallengesCount: privateChallenges?.length,
+      statsCalculated: !!stats
+    });
+    return <div style={{ padding: 20 }}>Error rendering page. Check console.</div>;
   }
 };
 
