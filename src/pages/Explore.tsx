@@ -155,7 +155,7 @@ const Explore = () => {
             hover:scale-105 active:scale-95 active:rotate-1
             shadow-2xl shadow-slate-500/30 hover:shadow-slate-400/50 hover:shadow-3xl
             border-0 text-white hover:text-white
-            flex items-center justify-center space-y-0 space-x-3
+            flex items-center justify-start pl-8 space-y-0 space-x-3
             backdrop-blur-sm overflow-hidden
             before:absolute before:inset-0 before:bg-gradient-to-br 
             before:from-white/20 before:to-transparent before:opacity-0 
