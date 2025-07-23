@@ -37,7 +37,7 @@ export default function BodyScanAI() {
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: 'user',
+          facingMode: { exact: 'environment' },
           width: { ideal: 1280, min: 640 },
           height: { ideal: 720, min: 480 }
         }
@@ -194,14 +194,14 @@ export default function BodyScanAI() {
       </div>
       
       {/* Body Silhouette Overlay - Vertically centered with bigger size */}
-      <div className="absolute inset-0 flex items-center justify-center z-15">
+      <div className="absolute inset-0 flex items-center justify-center mt-[-2vh] z-15">
         <div className={`relative transition-all duration-500 ${
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
           <img 
             src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             alt=""
-            className="max-w-[90vw] max-h-[75vh] h-auto w-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
+            className="w-[95vw] max-h-[80vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
