@@ -481,26 +481,6 @@ export default function BodyScanAI() {
         </div>
       </div>
 
-      {/* Camera Toggle Button - Floating Top Right */}
-      <div className="fixed top-6 right-6 z-30 flex flex-col items-center space-y-2">
-        <Button
-          onClick={toggleCamera}
-          className="w-14 h-14 rounded-full bg-black/80 backdrop-blur-md border-2 border-white/40 text-white hover:bg-black/90 hover:border-white/60 transition-all duration-300 shadow-lg hover:shadow-xl"
-          size="sm"
-        >
-          <div className="text-lg">🔄</div>
-        </Button>
-        <div className="bg-black/80 backdrop-blur-md rounded-full px-3 py-1 border border-white/30 shadow-lg">
-          <div className="flex items-center space-x-1">
-            <span className="text-xs">
-              {cameraMode === 'environment' ? '📱' : '🤳'}
-            </span>
-            <span className="text-white text-xs font-medium">
-              {cameraMode === 'environment' ? 'Back' : 'Front'}
-            </span>
-          </div>
-        </div>
-      </div>
       
       {/* Body Silhouette Overlay - Vertically centered with bigger size */}
       <div className="absolute inset-0 flex items-center justify-center mt-[-4vh] z-15">
@@ -525,6 +505,17 @@ export default function BodyScanAI() {
           </div>
         </div>
       )}
+
+      {/* Camera Toggle Button - Bottom Right, Above Cancel */}
+      <div className="fixed bottom-24 right-6 z-30">
+        <Button
+          onClick={toggleCamera}
+          className="w-16 h-16 rounded-full bg-black/80 backdrop-blur-md border-2 border-cyan-400/60 text-white hover:bg-black/90 hover:border-cyan-300/80 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]"
+          size="sm"
+        >
+          <div className="text-xl">🔄</div>
+        </Button>
+      </div>
 
       {/* Fixed Bottom Controls - Matching Health Scanner */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
