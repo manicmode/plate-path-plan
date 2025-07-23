@@ -40,12 +40,6 @@ export interface AuthContextType {
   updateProfile: (profileData: Partial<ExtendedUser>) => void;
   updateSelectedTrackers: (trackers: string[]) => Promise<void>;
   refreshUser: () => Promise<void>;
-  dailyCalories?: any[];
-  dailyProtein: number;
-  dailyCarbs: number;
-  dailyFat: number;
-  dailyHydration?: any[];
-  dailySupplements?: any[];
 }
 
 export interface AuthProviderProps {
