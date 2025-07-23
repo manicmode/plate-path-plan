@@ -180,29 +180,55 @@ export default function BodyScanAI() {
           <div className={`relative transition-all duration-500 ${
             isCapturing ? 'scale-105' : 'scale-100'
           } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
-            <div className="relative flex items-center justify-center h-screen">
+            <div className="relative flex items-center justify-center h-screen py-8">
               <img 
                 src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
                 alt=""
-                className="max-h-[90vh] max-w-[90vw] h-auto w-auto opacity-70 object-contain"
+                className="max-h-[80vh] max-w-[90vw] h-auto w-auto opacity-75 object-contain"
                 style={{
-                  filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 60px rgba(255, 255, 255, 0.2))',
-                  animation: 'pulse 3s ease-in-out infinite'
+                  filter: 'brightness(1.2) drop-shadow(0 0 15px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 30px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.3))',
+                  animation: 'pulse 3s ease-in-out infinite',
+                  strokeWidth: '3px'
                 }}
                 onLoad={handleImageLoad}
                 onError={handleImageError}
               />
+              
+              {/* Upload Image Instead Button - positioned below silhouette */}
+              <div className="absolute bottom-4">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/10 backdrop-blur-sm border-white/30 text-white/90 hover:bg-white/20 hover:text-white transition-all duration-300 text-xs px-3 py-1.5"
+                >
+                  <Upload className="w-3 h-3 mr-1" />
+                  Upload Image Instead
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Header Instructions */}
-        <div className="absolute top-6 left-4 right-4 text-center z-20">
-          <div className="bg-black/50 backdrop-blur-sm rounded-xl p-3 border border-primary/20">
-            <h2 className="text-white text-lg font-bold mb-1">
+        {/* Grid Overlay - Same as Health Inspector Scanner */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none z-5">
+          <div className="w-full h-full" style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)
+            `,
+            backgroundSize: '30px 30px',
+            filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))'
+          }}></div>
+        </div>
+
+        {/* Header Instructions - Match Health Inspector Scanner styling */}
+        <div className="absolute top-8 left-4 right-4 text-center z-20">
+          <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+            <h2 className="text-white text-lg font-bold mb-2">
               📸 Front Body Scan
             </h2>
-            <p className="text-primary/90 text-sm">
+            <p className="text-white/90 text-sm">
               Stand upright with arms out. Match your body to the glowing outline.
             </p>
           </div>
