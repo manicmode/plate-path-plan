@@ -15,7 +15,9 @@ interface ExerciseChallengesProps {
   workouts?: any[];
 }
 
-export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(({ workouts = [] }) => {
+export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts = [] }) => {
+  console.log('🔍 ExerciseChallenges rendering with workouts:', workouts);
+  
   const { 
     miniChallenges, 
     accountabilityGroups, 
@@ -29,6 +31,18 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
     clearAllNotifications
   } = useExerciseChallenges(workouts);
   
+  // Log all hook return values
+  console.log('🔍 Hook returned data:', {
+    miniChallenges: miniChallenges?.length || 0,
+    accountabilityGroups: accountabilityGroups?.length || 0,
+    leaderboard: leaderboard?.length || 0,
+    notifications: notifications?.length || 0,
+    workoutStats,
+    hasJoinChallenge: !!joinChallenge,
+    hasSendGroupNudge: !!sendGroupNudge,
+    hasGenerateCoachMessage: !!generateCoachMessage
+  });
+  
   const { sendNudge } = useSocialAccountability();
   
   const [isNudgeModalOpen, setIsNudgeModalOpen] = useState(false);
@@ -36,9 +50,24 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
   const [selectedMember, setSelectedMember] = useState<{groupId: string, memberId: string, memberName: string} | null>(null);
   const [customNudgeMessage, setCustomNudgeMessage] = useState('');
 
-  // Memoize coach message to prevent unnecessary recalculations
-  const coachMessage = useMemo(() => generateCoachMessage(), [generateCoachMessage]);
-  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+  // Memoize coach message with fallback
+  const coachMessage = useMemo(() => {
+    try {
+      const message = generateCoachMessage();
+      console.log('🔍 Generated coach message:', message);
+      return message || "Let's get started with your fitness journey! 🚀";
+    } catch (error) {
+      console.error('🔍 Error generating coach message:', error);
+      return "Ready to crush your fitness goals? Let's do this! 💪";
+    }
+  }, [generateCoachMessage]);
+
+  // Ensure unread count has fallback
+  const unreadCount = useMemo(() => {
+    const count = notifications?.filter(n => !n.isRead).length || 0;
+    console.log('🔍 Unread notifications count:', count);
+    return count;
+  }, [notifications]);
 
   // Auto-open notifications if there are unread ones
   useEffect(() => {
@@ -86,14 +115,24 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
     }
   }, [handleSendNudge]);
 
+  // Add safety checks for rendering
+  if (!workoutStats) {
+    console.log('🔍 No workoutStats, showing loading state');
+    return (
+      <div className="space-y-6 p-1">
+        <div className="text-center text-muted-foreground">
+          Loading your fitness data...
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🔍 About to render main content');
+
   return (
     <div className="space-y-6 p-1">
       {/* Notifications Toggle Button */}
-      <motion.div
-        className="flex justify-end"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
+      <div className="flex justify-end">
         <Button
           variant="outline"
           size="sm"
@@ -103,48 +142,34 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
           <Bell className="h-4 w-4 mr-2" />
           Notifications
           {unreadCount > 0 && (
-            <motion.div
-              className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            >
+            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {unreadCount}
-            </motion.div>
+            </div>
           )}
         </Button>
-      </motion.div>
+      </div>
 
       {/* Notifications Panel */}
       <AnimatePresence>
         {showNotifications && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-          >
+          <div>
             <NotificationPanel
-              notifications={notifications}
+              notifications={notifications || []}
               onMarkAsRead={markNotificationAsRead}
               onClearAll={clearAllNotifications}
               onActionTaken={handleNotificationAction}
             />
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* AI Coach Card with stable key */}
-      <motion.div
-        key="ai-coach-card-wrapper"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, type: "spring", stiffness: 100, damping: 18 }}
-      >
+      {/* AI Coach Card */}
+      <div>
         <AICoachCard 
           coachMessage={coachMessage}
           workoutStats={workoutStats}
         />
-      </motion.div>
+      </div>
 
       {/* Public Mini Challenges */}
       <div className="space-y-4">
@@ -155,21 +180,21 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {miniChallenges.map((challenge, index) => (
-            <motion.div
-              key={challenge.id}
-              layoutId={`challenge-${challenge.id}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1, type: "spring", stiffness: 100, damping: 15 }}
-            >
+          {(miniChallenges || []).map((challenge, index) => (
+            <div key={challenge.id}>
               <MiniChallengeCard 
                 challenge={challenge} 
                 onJoin={handleJoinChallenge} 
               />
-            </motion.div>
+            </div>
           ))}
         </div>
+        
+        {(!miniChallenges || miniChallenges.length === 0) && (
+          <div className="text-center text-muted-foreground py-8">
+            No challenges available right now. Check back soon!
+          </div>
+        )}
       </div>
 
       {/* Accountability Groups */}
@@ -181,32 +206,27 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {accountabilityGroups.map((group, index) => (
-            <motion.div
-              key={group.id}
-              layoutId={`group-${group.id}`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.2, type: "spring", stiffness: 100, damping: 15 }}
-            >
+          {(accountabilityGroups || []).map((group, index) => (
+            <div key={group.id}>
               <AccountabilityGroupCard 
                 group={group} 
                 onSendNudge={handleSendNudge}
               />
-            </motion.div>
+            </div>
           ))}
         </div>
+        
+        {(!accountabilityGroups || accountabilityGroups.length === 0) && (
+          <div className="text-center text-muted-foreground py-8">
+            No accountability groups yet. Create one to get started!
+          </div>
+        )}
       </div>
 
       {/* Mini Leaderboard */}
-      <motion.div
-        layoutId="challenge-leaderboard"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, type: "spring", stiffness: 100, damping: 15 }}
-      >
-        <ChallengeLeaderboard leaderboard={leaderboard} />
-      </motion.div>
+      <div>
+        <ChallengeLeaderboard leaderboard={leaderboard || []} />
+      </div>
 
       {/* Nudge Modal */}
       <Dialog open={isNudgeModalOpen} onOpenChange={setIsNudgeModalOpen}>
@@ -262,6 +282,6 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
       </Dialog>
     </div>
   );
-});
+};
 
 ExerciseChallenges.displayName = 'ExerciseChallenges';
