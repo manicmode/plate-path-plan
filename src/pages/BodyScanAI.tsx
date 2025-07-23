@@ -151,90 +151,84 @@ export default function BodyScanAI() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-black flex flex-col overflow-hidden">
-      <div className="flex-1 relative">
-        {/* Camera video background - positioned absolutely to ensure proper rendering */}
-        <div className="absolute inset-0 z-0">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            onLoadedMetadata={() => {
-              // Ensure video plays after metadata is loaded
-              if (videoRef.current) {
-                videoRef.current.play().catch(console.log);
-              }
-            }}
-            className="w-full h-full object-cover"
-            style={{ 
-              transform: 'scaleX(-1)', // Mirror the video for better UX
-              WebkitTransform: 'scaleX(-1)' // iOS compatibility
-            }}
-          />
-        </div>
-        <canvas ref={canvasRef} className="hidden" />
-        
-        {/* White Silhouette Overlay - Full screen pose guidance */}
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className={`relative transition-all duration-500 ${
-            isCapturing ? 'scale-105' : 'scale-100'
-          } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
-            <div className="relative flex items-center justify-center h-screen py-8">
-              <img 
-                src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
-                alt=""
-                className="max-h-[80vh] max-w-[90vw] h-auto w-auto opacity-75 object-contain"
-                style={{
-                  filter: 'brightness(1.2) drop-shadow(0 0 15px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 30px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.3))',
-                  animation: 'pulse 3s ease-in-out infinite',
-                  strokeWidth: '3px'
-                }}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Grid Overlay - Same as Health Inspector Scanner */}
-        <div className="absolute inset-0 opacity-15 pointer-events-none z-5">
-          <div className="w-full h-full" style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)
-            `,
-            backgroundSize: '30px 30px',
-            filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))'
-          }}></div>
-        </div>
-
-        {/* Header Instructions - Match Health Inspector Scanner styling */}
-        <div className="absolute top-8 left-4 right-4 text-center z-20">
-          <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
-            <h2 className="text-white text-lg font-bold mb-2">
-              📸 Front Body Scan
-            </h2>
-            <p className="text-white/90 text-sm">
-              Stand upright with arms out. Match your body to the glowing outline.
-            </p>
-          </div>
-        </div>
-
-        {/* Capture success overlay */}
-        {hasImageReady && (
-          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
-            <div className="bg-green-500/90 text-white px-6 py-3 rounded-full font-bold animate-fade-in">
-              ✅ Front scan complete!
-            </div>
-          </div>
-        )}
+    <div className="relative w-full h-screen bg-black overflow-hidden">
+      {/* Camera video background */}
+      <div className="absolute inset-0 z-0">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          onLoadedMetadata={() => {
+            if (videoRef.current) {
+              videoRef.current.play().catch(console.log);
+            }
+          }}
+          className="w-full h-full object-cover"
+          style={{ 
+            transform: 'scaleX(-1)',
+            WebkitTransform: 'scaleX(-1)'
+          }}
+        />
+      </div>
+      <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Grid Overlay - Health Scanner style */}
+      <div className="absolute inset-0 opacity-15 pointer-events-none z-5">
+        <div className="w-full h-full" style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)
+          `,
+          backgroundSize: '30px 30px',
+          filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))'
+        }}></div>
       </div>
 
-      {/* Bottom Controls - Match Health Inspector layout exactly */}
-      <div className="p-6 pb-24 bg-gradient-to-t from-black/90 to-transparent">
+      {/* Header Instructions - Pinned at top */}
+      <div className="absolute top-8 left-4 right-4 text-center z-20">
+        <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+          <h2 className="text-white text-lg font-bold mb-2">
+            📸 Front Body Scan
+          </h2>
+          <p className="text-white/90 text-sm">
+            Stand upright with arms out. Match your body to the glowing outline.
+          </p>
+        </div>
+      </div>
+      
+      {/* Body Silhouette Overlay - Repositioned lower with glow effect */}
+      <div className="absolute inset-0 flex items-center justify-center z-10" style={{ marginTop: '140px' }}>
+        <div className={`relative transition-all duration-500 ${
+          isCapturing ? 'scale-105' : 'scale-100'
+        } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
+          <img 
+            src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+            alt=""
+            className="max-h-[60vh] max-w-[80vw] h-auto w-auto opacity-75 object-contain"
+            style={{
+              filter: 'brightness(1.3) drop-shadow(0 0 20px rgba(0, 255, 255, 0.8)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 60px rgba(0, 255, 255, 0.4))',
+              animation: 'pulse 3s ease-in-out infinite'
+            }}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        </div>
+      </div>
+
+      {/* Capture success overlay */}
+      {hasImageReady && (
+        <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-15">
+          <div className="bg-green-500/90 text-white px-6 py-3 rounded-full font-bold animate-fade-in">
+            ✅ Front scan complete!
+          </div>
+        </div>
+      )}
+
+      {/* Fixed Bottom Controls - Health Scanner style */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
         <div className="flex flex-col space-y-4">
-          {/* Cancel Button - Centered with w-1/2 width */}
+          {/* Cancel Button */}
           <div className="flex justify-center">
             <Button
               onClick={handleCancel}
@@ -245,7 +239,7 @@ export default function BodyScanAI() {
             </Button>
           </div>
 
-          {/* Upload from Gallery - Full width with blue styling */}
+          {/* Upload Button */}
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="outline"
@@ -255,7 +249,7 @@ export default function BodyScanAI() {
             Upload Image
           </Button>
 
-          {/* Continue/Capture Button - Full width */}
+          {/* Capture/Continue Button */}
           <Button
             onClick={hasImageReady ? handleContinue : captureImage}
             disabled={isCapturing}
