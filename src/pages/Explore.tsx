@@ -102,7 +102,7 @@ const Explore = () => {
   const safeIsMobile = isMobile ?? false;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5.5rem)] p-4 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-12rem)] p-4 overflow-hidden">
       {/* Main 2x3 Grid - flex-1 to take available space */}
       <div className="flex-1 grid grid-cols-2 grid-rows-3 gap-4 mb-4">
         {mainTiles.map((tile) => {
