@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, RotateCcw, Eye, Calendar, Target } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, RotateCcw, Eye, Calendar, Target, TrendingUp, X, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, startOfWeek } from 'date-fns';
 
 interface BodyScan {
   id: string;
@@ -22,11 +23,30 @@ interface GroupedScans {
   back?: BodyScan;
 }
 
+interface WeeklyScans {
+  weekStart: string;
+  scans: {
+    front?: BodyScan;
+    side?: BodyScan;
+    back?: BodyScan;
+  };
+}
+
+interface ComparisonModalProps {
+  currentWeek: WeeklyScans;
+  previousWeek?: WeeklyScans;
+  onClose: () => void;
+}
+
 export default function BodyScanResults() {
   const navigate = useNavigate();
   const [scans, setScans] = useState<GroupedScans>({});
+  const [allScans, setAllScans] = useState<BodyScan[]>([]);
+  const [weeklyScans, setWeeklyScans] = useState<WeeklyScans[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<WeeklyScans | null>(null);
+  const [activeTab, setActiveTab] = useState('current');
 
   useEffect(() => {
     fetchBodyScans();
@@ -62,6 +82,32 @@ export default function BodyScanResults() {
       });
 
       setScans(grouped);
+      setAllScans((data || []) as BodyScan[]);
+      
+      // Group all scans by week for timeline
+      const weeklyGroups: { [key: string]: WeeklyScans } = {};
+      (data || []).forEach((scan) => {
+        const scanTyped = scan as BodyScan;
+        const weekStart = startOfWeek(new Date(scanTyped.created_at), { weekStartsOn: 1 });
+        const weekKey = format(weekStart, 'yyyy-MM-dd');
+        
+        if (!weeklyGroups[weekKey]) {
+          weeklyGroups[weekKey] = {
+            weekStart: weekKey,
+            scans: {}
+          };
+        }
+        
+        const scanType = scanTyped.type as keyof GroupedScans;
+        if (!weeklyGroups[weekKey].scans[scanType]) {
+          weeklyGroups[weekKey].scans[scanType] = scanTyped;
+        }
+      });
+      
+      const sortedWeekly = Object.values(weeklyGroups)
+        .sort((a, b) => new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime());
+      
+      setWeeklyScans(sortedWeekly);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load body scans');
@@ -104,6 +150,33 @@ export default function BodyScanResults() {
   const scanCount = Object.keys(scans).length;
   const averageScore = getAveragePoseScore();
   const latestDate = getLatestScanDate();
+
+  const generateAIFeedback = (current: WeeklyScans, previous?: WeeklyScans) => {
+    if (!previous) return "This is your first scan week. Great start on your journey!";
+    
+    const currentAvg = Object.values(current.scans)
+      .map(s => s?.pose_score || 0)
+      .reduce((a, b) => a + b, 0) / 3;
+    const previousAvg = Object.values(previous.scans)
+      .map(s => s?.pose_score || 0)
+      .reduce((a, b) => a + b, 0) / 3;
+    
+    const improvement = currentAvg - previousAvg;
+    
+    if (improvement > 0.5) {
+      return `Excellent progress! Your posture improved by ${improvement.toFixed(1)} points. Keep up the great work!`;
+    } else if (improvement > 0) {
+      return `Nice improvement! Your posture is getting better with a ${improvement.toFixed(1)} point increase.`;
+    } else if (improvement > -0.5) {
+      return `You're maintaining consistent posture. Small fluctuations are normal - keep it up!`;
+    } else {
+      return `Focus on form this week. Consider reviewing your posture tips and retaking scans.`;
+    }
+  };
+
+  const exportComparison = async (current: WeeklyScans, previous?: WeeklyScans) => {
+    toast.success('Comparison exported! (Feature coming soon)');
+  };
 
   if (loading) {
     return (
@@ -148,8 +221,16 @@ export default function BodyScanResults() {
           <h1 className="text-3xl font-bold text-foreground">Body Scan Results</h1>
         </div>
 
-        {/* Scan Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="current">Latest Scans</TabsTrigger>
+            <TabsTrigger value="timeline">Progress Timeline 📈</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="current" className="space-y-8">
+            {/* Scan Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {['front', 'side', 'back'].map((type) => {
             const scan = scans[type as keyof GroupedScans];
             
@@ -228,10 +309,10 @@ export default function BodyScanResults() {
               </Card>
             );
           })}
-        </div>
+            </div>
 
-        {/* Summary Section */}
-        {scanCount > 0 && (
+            {/* Summary Section */}
+            {scanCount > 0 && (
           <Card className="visible-card border-primary/20">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-center">
@@ -281,29 +362,96 @@ export default function BodyScanResults() {
               </Button>
             </CardContent>
           </Card>
-        )}
+            )}
 
-        {/* No Scans State */}
-        {scanCount === 0 && (
-          <Card className="visible-card text-center">
-            <CardContent className="pt-8 pb-8">
-              <div className="space-y-4">
-                <div className="text-6xl">📱</div>
-                <h2 className="text-xl font-semibold text-foreground">No Scans Yet</h2>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  Start your body scanning journey! Capture three views to get a complete picture of your progress.
-                </p>
-                <Button
-                  size="lg"
-                  onClick={() => navigate('/body-scan-ai')}
-                  className="mt-6"
-                >
-                  Start First Scan
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            {/* No Scans State */}
+            {scanCount === 0 && (
+              <Card className="visible-card text-center">
+                <CardContent className="pt-8 pb-8">
+                  <div className="space-y-4">
+                    <div className="text-6xl">📱</div>
+                    <h2 className="text-xl font-semibold text-foreground">No Scans Yet</h2>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      Start your body scanning journey! Capture three views to get a complete picture of your progress.
+                    </p>
+                    <Button
+                      size="lg"
+                      onClick={() => navigate('/body-scan-ai')}
+                      className="mt-6"
+                    >
+                      Start First Scan
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="timeline" className="space-y-6">
+            {weeklyScans.length > 0 ? (
+              <>
+                <Card className="visible-card">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Progress Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto pb-4">
+                      <div className="flex gap-6 min-w-fit">
+                        {weeklyScans.map((week, index) => (
+                          <div key={week.weekStart} className="flex flex-col items-center min-w-[120px]">
+                            <div className="text-sm font-medium text-muted-foreground mb-2">
+                              {format(new Date(week.weekStart), 'MMM d')}
+                            </div>
+                            <div className="relative">
+                              <div className="grid grid-cols-3 gap-1 p-2 border-2 border-primary/20 rounded-lg bg-card hover:border-primary/40 transition-colors cursor-pointer"
+                                   onClick={() => setSelectedWeek(week)}>
+                                {['front', 'side', 'back'].map((type) => {
+                                  const scan = week.scans[type as keyof GroupedScans];
+                                  return (
+                                    <div key={type} className="w-8 h-10 rounded bg-muted overflow-hidden">
+                                      {scan ? (
+                                        <img
+                                          src={scan.image_url}
+                                          alt={`${type} mini`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-muted-foreground/20" />
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {index < weeklyScans.length - 1 && (
+                                <div className="absolute top-1/2 -right-3 w-6 h-0.5 bg-primary/30" />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card className="visible-card text-center">
+                <CardContent className="pt-8 pb-8">
+                  <div className="space-y-4">
+                    <div className="text-6xl">📈</div>
+                    <h2 className="text-xl font-semibold text-foreground">Start Your Progress Journey</h2>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      Start scanning regularly to track progress! Take scans weekly to see your improvement over time.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+
       </div>
 
       {/* Full Image Modal */}
@@ -319,6 +467,86 @@ export default function BodyScanResults() {
               className="max-w-full max-h-full object-contain rounded-lg"
             />
           </div>
+        </div>
+      )}
+
+      {/* Progress Comparison Modal */}
+      {selectedWeek && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl font-semibold">
+                Week of {format(new Date(selectedWeek.weekStart), 'MMM d, yyyy')}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedWeek(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Full Size Images */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {['front', 'side', 'back'].map((type) => {
+                  const scan = selectedWeek.scans[type as keyof GroupedScans];
+                  return (
+                    <div key={type} className="space-y-2">
+                      <h3 className="font-medium text-center">{getScanTypeTitle(type)} View</h3>
+                      <div className="aspect-[3/4] bg-muted rounded-lg overflow-hidden border-2 border-primary/20">
+                        {scan ? (
+                          <img
+                            src={scan.image_url}
+                            alt={`${type} scan`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            No scan available
+                          </div>
+                        )}
+                      </div>
+                      {scan?.pose_score && (
+                        <p className="text-center text-sm text-muted-foreground">
+                          Score: {scan.pose_score.toFixed(1)}/10
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* AI Feedback */}
+              <div className="p-4 bg-accent/10 rounded-lg">
+                <h3 className="font-medium mb-2">📊 AI Analysis</h3>
+                <p className="text-sm text-muted-foreground">
+                  {generateAIFeedback(
+                    selectedWeek,
+                    weeklyScans.find((w, index) => 
+                      weeklyScans.indexOf(selectedWeek) === index - 1
+                    )
+                  )}
+                </p>
+              </div>
+
+              {/* Export Button */}
+              <div className="flex justify-center">
+                <Button
+                  onClick={() => exportComparison(
+                    selectedWeek,
+                    weeklyScans.find((w, index) => 
+                      weeklyScans.indexOf(selectedWeek) === index - 1
+                    )
+                  )}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Comparison
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
