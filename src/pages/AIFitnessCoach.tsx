@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIntelligentFitnessCoach } from '@/hooks/useIntelligentFitnessCoach';
 import { useSocialAccountability } from '@/hooks/useSocialAccountability';
@@ -16,6 +17,7 @@ import { AnimatePresence } from 'framer-motion';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { 
     processUserInput, 
     analyzeWorkoutPatterns, 
@@ -186,6 +188,16 @@ Make it sound exciting, supportive, and customized. Mention any health-based mod
     const day = weeklyPlan[dayIndex];
     if (!day) return;
 
+    // Check if day is locked
+    if (day.isLocked) {
+      toast({
+        title: "Day is Locked 🔒",
+        description: "This day is locked. Unlock to make changes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsRegeneratingDay(day.day);
 
     // Get previous day's muscle groups for smart balancing
@@ -258,9 +270,20 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
   };
 
   const toggleDayLock = (dayIndex: number) => {
+    const currentDay = weeklyPlan[dayIndex];
+    const willBeLocked = !currentDay.isLocked;
+    
     setWeeklyPlan(prev => prev.map((day, index) => 
       index === dayIndex ? { ...day, isLocked: !day.isLocked } : day
     ));
+
+    // Show toast with lock status
+    toast({
+      title: willBeLocked ? "Day Locked 🔒" : "Day Unlocked 🔓",
+      description: willBeLocked 
+        ? "This day is now locked. It won't be regenerated and will maintain its current routine. Smart generation for other days will respect this day's muscle groups for balanced recovery."
+        : "This day is now unlocked. You can regenerate and modify this routine anytime.",
+    });
   };
 
   const motivationalQuotes = [
@@ -510,8 +533,10 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                     {weeklyPlan.map((day, index) => (
                       <div
                         key={index}
-                        className={`bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border ${
-                          day.isLocked ? 'border-yellow-300 dark:border-yellow-600' : 'border-gray-200 dark:border-gray-700'
+                        className={`bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border transition-all duration-300 ${
+                          day.isLocked 
+                            ? 'border-yellow-300 dark:border-yellow-600 bg-yellow-50/50 dark:bg-yellow-900/20' 
+                            : 'border-gray-200 dark:border-gray-700'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -519,14 +544,23 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                             <span className="font-semibold text-green-600 dark:text-green-400">
                               {day.day}
                             </span>
-                            {day.isLocked && <span className="text-yellow-500">🔒</span>}
+                            {day.isLocked && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-yellow-500">🔒</span>
+                                <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Locked</span>
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => toggleDayLock(index)}
-                              className="h-8 w-8 p-0"
+                              className={`h-8 w-8 p-0 transition-colors ${
+                                day.isLocked 
+                                  ? 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/30' 
+                                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
+                              }`}
                               title={day.isLocked ? "Unlock day" : "Lock day"}
                             >
                               {day.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -535,9 +569,13 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRegenerateDay(index)}
-                              disabled={isRegeneratingDay === day.day || day.isLocked}
-                              className="h-8 w-8 p-0"
-                              title="Regenerate this day"
+                              disabled={isRegeneratingDay === day.day}
+                              className={`h-8 w-8 p-0 ${
+                                day.isLocked 
+                                  ? 'opacity-40 cursor-not-allowed' 
+                                  : 'text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/30'
+                              }`}
+                              title={day.isLocked ? "Unlock to regenerate" : "Regenerate this day"}
                             >
                               {isRegeneratingDay === day.day ? (
                                 <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -547,7 +585,9 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                             </Button>
                           </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className={`space-y-2 transition-all duration-300 ${
+                          day.isLocked ? 'opacity-70' : 'opacity-100'
+                        }`}>
                           <h5 className="font-medium text-sm">{day.title}</h5>
                           <p className="text-xs text-muted-foreground">
                             Target: {day.muscleGroups.join(', ')}
