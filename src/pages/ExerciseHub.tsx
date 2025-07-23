@@ -32,36 +32,42 @@ const ExerciseHub = () => {
     }
   }, [location.state]);
 
-  // Mock workout data for today
+  // Enhanced mock workout data with complete workout history
   const mockWorkouts = [
     {
       id: 1,
-      name: "Push Day",
-      emoji: "💪",
-      duration: "45 min",
+      name: "Upper Body Strength",
+      emoji: "🏋️",
+      type: "Strength",
+      duration: "45 minutes",
       calories: "320 kcal",
-      startTime: "09:30",
-      endTime: "10:15",
+      date: "2024-01-23",
+      time: "09:30 AM",
+      summary: "Bench press, shoulder press, rows, pull-ups",
       gradient: "from-orange-300 to-red-500"
     },
     {
       id: 2,
-      name: "Morning Run",
+      name: "Morning Cardio Run",
       emoji: "🏃",
-      duration: "30 min",
+      type: "Cardio", 
+      duration: "30 minutes",
       calories: "280 kcal",
-      startTime: "07:00",
-      endTime: "07:30",
+      date: "2024-01-23",
+      time: "07:00 AM",
+      summary: "5K outdoor run around the park",
       gradient: "from-blue-300 to-cyan-500"
     },
     {
       id: 3,
-      name: "Yoga Flow",
+      name: "Evening Yoga Flow",
       emoji: "🧘",
-      duration: "25 min",
+      type: "Flexibility",
+      duration: "25 minutes", 
       calories: "150 kcal",
-      startTime: "18:30",
-      endTime: "18:55",
+      date: "2024-01-22",
+      time: "06:30 PM",
+      summary: "Vinyasa flow, sun salutations, meditation",
       gradient: "from-purple-300 to-pink-500"
     }
   ];
@@ -287,39 +293,55 @@ const ExerciseHub = () => {
                 {/* Workout Log Tab - Enhanced */}
                 {tab.id === 'workout-log' ? (
                   <div className="space-y-6">
-                    {/* Today's Workouts Header */}
+                    {/* Workout History Header */}
                     <div className="text-center mb-4">
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Today's Workouts</h2>
-                      <p className="text-muted-foreground">
-                        {new Date().toLocaleDateString('en-US', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </p>
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Workout History</h2>
+                      <p className="text-muted-foreground">Your complete fitness journey</p>
                     </div>
+
+                    {/* Add Workout Button at Top */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-4">
+                        <Button
+                          onClick={() => setIsAddWorkoutModalOpen(true)}
+                          className="w-full h-12 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Workout
+                        </Button>
+                      </CardContent>
+                    </Card>
 
                     {/* Workout Entries */}
                     <div className="space-y-4">
                       {mockWorkouts.map((workout) => (
-                        <Card key={workout.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300">
+                        <Card key={workout.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
                           <CardContent className="p-0">
                             <div className={`bg-gradient-to-r ${workout.gradient} p-1 rounded-t-lg`} />
                             <div className="p-6">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center space-x-3">
                                   <div className="text-4xl cursor-pointer transition-transform duration-200 hover:animate-bounce active:scale-110">{workout.emoji}</div>
-                                  <div>
-                                    <h3 className="text-xl font-bold text-foreground drop-shadow-sm">{workout.name}</h3>
-                                    {workout.startTime && workout.endTime && (
-                                      <p className="text-sm text-muted-foreground flex items-center mt-1">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h3 className="text-xl font-bold text-foreground drop-shadow-sm">{workout.name}</h3>
+                                      <span className="px-2 py-1 text-xs bg-muted rounded-full text-muted-foreground font-medium">{workout.type}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                      <div className="flex items-center">
                                         <Timer className="mr-1 h-3 w-3" />
-                                        {workout.startTime} - {workout.endTime}
-                                      </p>
-                                    )}
+                                        {workout.date} at {workout.time}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
+                              </div>
+                              
+                              {/* Workout Summary */}
+                              <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+                                <p className="text-sm text-muted-foreground">
+                                  <span className="font-medium">Summary:</span> {workout.summary}
+                                </p>
                               </div>
                               
                               <div className="grid grid-cols-2 gap-4">
@@ -350,7 +372,7 @@ const ExerciseHub = () => {
                       <Card className="w-full shadow-lg border-border bg-card">
                         <CardContent className="p-8 text-center">
                           <div className="text-4xl mb-4">📘</div>
-                          <h3 className="text-xl font-bold text-foreground mb-2">No workouts today</h3>
+                          <h3 className="text-xl font-bold text-foreground mb-2">No workouts logged yet</h3>
                           <p className="text-muted-foreground mb-6">Start tracking your fitness journey!</p>
                           <Button
                             onClick={() => setIsAddWorkoutModalOpen(true)}
