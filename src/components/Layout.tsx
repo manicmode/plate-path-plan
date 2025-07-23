@@ -76,6 +76,9 @@ const Layout = ({ children }: LayoutProps) => {
   // Show only header for unauthenticated users on non-auth pages
   const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
 
+  // Special handling for explore page to prevent scrolling
+  const isExplorePage = location.pathname === '/explore';
+
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
       {/* Enhanced Header with better spacing */}
@@ -107,10 +110,18 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content with adjusted padding for explore page */}
       <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-        shouldShowNavigation ? (isMobile ? 'pb-40' : 'pb-60') : 'pb-8'
-      } min-h-[calc(100vh-140px)]`}>
+        shouldShowNavigation ? (
+          isExplorePage 
+            ? 'pb-20' // Reduced padding for explore page
+            : (isMobile ? 'pb-40' : 'pb-60')
+        ) : 'pb-8'
+      } ${
+        isExplorePage 
+          ? 'h-[calc(100vh-160px)]' // Precise height for explore page
+          : 'min-h-[calc(100vh-140px)]'
+      }`}>
         {children}
       </main>
 

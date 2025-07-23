@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -105,7 +106,7 @@ const Explore = () => {
   const safeIsMobile = isMobile ?? false;
 
   return (
-    <div className="min-h-screen flex flex-col p-4 pb-24 relative">
+    <div className="flex flex-col p-4 overflow-hidden relative">
       {/* Main 2x3 Grid with simplified styling */}
       <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-4">
         {mainTiles.map((tile) => {
@@ -143,8 +144,8 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tab - Simplified and positioned correctly */}
-      <div className="w-full mb-16 relative z-30">
+      {/* Profile Tab - Reduced bottom margin */}
+      <div className="w-full mb-2 relative z-30">
         <Button
           onClick={() => handleTileClick('profile')}
           disabled={navigationInProgress}
