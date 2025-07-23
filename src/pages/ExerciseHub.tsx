@@ -197,6 +197,22 @@ const ExerciseHub = () => {
         <h1 className="text-2xl font-bold text-foreground">Exercise Hub</h1>
       </div>
 
+      {/* AI Fitness Coach Hero Tab */}
+      <div className="mb-6">
+        <button
+          onClick={() => navigate('/ai-fitness-coach')}
+          className="w-full p-6 rounded-2xl bg-gradient-to-r from-indigo-200 to-purple-400 dark:from-indigo-400 dark:to-purple-600 hover:from-indigo-300 hover:to-purple-500 dark:hover:from-indigo-500 dark:hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl text-white"
+        >
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <span className="text-3xl animate-pulse">🤖</span>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
+          </div>
+          <p className="text-gray-700 dark:text-indigo-100 text-sm opacity-90">
+            Your personal trainer, motivator, and guide
+          </p>
+        </button>
+      </div>
+
       {/* Tab Navigation */}
       <div className="mb-6">
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'} mb-4`}>

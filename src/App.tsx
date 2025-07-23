@@ -22,6 +22,7 @@ const Analytics = lazy(() => import('@/pages/Analytics'));
 const Coach = lazy(() => import('@/pages/Coach'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
+const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
@@ -84,6 +85,11 @@ function AppContent() {
                               <Route path="/exercise-hub" element={
                                 <ProtectedRoute>
                                   <ExerciseHub />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/ai-fitness-coach" element={
+                                <ProtectedRoute>
+                                  <AIFitnessCoach />
                                 </ProtectedRoute>
                               } />
                               <Route path="/profile" element={
