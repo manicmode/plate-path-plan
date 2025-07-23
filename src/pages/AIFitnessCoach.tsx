@@ -4,6 +4,9 @@ import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users }
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIntelligentFitnessCoach } from '@/hooks/useIntelligentFitnessCoach';
 import { useSocialAccountability } from '@/hooks/useSocialAccountability';
@@ -31,6 +34,17 @@ export default function AIFitnessCoach() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Workout routine generation state
+  const [showRoutineDialog, setShowRoutineDialog] = useState(false);
+  const [routinePreferences, setRoutinePreferences] = useState({
+    fitnessGoal: '',
+    trainingSplit: '',
+    workoutTime: '',
+    equipment: '',
+    weeklyFrequency: ''
+  });
+  const [isGeneratingRoutine, setIsGeneratingRoutine] = useState(false);
   useScrollToTop();
   
   const { sendNudge } = useSocialAccountability();
@@ -78,6 +92,58 @@ export default function AIFitnessCoach() {
 
   const handlePromptClick = (promptMessage: string) => {
     handleSendMessage(promptMessage);
+  };
+
+  const handleGenerateRoutine = async () => {
+    if (!routinePreferences.fitnessGoal || !routinePreferences.trainingSplit || 
+        !routinePreferences.workoutTime || !routinePreferences.equipment || 
+        !routinePreferences.weeklyFrequency) {
+      return;
+    }
+
+    setIsGeneratingRoutine(true);
+    setShowRoutineDialog(false);
+
+    // Create the detailed prompt with user preferences
+    const routinePrompt = `🧠 "You are NutriCoach's AI Fitness Coach. Use the user's full profile data (goals, health conditions, fitness level, current nutrition, available equipment, and past workout activity) to generate a fully personalized 8-week workout routine.
+
+Based on the user's preferences:
+- Fitness Goal: ${routinePreferences.fitnessGoal}
+- Training Split Style: ${routinePreferences.trainingSplit}
+- Workout Time per Day: ${routinePreferences.workoutTime}
+- Equipment Available: ${routinePreferences.equipment}
+- Weekly Frequency: ${routinePreferences.weeklyFrequency}
+
+Generate a complete week-by-week plan that includes:
+
+🗓️ **Week 1-8 Breakdown:**
+- Daily plan titles (e.g., "Upper Body Strength," "HIIT & Core," "Mobility & Recovery")
+- Targeted muscle groups
+- Example exercises with sets/reps
+- Rest days intelligently placed
+- Visual variation in style and difficulty across weeks
+
+Each week should contain 5–6 intelligently varied training days. Consider muscle group recovery times and avoid repeating the same muscle groups on consecutive days. Alternate between strength, cardio, functional, and rest/recovery as needed.
+
+Make it sound exciting, supportive, and customized. Mention any health-based modifications if needed based on the user's profile data."`;
+
+    // Add user message
+    const newMessages = [...messages, { 
+      role: 'user' as const, 
+      content: `Generate my personalized 8-week workout routine with these preferences: ${routinePreferences.fitnessGoal}, ${routinePreferences.trainingSplit}, ${routinePreferences.workoutTime}, ${routinePreferences.equipment}, ${routinePreferences.weeklyFrequency} per week` 
+    }];
+    setMessages(newMessages);
+
+    // Simulate AI generation
+    setTimeout(() => {
+      const coachResponse = processUserInput(routinePrompt);
+      setMessages([...newMessages, { 
+        role: 'assistant', 
+        content: coachResponse.message,
+        emoji: '🏋️‍♂️'
+      }]);
+      setIsGeneratingRoutine(false);
+    }, 3000); // Longer generation time for routine
   };
 
   const motivationalQuotes = [
@@ -180,18 +246,20 @@ export default function AIFitnessCoach() {
                     </div>
                   </div>
                 ))}
-                {isLoading && (
+                {(isLoading || isGeneratingRoutine) && (
                   <div className="flex justify-start">
                     <div className="bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                       <div className="flex items-center gap-3">
-                        <span className="text-lg">🤖</span>
+                        <span className="text-lg">{isGeneratingRoutine ? '🏋️‍♂️' : '🤖'}</span>
                         <div className="flex flex-col gap-1">
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                           </div>
-                          <p className="text-xs text-muted-foreground">Analyzing your fitness data...</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isGeneratingRoutine ? 'Creating your personalized 8-week routine...' : 'Analyzing your fitness data...'}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -209,7 +277,7 @@ export default function AIFitnessCoach() {
                       variant="outline"
                       onClick={() => handlePromptClick(prompt.message)}
                       className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
-                      disabled={isLoading}
+                      disabled={isLoading || isGeneratingRoutine}
                     >
                       <span className="mr-2 text-lg">{prompt.emoji}</span>
                       <span className="text-sm font-medium">{prompt.text}</span>
@@ -226,11 +294,11 @@ export default function AIFitnessCoach() {
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                   className="flex-1"
-                  disabled={isLoading}
+                  disabled={isLoading || isGeneratingRoutine}
                 />
                 <Button
                   onClick={() => handleSendMessage(inputMessage)}
-                  disabled={isLoading || !inputMessage.trim()}
+                  disabled={isLoading || isGeneratingRoutine || !inputMessage.trim()}
                   className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
                 >
                   <Send className="h-4 w-4" />
@@ -315,10 +383,119 @@ export default function AIFitnessCoach() {
                   </div>
                 </div>
               </div>
-              <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white">
-                <Zap className="h-4 w-4 mr-2" />
-                Generate New Routine
-              </Button>
+              <Dialog open={showRoutineDialog} onOpenChange={setShowRoutineDialog}>
+                <DialogTrigger asChild>
+                  <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white">
+                    <Zap className="h-4 w-4 mr-2" />
+                    Generate New Routine
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-green-600" />
+                      Workout Preferences
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fitness-goal">Fitness Goal</Label>
+                      <Select value={routinePreferences.fitnessGoal} onValueChange={(value) => 
+                        setRoutinePreferences(prev => ({ ...prev, fitnessGoal: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your goal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weight-loss">Weight Loss</SelectItem>
+                          <SelectItem value="muscle-gain">Muscle Gain</SelectItem>
+                          <SelectItem value="tone-sculpt">Tone & Sculpt</SelectItem>
+                          <SelectItem value="general-wellness">General Wellness</SelectItem>
+                          <SelectItem value="strength">Build Strength</SelectItem>
+                          <SelectItem value="endurance">Improve Endurance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="training-split">Training Split Style</Label>
+                      <Select value={routinePreferences.trainingSplit} onValueChange={(value) => 
+                        setRoutinePreferences(prev => ({ ...prev, trainingSplit: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select training style" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full-body">Full Body</SelectItem>
+                          <SelectItem value="push-pull-legs">Push/Pull/Legs</SelectItem>
+                          <SelectItem value="upper-lower">Upper/Lower</SelectItem>
+                          <SelectItem value="muscle-group">Muscle Group Isolation</SelectItem>
+                          <SelectItem value="functional">Functional Training</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="workout-time">Workout Time per Day</Label>
+                      <Select value={routinePreferences.workoutTime} onValueChange={(value) => 
+                        setRoutinePreferences(prev => ({ ...prev, workoutTime: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20-min">20 minutes</SelectItem>
+                          <SelectItem value="30-min">30 minutes</SelectItem>
+                          <SelectItem value="45-min">45 minutes</SelectItem>
+                          <SelectItem value="60-min">60 minutes</SelectItem>
+                          <SelectItem value="90-min">90+ minutes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="equipment">Equipment Available</Label>
+                      <Select value={routinePreferences.equipment} onValueChange={(value) => 
+                        setRoutinePreferences(prev => ({ ...prev, equipment: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select equipment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bodyweight">Bodyweight Only</SelectItem>
+                          <SelectItem value="dumbbells">Dumbbells</SelectItem>
+                          <SelectItem value="resistance-bands">Resistance Bands</SelectItem>
+                          <SelectItem value="home-gym">Home Gym Setup</SelectItem>
+                          <SelectItem value="full-gym">Full Gym Access</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="frequency">Weekly Frequency</Label>
+                      <Select value={routinePreferences.weeklyFrequency} onValueChange={(value) => 
+                        setRoutinePreferences(prev => ({ ...prev, weeklyFrequency: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="3x">3x per week</SelectItem>
+                          <SelectItem value="4x">4x per week</SelectItem>
+                          <SelectItem value="5x">5x per week</SelectItem>
+                          <SelectItem value="6x">6x per week</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      onClick={handleGenerateRoutine}
+                      disabled={!routinePreferences.fitnessGoal || !routinePreferences.trainingSplit || 
+                               !routinePreferences.workoutTime || !routinePreferences.equipment || 
+                               !routinePreferences.weeklyFrequency}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate My 8-Week Routine
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>
