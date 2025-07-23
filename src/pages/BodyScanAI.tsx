@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight } from 'lucide-react';
@@ -17,6 +16,8 @@ export default function BodyScanAI() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [hasImageReady, setHasImageReady] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -137,6 +138,18 @@ export default function BodyScanAI() {
     navigate('/exercise-hub');
   };
 
+  const handleImageLoad = () => {
+    console.log('Body outline image loaded successfully');
+    setImageLoaded(true);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    console.log('Failed to load body outline image');
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
   return (
     <div className="relative w-full h-screen bg-black flex flex-col overflow-hidden">
       <div className="flex-1 relative">
@@ -168,15 +181,31 @@ export default function BodyScanAI() {
             isCapturing ? 'scale-105' : 'scale-100'
           } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
             <div className="relative">
-              <img 
-                src="/lovable-uploads/64c1a95e-d05a-487b-bb53-b51e0c18f422.png"
-                alt="Body pose guide"
-                className="w-[300px] max-w-[90vw] h-auto opacity-80 animate-pulse"
-                style={{
-                  filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
-                  animation: 'pulse 2s ease-in-out infinite'
-                }}
-              />
+              {!imageError ? (
+                <img 
+                  src="/lovable-uploads/76dd7719-6db9-4f38-9ba7-758d3da65e27.png"
+                  alt="Body pose guide"
+                  className="w-[300px] max-w-[90vw] h-auto opacity-80 animate-pulse"
+                  style={{
+                    filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
+                    animation: 'pulse 2s ease-in-out infinite'
+                  }}
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                />
+              ) : (
+                <img 
+                  src="/lovable-uploads/efb4b7c2-4b95-482c-b50b-17a9a86b8c29.png"
+                  alt="Body pose guide"
+                  className="w-[300px] max-w-[90vw] h-auto opacity-80 animate-pulse"
+                  style={{
+                    filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
+                    animation: 'pulse 2s ease-in-out infinite'
+                  }}
+                  onLoad={handleImageLoad}
+                  onError={() => console.log('Both body outline images failed to load')}
+                />
+              )}
             </div>
           </div>
         </div>
