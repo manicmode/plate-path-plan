@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Upload, ArrowRight } from 'lucide-react';
+import { X, Upload, ArrowRight, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ export default function BodyScanAI() {
   const [hasImageReady, setHasImageReady] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'environment' | 'user'>('environment');
 
   useEffect(() => {
     startCamera();
@@ -27,7 +28,7 @@ export default function BodyScanAI() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [cameraMode]);
 
   const startCamera = async () => {
     try {
@@ -37,7 +38,7 @@ export default function BodyScanAI() {
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: { exact: 'environment' },
+          facingMode: { exact: cameraMode },
           width: { ideal: 1280, min: 640 },
           height: { ideal: 720, min: 480 }
         }
@@ -146,6 +147,10 @@ export default function BodyScanAI() {
     setImageLoaded(false);
   };
 
+  const toggleCamera = () => {
+    setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
+  };
+
   return (
     <div className="fixed inset-0 w-full h-full bg-black overflow-hidden">
       {/* Camera video background */}
@@ -190,6 +195,22 @@ export default function BodyScanAI() {
           <p className="text-white/90 text-sm text-center">
             Stand upright with arms out. Match your body to the glowing outline.
           </p>
+        </div>
+      </div>
+
+      {/* Camera Toggle Button - Top Right */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col items-end space-y-2">
+        <Button
+          onClick={toggleCamera}
+          className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm border border-white/30 text-white hover:bg-black/70 transition-all duration-300"
+          size="sm"
+        >
+          <RotateCcw className="w-5 h-5" />
+        </Button>
+        <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1 border border-white/20">
+          <span className="text-white text-xs font-medium">
+            {cameraMode === 'environment' ? 'Back Camera Active' : 'Front Camera Active'}
+          </span>
         </div>
       </div>
       
