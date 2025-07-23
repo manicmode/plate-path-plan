@@ -7,6 +7,8 @@ import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
+import { CreateRoutineModal } from '@/components/CreateRoutineModal';
+import { RoutineCard } from '@/components/RoutineCard';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -78,37 +80,74 @@ const ExerciseHub = () => {
     setMockWorkouts(prev => [newWorkout, ...prev]); // Add to beginning of array
   };
 
-  // Mock routine data
-  const mockRoutines = [
+  // Enhanced mock routine data - make it dynamic
+  const [mockRoutines, setMockRoutines] = useState([
     {
       id: 1,
-      title: "Full Body Blast",
-      emoji: "💥",
-      description: "3-day strength circuit",
-      gradient: "from-red-400 to-orange-500"
+      title: "Push/Pull/Legs Split",
+      emoji: "🏋️",
+      type: "Strength",
+      routineType: "strength",
+      duration: "60-75 minutes",
+      gradient: "from-red-400 to-orange-600",
+      weeklyPlan: {
+        Monday: "Push: Bench press 3x8, Shoulder press 3x10, Tricep dips 3x12",
+        Tuesday: "Pull: Pull-ups 3x8, Rows 3x10, Bicep curls 3x12",
+        Wednesday: "Legs: Squats 3x10, Deadlifts 3x8, Calf raises 3x15",
+        Thursday: "Push: Incline press 3x8, Lateral raises 3x12, Push-ups 3x15",
+        Friday: "Pull: Lat pulldowns 3x10, Face pulls 3x15, Hammer curls 3x12",
+        Saturday: "Legs: Leg press 3x12, Romanian deadlifts 3x10, Lunges 3x12",
+        Sunday: "Rest day"
+      },
+      notes: "Progressive overload each week. Rest 2-3 minutes between sets.",
+      createdAt: "2024-01-20T10:00:00Z"
     },
     {
       id: 2,
-      title: "Cardio Power",
-      emoji: "🏃",
-      description: "High-intensity cardio",
-      gradient: "from-blue-400 to-cyan-500"
-    },
-    {
-      id: 3,
-      title: "Zen & Stretch",
-      emoji: "🧘",
-      description: "Flexibility & mindfulness",
-      gradient: "from-purple-400 to-pink-500"
-    },
-    {
-      id: 4,
-      title: "Core Crusher",
-      emoji: "🔥",
-      description: "Abs & core strengthening",
-      gradient: "from-yellow-400 to-red-500"
+      title: "Morning HIIT Routine",
+      emoji: "⚡",
+      type: "HIIT",
+      routineType: "hiit",
+      duration: "25-30 minutes",
+      gradient: "from-yellow-400 to-orange-600",
+      weeklyPlan: {
+        Monday: "Burpees 30s, Rest 30s, Jump squats 30s, Rest 30s - Repeat 5 rounds",
+        Tuesday: "Rest day",
+        Wednesday: "Mountain climbers 30s, Rest 30s, High knees 30s, Rest 30s - Repeat 5 rounds",
+        Thursday: "Rest day",
+        Friday: "Jumping jacks 30s, Rest 30s, Plank 30s, Rest 30s - Repeat 5 rounds",
+        Saturday: "Full body HIIT circuit - 40 minutes",
+        Sunday: "Active recovery walk"
+      },
+      notes: "High intensity intervals for maximum fat burn. Stay hydrated!",
+      createdAt: "2024-01-18T08:00:00Z"
     }
-  ];
+  ]);
+
+  // Function to handle adding/editing routines
+  const handleSaveRoutine = (newRoutine: any) => {
+    if (newRoutine.id && mockRoutines.find(r => r.id === newRoutine.id)) {
+      // Edit existing routine
+      setMockRoutines(prev => prev.map(r => r.id === newRoutine.id ? newRoutine : r));
+    } else {
+      // Add new routine
+      setMockRoutines(prev => [newRoutine, ...prev]);
+    }
+  };
+
+  // Function to handle duplicating routines
+  const handleDuplicateRoutine = (routine: any) => {
+    const duplicatedRoutine = {
+      ...routine,
+      id: Date.now(),
+      title: `${routine.title} (Copy)`,
+      createdAt: new Date().toISOString()
+    };
+    setMockRoutines(prev => [duplicatedRoutine, ...prev]);
+  };
+
+  // State for editing routines
+  const [editingRoutine, setEditingRoutine] = useState<any>(null);
 
   // Mock progress data
   const mockWeeklyData = [
@@ -396,13 +435,13 @@ const ExerciseHub = () => {
                   <div className="space-y-6">
                     {/* Create New Routine Button */}
                     <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6">
+                      <CardContent className="p-4">
                         <Button
                           onClick={() => setIsCreateRoutineModalOpen(true)}
-                          className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+                          className="w-full h-12 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
                         >
-                          <Plus className="mr-2 h-5 w-5" />
-                          Create New Routine
+                          <Plus className="mr-2 h-4 w-4" />
+                          New Routine
                         </Button>
                       </CardContent>
                     </Card>
@@ -413,26 +452,18 @@ const ExerciseHub = () => {
                       <p className="text-muted-foreground">Custom workout plans tailored for you</p>
                     </div>
 
-                    {/* Routines Grid - 2x2 */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {mockRoutines.map((routine, index) => (
-                        <Card key={routine.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer" style={{ animationDelay: `${index * 100}ms` }}>
-                          <CardContent className="p-0">
-                            <div className={`bg-gradient-to-br ${routine.gradient} p-3 rounded-t-lg`} />
-                            <div className="p-4">
-                              <div className="text-center space-y-3">
-                                {/* Emoji */}
-                                <div className="text-4xl cursor-pointer transition-transform duration-200 hover:animate-bounce active:scale-110 hover:drop-shadow-lg">{routine.emoji}</div>
-                                
-                                {/* Title */}
-                                <h3 className="text-lg font-bold text-foreground leading-tight drop-shadow-sm">{routine.title}</h3>
-                                
-                                {/* Description */}
-                                <p className="text-sm text-muted-foreground">{routine.description}</p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                    {/* Routines Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {mockRoutines.map((routine) => (
+                        <RoutineCard
+                          key={routine.id}
+                          routine={routine}
+                          onEdit={(editRoutine) => {
+                            setEditingRoutine(editRoutine);
+                            setIsCreateRoutineModalOpen(true);
+                          }}
+                          onDuplicate={handleDuplicateRoutine}
+                        />
                       ))}
                     </div>
 
@@ -445,7 +476,7 @@ const ExerciseHub = () => {
                           <p className="text-muted-foreground mb-6">Create your first custom workout routine!</p>
                           <Button
                             onClick={() => setIsCreateRoutineModalOpen(true)}
-                            className="bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white"
+                            className="bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-500 hover:to-pink-700 text-white"
                           >
                             <Plus className="mr-2 h-4 w-4" />
                             Create Your First Routine
@@ -653,6 +684,17 @@ const ExerciseHub = () => {
         isOpen={isAddWorkoutModalOpen}
         onClose={() => setIsAddWorkoutModalOpen(false)}
         onSave={handleAddWorkout}
+      />
+
+      {/* Create Routine Modal */}
+      <CreateRoutineModal
+        isOpen={isCreateRoutineModalOpen}
+        onClose={() => {
+          setIsCreateRoutineModalOpen(false);
+          setEditingRoutine(null);
+        }}
+        onSave={handleSaveRoutine}
+        editingRoutine={editingRoutine}
       />
     </div>
   );
