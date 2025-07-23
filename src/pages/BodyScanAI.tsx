@@ -175,37 +175,23 @@ export default function BodyScanAI() {
         </div>
         <canvas ref={canvasRef} className="hidden" />
         
-        {/* Human Outline Overlay - Using uploaded PNG image */}
+        {/* White Silhouette Overlay - Full screen pose guidance */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className={`relative transition-all duration-500 ${
             isCapturing ? 'scale-105' : 'scale-100'
           } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
-            <div className="relative">
-              {!imageError ? (
-                <img 
-                  src="/lovable-uploads/76dd7719-6db9-4f38-9ba7-758d3da65e27.png"
-                  alt="Body pose guide"
-                  className="w-[300px] max-w-[90vw] h-auto opacity-80 animate-pulse"
-                  style={{
-                    filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
-                    animation: 'pulse 2s ease-in-out infinite'
-                  }}
-                  onLoad={handleImageLoad}
-                  onError={handleImageError}
-                />
-              ) : (
-                <img 
-                  src="/lovable-uploads/efb4b7c2-4b95-482c-b50b-17a9a86b8c29.png"
-                  alt="Body pose guide"
-                  className="w-[300px] max-w-[90vw] h-auto opacity-80 animate-pulse"
-                  style={{
-                    filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
-                    animation: 'pulse 2s ease-in-out infinite'
-                  }}
-                  onLoad={handleImageLoad}
-                  onError={() => console.log('Both body outline images failed to load')}
-                />
-              )}
+            <div className="relative flex items-center justify-center h-screen">
+              <img 
+                src="/lovable-uploads/169fbfb1-a7b0-4bca-af53-8bb6b288c5fc.png"
+                alt="Pose alignment guide"
+                className="max-h-[90vh] max-w-[90vw] h-auto w-auto opacity-70 object-contain"
+                style={{
+                  filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 60px rgba(255, 255, 255, 0.2))',
+                  animation: 'pulse 3s ease-in-out infinite'
+                }}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
+              />
             </div>
           </div>
         </div>
