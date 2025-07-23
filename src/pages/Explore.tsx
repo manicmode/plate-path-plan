@@ -107,7 +107,7 @@ const Explore = () => {
   return (
     <div className="min-h-screen flex flex-col p-4 pb-24 relative">
       {/* Main 2x3 Grid with simplified styling */}
-      <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-6">
         {mainTiles.map((tile) => {
           return (
             <Button
