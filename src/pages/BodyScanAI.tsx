@@ -20,6 +20,7 @@ export default function BodyScanAI() {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [cameraMode, setCameraMode] = useState<'environment' | 'user'>('environment');
+  const [showOrientationWarning, setShowOrientationWarning] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -29,6 +30,48 @@ export default function BodyScanAI() {
       }
     };
   }, [cameraMode]);
+
+  useEffect(() => {
+    // Lock screen orientation to portrait if supported
+    const lockOrientation = async () => {
+      try {
+        if ('orientation' in screen && 'lock' in screen.orientation) {
+          await (screen.orientation as any).lock('portrait');
+        }
+      } catch (error) {
+        console.log('Orientation lock not supported:', error);
+      }
+    };
+
+    // Handle orientation change for unsupported devices
+    const handleOrientationChange = () => {
+      if (window.innerHeight < window.innerWidth) {
+        setShowOrientationWarning(true);
+      } else {
+        setShowOrientationWarning(false);
+      }
+    };
+
+    lockOrientation();
+    handleOrientationChange();
+    
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      
+      // Unlock orientation when leaving the page
+      try {
+        if ('orientation' in screen && 'unlock' in screen.orientation) {
+          (screen.orientation as any).unlock();
+        }
+      } catch (error) {
+        console.log('Orientation unlock not supported:', error);
+      }
+    };
+  }, []);
 
   const startCamera = async () => {
     try {
@@ -152,7 +195,22 @@ export default function BodyScanAI() {
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden portrait:block landscape:hidden">
+      {/* Landscape orientation warning */}
+      {showOrientationWarning && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-yellow-500/90 text-black p-6 rounded-2xl text-center max-w-sm">
+            <div className="text-4xl mb-4">📱</div>
+            <h3 className="text-lg font-bold mb-2">Please Rotate Your Device</h3>
+            <p className="text-sm">
+              For the best body scanning experience, please hold your device in portrait mode.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Main content - only show in portrait */}
+      <div className="portrait:block landscape:hidden w-full h-full">
       {/* Camera video background */}
       <div className="absolute inset-0 z-0">
         <video
@@ -298,6 +356,7 @@ export default function BodyScanAI() {
         onChange={handleFileUpload}
         className="hidden"
       />
+      </div>
     </div>
   );
 }
