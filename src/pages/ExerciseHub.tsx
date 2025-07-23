@@ -15,7 +15,7 @@ import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
 import { DateFilterSelect } from '@/components/analytics/DateFilterSelect';
 import { PreMadePlanCard } from '@/components/PreMadePlanCard';
 import { PlanPreviewModal } from '@/components/PlanPreviewModal';
-import { ExerciseChallenges } from '@/components/ExerciseChallenges';
+
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 import { YearlyExerciseReportCard } from '@/components/exercise/YearlyExerciseReportCard';
 import { WeeklyExerciseInsightsCard } from "@/components/analytics/WeeklyExerciseInsightsCard";
@@ -660,12 +660,6 @@ const ExerciseHub = () => {
       title: 'Body Scan AI',
       emoji: '📸',
       content: 'AI-powered body analysis and recommendations.'
-    },
-    {
-      id: 'exercise-challenges',
-      title: 'Exercise Challenges',
-      emoji: '🚀',
-      content: 'Join fun challenges and stay motivated with friends!'
     }
   ];
 
@@ -733,30 +727,9 @@ const ExerciseHub = () => {
 
       {/* Tab Navigation */}
       <div className="mb-6">
-        {/* Exercise Challenges as full-width banner - MOVED TO TOP */}
-        <div className="w-full mb-4">
-          <button
-            onClick={() => setActiveTab('exercise-challenges')}
-            className={`w-full p-4 rounded-xl transition-all duration-300 transform shadow-xl group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12 ${
-              activeTab === 'exercise-challenges'
-                ? 'bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 scale-105 shadow-2xl shadow-teal-500/40 border border-teal-400/30'
-                : 'bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 hover:scale-[1.01] hover:shadow-2xl hover:shadow-teal-500/40 border border-teal-400/30 hover:brightness-110'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
-              <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-[bounce_2s_ease-in-out_infinite]">🚀</span>
-              <h2 className="text-xl font-bold text-white">Exercise Challenges</h2>
-              <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
-            </div>
-            <p className="text-white/90 text-sm opacity-90 relative z-10">
-              Join fun challenges and stay motivated with friends!
-            </p>
-          </button>
-        </div>
-
-        {/* 5 tabs in grid - MOVED BELOW */}
-        <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-5 gap-3'}`}>
-          {tabs.slice(0, 5).map((tab) => (
+        {/* 4 tabs in grid */}
+        <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'}`}>
+          {tabs.slice(0, 4).map((tab) => (
             <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -1160,9 +1133,6 @@ const ExerciseHub = () => {
                         </Card>
                       )}
                     </div>
-                  ) : tab.id === 'exercise-challenges' ? (
-                    /* Exercise Challenges Tab - New Feature */
-                    <ExerciseChallenges />
                   ) : (
                    /* Other Tabs - Keep Original Design */
                    <Card className="w-full shadow-lg border-border bg-card">
