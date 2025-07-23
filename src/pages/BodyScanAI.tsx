@@ -490,7 +490,7 @@ export default function BodyScanAI() {
           <img 
             src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             alt=""
-            className="w-[98vw] max-h-[85vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
+            className="w-[99vw] max-h-[88vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
