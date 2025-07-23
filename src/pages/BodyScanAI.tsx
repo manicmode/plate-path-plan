@@ -136,34 +136,81 @@ export default function BodyScanAI() {
     navigate('/exercise-hub');
   };
 
-  // Human figure SVG for T-pose silhouette
+  // Realistic human figure SVG for T-pose silhouette
   const HumanSilhouette = () => (
     <svg 
-      width="200" 
-      height="300" 
-      viewBox="0 0 200 300" 
-      className="text-blue-400/40 animate-pulse"
-      fill="currentColor"
+      width="240" 
+      height="320" 
+      viewBox="0 0 240 320" 
+      className="opacity-60"
     >
-      {/* Head */}
-      <circle cx="100" cy="40" r="25" />
+      {/* Main body outline with realistic proportions */}
+      <g 
+        fill="none" 
+        stroke="rgb(59 130 246)" 
+        strokeWidth="3" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+        className="animate-pulse"
+        style={{
+          filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))'
+        }}
+      >
+        {/* Head */}
+        <circle cx="120" cy="35" r="22" />
+        
+        {/* Neck */}
+        <line x1="120" y1="57" x2="120" y2="70" />
+        
+        {/* Shoulders and torso */}
+        <path d="M 95 70 Q 120 68 145 70" /> {/* Shoulders */}
+        <line x1="95" y1="70" x2="100" y2="85" /> {/* Left shoulder line */}
+        <line x1="145" y1="70" x2="140" y2="85" /> {/* Right shoulder line */}
+        
+        {/* Torso outline */}
+        <path d="M 100 85 Q 120 83 140 85 L 135 140 Q 120 143 105 140 Z" />
+        
+        {/* Arms extended (T-pose) */}
+        {/* Left arm */}
+        <line x1="95" y1="70" x2="40" y2="75" /> {/* Upper arm */}
+        <line x1="40" y1="75" x2="35" y2="110" /> {/* Forearm */}
+        <circle cx="35" cy="115" r="4" /> {/* Hand */}
+        
+        {/* Right arm */}
+        <line x1="145" y1="70" x2="200" y2="75" /> {/* Upper arm */}
+        <line x1="200" y1="75" x2="205" y2="110" /> {/* Forearm */}
+        <circle cx="205" cy="115" r="4" /> {/* Hand */}
+        
+        {/* Waist and hips */}
+        <path d="M 105 140 Q 120 145 135 140" />
+        <path d="M 105 140 Q 120 148 135 140 L 140 165 Q 120 168 100 165 Z" />
+        
+        {/* Legs */}
+        {/* Left leg */}
+        <line x1="108" y1="165" x2="105" y2="220" /> {/* Thigh */}
+        <line x1="105" y1="220" x2="100" y2="275" /> {/* Shin */}
+        <ellipse cx="95" cy="285" rx="8" ry="6" /> {/* Foot */}
+        
+        {/* Right leg */}
+        <line x1="132" y1="165" x2="135" y2="220" /> {/* Thigh */}
+        <line x1="135" y1="220" x2="140" y2="275" /> {/* Shin */}
+        <ellipse cx="145" cy="285" rx="8" ry="6" /> {/* Foot */}
+      </g>
       
-      {/* Body */}
-      <rect x="85" y="65" width="30" height="100" rx="15" />
-      
-      {/* Arms (T-pose) */}
-      <rect x="40" y="80" width="45" height="15" rx="7" />
-      <rect x="115" y="80" width="45" height="15" rx="7" />
-      
-      {/* Legs */}
-      <rect x="90" y="165" width="20" height="80" rx="10" />
-      <rect x="90" y="165" width="20" height="80" rx="10" />
-      <rect x="88" y="165" width="12" height="80" rx="6" />
-      <rect x="100" y="165" width="12" height="80" rx="6" />
-      
-      {/* Feet */}
-      <ellipse cx="94" cy="255" rx="12" ry="8" />
-      <ellipse cx="106" cy="255" rx="12" ry="8" />
+      {/* Body landmarks */}
+      <g fill="rgb(59 130 246)" className="animate-pulse" style={{ opacity: 0.8 }}>
+        {/* Shoulder markers */}
+        <circle cx="95" cy="70" r="2" />
+        <circle cx="145" cy="70" r="2" />
+        
+        {/* Hip markers */}
+        <circle cx="108" cy="165" r="2" />
+        <circle cx="132" cy="165" r="2" />
+        
+        {/* Foot alignment markers */}
+        <circle cx="95" cy="285" r="2" />
+        <circle cx="145" cy="285" r="2" />
+      </g>
     </svg>
   );
 
@@ -207,11 +254,12 @@ export default function BodyScanAI() {
               <div className="relative p-8 border-2 border-blue-400/50 rounded-3xl bg-blue-500/5 backdrop-blur-sm">
                 <HumanSilhouette />
                 
-                {/* Sparkle effects */}
-                <div className="absolute top-4 left-4 w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
-                <div className="absolute top-1/3 right-6 w-1 h-1 bg-white rounded-full animate-pulse delay-75"></div>
-                <div className="absolute bottom-1/4 left-8 w-1.5 h-1.5 bg-blue-300 rounded-full animate-ping delay-150"></div>
-                <div className="absolute top-1/2 right-4 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
+                {/* Sparkle effects - evenly sized and distributed */}
+                <div className="absolute top-6 left-6 w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
+                <div className="absolute top-1/4 right-8 w-2 h-2 bg-white rounded-full animate-pulse delay-75"></div>
+                <div className="absolute bottom-1/3 left-10 w-2 h-2 bg-blue-300 rounded-full animate-ping delay-150"></div>
+                <div className="absolute top-2/3 right-6 w-2 h-2 bg-white rounded-full animate-pulse delay-300"></div>
+                <div className="absolute bottom-6 right-12 w-2 h-2 bg-blue-400 rounded-full animate-ping delay-500"></div>
               </div>
               
               {/* Corner guides */}
