@@ -13,6 +13,8 @@ import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressCh
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
 import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
 import { DateFilterSelect } from '@/components/analytics/DateFilterSelect';
+import { PreMadePlanCard } from '@/components/PreMadePlanCard';
+import { PlanPreviewModal } from '@/components/PlanPreviewModal';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -24,6 +26,8 @@ const ExerciseHub = () => {
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
   const [originRoute, setOriginRoute] = useState<string>('/explore');
   const [dateFilter, setDateFilter] = useState('30d');
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [isPlanPreviewOpen, setIsPlanPreviewOpen] = useState(false);
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
@@ -253,37 +257,349 @@ const ExerciseHub = () => {
     }
   ];
 
-  // Mock pre-made plans data
-  const mockPlans = [
+  // Comprehensive mock pre-made plans data
+  const mockPreMadePlans = [
     {
       id: 1,
-      name: "Strength Builder",
-      emoji: "🏋️‍♂️",
-      description: "4-week heavy lifting program",
-      gradient: "from-red-400 to-orange-600"
+      title: "Full Body Blast",
+      emoji: "💪",
+      type: "Strength",
+      difficulty: "Intermediate" as const,
+      duration: "6 Weeks",
+      timeCommitment: "45 min/day, 4x/week",
+      gradient: "from-red-400 to-orange-600",
+      schedulePreview: "Mon: Upper Body, Tue: Lower Body, Thu: Full Body, Fri: Core & Cardio",
+      description: "A comprehensive strength training program designed to build muscle and improve overall fitness. Perfect for those looking to challenge themselves with compound movements and progressive overload.",
+      weeks: {
+        "Week 1": {
+          "Monday": "Upper Body Focus - Bench press 3x8, Pull-ups 3x6, Shoulder press 3x10, Rows 3x10",
+          "Tuesday": "Lower Body Focus - Squats 3x10, Deadlifts 3x6, Lunges 3x12, Calf raises 3x15",
+          "Wednesday": "Rest day",
+          "Thursday": "Full Body Circuit - Burpees 3x10, Mountain climbers 3x20, Push-ups 3x12, Plank 3x45s",
+          "Friday": "Core & Cardio - Bicycle crunches 3x20, Russian twists 3x30, 20 min cardio",
+          "Saturday": "Active recovery walk",
+          "Sunday": "Rest day"
+        },
+        "Week 2": {
+          "Monday": "Upper Body Focus - Incline press 3x8, Lat pulldowns 3x10, Dumbbell press 3x10, Cable rows 3x12",
+          "Tuesday": "Lower Body Focus - Front squats 3x8, Romanian deadlifts 3x10, Bulgarian split squats 3x10, Hip thrusts 3x12",
+          "Wednesday": "Rest day",
+          "Thursday": "Full Body Circuit - Jump squats 3x12, Push-up variations 3x10, Bear crawls 3x30s, Side plank 3x30s",
+          "Friday": "Core & Cardio - Dead bugs 3x12, Hollow holds 3x30s, 25 min cardio",
+          "Saturday": "Active recovery yoga",
+          "Sunday": "Rest day"
+        },
+        "Week 3": {
+          "Monday": "Upper Body Focus - Weighted pull-ups 3x6, Dips 3x10, Arnold press 3x10, Face pulls 3x15",
+          "Tuesday": "Lower Body Focus - Back squats 3x8, Sumo deadlifts 3x8, Walking lunges 3x12, Glute bridges 3x15",
+          "Wednesday": "Rest day",
+          "Thursday": "Full Body HIIT - 30s work, 15s rest for 20 minutes",
+          "Friday": "Core & Strength - Hanging leg raises 3x10, Weighted planks 3x45s, 20 min LISS cardio",
+          "Saturday": "Active recovery stretching",
+          "Sunday": "Rest day"
+        },
+        "Week 4": {
+          "Monday": "Upper Body Power - Explosive push-ups 3x8, Power rows 3x8, Med ball slams 3x12",
+          "Tuesday": "Lower Body Power - Jump squats 3x10, Box jumps 3x8, Single leg deadlifts 3x8",
+          "Wednesday": "Rest day",
+          "Thursday": "Full Body Challenge - Complex movements, 30 min circuit",
+          "Friday": "Core & Conditioning - Advanced core circuit, 25 min cardio",
+          "Saturday": "Recovery and mobility",
+          "Sunday": "Rest day"
+        }
+      }
     },
     {
       id: 2,
-      name: "Dance Fit",
-      emoji: "💃",
-      description: "Fun cardio through dance routines",
-      gradient: "from-pink-400 to-purple-600"
+      title: "Beginner's Journey",
+      emoji: "🌱",
+      type: "Strength",
+      difficulty: "Beginner" as const,
+      duration: "4 Weeks",
+      timeCommitment: "30 min/day, 3x/week",
+      gradient: "from-green-400 to-emerald-600",
+      schedulePreview: "Mon: Upper Body Basics, Wed: Lower Body Basics, Fri: Full Body Introduction",
+      description: "Start your fitness journey with confidence! This beginner-friendly program introduces you to fundamental movements and builds a strong foundation for future progress.",
+      weeks: {
+        "Week 1": {
+          "Monday": "Upper Body Basics - Wall push-ups 2x10, Assisted pull-ups 2x5, Light dumbbell press 2x8",
+          "Tuesday": "Rest day",
+          "Wednesday": "Lower Body Basics - Bodyweight squats 2x10, Glute bridges 2x12, Wall sits 2x30s",
+          "Thursday": "Rest day",
+          "Friday": "Full Body Introduction - Light full body movements, stretching",
+          "Saturday": "Walk or light activity",
+          "Sunday": "Rest day"
+        },
+        "Week 2": {
+          "Monday": "Upper Body Progress - Modified push-ups 2x8, Band rows 2x10, Light overhead press 2x10",
+          "Tuesday": "Rest day", 
+          "Wednesday": "Lower Body Progress - Chair squats 2x12, Step-ups 2x8, Calf raises 2x15",
+          "Thursday": "Rest day",
+          "Friday": "Full Body Flow - Gentle circuit, focus on form",
+          "Saturday": "Light cardio or walk",
+          "Sunday": "Rest day"
+        },
+        "Week 3": {
+          "Monday": "Upper Body Building - Knee push-ups 3x8, TRX rows 3x8, Dumbbell exercises 3x10",
+          "Tuesday": "Rest day",
+          "Wednesday": "Lower Body Building - Goblet squats 3x10, Deadlifts with light weight 3x8, Lunges 3x6 each leg",
+          "Thursday": "Rest day",
+          "Friday": "Full Body Confidence - Combining upper and lower movements",
+          "Saturday": "Active recovery",
+          "Sunday": "Rest day"
+        },
+        "Week 4": {
+          "Monday": "Upper Body Challenge - Standard push-ups 3x5, Pull-up progression, Increased weights",
+          "Tuesday": "Rest day",
+          "Wednesday": "Lower Body Challenge - Deeper squats, More weight, Balance challenges",
+          "Thursday": "Rest day",
+          "Friday": "Full Body Celebration - Complete workout showcasing progress",
+          "Saturday": "Fun activity of choice",
+          "Sunday": "Rest and reflection"
+        }
+      }
     },
     {
       id: 3,
-      name: "Mind & Body Flow",
-      emoji: "🧘",
-      description: "Gentle yoga & breathwork for stress relief",
-      gradient: "from-green-400 to-teal-600"
+      title: "HIIT Inferno",
+      emoji: "🔥",
+      type: "HIIT",
+      difficulty: "Advanced" as const,
+      duration: "4 Weeks",
+      timeCommitment: "25 min/day, 5x/week",
+      gradient: "from-orange-500 to-red-600",
+      schedulePreview: "High-intensity intervals daily with one rest day. Focus on fat burn and conditioning.",
+      description: "Intense high-intensity interval training designed to maximize fat burn and improve cardiovascular fitness. Only for those ready to push their limits!",
+      weeks: {
+        "Week 1": {
+          "Monday": "Total Body HIIT - 30s work, 30s rest - Burpees, jump squats, mountain climbers, 20 min",
+          "Tuesday": "Upper Body HIIT - 30s work, 30s rest - Push-up variations, battle ropes, boxing, 20 min",
+          "Wednesday": "Lower Body HIIT - 30s work, 30s rest - Jump lunges, squat jumps, single leg burpees, 20 min",
+          "Thursday": "Cardio Blast - 45s work, 15s rest - High knees, jumping jacks, sprint intervals, 25 min",
+          "Friday": "Core Inferno - 30s work, 30s rest - Plank variations, bicycle crunches, Russian twists, 20 min",
+          "Saturday": "Active recovery or light yoga",
+          "Sunday": "Rest day"
+        },
+        "Week 2": {
+          "Monday": "Power Circuits - 40s work, 20s rest - Explosive movements, plyometrics, 25 min",
+          "Tuesday": "Upper Intensity - 40s work, 20s rest - Advanced push variations, pull-ups, dips, 25 min",
+          "Wednesday": "Lower Power - 40s work, 20s rest - Box jumps, broad jumps, single leg hops, 25 min",
+          "Thursday": "Metabolic Madness - 30s work, 15s rest - Full body compound movements, 25 min",
+          "Friday": "Core & Conditioning - 40s work, 20s rest - Advanced core, stability challenges, 25 min",
+          "Saturday": "Recovery mobility work",
+          "Sunday": "Rest day"
+        },
+        "Week 3": {
+          "Monday": "Elite Total Body - 45s work, 15s rest - Complex movements, maximum intensity, 25 min",
+          "Tuesday": "Upper Body Beast - 45s work, 15s rest - Weighted exercises, advanced variations, 25 min",
+          "Wednesday": "Lower Body Lightning - 45s work, 15s rest - Plyometric combinations, agility work, 25 min",
+          "Thursday": "Cardio Crusher - Intervals with minimal rest, 30 min",
+          "Friday": "Core Destroyer - 45s work, 15s rest - Weighted core, instability training, 25 min",
+          "Saturday": "Light movement and stretching",
+          "Sunday": "Rest day"
+        },
+        "Week 4": {
+          "Monday": "Championship Challenge - Max effort circuits, test your limits, 30 min",
+          "Tuesday": "Upper Body Finals - Personal bests, advanced combinations, 30 min",
+          "Wednesday": "Lower Body Finals - Explosive power, endurance test, 30 min",
+          "Thursday": "Ultimate Cardio - Longest session, peak conditioning, 35 min",
+          "Friday": "Core Mastery - Most challenging core workout yet, 30 min",
+          "Saturday": "Victory lap - light celebration workout",
+          "Sunday": "Rest and recovery"
+        }
+      }
     },
     {
       id: 4,
-      name: "Endurance Challenge",
-      emoji: "🏔",
-      description: "Build stamina with uphill cardio",
-      gradient: "from-blue-400 to-indigo-600"
+      title: "Zen Flow Flexibility",
+      emoji: "🧘",
+      type: "Flexibility",
+      difficulty: "Beginner" as const,
+      duration: "6 Weeks",
+      timeCommitment: "20 min/day, 6x/week",
+      gradient: "from-purple-400 to-blue-500",
+      schedulePreview: "Daily gentle stretching and yoga flows. Focus on mobility, relaxation, and mind-body connection.",
+      description: "A peaceful journey to improved flexibility and inner calm. Perfect for beginners or anyone looking to add mindful movement to their routine.",
+      weeks: {
+        "Week 1": {
+          "Monday": "Morning Sun Salutation - Gentle wake-up flow, basic poses, 20 min",
+          "Tuesday": "Hip Opening Flow - Gentle hip stretches, pigeon pose progressions, 20 min", 
+          "Wednesday": "Spinal Mobility - Cat-cow, twists, backbend preparation, 20 min",
+          "Thursday": "Shoulder & Neck Relief - Upper body focus, desk warrior sequence, 20 min",
+          "Friday": "Leg Lengthening - Hamstring and calf stretches, forward folds, 20 min",
+          "Saturday": "Full Body Integration - Combining all week's movements, 25 min",
+          "Sunday": "Restorative Practice - Gentle holds, meditation, 20 min"
+        },
+        "Week 2": {
+          "Monday": "Energizing Flow - More dynamic movements, building heat, 22 min",
+          "Tuesday": "Deep Hip Work - Longer holds, hip flexor focus, 22 min",
+          "Wednesday": "Spine & Core - Gentle core work with flexibility, 22 min",
+          "Thursday": "Upper Body Freedom - Shoulder mobility, arm balances prep, 22 min",
+          "Friday": "Lower Body Release - IT band, glutes, hamstrings, 22 min",
+          "Saturday": "Moving Meditation - Flow and mindfulness combined, 25 min",
+          "Sunday": "Yin Practice - Passive stretches, deep relaxation, 25 min"
+        },
+        "Week 3": {
+          "Monday": "Power Vinyasa - Building strength in flexibility, 25 min",
+          "Tuesday": "Hip Harmony - Advanced hip opening sequence, 25 min",
+          "Wednesday": "Backbend Journey - Safe backbend progression, 25 min",
+          "Thursday": "Arm Balance Play - Core strength meets flexibility, 25 min",
+          "Friday": "Twisted Release - Spinal twists and leg stretches, 25 min",
+          "Saturday": "Flow State - Continuous movement practice, 30 min",
+          "Sunday": "Deep Rest - Extended relaxation, meditation, 25 min"
+        },
+        "Week 4": {
+          "Monday": "Advanced Flow - Challenging sequences, 25 min",
+          "Tuesday": "Hip Mastery - Deepest hip work yet, 25 min",
+          "Wednesday": "Backbend Bliss - Full expression of backbends, 25 min",
+          "Thursday": "Balance & Grace - Arm balances, inversions, 25 min",
+          "Friday": "Flexibility Fusion - All areas combined, 25 min",
+          "Saturday": "Personal Practice - Self-guided flow, 30 min",
+          "Sunday": "Gratitude & Rest - Reflective practice, 25 min"
+        }
+      }
+    },
+    {
+      id: 5,
+      title: "Cardio Crusher",
+      emoji: "🏃",
+      type: "Cardio",
+      difficulty: "Intermediate" as const,
+      duration: "5 Weeks",
+      timeCommitment: "35 min/day, 5x/week",
+      gradient: "from-blue-400 to-cyan-500",
+      schedulePreview: "Mon: Steady State, Tue: Intervals, Wed: Cross-training, Thu: Tempo, Fri: Fun Cardio",
+      description: "Boost your cardiovascular fitness with varied cardio workouts. Improve endurance, burn calories, and have fun with different cardio modalities.",
+      weeks: {
+        "Week 1": {
+          "Monday": "Steady State Run/Walk - 30 min moderate pace, build aerobic base",
+          "Tuesday": "Interval Training - 5 min warm-up, 8x(2 min fast, 1 min easy), 5 min cool-down",
+          "Wednesday": "Cross-Training - Bike, swim, or elliptical for 35 min",
+          "Thursday": "Tempo Workout - 10 min easy, 15 min tempo pace, 10 min easy",
+          "Friday": "Fun Cardio - Dance, hiking, sports, or favorite activity, 30-40 min",
+          "Saturday": "Rest or gentle walk",
+          "Sunday": "Rest day"
+        },
+        "Week 2": {
+          "Monday": "Long Steady - 35 min moderate effort, conversation pace",
+          "Tuesday": "Pyramid Intervals - Build up and down intensity, 30 min total",
+          "Wednesday": "Strength Cardio - Circuit training with cardio elements, 35 min",
+          "Thursday": "Tempo Plus - 10 min easy, 18 min tempo, 7 min easy",
+          "Friday": "Adventure Cardio - Try something new and fun, 35 min",
+          "Saturday": "Active recovery",
+          "Sunday": "Rest day"
+        },
+        "Week 3": {
+          "Monday": "Aerobic Build - 40 min steady with slight progressions",
+          "Tuesday": "Speed Play - Fartlek training, vary pace naturally, 30 min",
+          "Wednesday": "Multi-Modal - Combine 2-3 cardio types in one session, 35 min",
+          "Thursday": "Threshold Work - 8 min easy, 20 min threshold effort, 7 min easy",
+          "Friday": "Game Day Cardio - Competitive or team-based activity, 35 min",
+          "Saturday": "Recovery movement",
+          "Sunday": "Rest day"
+        },
+        "Week 4": {
+          "Monday": "Endurance Test - 40 min steady, track how you feel vs week 1",
+          "Tuesday": "Peak Intervals - Highest intensity intervals yet, 30 min",
+          "Wednesday": "Cardio Strength Fusion - Heavy integration of strength and cardio, 35 min",
+          "Thursday": "Time Trial - 25 min sustained effort, measure progress",
+          "Friday": "Celebration Cardio - Fun, high-energy session, 35 min",
+          "Saturday": "Easy movement",
+          "Sunday": "Rest day"
+        },
+        "Week 5": {
+          "Monday": "Mastery Distance - Longest steady cardio yet, 45 min",
+          "Tuesday": "Ultimate Intervals - Most challenging interval session, 35 min",
+          "Wednesday": "Your Choice Cross-Train - Pick your favorite alternative, 40 min",
+          "Thursday": "Graduation Tempo - Final tempo test, 40 min",
+          "Friday": "Victory Lap - Celebrate your progress with joyful movement, 30 min",
+          "Saturday": "Gentle congratulatory activity",
+          "Sunday": "Rest and reflect"
+        }
+      }
+    },
+    {
+      id: 6,
+      title: "Elite Athlete Prep",
+      emoji: "🏆",
+      type: "Strength",
+      difficulty: "Advanced" as const,
+      duration: "8 Weeks",
+      timeCommitment: "60 min/day, 6x/week",
+      gradient: "from-yellow-400 to-orange-500",
+      schedulePreview: "Competition-level training. Strength, power, agility, and conditioning for peak performance.",
+      description: "Elite-level training program for serious athletes and advanced fitness enthusiasts. Focuses on peak performance, power development, and competition preparation.",
+      weeks: {
+        "Week 1": {
+          "Monday": "Max Strength - Squats 5x3@90%, Bench 5x3@90%, Deadlifts 3x3@95%",
+          "Tuesday": "Power Development - Olympic lifts, plyometrics, explosive movements",
+          "Wednesday": "Agility & Speed - Cone drills, sprint intervals, reaction training",
+          "Thursday": "Upper Body Power - Weighted explosive movements, advanced variations",
+          "Friday": "Conditioning - Sport-specific endurance, metabolic circuits",
+          "Saturday": "Recovery & Mobility - Deep tissue work, movement prep",
+          "Sunday": "Rest day"
+        },
+        "Week 2": {
+          "Monday": "Strength Complex - Multi-exercise combinations, heavy loads",
+          "Tuesday": "Plyometric Progression - Advanced jumping, bounding, reactive exercises",
+          "Wednesday": "Speed & Agility Plus - More complex patterns, decision making",
+          "Thursday": "Upper Body Dominance - Max effort upper body training",
+          "Friday": "Peak Conditioning - Lactate threshold and VO2 max work",
+          "Saturday": "Active Recovery & Assessment - Movement quality check",
+          "Sunday": "Rest day"
+        },
+        "Week 3": {
+          "Monday": "Competition Simulation - Training that mimics competitive demands",
+          "Tuesday": "Explosive Power Peak - Maximum power output training",
+          "Wednesday": "Elite Agility - Sport-specific movement patterns, game situations",
+          "Thursday": "Upper Body Power Endurance - Sustained high-intensity upper work",
+          "Friday": "Championship Conditioning - Peak aerobic and anaerobic systems",
+          "Saturday": "Pre-Competition Prep - Light movement, mental preparation",
+          "Sunday": "Complete rest"
+        },
+        "Week 4": {
+          "Monday": "Deload Strength - Reduce volume, maintain intensity",
+          "Tuesday": "Deload Power - Active recovery with light explosive work",
+          "Wednesday": "Movement Quality - Perfect technique, mobility focus",
+          "Thursday": "Light Upper - Maintain feel without fatigue",
+          "Friday": "Easy Conditioning - Flush systems, prepare for next block",
+          "Saturday": "Recovery & Regeneration",
+          "Sunday": "Rest day"
+        }
+      }
     }
   ];
+
+  // Functions to handle pre-made plans
+  const handlePlanPreview = (plan: any) => {
+    setSelectedPlan(plan);
+    setIsPlanPreviewOpen(true);
+  };
+
+  const handleStartPlan = (plan: any) => {
+    // Convert plan to routine format and add to user's routines
+    const newRoutine = {
+      id: Date.now(),
+      title: plan.title,
+      emoji: plan.emoji,
+      type: plan.type,
+      routineType: plan.type.toLowerCase(),
+      duration: plan.timeCommitment,
+      gradient: plan.gradient,
+      weeklyPlan: plan.weeks["Week 1"], // Use first week as the routine template
+      notes: plan.description,
+      createdAt: new Date().toISOString()
+    };
+    
+    setMockRoutines(prev => [newRoutine, ...prev]);
+    
+    // Show success message or navigate to routines tab
+    setActiveTab('my-routines');
+  };
+
+  const handleAddPlanToRoutines = (plan: any) => {
+    handleStartPlan(plan);
+  };
 
   const tabs = [
     {
@@ -614,51 +930,31 @@ const ExerciseHub = () => {
                       <p className="text-muted-foreground">Choose a plan and start training with confidence</p>
                     </div>
 
-                    {/* Pre-Made Plans Grid - 2x2 */}
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      {mockPlans.map((plan, index) => (
-                        <Card key={plan.id} className="w-full shadow-lg border-border bg-card hover:shadow-2xl hover:shadow-accent/25 hover:scale-105 transition-all duration-500 cursor-pointer animate-fade-in group" style={{ animationDelay: `${index * 150}ms` }}>
-                          <CardContent className="p-0">
-                            <div className={`bg-gradient-to-br ${plan.gradient} p-6 rounded-t-lg group-hover:brightness-110 transition-all duration-300`}>
-                              <div className="text-center space-y-3 text-white">
-                                {/* Emoji */}
-                                <div className="text-4xl filter drop-shadow-lg group-hover:animate-bounce group-hover:scale-110 transition-transform duration-300">{plan.emoji}</div>
-                                
-                                {/* Plan Name */}
-                                <h3 className="text-lg font-bold leading-tight drop-shadow-md group-hover:drop-shadow-lg transition-all duration-300">{plan.name}</h3>
-                              </div>
-                            </div>
-                            <div className="p-4 bg-card">
-                              {/* Description */}
-                              <p className="text-sm text-muted-foreground text-center leading-relaxed drop-shadow-sm group-hover:text-foreground transition-colors duration-300">{plan.description}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
+                    {/* Pre-Made Plans Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {mockPreMadePlans.map((plan) => (
+                        <PreMadePlanCard
+                          key={plan.id}
+                          plan={plan}
+                          onPreview={handlePlanPreview}
+                          onStartPlan={handleStartPlan}
+                        />
                       ))}
                     </div>
 
-                    {/* Explore More Plans Button */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6">
-                        <Button
-                          onClick={() => setIsExploreMoreModalOpen(true)}
-                          className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-                        >
-                          Explore More Plans
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    {/* Additional Info Card */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6 text-center">
-                        <div className="text-3xl mb-4">🧩</div>
-                        <h3 className="text-lg font-bold text-foreground mb-2">Personalized Recommendations</h3>
-                        <p className="text-muted-foreground text-sm">
-                          Plans are tailored to different fitness levels and goals. Start where you feel comfortable!
-                        </p>
-                      </CardContent>
-                    </Card>
+                    {/* Empty State (if no plans) */}
+                    {mockPreMadePlans.length === 0 && (
+                      <Card className="w-full shadow-lg border-border bg-card">
+                        <CardContent className="p-8 text-center">
+                          <div className="text-4xl mb-4">🧩</div>
+                          <h3 className="text-xl font-bold text-foreground mb-2">No plans yet?</h3>
+                          <p className="text-muted-foreground mb-6">Don't worry—we've got you covered with amazing workout plans!</p>
+                          <div className="inline-flex items-center px-4 py-2 rounded-full bg-muted text-muted-foreground border border-border">
+                            <span className="text-sm font-medium">Plans coming soon</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 ) : (
                   /* Other Tabs - Keep Original Design */
@@ -717,6 +1013,14 @@ const ExerciseHub = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Plan Preview Modal */}
+      <PlanPreviewModal
+        plan={selectedPlan}
+        isOpen={isPlanPreviewOpen}
+        onClose={() => setIsPlanPreviewOpen(false)}
+        onAddToRoutines={handleAddPlanToRoutines}
+      />
 
       {/* Add Workout Modal */}
       <AddWorkoutModal
