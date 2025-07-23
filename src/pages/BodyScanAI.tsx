@@ -182,8 +182,8 @@ export default function BodyScanAI() {
           } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
             <div className="relative flex items-center justify-center h-screen">
               <img 
-                src="/lovable-uploads/169fbfb1-a7b0-4bca-af53-8bb6b288c5fc.png"
-                alt="Pose alignment guide"
+                src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+                alt=""
                 className="max-h-[90vh] max-w-[90vw] h-auto w-auto opacity-70 object-contain"
                 style={{
                   filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 60px rgba(255, 255, 255, 0.2))',
