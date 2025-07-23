@@ -62,12 +62,8 @@ export interface MotivationalNotification {
 export const useExerciseChallenges = (workouts: any[] = []) => {
   const { toast } = useToast();
   
-  console.log('🔍 useExerciseChallenges hook called with workouts:', workouts?.length || 0);
-  
   // Memoize workout stats calculation to prevent unnecessary recalculations
   const workoutStats = useMemo(() => {
-    console.log('🔍 Calculating workout stats from workouts:', workouts);
-    
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     
@@ -76,7 +72,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       return workoutDate >= weekAgo && workoutDate <= today;
     });
 
-    const stats = {
+    return {
       weeklyCount: recentWorkouts.length,
       lastWorkoutDate: recentWorkouts.length > 0 ? recentWorkouts[0].date : null,
       totalMinutes: recentWorkouts.reduce((total, w) => {
@@ -84,9 +80,6 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
         return total + minutes;
       }, 0)
     };
-    
-    console.log('🔍 Calculated workout stats:', stats);
-    return stats;
   }, [workouts]);
 
   // Enhanced challenges with progress tracking
@@ -509,8 +502,6 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
 
   // Stabilize generateCoachMessage with deterministic approach
   const generateCoachMessage = useCallback(() => {
-    console.log('🔍 Generating coach message with workoutStats:', workoutStats);
-    
     // Use deterministic approach based on workout count instead of Math.random()
     const messages = [
       "🔥 Your consistency is paying off! Keep the momentum going!",
@@ -531,12 +522,10 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
 
     // Use workout count as seed for deterministic message selection
     const messageIndex = workoutStats.weeklyCount % messages.length;
-    const message = messages[messageIndex];
-    console.log('🔍 Generated coach message:', message);
-    return message;
+    return messages[messageIndex];
   }, [workoutStats]);
 
-  const returnData = {
+  return {
     miniChallenges,
     accountabilityGroups,
     leaderboard,
@@ -548,15 +537,4 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     markNotificationAsRead,
     clearAllNotifications
   };
-
-  console.log('🔍 useExerciseChallenges returning data:', {
-    miniChallengesCount: miniChallenges.length,
-    accountabilityGroupsCount: accountabilityGroups.length,
-    leaderboardCount: leaderboard.length,
-    notificationsCount: notifications.length,
-    workoutStats,
-    hasCallbacks: !!(joinChallenge && sendGroupNudge && generateCoachMessage)
-  });
-
-  return returnData;
 };
