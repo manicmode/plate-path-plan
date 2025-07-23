@@ -13,7 +13,7 @@ export const useScrollToTop = () => {
     }
 
     // Only scroll to top for specific routes that need it
-    const shouldScroll = ['/home', '/analytics', '/coach', '/explore'].includes(location.pathname);
+    const shouldScroll = ['/home', '/analytics', '/coach', '/explore', '/exercise-hub'].includes(location.pathname);
     
     if (shouldScroll) {
       // Debounced scroll with longer delay to prevent conflicts
