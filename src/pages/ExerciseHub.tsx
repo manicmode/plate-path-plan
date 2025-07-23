@@ -720,7 +720,7 @@ const ExerciseHub = () => {
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <div className="flex items-center gap-2">
-              <span className="text-3xl leading-none">📸</span>
+              <span className="text-3xl leading-none -ml-1 animate-camera-flash">📸</span>
               <h2 className="text-xl font-bold text-white">Body Scan AI</h2>
             </div>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>

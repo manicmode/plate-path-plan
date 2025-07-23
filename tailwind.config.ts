@@ -110,6 +110,11 @@ export default {
 				'slow-pulse': {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.5' }
+				},
+				'cameraFlash': {
+					'0%, 90%': { opacity: '1', filter: 'brightness(1)' },
+					'95%': { opacity: '1', filter: 'brightness(2) drop-shadow(0 0 8px rgba(255,255,255,0.8))' },
+					'100%': { opacity: '1', filter: 'brightness(1)' }
 				}
 			},
 			animation: {
@@ -118,7 +123,8 @@ export default {
 				'fade-in': 'fadeIn 0.5s ease-in-out',
 				'slide-up': 'slideUp 0.3s ease-out',
 				'float': 'float 6s ease-in-out infinite',
-				'slow-pulse': 'slow-pulse 3s ease-in-out infinite'
+				'slow-pulse': 'slow-pulse 3s ease-in-out infinite',
+				'camera-flash': 'cameraFlash 2.5s ease-in-out infinite'
 			}
 		}
 	},
