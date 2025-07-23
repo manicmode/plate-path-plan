@@ -182,7 +182,7 @@ export default function BodyScanAI() {
       </div>
 
       {/* Header Instructions - Fixed at top with proper spacing */}
-      <div className="absolute top-20 left-4 right-4 z-20">
+      <div className="absolute top-4 md:top-6 left-4 right-4 z-20">
         <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
           <h2 className="text-white text-lg font-bold mb-2 text-center">
             📸 Front Body Scan
@@ -201,11 +201,7 @@ export default function BodyScanAI() {
           <img 
             src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             alt=""
-            className="max-h-[65vh] max-w-[85vw] h-auto w-auto opacity-75 object-contain"
-            style={{
-              filter: 'brightness(1.3) drop-shadow(0 0 20px rgba(0, 255, 255, 0.8)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 60px rgba(0, 255, 255, 0.4))',
-              animation: 'pulse 3s ease-in-out infinite'
-            }}
+            className="max-w-[90vw] max-h-[75vh] h-auto w-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
