@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export interface MiniChallenge {
@@ -286,15 +286,10 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
   // Motivational notifications system
   const [notifications, setNotifications] = useState<MotivationalNotification[]>([]);
 
-  // Use ref to track previous notifications and prevent duplicates
-  const previousNotificationsRef = useRef<MotivationalNotification[]>([]);
-  const lastCheckTimeRef = useRef<number>(Date.now());
-
   // Generate smart notifications based on activity patterns
   const generateSmartNotifications = useCallback(() => {
     const newNotifications: MotivationalNotification[] = [];
-    const now = Date.now();
-    const today = new Date(now);
+    const today = new Date();
 
     // Challenge reminder notifications
     miniChallenges.forEach(challenge => {
@@ -303,14 +298,13 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
           Math.floor((today.getTime() - new Date(challenge.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
         
         if (daysSinceStart >= 2 && challenge.completedWorkouts === 0) {
-          const id = `challenge-${challenge.id}-reminder`;
           newNotifications.push({
-            id,
+            id: `challenge-${challenge.id}-reminder`,
             type: 'challenge_reminder',
             title: 'Challenge Check-in',
             message: `You've joined "${challenge.name}" but haven't logged anything in 2 days! Want to get moving? 💪`,
             emoji: '⏰',
-            timestamp: new Date(now),
+            timestamp: new Date(),
             isRead: false,
             actionable: true,
             challengeId: challenge.id
@@ -319,14 +313,13 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
 
         if (challenge.completedWorkouts > 0 && challenge.completedWorkouts < challenge.targetWorkouts) {
           const remaining = challenge.targetWorkouts - challenge.completedWorkouts;
-          const id = `challenge-${challenge.id}-progress`;
           newNotifications.push({
-            id,
+            id: `challenge-${challenge.id}-progress`,
             type: 'progress_update',
             title: 'You\'re Making Progress!',
             message: `${challenge.completedWorkouts}/${challenge.targetWorkouts} workouts completed for ${challenge.name}! Just ${remaining} more to go! 🎯`,
             emoji: '📈',
-            timestamp: new Date(now),
+            timestamp: new Date(),
             isRead: false,
             challengeId: challenge.id
           });
@@ -342,14 +335,13 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
             Math.floor((today.getTime() - new Date(member.lastWorkout).getTime()) / (1000 * 60 * 60 * 24)) : 999;
           
           if (daysSinceWorkout >= 3) {
-            const id = `nudge-${group.id}-${member.id}`;
             newNotifications.push({
-              id,
+              id: `nudge-${group.id}-${member.id}`,
               type: 'team_nudge',
               title: 'Teammate Needs Support',
               message: `Wanna nudge ${member.name}? They've been quiet for ${daysSinceWorkout} days 😴`,
               emoji: '🤝',
-              timestamp: new Date(now),
+              timestamp: new Date(),
               isRead: false,
               actionable: true,
               groupId: group.id,
@@ -361,14 +353,13 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
 
       // Group achievement notifications
       if (group.groupProgress >= 80) {
-        const id = `group-${group.id}-achievement`;
         newNotifications.push({
-          id,
+          id: `group-${group.id}-achievement`,
           type: 'streak_celebration',
           title: 'Team Achievement!',
           message: `Team "${group.name}" is crushing it! You're all amazing! 🔥`,
           emoji: '🏆',
-          timestamp: new Date(now),
+          timestamp: new Date(),
           isRead: false,
           groupId: group.id
         });
@@ -378,30 +369,16 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     return newNotifications;
   }, [miniChallenges, accountabilityGroups]);
 
-  // Check for new notifications periodically - REMOVED notifications from dependencies to prevent infinite loop
+  // Check for new notifications periodically
   useEffect(() => {
     const checkNotifications = () => {
-      const now = Date.now();
-      
-      // Only check if enough time has passed to prevent rapid updates
-      if (now - lastCheckTimeRef.current < 60000) { // 60 seconds instead of 30
-        return;
-      }
-      
-      lastCheckTimeRef.current = now;
       const newNotifications = generateSmartNotifications();
-      
-      // Compare with previous notifications to avoid duplicates
       const unseenNotifications = newNotifications.filter(n => 
-        !previousNotificationsRef.current.some(existing => existing.id === n.id)
+        !notifications.some(existing => existing.id === n.id)
       );
 
       if (unseenNotifications.length > 0) {
-        setNotifications(prev => {
-          const updated = [...unseenNotifications, ...prev];
-          previousNotificationsRef.current = updated;
-          return updated;
-        });
+        setNotifications(prev => [...unseenNotifications, ...prev]);
         
         // Show toast for most important notifications
         unseenNotifications.slice(0, 1).forEach(notification => {
@@ -415,10 +392,10 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     };
 
     checkNotifications();
-    const interval = setInterval(checkNotifications, 60000); // Check every 60 seconds
+    const interval = setInterval(checkNotifications, 30000); // Check every 30 seconds
 
     return () => clearInterval(interval);
-  }, [miniChallenges, accountabilityGroups, generateSmartNotifications, toast]); // REMOVED notifications from dependencies
+  }, [miniChallenges, accountabilityGroups, notifications, generateSmartNotifications, toast]);
 
   // Sync workout progress with challenges
   useEffect(() => {
@@ -477,29 +454,20 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       duration: 3000,
     });
 
-    // Remove related notification and update ref
-    setNotifications(prev => {
-      const updated = prev.filter(n => 
-        !(n.groupId === groupId && n.targetUserId === memberId)
-      );
-      previousNotificationsRef.current = updated;
-      return updated;
-    });
+    // Remove related notification
+    setNotifications(prev => prev.filter(n => 
+      !(n.groupId === groupId && n.targetUserId === memberId)
+    ));
   }, [toast]);
 
   const markNotificationAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev => {
-      const updated = prev.map(n => 
-        n.id === notificationId ? { ...n, isRead: true } : n
-      );
-      previousNotificationsRef.current = updated;
-      return updated;
-    });
+    setNotifications(prev => prev.map(n => 
+      n.id === notificationId ? { ...n, isRead: true } : n
+    ));
   }, []);
 
   const clearAllNotifications = useCallback(() => {
     setNotifications([]);
-    previousNotificationsRef.current = [];
   }, []);
 
   const generateCoachMessage = useCallback(() => {
