@@ -161,15 +161,15 @@ const Explore = () => {
             ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
-          <div className="relative w-full flex justify-center">
-            {/* Profile Icon - positioned absolutely on the left */}
-            <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
+          <div className="flex items-center justify-center w-full">
+            {/* Profile Icon */}
+            <div className={`mr-2 ${safeIsMobile ? 'text-xl' : 'text-2xl'} 
               group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
               filter drop-shadow-lg`}>
               👤
             </div>
-            {/* Profile Text - centered in the full width */}
-            <span className={`w-full text-center ${safeIsMobile ? 'text-lg' : 'text-xl'} 
+            {/* Profile Text */}
+            <span className={`text-center ${safeIsMobile ? 'text-lg' : 'text-xl'} 
               font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
               Profile
             </span>
