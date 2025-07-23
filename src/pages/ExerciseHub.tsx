@@ -185,29 +185,30 @@ const ExerciseHub = () => {
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
       {/* Header with Back Button */}
-      <div className="flex items-center mb-6">
+      <div className="flex items-center justify-center mb-6 relative">
         <Button
           variant="ghost"
           size="sm"
           onClick={handleBackClick}
-          className="mr-3 p-2 hover:bg-accent"
+          className="absolute left-0 p-2 hover:bg-accent"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-2xl font-bold text-foreground">Exercise Hub</h1>
       </div>
 
-      {/* AI Fitness Coach Hero Tab */}
-      <div className="mb-6">
+      {/* AI Fitness Coach Tab */}
+      <div className="mb-4 mt-2">
         <button
           onClick={() => navigate('/ai-fitness-coach')}
-          className="w-full p-6 rounded-2xl bg-gradient-to-r from-indigo-200 to-purple-400 dark:from-indigo-400 dark:to-purple-600 hover:from-indigo-300 hover:to-purple-500 dark:hover:from-indigo-500 dark:hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl text-white"
+          className="w-full p-4 rounded-xl bg-gradient-to-r from-indigo-200 to-purple-400 dark:from-indigo-400 dark:to-purple-600 hover:from-indigo-300 hover:to-purple-500 dark:hover:from-indigo-500 dark:hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-lg hover:shadow-purple-500/25 border border-indigo-300/20 dark:border-indigo-500/20 shadow-md group"
         >
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="text-3xl animate-pulse">🤖</span>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
+          <div className="flex items-center justify-center gap-3 mb-1">
+            <span className="text-2xl transition-transform duration-300 group-hover:scale-110">🤖</span>
+            <h2 className="text-lg font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
+            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
-          <p className="text-gray-700 dark:text-indigo-100 text-sm opacity-90">
+          <p className="text-gray-700 dark:text-indigo-100 text-xs opacity-90">
             Your personal trainer, motivator, and guide
           </p>
         </button>
