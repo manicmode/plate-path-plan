@@ -719,7 +719,7 @@ const ExerciseHub = () => {
           className="w-full p-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 dark:from-purple-600 dark:to-blue-700 hover:from-purple-400 hover:to-blue-500 dark:hover:from-purple-500 dark:hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-purple-500/40 border border-purple-500/30 dark:border-purple-600/30 shadow-xl shadow-purple-500/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
-            <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-pulse hover:animate-none">📸</span>
+            <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-slow-pulse hover:animate-none">📸</span>
             <h2 className="text-xl font-bold text-white">Body Scan AI — Analyze Your Physique</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
