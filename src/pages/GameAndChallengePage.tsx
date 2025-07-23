@@ -751,7 +751,7 @@ function GameAndChallengeContent() {
               </ScrollArea>
               
               {/* Challenge Mode Toggle - Mobile */}
-              {activeSection !== 'friends' && activeSection !== 'chat' && (
+              {activeSection !== 'my-friends' && activeSection !== 'chat' && (
                 <div className="flex justify-center mt-2">
                   <ToggleGroup 
                     type="single" 
@@ -797,7 +797,7 @@ function GameAndChallengeContent() {
               </div>
               
               {/* Challenge Mode Toggle - Desktop */}
-              {activeSection !== 'friends' && activeSection !== 'chat' && (
+              {activeSection !== 'my-friends' && activeSection !== 'chat' && (
                 <div className="flex justify-center">
                   <ToggleGroup 
                     type="single" 
