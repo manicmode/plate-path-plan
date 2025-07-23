@@ -40,6 +40,7 @@ const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const BodyScanAI = lazy(() => import('@/pages/BodyScanAI'));
+const SideBodyScan = lazy(() => import('@/pages/SideBodyScan'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,11 @@ function AppContent() {
           <Route path="/body-scan-ai" element={
             <ProtectedRoute>
               <BodyScanAI />
+            </ProtectedRoute>
+          } />
+          <Route path="/body-scan-side" element={
+            <ProtectedRoute>
+              <SideBodyScan />
             </ProtectedRoute>
           } />
           
