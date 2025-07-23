@@ -215,14 +215,14 @@ const ExerciseHub = () => {
       <div className="mb-4 mt-2">
         <button
           onClick={() => navigate('/ai-fitness-coach', { state: { from: '/exercise-hub' } })}
-          className="w-full p-4 rounded-xl bg-gradient-to-r from-orange-300 to-red-500 dark:from-orange-400 dark:to-red-600 hover:from-orange-400 hover:to-red-600 dark:hover:from-orange-500 dark:hover:to-red-700 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-orange-500/40 border border-orange-300/30 dark:border-orange-500/30 shadow-xl shadow-orange-500/25 group"
+          className="w-full p-4 rounded-xl bg-gradient-to-r from-[#FFD580] to-[#FFA07A] dark:from-[#FFB347] dark:to-[#FF7043] hover:from-[#FFE4A3] hover:to-[#FFB39A] dark:hover:from-[#FFC470] dark:hover:to-[#FF8A65] transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#FFA07A]/40 border border-[#FFD580]/30 dark:border-[#FFB347]/30 shadow-xl shadow-[#FFA07A]/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
         >
-          <div className="flex items-center justify-center gap-3 mb-1">
-            <span className="text-3xl transition-transform duration-300 group-hover:scale-110">🤖</span>
+          <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
+            <span className="text-3xl transition-transform duration-300 group-hover:scale-110 animate-[robotWave_4s_ease-in-out_infinite]">🤖</span>
             <h2 className="text-lg font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
-          <p className="text-gray-700 dark:text-indigo-100 text-xs opacity-90">
+          <p className="text-gray-700 dark:text-indigo-100 text-xs opacity-90 relative z-10">
             Your personal trainer, motivator, and guide
           </p>
         </button>
