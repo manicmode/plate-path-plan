@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ interface ComparisonModalProps {
 
 export default function BodyScanResults() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [scans, setScans] = useState<GroupedScans>({});
   const [allScans, setAllScans] = useState<BodyScan[]>([]);
   const [weeklyScans, setWeeklyScans] = useState<WeeklyScans[]>([]);
@@ -50,7 +51,16 @@ export default function BodyScanResults() {
 
   useEffect(() => {
     fetchBodyScans();
-  }, []);
+    
+    // Track visit to body scan results page
+    localStorage.setItem('lastBodyScanResultsVisit', new Date().toISOString());
+    
+    // Check if user came from a timeline reminder (URL param)
+    const tab = searchParams.get('tab');
+    if (tab === 'timeline') {
+      setActiveTab('timeline');
+    }
+  }, [searchParams]);
 
   const fetchBodyScans = async () => {
     try {
