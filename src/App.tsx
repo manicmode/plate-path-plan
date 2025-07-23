@@ -1,6 +1,7 @@
 
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -58,6 +59,7 @@ function AppContent() {
 
   return (
     <>
+      <BodyScanReminderChecker />
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           {/* Fullscreen pages without Layout */}

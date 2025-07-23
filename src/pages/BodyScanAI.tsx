@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useBodyScanNotifications } from '@/hooks/useBodyScanNotifications';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +41,7 @@ export default function BodyScanAI() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { triggerScanCompletedNotification, showInstantFeedback } = useBodyScanNotifications();
   
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -391,6 +393,10 @@ export default function BodyScanAI() {
       // Update UI state
       setSavedScanUrl(publicUrl);
       setShowSuccessScreen(true);
+      
+      // Trigger notifications
+      await triggerScanCompletedNotification('front');
+      await showInstantFeedback('front');
       
       toast({
         title: "Front Scan Saved ✅",
