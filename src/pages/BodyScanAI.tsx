@@ -193,19 +193,6 @@ export default function BodyScanAI() {
                 onLoad={handleImageLoad}
                 onError={handleImageError}
               />
-              
-              {/* Upload Image Instead Button - positioned below silhouette */}
-              <div className="absolute bottom-4">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white/10 backdrop-blur-sm border-white/30 text-white/90 hover:bg-white/20 hover:text-white transition-all duration-300 text-xs px-3 py-1.5"
-                >
-                  <Upload className="w-3 h-3 mr-1" />
-                  Upload Image Instead
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -245,7 +232,7 @@ export default function BodyScanAI() {
       </div>
 
       {/* Bottom Controls - Match Health Inspector layout exactly */}
-      <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
+      <div className="p-6 pb-24 bg-gradient-to-t from-black/90 to-transparent">
         <div className="flex flex-col space-y-4">
           {/* Cancel Button - Centered with w-1/2 width */}
           <div className="flex justify-center">
