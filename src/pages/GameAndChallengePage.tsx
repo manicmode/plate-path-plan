@@ -986,7 +986,7 @@ function GameAndChallengeContent() {
               }
             }} className="w-full flex flex-col">
 
-              <TabsContent value="ranking" className="mt-4 pb-20">
+              <TabsContent value="ranking" className="mt-4">
                 {/* Mobile Ranking Section */}
                 <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
                   <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
@@ -1080,17 +1080,17 @@ function GameAndChallengeContent() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="challenges" className="mt-4 pb-20">
+              <TabsContent value="challenges" className="mt-4">
                 <PublicChallengesBrowse />
               </TabsContent>
 
-              <TabsContent value="my-challenges" className="mt-4 pb-20 overflow-x-hidden w-full max-w-full">
+              <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
                 <div className="space-y-8">
                   <UserChallengeParticipations />
                 </div>
               </TabsContent>
 
-              <TabsContent value="chat" className="mt-0 pb-20 -mt-4">
+              <TabsContent value="chat" className="mt-0 -mt-4">
                 {/* Chat is now handled by ChatroomManager */}
                 <div className="text-center py-12">
                   <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -1108,34 +1108,17 @@ function GameAndChallengeContent() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="winners" className="mt-4 pb-20">
+              <TabsContent value="winners" className="mt-4">
                 <MonthlyTrophyPodium />
               </TabsContent>
 
-              <TabsContent value="my-friends" className="mt-4 pb-20">
+              <TabsContent value="my-friends" className="mt-4">
                 <MyFriendsTab />
               </TabsContent>
 
-              <TabsContent value="hall-of-fame" className="mt-4 pb-20">
+              <TabsContent value="hall-of-fame" className="mt-4">
                 <HallOfFame champions={optimizedHallOfFame} />
               </TabsContent>
-              
-              {/* Bottom Navigation Tabs */}
-              <div className="sticky bottom-2 bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg mb-2 shadow-lg w-full">
-                <div className="flex justify-between w-full pb-3 pt-1 px-2">
-                  {navigationItems.map(({ id, icon: Icon }) => (
-                    <Button
-                      key={id}
-                      variant={activeSection === id ? "default" : "ghost"}
-                      onClick={() => scrollToSection(id)}
-                      className="flex items-center justify-center h-12 w-12 p-0 rounded-full"
-                      size="sm"
-                    >
-                      <Icon className="h-6 w-6" />
-                    </Button>
-                  ))}
-                </div>
-              </div>
             </Tabs>
           ) : (
             // Desktop sections
