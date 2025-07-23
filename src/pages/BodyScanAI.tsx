@@ -5,6 +5,7 @@ import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
@@ -57,6 +58,9 @@ export default function BodyScanAI() {
   const [validPoseTimer, setValidPoseTimer] = useState(0);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -309,10 +313,108 @@ export default function BodyScanAI() {
     setValidPoseTimer(0);
     setIsCountingDown(false);
     
+    // Auto-save the scan to Supabase
+    await saveBodyScanToSupabase(imageData);
+    
     toast({
       title: "Photo Captured!",
       description: "Front body scan complete. Ready to continue to side scan.",
     });
+  };
+
+  // Function to upload image to Supabase Storage and save record
+  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
+    try {
+      setIsSaving(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Convert data URL to blob
+      const response = await fetch(imageDataUrl);
+      const blob = await response.blob();
+      
+      // Create filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `${user.id}/front-${timestamp}.jpg`;
+      
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('body-scans')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('body-scans')
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+      
+      // Calculate pose metadata
+      const poseMetadata = {
+        alignmentScore: alignmentFeedback?.alignmentScore || 0,
+        misalignedLimbs: alignmentFeedback?.misalignedLimbs || [],
+        poseConfidence: poseDetected?.score || 0,
+        detectedKeypoints: poseDetected?.keypoints?.length || 0,
+        cameraMode,
+        captureTimestamp: new Date().toISOString()
+      };
+
+      // Save record to database
+      const { data: scanData, error: dbError } = await supabase
+        .from('body_scans')
+        .insert({
+          user_id: user.id,
+          type: 'front',
+          image_url: publicUrl,
+          pose_score: alignmentFeedback?.alignmentScore || 0,
+          pose_metadata: poseMetadata
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      // Update UI state
+      setSavedScanUrl(publicUrl);
+      setShowSuccessScreen(true);
+      
+      toast({
+        title: "Front Scan Saved ✅",
+        description: "Your body scan has been securely saved.",
+      });
+
+    } catch (error) {
+      console.error('Error saving body scan:', error);
+      toast({
+        title: "Save Error",
+        description: "Failed to save body scan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRetake = () => {
+    setCapturedImage(null);
+    setHasImageReady(false);
+    setSavedScanUrl(null);
+    setShowSuccessScreen(false);
+    setValidPoseTimer(0);
+    setIsCountingDown(false);
   };
 
   // Pose analysis functions
@@ -496,8 +598,9 @@ export default function BodyScanAI() {
   };
 
   const handleContinue = () => {
-    if (hasImageReady && capturedImage) {
-      sessionStorage.setItem('frontBodyScan', capturedImage);
+    if (hasImageReady && savedScanUrl) {
+      // Store the saved scan URL instead of raw image data
+      sessionStorage.setItem('frontBodyScanUrl', savedScanUrl);
       navigate('/body-scan-side');
     }
   };
@@ -610,11 +713,38 @@ export default function BodyScanAI() {
         </div>
       </div>
 
-      {/* Capture success overlay */}
-      {hasImageReady && (
-        <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-16">
-          <div className="bg-green-500/90 text-white px-6 py-3 rounded-full font-bold animate-fade-in">
-            ✅ Front scan complete!
+      {/* Capture success overlay with image preview */}
+      {showSuccessScreen && savedScanUrl && (
+        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30 p-6">
+          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 text-center max-w-sm">
+            <div className="text-4xl mb-4">✅</div>
+            <h3 className="text-white text-xl font-bold mb-4">Front Scan Saved!</h3>
+            
+            {/* Thumbnail preview */}
+            <div className="mb-6 rounded-2xl overflow-hidden border-2 border-green-400/50">
+              <img 
+                src={savedScanUrl}
+                alt="Front body scan"
+                className="w-full h-32 object-cover"
+              />
+            </div>
+            
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <Button
+                onClick={handleContinue}
+                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3"
+              >
+                Continue to Side Scan →
+              </Button>
+              <Button
+                onClick={handleRetake}
+                variant="outline"
+                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20"
+              >
+                Retake Photo
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -657,8 +787,10 @@ export default function BodyScanAI() {
             onClick={hasImageReady ? handleContinue : captureImage}
             disabled={
               isCapturing || 
+              isSaving ||
               (isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned) ||
-              isCountingDown
+              isCountingDown ||
+              showSuccessScreen
             }
             className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
               isPoseDetectionEnabled && alignmentFeedback?.isAligned
@@ -669,10 +801,17 @@ export default function BodyScanAI() {
             }`}
           >
             <div className="flex items-center justify-center">
-              {hasImageReady ? (
+              {showSuccessScreen ? (
                 <>
                   <ArrowRight className="w-6 h-6 mr-3" />
                   🚀 Continue to Side Scan
+                </>
+              ) : hasImageReady ? (
+                <>
+                  <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
+                    {isSaving ? '💾' : '✅'}
+                  </div>
+                  {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
                 </>
               ) : (
                 <>
