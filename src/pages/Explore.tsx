@@ -83,22 +83,22 @@ const Explore = () => {
       id: 'exercise-hub',
       title: 'Exercise Hub',
       emoji: '💪',
-      color: 'from-blue-300 to-blue-600',
-      shadowColor: 'shadow-blue-500/20',
+      color: 'from-blue-500 via-blue-400 to-blue-600',
+      shadowColor: 'shadow-blue-500/30',
     },
     {
       id: 'influencers',
       title: 'Influencer Hub',
       emoji: '⭐️',
-      color: 'from-blue-300 to-cyan-600',
-      shadowColor: 'shadow-blue-500/20',
+      color: 'from-blue-600 via-cyan-400 to-cyan-600',
+      shadowColor: 'shadow-cyan-500/30',
     },
     {
       id: 'my-reports',
       title: 'My Reports',
       emoji: '📄',
-      color: 'from-emerald-300 to-teal-600',
-      shadowColor: 'shadow-emerald-500/20',
+      color: 'from-emerald-500 via-emerald-400 to-teal-600',
+      shadowColor: 'shadow-emerald-500/30',
     },
   ];
 
