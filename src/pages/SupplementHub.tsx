@@ -1425,22 +1425,22 @@ const SupplementHub = () => {
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
       <div className="max-w-md mx-auto space-y-6">
-        {/* Compact Header with Back Button and Title */}
-        <div className="flex items-center justify-between py-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/explore')}
-            className="rounded-full glass-button"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          
-          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent text-center flex-1`}>
-            <span className="text-yellow-400 drop-shadow-lg animate-pulse">🌟</span> Your Personalized Supplement Hub
-          </h1>
-          
-          <div className="w-10"></div> {/* Spacer for balance */}
+        {/* Header */}
+        <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3 -mx-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/explore')}
+              className="rounded-full"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🌟</span>
+              <h1 className="text-xl font-bold">Supplement Hub</h1>
+            </div>
+          </div>
         </div>
         
         {/* Scrolling Ticker */}

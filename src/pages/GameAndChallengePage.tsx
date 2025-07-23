@@ -715,17 +715,19 @@ function GameAndChallengeContent() {
 
   return (
     <div className="overflow-x-hidden w-full max-w-full min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
-      {/* Back Arrow */}
-      <div className="fixed top-4 left-4 z-50">
-        <Link to="/explore">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-10 h-10 p-0 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90 shadow-md"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Link to="/explore">
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🎮</span>
+            <h1 className="text-xl font-bold">Game & Challenges</h1>
+          </div>
+        </div>
       </div>
 
       {/* Mystery Boxes - Hidden on mobile for performance */}
