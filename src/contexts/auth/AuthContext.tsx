@@ -1,5 +1,6 @@
 
 import React, { createContext, useEffect, useState } from 'react';
+import * as ReactModule from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
 import { loginUser, registerUser, resendEmailConfirmation, signOutUser, setSignOutNavigationCallback } from './authService';
@@ -11,12 +12,18 @@ import { cleanupAuthState } from '@/lib/authUtils';
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [signingOut, setSigningOut] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  // Defensive check for React hooks availability
+  if (!ReactModule.useState) {
+    console.error('React hooks not available, falling back to basic render');
+    return children as React.ReactElement;
+  }
+
+  const [user, setUser] = ReactModule.useState<ExtendedUser | null>(null);
+  const [session, setSession] = ReactModule.useState<Session | null>(null);
+  const [loading, setLoading] = ReactModule.useState(true);
+  const [signingOut, setSigningOut] = ReactModule.useState(false);
+  const [profileLoading, setProfileLoading] = ReactModule.useState(false);
+  const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
   // Load user profile in background
   const loadExtendedProfile = async (supabaseUser: any) => {
@@ -67,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Set up navigation callback for signOut
-  useEffect(() => {
+  ReactModule.useEffect(() => {
     setSignOutNavigationCallback(() => {
       console.log('📍 Navigating to home after sign out');
       window.location.href = '/';
@@ -75,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Main auth initialization effect
-  useEffect(() => {
+  ReactModule.useEffect(() => {
     let mounted = true;
     
     console.log('🔐 Starting auth initialization...');
@@ -178,7 +185,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [loading]);
 
   // Load extended profile when session is established (only once per session)
-  useEffect(() => {
+  ReactModule.useEffect(() => {
     if (session?.user && !profileLoading) {
       try {
         loadExtendedProfile(session.user);
