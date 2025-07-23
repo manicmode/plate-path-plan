@@ -157,21 +157,23 @@ const Explore = () => {
             hover:scale-105 active:scale-95 active:rotate-1
             shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] shadow-slate-500/20 hover:shadow-2xl
             border-0 text-white hover:text-white
-            flex items-center justify-center space-x-3
+            flex items-center justify-center
             ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
-          {/* Profile Icon */}
-          <div className={`${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
-            group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
-            filter drop-shadow-lg`}>
-            👤
+          <div className="relative w-full flex justify-center">
+            {/* Profile Icon - positioned absolutely on the left */}
+            <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
+              group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
+              filter drop-shadow-lg`}>
+              👤
+            </div>
+            {/* Profile Text - centered in the full width */}
+            <span className={`w-full text-center ${safeIsMobile ? 'text-lg' : 'text-xl'} 
+              font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
+              Profile
+            </span>
           </div>
-          {/* Profile Text */}
-          <span className={`${safeIsMobile ? 'text-lg' : 'text-xl'} 
-            font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
-            Profile
-          </span>
         </Button>
       </div>
 
