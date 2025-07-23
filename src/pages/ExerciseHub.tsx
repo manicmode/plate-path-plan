@@ -643,7 +643,7 @@ const ExerciseHub = () => {
     <div className="min-h-screen bg-background p-4 pb-24">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3 -mx-4 mb-6">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center">
           {/* Left Column - Back Button */}
           <div className="flex justify-start">
             <Button
