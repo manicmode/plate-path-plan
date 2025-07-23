@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBodyScanNotifications } from '@/hooks/useBodyScanNotifications';
+import ScanTipsModal from '@/components/ScanTipsModal';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +42,8 @@ export default function BodyScanAI() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { triggerScanCompletedNotification, showInstantFeedback } = useBodyScanNotifications();
+  const { triggerScanCompletedNotification, showInstantFeedback, showPoseQualityFeedback, getTipsModal } = useBodyScanNotifications();
+  const tipsModal = getTipsModal();
   
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -397,6 +399,17 @@ export default function BodyScanAI() {
       // Trigger notifications
       await triggerScanCompletedNotification('front');
       await showInstantFeedback('front');
+      
+      // Show pose quality feedback
+      showPoseQualityFeedback({
+        poseScore: alignmentFeedback?.alignmentScore || 0,
+        poseMetadata: {
+          shouldersLevel: !alignmentFeedback?.misalignedLimbs.includes('shoulders'),
+          armsRaised: alignmentFeedback?.misalignedLimbs.includes('left_arm') || alignmentFeedback?.misalignedLimbs.includes('right_arm'),
+          alignmentScore: Math.round((alignmentFeedback?.alignmentScore || 0) * 100),
+          misalignedLimbs: alignmentFeedback?.misalignedLimbs || []
+        }
+      }, 'front');
       
       toast({
         title: "Front Scan Saved ✅",
@@ -916,6 +929,12 @@ export default function BodyScanAI() {
         className="hidden"
       />
       </div>
+      
+      {/* Scan Tips Modal */}
+      <ScanTipsModal 
+        isOpen={tipsModal.isOpen} 
+        onClose={tipsModal.onClose} 
+      />
     </div>
   );
 }
