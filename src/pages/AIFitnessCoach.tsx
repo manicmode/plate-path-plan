@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,16 @@ export default function AIFitnessCoach() {
     weeklyFrequency: ''
   });
   const [isGeneratingRoutine, setIsGeneratingRoutine] = useState(false);
+  
+  // Weekly plan and regeneration state
+  const [weeklyPlan, setWeeklyPlan] = useState<Array<{
+    day: string;
+    title: string;
+    muscleGroups: string[];
+    exercises: Array<{ name: string; sets: string; reps: string }>;
+    isLocked: boolean;
+  }>>([]);
+  const [isRegeneratingDay, setIsRegeneratingDay] = useState<string | null>(null);
   useScrollToTop();
   
   const { sendNudge } = useSocialAccountability();
@@ -137,6 +147,32 @@ Make it sound exciting, supportive, and customized. Mention any health-based mod
     // Simulate AI generation
     setTimeout(() => {
       const coachResponse = processUserInput(routinePrompt);
+      // Generate mock weekly plan data when routine is created
+      const mockWeeklyPlan = [
+        { day: 'Monday', title: 'Upper Body Strength', muscleGroups: ['chest', 'triceps'], exercises: [
+          { name: 'Push-ups', sets: '3', reps: '10-12' },
+          { name: 'Tricep Dips', sets: '3', reps: '8-10' }
+        ], isLocked: false },
+        { day: 'Tuesday', title: 'Lower Body Power', muscleGroups: ['legs', 'glutes'], exercises: [
+          { name: 'Squats', sets: '4', reps: '12-15' },
+          { name: 'Lunges', sets: '3', reps: '10 each leg' }
+        ], isLocked: false },
+        { day: 'Wednesday', title: 'Pull Focus', muscleGroups: ['back', 'biceps'], exercises: [
+          { name: 'Pull-ups', sets: '3', reps: '6-8' },
+          { name: 'Bicep Curls', sets: '3', reps: '12-15' }
+        ], isLocked: false },
+        { day: 'Thursday', title: 'HIIT Cardio', muscleGroups: ['cardio', 'core'], exercises: [
+          { name: 'Burpees', sets: '4', reps: '30s' },
+          { name: 'Mountain Climbers', sets: '4', reps: '30s' }
+        ], isLocked: false },
+        { day: 'Friday', title: 'Full Body', muscleGroups: ['full body'], exercises: [
+          { name: 'Deadlifts', sets: '3', reps: '8-10' },
+          { name: 'Plank', sets: '3', reps: '45s' }
+        ], isLocked: false }
+      ];
+      
+      setWeeklyPlan(mockWeeklyPlan);
+
       setMessages([...newMessages, { 
         role: 'assistant', 
         content: coachResponse.message,
@@ -144,6 +180,87 @@ Make it sound exciting, supportive, and customized. Mention any health-based mod
       }]);
       setIsGeneratingRoutine(false);
     }, 3000); // Longer generation time for routine
+  };
+
+  const handleRegenerateDay = async (dayIndex: number) => {
+    const day = weeklyPlan[dayIndex];
+    if (!day) return;
+
+    setIsRegeneratingDay(day.day);
+
+    // Get previous day's muscle groups for smart balancing
+    const previousDay = dayIndex > 0 ? weeklyPlan[dayIndex - 1] : null;
+    const nextDay = dayIndex < weeklyPlan.length - 1 ? weeklyPlan[dayIndex + 1] : null;
+
+    // Build regeneration prompt with muscle group balancing logic
+    const regenerationPrompt = `💡 "You are NutriCoach's AI Fitness Coach. The user has tapped the 'Regenerate' button for ${day.day}. Create a new workout for this day with intelligent muscle group balancing.
+
+Current Context:
+- Day to regenerate: ${day.day}
+- Previous day (${previousDay?.day || 'Rest'}): ${previousDay?.muscleGroups.join(', ') || 'No workout'}
+- Next day (${nextDay?.day || 'Rest'}): ${nextDay?.muscleGroups.join(', ') || 'No workout'}
+
+User Preferences:
+- Fitness Goal: ${routinePreferences.fitnessGoal}
+- Training Split: ${routinePreferences.trainingSplit}
+- Workout Time: ${routinePreferences.workoutTime}
+- Equipment: ${routinePreferences.equipment}
+
+Smart Balancing Rules:
+- Avoid repeating the same primary muscle groups from the day before
+- If previous day focused on chest/triceps, avoid those today
+- Ensure the new day fits into the overall split style and weekly balance
+- Consider recovery time between muscle groups
+
+Generate a new ${day.day} workout that includes:
+- Exciting workout title (e.g., 'Pull Power — Back & Biceps', 'HIIT Cardio Blast')
+- Primary muscle groups targeted
+- 4-6 specific exercises with sets/reps
+- Brief motivational note
+
+Make it energetic and perfectly balanced with the rest of the week!"`;
+
+    // Add regeneration message to chat
+    const newMessages = [...messages, { 
+      role: 'user' as const, 
+      content: `Regenerate my ${day.day} workout with smart muscle group balancing` 
+    }];
+    setMessages(newMessages);
+
+    // Simulate AI regeneration
+    setTimeout(() => {
+      const coachResponse = processUserInput(regenerationPrompt);
+      
+      // Update the specific day in weekly plan (mock data for now)
+      const newDay = {
+        ...day,
+        title: `New ${day.day} Routine`,
+        muscleGroups: previousDay?.muscleGroups.includes('chest') ? ['back', 'biceps'] : ['chest', 'triceps'],
+        exercises: [
+          { name: 'Exercise 1', sets: '3', reps: '10-12' },
+          { name: 'Exercise 2', sets: '3', reps: '8-10' },
+          { name: 'Exercise 3', sets: '2', reps: '12-15' },
+          { name: 'Exercise 4', sets: '3', reps: '30s' }
+        ]
+      };
+
+      setWeeklyPlan(prev => prev.map((planDay, index) => 
+        index === dayIndex ? newDay : planDay
+      ));
+
+      setMessages([...newMessages, { 
+        role: 'assistant', 
+        content: coachResponse.message,
+        emoji: '🔄'
+      }]);
+      setIsRegeneratingDay(null);
+    }, 2000);
+  };
+
+  const toggleDayLock = (dayIndex: number) => {
+    setWeeklyPlan(prev => prev.map((day, index) => 
+      index === dayIndex ? { ...day, isLocked: !day.isLocked } : day
+    ));
   };
 
   const motivationalQuotes = [
@@ -383,6 +500,73 @@ Make it sound exciting, supportive, and customized. Mention any health-based mod
                   </div>
                 </div>
               </div>
+              {/* Weekly Plan Display */}
+              {weeklyPlan.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  <h4 className="font-semibold text-green-700 dark:text-green-400 flex items-center gap-2">
+                    📅 Your Weekly Plan
+                  </h4>
+                  <div className="grid gap-3">
+                    {weeklyPlan.map((day, index) => (
+                      <div
+                        key={index}
+                        className={`bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border ${
+                          day.isLocked ? 'border-yellow-300 dark:border-yellow-600' : 'border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold text-green-600 dark:text-green-400">
+                              {day.day}
+                            </span>
+                            {day.isLocked && <span className="text-yellow-500">🔒</span>}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleDayLock(index)}
+                              className="h-8 w-8 p-0"
+                              title={day.isLocked ? "Unlock day" : "Lock day"}
+                            >
+                              {day.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRegenerateDay(index)}
+                              disabled={isRegeneratingDay === day.day || day.isLocked}
+                              className="h-8 w-8 p-0"
+                              title="Regenerate this day"
+                            >
+                              {isRegeneratingDay === day.day ? (
+                                <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <RotateCcw className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h5 className="font-medium text-sm">{day.title}</h5>
+                          <p className="text-xs text-muted-foreground">
+                            Target: {day.muscleGroups.join(', ')}
+                          </p>
+                          <div className="text-xs space-y-1">
+                            {day.exercises.map((exercise, exerciseIndex) => (
+                              <div key={exerciseIndex} className="flex justify-between">
+                                <span>{exercise.name}</span>
+                                <span className="text-muted-foreground">{exercise.sets}x{exercise.reps}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Dialog open={showRoutineDialog} onOpenChange={setShowRoutineDialog}>
                 <DialogTrigger asChild>
                   <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white">
