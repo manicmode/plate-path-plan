@@ -19,3 +19,9 @@ jobs:
     schedule: "0 9 1 1 *"  # January 1st at 9:00 AM UTC
     function: "generate-yearly-reports"
     payload: {}
+    
+  # Generate weekly exercise insights every Monday at 8:00 AM UTC
+  - name: "weekly-exercise-insights"
+    schedule: "0 8 * * 1"  # Every Monday at 8:00 AM UTC
+    function: "weekly-exercise-insights-cron"
+    payload: {}

@@ -1734,6 +1734,63 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_exercise_insights: {
+        Row: {
+          created_at: string
+          days_skipped: number
+          id: string
+          missed_target_areas: string[] | null
+          most_frequent_muscle_groups: string[] | null
+          motivational_headline: string
+          progress_message: string
+          suggestion_tip: string
+          total_calories_burned: number
+          total_duration_minutes: number
+          updated_at: string
+          user_id: string
+          volume_trend: string | null
+          week_end_date: string
+          week_start_date: string
+          workouts_completed: number
+        }
+        Insert: {
+          created_at?: string
+          days_skipped?: number
+          id?: string
+          missed_target_areas?: string[] | null
+          most_frequent_muscle_groups?: string[] | null
+          motivational_headline: string
+          progress_message: string
+          suggestion_tip: string
+          total_calories_burned?: number
+          total_duration_minutes?: number
+          updated_at?: string
+          user_id: string
+          volume_trend?: string | null
+          week_end_date: string
+          week_start_date: string
+          workouts_completed?: number
+        }
+        Update: {
+          created_at?: string
+          days_skipped?: number
+          id?: string
+          missed_target_areas?: string[] | null
+          most_frequent_muscle_groups?: string[] | null
+          motivational_headline?: string
+          progress_message?: string
+          suggestion_tip?: string
+          total_calories_burned?: number
+          total_duration_minutes?: number
+          updated_at?: string
+          user_id?: string
+          volume_trend?: string | null
+          week_end_date?: string
+          week_start_date?: string
+          workouts_completed?: number
+        }
+        Relationships: []
+      }
       weekly_reports: {
         Row: {
           created_at: string

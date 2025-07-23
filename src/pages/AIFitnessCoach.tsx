@@ -13,6 +13,7 @@ import { useIntelligentFitnessCoach } from '@/hooks/useIntelligentFitnessCoach';
 import { useSocialAccountability } from '@/hooks/useSocialAccountability';
 import { NudgeOpportunityCard } from '@/components/NudgeOpportunityCard';
 import { GroupStatsDisplay } from '@/components/GroupStatsDisplay';
+import { WeeklyExerciseInsightsCard } from '@/components/analytics/WeeklyExerciseInsightsCard';
 import { AnimatePresence } from 'framer-motion';
 
 export default function AIFitnessCoach() {
@@ -527,6 +528,9 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </CardContent>
           </Card>
         )}
+
+        {/* Weekly Exercise Insights */}
+        <WeeklyExerciseInsightsCard />
 
         {/* Personalized 8-Week Routine */}
         <Card className="border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
