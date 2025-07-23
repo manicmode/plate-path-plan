@@ -16,6 +16,7 @@ import { DateFilterSelect } from '@/components/analytics/DateFilterSelect';
 import { PreMadePlanCard } from '@/components/PreMadePlanCard';
 import { PlanPreviewModal } from '@/components/PlanPreviewModal';
 import { ExerciseChallenges } from '@/components/ExerciseChallenges';
+import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -923,6 +924,9 @@ const ExerciseHub = () => {
                         🏆 You're Crushing It!
                       </div>
                     </div>
+
+                    {/* Monthly Exercise Report Card */}
+                    <MonthlyExerciseReportCard />
 
                     {/* Date Filter */}
                     <DateFilterSelect value={dateFilter} onValueChange={setDateFilter} />

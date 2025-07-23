@@ -69,3 +69,6 @@ verify_jwt = false
 
 [functions.calculate-daily-score]
 verify_jwt = false
+
+[functions.generate-monthly-exercise-reports]
+verify_jwt = false
