@@ -18,6 +18,7 @@ import { PlanPreviewModal } from '@/components/PlanPreviewModal';
 import { ExerciseChallenges } from '@/components/ExerciseChallenges';
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 import { YearlyExerciseReportCard } from '@/components/exercise/YearlyExerciseReportCard';
+import { WeeklyExerciseInsightsCard } from "@/components/analytics/WeeklyExerciseInsightsCard";
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -926,12 +927,6 @@ const ExerciseHub = () => {
                       </div>
                     </div>
 
-                    {/* Monthly Exercise Report Card */}
-                    <MonthlyExerciseReportCard />
-
-                    {/* Yearly Exercise Report Card */}
-                    <YearlyExerciseReportCard />
-
                     {/* Date Filter */}
                     <DateFilterSelect value={dateFilter} onValueChange={setDateFilter} />
 
@@ -970,6 +965,46 @@ const ExerciseHub = () => {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Report Cards Section - Moved to Bottom */}
+                    <div className="space-y-6 pt-4">
+                      <div className="text-center">
+                        <h3 className="text-xl font-bold text-foreground mb-2">📈 Your Exercise Reports</h3>
+                        <p className="text-muted-foreground text-sm">Comprehensive insights into your fitness journey</p>
+                      </div>
+
+                      {/* 📈 Workout Duration Trend (Last 30 Days) - This is the ExerciseProgressChart */}
+                      <div className="w-full">
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          📈 Workout Duration Trend (Last 30 Days)
+                        </h4>
+                        <ExerciseProgressChart data={mockProgressData} />
+                      </div>
+
+                      {/* 📅 WeeklyExerciseInsightsCard */}
+                      <div className="w-full">
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          📅 Weekly Exercise Insights
+                        </h4>
+                        <WeeklyExerciseInsightsCard />
+                      </div>
+
+                      {/* 🗓️ MonthlyExerciseReportCard */}
+                      <div className="w-full">
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          🗓️ Monthly Exercise Report
+                        </h4>
+                        <MonthlyExerciseReportCard />
+                      </div>
+
+                      {/* 📊 YearlyExerciseReportCard */}
+                      <div className="w-full">
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          📊 Yearly Exercise Report
+                        </h4>
+                        <YearlyExerciseReportCard />
+                      </div>
+                    </div>
                   </div>
                 ) : tab.id === 'pre-made-plans' ? (
                   /* Pre-Made Plans Tab - Enhanced */
