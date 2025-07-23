@@ -281,59 +281,61 @@ export default function BodyScanAI() {
         )}
       </div>
 
-      {/* Bottom Controls */}
-      <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
-        <div className="flex flex-col space-y-4">
-          {/* Action Buttons Row */}
-          <div className="flex space-x-3">
-            {/* Cancel Button */}
-            <Button
-              onClick={handleCancel}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
-            >
-              <X className="w-5 h-5 mr-2" />
-              Cancel
-            </Button>
+      {/* Bottom Controls - Positioned higher to avoid main menu overlap */}
+      <div className="absolute bottom-24 left-4 right-4 z-30">
+        <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-4 border border-primary/20">
+          <div className="flex flex-col space-y-3">
+            {/* Action Buttons Row */}
+            <div className="flex space-x-3">
+              {/* Cancel Button */}
+              <Button
+                onClick={handleCancel}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
+              >
+                <X className="w-5 h-5 mr-2" />
+                Cancel
+              </Button>
 
-            {/* Upload from Gallery */}
+              {/* Upload from Gallery */}
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="flex-1 bg-gray-600/20 border-gray-400 text-gray-300 hover:bg-gray-600/30 hover:text-white transition-all duration-300"
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                Upload
+              </Button>
+            </div>
+
+            {/* Continue Button */}
             <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              className="flex-1 bg-gray-600/20 border-gray-400 text-gray-300 hover:bg-gray-600/30 hover:text-white transition-all duration-300"
+              onClick={hasImageReady ? handleContinue : captureImage}
+              disabled={isCapturing}
+              className={`relative font-bold py-4 text-lg border-2 transition-all duration-300 ${
+                hasImageReady 
+                  ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]'
+                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)]'
+              } text-white disabled:opacity-50`}
             >
-              <Upload className="w-5 h-5 mr-2" />
-              Upload
+              <div className="flex items-center justify-center">
+                {hasImageReady ? (
+                  <>
+                    <ArrowRight className="w-6 h-6 mr-3" />
+                    🚀 Continue to Side Scan
+                  </>
+                ) : (
+                  <>
+                    <div className={`w-6 h-6 mr-3 ${isCapturing ? 'animate-spin' : 'animate-pulse'}`}>📸</div>
+                    {isCapturing ? 'Capturing...' : 'Capture Front View'}
+                  </>
+                )}
+              </div>
+              {!hasImageReady && !isCapturing && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                             animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
+              )}
             </Button>
           </div>
-
-          {/* Continue Button */}
-          <Button
-            onClick={hasImageReady ? handleContinue : captureImage}
-            disabled={isCapturing}
-            className={`relative font-bold py-4 text-lg border-2 transition-all duration-300 ${
-              hasImageReady 
-                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]'
-                : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)]'
-            } text-white disabled:opacity-50`}
-          >
-            <div className="flex items-center justify-center">
-              {hasImageReady ? (
-                <>
-                  <ArrowRight className="w-6 h-6 mr-3" />
-                  🚀 Continue to Side Scan
-                </>
-              ) : (
-                <>
-                  <div className={`w-6 h-6 mr-3 ${isCapturing ? 'animate-spin' : 'animate-pulse'}`}>📸</div>
-                  {isCapturing ? 'Capturing...' : 'Capture Front View'}
-                </>
-              )}
-            </div>
-            {!hasImageReady && !isCapturing && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                           animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
-            )}
-          </Button>
         </div>
       </div>
 
