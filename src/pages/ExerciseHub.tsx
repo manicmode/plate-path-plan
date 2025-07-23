@@ -720,11 +720,11 @@ const ExerciseHub = () => {
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-slow-pulse hover:animate-none">📸</span>
-            <h2 className="text-xl font-bold text-white">Body Scan AI — Analyze Your Physique</h2>
+            <h2 className="text-xl font-bold text-white">📸 Body Scan AI</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
           <p className="text-white/90 text-sm opacity-90 relative z-10">
-            Upload a body photo to analyze muscle symmetry, posture alignment, and get personalized recommendations.
+            Analyze your physique to unlock personalized posture and muscle balance insights
           </p>
         </button>
       </div>
