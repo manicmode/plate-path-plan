@@ -204,7 +204,7 @@ const ExerciseHub = () => {
           className="w-full p-4 rounded-xl bg-gradient-to-r from-indigo-200 to-purple-400 dark:from-indigo-400 dark:to-purple-600 hover:from-indigo-300 hover:to-purple-500 dark:hover:from-indigo-500 dark:hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-lg hover:shadow-purple-500/25 border border-indigo-300/20 dark:border-indigo-500/20 shadow-md group"
         >
           <div className="flex items-center justify-center gap-3 mb-1">
-            <span className="text-2xl transition-transform duration-300 group-hover:scale-110">🤖</span>
+            <span className="text-3xl transition-transform duration-300 group-hover:scale-110">🤖</span>
             <h2 className="text-lg font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
@@ -231,7 +231,7 @@ const ExerciseHub = () => {
                 }
               `}
             >
-              <div className={`${isMobile ? 'text-lg' : 'text-xl'} transition-transform duration-300 ${
+              <div className={`${isMobile ? 'text-xl' : 'text-2xl'} transition-transform duration-300 ${
                 activeTab === tab.id ? 'scale-110' : ''
               }`}>
                 {tab.emoji}
