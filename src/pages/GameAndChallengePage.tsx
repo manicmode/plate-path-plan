@@ -715,21 +715,6 @@ function GameAndChallengeContent() {
 
   return (
     <div className="overflow-x-hidden w-full max-w-full min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Link to="/explore">
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🎮</span>
-            <h1 className="text-xl font-bold">Game & Challenges</h1>
-          </div>
-        </div>
-      </div>
-
       {/* Mystery Boxes - Hidden on mobile for performance */}
       {!isMobile && (
         <>
@@ -738,14 +723,20 @@ function GameAndChallengeContent() {
         </>
       )}
 
-      {/* Mobile-Optimized Navigation - Fixed positioning */}
-      <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-md border-b border-border/50">
+      {/* Mobile-Optimized Navigation - Updated to be sticky and translucent */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4">
           {isMobile ? (
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
-              <div className="flex items-center justify-center">
+              <div className="flex items-center justify-between">
+                <Link to="/explore">
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </Link>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
+                <div className="w-10"></div> {/* Spacer for balance */}
               </div>
               
               {/* Mobile horizontal scroll tabs */}
@@ -765,7 +756,20 @@ function GameAndChallengeContent() {
                 </div>
               </ScrollArea>
             </div>
-          ) : null}
+          ) : (
+            // Desktop Navigation
+            <div className="flex items-center justify-between">
+              <Link to="/explore">
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div className="flex items-center justify-center">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
+              </div>
+              <div className="w-10"></div> {/* Spacer for balance */}
+            </div>
+          )}
           
           {/* Sort Controls - Responsive */}
           {activeSection === 'ranking' && (
