@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -54,125 +55,133 @@ function AppContent() {
 
   return (
     <>
-      <Layout>
-        <Suspense fallback={<LoadingScreen />}>
-          <Routes>
-                              <Route path="/" element={<Index />} />
-                              <Route path="/home" element={
-                                <ProtectedRoute>
-                                  <Home />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/camera" element={
-                                <ProtectedRoute>
-                                  <Camera />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/analytics" element={
-                                <ProtectedRoute>
-                                  <Analytics />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/coach" element={
-                                <ProtectedRoute>
-                                  <Coach />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/explore" element={
-                                <ProtectedRoute>
-                                  <Explore />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/exercise-hub" element={
-                                <ProtectedRoute>
-                                  <ExerciseHub />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/ai-fitness-coach" element={
-                                <ProtectedRoute>
-                                  <AIFitnessCoach />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/profile" element={
-                                <ProtectedRoute>
-                                  <Profile />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/game-and-challenge" element={
-                                <ProtectedRoute>
-                                  <GameAndChallengePage />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/supplement-hub" element={
-                                <ProtectedRoute>
-                                  <SupplementHub />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/supplements" element={
-                                <ProtectedRoute>
-                                  <Supplements />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/hydration" element={
-                                <ProtectedRoute>
-                                  <Hydration />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/progress/calories" element={
-                                <ProtectedRoute>
-                                  <ProgressCalories />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/progress/protein" element={
-                                <ProtectedRoute>
-                                  <ProgressProtein />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/progress/carbs" element={
-                                <ProtectedRoute>
-                                  <ProgressCarbs />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/progress/fat" element={
-                                <ProtectedRoute>
-                                  <ProgressFat />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/progress/hydration" element={
-                                <ProtectedRoute>
-                                  <ProgressHydration />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/progress/supplements" element={
-                                <ProtectedRoute>
-                                  <ProgressSupplements />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/my-reports" element={
-                                <ProtectedRoute>
-                                  <MyReports />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/report-viewer" element={
-                                <ProtectedRoute>
-                                  <ReportViewer />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/firebase-setup" element={
-                                <ProtectedRoute>
-                                  <FirebaseSetup />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/body-scan-ai" element={
-                                <ProtectedRoute>
-                                  <BodyScanAI />
-                                </ProtectedRoute>
-                              } />
-                              <Route path="/404" element={<NotFound />} />
-                              <Route path="*" element={<Navigate to="/404" replace />} />
-          </Routes>
-        </Suspense>
-      </Layout>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          {/* Fullscreen pages without Layout */}
+          <Route path="/body-scan-ai" element={
+            <ProtectedRoute>
+              <BodyScanAI />
+            </ProtectedRoute>
+          } />
+          
+          {/* Regular pages with Layout */}
+          <Route path="/*" element={
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/home" element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                } />
+                <Route path="/camera" element={
+                  <ProtectedRoute>
+                    <Camera />
+                  </ProtectedRoute>
+                } />
+                <Route path="/analytics" element={
+                  <ProtectedRoute>
+                    <Analytics />
+                  </ProtectedRoute>
+                } />
+                <Route path="/coach" element={
+                  <ProtectedRoute>
+                    <Coach />
+                  </ProtectedRoute>
+                } />
+                <Route path="/explore" element={
+                  <ProtectedRoute>
+                    <Explore />
+                  </ProtectedRoute>
+                } />
+                <Route path="/exercise-hub" element={
+                  <ProtectedRoute>
+                    <ExerciseHub />
+                  </ProtectedRoute>
+                } />
+                <Route path="/ai-fitness-coach" element={
+                  <ProtectedRoute>
+                    <AIFitnessCoach />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/game-and-challenge" element={
+                  <ProtectedRoute>
+                    <GameAndChallengePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/supplement-hub" element={
+                  <ProtectedRoute>
+                    <SupplementHub />
+                  </ProtectedRoute>
+                } />
+                <Route path="/supplements" element={
+                  <ProtectedRoute>
+                    <Supplements />
+                  </ProtectedRoute>
+                } />
+                <Route path="/hydration" element={
+                  <ProtectedRoute>
+                    <Hydration />
+                  </ProtectedRoute>
+                } />
+                <Route path="/progress/calories" element={
+                  <ProtectedRoute>
+                    <ProgressCalories />
+                  </ProtectedRoute>
+                } />
+                <Route path="/progress/protein" element={
+                  <ProtectedRoute>
+                    <ProgressProtein />
+                  </ProtectedRoute>
+                } />
+                <Route path="/progress/carbs" element={
+                  <ProtectedRoute>
+                    <ProgressCarbs />
+                  </ProtectedRoute>
+                } />
+                <Route path="/progress/fat" element={
+                  <ProtectedRoute>
+                    <ProgressFat />
+                  </ProtectedRoute>
+                } />
+                <Route path="/progress/hydration" element={
+                  <ProtectedRoute>
+                    <ProgressHydration />
+                  </ProtectedRoute>
+                } />
+                <Route path="/progress/supplements" element={
+                  <ProtectedRoute>
+                    <ProgressSupplements />
+                  </ProtectedRoute>
+                } />
+                <Route path="/my-reports" element={
+                  <ProtectedRoute>
+                    <MyReports />
+                  </ProtectedRoute>
+                } />
+                <Route path="/report-viewer" element={
+                  <ProtectedRoute>
+                    <ReportViewer />
+                  </ProtectedRoute>
+                } />
+                <Route path="/firebase-setup" element={
+                  <ProtectedRoute>
+                    <FirebaseSetup />
+                  </ProtectedRoute>
+                } />
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </Layout>
+          } />
+        </Routes>
+      </Suspense>
+      
       <DailyMoodModal 
         isOpen={showMoodModal} 
         onClose={() => setShowMoodModal(false)} 
