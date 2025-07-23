@@ -3,12 +3,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar, TrendingUp, Target, Award, Activity } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { CreateRoutineModal } from '@/components/CreateRoutineModal';
 import { RoutineCard } from '@/components/RoutineCard';
+import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
+import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
+import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
+import { DateFilterSelect } from '@/components/analytics/DateFilterSelect';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -19,6 +23,7 @@ const ExerciseHub = () => {
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
   const [originRoute, setOriginRoute] = useState<string>('/explore');
+  const [dateFilter, setDateFilter] = useState('30d');
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
@@ -148,6 +153,70 @@ const ExerciseHub = () => {
 
   // State for editing routines
   const [editingRoutine, setEditingRoutine] = useState<any>(null);
+
+  // Mock progress data for charts
+  const mockProgressData = [
+    { date: '2024-01-15', duration: 45 },
+    { date: '2024-01-16', duration: 30 },
+    { date: '2024-01-17', duration: 0 },
+    { date: '2024-01-18', duration: 60 },
+    { date: '2024-01-19', duration: 35 },
+    { date: '2024-01-20', duration: 50 },
+    { date: '2024-01-21', duration: 25 },
+    { date: '2024-01-22', duration: 45 },
+    { date: '2024-01-23', duration: 75 },
+    { date: '2024-01-24', duration: 40 },
+    { date: '2024-01-25', duration: 55 },
+    { date: '2024-01-26', duration: 30 },
+    { date: '2024-01-27', duration: 65 },
+    { date: '2024-01-28', duration: 50 }
+  ];
+
+  const mockWorkoutTypesData = [
+    { type: 'Strength', count: 12, emoji: '🏋️', color: '#f59e0b' },
+    { type: 'Cardio', count: 8, emoji: '🏃', color: '#3b82f6' },
+    { type: 'Flexibility', count: 6, emoji: '🧘', color: '#8b5cf6' },
+    { type: 'HIIT', count: 4, emoji: '⚡', color: '#ef4444' }
+  ];
+
+  const mockExerciseStats = [
+    {
+      icon: Activity,
+      label: 'Total Workouts Logged',
+      value: '30',
+      color: 'from-blue-400 to-cyan-500'
+    },
+    {
+      icon: Clock,
+      label: 'Total Minutes Exercised',
+      value: '1,350',
+      color: 'from-emerald-400 to-teal-500'
+    },
+    {
+      icon: TrendingUp,
+      label: 'Avg. Weekly Frequency',
+      value: '4.2 days',
+      color: 'from-orange-400 to-red-500'
+    },
+    {
+      icon: Flame,
+      label: 'Longest Streak',
+      value: '12 days',
+      color: 'from-purple-400 to-pink-500'
+    },
+    {
+      icon: Target,
+      label: 'Favorite Routine',
+      value: 'Push/Pull/Legs',
+      color: 'from-green-400 to-emerald-500'
+    },
+    {
+      icon: Award,
+      label: 'Most Logged Type',
+      value: '🏋️ Strength',
+      color: 'from-yellow-400 to-orange-500'
+    }
+  ];
 
   // Mock progress data
   const mockWeeklyData = [
@@ -488,80 +557,50 @@ const ExerciseHub = () => {
                 ) : tab.id === 'progress-reports' ? (
                   /* Progress & Reports Tab - Enhanced */
                   <div className="space-y-6">
-                    {/* Progress Overview Header */}
+                    {/* Header with motivational badge */}
                     <div className="text-center mb-6">
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Progress Overview</h2>
-                      <p className="text-muted-foreground">Track your training consistency and performance over time</p>
-                    </div>
-
-                    {/* Weekly Workout Frequency Chart */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6">
-                        <h3 className="text-xl font-bold text-foreground mb-4">Weekly Workout Frequency</h3>
-                        
-                        {/* Mock Bar Chart */}
-                        <div className="flex items-end justify-between h-32 mb-4">
-                          {mockWeeklyData.map((day, index) => (
-                            <div key={day.day} className="flex flex-col items-center space-y-2 flex-1">
-                              <div className="w-full flex justify-center">
-                                <div 
-                                  className={`w-8 bg-gradient-to-t from-emerald-400 via-cyan-500 to-blue-500 rounded-t-md transition-all duration-1000 ease-out shadow-lg animate-fade-in`}
-                                  style={{ 
-                                    height: activeTab === 'progress-reports' ? day.height : '0%',
-                                    animationDelay: `${index * 200}ms`
-                                  }}
-                                />
-                              </div>
-                              <span className="text-xs text-muted-foreground font-medium">{day.day}</span>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Chart Legend */}
-                        <div className="flex items-center justify-center space-x-4 text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-cyan-500 rounded"></div>
-                            <span>Workouts completed</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Stats Summary Section */}
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-bold text-foreground text-center">Performance Stats</h3>
-                      
-                      <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
-                        {mockStats.map((stat, index) => {
-                          const IconComponent = stat.icon;
-                          return (
-                            <Card key={index} className="shadow-lg border-border bg-card hover:shadow-2xl hover:shadow-accent/20 hover:scale-105 transition-all duration-300 cursor-pointer group">
-                              <CardContent className="p-0">
-                                <div className={`bg-gradient-to-br ${stat.gradient} p-2 rounded-t-lg group-hover:brightness-110 transition-all duration-300`} />
-                                <div className="p-6 text-center">
-                                  <div className="flex justify-center mb-3">
-                                    <IconComponent className={`h-8 w-8 ${stat.iconColor} group-hover:scale-110 transition-transform duration-300`} />
-                                  </div>
-                                  <h4 className="text-sm font-medium text-muted-foreground mb-2 drop-shadow-sm">{stat.title}</h4>
-                                  <p className="text-2xl font-bold text-foreground group-hover:scale-105 transition-transform duration-300">{stat.value}</p>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Progress This Month</h2>
+                      <p className="text-muted-foreground mb-4">Track your fitness journey and celebrate your achievements</p>
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-semibold rounded-full shadow-lg">
+                        🏆 You're Crushing It!
                       </div>
                     </div>
 
-                    {/* Additional Progress Insights */}
+                    {/* Date Filter */}
+                    <DateFilterSelect value={dateFilter} onValueChange={setDateFilter} />
+
+                    {/* Progress Charts */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <ExerciseProgressChart data={mockProgressData} />
+                      <WorkoutTypesChart data={mockWorkoutTypesData} />
+                    </div>
+
+                    {/* Exercise Stats */}
+                    <ExerciseStatsCard stats={mockExerciseStats} />
+
+                    {/* Weekly Overview */}
                     <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6 text-center">
-                        <div className="text-3xl mb-4">📈</div>
-                        <h3 className="text-lg font-bold text-foreground mb-2">Progress Insights</h3>
-                        <p className="text-muted-foreground text-sm">
-                          You're doing great! Keep up the consistency to reach your fitness goals.
-                        </p>
-                        <div className="mt-4 inline-flex items-center px-4 py-2 rounded-full bg-muted text-muted-foreground border border-border">
-                          <span className="text-sm font-medium">Detailed analytics coming soon</span>
+                      <CardContent className="p-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                          📅 Weekly Activity Overview
+                        </h3>
+                        <div className="space-y-3">
+                          {mockWeeklyData.map((day, index) => (
+                            <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-all duration-200">
+                              <span className="font-medium text-foreground">{day.day}</span>
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-1 bg-muted rounded-full h-2 w-24 overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-500"
+                                    style={{ width: day.height }}
+                                  />
+                                </div>
+                                <span className="text-sm text-muted-foreground min-w-[80px] text-right">
+                                  {day.workouts} workout{day.workouts !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </CardContent>
                     </Card>
