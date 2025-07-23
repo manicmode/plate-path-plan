@@ -24,7 +24,7 @@ const ExerciseHub = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState('exercise-challenges');
+  const [activeTab, setActiveTab] = useState('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
