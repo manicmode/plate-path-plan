@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ interface ExerciseChallengesProps {
   workouts?: any[];
 }
 
-export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts = [] }) => {
+export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(({ workouts = [] }) => {
   const { 
     miniChallenges, 
     accountabilityGroups, 
@@ -36,20 +36,22 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
   const [selectedMember, setSelectedMember] = useState<{groupId: string, memberId: string, memberName: string} | null>(null);
   const [customNudgeMessage, setCustomNudgeMessage] = useState('');
 
+  const coachMessage = useMemo(() => generateCoachMessage(), [generateCoachMessage]);
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+
   // Auto-open notifications if there are unread ones
   useEffect(() => {
-    const unreadCount = notifications.filter(n => !n.isRead).length;
     if (unreadCount > 0 && unreadCount <= 2) {
       setShowNotifications(true);
     }
-  }, [notifications]);
+  }, [unreadCount]);
 
-  const handleJoinChallenge = (challengeId: string) => {
+  const handleJoinChallenge = useCallback((challengeId: string) => {
     joinChallenge(challengeId);
     // Show success animation or toast
-  };
+  }, [joinChallenge]);
 
-  const handleSendNudge = (groupId: string, memberId: string) => {
+  const handleSendNudge = useCallback((groupId: string, memberId: string) => {
     const group = accountabilityGroups.find(g => g.id === groupId);
     const member = group?.members.find(m => m.id === memberId);
     
@@ -57,7 +59,7 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
       setSelectedMember({ groupId, memberId, memberName: member.name });
       setIsNudgeModalOpen(true);
     }
-  };
+  }, [accountabilityGroups]);
 
   const quickNudgeMessages = [
     "You got this! 💪",
@@ -67,25 +69,24 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
     "Your squad is cheering you on! 🎉"
   ];
 
-  const confirmNudge = (message: string) => {
+  const confirmNudge = useCallback((message: string) => {
     if (selectedMember) {
       sendGroupNudge(selectedMember.groupId, selectedMember.memberId, message);
       setIsNudgeModalOpen(false);
       setSelectedMember(null);
       setCustomNudgeMessage('');
     }
-  };
+  }, [selectedMember, sendGroupNudge]);
 
-  const handleNotificationAction = (notification: any) => {
+  const handleNotificationAction = useCallback((notification: any) => {
     if (notification.type === 'team_nudge' && notification.groupId && notification.targetUserId) {
       handleSendNudge(notification.groupId, notification.targetUserId);
     } else if (notification.type === 'challenge_reminder' && notification.challengeId) {
       // Could navigate to the specific challenge or show workout suggestions
       console.log(`Take action on challenge: ${notification.challengeId}`);
     }
-  };
+  }, [handleSendNudge]);
 
-  const coachMessage = generateCoachMessage();
 
   return (
     <div className="space-y-6 p-1">
@@ -103,13 +104,13 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
         >
           <Bell className="h-4 w-4 mr-2" />
           Notifications
-          {notifications.filter(n => !n.isRead).length > 0 && (
+          {unreadCount > 0 && (
             <motion.div
               className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ repeat: Infinity, duration: 2 }}
             >
-              {notifications.filter(n => !n.isRead).length}
+              {unreadCount}
             </motion.div>
           )}
         </Button>
@@ -135,14 +136,16 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
       </AnimatePresence>
       {/* AI Coach Message */}
       <motion.div
+        layoutId="ai-coach-card"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.5, type: "spring", stiffness: 100, damping: 15 }}
       >
         <Card className="border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               <motion.div
+                layoutId="ai-coach-sparkles"
                 animate={{ rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
               >
@@ -151,16 +154,24 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-foreground">AI Fitness Coach</span>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Live</span>
+                  <motion.span 
+                    layoutId="live-badge"
+                    className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+                  >
+                    Live
+                  </motion.span>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {coachMessage}
                 </p>
                 {/* Workout Stats Summary */}
                 {workoutStats.weeklyCount > 0 && (
-                  <div className="mt-2 text-xs text-muted-foreground">
+                  <motion.div 
+                    layoutId="workout-stats"
+                    className="mt-2 text-xs text-muted-foreground"
+                  >
                     📊 This week: {workoutStats.weeklyCount} workouts • {workoutStats.totalMinutes} minutes
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </div>
@@ -180,9 +191,10 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
           {miniChallenges.map((challenge, index) => (
             <motion.div
               key={challenge.id}
+              layoutId={`challenge-${challenge.id}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.1, type: "spring", stiffness: 100, damping: 15 }}
             >
               <MiniChallengeCard 
                 challenge={challenge} 
@@ -205,9 +217,10 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
           {accountabilityGroups.map((group, index) => (
             <motion.div
               key={group.id}
+              layoutId={`group-${group.id}`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.2 }}
+              transition={{ delay: index * 0.2, type: "spring", stiffness: 100, damping: 15 }}
             >
               <AccountabilityGroupCard 
                 group={group} 
@@ -220,9 +233,10 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
 
       {/* Mini Leaderboard */}
       <motion.div
+        layoutId="challenge-leaderboard"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.6, type: "spring", stiffness: 100, damping: 15 }}
       >
         <ChallengeLeaderboard leaderboard={leaderboard} />
       </motion.div>
@@ -281,4 +295,4 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
       </Dialog>
     </div>
   );
-};
+});
