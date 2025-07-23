@@ -24,20 +24,31 @@ export default function BodyScanAI() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [stream]);
+  }, []); // Remove stream dependency to prevent infinite loop
 
   const startCamera = async () => {
     try {
+      // Clean up any existing stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
         }
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        // Ensure video plays on iOS
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.log('Video autoplay prevented, will play on user interaction');
+        }
       }
       setStream(mediaStream);
     } catch (error) {
@@ -159,13 +170,26 @@ export default function BodyScanAI() {
   return (
     <div className="relative w-full h-screen bg-black flex flex-col overflow-hidden">
       <div className="flex-1 relative">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-        />
+        {/* Camera video background - positioned absolutely to ensure proper rendering */}
+        <div className="absolute inset-0 z-0">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            onLoadedMetadata={() => {
+              // Ensure video plays after metadata is loaded
+              if (videoRef.current) {
+                videoRef.current.play().catch(console.log);
+              }
+            }}
+            className="w-full h-full object-cover"
+            style={{ 
+              transform: 'scaleX(-1)', // Mirror the video for better UX
+              WebkitTransform: 'scaleX(-1)' // iOS compatibility
+            }}
+          />
+        </div>
         <canvas ref={canvasRef} className="hidden" />
         
         {/* Scanning Overlay with Human Silhouette */}
