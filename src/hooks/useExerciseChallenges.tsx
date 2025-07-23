@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useCallback } from 'react';
 
 export interface MiniChallenge {
   id: string;
@@ -12,10 +11,6 @@ export interface MiniChallenge {
   participantCount: number;
   isJoined: boolean;
   gradient: string;
-  targetWorkouts: number;
-  completedWorkouts: number;
-  startDate?: string;
-  endDate?: string;
 }
 
 export interface AccountabilityGroup {
@@ -45,47 +40,8 @@ export interface LeaderboardEntry {
   rank: number;
 }
 
-export interface MotivationalNotification {
-  id: string;
-  type: 'challenge_reminder' | 'team_nudge' | 'streak_celebration' | 'progress_update';
-  title: string;
-  message: string;
-  emoji: string;
-  timestamp: Date;
-  isRead: boolean;
-  actionable?: boolean;
-  challengeId?: string;
-  groupId?: string;
-  targetUserId?: string;
-}
-
-export const useExerciseChallenges = (workouts: any[] = []) => {
-  const { toast } = useToast();
-  
-  // Calculate user's recent workout activity
-  const calculateWorkoutStats = useCallback(() => {
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    const recentWorkouts = workouts.filter(workout => {
-      const workoutDate = new Date(workout.date);
-      return workoutDate >= weekAgo && workoutDate <= today;
-    });
-
-    return {
-      weeklyCount: recentWorkouts.length,
-      lastWorkoutDate: recentWorkouts.length > 0 ? recentWorkouts[0].date : null,
-      totalMinutes: recentWorkouts.reduce((total, w) => {
-        const minutes = parseInt(w.duration.split(' ')[0]) || 0;
-        return total + minutes;
-      }, 0)
-    };
-  }, [workouts]);
-
-  const workoutStats = calculateWorkoutStats();
-
-  // Enhanced challenges with progress tracking
-  const [miniChallenges, setMiniChallenges] = useState<MiniChallenge[]>([
+export const useExerciseChallenges = () => {
+  const [miniChallenges] = useState<MiniChallenge[]>([
     {
       id: '1',
       name: '5-Day Step Master',
@@ -96,9 +52,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       type: 'Cardio',
       participantCount: 247,
       isJoined: false,
-      gradient: 'from-green-400 to-emerald-600',
-      targetWorkouts: 5,
-      completedWorkouts: 0
+      gradient: 'from-green-400 to-emerald-600'
     },
     {
       id: '2',
@@ -110,10 +64,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       type: 'Flexibility',
       participantCount: 189,
       isJoined: true,
-      gradient: 'from-orange-400 to-amber-600',
-      targetWorkouts: 7,
-      completedWorkouts: 3,
-      startDate: '2024-01-21'
+      gradient: 'from-orange-400 to-amber-600'
     },
     {
       id: '3',
@@ -125,9 +76,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       type: 'Strength',
       participantCount: 156,
       isJoined: false,
-      gradient: 'from-red-400 to-rose-600',
-      targetWorkouts: 10,
-      completedWorkouts: 0
+      gradient: 'from-red-400 to-rose-600'
     },
     {
       id: '4',
@@ -139,9 +88,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       type: 'Mixed',
       participantCount: 203,
       isJoined: false,
-      gradient: 'from-blue-400 to-cyan-600',
-      targetWorkouts: 7,
-      completedWorkouts: 0
+      gradient: 'from-blue-400 to-cyan-600'
     },
     {
       id: '5',
@@ -153,9 +100,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       type: 'Strength',
       participantCount: 134,
       isJoined: false,
-      gradient: 'from-purple-400 to-violet-600',
-      targetWorkouts: 3,
-      completedWorkouts: 0
+      gradient: 'from-purple-400 to-violet-600'
     },
     {
       id: '6',
@@ -167,14 +112,11 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       type: 'Flexibility',
       participantCount: 98,
       isJoined: false,
-      gradient: 'from-pink-400 to-rose-500',
-      targetWorkouts: 10,
-      completedWorkouts: 0
+      gradient: 'from-pink-400 to-rose-500'
     }
   ]);
 
-  // Enhanced accountability groups with real-time sync
-  const [accountabilityGroups, setAccountabilityGroups] = useState<AccountabilityGroup[]>([
+  const [accountabilityGroups] = useState<AccountabilityGroup[]>([
     {
       id: '1',
       name: 'Sunrise Squad',
@@ -185,10 +127,10 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
           name: 'You',
           avatar: '🏃‍♂️',
           weeklyGoal: 4,
-          completedWorkouts: workoutStats.weeklyCount,
+          completedWorkouts: 3,
           streak: 5,
-          lastWorkout: workoutStats.lastWorkoutDate || '2024-01-23',
-          status: workoutStats.weeklyCount >= 3 ? 'active' : workoutStats.weeklyCount >= 1 ? 'needs_nudge' : 'inactive'
+          lastWorkout: '2024-01-23',
+          status: 'active'
         },
         {
           id: '2',
@@ -224,10 +166,10 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
           name: 'You',
           avatar: '🏃‍♂️',
           weeklyGoal: 3,
-          completedWorkouts: workoutStats.weeklyCount,
+          completedWorkouts: 2,
           streak: 3,
-          lastWorkout: workoutStats.lastWorkoutDate || '2024-01-23',
-          status: workoutStats.weeklyCount >= 2 ? 'active' : 'needs_nudge'
+          lastWorkout: '2024-01-23',
+          status: 'active'
         },
         {
           id: '4',
@@ -255,18 +197,9 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     }
   ]);
 
-  // Dynamic leaderboard based on actual performance
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([
+  const [leaderboard] = useState<LeaderboardEntry[]>([
     {
       id: '1',
-      name: 'You',
-      avatar: '🏃‍♂️',
-      workouts: workoutStats.weeklyCount,
-      minutes: workoutStats.totalMinutes,
-      rank: workoutStats.weeklyCount >= 5 ? 1 : workoutStats.weeklyCount >= 3 ? 2 : 3
-    },
-    {
-      id: '2',
       name: 'FitGuru23',
       avatar: '👑',
       workouts: 12,
@@ -274,233 +207,50 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       rank: 1
     },
     {
-      id: '3',
+      id: '2',
       name: 'IronWill',
       avatar: '💪',
       workouts: 10,
       minutes: 485,
       rank: 2
+    },
+    {
+      id: '3',
+      name: 'ZenMaster',
+      avatar: '🧘‍♀️',
+      workouts: 8,
+      minutes: 420,
+      rank: 3
     }
   ]);
 
-  // Motivational notifications system
-  const [notifications, setNotifications] = useState<MotivationalNotification[]>([]);
-
-  // Generate smart notifications based on activity patterns
-  const generateSmartNotifications = useCallback(() => {
-    const newNotifications: MotivationalNotification[] = [];
-    const today = new Date();
-
-    // Challenge reminder notifications
-    miniChallenges.forEach(challenge => {
-      if (challenge.isJoined) {
-        const daysSinceStart = challenge.startDate ? 
-          Math.floor((today.getTime() - new Date(challenge.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-        
-        if (daysSinceStart >= 2 && challenge.completedWorkouts === 0) {
-          newNotifications.push({
-            id: `challenge-${challenge.id}-reminder`,
-            type: 'challenge_reminder',
-            title: 'Challenge Check-in',
-            message: `You've joined "${challenge.name}" but haven't logged anything in 2 days! Want to get moving? 💪`,
-            emoji: '⏰',
-            timestamp: new Date(),
-            isRead: false,
-            actionable: true,
-            challengeId: challenge.id
-          });
-        }
-
-        if (challenge.completedWorkouts > 0 && challenge.completedWorkouts < challenge.targetWorkouts) {
-          const remaining = challenge.targetWorkouts - challenge.completedWorkouts;
-          newNotifications.push({
-            id: `challenge-${challenge.id}-progress`,
-            type: 'progress_update',
-            title: 'You\'re Making Progress!',
-            message: `${challenge.completedWorkouts}/${challenge.targetWorkouts} workouts completed for ${challenge.name}! Just ${remaining} more to go! 🎯`,
-            emoji: '📈',
-            timestamp: new Date(),
-            isRead: false,
-            challengeId: challenge.id
-          });
-        }
-      }
-    });
-
-    // Team nudge notifications
-    accountabilityGroups.forEach(group => {
-      group.members.forEach(member => {
-        if (member.id !== '1' && member.status === 'needs_nudge') {
-          const daysSinceWorkout = member.lastWorkout ? 
-            Math.floor((today.getTime() - new Date(member.lastWorkout).getTime()) / (1000 * 60 * 60 * 24)) : 999;
-          
-          if (daysSinceWorkout >= 3) {
-            newNotifications.push({
-              id: `nudge-${group.id}-${member.id}`,
-              type: 'team_nudge',
-              title: 'Teammate Needs Support',
-              message: `Wanna nudge ${member.name}? They've been quiet for ${daysSinceWorkout} days 😴`,
-              emoji: '🤝',
-              timestamp: new Date(),
-              isRead: false,
-              actionable: true,
-              groupId: group.id,
-              targetUserId: member.id
-            });
-          }
-        }
-      });
-
-      // Group achievement notifications
-      if (group.groupProgress >= 80) {
-        newNotifications.push({
-          id: `group-${group.id}-achievement`,
-          type: 'streak_celebration',
-          title: 'Team Achievement!',
-          message: `Team "${group.name}" is crushing it! You're all amazing! 🔥`,
-          emoji: '🏆',
-          timestamp: new Date(),
-          isRead: false,
-          groupId: group.id
-        });
-      }
-    });
-
-    return newNotifications;
-  }, [miniChallenges, accountabilityGroups]);
-
-  // Check for new notifications periodically
-  useEffect(() => {
-    const checkNotifications = () => {
-      const newNotifications = generateSmartNotifications();
-      const unseenNotifications = newNotifications.filter(n => 
-        !notifications.some(existing => existing.id === n.id)
-      );
-
-      if (unseenNotifications.length > 0) {
-        setNotifications(prev => [...unseenNotifications, ...prev]);
-        
-        // Show toast for most important notifications
-        unseenNotifications.slice(0, 1).forEach(notification => {
-          toast({
-            title: notification.title,
-            description: notification.message,
-            duration: 5000,
-          });
-        });
-      }
-    };
-
-    checkNotifications();
-    const interval = setInterval(checkNotifications, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [miniChallenges, accountabilityGroups, notifications, generateSmartNotifications, toast]);
-
-  // Sync workout progress with challenges
-  useEffect(() => {
-    setMiniChallenges(prev => prev.map(challenge => {
-      if (challenge.isJoined) {
-        // Count relevant workouts based on challenge type
-        const relevantWorkouts = workouts.filter(workout => {
-          const workoutDate = new Date(workout.date);
-          const challengeStart = challenge.startDate ? new Date(challenge.startDate) : new Date();
-          
-          return workoutDate >= challengeStart && 
-                 (challenge.type === 'Mixed' || workout.type === challenge.type);
-        });
-
-        return {
-          ...challenge,
-          completedWorkouts: Math.min(relevantWorkouts.length, challenge.targetWorkouts)
-        };
-      }
-      return challenge;
-    }));
-
-    // Update leaderboard with current user stats
-    setLeaderboard(prev => prev.map(entry => 
-      entry.id === '1' ? {
-        ...entry,
-        workouts: workoutStats.weeklyCount,
-        minutes: workoutStats.totalMinutes,
-        rank: workoutStats.weeklyCount >= 8 ? 1 : workoutStats.weeklyCount >= 5 ? 2 : 3
-      } : entry
-    ).sort((a, b) => b.workouts - a.workouts).map((entry, index) => ({ ...entry, rank: index + 1 })));
-  }, [workouts, workoutStats]);
-
   const joinChallenge = useCallback((challengeId: string) => {
-    setMiniChallenges(prev => prev.map(challenge => 
-      challenge.id === challengeId ? {
-        ...challenge,
-        isJoined: true,
-        startDate: new Date().toISOString().split('T')[0],
-        participantCount: challenge.participantCount + 1
-      } : challenge
-    ));
-
-    toast({
-      title: "Challenge Joined! 🚀",
-      description: "Good luck! We're rooting for you!",
-      duration: 3000,
-    });
-  }, [toast]);
-
-  const sendGroupNudge = useCallback((groupId: string, memberId: string, message: string) => {
-    // Simulate sending nudge
-    toast({
-      title: "Nudge Sent! 💌",
-      description: "Your teammate will appreciate the motivation!",
-      duration: 3000,
-    });
-
-    // Remove related notification
-    setNotifications(prev => prev.filter(n => 
-      !(n.groupId === groupId && n.targetUserId === memberId)
-    ));
-  }, [toast]);
-
-  const markNotificationAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev => prev.map(n => 
-      n.id === notificationId ? { ...n, isRead: true } : n
-    ));
+    console.log(`Joining challenge: ${challengeId}`);
+    // In real implementation, this would update the backend
   }, []);
 
-  const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
+  const sendGroupNudge = useCallback((groupId: string, memberId: string, message: string) => {
+    console.log(`Sending nudge to ${memberId} in group ${groupId}: ${message}`);
+    // In real implementation, this would send a notification
   }, []);
 
   const generateCoachMessage = useCallback(() => {
     const messages = [
-      "🔥 Your consistency is paying off! Keep the momentum going!",
-      `💪 You've completed ${workoutStats.weeklyCount} workouts this week - amazing progress!`,
-      "🌟 Your dedication is inspiring your teammates!",
-      "🎯 Ready to tackle today's fitness goals? Let's do this!",
-      "🚀 Every workout counts - you're building something incredible!"
+      "🔥 Team CardioBlasters is killing it! Keep the momentum going!",
+      "👟 Looks like Mike hasn't logged a workout in 3 days—wanna send a nudge?",
+      "🌟 Sunrise Squad is crushing their weekly goals! You're all amazing!",
+      "💪 Who's gonna be the spark today? Some teammates could use your energy!",
+      "🎯 Great consistency this week! Your dedication is inspiring others!"
     ];
-
-    // Personalize based on recent activity
-    if (workoutStats.weeklyCount >= 5) {
-      return "🏆 WOW! You're absolutely crushing it with " + workoutStats.weeklyCount + " workouts this week! Your consistency is next level!";
-    } else if (workoutStats.weeklyCount >= 3) {
-      return "💪 Great momentum with " + workoutStats.weeklyCount + " workouts this week! You're building healthy habits!";
-    } else if (workoutStats.weeklyCount >= 1) {
-      return "🌱 Good start this week! Ready to add another workout to build your streak?";
-    }
-
     return messages[Math.floor(Math.random() * messages.length)];
-  }, [workoutStats]);
+  }, []);
 
   return {
     miniChallenges,
     accountabilityGroups,
     leaderboard,
-    notifications,
-    workoutStats,
     joinChallenge,
     sendGroupNudge,
-    generateCoachMessage,
-    markNotificationAsRead,
-    clearAllNotifications
+    generateCoachMessage
   };
 };

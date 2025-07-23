@@ -1,48 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sparkles, MessageSquare, Users, Target, Bell } from 'lucide-react';
+import { Sparkles, MessageSquare, Users, Target } from 'lucide-react';
 import { useExerciseChallenges } from '@/hooks/useExerciseChallenges';
 import { useSocialAccountability } from '@/hooks/useSocialAccountability';
 import { MiniChallengeCard } from '@/components/MiniChallengeCard';
 import { AccountabilityGroupCard } from '@/components/AccountabilityGroupCard';
 import { ChallengeLeaderboard } from '@/components/ChallengeLeaderboard';
-import { NotificationPanel } from '@/components/NotificationPanel';
 
-interface ExerciseChallengesProps {
-  workouts?: any[];
-}
-
-export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts = [] }) => {
+export const ExerciseChallenges: React.FC = () => {
   const { 
     miniChallenges, 
     accountabilityGroups, 
-    leaderboard,
-    notifications,
-    workoutStats,
+    leaderboard, 
     joinChallenge, 
     sendGroupNudge,
-    generateCoachMessage,
-    markNotificationAsRead,
-    clearAllNotifications
-  } = useExerciseChallenges(workouts);
+    generateCoachMessage 
+  } = useExerciseChallenges();
   
   const { sendNudge } = useSocialAccountability();
   
   const [isNudgeModalOpen, setIsNudgeModalOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [selectedMember, setSelectedMember] = useState<{groupId: string, memberId: string, memberName: string} | null>(null);
   const [customNudgeMessage, setCustomNudgeMessage] = useState('');
-
-  // Auto-open notifications if there are unread ones
-  useEffect(() => {
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-    if (unreadCount > 0 && unreadCount <= 2) {
-      setShowNotifications(true);
-    }
-  }, [notifications]);
 
   const handleJoinChallenge = (challengeId: string) => {
     joinChallenge(challengeId);
@@ -76,63 +58,10 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
     }
   };
 
-  const handleNotificationAction = (notification: any) => {
-    if (notification.type === 'team_nudge' && notification.groupId && notification.targetUserId) {
-      handleSendNudge(notification.groupId, notification.targetUserId);
-    } else if (notification.type === 'challenge_reminder' && notification.challengeId) {
-      // Could navigate to the specific challenge or show workout suggestions
-      console.log(`Take action on challenge: ${notification.challengeId}`);
-    }
-  };
-
   const coachMessage = generateCoachMessage();
 
   return (
     <div className="space-y-6 p-1">
-      {/* Notifications Toggle Button */}
-      <motion.div
-        className="flex justify-end"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowNotifications(!showNotifications)}
-          className="relative"
-        >
-          <Bell className="h-4 w-4 mr-2" />
-          Notifications
-          {notifications.filter(n => !n.isRead).length > 0 && (
-            <motion.div
-              className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            >
-              {notifications.filter(n => !n.isRead).length}
-            </motion.div>
-          )}
-        </Button>
-      </motion.div>
-
-      {/* Notifications Panel */}
-      <AnimatePresence>
-        {showNotifications && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <NotificationPanel
-              notifications={notifications}
-              onMarkAsRead={markNotificationAsRead}
-              onClearAll={clearAllNotifications}
-              onActionTaken={handleNotificationAction}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
       {/* AI Coach Message */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -156,12 +85,6 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = ({ workouts
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {coachMessage}
                 </p>
-                {/* Workout Stats Summary */}
-                {workoutStats.weeklyCount > 0 && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    📊 This week: {workoutStats.weeklyCount} workouts • {workoutStats.totalMinutes} minutes
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>

@@ -965,7 +965,7 @@ const ExerciseHub = () => {
                    </div>
                  ) : tab.id === 'exercise-challenges' ? (
                    /* Exercise Challenges Tab - New Feature */
-                   <ExerciseChallenges workouts={mockWorkouts} />
+                   <ExerciseChallenges />
                  ) : (
                    /* Other Tabs - Keep Original Design */
                    <Card className="w-full shadow-lg border-border bg-card">
