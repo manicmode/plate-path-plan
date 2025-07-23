@@ -42,6 +42,7 @@ import {
   ChevronRight,
   Lock
 } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
 import { FriendsArena } from '@/components/analytics/FriendsArena';
 import { MonthlyTrophyPodium } from '@/components/analytics/MonthlyTrophyPodium';
@@ -630,6 +631,7 @@ function GameAndChallengeContent() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
+  const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'combined'>('combined');
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -747,19 +749,79 @@ function GameAndChallengeContent() {
                   ))}
                 </div>
               </ScrollArea>
+              
+              {/* Challenge Mode Toggle - Mobile */}
+              <div className="flex justify-center mt-2">
+                <ToggleGroup 
+                  type="single" 
+                  value={challengeMode} 
+                  onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'combined')}
+                  className="bg-muted/50 rounded-full p-1"
+                >
+                  <ToggleGroupItem 
+                    value="nutrition" 
+                    className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    Nutrition
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
+                    value="exercise" 
+                    className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    Exercise
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
+                    value="combined" 
+                    className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    Combined
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
           ) : (
             // Desktop Navigation
-            <div className="flex items-center justify-between">
-              <Link to="/explore">
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center justify-center">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center justify-between">
+                <Link to="/explore">
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <div className="flex items-center justify-center">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
+                </div>
+                <div className="w-10"></div> {/* Spacer for balance */}
               </div>
-              <div className="w-10"></div> {/* Spacer for balance */}
+              
+              {/* Challenge Mode Toggle - Desktop */}
+              <div className="flex justify-center">
+                <ToggleGroup 
+                  type="single" 
+                  value={challengeMode} 
+                  onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'combined')}
+                  className="bg-muted/50 rounded-full p-1"
+                >
+                  <ToggleGroupItem 
+                    value="nutrition" 
+                    className="rounded-full px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    Nutrition
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
+                    value="exercise" 
+                    className="rounded-full px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    Exercise
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
+                    value="combined" 
+                    className="rounded-full px-4 py-2 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    Combined
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
           )}
           
