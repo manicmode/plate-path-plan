@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -40,7 +39,7 @@ const Explore = () => {
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'exercise-hub') {
         setNavigationInProgress(true);
-        navigate('/exercise-hub');
+        navigate('/exercise-hub', { state: { from: '/explore' } });
         setTimeout(() => setNavigationInProgress(false), 300);
       } else if (tileId === 'influencers') {
         setIsComingSoonOpen(true);

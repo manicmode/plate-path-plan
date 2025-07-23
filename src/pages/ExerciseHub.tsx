@@ -15,15 +15,21 @@ const ExerciseHub = () => {
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
-  const [originRoute, setOriginRoute] = useState<string>('/');
+  const [originRoute, setOriginRoute] = useState<string>('/explore');
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
 
   // Store the origin route when entering Exercise Hub
   useEffect(() => {
-    const referrer = location.state?.from || '/';
-    setOriginRoute(referrer);
+    const referrer = location.state?.from;
+    if (referrer) {
+      setOriginRoute(referrer);
+    } else {
+      // Enhanced fallback: check referrer or default to explore
+      const fallbackRoute = document.referrer.includes('/home') ? '/home' : '/explore';
+      setOriginRoute(fallbackRoute);
+    }
   }, [location.state]);
 
   // Mock workout data for today
