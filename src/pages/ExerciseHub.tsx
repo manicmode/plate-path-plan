@@ -643,19 +643,27 @@ const ExerciseHub = () => {
     <div className="min-h-screen bg-background p-4 pb-24">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3 -mx-4 mb-6">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleBackClick}
-            className="rounded-full"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2">
+        <div className="grid grid-cols-3 items-center">
+          {/* Left Column - Back Button */}
+          <div className="flex justify-start">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBackClick}
+              className="rounded-full"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </div>
+          
+          {/* Center Column - Title */}
+          <div className="flex items-center justify-center gap-2">
             <span className="text-2xl">🏋️</span>
             <h1 className="text-xl font-bold">Exercise Hub</h1>
           </div>
+          
+          {/* Right Column - Empty for balance */}
+          <div></div>
         </div>
       </div>
 
