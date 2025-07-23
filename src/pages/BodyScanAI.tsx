@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight } from 'lucide-react';
@@ -136,93 +137,6 @@ export default function BodyScanAI() {
     navigate('/exercise-hub');
   };
 
-  // Athletic human figure outline for pose guidance
-  const HumanOutline = () => (
-    <svg 
-      width="280" 
-      height="380" 
-      viewBox="0 0 280 380" 
-      className="opacity-70"
-    >
-      {/* Athletic human outline with realistic proportions */}
-      <g 
-        fill="none" 
-        stroke="hsl(var(--primary))" 
-        strokeWidth="2.5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-        className="animate-pulse"
-        style={{
-          filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
-          animation: 'pulse 2s ease-in-out infinite'
-        }}
-      >
-        {/* Head - more realistic shape */}
-        <ellipse cx="140" cy="40" rx="18" ry="22" />
-        
-        {/* Neck */}
-        <path d="M 140 62 L 140 75" />
-        
-        {/* Shoulders - athletic build */}
-        <path d="M 105 75 Q 140 70 175 75" />
-        
-        {/* Torso - V-shaped athletic build */}
-        <path d="M 105 75 L 115 95 L 120 130 L 125 160 L 130 175" />
-        <path d="M 175 75 L 165 95 L 160 130 L 155 160 L 150 175" />
-        
-        {/* Waist */}
-        <path d="M 130 175 Q 140 177 150 175" />
-        
-        {/* Hips */}
-        <path d="M 130 175 L 125 185 L 120 195" />
-        <path d="M 150 175 L 155 185 L 160 195" />
-        
-        {/* Arms extended - T-pose */}
-        {/* Left arm */}
-        <path d="M 105 75 L 60 80 L 45 85" /> {/* Upper arm */}
-        <path d="M 45 85 L 35 95 L 30 120" /> {/* Forearm */}
-        <ellipse cx="25" cy="125" rx="6" ry="4" /> {/* Hand */}
-        
-        {/* Right arm */}
-        <path d="M 175 75 L 220 80 L 235 85" /> {/* Upper arm */}
-        <path d="M 235 85 L 245 95 L 250 120" /> {/* Forearm */}
-        <ellipse cx="255" cy="125" rx="6" ry="4" /> {/* Hand */}
-        
-        {/* Legs - athletic stance */}
-        {/* Left leg */}
-        <path d="M 120 195 L 115 240 L 112 290 L 110 335" /> {/* Thigh to ankle */}
-        <ellipse cx="105" cy="345" rx="12" ry="8" /> {/* Foot */}
-        
-        {/* Right leg */}
-        <path d="M 160 195 L 165 240 L 168 290 L 170 335" /> {/* Thigh to ankle */}
-        <ellipse cx="175" cy="345" rx="12" ry="8" /> {/* Foot */}
-        
-        {/* Muscle definition lines */}
-        <path d="M 125 100 Q 140 95 155 100" opacity="0.6" /> {/* Chest */}
-        <path d="M 130 120 Q 140 115 150 120" opacity="0.6" /> {/* Abs */}
-      </g>
-      
-      {/* Body alignment markers */}
-      <g fill="hsl(var(--primary))" className="animate-ping" style={{ opacity: 0.8 }}>
-        {/* Shoulder markers */}
-        <circle cx="105" cy="75" r="3" />
-        <circle cx="175" cy="75" r="3" />
-        
-        {/* Hip markers */}
-        <circle cx="125" cy="185" r="3" />
-        <circle cx="155" cy="185" r="3" />
-        
-        {/* Foot alignment markers */}
-        <circle cx="105" cy="345" r="3" />
-        <circle cx="175" cy="345" r="3" />
-        
-        {/* Hand markers */}
-        <circle cx="25" cy="125" r="3" />
-        <circle cx="255" cy="125" r="3" />
-      </g>
-    </svg>
-  );
-
   return (
     <div className="relative w-full h-screen bg-black flex flex-col overflow-hidden">
       <div className="flex-1 relative">
@@ -248,13 +162,21 @@ export default function BodyScanAI() {
         </div>
         <canvas ref={canvasRef} className="hidden" />
         
-        {/* Human Outline Overlay - Clean and immersive */}
+        {/* Human Outline Overlay - Using uploaded PNG image */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className={`relative transition-all duration-500 ${
             isCapturing ? 'scale-105' : 'scale-100'
           } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
             <div className="relative">
-              <HumanOutline />
+              <img 
+                src="/lovable-uploads/64c1a95e-d05a-487b-bb53-b51e0c18f422.png"
+                alt="Body pose guide"
+                className="w-[300px] max-w-[90vw] h-auto opacity-80 animate-pulse"
+                style={{
+                  filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.6))',
+                  animation: 'pulse 2s ease-in-out infinite'
+                }}
+              />
             </div>
           </div>
         </div>
