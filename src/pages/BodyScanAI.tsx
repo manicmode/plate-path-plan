@@ -1,43 +1,41 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
+import * as tf from '@tensorflow/tfjs';
+import * as poseDetection from '@tensorflow-models/pose-detection';
+import '@tensorflow/tfjs-backend-webgl';
 
-// TODO: Future pose detection imports
-// import * as poseDetection from '@tensorflow-models/pose-detection';
-// import '@tensorflow/tfjs-backend-webgl';
-// import { MediaPipeHands } from '@mediapipe/hands';
-// import { Camera } from '@mediapipe/camera_utils';
+// Pose detection types
+interface PoseKeypoint {
+  x: number;
+  y: number;
+  score: number;
+  name: string;
+}
 
-// TODO: Future pose detection types
-// interface PoseKeypoint {
-//   x: number;
-//   y: number;
-//   confidence: number;
-// }
-// 
-// interface DetectedPose {
-//   keypoints: PoseKeypoint[];
-//   score: number;
-// }
-//
-// interface AlignmentFeedback {
-//   isAligned: boolean;
-//   misalignedLimbs: string[];
-//   alignmentScore: number;
-// }
+interface DetectedPose {
+  keypoints: PoseKeypoint[];
+  score: number;
+}
+
+interface AlignmentFeedback {
+  isAligned: boolean;
+  misalignedLimbs: string[];
+  alignmentScore: number;
+  feedback: string;
+}
 
 export default function BodyScanAI() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // TODO: Future pose detection refs
-  // const poseDetectorRef = useRef<poseDetection.PoseDetector | null>(null);
-  // const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const poseDetectorRef = useRef<poseDetection.PoseDetector | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -51,11 +49,14 @@ export default function BodyScanAI() {
   const [cameraMode, setCameraMode] = useState<'environment' | 'user'>('environment');
   const [showOrientationWarning, setShowOrientationWarning] = useState(false);
   
-  // TODO: Future pose detection state
-  // const [poseDetected, setPoseDetected] = useState<DetectedPose | null>(null);
-  // const [alignmentFeedback, setAlignmentFeedback] = useState<AlignmentFeedback | null>(null);
-  // const [isPoseDetectionEnabled, setIsPoseDetectionEnabled] = useState(true);
-  // const [poseDetectionReady, setPoseDetectionReady] = useState(false);
+  // Pose detection state
+  const [poseDetected, setPoseDetected] = useState<DetectedPose | null>(null);
+  const [alignmentFeedback, setAlignmentFeedback] = useState<AlignmentFeedback | null>(null);
+  const [isPoseDetectionEnabled, setIsPoseDetectionEnabled] = useState(true);
+  const [poseDetectionReady, setPoseDetectionReady] = useState(false);
+  const [validPoseTimer, setValidPoseTimer] = useState(0);
+  const [isCountingDown, setIsCountingDown] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(0);
 
   useEffect(() => {
     startCamera();
@@ -108,77 +109,140 @@ export default function BodyScanAI() {
     };
   }, []);
 
-  // TODO: Future pose detection initialization
+  // Initialize pose detection
   useEffect(() => {
-    // const initializePoseDetection = async () => {
-    //   try {
-    //     // Initialize TensorFlow.js pose detection
-    //     await tf.ready();
-    //     const detector = await poseDetection.createDetector(
-    //       poseDetection.SupportedModels.MoveNet,
-    //       {
-    //         modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-    //         enableSmoothing: true,
-    //       }
-    //     );
-    //     poseDetectorRef.current = detector;
-    //     setPoseDetectionReady(true);
-    //     console.log('Pose detection initialized');
-    //   } catch (error) {
-    //     console.error('Failed to initialize pose detection:', error);
-    //   }
-    // };
-    //
-    // initializePoseDetection();
-    //
-    // return () => {
-    //   if (poseDetectorRef.current) {
-    //     poseDetectorRef.current.dispose();
-    //   }
-    // };
+    const initializePoseDetection = async () => {
+      try {
+        console.log('Initializing TensorFlow.js...');
+        await tf.ready();
+        await tf.setBackend('webgl');
+        
+        console.log('Loading pose detection model...');
+        const detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          {
+            modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+            enableSmoothing: true,
+          }
+        );
+        
+        poseDetectorRef.current = detector;
+        setPoseDetectionReady(true);
+        console.log('Pose detection initialized successfully');
+        
+        toast({
+          title: "Pose Detection Ready",
+          description: "AI-powered pose alignment is now active",
+        });
+      } catch (error) {
+        console.error('Failed to initialize pose detection:', error);
+        toast({
+          title: "Pose Detection Error",
+          description: "AI features disabled. Basic capture still available.",
+          variant: "destructive"
+        });
+        setIsPoseDetectionEnabled(false);
+      }
+    };
+
+    initializePoseDetection();
+
+    return () => {
+      if (poseDetectorRef.current) {
+        poseDetectorRef.current.dispose();
+      }
+    };
   }, []);
 
-  // TODO: Future real-time pose detection loop
+  // Real-time pose detection loop
   useEffect(() => {
-    // let animationFrame: number;
-    //
-    // const detectPoseRealTime = async () => {
-    //   if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled) {
-    //     animationFrame = requestAnimationFrame(detectPoseRealTime);
-    //     return;
-    //   }
-    //
-    //   try {
-    //     const poses = await poseDetectorRef.current.estimatePoses(videoRef.current);
-    //     
-    //     if (poses.length > 0) {
-    //       const pose = poses[0];
-    //       setPoseDetected(pose);
-    //       
-    //       // Analyze alignment with body outline
-    //       const alignment = analyzePoseAlignment(pose);
-    //       setAlignmentFeedback(alignment);
-    //       
-    //       // Draw pose overlay
-    //       drawPoseOverlay(pose, alignment);
-    //     }
-    //   } catch (error) {
-    //     console.error('Pose detection error:', error);
-    //   }
-    //
-    //   animationFrame = requestAnimationFrame(detectPoseRealTime);
-    // };
-    //
-    // if (stream && poseDetectionReady) {
-    //   detectPoseRealTime();
-    // }
-    //
-    // return () => {
-    //   if (animationFrame) {
-    //     cancelAnimationFrame(animationFrame);
-    //   }
-    // };
-  }, [stream, /* poseDetectionReady, isPoseDetectionEnabled */]);
+    let lastTime = 0;
+    const FPS_LIMIT = 15; // 15 FPS for mobile performance
+    const frameInterval = 1000 / FPS_LIMIT;
+
+    const detectPoseRealTime = async (currentTime: number) => {
+      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+
+      if (currentTime - lastTime < frameInterval) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+
+      try {
+        const poses = await poseDetectorRef.current.estimatePoses(videoRef.current);
+        
+        if (poses.length > 0) {
+          const pose = poses[0] as DetectedPose;
+          setPoseDetected(pose);
+          
+          // Analyze alignment with body outline
+          const alignment = analyzePoseAlignment(pose);
+          setAlignmentFeedback(alignment);
+          
+          // Draw pose overlay
+          drawPoseOverlay(pose, alignment);
+          
+          // Handle valid pose timing
+          if (alignment.isAligned) {
+            setValidPoseTimer(prev => prev + frameInterval);
+          } else {
+            setValidPoseTimer(0);
+            setIsCountingDown(false);
+            setCountdownSeconds(0);
+          }
+        } else {
+          setPoseDetected(null);
+          setAlignmentFeedback(null);
+          setValidPoseTimer(0);
+          setIsCountingDown(false);
+          setCountdownSeconds(0);
+        }
+      } catch (error) {
+        console.error('Pose detection error:', error);
+      }
+
+      lastTime = currentTime;
+      animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+    };
+
+    if (stream && poseDetectionReady && isPoseDetectionEnabled) {
+      animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
+
+  // Auto-capture countdown logic
+  useEffect(() => {
+    if (validPoseTimer >= 2000 && !isCountingDown && !hasImageReady) { // 2 seconds of valid pose
+      setIsCountingDown(true);
+      setCountdownSeconds(3);
+      
+      const countdownInterval = setInterval(() => {
+        setCountdownSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            setIsCountingDown(false);
+            // Auto capture
+            if (alignmentFeedback?.isAligned) {
+              captureImage();
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(countdownInterval);
+    }
+  }, [validPoseTimer, isCountingDown, hasImageReady, alignmentFeedback]);
 
   const startCamera = async () => {
     try {
@@ -216,20 +280,17 @@ export default function BodyScanAI() {
   const captureImage = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     
-    setIsCapturing(true);
+    // Pose validation before capture
+    if (isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned) {
+      toast({
+        title: "Pose Alignment Issue",
+        description: `Please adjust: ${alignmentFeedback.feedback}`,
+        variant: "destructive"
+      });
+      return;
+    }
     
-    // TODO: Future pose validation before capture
-    // if (isPoseDetectionEnabled && alignmentFeedback) {
-    //   if (alignmentFeedback.alignmentScore < 0.8) {
-    //     toast({
-    //       title: "Pose Alignment Issue",
-    //       description: `Please adjust: ${alignmentFeedback.misalignedLimbs.join(', ')}`,
-    //       variant: "destructive"
-    //     });
-    //     setIsCapturing(false);
-    //     return;
-    //   }
-    // }
+    setIsCapturing(true);
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -245,6 +306,8 @@ export default function BodyScanAI() {
     setCapturedImage(imageData);
     setHasImageReady(true);
     setIsCapturing(false);
+    setValidPoseTimer(0);
+    setIsCountingDown(false);
     
     toast({
       title: "Photo Captured!",
@@ -252,100 +315,150 @@ export default function BodyScanAI() {
     });
   };
 
-  // TODO: Future pose analysis functions
-  // const analyzePoseAlignment = (pose: DetectedPose): AlignmentFeedback => {
-  //   const alignmentThreshold = 0.1; // 10% tolerance
-  //   const misalignedLimbs: string[] = [];
-  //   
-  //   // Check key pose landmarks against ideal body outline positions
-  //   const keypoints = pose.keypoints;
-  //   
-  //   // Analyze shoulder alignment (should be horizontal)
-  //   const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
-  //   const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
-  //   
-  //   if (leftShoulder && rightShoulder) {
-  //     const shoulderAngle = Math.abs(leftShoulder.y - rightShoulder.y) / Math.abs(leftShoulder.x - rightShoulder.x);
-  //     if (shoulderAngle > alignmentThreshold) {
-  //       misalignedLimbs.push('shoulders');
-  //     }
-  //   }
-  //   
-  //   // Analyze arm position (should be outstretched)
-  //   const leftWrist = keypoints.find(kp => kp.name === 'left_wrist');
-  //   const rightWrist = keypoints.find(kp => kp.name === 'right_wrist');
-  //   
-  //   if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
-  //     // Check if arms are extended horizontally
-  //     const leftArmExtended = Math.abs(leftWrist.y - leftShoulder.y) < alignmentThreshold;
-  //     const rightArmExtended = Math.abs(rightWrist.y - rightShoulder.y) < alignmentThreshold;
-  //     
-  //     if (!leftArmExtended) misalignedLimbs.push('left_arm');
-  //     if (!rightArmExtended) misalignedLimbs.push('right_arm');
-  //   }
-  //   
-  //   // Calculate overall alignment score
-  //   const totalCheckpoints = 3; // shoulders, left_arm, right_arm
-  //   const alignmentScore = (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints;
-  //   
-  //   return {
-  //     isAligned: misalignedLimbs.length === 0,
-  //     misalignedLimbs,
-  //     alignmentScore
-  //   };
-  // };
+  // Pose analysis functions
+  const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
+    const alignmentThreshold = 0.15; // 15% tolerance
+    const misalignedLimbs: string[] = [];
+    let feedback = "";
+    
+    // Find key landmarks
+    const keypoints = pose.keypoints;
+    const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
+    const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
+    const leftWrist = keypoints.find(kp => kp.name === 'left_wrist');
+    const rightWrist = keypoints.find(kp => kp.name === 'right_wrist');
+    const leftHip = keypoints.find(kp => kp.name === 'left_hip');
+    const rightHip = keypoints.find(kp => kp.name === 'right_hip');
+    const nose = keypoints.find(kp => kp.name === 'nose');
+    
+    // Check if person is facing camera (nose should be visible)
+    if (!nose || nose.score < 0.5) {
+      misalignedLimbs.push('face');
+      feedback = "Please face the camera";
+    }
+    
+    // Analyze shoulder alignment (should be horizontal)
+    if (leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5) {
+      const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+      const shoulderHeight = Math.abs(leftShoulder.y - rightShoulder.y);
+      const shoulderAngle = shoulderHeight / shoulderWidth;
+      
+      if (shoulderAngle > alignmentThreshold) {
+        misalignedLimbs.push('shoulders');
+        feedback = "Keep shoulders level";
+      }
+    }
+    
+    // Analyze arm position (should be outstretched horizontally)
+    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
+      if (leftWrist.score > 0.3 && leftShoulder.score > 0.5) {
+        const leftArmHeight = Math.abs(leftWrist.y - leftShoulder.y);
+        const leftShoulderHeight = Math.abs(leftShoulder.y - (rightShoulder?.y || leftShoulder.y));
+        
+        if (leftArmHeight > leftShoulderHeight * 0.3) {
+          misalignedLimbs.push('left_arm');
+          feedback = "Raise left arm horizontally";
+        }
+      }
+      
+      if (rightWrist.score > 0.3 && rightShoulder.score > 0.5) {
+        const rightArmHeight = Math.abs(rightWrist.y - rightShoulder.y);
+        const rightShoulderHeight = Math.abs(rightShoulder.y - (leftShoulder?.y || rightShoulder.y));
+        
+        if (rightArmHeight > rightShoulderHeight * 0.3) {
+          misalignedLimbs.push('right_arm');
+          feedback = "Raise right arm horizontally";
+        }
+      }
+    }
+    
+    // Check body centering
+    if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
+      const hipCenter = (leftHip.x + rightHip.x) / 2;
+      const screenCenter = (videoRef.current?.videoWidth || 640) / 2;
+      const centerOffset = Math.abs(hipCenter - screenCenter) / screenCenter;
+      
+      if (centerOffset > 0.2) {
+        misalignedLimbs.push('centering');
+        feedback = "Move to center of frame";
+      }
+    }
+    
+    // Calculate overall alignment score
+    const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
+    const alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
+    
+    if (misalignedLimbs.length === 0) {
+      feedback = "Perfect pose! Hold steady...";
+    }
+    
+    return {
+      isAligned: misalignedLimbs.length === 0,
+      misalignedLimbs,
+      alignmentScore,
+      feedback
+    };
+  }, []);
 
-  // const drawPoseOverlay = (pose: DetectedPose, alignment: AlignmentFeedback) => {
-  //   if (!overlayCanvasRef.current || !videoRef.current) return;
-  //   
-  //   const canvas = overlayCanvasRef.current;
-  //   const ctx = canvas.getContext('2d');
-  //   if (!ctx) return;
-  //   
-  //   // Clear previous drawings
-  //   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  //   
-  //   // Draw pose keypoints with color coding
-  //   pose.keypoints.forEach((keypoint) => {
-  //     if (keypoint.confidence > 0.5) {
-  //       const isAligned = !alignment.misalignedLimbs.some(limb => 
-  //         keypoint.name?.includes(limb.replace('_', ' '))
-  //       );
-  //       
-  //       ctx.beginPath();
-  //       ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
-  //       ctx.fillStyle = isAligned ? '#00ff00' : '#ff0000'; // Green for aligned, red for misaligned
-  //       ctx.fill();
-  //       ctx.strokeStyle = '#ffffff';
-  //       ctx.lineWidth = 2;
-  //       ctx.stroke();
-  //     }
-  //   });
-  //   
-  //   // Draw skeleton connections
-  //   const connections = [
-  //     ['left_shoulder', 'right_shoulder'],
-  //     ['left_shoulder', 'left_elbow'],
-  //     ['left_elbow', 'left_wrist'],
-  //     ['right_shoulder', 'right_elbow'],
-  //     ['right_elbow', 'right_wrist'],
-  //     // Add more connections as needed
-  //   ];
-  //   
-  //   connections.forEach(([pointA, pointB]) => {
-  //     const kpA = pose.keypoints.find(kp => kp.name === pointA);
-  //     const kpB = pose.keypoints.find(kp => kp.name === pointB);
-  //     
-  //     if (kpA && kpB && kpA.confidence > 0.5 && kpB.confidence > 0.5) {
-  //       ctx.beginPath();
-  //       ctx.moveTo(kpA.x, kpA.y);
-  //       ctx.lineTo(kpB.x, kpB.y);
-  //       ctx.strokeStyle = '#00ffff';
-  //       ctx.lineWidth = 3;
-  //       ctx.stroke();
-  //     }
-  //   });
-  // };
+  const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
+    if (!overlayCanvasRef.current || !videoRef.current) return;
+    
+    const canvas = overlayCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Set canvas size to match video
+    if (canvas.width !== videoRef.current.videoWidth || canvas.height !== videoRef.current.videoHeight) {
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+    }
+    
+    // Clear previous drawings
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw pose keypoints with color coding
+    pose.keypoints.forEach((keypoint) => {
+      if (keypoint.score > 0.5) {
+        const isAligned = !alignment.misalignedLimbs.some(limb => 
+          keypoint.name?.includes(limb.replace('_', ' '))
+        );
+        
+        ctx.beginPath();
+        ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = isAligned ? '#00ff00' : '#ff6b00'; // Green for aligned, orange for misaligned
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    });
+    
+    // Draw skeleton connections
+    const connections = [
+      ['left_shoulder', 'right_shoulder'],
+      ['left_shoulder', 'left_elbow'],
+      ['left_elbow', 'left_wrist'],
+      ['right_shoulder', 'right_elbow'],
+      ['right_elbow', 'right_wrist'],
+      ['left_hip', 'right_hip'],
+      ['left_shoulder', 'left_hip'],
+      ['right_shoulder', 'right_hip'],
+    ];
+    
+    connections.forEach(([pointA, pointB]) => {
+      const kpA = pose.keypoints.find(kp => kp.name === pointA);
+      const kpB = pose.keypoints.find(kp => kp.name === pointB);
+      
+      if (kpA && kpB && kpA.score > 0.5 && kpB.score > 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(kpA.x, kpA.y);
+        ctx.lineTo(kpB.x, kpB.y);
+        ctx.strokeStyle = alignment.isAligned ? '#00ffff' : '#ff6b00';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+    });
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -447,15 +560,15 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* TODO: Future pose detection overlay canvas */}
-      {/* <canvas 
+      {/* Pose detection overlay canvas */}
+      <canvas 
         ref={overlayCanvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-25"
         style={{ 
           transform: cameraMode === 'user' ? 'scaleX(-1)' : 'none',
           WebkitTransform: cameraMode === 'user' ? 'scaleX(-1)' : 'none'
         }}
-      /> */}
+      />
       
       {/* Grid Overlay - Fixed behind camera */}
       <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
@@ -542,11 +655,18 @@ export default function BodyScanAI() {
           {/* Main Action Button */}
           <Button
             onClick={hasImageReady ? handleContinue : captureImage}
-            disabled={isCapturing /* || (isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned) */}
-            className={`relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 
-                     text-white font-bold py-4 text-lg border-2 border-green-400 
-                     shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
-                     transition-all duration-300 disabled:opacity-50`}
+            disabled={
+              isCapturing || 
+              (isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned) ||
+              isCountingDown
+            }
+            className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
+              isPoseDetectionEnabled && alignmentFeedback?.isAligned
+                ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
+                : isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
+            }`}
           >
             <div className="flex items-center justify-center">
               {hasImageReady ? (
@@ -556,14 +676,16 @@ export default function BodyScanAI() {
                 </>
               ) : (
                 <>
-                  <div className={`w-6 h-6 mr-3 ${isCapturing ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
-                  {isCapturing ? '🔍 SCANNING...' : '📸 Capture Front View'}
-                  {/* TODO: Add pose alignment indicator */}
-                  {/* {isPoseDetectionEnabled && alignmentFeedback && (
+                  <div className={`w-6 h-6 mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
+                  {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
+                   isCapturing ? '🔍 SCANNING...' : 
+                   '📸 Capture Front View'}
+                  {/* Pose alignment indicator */}
+                  {isPoseDetectionEnabled && alignmentFeedback && (
                     <span className="ml-2">
                       {alignmentFeedback.isAligned ? '✅' : '⚠️'}
                     </span>
-                  )} */}
+                  )}
                 </>
               )}
             </div>
@@ -575,33 +697,69 @@ export default function BodyScanAI() {
         </div>
       </div>
 
-      {/* TODO: Future alignment feedback overlay */}
-      {/* {alignmentFeedback && !alignmentFeedback.isAligned && (
+      {/* Alignment feedback overlay */}
+      {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
-          <div className="bg-red-500/90 backdrop-blur-sm rounded-2xl p-4 border border-red-400">
-            <h3 className="text-white font-bold mb-2">⚠️ Pose Alignment</h3>
+          <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-300 ${
+            alignmentFeedback.alignmentScore > 0.6 
+              ? 'bg-orange-500/90 border-orange-400' 
+              : 'bg-red-500/90 border-red-400'
+          }`}>
+            <h3 className="text-white font-bold mb-2 flex items-center">
+              {alignmentFeedback.alignmentScore > 0.6 ? '⚠️' : '❌'} Pose Alignment
+            </h3>
             <p className="text-white text-sm mb-2">
-              Alignment Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
+              Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
             </p>
-            <div className="space-y-1">
-              {alignmentFeedback.misalignedLimbs.map((limb) => (
-                <div key={limb} className="text-white text-xs bg-red-400/50 rounded px-2 py-1">
-                  Adjust {limb.replace('_', ' ')}
+            <p className="text-white text-sm font-medium">
+              {alignmentFeedback.feedback}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Perfect pose indicator */}
+      {alignmentFeedback?.isAligned && !hasImageReady && (
+        <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
+          <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400">
+            <div className="text-center">
+              <div className="text-2xl mb-2">✅</div>
+              <p className="text-white font-bold text-lg">Perfect Pose!</p>
+              <p className="text-white text-sm">Hold steady for auto-capture...</p>
+              {validPoseTimer > 0 && (
+                <div className="mt-2">
+                  <div className="bg-white/20 rounded-full h-2">
+                    <div 
+                      className="bg-white rounded-full h-2 transition-all duration-100"
+                      style={{ width: `${Math.min(100, (validPoseTimer / 2000) * 100)}%` }}
+                    ></div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
-      )} */}
+      )}
 
-      {/* TODO: Future pose detection status indicator */}
-      {/* {isPoseDetectionEnabled && (
-        <div className="absolute top-20 right-6 z-25">
-          <div className={`w-3 h-3 rounded-full ${
+      {/* Auto-capture countdown */}
+      {isCountingDown && countdownSeconds > 0 && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+          <div className="bg-green-500/95 backdrop-blur-md rounded-full w-24 h-24 flex items-center justify-center border-4 border-white">
+            <span className="text-white text-3xl font-bold animate-pulse">
+              {countdownSeconds}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Pose detection status indicator */}
+      {isPoseDetectionEnabled && (
+        <div className="absolute top-24 right-6 z-25">
+          <div className={`w-3 h-3 rounded-full transition-colors duration-300 ${
             poseDetectionReady ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'
           }`}></div>
         </div>
-      )} */}
+      )}
 
       {/* Hidden file input */}
       <input
