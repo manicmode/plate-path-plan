@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ interface ComparisonModalProps {
 export default function BodyScanResults() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { trackExportUsage, trackCompareUsage } = useBodyScanSharingReminder();
   const [scans, setScans] = useState<GroupedScans>({});
   const [allScans, setAllScans] = useState<BodyScan[]>([]);
   const [weeklyScans, setWeeklyScans] = useState<WeeklyScans[]>([]);
@@ -185,6 +187,7 @@ export default function BodyScanResults() {
   };
 
   const exportComparison = async (current: WeeklyScans, previous?: WeeklyScans) => {
+    trackExportUsage(); // Track that user used export feature
     toast.success('Comparison exported! (Feature coming soon)');
   };
 
@@ -417,7 +420,10 @@ export default function BodyScanResults() {
                             </div>
                             <div className="relative">
                               <div className="grid grid-cols-3 gap-1 p-2 border-2 border-primary/20 rounded-lg bg-card hover:border-primary/40 transition-colors cursor-pointer"
-                                   onClick={() => setSelectedWeek(week)}>
+                                   onClick={() => {
+                                     setSelectedWeek(week);
+                                     trackCompareUsage(); // Track that user used compare feature
+                                   }}>
                                 {['front', 'side', 'back'].map((type) => {
                                   const scan = week.scans[type as keyof GroupedScans];
                                   return (

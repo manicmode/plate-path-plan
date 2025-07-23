@@ -16,6 +16,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
 import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
+import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 
 // Lazy load components
 const Index = lazy(() => import('@/pages/Index'));
@@ -58,6 +59,7 @@ const queryClient = new QueryClient({
 function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
   useBodyScanTimelineReminder();
+  useBodyScanSharingReminder();
 
   return (
     <>
