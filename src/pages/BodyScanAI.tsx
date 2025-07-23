@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RotateCcw } from 'lucide-react';
@@ -167,7 +166,7 @@ export default function BodyScanAI() {
   };
 
   return (
-    <div className="relative w-full h-full bg-black flex flex-col overflow-hidden">
+    <div className="relative w-full h-screen bg-black flex flex-col overflow-hidden">
       <div className="flex-1 relative">
         {/* Camera video background - positioned absolutely to ensure proper rendering */}
         <div className="absolute inset-0 z-0">
@@ -192,7 +191,7 @@ export default function BodyScanAI() {
         <canvas ref={canvasRef} className="hidden" />
         
         {/* White Silhouette Overlay - Positioned lower to avoid header overlap */}
-        <div className="absolute inset-0 flex items-center justify-center z-10 pt-52 pb-16">
+        <div className="absolute inset-0 flex items-end justify-center z-10 pt-32 pb-32">
           <div className={`relative transition-all duration-500 ${
             isCapturing ? 'scale-105' : 'scale-100'
           } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
@@ -200,7 +199,7 @@ export default function BodyScanAI() {
               <img 
                 src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
                 alt=""
-                className="max-h-[55vh] max-w-[90vw] h-auto w-auto opacity-80 object-contain"
+                className="max-h-[65vh] max-w-[90vw] h-auto w-auto opacity-80 object-contain"
                 style={{
                   filter: 'brightness(1.3) drop-shadow(0 0 20px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 60px rgba(255, 255, 255, 0.3))',
                   animation: 'pulse 3s ease-in-out infinite',
@@ -225,8 +224,8 @@ export default function BodyScanAI() {
           }}></div>
         </div>
 
-        {/* Header Instructions - Positioned at top like Health Inspector */}
-        <div className="absolute top-8 left-4 right-4 text-center z-20">
+        {/* Header Instructions - Moved higher to avoid overlap */}
+        <div className="absolute top-2 left-4 right-4 text-center z-20">
           <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
             <h2 className="text-white text-lg font-bold mb-2">
               📸 Front Body Scan
@@ -238,7 +237,7 @@ export default function BodyScanAI() {
         </div>
 
         {/* Camera Switch Button - Top right */}
-        <div className="absolute top-8 right-4 z-20">
+        <div className="absolute top-2 right-4 z-20">
           <Button
             onClick={switchCamera}
             variant="outline"
@@ -260,7 +259,7 @@ export default function BodyScanAI() {
       </div>
 
       {/* Bottom Controls - Match Health Inspector layout exactly */}
-      <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
+      <div className="p-6 pb-24 bg-gradient-to-t from-black/90 to-transparent">
         <div className="flex flex-col space-y-4">
           {/* Cancel Button - Centered with w-1/2 width */}
           <div className="flex justify-center">
