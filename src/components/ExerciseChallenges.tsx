@@ -62,29 +62,34 @@ export const ExerciseChallenges: React.FC = () => {
 
   return (
     <div className="space-y-6 p-1">
-      {/* AI Coach Message */}
+      {/* Exercise Challenges Banner */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="w-full"
       >
-        <Card className="border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
+        <Card className="border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5 shadow-lg shadow-primary/20 rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center gap-3">
               <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
+                animate={{ 
+                  y: [0, -4, 0],
+                  rotate: [0, 2, -2, 0]
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  repeatDelay: 2,
+                  ease: "easeInOut"
+                }}
+                className="text-3xl"
               >
-                <Sparkles className="h-6 w-6 text-primary mt-0.5" />
+                🚀
               </motion.div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-foreground">AI Fitness Coach</span>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Live</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {coachMessage}
-                </p>
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-foreground mb-1">Exercise Challenges</h1>
+                <p className="text-sm text-muted-foreground">Join challenges, track progress, and stay motivated together!</p>
               </div>
             </div>
           </CardContent>
