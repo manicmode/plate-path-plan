@@ -72,3 +72,9 @@ verify_jwt = false
 
 [functions.generate-monthly-exercise-reports]
 verify_jwt = false
+
+[functions.generate-yearly-exercise-reports]
+verify_jwt = false
+
+[functions.test-yearly-reports]
+verify_jwt = false
