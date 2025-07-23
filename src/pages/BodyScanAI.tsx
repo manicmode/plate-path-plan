@@ -181,8 +181,8 @@ export default function BodyScanAI() {
         }}></div>
       </div>
 
-      {/* Header Instructions - Fixed at top */}
-      <div className="absolute top-8 left-4 right-4 z-20">
+      {/* Header Instructions - Fixed at top with proper spacing */}
+      <div className="absolute top-20 left-4 right-4 z-20">
         <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
           <h2 className="text-white text-lg font-bold mb-2 text-center">
             📸 Front Body Scan
@@ -193,7 +193,7 @@ export default function BodyScanAI() {
         </div>
       </div>
       
-      {/* Body Silhouette Overlay - Vertically centered */}
+      {/* Body Silhouette Overlay - Vertically centered with bigger size */}
       <div className="absolute inset-0 flex items-center justify-center z-15">
         <div className={`relative transition-all duration-500 ${
           isCapturing ? 'scale-105' : 'scale-100'
@@ -201,7 +201,7 @@ export default function BodyScanAI() {
           <img 
             src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             alt=""
-            className="max-h-[55vh] max-w-[70vw] h-auto w-auto opacity-75 object-contain"
+            className="max-h-[65vh] max-w-[85vw] h-auto w-auto opacity-75 object-contain"
             style={{
               filter: 'brightness(1.3) drop-shadow(0 0 20px rgba(0, 255, 255, 0.8)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 60px rgba(0, 255, 255, 0.4))',
               animation: 'pulse 3s ease-in-out infinite'
@@ -221,7 +221,7 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* Fixed Bottom Controls - Similar to Health Scanner */}
+      {/* Fixed Bottom Controls - Matching Health Scanner */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
         <div className="flex flex-col space-y-4">
           {/* Cancel Button */}
@@ -240,7 +240,7 @@ export default function BodyScanAI() {
             className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
           >
             <Upload className="w-5 h-5 mr-2" />
-            📷 Enter Barcode Manually
+            📷 Upload Image
           </Button>
 
           {/* Main Action Button */}
@@ -261,7 +261,7 @@ export default function BodyScanAI() {
               ) : (
                 <>
                   <div className={`w-6 h-6 mr-3 ${isCapturing ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
-                  {isCapturing ? '🔍 SCANNING...' : '🚨 ANALYZE NOW'}
+                  {isCapturing ? '🔍 SCANNING...' : '📸 Capture Front View'}
                 </>
               )}
             </div>
