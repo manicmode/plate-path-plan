@@ -215,7 +215,7 @@ const ExerciseHub = () => {
       <div className="mb-4 mt-2">
         <button
           onClick={() => navigate('/ai-fitness-coach', { state: { from: '/exercise-hub' } })}
-          className="w-full p-4 rounded-xl bg-gradient-to-r from-indigo-200 to-purple-400 dark:from-indigo-400 dark:to-purple-600 hover:from-indigo-300 hover:to-purple-500 dark:hover:from-indigo-500 dark:hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-lg hover:shadow-purple-500/25 border border-indigo-300/20 dark:border-indigo-500/20 shadow-md group"
+          className="w-full p-4 rounded-xl bg-gradient-to-r from-orange-300 to-red-500 dark:from-orange-400 dark:to-red-600 hover:from-orange-400 hover:to-red-600 dark:hover:from-orange-500 dark:hover:to-red-700 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-orange-500/40 border border-orange-300/30 dark:border-orange-500/30 shadow-xl shadow-orange-500/25 group"
         >
           <div className="flex items-center justify-center gap-3 mb-1">
             <span className="text-3xl transition-transform duration-300 group-hover:scale-110">🤖</span>
