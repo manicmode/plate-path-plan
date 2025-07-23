@@ -1,13 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+    { role: 'assistant', content: 'Hello! I\'m your AI Fitness Coach. How can I help you achieve your fitness goals today?' }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   useScrollToTop();
+
+  const smartPrompts = [
+    { emoji: '🏋️', text: 'Build Me a Routine', message: 'Can you create a personalized workout routine based on my fitness level and goals?' },
+    { emoji: '📈', text: 'Track My Progress', message: 'Help me track my fitness progress and suggest areas for improvement.' },
+    { emoji: '💡', text: 'Give Me a Tip', message: 'Share a fitness tip that can help me improve my workout performance today.' },
+    { emoji: '🔥', text: 'Motivate Me!', message: 'I need some motivation to stay consistent with my fitness routine!' }
+  ];
+
+  const handleSendMessage = async (message: string) => {
+    if (!message.trim()) return;
+    
+    setIsLoading(true);
+    const newMessages = [...messages, { role: 'user' as const, content: message }];
+    setMessages(newMessages);
+    setInputMessage('');
+    
+    // Simulate AI response - in real implementation, this would call your AI service
+    setTimeout(() => {
+      const responses = [
+        "Great question! Let me help you with that...",
+        "Based on your fitness goals, I recommend...",
+        "Here's a personalized suggestion for you...",
+        "Excellent! Let's work on that together..."
+      ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      setMessages([...newMessages, { role: 'assistant', content: randomResponse }]);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const handlePromptClick = (promptMessage: string) => {
+    handleSendMessage(promptMessage);
+  };
 
   const motivationalQuotes = [
     "The only bad workout is the one that didn't happen.",
@@ -77,7 +116,7 @@ export default function AIFitnessCoach() {
         </div>
 
         {/* AI Chat Component */}
-        <Card className="border-2 border-dashed border-indigo-300 dark:border-indigo-700">
+        <Card className="border-2 border-indigo-300 dark:border-indigo-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-indigo-600" />
@@ -86,13 +125,72 @@ export default function AIFitnessCoach() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-4 text-center">
-                <p className="text-muted-foreground mb-4">
-                  Chat with your AI fitness coach for personalized advice, workout modifications, and motivation.
-                </p>
-                <Button className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white">
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Start Conversation
+              {/* Chat Messages */}
+              <div className="bg-muted/30 rounded-lg p-4 min-h-[300px] max-h-[400px] overflow-y-auto space-y-3">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        message.role === 'user'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-white dark:bg-gray-700 text-foreground'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white dark:bg-gray-700 p-3 rounded-lg">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Smart Prompt Buttons */}
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground font-medium">Quick Actions:</p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {smartPrompts.map((prompt, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      onClick={() => handlePromptClick(prompt.message)}
+                      className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105"
+                      disabled={isLoading}
+                    >
+                      <span className="mr-2">{prompt.emoji}</span>
+                      <span className="text-sm font-medium">{prompt.text}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Input */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ask your AI fitness coach anything..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
+                  className="flex-1"
+                  disabled={isLoading}
+                />
+                <Button
+                  onClick={() => handleSendMessage(inputMessage)}
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                >
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
