@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,14 +9,22 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
+  const [originRoute, setOriginRoute] = useState<string>('/');
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
+
+  // Store the origin route when entering Exercise Hub
+  useEffect(() => {
+    const referrer = location.state?.from || '/';
+    setOriginRoute(referrer);
+  }, [location.state]);
 
   // Mock workout data for today
   const mockWorkouts = [
@@ -179,7 +187,7 @@ const ExerciseHub = () => {
   ];
 
   const handleBackClick = () => {
-    navigate(-1);
+    navigate(originRoute);
   };
 
   return (
@@ -200,7 +208,7 @@ const ExerciseHub = () => {
       {/* AI Fitness Coach Tab */}
       <div className="mb-4 mt-2">
         <button
-          onClick={() => navigate('/ai-fitness-coach')}
+          onClick={() => navigate('/ai-fitness-coach', { state: { from: '/exercise-hub' } })}
           className="w-full p-4 rounded-xl bg-gradient-to-r from-indigo-200 to-purple-400 dark:from-indigo-400 dark:to-purple-600 hover:from-indigo-300 hover:to-purple-500 dark:hover:from-indigo-500 dark:hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-lg hover:shadow-purple-500/25 border border-indigo-300/20 dark:border-indigo-500/20 shadow-md group"
         >
           <div className="flex items-center justify-center gap-3 mb-1">
