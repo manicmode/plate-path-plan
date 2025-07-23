@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Upload, ArrowRight, RotateCcw } from 'lucide-react';
+import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
@@ -256,19 +256,24 @@ export default function BodyScanAI() {
         </div>
       </div>
 
-      {/* Camera Toggle Button - Top Right */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col items-end space-y-2">
+      {/* Camera Toggle Button - Floating Top Right */}
+      <div className="fixed top-6 right-6 z-30 flex flex-col items-center space-y-2">
         <Button
           onClick={toggleCamera}
-          className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm border border-white/30 text-white hover:bg-black/70 transition-all duration-300"
+          className="w-14 h-14 rounded-full bg-black/80 backdrop-blur-md border-2 border-white/40 text-white hover:bg-black/90 hover:border-white/60 transition-all duration-300 shadow-lg hover:shadow-xl"
           size="sm"
         >
-          <RotateCcw className="w-5 h-5" />
+          <div className="text-lg">🔄</div>
         </Button>
-        <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1 border border-white/20">
-          <span className="text-white text-xs font-medium">
-            {cameraMode === 'environment' ? 'Back Camera Active' : 'Front Camera Active'}
-          </span>
+        <div className="bg-black/80 backdrop-blur-md rounded-full px-3 py-1 border border-white/30 shadow-lg">
+          <div className="flex items-center space-x-1">
+            <span className="text-xs">
+              {cameraMode === 'environment' ? '📱' : '🤳'}
+            </span>
+            <span className="text-white text-xs font-medium">
+              {cameraMode === 'environment' ? 'Back' : 'Front'}
+            </span>
+          </div>
         </div>
       </div>
       
