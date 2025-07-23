@@ -228,6 +228,19 @@ const ExerciseHub = () => {
         </button>
       </div>
 
+      {/* Add Workout Button */}
+      <Card className="w-full shadow-lg border-border bg-card mb-6">
+        <CardContent className="p-6">
+          <Button
+            onClick={() => setIsAddWorkoutModalOpen(true)}
+            className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Add Workout
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Tab Navigation */}
       <div className="mb-6">
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'} mb-4`}>
@@ -274,19 +287,6 @@ const ExerciseHub = () => {
                 {/* Workout Log Tab - Enhanced */}
                 {tab.id === 'workout-log' ? (
                   <div className="space-y-6">
-                    {/* Add Workout Button */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6">
-                        <Button
-                          onClick={() => setIsAddWorkoutModalOpen(true)}
-                          className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-                        >
-                          <Plus className="mr-2 h-5 w-5" />
-                          Add Workout
-                        </Button>
-                      </CardContent>
-                    </Card>
-
                     {/* Today's Workouts Header */}
                     <div className="text-center mb-4">
                       <h2 className="text-2xl font-bold text-foreground mb-2">Today's Workouts</h2>
