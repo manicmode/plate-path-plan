@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export interface MiniChallenge {
@@ -62,8 +62,8 @@ export interface MotivationalNotification {
 export const useExerciseChallenges = (workouts: any[] = []) => {
   const { toast } = useToast();
   
-  // Memoize workout stats calculation to prevent unnecessary recalculations
-  const workoutStats = useMemo(() => {
+  // Calculate user's recent workout activity
+  const calculateWorkoutStats = useCallback(() => {
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     
@@ -81,6 +81,8 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       }, 0)
     };
   }, [workouts]);
+
+  const workoutStats = calculateWorkoutStats();
 
   // Enhanced challenges with progress tracking
   const [miniChallenges, setMiniChallenges] = useState<MiniChallenge[]>([
@@ -288,7 +290,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
   const previousNotificationsRef = useRef<MotivationalNotification[]>([]);
   const lastCheckTimeRef = useRef<number>(Date.now());
 
-  // Stabilize generateSmartNotifications with useCallback and stable IDs
+  // Generate smart notifications based on activity patterns
   const generateSmartNotifications = useCallback(() => {
     const newNotifications: MotivationalNotification[] = [];
     const now = Date.now();
@@ -376,13 +378,13 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     return newNotifications;
   }, [miniChallenges, accountabilityGroups]);
 
-  // Check for new notifications periodically with 60-second intervals
+  // Check for new notifications periodically - REMOVED notifications from dependencies to prevent infinite loop
   useEffect(() => {
     const checkNotifications = () => {
       const now = Date.now();
       
-      // Only check if enough time has passed
-      if (now - lastCheckTimeRef.current < 60000) {
+      // Only check if enough time has passed to prevent rapid updates
+      if (now - lastCheckTimeRef.current < 60000) { // 60 seconds instead of 30
         return;
       }
       
@@ -413,10 +415,10 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     };
 
     checkNotifications();
-    const interval = setInterval(checkNotifications, 60000);
+    const interval = setInterval(checkNotifications, 60000); // Check every 60 seconds
 
     return () => clearInterval(interval);
-  }, [generateSmartNotifications, toast]);
+  }, [miniChallenges, accountabilityGroups, generateSmartNotifications, toast]); // REMOVED notifications from dependencies
 
   // Sync workout progress with challenges
   useEffect(() => {
@@ -500,9 +502,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
     previousNotificationsRef.current = [];
   }, []);
 
-  // Stabilize generateCoachMessage with deterministic approach
   const generateCoachMessage = useCallback(() => {
-    // Use deterministic approach based on workout count instead of Math.random()
     const messages = [
       "🔥 Your consistency is paying off! Keep the momentum going!",
       `💪 You've completed ${workoutStats.weeklyCount} workouts this week - amazing progress!`,
@@ -520,9 +520,7 @@ export const useExerciseChallenges = (workouts: any[] = []) => {
       return "🌱 Good start this week! Ready to add another workout to build your streak?";
     }
 
-    // Use workout count as seed for deterministic message selection
-    const messageIndex = workoutStats.weeklyCount % messages.length;
-    return messages[messageIndex];
+    return messages[Math.floor(Math.random() * messages.length)];
   }, [workoutStats]);
 
   return {

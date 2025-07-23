@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { MessageSquare, Users, Target, Bell } from 'lucide-react';
+import { Sparkles, MessageSquare, Users, Target, Bell } from 'lucide-react';
 import { useExerciseChallenges } from '@/hooks/useExerciseChallenges';
 import { useSocialAccountability } from '@/hooks/useSocialAccountability';
 import { MiniChallengeCard } from '@/components/MiniChallengeCard';
 import { AccountabilityGroupCard } from '@/components/AccountabilityGroupCard';
 import { ChallengeLeaderboard } from '@/components/ChallengeLeaderboard';
 import { NotificationPanel } from '@/components/NotificationPanel';
-import { AICoachCard } from '@/components/AICoachCard';
 
 interface ExerciseChallengesProps {
   workouts?: any[];
@@ -36,7 +36,6 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
   const [selectedMember, setSelectedMember] = useState<{groupId: string, memberId: string, memberName: string} | null>(null);
   const [customNudgeMessage, setCustomNudgeMessage] = useState('');
 
-  // Memoize coach message to prevent unnecessary recalculations
   const coachMessage = useMemo(() => generateCoachMessage(), [generateCoachMessage]);
   const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
 
@@ -49,6 +48,7 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
 
   const handleJoinChallenge = useCallback((challengeId: string) => {
     joinChallenge(challengeId);
+    // Show success animation or toast
   }, [joinChallenge]);
 
   const handleSendNudge = useCallback((groupId: string, memberId: string) => {
@@ -82,9 +82,11 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
     if (notification.type === 'team_nudge' && notification.groupId && notification.targetUserId) {
       handleSendNudge(notification.groupId, notification.targetUserId);
     } else if (notification.type === 'challenge_reminder' && notification.challengeId) {
+      // Could navigate to the specific challenge or show workout suggestions
       console.log(`Take action on challenge: ${notification.challengeId}`);
     }
   }, [handleSendNudge]);
+
 
   return (
     <div className="space-y-6 p-1">
@@ -132,18 +134,49 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* AI Coach Card with stable key */}
+      {/* AI Coach Message */}
       <motion.div
-        key="ai-coach-card-wrapper"
+        layoutId="ai-coach-card"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, type: "spring", stiffness: 100, damping: 18 }}
+        transition={{ duration: 0.5, type: "spring", stiffness: 100, damping: 15 }}
       >
-        <AICoachCard 
-          coachMessage={coachMessage}
-          workoutStats={workoutStats}
-        />
+        <Card className="border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <motion.div
+                layoutId="ai-coach-sparkles"
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
+              >
+                <Sparkles className="h-6 w-6 text-primary mt-0.5" />
+              </motion.div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-foreground">AI Fitness Coach</span>
+                  <motion.span 
+                    layoutId="live-badge"
+                    className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+                  >
+                    Live
+                  </motion.span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {coachMessage}
+                </p>
+                {/* Workout Stats Summary */}
+                {workoutStats.weeklyCount > 0 && (
+                  <motion.div 
+                    layoutId="workout-stats"
+                    className="mt-2 text-xs text-muted-foreground"
+                  >
+                    📊 This week: {workoutStats.weeklyCount} workouts • {workoutStats.totalMinutes} minutes
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Public Mini Challenges */}
@@ -263,5 +296,3 @@ export const ExerciseChallenges: React.FC<ExerciseChallengesProps> = React.memo(
     </div>
   );
 });
-
-ExerciseChallenges.displayName = 'ExerciseChallenges';
