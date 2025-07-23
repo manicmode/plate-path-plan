@@ -219,10 +219,10 @@ const ExerciseHub = () => {
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-[robotWave_6s_ease-in-out_infinite]">🤖</span>
-            <h2 className="text-lg font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">AI Fitness Coach</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
-          <p className="text-gray-700 dark:text-indigo-100 text-xs opacity-90 relative z-10">
+          <p className="text-gray-700 dark:text-indigo-100 text-sm opacity-90 relative z-10">
             Your personal trainer, motivator, and guide
           </p>
         </button>
