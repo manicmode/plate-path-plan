@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sparkles, MessageSquare, Users, Target } from 'lucide-react';
+import { MessageSquare, Users, Target } from 'lucide-react';
 import { useExerciseChallenges } from '@/hooks/useExerciseChallenges';
 import { useSocialAccountability } from '@/hooks/useSocialAccountability';
 import { MiniChallengeCard } from '@/components/MiniChallengeCard';
@@ -58,37 +59,49 @@ export const ExerciseChallenges: React.FC = () => {
     }
   };
 
-  const coachMessage = generateCoachMessage();
-
   return (
     <div className="space-y-6 p-1">
-      {/* AI Coach Message */}
+      {/* Exercise Challenges Banner */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-[#FFD580] to-[#FF8C66] p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/20 hover:brightness-110 hover:scale-[1.02]"
+        style={{
+          boxShadow: '0 8px 32px rgba(255, 140, 102, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+        }}
       >
-        <Card className="border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
-              >
-                <Sparkles className="h-6 w-6 text-primary mt-0.5" />
-              </motion.div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-foreground">AI Fitness Coach</span>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Live</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {coachMessage}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        <div className="relative flex items-center gap-4">
+          <motion.div
+            animate={{ 
+              rotate: [0, 10, -10, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              repeatDelay: 3
+            }}
+            className="text-4xl"
+          >
+            🚀
+          </motion.div>
+          
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-white mb-1">
+              Exercise Challenges
+            </h1>
+            <p className="text-white/90 text-sm">
+              Join challenges, track progress, and stay motivated together!
+            </p>
+          </div>
+        </div>
+        
+        <div className="absolute inset-0 opacity-30 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 animate-pulse" />
+        </div>
       </motion.div>
 
       {/* Public Mini Challenges */}
