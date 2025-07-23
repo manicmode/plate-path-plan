@@ -15,6 +15,7 @@ import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
 import { DateFilterSelect } from '@/components/analytics/DateFilterSelect';
 import { PreMadePlanCard } from '@/components/PreMadePlanCard';
 import { PlanPreviewModal } from '@/components/PlanPreviewModal';
+import { ExerciseChallenges } from '@/components/ExerciseChallenges';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -625,6 +626,12 @@ const ExerciseHub = () => {
       title: 'Pre-Made Plans',
       emoji: '🧩',
       content: 'Explore workout plans made for every fitness level.'
+    },
+    {
+      id: 'exercise-challenges',
+      title: 'Exercise Challenges',
+      emoji: '🚀',
+      content: 'Join fun challenges and stay motivated with friends!'
     }
   ];
 
@@ -954,11 +961,14 @@ const ExerciseHub = () => {
                           </div>
                         </CardContent>
                       </Card>
-                    )}
-                  </div>
-                ) : (
-                  /* Other Tabs - Keep Original Design */
-                  <Card className="w-full shadow-lg border-border bg-card">
+                     )}
+                   </div>
+                 ) : tab.id === 'exercise-challenges' ? (
+                   /* Exercise Challenges Tab - New Feature */
+                   <ExerciseChallenges />
+                 ) : (
+                   /* Other Tabs - Keep Original Design */
+                   <Card className="w-full shadow-lg border-border bg-card">
                     <CardContent className="p-8">
                       <div className="text-center space-y-6">
                         {/* Large Emoji */}
