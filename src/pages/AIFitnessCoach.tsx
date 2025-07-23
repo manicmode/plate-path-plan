@@ -5,21 +5,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { useIntelligentFitnessCoach } from '@/hooks/useIntelligentFitnessCoach';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
-    { role: 'assistant', content: 'Hello! I\'m your AI Fitness Coach. How can I help you achieve your fitness goals today?' }
+  const { processUserInput, analyzeWorkoutPatterns, isAnalyzing } = useIntelligentFitnessCoach();
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; emoji?: string }>>([
+    { 
+      role: 'assistant', 
+      content: 'Hey there, fitness champion! 💪 I\'m your AI Fitness Coach, and I\'m here to analyze your workouts, keep you motivated, and help you crush your goals! I can track your progress, suggest improvements, create challenges, and be your personal hype squad. What would you like to work on today?',
+      emoji: '🤖'
+    }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   useScrollToTop();
 
   const smartPrompts = [
-    { emoji: '🏋️', text: 'Build Me a Routine', message: 'Can you create a personalized workout routine based on my fitness level and goals?' },
-    { emoji: '📈', text: 'Track My Progress', message: 'Help me track my fitness progress and suggest areas for improvement.' },
-    { emoji: '💡', text: 'Give Me a Tip', message: 'Share a fitness tip that can help me improve my workout performance today.' },
-    { emoji: '🔥', text: 'Motivate Me!', message: 'I need some motivation to stay consistent with my fitness routine!' }
+    { emoji: '📊', text: 'How Am I Doing?', message: 'How am I doing this week? Give me a complete analysis of my workout progress and patterns.' },
+    { emoji: '🚀', text: 'Give Me a Challenge', message: 'Give me a new challenge based on my workout history. I want to push myself!' },
+    { emoji: '🔥', text: 'Motivate Me!', message: 'I need some serious motivation to stay consistent with my fitness routine! Hype me up!' },
+    { emoji: '💡', text: 'Areas to Improve', message: 'What areas should I focus on improving? Give me specific suggestions based on my workouts.' },
+    { emoji: '🧘', text: 'Recovery Advice', message: 'Should I take a rest day or keep pushing? Help me with recovery planning.' }
   ];
 
   const handleSendMessage = async (message: string) => {
@@ -30,18 +37,16 @@ export default function AIFitnessCoach() {
     setMessages(newMessages);
     setInputMessage('');
     
-    // Simulate AI response - in real implementation, this would call your AI service
+    // Process message with intelligent coach logic
     setTimeout(() => {
-      const responses = [
-        "Great question! Let me help you with that...",
-        "Based on your fitness goals, I recommend...",
-        "Here's a personalized suggestion for you...",
-        "Excellent! Let's work on that together..."
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      setMessages([...newMessages, { role: 'assistant', content: randomResponse }]);
+      const coachResponse = processUserInput(message);
+      setMessages([...newMessages, { 
+        role: 'assistant', 
+        content: coachResponse.message,
+        emoji: coachResponse.emoji
+      }]);
       setIsLoading(false);
-    }, 1000);
+    }, 1500); // Slightly longer to simulate analysis
   };
 
   const handlePromptClick = (promptMessage: string) => {
@@ -133,23 +138,34 @@ export default function AIFitnessCoach() {
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
+                      className={`max-w-[85%] p-4 rounded-lg ${
                         message.role === 'user'
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-white dark:bg-gray-700 text-foreground'
+                          ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                          : 'bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-800 text-foreground border border-gray-200 dark:border-gray-600'
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
+                      <div className="flex items-start gap-2">
+                        {message.role === 'assistant' && message.emoji && (
+                          <span className="text-lg flex-shrink-0 mt-0.5">{message.emoji}</span>
+                        )}
+                        <p className="text-sm whitespace-pre-line leading-relaxed">{message.content}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-white dark:bg-gray-700 p-3 rounded-lg">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🤖</span>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Analyzing your fitness data...</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -158,17 +174,17 @@ export default function AIFitnessCoach() {
 
               {/* Smart Prompt Buttons */}
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground font-medium">Quick Actions:</p>
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <p className="text-sm text-muted-foreground font-medium">🚀 Quick Actions - Get instant insights:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {smartPrompts.map((prompt, index) => (
                     <Button
                       key={index}
                       variant="outline"
                       onClick={() => handlePromptClick(prompt.message)}
-                      className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105"
+                      className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
                       disabled={isLoading}
                     >
-                      <span className="mr-2">{prompt.emoji}</span>
+                      <span className="mr-2 text-lg">{prompt.emoji}</span>
                       <span className="text-sm font-medium">{prompt.text}</span>
                     </Button>
                   ))}
