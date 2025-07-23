@@ -333,12 +333,12 @@ export default function BodyScanAI() {
         throw new Error('User not authenticated');
       }
 
-      // Convert data URL to blob
+      // Convert data URL to blob/JPEG
       const response = await fetch(imageDataUrl);
       const blob = await response.blob();
       
-      // Create filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      // Create filename with timestamp as requested: ${user_id}/front-${Date.now()}.jpg
+      const timestamp = Date.now();
       const fileName = `${user.id}/front-${timestamp}.jpg`;
       
       // Upload to Supabase Storage
@@ -346,31 +346,32 @@ export default function BodyScanAI() {
         .from('body-scans')
         .upload(fileName, blob, {
           contentType: 'image/jpeg',
-          upsert: false
+          upsert: true // Allow overwriting as requested
         });
 
       if (uploadError) {
         throw uploadError;
       }
 
-      // Get public URL
+      // Get public URL via Supabase client after upload
       const { data: urlData } = supabase.storage
         .from('body-scans')
         .getPublicUrl(fileName);
 
       const publicUrl = urlData.publicUrl;
       
-      // Calculate pose metadata
+      // Calculate pose metadata with specific structure
       const poseMetadata = {
-        alignmentScore: alignmentFeedback?.alignmentScore || 0,
-        misalignedLimbs: alignmentFeedback?.misalignedLimbs || [],
+        shouldersLevel: !alignmentFeedback?.misalignedLimbs.includes('shoulders'),
+        armsRaised: !(alignmentFeedback?.misalignedLimbs.includes('left_arm') || alignmentFeedback?.misalignedLimbs.includes('right_arm')),
+        alignmentScore: Math.round((alignmentFeedback?.alignmentScore || 0) * 100),
         poseConfidence: poseDetected?.score || 0,
         detectedKeypoints: poseDetected?.keypoints?.length || 0,
         cameraMode,
         captureTimestamp: new Date().toISOString()
       };
 
-      // Save record to database
+      // Save entry to body_scans table
       const { data: scanData, error: dbError } = await supabase
         .from('body_scans')
         .insert({
@@ -735,14 +736,14 @@ export default function BodyScanAI() {
                 onClick={handleContinue}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3"
               >
-                Continue to Side Scan →
+                Continue to Back Scan 🔜
               </Button>
               <Button
                 onClick={handleRetake}
                 variant="outline"
                 className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20"
               >
-                Retake Photo
+                Retake Front Scan 🔁
               </Button>
             </div>
           </div>
