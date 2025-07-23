@@ -251,18 +251,18 @@ const ExerciseHub = () => {
               variant={activeTab === tab.id ? "default" : "outline"}
               className={`
                 relative h-16 p-3 rounded-xl transition-all duration-300 ease-out
-                flex flex-col items-center justify-center space-y-0.5
+                flex flex-col items-center justify-center gap-1
                 ${activeTab === tab.id 
                   ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
                   : 'bg-card hover:bg-accent hover:text-accent-foreground border-border'
                 }
               `}
             >
-               <div className={`${isMobile ? 'text-2xl' : 'text-3xl'} transition-transform duration-300 ${
-                 activeTab === tab.id ? 'scale-110' : ''
-               }`}>
-                 {tab.emoji}
-               </div>
+              <div className={`${isMobile ? 'text-2xl' : 'text-3xl'} transition-transform duration-300 ${
+                activeTab === tab.id ? 'scale-110' : ''
+              } -mb-1`}>
+                {tab.emoji}
+              </div>
               <span className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-center leading-tight`}>
                 {tab.title}
               </span>
