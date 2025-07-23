@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, TrendingUp, Activity, FileText, Share, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, TrendingUp, Activity, FileText, Share, Eye, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth";
 
@@ -121,6 +120,7 @@ const ReportCard = ({ report, tabType }: { report: ReportData; tabType: 'weekly'
 };
 
 export default function MyReportsPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("weekly");
   const [showOlderReports, setShowOlderReports] = useState<{[key: string]: boolean}>({
     weekly: false,
@@ -138,6 +138,10 @@ export default function MyReportsPage() {
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  const handleBackClick = () => {
+    navigate(-1);
+  };
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -201,6 +205,19 @@ export default function MyReportsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       <div className="p-6 space-y-8 max-w-6xl mx-auto">
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBackClick}
+            className="flex items-center gap-2 hover:bg-accent transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+
         {/* Custom Header */}
         <div className="text-center space-y-3 pt-4">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
