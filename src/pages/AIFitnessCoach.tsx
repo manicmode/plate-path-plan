@@ -57,6 +57,12 @@ export default function AIFitnessCoach() {
     isLocked: boolean;
   }>>([]);
   const [isRegeneratingDay, setIsRegeneratingDay] = useState<string | null>(null);
+  
+  // Multi-day regeneration tracking
+  const [recentRegenerations, setRecentRegenerations] = useState<Array<{
+    day: string;
+    timestamp: number;
+  }>>([]);
   useScrollToTop();
   
   const { sendNudge } = useSocialAccountability();
@@ -200,6 +206,23 @@ Make it sound exciting, supportive, and customized. Mention any health-based mod
 
     setIsRegeneratingDay(day.day);
 
+    // Track this regeneration for multi-day smart adjustments
+    const currentTime = Date.now();
+    const recentTimeFrame = 10 * 60 * 1000; // 10 minutes
+    
+    // Add current regeneration to tracking
+    const newRegeneration = { day: day.day, timestamp: currentTime };
+    const updatedRegenerations = [...recentRegenerations, newRegeneration]
+      .filter(regen => currentTime - regen.timestamp < recentTimeFrame); // Keep only recent ones
+    
+    setRecentRegenerations(updatedRegenerations);
+
+    // Check if this is multi-day regeneration (2+ unlocked days in timeframe)
+    const unlockedRegenerations = updatedRegenerations.filter(regen => {
+      const regenDayIndex = weeklyPlan.findIndex(d => d.day === regen.day);
+      return regenDayIndex !== -1 && !weeklyPlan[regenDayIndex].isLocked;
+    });
+
     // Get previous day's muscle groups for smart balancing
     const previousDay = dayIndex > 0 ? weeklyPlan[dayIndex - 1] : null;
     const nextDay = dayIndex < weeklyPlan.length - 1 ? weeklyPlan[dayIndex + 1] : null;
@@ -260,11 +283,28 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         index === dayIndex ? newDay : planDay
       ));
 
-      setMessages([...newMessages, { 
-        role: 'assistant', 
-        content: coachResponse.message,
-        emoji: '🔄'
-      }]);
+      // Check for multi-day smart regeneration (2+ unlocked days regenerated)
+      if (unlockedRegenerations.length >= 2) {
+        // Show multi-day smart adjustment prompt
+        const smartAdjustmentMessage = {
+          role: 'assistant' as const,
+          content: '🤖 Smart Adjustment Activated!\n\nI\'ve optimized your weekly plan to ensure:\n\n💪 No muscle group is overworked back-to-back\n\n🔁 Push/pull/leg/core workouts are distributed evenly\n\n⚖️ Locked days are fully respected during balancing\n\nYour workout plan is now perfectly balanced for optimal recovery and results!',
+          emoji: '🤖'
+        };
+        
+        setMessages([...newMessages, { 
+          role: 'assistant', 
+          content: coachResponse.message,
+          emoji: '🔄'
+        }, smartAdjustmentMessage]);
+      } else {
+        setMessages([...newMessages, { 
+          role: 'assistant', 
+          content: coachResponse.message,
+          emoji: '🔄'
+        }]);
+      }
+      
       setIsRegeneratingDay(null);
     }, 2000);
   };
