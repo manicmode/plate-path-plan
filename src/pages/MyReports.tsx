@@ -206,14 +206,14 @@ export default function MyReportsPage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       <div className="p-6 space-y-8 max-w-6xl mx-auto">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={handleBackClick}
-            className="flex items-center gap-2 hover:bg-accent transition-colors"
+            className="flex items-center gap-2 bg-background/80 backdrop-blur-sm border-2 border-muted hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
             Back
           </Button>
         </div>
