@@ -135,8 +135,8 @@ export default function AIFitnessCoach() {
         {/* Hero Section */}
         <div className="text-center space-y-4 py-8">
           <div className="flex justify-center mb-4">
-            <div className="p-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg">
-              <span className="text-4xl animate-bounce">🤖</span>
+            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-600 rounded-full flex items-center justify-center neon-glow animate-float shadow-2xl">
+              <span className="text-5xl animate-pulse">🤖</span>
             </div>
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
