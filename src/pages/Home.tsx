@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, CheckCircle2, ChevronRight, Dumbbell, Flame, ListChecks, LucideIcon, Stopwatch, User2 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import { CalendarDays, CheckCircle2, ChevronRight, Dumbbell, Flame, ListChecks, LucideIcon, Timer, User2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
@@ -45,7 +45,7 @@ const Home = () => {
         { id: 1, title: 'Steps', icon: User2, current: 3200, target: 10000, unit: 'steps', color: 'blue' },
         { id: 2, title: 'Workouts', icon: Dumbbell, current: 1, target: 1, unit: 'workout', color: 'orange' },
         { id: 3, title: 'Calories Burned', icon: Flame, current: 450, target: 600, unit: 'kcal', color: 'red' },
-        { id: 4, title: 'Active Time', icon: Stopwatch, current: 25, target: 30, unit: 'min', color: 'green' },
+        { id: 4, title: 'Active Time', icon: Timer, current: 25, target: 30, unit: 'min', color: 'green' },
       ]);
 			setIsLoading(false);
     }, 500);
