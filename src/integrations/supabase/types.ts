@@ -1923,6 +1923,69 @@ export type Database = {
         }
         Relationships: []
       }
+      yearly_exercise_reports: {
+        Row: {
+          created_at: string
+          days_active: number
+          days_skipped: number
+          id: string
+          missed_muscle_groups: string[] | null
+          most_frequent_muscle_groups: string[] | null
+          motivational_title: string
+          personalized_message: string
+          report_data: Json
+          smart_suggestions: string
+          total_calories_burned: number
+          total_duration_minutes: number
+          total_workouts_completed: number
+          updated_at: string
+          user_id: string
+          year_end: string
+          year_over_year_progress: Json | null
+          year_start: string
+        }
+        Insert: {
+          created_at?: string
+          days_active?: number
+          days_skipped?: number
+          id?: string
+          missed_muscle_groups?: string[] | null
+          most_frequent_muscle_groups?: string[] | null
+          motivational_title: string
+          personalized_message: string
+          report_data?: Json
+          smart_suggestions: string
+          total_calories_burned?: number
+          total_duration_minutes?: number
+          total_workouts_completed?: number
+          updated_at?: string
+          user_id: string
+          year_end: string
+          year_over_year_progress?: Json | null
+          year_start: string
+        }
+        Update: {
+          created_at?: string
+          days_active?: number
+          days_skipped?: number
+          id?: string
+          missed_muscle_groups?: string[] | null
+          most_frequent_muscle_groups?: string[] | null
+          motivational_title?: string
+          personalized_message?: string
+          report_data?: Json
+          smart_suggestions?: string
+          total_calories_burned?: number
+          total_duration_minutes?: number
+          total_workouts_completed?: number
+          updated_at?: string
+          user_id?: string
+          year_end?: string
+          year_over_year_progress?: Json | null
+          year_start?: string
+        }
+        Relationships: []
+      }
       yearly_hall_of_fame: {
         Row: {
           avg_hydration_streak: number | null
