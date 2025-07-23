@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -6,6 +7,7 @@ import { toast } from 'sonner';
 export const useDailyTargetsGeneration = () => {
   const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
+  const generationRef = useRef(false);
 
   const generateDailyTargets = async (userId?: string) => {
     const targetUserId = userId || user?.id;
@@ -15,6 +17,12 @@ export const useDailyTargetsGeneration = () => {
       return null;
     }
 
+    if (generationRef.current) {
+      console.log('Target generation already in progress, skipping...');
+      return null;
+    }
+
+    generationRef.current = true;
     setIsGenerating(true);
     
     try {
@@ -26,25 +34,35 @@ export const useDailyTargetsGeneration = () => {
 
       if (error) {
         console.error('Error generating daily targets:', error);
-        toast.error('Failed to generate daily nutrition targets');
+        // Only show toast for user-initiated actions, not automatic background calls
+        if (userId) {
+          toast.error('Failed to generate daily nutrition targets');
+        }
         throw error;
       }
 
       console.log('Daily nutrition targets generated successfully:', data);
-      toast.success('Daily nutrition targets updated successfully!');
+      // Only show success toast for user-initiated actions
+      if (userId) {
+        toast.success('Daily nutrition targets updated successfully!');
+      }
       return data;
       
     } catch (error) {
       console.error('Error in generateDailyTargets:', error);
-      toast.error('Failed to generate daily nutrition targets');
+      // Only show toast for user-initiated actions
+      if (userId) {
+        toast.error('Failed to generate daily nutrition targets');
+      }
       throw error;
     } finally {
       setIsGenerating(false);
+      generationRef.current = false;
     }
   };
 
   const ensureUserHasTargets = async () => {
-    if (!user?.id) return null;
+    if (!user?.id || generationRef.current) return null;
 
     try {
       // Check if user already has targets for today
@@ -85,6 +103,7 @@ export const useDailyTargetsGeneration = () => {
 
       // Generate targets if user has completed onboarding but no targets exist
       console.log('User has completed onboarding but no targets exist, generating...');
+      // Don't pass userId to avoid showing toast for automatic generation
       return await generateDailyTargets();
       
     } catch (error) {
@@ -94,11 +113,12 @@ export const useDailyTargetsGeneration = () => {
   };
 
   const regenerateTargetsAfterProfileUpdate = async () => {
-    if (!user?.id) return null;
+    if (!user?.id || generationRef.current) return null;
 
     try {
       console.log('Regenerating targets after profile update...');
-      const result = await generateDailyTargets();
+      // Pass userId to show toast for this user-initiated action
+      const result = await generateDailyTargets(user.id);
       
       if (result) {
         toast.success('Your daily nutrition targets have been updated based on your new profile!');

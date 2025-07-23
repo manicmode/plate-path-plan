@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,11 +31,16 @@ export const DailyTargetsCard = () => {
   const [targets, setTargets] = useState<DailyTarget | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const loadingRef = useRef(false);
 
   const loadTargets = async () => {
-    if (!user?.id) return;
-
+    if (!user?.id || loadingRef.current) return;
+    
+    loadingRef.current = true;
     setIsLoading(true);
+    setHasError(false);
+    
     try {
       // Check user profile completion
       const { data: profile } = await supabase
@@ -56,6 +62,7 @@ export const DailyTargetsCard = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading targets:', error);
+        setHasError(true);
         return;
       }
 
@@ -64,20 +71,27 @@ export const DailyTargetsCard = () => {
       // If no targets exist and user has completed profile, try to generate them
       if (!todayTargets && profile?.onboarding_completed) {
         console.log('No targets found for completed profile, attempting to generate...');
-        await ensureUserHasTargets();
-        // Reload after generation attempt
-        const { data: newTargets } = await supabase
-          .from('daily_nutrition_targets')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('target_date', today)
-          .maybeSingle();
-        setTargets(newTargets);
+        try {
+          await ensureUserHasTargets();
+          // Reload after generation attempt
+          const { data: newTargets } = await supabase
+            .from('daily_nutrition_targets')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('target_date', today)
+            .maybeSingle();
+          setTargets(newTargets);
+        } catch (generateError) {
+          console.error('Error generating targets:', generateError);
+          setHasError(true);
+        }
       }
     } catch (error) {
       console.error('Error in loadTargets:', error);
+      setHasError(true);
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
   };
 
@@ -86,11 +100,16 @@ export const DailyTargetsCard = () => {
   }, [user?.id]);
 
   const handleRegenerateTargets = async () => {
+    if (isGenerating || loadingRef.current) return;
+    
     try {
+      setHasError(false);
       await generateDailyTargets();
       await loadTargets(); // Reload after regeneration
     } catch (error) {
       console.error('Error regenerating targets:', error);
+      setHasError(true);
+      toast.error('Failed to regenerate targets. Please try again.');
     }
   };
 
@@ -119,6 +138,43 @@ export const DailyTargetsCard = () => {
             <AlertCircle className="w-4 h-4" />
             <span>Complete your profile setup to get personalized daily nutrition targets</span>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Daily Nutrition Targets
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="w-4 h-4" />
+            <span>Unable to load daily targets. Please try again.</span>
+          </div>
+          <Button 
+            onClick={handleRegenerateTargets} 
+            disabled={isGenerating}
+            className="w-full"
+            variant="outline"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
     );

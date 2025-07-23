@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -57,6 +58,10 @@ Deno.serve(async (req) => {
       
       profile = dbProfile;
     }
+
+    // Ensure arrays are not null - this fixes the forEach error
+    profile.health_conditions = profile.health_conditions || [];
+    profile.diet_styles = profile.diet_styles || [];
 
     console.log('Profile data for calculations:', {
       age: profile.age,
@@ -391,11 +396,14 @@ function calculateSupplementTarget(
     'anxiety': 1,
   };
   
-  healthConditions.forEach(condition => {
-    if (conditionSupplements[condition]) {
-      baseSupplementCount += conditionSupplements[condition];
-    }
-  });
+  // Safe iteration with null check
+  if (healthConditions) {
+    healthConditions.forEach(condition => {
+      if (conditionSupplements[condition]) {
+        baseSupplementCount += conditionSupplements[condition];
+      }
+    });
+  }
   
   const dietSupplements: Record<string, number> = {
     'vegan': 2,
@@ -404,11 +412,14 @@ function calculateSupplementTarget(
     'paleo': 1,
   };
   
-  dietStyles.forEach(diet => {
-    if (dietSupplements[diet]) {
-      baseSupplementCount += dietSupplements[diet];
-    }
-  });
+  // Safe iteration with null check
+  if (dietStyles) {
+    dietStyles.forEach(diet => {
+      if (dietSupplements[diet]) {
+        baseSupplementCount += dietSupplements[diet];
+      }
+    });
+  }
   
   return Math.min(baseSupplementCount, 8);
 }
@@ -478,11 +489,14 @@ function getFlaggedIngredients(healthConditions: string[] = []): { ingredient: s
     ]
   };
   
-  healthConditions.forEach(condition => {
-    if (conditionFlags[condition]) {
-      flaggedIngredients.push(...conditionFlags[condition]);
-    }
-  });
+  // Safe iteration with null check
+  if (healthConditions) {
+    healthConditions.forEach(condition => {
+      if (conditionFlags[condition]) {
+        flaggedIngredients.push(...conditionFlags[condition]);
+      }
+    });
+  }
   
   // Remove duplicates based on ingredient name
   const uniqueFlags = flaggedIngredients.reduce((acc, current) => {
@@ -536,11 +550,14 @@ function getPriorityMicronutrients(
     'anxiety': ['Magnesium', 'B-complex', 'Vitamin C'],
   };
   
-  healthConditions.forEach(condition => {
-    if (conditionMicronutrients[condition]) {
-      micronutrients.push(...conditionMicronutrients[condition]);
-    }
-  });
+  // Safe iteration with null check
+  if (healthConditions) {
+    healthConditions.forEach(condition => {
+      if (conditionMicronutrients[condition]) {
+        micronutrients.push(...conditionMicronutrients[condition]);
+      }
+    });
+  }
   
   const dietMicronutrients: Record<string, string[]> = {
     'vegan': ['Vitamin B12', 'Iron', 'Zinc', 'Vitamin D'],
@@ -549,11 +566,14 @@ function getPriorityMicronutrients(
     'paleo': ['Vitamin D', 'Calcium'],
   };
   
-  dietStyles.forEach(diet => {
-    if (dietMicronutrients[diet]) {
-      micronutrients.push(...dietMicronutrients[diet]);
-    }
-  });
+  // Safe iteration with null check
+  if (dietStyles) {
+    dietStyles.forEach(diet => {
+      if (dietMicronutrients[diet]) {
+        micronutrients.push(...dietMicronutrients[diet]);
+      }
+    });
+  }
   
   return [...new Set(micronutrients)].slice(0, 8);
 }
@@ -601,8 +621,8 @@ function calculateNutritionTargets(profile: any) {
   const supplementCount = calculateSupplementTarget(
     profile.age,
     profile.gender,
-    profile.health_conditions,
-    profile.diet_styles
+    profile.health_conditions || [],
+    profile.diet_styles || []
   );
   
   // Get priority micronutrients
@@ -614,7 +634,7 @@ function calculateNutritionTargets(profile: any) {
   );
   
   // Get flagged ingredients with detailed info
-  const flaggedIngredients = getFlaggedIngredients(profile.health_conditions);
+  const flaggedIngredients = getFlaggedIngredients(profile.health_conditions || []);
   
   return {
     bmr: Math.round(bmr),
