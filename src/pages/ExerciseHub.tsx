@@ -248,7 +248,7 @@ const ExerciseHub = () => {
                       <CardContent className="p-6">
                         <Button
                           onClick={() => setIsAddWorkoutModalOpen(true)}
-                          className="w-full h-14 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                          className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
                         >
                           <Plus className="mr-2 h-5 w-5" />
                           Add Workout
@@ -278,9 +278,9 @@ const ExerciseHub = () => {
                             <div className="p-6">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center space-x-3">
-                                  <div className="text-3xl">{workout.emoji}</div>
+                                  <div className="text-4xl cursor-pointer transition-transform duration-200 hover:animate-bounce active:scale-110">{workout.emoji}</div>
                                   <div>
-                                    <h3 className="text-xl font-bold text-foreground">{workout.name}</h3>
+                                    <h3 className="text-xl font-bold text-foreground drop-shadow-sm">{workout.name}</h3>
                                     {workout.startTime && workout.endTime && (
                                       <p className="text-sm text-muted-foreground flex items-center mt-1">
                                         <Timer className="mr-1 h-3 w-3" />
@@ -296,7 +296,7 @@ const ExerciseHub = () => {
                                   <Clock className="h-4 w-4 text-blue-500" />
                                   <div>
                                     <p className="text-xs text-muted-foreground">Duration</p>
-                                    <p className="font-semibold text-foreground">{workout.duration}</p>
+                                    <p className="font-semibold text-foreground drop-shadow-sm">{workout.duration}</p>
                                   </div>
                                 </div>
                                 
@@ -304,7 +304,7 @@ const ExerciseHub = () => {
                                   <Flame className="h-4 w-4 text-orange-500" />
                                   <div>
                                     <p className="text-xs text-muted-foreground">Calories</p>
-                                    <p className="font-semibold text-foreground">{workout.calories}</p>
+                                    <p className="font-semibold text-foreground drop-shadow-sm">{workout.calories}</p>
                                   </div>
                                 </div>
                               </div>
@@ -340,7 +340,7 @@ const ExerciseHub = () => {
                       <CardContent className="p-6">
                         <Button
                           onClick={() => setIsCreateRoutineModalOpen(true)}
-                          className="w-full h-14 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                          className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
                         >
                           <Plus className="mr-2 h-5 w-5" />
                           Create New Routine
@@ -356,17 +356,17 @@ const ExerciseHub = () => {
 
                     {/* Routines Grid - 2x2 */}
                     <div className="grid grid-cols-2 gap-4">
-                      {mockRoutines.map((routine) => (
-                        <Card key={routine.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
+                      {mockRoutines.map((routine, index) => (
+                        <Card key={routine.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer" style={{ animationDelay: `${index * 100}ms` }}>
                           <CardContent className="p-0">
-                            <div className={`bg-gradient-to-r ${routine.gradient} p-1 rounded-t-lg`} />
+                            <div className={`bg-gradient-to-br ${routine.gradient} p-3 rounded-t-lg`} />
                             <div className="p-4">
                               <div className="text-center space-y-3">
                                 {/* Emoji */}
-                                <div className="text-4xl">{routine.emoji}</div>
+                                <div className="text-4xl cursor-pointer transition-transform duration-200 hover:animate-bounce active:scale-110 hover:drop-shadow-lg">{routine.emoji}</div>
                                 
                                 {/* Title */}
-                                <h3 className="text-lg font-bold text-foreground leading-tight">{routine.title}</h3>
+                                <h3 className="text-lg font-bold text-foreground leading-tight drop-shadow-sm">{routine.title}</h3>
                                 
                                 {/* Description */}
                                 <p className="text-sm text-muted-foreground">{routine.description}</p>
@@ -415,8 +415,11 @@ const ExerciseHub = () => {
                             <div key={day.day} className="flex flex-col items-center space-y-2 flex-1">
                               <div className="w-full flex justify-center">
                                 <div 
-                                  className={`w-8 bg-gradient-to-t from-emerald-400 to-cyan-500 rounded-t-md transition-all duration-500 ease-out`}
-                                  style={{ height: day.height }}
+                                  className={`w-8 bg-gradient-to-t from-emerald-400 via-cyan-500 to-blue-500 rounded-t-md transition-all duration-1000 ease-out shadow-lg animate-fade-in`}
+                                  style={{ 
+                                    height: activeTab === 'progress-reports' ? day.height : '0%',
+                                    animationDelay: `${index * 200}ms`
+                                  }}
                                 />
                               </div>
                               <span className="text-xs text-muted-foreground font-medium">{day.day}</span>
@@ -442,15 +445,15 @@ const ExerciseHub = () => {
                         {mockStats.map((stat, index) => {
                           const IconComponent = stat.icon;
                           return (
-                            <Card key={index} className="shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300">
+                            <Card key={index} className="shadow-lg border-border bg-card hover:shadow-2xl hover:shadow-accent/20 hover:scale-105 transition-all duration-300 cursor-pointer group">
                               <CardContent className="p-0">
-                                <div className={`bg-gradient-to-r ${stat.gradient} p-1 rounded-t-lg`} />
+                                <div className={`bg-gradient-to-br ${stat.gradient} p-2 rounded-t-lg group-hover:brightness-110 transition-all duration-300`} />
                                 <div className="p-6 text-center">
                                   <div className="flex justify-center mb-3">
-                                    <IconComponent className={`h-8 w-8 ${stat.iconColor}`} />
+                                    <IconComponent className={`h-8 w-8 ${stat.iconColor} group-hover:scale-110 transition-transform duration-300`} />
                                   </div>
-                                  <h4 className="text-sm font-medium text-muted-foreground mb-2">{stat.title}</h4>
-                                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                                  <h4 className="text-sm font-medium text-muted-foreground mb-2 drop-shadow-sm">{stat.title}</h4>
+                                  <p className="text-2xl font-bold text-foreground group-hover:scale-105 transition-transform duration-300">{stat.value}</p>
                                 </div>
                               </CardContent>
                             </Card>
@@ -484,21 +487,21 @@ const ExerciseHub = () => {
 
                     {/* Pre-Made Plans Grid - 2x2 */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
-                      {mockPlans.map((plan) => (
-                        <Card key={plan.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
+                      {mockPlans.map((plan, index) => (
+                        <Card key={plan.id} className="w-full shadow-lg border-border bg-card hover:shadow-2xl hover:shadow-accent/25 hover:scale-105 transition-all duration-500 cursor-pointer animate-fade-in group" style={{ animationDelay: `${index * 150}ms` }}>
                           <CardContent className="p-0">
-                            <div className={`bg-gradient-to-br ${plan.gradient} p-6 rounded-t-lg`}>
+                            <div className={`bg-gradient-to-br ${plan.gradient} p-6 rounded-t-lg group-hover:brightness-110 transition-all duration-300`}>
                               <div className="text-center space-y-3 text-white">
                                 {/* Emoji */}
-                                <div className="text-4xl filter drop-shadow-lg">{plan.emoji}</div>
+                                <div className="text-4xl filter drop-shadow-lg group-hover:animate-bounce group-hover:scale-110 transition-transform duration-300">{plan.emoji}</div>
                                 
                                 {/* Plan Name */}
-                                <h3 className="text-lg font-bold leading-tight drop-shadow-md">{plan.name}</h3>
+                                <h3 className="text-lg font-bold leading-tight drop-shadow-md group-hover:drop-shadow-lg transition-all duration-300">{plan.name}</h3>
                               </div>
                             </div>
                             <div className="p-4 bg-card">
                               {/* Description */}
-                              <p className="text-sm text-muted-foreground text-center leading-relaxed">{plan.description}</p>
+                              <p className="text-sm text-muted-foreground text-center leading-relaxed drop-shadow-sm group-hover:text-foreground transition-colors duration-300">{plan.description}</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -510,7 +513,7 @@ const ExerciseHub = () => {
                       <CardContent className="p-6">
                         <Button
                           onClick={() => setIsExploreMoreModalOpen(true)}
-                          className="w-full h-14 bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-500 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                          className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
                         >
                           Explore More Plans
                         </Button>
