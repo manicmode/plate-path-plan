@@ -245,6 +245,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
     updateSelectedTrackers,
     refreshUser,
+    dailyCalories: [],
+    dailyProtein: 0,
+    dailyCarbs: 0,
+    dailyFat: 0,
+    dailyHydration: [],
+    dailySupplements: [],
   };
 
   return (
