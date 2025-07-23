@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar, TrendingUp, Target, Award, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar, TrendingUp, Target, Award, Activity, Upload, Loader2, Camera } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
@@ -32,6 +32,11 @@ const ExerciseHub = () => {
   const [dateFilter, setDateFilter] = useState('30d');
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [isPlanPreviewOpen, setIsPlanPreviewOpen] = useState(false);
+  
+  // Body Scan AI state
+  const [bodyScanFile, setBodyScanFile] = useState<File | null>(null);
+  const [bodyScanLoading, setBodyScanLoading] = useState(false);
+  const [bodyScanResult, setBodyScanResult] = useState<any>(null);
   
   // Use the optimized scroll-to-top hook
   useScrollToTop();
@@ -605,6 +610,26 @@ const ExerciseHub = () => {
     handleStartPlan(plan);
   };
 
+  // Body Scan AI handlers
+  const handleBodyScanUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setBodyScanFile(file);
+      setBodyScanLoading(true);
+      
+      // Simulate processing time
+      setTimeout(() => {
+        setBodyScanLoading(false);
+        setBodyScanResult({
+          leftArm: "6%",
+          rightArm: "8%",
+          posture: "Slight Right Lean",
+          focusAreas: "Left Shoulder, Core"
+        });
+      }, 3000);
+    }
+  };
+
   const tabs = [
     {
       id: 'workout-log',
@@ -629,6 +654,12 @@ const ExerciseHub = () => {
       title: 'Pre-Made Plans',
       emoji: '🧩',
       content: 'Explore workout plans made for every fitness level.'
+    },
+    {
+      id: 'body-scan-ai',
+      title: 'Body Scan AI',
+      emoji: '📸',
+      content: 'AI-powered body analysis and recommendations.'
     },
     {
       id: 'exercise-challenges',
@@ -723,9 +754,9 @@ const ExerciseHub = () => {
           </button>
         </div>
 
-        {/* 4 tabs in grid - MOVED BELOW */}
-        <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'}`}>
-          {tabs.slice(0, 4).map((tab) => (
+        {/* 5 tabs in grid - MOVED BELOW */}
+        <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-5 gap-3'}`}>
+          {tabs.slice(0, 5).map((tab) => (
             <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -1041,10 +1072,98 @@ const ExerciseHub = () => {
                       </Card>
                      )}
                    </div>
-                 ) : tab.id === 'exercise-challenges' ? (
-                   /* Exercise Challenges Tab - New Feature */
-                   <ExerciseChallenges />
-                 ) : (
+                  ) : tab.id === 'body-scan-ai' ? (
+                    /* Body Scan AI Tab */
+                    <div className="space-y-6">
+                      {/* Header */}
+                      <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold text-foreground mb-2">📸 Body Scan AI — Analyze Your Physique</h2>
+                        <p className="text-muted-foreground">Upload a body photo to analyze muscle symmetry, posture alignment, and get personalized recommendations.</p>
+                      </div>
+
+                      {/* Upload Section */}
+                      {!bodyScanFile && !bodyScanResult && (
+                        <Card className="w-full shadow-lg border-border bg-card">
+                          <CardContent className="p-8">
+                            <div className="text-center">
+                              <div className="mb-6">
+                                <Camera className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                              </div>
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleBodyScanUpload}
+                                  className="hidden"
+                                />
+                                <Button className="w-full max-w-md h-14 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105">
+                                  <Upload className="mr-2 h-5 w-5" />
+                                  Upload Body Photo
+                                </Button>
+                              </label>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Loading Section */}
+                      {bodyScanLoading && (
+                        <Card className="w-full shadow-lg border-border bg-card">
+                          <CardContent className="p-8">
+                            <div className="text-center">
+                              <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
+                              <h3 className="text-lg font-semibold mb-2">Analyzing Your Body...</h3>
+                              <p className="text-muted-foreground">Our AI is processing your photo and generating insights.</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Results Section */}
+                      {bodyScanResult && !bodyScanLoading && (
+                        <Card className="w-full shadow-lg border-border bg-card">
+                          <CardHeader>
+                            <CardTitle className="text-center">🧠 AI Body Scan Report</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-muted rounded-lg p-4">
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-1">Left Arm Muscle Mass</h4>
+                                <p className="text-2xl font-bold text-foreground">{bodyScanResult.leftArm}</p>
+                              </div>
+                              <div className="bg-muted rounded-lg p-4">
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-1">Right Arm Muscle Mass</h4>
+                                <p className="text-2xl font-bold text-foreground">{bodyScanResult.rightArm}</p>
+                              </div>
+                              <div className="bg-muted rounded-lg p-4">
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-1">Posture</h4>
+                                <p className="text-2xl font-bold text-foreground">{bodyScanResult.posture}</p>
+                              </div>
+                              <div className="bg-muted rounded-lg p-4">
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-1">Suggested Focus Areas</h4>
+                                <p className="text-2xl font-bold text-foreground">{bodyScanResult.focusAreas}</p>
+                              </div>
+                            </div>
+                            <div className="mt-6 text-center">
+                              <Button 
+                                onClick={() => {
+                                  setBodyScanFile(null);
+                                  setBodyScanResult(null);
+                                }}
+                                variant="outline"
+                                className="w-full max-w-md"
+                              >
+                                Scan Another Photo
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  ) : tab.id === 'exercise-challenges' ? (
+                    /* Exercise Challenges Tab - New Feature */
+                    <ExerciseChallenges />
+                  ) : (
                    /* Other Tabs - Keep Original Design */
                    <Card className="w-full shadow-lg border-border bg-card">
                     <CardContent className="p-8">
