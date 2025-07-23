@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useAuth } from '@/contexts/auth';
+import { useSocialAccountability } from '@/hooks/useSocialAccountability';
 
 interface WorkoutPattern {
   consistency: 'excellent' | 'good' | 'inconsistent' | 'poor';
@@ -23,6 +24,7 @@ interface CoachResponse {
 export const useIntelligentFitnessCoach = () => {
   const { user } = useAuth();
   const { exerciseData, summary } = useRealExerciseData('30d');
+  const { nudgeOpportunities, groupStats, generateCoachGroupMessage } = useSocialAccountability();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const analyzeWorkoutPatterns = useCallback((): WorkoutPattern => {
@@ -138,6 +140,14 @@ export const useIntelligentFitnessCoach = () => {
     const patterns = analyzeWorkoutPatterns();
     const lowerInput = input.toLowerCase();
     
+    // Check for social/group related queries first
+    if (lowerInput.includes('team') || lowerInput.includes('group') || lowerInput.includes('squad') || lowerInput.includes('social')) {
+      const socialMessage = generateCoachGroupMessage();
+      if (socialMessage) {
+        return { message: socialMessage, type: 'motivation', emoji: '🤝' };
+      }
+    }
+    
     // Detect intent from user input
     if (lowerInput.includes('how am i doing') || lowerInput.includes('progress') || lowerInput.includes('analysis')) {
       return generateProgressAnalysis(patterns);
@@ -161,7 +171,7 @@ export const useIntelligentFitnessCoach = () => {
     
     // Default response with general analysis
     return generateGeneralResponse(patterns);
-  }, [analyzeWorkoutPatterns]);
+  }, [analyzeWorkoutPatterns, generateCoachGroupMessage]);
 
   const generateProgressAnalysis = (patterns: WorkoutPattern): CoachResponse => {
     const { consistency, weeklyFrequency, currentStreak, strengths, improvementAreas } = patterns;
@@ -355,6 +365,9 @@ export const useIntelligentFitnessCoach = () => {
   return {
     processUserInput,
     analyzeWorkoutPatterns,
-    isAnalyzing
+    isAnalyzing,
+    nudgeOpportunities,
+    groupStats,
+    socialCoachMessage: generateCoachGroupMessage()
   };
 };

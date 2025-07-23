@@ -1,15 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIntelligentFitnessCoach } from '@/hooks/useIntelligentFitnessCoach';
+import { useSocialAccountability } from '@/hooks/useSocialAccountability';
+import { NudgeOpportunityCard } from '@/components/NudgeOpportunityCard';
+import { GroupStatsDisplay } from '@/components/GroupStatsDisplay';
+import { AnimatePresence } from 'framer-motion';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
-  const { processUserInput, analyzeWorkoutPatterns, isAnalyzing } = useIntelligentFitnessCoach();
+  const { 
+    processUserInput, 
+    analyzeWorkoutPatterns, 
+    isAnalyzing, 
+    nudgeOpportunities, 
+    groupStats, 
+    socialCoachMessage 
+  } = useIntelligentFitnessCoach();
+  
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; emoji?: string }>>([
     { 
       role: 'assistant', 
@@ -20,14 +32,29 @@ export default function AIFitnessCoach() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   useScrollToTop();
+  
+  const { sendNudge } = useSocialAccountability();
+  const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set());
 
   const smartPrompts = [
     { emoji: '📊', text: 'How Am I Doing?', message: 'How am I doing this week? Give me a complete analysis of my workout progress and patterns.' },
     { emoji: '🚀', text: 'Give Me a Challenge', message: 'Give me a new challenge based on my workout history. I want to push myself!' },
     { emoji: '🔥', text: 'Motivate Me!', message: 'I need some serious motivation to stay consistent with my fitness routine! Hype me up!' },
     { emoji: '💡', text: 'Areas to Improve', message: 'What areas should I focus on improving? Give me specific suggestions based on my workouts.' },
-    { emoji: '🧘', text: 'Recovery Advice', message: 'Should I take a rest day or keep pushing? Help me with recovery planning.' }
+    { emoji: '🧘', text: 'Recovery Advice', message: 'Should I take a rest day or keep pushing? Help me with recovery planning.' },
+    { emoji: '🤝', text: 'Team Check', message: 'How is our squad doing? Any teammates who need support?' }
   ];
+
+  // Show social coach message in chat if available
+  useEffect(() => {
+    if (socialCoachMessage && messages[messages.length - 1]?.content !== socialCoachMessage) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: socialCoachMessage,
+        emoji: '🤝'
+      }]);
+    }
+  }, [socialCoachMessage]);
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
@@ -212,6 +239,46 @@ export default function AIFitnessCoach() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Social Accountability Section */}
+        {(nudgeOpportunities?.length > 0 || groupStats) && (
+          <Card className="border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Squad Accountability
+                <span className="text-2xl">🤝</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Group Stats */}
+              {groupStats && <GroupStatsDisplay stats={groupStats} />}
+              
+              {/* Nudge Opportunities */}
+              {nudgeOpportunities && nudgeOpportunities.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-foreground flex items-center gap-2">
+                    💫 Teammates Who Could Use a Boost
+                  </h4>
+                  <AnimatePresence>
+                    {nudgeOpportunities
+                      .filter(opportunity => !dismissedNudges.has(opportunity.target_user.user_id))
+                      .map((opportunity) => (
+                        <NudgeOpportunityCard
+                          key={opportunity.target_user.user_id}
+                          opportunity={opportunity}
+                          onSendNudge={sendNudge}
+                          onDismiss={() => {
+                            setDismissedNudges(prev => new Set([...prev, opportunity.target_user.user_id]));
+                          }}
+                        />
+                      ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Personalized 8-Week Routine */}
         <Card className="border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
