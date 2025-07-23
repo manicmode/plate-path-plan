@@ -232,7 +232,7 @@ const ExerciseHub = () => {
               variant={activeTab === tab.id ? "default" : "outline"}
               className={`
                 relative h-16 p-3 rounded-xl transition-all duration-300 ease-out
-                flex flex-col items-center justify-center space-y-1
+                flex flex-col items-center justify-center space-y-0.5
                 ${activeTab === tab.id 
                   ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
                   : 'bg-card hover:bg-accent hover:text-accent-foreground border-border'
@@ -244,7 +244,7 @@ const ExerciseHub = () => {
               }`}>
                 {tab.emoji}
               </div>
-              <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-center leading-tight`}>
+              <span className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-center leading-tight`}>
                 {tab.title}
               </span>
             </Button>
