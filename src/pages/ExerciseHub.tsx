@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -32,8 +33,8 @@ const ExerciseHub = () => {
     }
   }, [location.state]);
 
-  // Enhanced mock workout data with complete workout history
-  const mockWorkouts = [
+  // Enhanced mock workout data with complete workout history - make it dynamic
+  const [mockWorkouts, setMockWorkouts] = useState([
     {
       id: 1,
       name: "Upper Body Strength",
@@ -70,7 +71,12 @@ const ExerciseHub = () => {
       summary: "Vinyasa flow, sun salutations, meditation",
       gradient: "from-purple-300 to-pink-500"
     }
-  ];
+  ]);
+
+  // Function to handle adding new workouts
+  const handleAddWorkout = (newWorkout: any) => {
+    setMockWorkouts(prev => [newWorkout, ...prev]); // Add to beginning of array
+  };
 
   // Mock routine data
   const mockRoutines = [
@@ -641,6 +647,13 @@ const ExerciseHub = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Workout Modal */}
+      <AddWorkoutModal
+        isOpen={isAddWorkoutModalOpen}
+        onClose={() => setIsAddWorkoutModalOpen(false)}
+        onSave={handleAddWorkout}
+      />
     </div>
   );
 };
