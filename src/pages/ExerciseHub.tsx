@@ -686,8 +686,9 @@ const ExerciseHub = () => {
 
       {/* Tab Navigation */}
       <div className="mb-6">
+        {/* First 4 tabs in grid */}
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'} mb-4`}>
-          {tabs.map((tab) => (
+          {tabs.slice(0, 4).map((tab) => (
             <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -712,6 +713,42 @@ const ExerciseHub = () => {
             </Button>
           ))}
         </div>
+
+        {/* Exercise Challenges tab - Full Width */}
+        {tabs.slice(4).map((tab) => (
+          <Button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            variant={activeTab === tab.id ? "default" : "outline"}
+            className={`
+              w-full h-20 p-4 rounded-xl transition-all duration-300 ease-out
+              flex items-center justify-center gap-4
+              ${activeTab === tab.id 
+                ? 'bg-gradient-to-r from-primary via-secondary to-primary text-primary-foreground shadow-xl shadow-primary/25 scale-[1.02] border-2 border-primary/50' 
+                : 'bg-gradient-to-r from-card via-muted/30 to-card hover:from-accent hover:via-accent/50 hover:to-accent hover:text-accent-foreground border-2 border-border hover:border-primary/30 hover:shadow-lg'
+              }
+            `}
+          >
+            <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} transition-transform duration-300 ${
+              activeTab === tab.id ? 'scale-110' : ''
+            }`}>
+              {tab.emoji}
+            </div>
+            <div className="flex flex-col items-start">
+              <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-left`}>
+                {tab.title}
+              </span>
+              <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-left opacity-80`}>
+                {tab.content}
+              </span>
+            </div>
+            {activeTab === tab.id && (
+              <div className="ml-auto">
+                <div className="w-3 h-3 bg-primary-foreground rounded-full animate-pulse" />
+              </div>
+            )}
+          </Button>
+        ))}
       </div>
 
       {/* Tab Content */}
