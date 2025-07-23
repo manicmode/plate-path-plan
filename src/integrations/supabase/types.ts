@@ -550,6 +550,63 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_exercise_reports: {
+        Row: {
+          created_at: string
+          days_skipped: number
+          id: string
+          missed_target_areas: string[] | null
+          month_end: string
+          month_start: string
+          most_frequent_muscle_groups: string[] | null
+          motivational_title: string
+          personalized_message: string
+          report_data: Json
+          smart_suggestions: string
+          total_calories_burned: number
+          total_duration_minutes: number
+          total_workouts_completed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_skipped?: number
+          id?: string
+          missed_target_areas?: string[] | null
+          month_end: string
+          month_start: string
+          most_frequent_muscle_groups?: string[] | null
+          motivational_title: string
+          personalized_message: string
+          report_data?: Json
+          smart_suggestions: string
+          total_calories_burned?: number
+          total_duration_minutes?: number
+          total_workouts_completed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days_skipped?: number
+          id?: string
+          missed_target_areas?: string[] | null
+          month_end?: string
+          month_start?: string
+          most_frequent_muscle_groups?: string[] | null
+          motivational_title?: string
+          personalized_message?: string
+          report_data?: Json
+          smart_suggestions?: string
+          total_calories_burned?: number
+          total_duration_minutes?: number
+          total_workouts_completed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_rankings: {
         Row: {
           completion_date: string
