@@ -77,9 +77,9 @@ const Layout = ({ children }: LayoutProps) => {
   const shouldShowNavigation = isAuthenticated && location.pathname !== '/';
 
   return (
-    <div className="h-screen flex flex-col gradient-main transition-all duration-300">
+    <div className="min-h-screen gradient-main transition-all duration-300">
       {/* Enhanced Header with better spacing */}
-      <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl flex-shrink-0">
+      <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} gradient-primary rounded-2xl flex items-center justify-center neon-glow`}>
@@ -108,9 +108,9 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex-1 overflow-auto ${
+      <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
         shouldShowNavigation ? (isMobile ? 'pb-40' : 'pb-60') : 'pb-8'
-      }`}>
+      } min-h-[calc(100vh-140px)]`}>
         {children}
       </main>
 

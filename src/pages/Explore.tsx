@@ -1,7 +1,7 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useState, useCallback } from 'react';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
@@ -12,6 +12,9 @@ const Explore = () => {
   const [isHealthCheckOpen, setIsHealthCheckOpen] = useState(false);
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
   const [navigationInProgress, setNavigationInProgress] = useState(false);
+  
+  // Use the optimized scroll-to-top hook
+  useScrollToTop();
 
   const handleProfileClick = useCallback(() => {
     if (navigationInProgress) return;
@@ -102,9 +105,9 @@ const Explore = () => {
   const safeIsMobile = isMobile ?? false;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] p-4 overflow-hidden">
-      {/* Main 2x3 Grid - flex-1 to take available space */}
-      <div className="flex-1 grid grid-cols-2 grid-rows-3 gap-4 mb-4">
+    <div className="min-h-screen flex flex-col p-4 pb-24 relative">
+      {/* Main 2x3 Grid with simplified styling */}
+      <div className="grid grid-cols-2 grid-rows-3 gap-4 mb-4">
         {mainTiles.map((tile) => {
           return (
             <Button
@@ -112,25 +115,25 @@ const Explore = () => {
               onClick={() => handleTileClick(tile.id)}
               disabled={navigationInProgress}
               variant="ghost"
-              className={`
-                group relative h-full w-full p-4 rounded-2xl 
+            className={`
+                group relative h-full min-h-[180px] p-6 rounded-2xl 
                 transition-all duration-500 ease-out
                 bg-gradient-to-br ${tile.color} 
                 hover:scale-105 active:scale-95 active:rotate-1
                 shadow-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] ${tile.shadowColor} hover:shadow-2xl
                 border-0 text-white hover:text-white
-                flex flex-col items-center justify-center space-y-3
+                flex flex-col items-center justify-center space-y-5
                 ${navigationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               {/* Emoji Icon */}
-              <div className={`${safeIsMobile ? 'text-[2.5rem]' : 'text-[3rem]'} 
+              <div className={`${safeIsMobile ? 'text-[3.5rem]' : 'text-[4rem]'} 
                 group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
                 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]`}>
                 {tile.emoji}
               </div>
               {/* Title */}
-              <span className={`${safeIsMobile ? 'text-xs' : 'text-sm'} 
+              <span className={`${safeIsMobile ? 'text-sm' : 'text-base'} 
                 font-bold text-center leading-tight text-white
                 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-shadow-[0_1px_2px_rgba(0,0,0,0.6)]`}>
                 {tile.title}
@@ -140,14 +143,14 @@ const Explore = () => {
         })}
       </div>
 
-      {/* Profile Tab - Fixed at bottom with reduced margin */}
-      <div className="flex-shrink-0 w-full">
+      {/* Profile Tab - Simplified and positioned correctly */}
+      <div className="w-full mb-16 relative z-30">
         <Button
           onClick={() => handleTileClick('profile')}
           disabled={navigationInProgress}
           variant="ghost"
           className={`
-            group relative w-full h-14 p-3 rounded-2xl 
+            group relative w-full h-16 p-3 rounded-2xl 
             transition-all duration-500 ease-out
             bg-gradient-to-br from-slate-300 to-slate-600 
             hover:scale-105 active:scale-95 active:rotate-1
@@ -158,13 +161,13 @@ const Explore = () => {
           `}
         >
           {/* Profile Icon */}
-          <div className={`${safeIsMobile ? 'text-xl' : 'text-2xl'} 
+          <div className={`${safeIsMobile ? 'text-2xl' : 'text-3xl'} 
             group-hover:animate-bounce group-hover:scale-110 transition-transform duration-500 ease-out
             filter drop-shadow-lg`}>
             👤
           </div>
           {/* Profile Text */}
-          <span className={`${safeIsMobile ? 'text-base' : 'text-lg'} 
+          <span className={`${safeIsMobile ? 'text-lg' : 'text-xl'} 
             font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]`}>
             Profile
           </span>
