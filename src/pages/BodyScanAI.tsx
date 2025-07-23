@@ -259,46 +259,59 @@ export default function BodyScanAI() {
         )}
       </div>
 
-        {/* Floating Action Buttons - Like Health Inspector Scanner */}
-        <div className="absolute bottom-8 left-4 right-4 z-20">
-          <div className="flex justify-between items-center">
-            {/* Cancel Button */}
+      {/* Bottom Controls - Match Health Inspector layout exactly */}
+      <div className="p-6 bg-gradient-to-t from-black/90 to-transparent">
+        <div className="flex flex-col space-y-4">
+          {/* Cancel Button - Centered with w-1/2 width */}
+          <div className="flex justify-center">
             <Button
               onClick={handleCancel}
-              variant="outline"
-              size="lg"
-              className="bg-black/60 backdrop-blur-sm border-red-500/50 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all duration-300"
+              className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
             >
-              <X className="w-6 h-6" />
-            </Button>
-
-            {/* Center Capture/Continue Button */}
-            <Button
-              onClick={hasImageReady ? handleContinue : captureImage}
-              disabled={isCapturing}
-              size="lg"
-              className={`bg-green-500/80 backdrop-blur-sm border-2 border-green-400 text-white hover:bg-green-400/80 
-                       shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
-                       transition-all duration-300 disabled:opacity-50 px-8`}
-            >
-              {hasImageReady ? (
-                <ArrowRight className="w-6 h-6" />
-              ) : (
-                <div className={`w-6 h-6 ${isCapturing ? 'animate-spin' : 'animate-pulse'}`}>📸</div>
-              )}
-            </Button>
-
-            {/* Upload Button */}
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              size="lg"
-              className="bg-black/60 backdrop-blur-sm border-blue-500/50 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-all duration-300"
-            >
-              <Upload className="w-6 h-6" />
+              <X className="w-5 h-5 mr-2" />
+              Cancel
             </Button>
           </div>
+
+          {/* Upload from Gallery - Full width with blue styling */}
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            Upload Image
+          </Button>
+
+          {/* Continue/Capture Button - Full width */}
+          <Button
+            onClick={hasImageReady ? handleContinue : captureImage}
+            disabled={isCapturing}
+            className={`relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 
+                     text-white font-bold py-4 text-lg border-2 border-green-400 
+                     shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]
+                     transition-all duration-300 disabled:opacity-50`}
+          >
+            <div className="flex items-center justify-center">
+              {hasImageReady ? (
+                <>
+                  <ArrowRight className="w-6 h-6 mr-3" />
+                  🚀 Continue to Side Scan
+                </>
+              ) : (
+                <>
+                  <div className={`w-6 h-6 mr-3 ${isCapturing ? 'animate-spin' : 'animate-pulse'}`}>📸</div>
+                  {isCapturing ? 'Capturing...' : 'Capture Front View'}
+                </>
+              )}
+            </div>
+            {!hasImageReady && !isCapturing && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                           animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
+            )}
+          </Button>
         </div>
+      </div>
 
       {/* Hidden file input */}
       <input
