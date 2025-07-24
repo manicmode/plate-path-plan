@@ -63,6 +63,16 @@ export default function BodyScanAI() {
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
   const [poseStatusHistory, setPoseStatusHistory] = useState<boolean[]>([]);
+  
+  // Enhanced state for pose smoothing and debugging
+  const [poseHistory, setPoseHistory] = useState<DetectedPose[]>([]);
+  const [debugInfo, setDebugInfo] = useState<{
+    landmarkCount: number;
+    avgConfidence: number;
+    stabilityFrames: number;
+    humanPresenceLevel: 'none' | 'partial' | 'full';
+  }>({ landmarkCount: 0, avgConfidence: 0, stabilityFrames: 0, humanPresenceLevel: 'none' });
+  const [stablePoseFrames, setStablePoseFrames] = useState(0);
   const [stableAlignmentStatus, setStableAlignmentStatus] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
@@ -191,20 +201,28 @@ export default function BodyScanAI() {
           // Analyze alignment with body outline
           const alignment = analyzePoseAlignment(pose);
           
-          // Implement pose stability buffer with debounce
+          // Enhanced pose stability tracking with 5-frame stability requirement
           setPoseStatusHistory(prev => {
-            const newHistory = [...prev, alignment.isAligned].slice(-10); // Keep last 10 frames (about 500ms at 15fps)
+            const newHistory = [...prev, alignment.isAligned].slice(-10); // Keep last 10 frames
             
-            // Check if pose has been stable for enough frames
-            const recentFrames = newHistory.slice(-8); // Last ~500ms
-            const stableGood = recentFrames.length >= 8 && recentFrames.every(status => status);
-            const stableBad = recentFrames.length >= 8 && recentFrames.every(status => !status);
-            
-            if (stableGood && stableAlignmentStatus !== true) {
-              setStableAlignmentStatus(true);
-            } else if (stableBad && stableAlignmentStatus !== false) {
-              setStableAlignmentStatus(false);
-            }
+            // Update stability frames counter
+            setStablePoseFrames(prevFrames => {
+              const recentFrames = newHistory.slice(-5); // Require 5 consistent frames (~300ms at 15fps)
+              const isStableGood = recentFrames.length >= 5 && recentFrames.every(status => status);
+              const isStableBad = recentFrames.length >= 5 && recentFrames.every(status => !status);
+              
+              if (isStableGood && stableAlignmentStatus !== true) {
+                setStableAlignmentStatus(true);
+                setDebugInfo(prev => ({ ...prev, stabilityFrames: recentFrames.length }));
+                console.log('🟢 Stable GOOD pose detected for 5+ frames');
+              } else if (isStableBad && stableAlignmentStatus !== false) {
+                setStableAlignmentStatus(false);
+                setDebugInfo(prev => ({ ...prev, stabilityFrames: 0 }));
+                console.log('🔴 Stable BAD pose detected for 5+ frames');
+              }
+              
+              return isStableGood ? prevFrames + 1 : 0;
+            });
             
             return newHistory;
           });
@@ -465,37 +483,95 @@ export default function BodyScanAI() {
     setIsCountingDown(false);
   };
 
-  // Human presence validation function
-  const validateHumanPresence = useCallback((pose: DetectedPose): boolean => {
-    const requiredLandmarks = [
+  // Enhanced human presence validation with pose smoothing
+  const validateHumanPresence = useCallback((pose: DetectedPose): { level: 'none' | 'partial' | 'full', validCount: number, avgConfidence: number } => {
+    const majorLandmarks = [
       'nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip',
       'left_knee', 'right_knee', 'left_elbow', 'right_elbow'
     ];
     
-    let validLandmarkCount = 0;
+    let validCount = 0;
+    let totalConfidence = 0;
+    const confidenceThreshold = 0.4; // Relaxed from 0.6
     
-    for (const landmarkName of requiredLandmarks) {
+    for (const landmarkName of majorLandmarks) {
       const landmark = pose.keypoints.find(kp => kp.name === landmarkName);
-      if (landmark && landmark.score > 0.6) {
-        validLandmarkCount++;
+      if (landmark && landmark.score > confidenceThreshold) {
+        validCount++;
+        totalConfidence += landmark.score;
       }
     }
     
-    // Require at least 8 out of 9 major landmarks for human presence
-    const humanPresent = validLandmarkCount >= 8;
+    const avgConfidence = validCount > 0 ? totalConfidence / validCount : 0;
     
-    // Optional: Log for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Human presence check: ${validLandmarkCount}/9 landmarks detected, Human present: ${humanPresent}`);
+    // Tiered validation: relaxed requirements
+    let level: 'none' | 'partial' | 'full' = 'none';
+    if (validCount >= 6) { // Reduced from 8 to 6
+      level = 'full';
+    } else if (validCount >= 4) { // Allow partial detection
+      level = 'partial';
     }
     
-    return humanPresent;
+    // Enhanced debugging with frame-by-frame analysis
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 Human Presence Analysis:
+        Valid landmarks: ${validCount}/${majorLandmarks.length}
+        Avg confidence: ${(avgConfidence * 100).toFixed(1)}%
+        Presence level: ${level}
+        Detected landmarks: ${pose.keypoints.filter(kp => kp.score > confidenceThreshold).map(kp => kp.name).join(', ')}
+      `);
+    }
+    
+    return { level, validCount, avgConfidence };
   }, []);
 
-  // Pose analysis functions
+  // Pose smoothing function - average poses over multiple frames
+  const smoothPoseData = useCallback((currentPose: DetectedPose) => {
+    setPoseHistory(prev => {
+      const maxHistory = 8; // 8 frames for ~500ms smoothing at 15fps
+      const newHistory = [...prev, currentPose].slice(-maxHistory);
+      
+      // Calculate smoothed pose by averaging keypoint positions and confidences
+      const smoothedKeypoints = currentPose.keypoints.map((kp, index) => {
+        const relevantFrames = newHistory.filter(pose => 
+          pose.keypoints[index] && pose.keypoints[index].score > 0.3
+        );
+        
+        if (relevantFrames.length === 0) return kp;
+        
+        const avgX = relevantFrames.reduce((sum, pose) => sum + pose.keypoints[index].x, 0) / relevantFrames.length;
+        const avgY = relevantFrames.reduce((sum, pose) => sum + pose.keypoints[index].y, 0) / relevantFrames.length;
+        const avgScore = relevantFrames.reduce((sum, pose) => sum + pose.keypoints[index].score, 0) / relevantFrames.length;
+        
+        return {
+          ...kp,
+          x: avgX,
+          y: avgY,
+          score: avgScore
+        };
+      });
+      
+      return newHistory;
+    });
+    
+    return currentPose; // For now, return current pose (can be enhanced to return smoothed)
+  }, []);
+
+  // Enhanced pose analysis with comprehensive validation
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
-    // STEP 1: Human presence validation - must pass before any alignment checks
-    if (!validateHumanPresence(pose)) {
+    // STEP 1: Enhanced human presence validation with tiered levels
+    const presenceCheck = validateHumanPresence(pose);
+    
+    // Update debug info state
+    setDebugInfo(prev => ({
+      ...prev,
+      landmarkCount: presenceCheck.validCount,
+      avgConfidence: presenceCheck.avgConfidence,
+      humanPresenceLevel: presenceCheck.level
+    }));
+    
+    // Immediate return for no human detected
+    if (presenceCheck.level === 'none') {
       return {
         isAligned: false,
         misalignedLimbs: ['no_human'],
@@ -503,6 +579,19 @@ export default function BodyScanAI() {
         feedback: "No person detected. Step into view to begin."
       };
     }
+    
+    // Partial human detection - give encouraging feedback
+    if (presenceCheck.level === 'partial') {
+      return {
+        isAligned: false,
+        misalignedLimbs: ['partial_detection'],
+        alignmentScore: Math.min(0.4, presenceCheck.avgConfidence), // Cap at 40% for partial detection
+        feedback: `Getting there! Move closer or adjust position. (${presenceCheck.validCount}/9 landmarks detected)`
+      };
+    }
+    
+    // Apply pose smoothing for full human detection
+    const smoothedPose = smoothPoseData(pose);
     
     const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
     const misalignedLimbs: string[] = [];
@@ -783,6 +872,25 @@ export default function BodyScanAI() {
           <p className="text-white/90 text-sm text-center">
             Stand upright with arms out. Match your body to the glowing outline.
           </p>
+          
+          {/* Enhanced Debug Information */}
+          {process.env.NODE_ENV === 'development' && debugInfo && (
+            <div className="mt-3 p-3 bg-black/40 rounded-xl border border-blue-400/30">
+              <div className="text-xs text-blue-300 grid grid-cols-2 gap-2">
+                <div>🎯 Landmarks: {debugInfo.landmarkCount}/9</div>
+                <div>📊 Confidence: {(debugInfo.avgConfidence * 100).toFixed(0)}%</div>
+                <div>⚡ Stable: {debugInfo.stabilityFrames}f</div>
+                <div>👤 Presence: 
+                  <span className={
+                    debugInfo.humanPresenceLevel === 'full' ? 'text-green-400' :
+                    debugInfo.humanPresenceLevel === 'partial' ? 'text-yellow-400' : 'text-red-400'
+                  }>
+                    {debugInfo.humanPresenceLevel}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
