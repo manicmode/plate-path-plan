@@ -65,3 +65,67 @@ export const safeParseDate = (value: any): Date | null => {
     return null;
   }
 };
+
+// Enhanced UUID validation with comprehensive checks
+export const isValidUUID = (value: string): boolean => {
+  if (!value || typeof value !== 'string') return false;
+  
+  // Check for common invalid values that cause database errors
+  if (value === 'undefined' || value === 'null' || value === 'false' || value === 'true' || value === '') {
+    return false;
+  }
+  
+  // Check for string representations of undefined/null
+  if (value.toLowerCase() === 'undefined' || value.toLowerCase() === 'null') {
+    return false;
+  }
+  
+  // UUID v4 pattern with strict validation
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidPattern.test(value) && value.length === 36;
+};
+
+// Enhanced notification data validation with constraint checking
+export const isValidNotificationData = (data: any): boolean => {
+  if (!data || typeof data !== 'object') return false;
+  
+  // Check for required notification structure
+  const validTypes = ['email', 'push', 'sms', 'in_app', 'reminder', 'challenge', 'social'];
+  
+  if (data.type && !validTypes.includes(data.type)) {
+    return false;
+  }
+  
+  // Validate notification preferences structure to prevent constraint violations
+  if (data.preferences) {
+    const prefs = data.preferences;
+    if (typeof prefs !== 'object') return false;
+    
+    // Check for valid boolean preferences
+    for (const [key, value] of Object.entries(prefs)) {
+      if (typeof value !== 'boolean' && value !== null && value !== undefined) {
+        return false;
+      }
+      
+      // Prevent empty string values that cause constraint violations
+      if (value === '' || value === 'undefined' || value === 'null') {
+        return false;
+      }
+    }
+  }
+  
+  // Validate required fields for database constraints
+  if (data.user_id && !isValidUUID(data.user_id)) {
+    return false;
+  }
+  
+  // Check for XSS in notification content
+  if (data.content && typeof data.content === 'string') {
+    const xssPattern = /<script|javascript:|on\w+\s*=|<iframe/i;
+    if (xssPattern.test(data.content)) {
+      return false;
+    }
+  }
+  
+  return true;
+};
