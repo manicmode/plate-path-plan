@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { X, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSecureApiCall } from '@/hooks/useSecureApiCall';
+import { sanitizeText, safeParseNumber } from '@/lib/validation';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   onSave,
   initialBarcode = ''
 }) => {
+  const { validateApiCall } = useSecureApiCall();
   const [formData, setFormData] = useState({
     name: '',
     calories: '',
@@ -39,20 +42,40 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       return;
     }
 
+    // Validate and sanitize all input data
+    const validatedData = validateApiCall({
+      name: formData.name,
+      calories: formData.calories,
+      protein: formData.protein,
+      carbs: formData.carbs,
+      fat: formData.fat,
+      fiber: formData.fiber,
+      sugar: formData.sugar,
+      sodium: formData.sodium,
+      barcode: formData.barcode
+    }, {
+      sanitizeTexts: ['name', 'barcode'],
+      validateNumbers: ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium']
+    });
+
+    if (validatedData === false) {
+      return; // Validation failed, error already shown
+    }
+
     const foodData = {
       id: `manual-${Date.now()}`,
-      name: formData.name,
-      calories: parseFloat(formData.calories) || 0,
-      protein: parseFloat(formData.protein) || 0,
-      carbs: parseFloat(formData.carbs) || 0,
-      fat: parseFloat(formData.fat) || 0,
-      fiber: parseFloat(formData.fiber) || 0,
-      sugar: parseFloat(formData.sugar) || 0,
-      sodium: parseFloat(formData.sodium) || 0,
+      name: validatedData.name,
+      calories: validatedData.calories || 0,
+      protein: validatedData.protein || 0,
+      carbs: validatedData.carbs || 0,
+      fat: validatedData.fat || 0,
+      fiber: validatedData.fiber || 0,
+      sugar: validatedData.sugar || 0,
+      sodium: validatedData.sodium || 0,
       confidence: 100,
       timestamp: new Date(),
       confirmed: false,
-      barcode: formData.barcode,
+      barcode: validatedData.barcode,
       ingredientsText: '',
       ingredientsAvailable: false,
       isManualEntry: true
@@ -64,7 +87,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Sanitize text inputs on change
+    const sanitizedValue = field === 'name' || field === 'barcode' 
+      ? sanitizeText(value) 
+      : value;
+    
+    setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
   };
 
   if (!isOpen) return null;

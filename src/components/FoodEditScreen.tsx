@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Save, X } from 'lucide-react';
+import { sanitizeText, safeParseNumber } from '@/lib/validation';
 
 interface FoodItem {
   id?: string;
@@ -85,7 +86,9 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
   const handleInputChange = (field: keyof FoodItem, value: string | number) => {
     setEditedFood(prev => ({
       ...prev,
-      [field]: typeof value === 'string' && field !== 'name' ? parseFloat(value) || 0 : value
+      [field]: typeof value === 'string' && field !== 'name' 
+        ? (safeParseNumber(value) || 0) 
+        : (field === 'name' ? sanitizeText(String(value)) : value)
     }));
   };
 
