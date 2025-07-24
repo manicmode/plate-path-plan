@@ -210,7 +210,12 @@ export default function BodyScanAI() {
       console.log("[VIDEO]", videoRef.current);
       if (videoRef.current?.readyState !== 4) {
         console.log("[VIDEO] Not ready", videoRef.current?.readyState);
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
       }
+      
+      // STEP 8: VIDEO STREAM DIMENSIONS
+      console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
       
       if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
@@ -226,11 +231,33 @@ export default function BodyScanAI() {
       try {
         console.log('[POSE FRAME] Attempting pose detection...');
         
+        // STEP 9: CONFIRM MODEL INFERENCE
+        console.log("[ESTIMATE] About to run estimatePoses");
+        
         // Detect pose using estimatePoses (MoveNet method)
         const poses = await poseDetectorRef.current.estimatePoses(video);
         
-        console.log('[POSE FRAME] Pose result:', poses);
+        // STEP 6: LOG POSE RESULT
+        console.log("[POSE RESULT]", poses);
         console.log('[POSE FRAME] Number of poses detected:', poses.length);
+        
+        // STEP 7: LOG KEYPOINTS DETAILS
+        if (poses.length > 0) {
+          const keypoints = poses[0].keypoints || [];
+          console.log("[KEYPOINTS] Count:", keypoints.length);
+          keypoints.forEach((kp, i) => {
+            console.log(`[KEYPOINT ${i}] ${kp.name || i}:`, kp);
+          });
+        } else {
+          console.log("[KEYPOINTS] No pose detected");
+          
+          // STEP 10: RED WARNING TOAST
+          toast({
+            title: "❌ Pose NOT detected",
+            description: "Check camera & lighting",
+            variant: "destructive"
+          });
+        }
         
         if (poses.length > 0) {
           const pose = poses[0] as DetectedPose;
