@@ -155,13 +155,13 @@ export default function BodyScanAI() {
   useEffect(() => {
     const initializePoseDetection = async () => {
       try {
-        console.log('🚀 Initializing TensorFlow.js...');
+        console.log('[POSE INIT] Starting TensorFlow.js initialization...');
         await tf.ready();
         await tf.setBackend('webgl');
-        console.log('✅ TensorFlow.js backend set to webgl');
+        console.log('[POSE INIT] TensorFlow.js backend set to webgl');
         
-        console.log('🤖 Loading pose detection model...');
-        const detector = await poseDetection.createDetector(
+        console.log('[POSE INIT] Loading pose detection model...');
+        const poseNet = await poseDetection.createDetector(
           poseDetection.SupportedModels.MoveNet,
           {
             modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
@@ -169,20 +169,25 @@ export default function BodyScanAI() {
           }
         );
         
-        poseDetectorRef.current = detector;
+        poseDetectorRef.current = poseNet;
         setPoseDetectionReady(true);
-        console.log('✅ Pose model loaded:', !!detector);
-        console.log('🎯 Pose detection initialized successfully');
+        
+        // FORCE LOG THE MODEL
+        console.log('[POSE INIT] Model loaded:', poseNet);
+        console.log('[POSE INIT] Model type:', typeof poseNet);
+        console.log('[POSE INIT] Model methods:', Object.getOwnPropertyNames(poseNet));
         
         toast({
-          title: "Pose Detection Ready",
+          title: "✅ Pose Detection Ready",
           description: "AI-powered pose alignment is now active",
         });
       } catch (error) {
-        console.error('❌ Failed to initialize pose detection:', error);
+        console.error('[POSE INIT] ❌ Failed to initialize pose detection:', error);
+        
+        // FORCE ERROR MESSAGE AS REQUESTED
         toast({
-          title: "Pose Detection Error",
-          description: "AI features disabled. Basic capture still available.",
+          title: "❌ Pose detection failed to load",
+          description: "Model initialization error. Basic capture only.",
           variant: "destructive"
         });
         setIsPoseDetectionEnabled(false);
@@ -193,7 +198,7 @@ export default function BodyScanAI() {
 
     return () => {
       if (poseDetectorRef.current) {
-        console.log('🧹 Disposing pose detector');
+        console.log('[POSE INIT] Disposing pose detector');
         poseDetectorRef.current.dispose();
       }
     };
@@ -210,53 +215,53 @@ export default function BodyScanAI() {
       const video = videoRef.current;
       const overlayCanvas = overlayCanvasRef.current;
 
-      // Debug: Log video and canvas dimensions
-      console.log('🎥 Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-      console.log('🎨 Canvas dimensions:', overlayCanvas?.width, 'x', overlayCanvas?.height);
-
       try {
+        // FORCE LOG POSE DETECTION ATTEMPT
+        console.log('[POSE FRAME] Attempting pose detection...');
+        
         // Detect pose using estimatePoses (MoveNet method)
         const poses = await poseDetectorRef.current.estimatePoses(video);
+        
+        // FORCE LOG POSE RESULT AS REQUESTED
+        console.log('[POSE FRAME] Pose result:', poses);
+        console.log('[POSE FRAME] Number of poses detected:', poses.length);
         
         if (poses.length > 0) {
           const pose = poses[0] as DetectedPose;
           setPoseDetected(pose);
           
-          console.log('🤖 Estimated pose:', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
+          console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
           
-          // Ensure pose keypoints exist before proceeding
-          if (pose?.keypoints?.length > 0) {
-            // Analyze alignment
-            const alignment = analyzePoseAlignment(pose);
-            setAlignmentFeedback(alignment);
-            
-            console.log('📐 Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
-            
-            // Simple 5-frame alignment confirmation
-            if (alignment.isAligned) {
-              setAlignmentFrameCount(prev => {
-                const newCount = prev + 1;
-                console.log('✅ Aligned frame count:', newCount);
-                
-                if (newCount >= 5 && !alignmentConfirmed) {
-                  setAlignmentConfirmed(true);
-                  console.log('🎯 ALIGNMENT CONFIRMED after 5 frames');
-                }
-                
-                return newCount;
-              });
-            } else {
-              setAlignmentFrameCount(0);
-              if (alignmentConfirmed) {
-                setAlignmentConfirmed(false);
-                console.log('❌ Alignment lost - resetting confirmation');
+          // Analyze alignment
+          const alignment = analyzePoseAlignment(pose);
+          setAlignmentFeedback(alignment);
+          
+          console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
+          
+          // Simple 5-frame alignment confirmation
+          if (alignment.isAligned) {
+            setAlignmentFrameCount(prev => {
+              const newCount = prev + 1;
+              console.log('[POSE FRAME] ✅ Aligned frame count:', newCount);
+              
+              if (newCount >= 5 && !alignmentConfirmed) {
+                setAlignmentConfirmed(true);
+                console.log('[POSE FRAME] 🎯 ALIGNMENT CONFIRMED after 5 frames');
               }
+              
+              return newCount;
+            });
+          } else {
+            setAlignmentFrameCount(0);
+            if (alignmentConfirmed) {
+              setAlignmentConfirmed(false);
+              console.log('[POSE FRAME] ❌ Alignment lost - resetting confirmation');
             }
-            
-            // Draw pose overlay with debug logging
-            console.log('🎨 Drawing pose overlay...');
-            drawPoseOverlay(pose, alignment);
           }
+          
+          // FORCE DRAW POSE OVERLAY - ALWAYS CALL THIS
+          console.log('[POSE FRAME] Calling drawPoseOverlay...');
+          drawPoseOverlay(pose, alignment);
           
         } else {
           setPoseDetected(null);
@@ -264,7 +269,7 @@ export default function BodyScanAI() {
           setAlignmentFrameCount(0);
           setAlignmentConfirmed(false);
           
-          console.log('👻 No pose detected');
+          console.log('[POSE FRAME] 👻 No pose detected - clearing overlay');
           
           // Clear overlay canvas
           if (overlayCanvas) {
@@ -275,20 +280,20 @@ export default function BodyScanAI() {
           }
         }
       } catch (error) {
-        console.error('❌ Pose detection error:', error);
+        console.error('[POSE FRAME] ❌ Pose detection error:', error);
       }
 
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     };
 
     if (stream && poseDetectionReady && isPoseDetectionEnabled) {
-      console.log('🚀 Starting pose detection loop');
+      console.log('[POSE FRAME] 🚀 Starting pose detection loop');
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     }
 
     return () => {
       if (animationFrameRef.current) {
-        console.log('🛑 Cleaning up animation frame');
+        console.log('[POSE FRAME] 🛑 Cleaning up animation frame');
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
@@ -709,15 +714,18 @@ export default function BodyScanAI() {
   }, []);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
+    // FORCE LOG DRAW CALL AS REQUESTED
+    console.log('[DRAW] Drawing pose overlay');
+    
     if (!overlayCanvasRef.current || !videoRef.current) {
-      console.log('❌ drawPoseOverlay: Missing canvas or video ref');
+      console.log('[DRAW] ❌ Missing canvas or video ref');
       return;
     }
     
     const canvas = overlayCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.log('❌ drawPoseOverlay: No canvas context');
+      console.log('[DRAW] ❌ No canvas context');
       return;
     }
     
@@ -732,50 +740,56 @@ export default function BodyScanAI() {
     // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    console.log(`🎨 Drawing pose overlay: canvas=${canvas.width}x${canvas.height}, video=${video.videoWidth}x${video.videoHeight}`);
-    console.log(`🔍 Found ${pose.keypoints.length} keypoints to draw`);
+    console.log(`[DRAW] Canvas setup: ${canvas.width}x${canvas.height}, video: ${video.videoWidth}x${video.videoHeight}`);
     
-    // Ensure pose keypoints exist
+    // FORCE DRAW EVEN IF NO KEYPOINTS - for debugging
     if (!pose?.keypoints?.length) {
-      console.log('❌ No keypoints to draw');
+      console.log('[DRAW] ❌ No keypoints to draw, drawing test circle');
+      // Draw a test circle to confirm canvas is working
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, 20, 0, 2 * Math.PI);
+      ctx.fillStyle = '#ff0000';
+      ctx.fill();
       return;
     }
     
-    // Draw pose keypoints with enhanced visibility (Green dots)
+    console.log(`[DRAW] Drawing ${pose.keypoints.length} keypoints`);
+    
+    // Draw GREEN DOTS for pose keypoints - FORCE VISIBLE
     let drawnKeypoints = 0;
     pose.keypoints.forEach((keypoint, index) => {
-      if (keypoint.score > 0.3) { // Lowered threshold for better visibility
+      if (keypoint.score > 0.2) { // Very low threshold to catch all keypoints
         const isAligned = !alignment.misalignedLimbs.some(limb => 
           keypoint.name?.includes(limb.replace('_', ' '))
         );
         
-        // Outer glow
+        // LARGE OUTER GLOW for visibility
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 10, 0, 2 * Math.PI);
-        ctx.fillStyle = isAligned ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 107, 0, 0.4)';
+        ctx.arc(keypoint.x, keypoint.y, 15, 0, 2 * Math.PI);
+        ctx.fillStyle = isAligned ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 107, 0, 0.5)';
         ctx.fill();
         
-        // Main dot (Green for aligned, orange for misaligned)
+        // LARGE GREEN DOT - FORCE VISIBLE
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
         ctx.fillStyle = isAligned ? '#00ff00' : '#ff6b00';
         ctx.fill();
         
-        // White border for contrast
+        // WHITE BORDER for maximum contrast
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.stroke();
         
         drawnKeypoints++;
-        console.log(`✅ Drew keypoint ${index}: ${keypoint.name} at (${keypoint.x.toFixed(1)}, ${keypoint.y.toFixed(1)}) score: ${keypoint.score.toFixed(3)}`);
+        console.log(`[DRAW] ✅ Drew keypoint ${index}: ${keypoint.name} at (${keypoint.x.toFixed(1)}, ${keypoint.y.toFixed(1)})`);
       }
     });
     
-    console.log(`🎯 Drew ${drawnKeypoints} keypoints out of ${pose.keypoints.length}`);
+    console.log(`[DRAW] Successfully drew ${drawnKeypoints} GREEN DOTS`);
     
-    // Draw skeleton connections with enhanced visibility
+    // Draw WHITE SKELETON LINES - FORCE VISIBLE
     const connections = [
       ['left_shoulder', 'right_shoulder'],
       ['left_shoulder', 'left_elbow'],
@@ -792,28 +806,29 @@ export default function BodyScanAI() {
       const kpA = pose.keypoints.find(kp => kp.name === pointA);
       const kpB = pose.keypoints.find(kp => kp.name === pointB);
       
-      if (kpA && kpB && kpA.score > 0.3 && kpB.score > 0.3) {
-        // Shadow/glow line
+      if (kpA && kpB && kpA.score > 0.2 && kpB.score > 0.2) {
+        // THICK WHITE SKELETON LINES
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
-        ctx.strokeStyle = alignment.isAligned ? 'rgba(0, 255, 255, 0.6)' : 'rgba(255, 107, 0, 0.6)';
-        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 5;
         ctx.stroke();
         
-        // Main line
+        // COLORED INNER LINE for alignment feedback
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
         ctx.strokeStyle = alignment.isAligned ? '#00ffff' : '#ff6b00';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 3;
         ctx.stroke();
         
         drawnConnections++;
       }
     });
     
-    console.log(`🔗 Drew ${drawnConnections} skeleton connections`);
+    console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
+    console.log('[DRAW] ✅ Pose overlay drawing complete');
   }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -913,19 +928,19 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Pose detection overlay canvas - VISIBLE and properly z-indexed */}
+      {/* FORCE VISIBLE POSE OVERLAY CANVAS */}
       <canvas 
         ref={overlayCanvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
           position: 'absolute',
+          zIndex: 20,
           top: 0,
           left: 0,
+          pointerEvents: 'none',
           width: '100%',
           height: '100%',
-          zIndex: 30,
-          pointerEvents: 'none',
-          display: 'block'
+          display: 'block',
+          border: '2px solid red' // TEMPORARY DEBUG BORDER
         }}
       />
       
