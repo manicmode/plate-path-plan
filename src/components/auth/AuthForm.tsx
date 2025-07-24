@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { User, Lock, Mail, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateEmail } from '@/utils/emailValidation';
+import { validateEmail as validateEmailSecure, validatePassword, sanitizeText } from '@/lib/validation';
 
 const AuthForm = () => {
   const { login, register, resendEmailConfirmation, user } = useAuth();
@@ -113,10 +114,22 @@ const AuthForm = () => {
       return;
     }
     
+    // Enhanced input validation
+    const sanitizedEmail = sanitizeText(formData.email);
+    if (!validateEmailSecure(sanitizedEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    if (!validatePassword(formData.password)) {
+      toast.error('Password must be at least 8 characters with uppercase, lowercase, and number');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      await login(formData.email, formData.password);
+      await login(sanitizedEmail, formData.password);
       toast.success('Welcome back!');
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -161,21 +174,22 @@ const AuthForm = () => {
       return;
     }
     
-    // Basic form validation
-    if (!formData.email || !formData.password || !formData.name) {
+    // Enhanced input validation
+    const sanitizedEmail = sanitizeText(formData.email);
+    const sanitizedName = sanitizeText(formData.name);
+    
+    if (!sanitizedEmail || !formData.password || !sanitizedName) {
       toast.error('Please fill in all fields.');
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters long.');
+    if (!validateEmailSecure(sanitizedEmail)) {
+      toast.error('Please enter a valid email address.');
       return;
     }
-
-    // Email validation
-    const emailValidationResult = validateEmail(formData.email);
-    if (!emailValidationResult.isValid) {
-      toast.error(emailValidationResult.error || 'Please enter a valid email address.');
+    
+    if (!validatePassword(formData.password)) {
+      toast.error('Password must be at least 8 characters with uppercase, lowercase, and number.');
       return;
     }
 
@@ -196,7 +210,7 @@ const AuthForm = () => {
     
     try {
       console.log('🎯 Calling register function...');
-      const result = await register(formData.email, formData.password, formData.name);
+      const result = await register(sanitizedEmail, formData.password, sanitizedName);
       console.log('🎉 Registration result:', result);
       
       if (result.requiresEmailConfirmation) {

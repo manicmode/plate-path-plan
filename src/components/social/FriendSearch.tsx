@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useFriendSearch } from '@/hooks/useFriendSearch';
 import { useDebounce } from '@/hooks/useDebounce';
+import { validateUUID, sanitizeText } from '@/lib/validation';
+import { toast } from 'sonner';
 
 export const FriendSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,11 +17,18 @@ export const FriendSearch = () => {
 
   React.useEffect(() => {
     if (debouncedSearchTerm) {
-      searchUsers(debouncedSearchTerm);
+      const sanitizedTerm = sanitizeText(debouncedSearchTerm);
+      if (sanitizedTerm.length >= 2) {
+        searchUsers(sanitizedTerm);
+      }
     }
   }, [debouncedSearchTerm, searchUsers]);
 
   const handleSendRequest = async (userId: string) => {
+    if (!validateUUID(userId)) {
+      toast.error('Invalid user ID');
+      return;
+    }
     await sendFriendRequest(userId);
   };
 
@@ -31,8 +40,9 @@ export const FriendSearch = () => {
         <Input
           placeholder="Search by username or email..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(sanitizeText(e.target.value))}
           className="pl-10"
+          maxLength={100}
         />
         {isSearching && (
           <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
