@@ -161,7 +161,7 @@ export default function BodyScanAI() {
         console.log('[POSE INIT] TensorFlow.js backend set to webgl');
         
         console.log('[POSE INIT] Loading pose detection model...');
-        const poseNet = await poseDetection.createDetector(
+        const model = await poseDetection.createDetector(
           poseDetection.SupportedModels.MoveNet,
           {
             modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
@@ -169,13 +169,13 @@ export default function BodyScanAI() {
           }
         );
         
-        poseDetectorRef.current = poseNet;
+        poseDetectorRef.current = model;
         setPoseDetectionReady(true);
         
-        // FORCE LOG THE MODEL
-        console.log('[POSE INIT] Model loaded:', poseNet);
-        console.log('[POSE INIT] Model type:', typeof poseNet);
-        console.log('[POSE INIT] Model methods:', Object.getOwnPropertyNames(poseNet));
+        // STEP 3: MODEL LOADED DEBUG
+        console.log('[MODEL] Model loaded', model);
+        console.log('[MODEL] Model type:', typeof model);
+        console.log('[MODEL] Model methods:', Object.getOwnPropertyNames(model));
         
         toast({
           title: "✅ Pose Detection Ready",
@@ -184,7 +184,6 @@ export default function BodyScanAI() {
       } catch (error) {
         console.error('[POSE INIT] ❌ Failed to initialize pose detection:', error);
         
-        // FORCE ERROR MESSAGE AS REQUESTED
         toast({
           title: "❌ Pose detection failed to load",
           description: "Model initialization error. Basic capture only.",
@@ -207,6 +206,12 @@ export default function BodyScanAI() {
   // Clean pose detection loop with debug logging
   useEffect(() => {
     const detectPoseRealTime = async () => {
+      // STEP 1: VIDEO DEBUG CHECK
+      console.log("[VIDEO]", videoRef.current);
+      if (videoRef.current?.readyState !== 4) {
+        console.log("[VIDEO] Not ready", videoRef.current?.readyState);
+      }
+      
       if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
@@ -215,14 +220,15 @@ export default function BodyScanAI() {
       const video = videoRef.current;
       const overlayCanvas = overlayCanvasRef.current;
 
+      // STEP 2: ANIMATION LOOP DEBUG
+      console.log("[LOOP] Running frame", Date.now());
+
       try {
-        // FORCE LOG POSE DETECTION ATTEMPT
         console.log('[POSE FRAME] Attempting pose detection...');
         
         // Detect pose using estimatePoses (MoveNet method)
         const poses = await poseDetectorRef.current.estimatePoses(video);
         
-        // FORCE LOG POSE RESULT AS REQUESTED
         console.log('[POSE FRAME] Pose result:', poses);
         console.log('[POSE FRAME] Number of poses detected:', poses.length);
         
@@ -259,7 +265,6 @@ export default function BodyScanAI() {
             }
           }
           
-          // FORCE DRAW POSE OVERLAY - ALWAYS CALL THIS
           console.log('[POSE FRAME] Calling drawPoseOverlay...');
           drawPoseOverlay(pose, alignment);
           
@@ -714,8 +719,8 @@ export default function BodyScanAI() {
   }, []);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
-    // FORCE LOG DRAW CALL AS REQUESTED
-    console.log('[DRAW] Drawing pose overlay');
+    // STEP 4: DRAW DEBUG
+    console.log("[DRAW] drawPoseOverlay called");
     
     if (!overlayCanvasRef.current || !videoRef.current) {
       console.log('[DRAW] ❌ Missing canvas or video ref');
@@ -729,6 +734,11 @@ export default function BodyScanAI() {
       return;
     }
     
+    // STEP 4: DRAW RED TEST BOX
+    ctx.fillStyle = "red";
+    ctx.fillRect(10, 10, 20, 20);
+    console.log("[DRAW] Red test box drawn");
+    
     const video = videoRef.current;
     
     // Set canvas buffer size to match video dimensions
@@ -740,16 +750,14 @@ export default function BodyScanAI() {
     // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // REDRAW TEST BOX AFTER CLEAR
+    ctx.fillStyle = "red";
+    ctx.fillRect(10, 10, 20, 20);
+    
     console.log(`[DRAW] Canvas setup: ${canvas.width}x${canvas.height}, video: ${video.videoWidth}x${video.videoHeight}`);
     
-    // FORCE DRAW EVEN IF NO KEYPOINTS - for debugging
     if (!pose?.keypoints?.length) {
-      console.log('[DRAW] ❌ No keypoints to draw, drawing test circle');
-      // Draw a test circle to confirm canvas is working
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, 20, 0, 2 * Math.PI);
-      ctx.fillStyle = '#ff0000';
-      ctx.fill();
+      console.log('[DRAW] ❌ No keypoints to draw, but red box should be visible');
       return;
     }
     
@@ -758,7 +766,7 @@ export default function BodyScanAI() {
     // Draw GREEN DOTS for pose keypoints - FORCE VISIBLE
     let drawnKeypoints = 0;
     pose.keypoints.forEach((keypoint, index) => {
-      if (keypoint.score > 0.2) { // Very low threshold to catch all keypoints
+      if (keypoint.score > 0.2) {
         const isAligned = !alignment.misalignedLimbs.some(limb => 
           keypoint.name?.includes(limb.replace('_', ' '))
         );
@@ -928,19 +936,19 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* FORCE VISIBLE POSE OVERLAY CANVAS */}
+      {/* STEP 5: CANVAS WITH LIME BORDER */}
       <canvas 
         ref={overlayCanvasRef}
         style={{
+          border: '3px solid lime',
           position: 'absolute',
-          zIndex: 20,
+          zIndex: 99,
           top: 0,
           left: 0,
-          pointerEvents: 'none',
           width: '100%',
           height: '100%',
-          display: 'block',
-          border: '2px solid red' // TEMPORARY DEBUG BORDER
+          pointerEvents: 'none',
+          display: 'block'
         }}
       />
       
