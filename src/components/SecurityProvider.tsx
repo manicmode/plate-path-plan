@@ -5,6 +5,7 @@ import { useAdvancedThreatDetection } from '@/hooks/useAdvancedThreatDetection';
 import { useCSPViolationReporting } from '@/hooks/useCSPViolationReporting';
 import { SecurityAlertsManager } from '@/components/security/SecurityAlertsManager';
 import { EnhancedThreatDetection } from '@/components/security/EnhancedThreatDetection';
+import { DatabaseErrorRecovery } from '@/components/security/DatabaseErrorRecovery';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -42,6 +43,7 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
     <SecurityContext.Provider value={contextValue}>
       <SecurityAlertsManager />
       <EnhancedThreatDetection />
+      <DatabaseErrorRecovery />
       {children}
     </SecurityContext.Provider>
   );
