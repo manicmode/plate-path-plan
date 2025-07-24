@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { useSecurityAlerts } from '@/hooks/useSecurityAlerts';
+import { useAdvancedThreatDetection } from '@/hooks/useAdvancedThreatDetection';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
   monitorNavigation: (path: string) => Promise<void>;
   performSecurityCheck: () => Promise<void>;
+  detectAnomalousActivity: (activity: string, metadata?: any) => Promise<void>;
 }
 
 const SecurityContext = createContext<SecurityContextType | null>(null);
@@ -24,10 +26,16 @@ interface SecurityProviderProps {
 
 export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) => {
   const securityMonitoring = useSecurityMonitoring();
+  const { detectAnomalousActivity } = useAdvancedThreatDetection();
   useSecurityAlerts(); // Initialize security alerts monitoring
 
+  const contextValue = {
+    ...securityMonitoring,
+    detectAnomalousActivity
+  };
+
   return (
-    <SecurityContext.Provider value={securityMonitoring}>
+    <SecurityContext.Provider value={contextValue}>
       {children}
     </SecurityContext.Provider>
   );

@@ -144,15 +144,36 @@ setInterval(() => {
   }
 }, 60000); // Clean up every minute
 
-// Apply security headers to document
+// Enhanced security headers application
 export const applySecurityHeaders = () => {
-  const csp = getSecurityHeaders()['Content-Security-Policy'];
+  const headers = getSecurityHeaders();
   
   // Apply CSP via meta tag if not already present
   if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
-    const meta = document.createElement('meta');
-    meta.httpEquiv = 'Content-Security-Policy';
-    meta.content = csp;
-    document.head.appendChild(meta);
+    const cspMeta = document.createElement('meta');
+    cspMeta.httpEquiv = 'Content-Security-Policy';
+    cspMeta.content = headers['Content-Security-Policy'];
+    document.head.appendChild(cspMeta);
   }
+
+  // Apply other headers via meta tags where applicable
+  const metaHeaders = [
+    { name: 'X-Content-Type-Options', content: headers['X-Content-Type-Options'] },
+    { name: 'X-Frame-Options', content: headers['X-Frame-Options'] },
+    { name: 'Referrer-Policy', content: headers['Referrer-Policy'] }
+  ];
+
+  metaHeaders.forEach(({ name, content }) => {
+    if (!document.querySelector(`meta[http-equiv="${name}"]`)) {
+      const meta = document.createElement('meta');
+      meta.httpEquiv = name;
+      meta.content = content;
+      document.head.appendChild(meta);
+    }
+  });
 };
+
+// Initialize security headers on page load
+if (typeof window !== 'undefined') {
+  applySecurityHeaders();
+}
