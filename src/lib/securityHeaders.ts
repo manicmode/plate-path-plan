@@ -37,6 +37,63 @@ export const rateLimitConfigs = {
 // Simple in-memory rate limiter for Edge Functions
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
+// Enhanced security utilities for client-side
+export const detectSecurityThreats = () => {
+  const threats: string[] = [];
+  
+  // Check for potential XSS in URL
+  const url = window.location.href;
+  if (/<script|javascript:|data:/i.test(url)) {
+    threats.push('potential_xss_in_url');
+  }
+  
+  // Check for suspicious localStorage manipulation
+  try {
+    const keys = Object.keys(localStorage);
+    if (keys.some(key => /<script|javascript:/i.test(key))) {
+      threats.push('suspicious_localstorage_keys');
+    }
+  } catch (e) {
+    // Ignore if localStorage is not available
+  }
+  
+  // Check for iframe attempts
+  if (window.top !== window.self) {
+    threats.push('iframe_embedding_detected');
+  }
+  
+  return threats;
+};
+
+// Client-side rate limiting
+interface ClientRateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+const clientRateLimitMap = new Map<string, ClientRateLimitEntry>();
+
+export const checkClientRateLimit = (
+  identifier: string,
+  maxRequests: number = 10,
+  windowMs: number = 60000
+): boolean => {
+  const now = Date.now();
+  const entry = clientRateLimitMap.get(identifier);
+  
+  if (!entry || now > entry.resetTime) {
+    clientRateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (entry.count >= maxRequests) {
+    return false;
+  }
+  
+  entry.count++;
+  return true;
+};
+
 export const checkRateLimit = (
   identifier: string, 
   config: RateLimitConfig = rateLimitConfigs.default
@@ -76,3 +133,26 @@ setInterval(() => {
     }
   }
 }, 300000); // Clean up every 5 minutes
+
+// Clean up client rate limit entries
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of clientRateLimitMap.entries()) {
+    if (now > entry.resetTime) {
+      clientRateLimitMap.delete(key);
+    }
+  }
+}, 60000); // Clean up every minute
+
+// Apply security headers to document
+export const applySecurityHeaders = () => {
+  const csp = getSecurityHeaders()['Content-Security-Policy'];
+  
+  // Apply CSP via meta tag if not already present
+  if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Content-Security-Policy';
+    meta.content = csp;
+    document.head.appendChild(meta);
+  }
+};
