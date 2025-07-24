@@ -47,7 +47,13 @@ export const SECURITY_EVENTS = {
   // Data access events
   SENSITIVE_DATA_ACCESS: 'sensitive_data_access',
   BULK_DATA_EXPORT: 'bulk_data_export',
-  PERMISSION_ESCALATION: 'permission_escalation'
+  PERMISSION_ESCALATION: 'permission_escalation',
+  
+  // System events
+  CRITICAL_ERROR: 'critical_error',
+  SYSTEM_RECOVERY: 'system_recovery',
+  INVALID_REQUEST: 'invalid_request',
+  CSP_VIOLATION: 'csp_violation'
 } as const;
 
 export type SecurityEventType = typeof SECURITY_EVENTS[keyof typeof SECURITY_EVENTS];

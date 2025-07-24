@@ -1,173 +1,226 @@
-import React, { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
+import { toast } from 'sonner';
 
-// CSS security patterns
-const CSS_SECURITY_PATTERNS = {
-  EXPRESSION: /expression\s*\(/i,
-  JAVASCRIPT_URL: /javascript:/i,
-  DATA_URL: /url\s*\(\s*data:/i,
-  IMPORT: /@import/i,
-  BINDING: /-moz-binding/i,
-  BEHAVIOR: /behavior\s*:/i,
-  SCRIPT_SRC: /src\s*=.*javascript:/i
-};
-
-export const ChartSecurityEnhancer: React.FC = () => {
-  
-  useEffect(() => {
-    // Enhanced CSS injection monitoring
-    const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
-    const originalSetAttribute = Element.prototype.setAttribute;
-
-    // Override CSS property setting
-    CSSStyleDeclaration.prototype.setProperty = function(property: string, value: string | null, priority?: string) {
-      if (value) {
-        for (const [threatType, pattern] of Object.entries(CSS_SECURITY_PATTERNS)) {
-          if (pattern.test(value)) {
-            logSecurityEvent({
-              eventType: SECURITY_EVENTS.XSS_ATTEMPT,
-              eventDetails: {
-                threatType: `CSS_${threatType}`,
-                property,
-                value: value.substring(0, 100),
-                context: 'css_injection_prevention',
-                location: window.location.pathname
-              },
-              severity: 'critical'
-            });
+export const ChartSecurityEnhancer = () => {
+  const monitorCSSInjection = useCallback(async () => {
+    // Monitor for potential CSS injection in chart components
+    const chartElements = document.querySelectorAll('[class*="recharts"], [class*="chart"]');
+    
+    chartElements.forEach((element) => {
+      const observer = new MutationObserver(async (mutations) => {
+        mutations.forEach(async (mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            const styleValue = (mutation.target as HTMLElement).style.cssText;
             
-            console.warn(`Blocked potentially malicious CSS: ${property}: ${value}`);
-            return; // Block the operation
-          }
-        }
-      }
-      
-      return originalSetProperty.call(this, property, value, priority);
-    };
-
-    // Override element attribute setting for style attributes
-    Element.prototype.setAttribute = function(name: string, value: string) {
-      if (name.toLowerCase() === 'style' && value) {
-        for (const [threatType, pattern] of Object.entries(CSS_SECURITY_PATTERNS)) {
-          if (pattern.test(value)) {
-            logSecurityEvent({
-              eventType: SECURITY_EVENTS.XSS_ATTEMPT,
-              eventDetails: {
-                threatType: `STYLE_${threatType}`,
-                attribute: name,
-                value: value.substring(0, 100),
-                context: 'style_attribute_injection',
-                element: this.tagName,
-                location: window.location.pathname
-              },
-              severity: 'critical'
-            });
+            // Check for potential CSS injection patterns
+            const dangerousPatterns = [
+              /javascript:/i,
+              /expression\s*\(/i,
+              /url\s*\(\s*["']?\s*javascript:/i,
+              /@import/i,
+              /behavior\s*:/i,
+              /-moz-binding/i,
+              /vbscript:/i
+            ];
             
-            console.warn(`Blocked potentially malicious style attribute: ${value}`);
-            return; // Block the operation
-          }
-        }
-      }
-      
-      return originalSetAttribute.call(this, name, value);
-    };
-
-    // Monitor chart container creation and modification
-    const observeChartContainers = () => {
-      const chartContainers = document.querySelectorAll('[class*="recharts"], [class*="chart"], .chart-container');
-      
-      chartContainers.forEach(container => {
-        // Add security attributes
-        container.setAttribute('data-security-monitored', 'true');
-        
-        // Monitor for suspicious modifications
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-              const target = mutation.target as Element;
-              const styleValue = target.getAttribute('style') || '';
+            const hasDangerousPattern = dangerousPatterns.some(pattern => 
+              pattern.test(styleValue)
+            );
+            
+            if (hasDangerousPattern) {
+              // Remove the dangerous style
+              (mutation.target as HTMLElement).removeAttribute('style');
               
-              for (const [threatType, pattern] of Object.entries(CSS_SECURITY_PATTERNS)) {
-                if (pattern.test(styleValue)) {
-                  logSecurityEvent({
+              await logSecurityEvent({
+                eventType: SECURITY_EVENTS.XSS_ATTEMPT,
+                eventDetails: {
+                  action: 'css_injection_attempt_blocked',
+                  element: mutation.target.nodeName,
+                  dangerousStyle: styleValue,
+                  context: 'chart_security_enhancer'
+                },
+                severity: 'high'
+              });
+              
+              toast.error('Potential CSS injection blocked in chart component');
+            }
+          }
+          
+          // Monitor for script injection in chart data
+          if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach(async (node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node as HTMLElement;
+                const textContent = element.textContent || '';
+                
+                // Check for script injection patterns
+                const scriptPatterns = [
+                  /<script/i,
+                  /javascript:/i,
+                  /on\w+\s*=/i,
+                  /eval\s*\(/i,
+                  /setTimeout\s*\(/i,
+                  /setInterval\s*\(/i
+                ];
+                
+                const hasScriptPattern = scriptPatterns.some(pattern => 
+                  pattern.test(textContent)
+                );
+                
+                if (hasScriptPattern) {
+                  // Remove the dangerous element
+                  element.remove();
+                  
+                  await logSecurityEvent({
                     eventType: SECURITY_EVENTS.XSS_ATTEMPT,
                     eventDetails: {
-                      threatType: `CHART_${threatType}`,
-                      element: target.tagName,
-                      className: target.className,
-                      styleValue: styleValue.substring(0, 100),
-                      context: 'chart_security_monitoring'
+                      action: 'script_injection_attempt_blocked',
+                      element: element.nodeName,
+                      dangerousContent: textContent.substring(0, 200),
+                      context: 'chart_security_enhancer'
                     },
-                    severity: 'high'
+                    severity: 'critical'
                   });
                   
-                  // Remove the malicious style
-                  target.removeAttribute('style');
+                  toast.error('Script injection attempt blocked in chart component');
                 }
               }
-            }
-          });
-        });
-        
-        observer.observe(container, {
-          attributes: true,
-          attributeFilter: ['style', 'class'],
-          subtree: true
-        });
-      });
-    };
-
-    // Initial scan and periodic monitoring
-    observeChartContainers();
-    const interval = setInterval(observeChartContainers, 10000); // Every 10 seconds
-
-    // Monitor for dynamic chart creation
-    const documentObserver = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const element = node as Element;
-            if (element.className && (
-              element.className.includes('recharts') || 
-              element.className.includes('chart') ||
-              element.querySelector('[class*="recharts"], [class*="chart"]')
-            )) {
-              // New chart detected, apply monitoring
-              setTimeout(observeChartContainers, 100);
-            }
+            });
           }
         });
       });
+      
+      observer.observe(element, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: ['style', 'class', 'data-*']
+      });
     });
+  }, []);
 
-    documentObserver.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-
-    // Enhanced Content Security Policy for charts
-    const addChartCSP = () => {
-      const existingMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-      if (!existingMeta) {
-        const meta = document.createElement('meta');
-        meta.httpEquiv = 'Content-Security-Policy';
-        meta.content = "style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none';";
-        document.head.appendChild(meta);
+  const enhanceContentSecurityPolicy = useCallback(() => {
+    // Add runtime CSP monitoring for chart components
+    const reportCSPViolation = async (event: SecurityPolicyViolationEvent) => {
+      if (event.violatedDirective.includes('style') || event.violatedDirective.includes('script')) {
+        await logSecurityEvent({
+          eventType: SECURITY_EVENTS.CSP_VIOLATION,
+          eventDetails: {
+            action: 'chart_csp_violation',
+            directive: event.violatedDirective,
+            blockedURI: event.blockedURI,
+            sourceFile: event.sourceFile,
+            lineNumber: event.lineNumber,
+            context: 'chart_security_enhancer'
+          },
+          severity: 'medium'
+        });
       }
     };
-
-    addChartCSP();
-
+    
+    document.addEventListener('securitypolicyviolation', reportCSPViolation);
+    
     return () => {
-      // Restore original methods
-      CSSStyleDeclaration.prototype.setProperty = originalSetProperty;
-      Element.prototype.setAttribute = originalSetAttribute;
-      
-      // Cleanup observers
-      clearInterval(interval);
-      documentObserver.disconnect();
+      document.removeEventListener('securitypolicyviolation', reportCSPViolation);
     };
   }, []);
 
-  return null; // This component only adds security monitoring
+  const validateChartData = useCallback(async (data: any): Promise<boolean> => {
+    if (!data || typeof data !== 'object') {
+      return true; // Allow non-object data
+    }
+    
+    const checkForDangerousContent = (obj: any): boolean => {
+      if (typeof obj === 'string') {
+        const dangerousPatterns = [
+          /<script/i,
+          /javascript:/i,
+          /on\w+\s*=/i,
+          /data:text\/html/i,
+          /vbscript:/i,
+          /@import/i
+        ];
+        
+        return dangerousPatterns.some(pattern => pattern.test(obj));
+      }
+      
+      if (Array.isArray(obj)) {
+        return obj.some(item => checkForDangerousContent(item));
+      }
+      
+      if (typeof obj === 'object' && obj !== null) {
+        return Object.values(obj).some(value => checkForDangerousContent(value));
+      }
+      
+      return false;
+    };
+    
+    const hasDangerousContent = checkForDangerousContent(data);
+    
+    if (hasDangerousContent) {
+      await logSecurityEvent({
+        eventType: SECURITY_EVENTS.XSS_ATTEMPT,
+        eventDetails: {
+          action: 'chart_data_validation_failed',
+          dataType: typeof data,
+          context: 'chart_security_enhancer'
+        },
+        severity: 'high'
+      });
+      
+      return false;
+    }
+    
+    return true;
+  }, []);
+
+  // Monitor chart data validation without React patching
+  const validateChartDataInDOM = useCallback(() => {
+    // Look for chart elements and validate their data attributes
+    const chartElements = document.querySelectorAll('[data-chart], [class*="recharts"]');
+    
+    chartElements.forEach(element => {
+      const dataAttributes = Array.from(element.attributes)
+        .filter(attr => attr.name.startsWith('data-'))
+        .map(attr => attr.value);
+      
+      dataAttributes.forEach(async (value) => {
+        try {
+          const parsedData = JSON.parse(value);
+          const isValid = await validateChartData(parsedData);
+          
+          if (!isValid) {
+            console.warn('Chart data validation failed for element:', element);
+            element.removeAttribute('data-chart');
+          }
+        } catch {
+          // Not JSON data, skip validation
+        }
+      });
+    });
+  }, [validateChartData]);
+
+  useEffect(() => {
+    // Set up chart security monitoring
+    monitorCSSInjection();
+    
+    // Enhance CSP monitoring
+    const cleanupCSP = enhanceContentSecurityPolicy();
+    
+    // Validate chart data in DOM
+    validateChartDataInDOM();
+    
+    // Set up periodic security checks
+    const securityCheckInterval = setInterval(() => {
+      monitorCSSInjection();
+    }, 30 * 1000); // Every 30 seconds
+    
+    return () => {
+      cleanupCSP();
+      clearInterval(securityCheckInterval);
+    };
+  }, [monitorCSSInjection, enhanceContentSecurityPolicy, validateChartDataInDOM]);
+
+  return null;
 };

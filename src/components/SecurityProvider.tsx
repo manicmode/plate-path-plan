@@ -8,6 +8,9 @@ import { EnhancedThreatDetection } from '@/components/security/EnhancedThreatDet
 import { DatabaseErrorRecovery } from '@/components/security/DatabaseErrorRecovery';
 import { AutomatedSecurityAlerts } from '@/components/security/AutomatedSecurityAlerts';
 import { EnhancedInputValidation } from '@/components/security/EnhancedInputValidation';
+import { EnhancedUuidValidator } from '@/components/security/EnhancedUuidValidator';
+import { NotificationConstraintValidator } from '@/components/security/NotificationConstraintValidator';
+import { AdvancedDatabaseErrorDetection } from '@/components/security/AdvancedDatabaseErrorDetection';
 import { ChartSecurityEnhancer } from '@/components/security/ChartSecurityEnhancer';
 import { SecurityAuditAutomation } from '@/components/security/SecurityAuditAutomation';
 import { CriticalSecurityManager } from '@/components/security/CriticalSecurityManager';
@@ -68,6 +71,12 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <DatabaseValidationMiddleware />
       <StorageValidationCleaner />
       <DatabaseErrorMonitor />
+      
+      {/* Enhanced Security Fixes */}
+      <EnhancedUuidValidator />
+      <NotificationConstraintValidator />
+      <AdvancedDatabaseErrorDetection />
+      
       {children}
     </SecurityContext.Provider>
   );
