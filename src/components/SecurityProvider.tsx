@@ -6,6 +6,10 @@ import { useCSPViolationReporting } from '@/hooks/useCSPViolationReporting';
 import { SecurityAlertsManager } from '@/components/security/SecurityAlertsManager';
 import { EnhancedThreatDetection } from '@/components/security/EnhancedThreatDetection';
 import { DatabaseErrorRecovery } from '@/components/security/DatabaseErrorRecovery';
+import { AutomatedSecurityAlerts } from '@/components/security/AutomatedSecurityAlerts';
+import { EnhancedInputValidation } from '@/components/security/EnhancedInputValidation';
+import { ChartSecurityEnhancer } from '@/components/security/ChartSecurityEnhancer';
+import { SecurityAuditAutomation } from '@/components/security/SecurityAuditAutomation';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -44,6 +48,10 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <SecurityAlertsManager />
       <EnhancedThreatDetection />
       <DatabaseErrorRecovery />
+      <AutomatedSecurityAlerts />
+      <EnhancedInputValidation />
+      <ChartSecurityEnhancer />
+      <SecurityAuditAutomation />
       {children}
     </SecurityContext.Provider>
   );
