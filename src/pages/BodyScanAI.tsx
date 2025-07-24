@@ -465,8 +465,45 @@ export default function BodyScanAI() {
     setIsCountingDown(false);
   };
 
+  // Human presence validation function
+  const validateHumanPresence = useCallback((pose: DetectedPose): boolean => {
+    const requiredLandmarks = [
+      'nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip',
+      'left_knee', 'right_knee', 'left_elbow', 'right_elbow'
+    ];
+    
+    let validLandmarkCount = 0;
+    
+    for (const landmarkName of requiredLandmarks) {
+      const landmark = pose.keypoints.find(kp => kp.name === landmarkName);
+      if (landmark && landmark.score > 0.6) {
+        validLandmarkCount++;
+      }
+    }
+    
+    // Require at least 8 out of 9 major landmarks for human presence
+    const humanPresent = validLandmarkCount >= 8;
+    
+    // Optional: Log for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Human presence check: ${validLandmarkCount}/9 landmarks detected, Human present: ${humanPresent}`);
+    }
+    
+    return humanPresent;
+  }, []);
+
   // Pose analysis functions
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
+    // STEP 1: Human presence validation - must pass before any alignment checks
+    if (!validateHumanPresence(pose)) {
+      return {
+        isAligned: false,
+        misalignedLimbs: ['no_human'],
+        alignmentScore: 0,
+        feedback: "No person detected. Step into view to begin."
+      };
+    }
+    
     const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
     const misalignedLimbs: string[] = [];
     let feedback = "";
