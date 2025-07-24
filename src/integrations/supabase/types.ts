@@ -1206,6 +1206,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string
+          event_details: Json
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_details?: Json
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_details?: Json
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       security_logs: {
         Row: {
           created_at: string
@@ -2382,6 +2415,15 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          event_type_param: string
+          event_details_param?: Json
+          user_id_param?: string
+          severity_param?: string
+        }
+        Returns: string
       }
       process_yearly_hall_of_fame: {
         Args: { target_year: number }
