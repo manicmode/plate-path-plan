@@ -53,7 +53,17 @@ export const SECURITY_EVENTS = {
   CRITICAL_ERROR: 'critical_error',
   SYSTEM_RECOVERY: 'system_recovery',
   INVALID_REQUEST: 'invalid_request',
-  CSP_VIOLATION: 'csp_violation'
+  CSP_VIOLATION: 'csp_violation',
+  
+  // Database security events
+  CONSTRAINT_VIOLATION: 'constraint_violation',
+  DATABASE_ERROR: 'database_error',
+  DATA_INTEGRITY_VIOLATION: 'data_integrity_violation',
+  
+  // Advanced security events
+  CSS_INJECTION_ATTEMPT: 'css_injection_attempt',
+  CHART_SECURITY_VIOLATION: 'chart_security_violation',
+  AUTOMATED_THREAT_DETECTION: 'automated_threat_detection'
 } as const;
 
 export type SecurityEventType = typeof SECURITY_EVENTS[keyof typeof SECURITY_EVENTS];

@@ -1,11 +1,10 @@
-import { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Database, Shield, Activity } from 'lucide-react';
 
 interface DatabaseErrorPattern {
   type: string;
@@ -15,32 +14,32 @@ interface DatabaseErrorPattern {
   autoFixAvailable: boolean;
 }
 
-export const AdvancedDatabaseErrorDetection = () => {
+export const AdvancedDatabaseErrorDetection: React.FC = () => {
   const [errorPatterns, setErrorPatterns] = useState<DatabaseErrorPattern[]>([]);
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [lastCheck, setLastCheck] = useState<string>('');
 
   const analyzeErrorPatterns = useCallback(async () => {
     try {
       setIsMonitoring(true);
       
-      // Query recent security events for database errors
-      const { data: securityEvents, error } = await supabase
+      // Fetch recent security events that indicate database errors
+      const { data: events, error } = await supabase
         .from('security_events')
         .select('*')
         .in('event_type', ['invalid_uuid', 'constraint_violation', 'database_error'])
-        .gte('created_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()) // Last 2 hours
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Failed to fetch security events:', error);
+        console.warn('Error fetching security events:', error);
         return;
       }
 
-      // Analyze error patterns
-      const patterns: Record<string, DatabaseErrorPattern> = {};
+      // Analyze patterns
+      const patterns: { [key: string]: DatabaseErrorPattern } = {};
       
-      securityEvents?.forEach(event => {
+      events?.forEach(event => {
         const key = event.event_type;
         if (!patterns[key]) {
           patterns[key] = {
@@ -48,48 +47,37 @@ export const AdvancedDatabaseErrorDetection = () => {
             count: 0,
             lastOccurrence: event.created_at,
             severity: 'low',
-            autoFixAvailable: key === 'invalid_uuid' || key === 'constraint_violation'
+            autoFixAvailable: ['invalid_uuid', 'constraint_violation'].includes(key)
           };
         }
-        
         patterns[key].count++;
-        if (new Date(event.created_at) > new Date(patterns[key].lastOccurrence)) {
-          patterns[key].lastOccurrence = event.created_at;
-        }
+        
+        // Determine severity based on frequency
+        if (patterns[key].count > 50) patterns[key].severity = 'critical';
+        else if (patterns[key].count > 20) patterns[key].severity = 'high';
+        else if (patterns[key].count > 10) patterns[key].severity = 'medium';
       });
 
-      // Determine severity based on frequency
-      Object.values(patterns).forEach(pattern => {
-        if (pattern.count > 50) {
-          pattern.severity = 'critical';
-        } else if (pattern.count > 20) {
-          pattern.severity = 'high';
-        } else if (pattern.count > 5) {
-          pattern.severity = 'medium';
-        }
-      });
-
-      setErrorPatterns(Object.values(patterns));
-      setLastCheck(new Date());
-
-      // Alert on critical patterns
-      const criticalPatterns = Object.values(patterns).filter(p => p.severity === 'critical');
+      const patternArray = Object.values(patterns).filter(p => p.count > 0);
+      setErrorPatterns(patternArray);
+      setLastCheck(new Date().toLocaleTimeString());
+      
+      // Log critical patterns
+      const criticalPatterns = patternArray.filter(p => p.severity === 'critical');
       if (criticalPatterns.length > 0) {
         await logSecurityEvent({
           eventType: SECURITY_EVENTS.CRITICAL_ERROR,
           eventDetails: {
-            action: 'critical_database_error_pattern_detected',
-            patterns: criticalPatterns,
-            context: 'advanced_database_error_detection'
+            context: 'database_error_pattern_analysis',
+            criticalPatterns: criticalPatterns.map(p => ({ type: p.type, count: p.count }))
           },
           severity: 'critical'
         });
-
-        toast.error(`Critical database error pattern detected: ${criticalPatterns[0].type} (${criticalPatterns[0].count} occurrences)`);
+        
+        toast.error(`Critical database error patterns detected: ${criticalPatterns.length} types`);
       }
-
     } catch (error) {
-      console.error('Error analyzing database patterns:', error);
+      console.warn('Error analyzing database patterns:', error);
     } finally {
       setIsMonitoring(false);
     }
@@ -97,84 +85,86 @@ export const AdvancedDatabaseErrorDetection = () => {
 
   const triggerAutoFix = useCallback(async (pattern: DatabaseErrorPattern) => {
     try {
-      let fixApplied = false;
+      toast.info(`Attempting to auto-fix ${pattern.type} issues...`);
       
-      if (pattern.type === 'invalid_uuid') {
-        // Clean up invalid UUIDs from localStorage
-        const storageKeys = Object.keys(localStorage);
-        let cleanedCount = 0;
-        
-        storageKeys.forEach(key => {
-          const value = localStorage.getItem(key);
-          if (value === 'undefined' || value === 'null' || value === '') {
-            localStorage.removeItem(key);
-            cleanedCount++;
-          }
-        });
-        
-        if (cleanedCount > 0) {
-          fixApplied = true;
-          toast.success(`Auto-fixed: Cleaned ${cleanedCount} invalid UUID entries`);
-        }
-      }
-      
-      if (pattern.type === 'constraint_violation') {
-        // Clean up invalid notification preferences
-        const keys = Object.keys(localStorage);
-        let cleanedCount = 0;
-        
-        keys.forEach(key => {
-          if (key.includes('notification') || key.includes('preferences')) {
-            try {
+      switch (pattern.type) {
+        case 'invalid_uuid':
+          // Clean up invalid UUID values from storage
+          let cleanedUuids = 0;
+          
+          // Clean localStorage
+          Object.keys(localStorage).forEach(key => {
+            const value = localStorage.getItem(key);
+            if (key.includes('id') && (value === 'undefined' || value === 'null' || value === '')) {
+              localStorage.removeItem(key);
+              cleanedUuids++;
+            }
+          });
+          
+          // Clean sessionStorage
+          Object.keys(sessionStorage).forEach(key => {
+            const value = sessionStorage.getItem(key);
+            if (key.includes('id') && (value === 'undefined' || value === 'null' || value === '')) {
+              sessionStorage.removeItem(key);
+              cleanedUuids++;
+            }
+          });
+          
+          toast.success(`Cleaned ${cleanedUuids} invalid UUID entries`);
+          break;
+          
+        case 'constraint_violation':
+          // Clean up invalid notification preferences
+          let cleanedNotifications = 0;
+          
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes('notification') || key.includes('preferences')) {
               const value = localStorage.getItem(key);
               if (value) {
-                const parsed = JSON.parse(value);
-                if (typeof parsed !== 'object' || parsed === null) {
+                try {
+                  const data = JSON.parse(value);
+                  // Basic validation - remove if structure is invalid
+                  if (!data || typeof data !== 'object' || !data.type) {
+                    localStorage.removeItem(key);
+                    cleanedNotifications++;
+                  }
+                } catch {
                   localStorage.removeItem(key);
-                  cleanedCount++;
+                  cleanedNotifications++;
                 }
               }
-            } catch {
-              localStorage.removeItem(key);
-              cleanedCount++;
             }
-          }
-        });
-        
-        if (cleanedCount > 0) {
-          fixApplied = true;
-          toast.success(`Auto-fixed: Cleaned ${cleanedCount} invalid notification entries`);
-        }
+          });
+          
+          toast.success(`Cleaned ${cleanedNotifications} invalid notification entries`);
+          break;
       }
       
-      if (fixApplied) {
-        await logSecurityEvent({
-          eventType: SECURITY_EVENTS.SYSTEM_RECOVERY,
-          eventDetails: {
-            action: 'database_error_auto_fix_applied',
-            patternType: pattern.type,
-            context: 'advanced_database_error_detection'
-          },
-          severity: 'low'
-        });
-        
-        // Re-analyze patterns after fix
-        setTimeout(analyzeErrorPatterns, 2000);
-      }
+      await logSecurityEvent({
+        eventType: SECURITY_EVENTS.SYSTEM_RECOVERY,
+        eventDetails: {
+          context: 'auto_fix_database_errors',
+          fixedPattern: pattern.type,
+          severity: pattern.severity
+        },
+        severity: 'low'
+      });
+      
+      // Re-analyze after fix
+      setTimeout(analyzeErrorPatterns, 2000);
       
     } catch (error) {
-      console.error('Auto-fix failed:', error);
-      toast.error('Auto-fix failed. Manual intervention may be required.');
+      toast.error(`Auto-fix failed for ${pattern.type}`);
+      console.warn('Auto-fix error:', error);
     }
   }, [analyzeErrorPatterns]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'critical': return 'destructive';
+      case 'high': return 'destructive';
+      case 'medium': return 'outline';
+      default: return 'secondary';
     }
   };
 
@@ -182,67 +172,50 @@ export const AdvancedDatabaseErrorDetection = () => {
     // Initial analysis
     analyzeErrorPatterns();
     
-    // Set up periodic monitoring (every 5 minutes)
-    const monitoringInterval = setInterval(analyzeErrorPatterns, 5 * 60 * 1000);
+    // Periodic analysis every 10 minutes
+    const interval = setInterval(analyzeErrorPatterns, 10 * 60 * 1000);
     
-    return () => {
-      clearInterval(monitoringInterval);
-    };
+    return () => clearInterval(interval);
   }, [analyzeErrorPatterns]);
 
-  if (errorPatterns.length === 0) {
-    return null;
-  }
+  if (errorPatterns.length === 0) return null;
 
   return (
-    <Card className="border-orange-500/20 bg-orange-50/10">
-      <CardHeader className="flex flex-row items-center space-y-0 pb-3">
-        <div className="flex items-center space-x-2">
-          <Database className="w-5 h-5 text-orange-500" />
-          <CardTitle className="text-lg">Database Error Patterns</CardTitle>
-        </div>
-        <div className="ml-auto flex items-center space-x-2">
-          {isMonitoring && <Activity className="w-4 h-4 text-orange-500 animate-pulse" />}
-          <Badge variant="outline" className="text-xs">
-            {lastCheck ? `Last check: ${lastCheck.toLocaleTimeString()}` : 'Analyzing...'}
-          </Badge>
-        </div>
+    <Card className="fixed bottom-4 right-4 w-96 z-50 border-destructive">
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center justify-between">
+          Database Error Patterns Detected
+          <Badge variant="destructive">{errorPatterns.length}</Badge>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <CardDescription>
-          Detected recurring database error patterns that may indicate security or data integrity issues.
-        </CardDescription>
-        
-        {errorPatterns.map((pattern) => (
-          <div key={pattern.type} className="flex items-center justify-between p-3 bg-background/50 rounded-lg border">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="w-4 h-4 text-orange-500" />
-              <div>
-                <div className="font-medium">{pattern.type.replace('_', ' ').toUpperCase()}</div>
-                <div className="text-sm text-muted-foreground">
-                  {pattern.count} occurrences in last 2 hours
-                </div>
+        {errorPatterns.map((pattern, index) => (
+          <div key={index} className="flex items-center justify-between p-2 border rounded">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">{pattern.type}</span>
+                <Badge variant={getSeverityColor(pattern.severity)}>{pattern.severity}</Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {pattern.count} occurrences
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <Badge className={`${getSeverityColor(pattern.severity)} text-white`}>
-                {pattern.severity}
-              </Badge>
-              {pattern.autoFixAvailable && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => triggerAutoFix(pattern)}
-                  className="flex items-center space-x-1"
-                >
-                  <Shield className="w-3 h-3" />
-                  <span>Auto-Fix</span>
-                </Button>
-              )}
-            </div>
+            {pattern.autoFixAvailable && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => triggerAutoFix(pattern)}
+                className="ml-2"
+              >
+                Auto-Fix
+              </Button>
+            )}
           </div>
         ))}
+        
+        <div className="text-xs text-muted-foreground pt-2 border-t">
+          {isMonitoring ? 'Monitoring...' : `Last check: ${lastCheck}`}
+        </div>
       </CardContent>
     </Card>
   );

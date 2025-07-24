@@ -1,126 +1,175 @@
-import { useEffect, useCallback } from 'react';
-import { validateUuidInput, validateFormUuids, cleanupInvalidUuids } from '@/lib/uuidValidationMiddleware';
-import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
+import React, { useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
+import { isValidUUID } from '@/lib/validation';
 
-export const EnhancedUuidValidator = () => {
+export const EnhancedUuidValidator: React.FC = () => {
+  // Real-time input validation for UUID fields
   const validateAndSanitizeInput = useCallback(async (event: Event) => {
     const target = event.target as HTMLInputElement;
     
-    // Check if this is likely a UUID field
-    if (target.name?.includes('id') || target.name?.includes('Id') || 
-        target.id?.includes('id') || target.id?.includes('Id') ||
-        target.placeholder?.toLowerCase().includes('id')) {
-      
-      const value = target.value;
-      if (value && value !== '') {
-        const validUuid = await validateUuidInput(value, `input_${target.name || target.id}`);
-        
-        if (!validUuid && value) {
-          // Invalid UUID detected
-          target.classList.add('border-destructive', 'animate-pulse');
-          toast.error('Invalid ID format detected');
-          
-          // Clear the invalid value after a short delay
-          setTimeout(() => {
-            target.value = '';
-            target.classList.remove('border-destructive', 'animate-pulse');
-          }, 2000);
-        } else if (validUuid) {
-          // Valid UUID
-          target.classList.remove('border-destructive', 'animate-pulse');
-          target.classList.add('border-green-500');
-          setTimeout(() => {
-            target.classList.remove('border-green-500');
-          }, 1000);
-        }
-      }
-    }
-  }, []);
-
-  const interceptFormSubmission = useCallback(async (event: Event) => {
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const formDataObj = Object.fromEntries(formData.entries());
+    if (!target || target.tagName !== 'INPUT') return;
     
-    try {
-      const validatedData = await validateFormUuids(formDataObj);
+    // Check if this looks like a UUID field
+    const isUuidField = target.name?.includes('id') || 
+                       target.id?.includes('id') || 
+                       target.placeholder?.toLowerCase().includes('id');
+    
+    if (!isUuidField) return;
+    
+    const value = target.value?.trim();
+    
+    // Check for invalid UUID values
+    if (value && (value === 'undefined' || value === 'null' || value === '')) {
+      target.value = '';
+      target.style.border = '2px solid hsl(var(--destructive))';
+      target.style.animation = 'pulse 0.5s ease-in-out';
       
-      if (!validatedData) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        form.classList.add('animate-pulse', 'border-destructive');
-        toast.error('Form contains invalid ID values. Please check your input.');
-        
-        await logSecurityEvent({
-          eventType: SECURITY_EVENTS.SUSPICIOUS_ACTIVITY,
-          eventDetails: {
-            action: 'form_submission_blocked',
-            reason: 'Invalid UUID in form data',
-            formFields: Object.keys(formDataObj),
-            context: 'enhanced_uuid_validator'
-          },
-          severity: 'medium'
-        });
-        
-        setTimeout(() => {
-          form.classList.remove('animate-pulse', 'border-destructive');
-        }, 3000);
-        
-        return false;
-      }
+      toast.error('Invalid ID format detected and cleared');
       
-      // Update form with validated data
-      Object.entries(validatedData).forEach(([key, value]) => {
-        const field = form.querySelector(`[name="${key}"]`) as HTMLInputElement;
-        if (field && value !== formDataObj[key]) {
-          field.value = value || '';
-        }
+      await logSecurityEvent({
+        eventType: SECURITY_EVENTS.INVALID_UUID,
+        eventDetails: { 
+          field: target.name || target.id, 
+          value,
+          context: 'real_time_validation' 
+        },
+        severity: 'medium'
       });
       
-    } catch (error) {
-      console.error('UUID validation error:', error);
-      event.preventDefault();
-      toast.error('Form validation failed. Please try again.');
+      setTimeout(() => {
+        target.style.border = '';
+        target.style.animation = '';
+      }, 1000);
+      
+      return;
+    }
+    
+    // Validate UUID format if value exists
+    if (value && !isValidUUID(value)) {
+      target.style.border = '2px solid hsl(var(--destructive))';
+      toast.error('Invalid UUID format');
+      
+      setTimeout(() => {
+        target.style.border = '';
+      }, 2000);
+    } else if (value && isValidUUID(value)) {
+      target.style.border = '2px solid hsl(var(--success))';
+      setTimeout(() => {
+        target.style.border = '';
+      }, 1000);
     }
   }, []);
 
+  // Form submission interception
+  const interceptFormSubmission = useCallback(async (event: Event) => {
+    const form = event.target as HTMLFormElement;
+    if (!form || form.tagName !== 'FORM') return;
+    
+    const formData = new FormData(form);
+    let hasInvalidUuids = false;
+    const invalidFields: string[] = [];
+    
+    // Check all form fields for UUID validation
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string' && key.includes('id')) {
+        if (value === 'undefined' || value === 'null' || value === '') {
+          hasInvalidUuids = true;
+          invalidFields.push(key);
+          // Clear the invalid value
+          const input = form.querySelector(`[name="${key}"]`) as HTMLInputElement;
+          if (input) input.value = '';
+        } else if (value && !isValidUUID(value)) {
+          hasInvalidUuids = true;
+          invalidFields.push(key);
+        }
+      }
+    }
+    
+    if (hasInvalidUuids) {
+      event.preventDefault();
+      toast.error(`Invalid UUID values detected in: ${invalidFields.join(', ')}`);
+      
+      await logSecurityEvent({
+        eventType: SECURITY_EVENTS.INVALID_UUID,
+        eventDetails: { 
+          invalidFields,
+          context: 'form_submission_blocked',
+          formAction: form.action 
+        },
+        severity: 'high'
+      });
+      
+      // Visual feedback
+      form.style.border = '2px solid hsl(var(--destructive))';
+      form.style.animation = 'shake 0.5s ease-in-out';
+      
+      setTimeout(() => {
+        form.style.border = '';
+        form.style.animation = '';
+      }, 2000);
+    }
+  }, []);
+
+  // Cleanup invalid UUIDs from storage
   const performPeriodicCleanup = useCallback(async () => {
     try {
-      const cleanedCount = cleanupInvalidUuids();
+      let cleanedCount = 0;
+      
+      // Clean localStorage
+      const localKeys = Object.keys(localStorage);
+      for (const key of localKeys) {
+        const value = localStorage.getItem(key);
+        if (key.includes('id') && (value === 'undefined' || value === 'null' || value === '')) {
+          localStorage.removeItem(key);
+          cleanedCount++;
+        }
+      }
+      
+      // Clean sessionStorage
+      const sessionKeys = Object.keys(sessionStorage);
+      for (const key of sessionKeys) {
+        const value = sessionStorage.getItem(key);
+        if (key.includes('id') && (value === 'undefined' || value === 'null' || value === '')) {
+          sessionStorage.removeItem(key);
+          cleanedCount++;
+        }
+      }
       
       if (cleanedCount > 0) {
         await logSecurityEvent({
-          eventType: SECURITY_EVENTS.SENSITIVE_DATA_ACCESS,
-          eventDetails: {
-            action: 'periodic_uuid_cleanup',
-            cleanedItems: cleanedCount,
-            context: 'enhanced_uuid_validator'
+          eventType: SECURITY_EVENTS.SYSTEM_RECOVERY,
+          eventDetails: { 
+            action: 'uuid_cleanup',
+            cleanedCount,
+            context: 'periodic_maintenance' 
           },
           severity: 'low'
         });
-        
-        console.log(`Cleaned ${cleanedCount} invalid UUID entries from storage`);
       }
     } catch (error) {
-      console.warn('UUID cleanup failed:', error);
+      await logSecurityEvent({
+        eventType: SECURITY_EVENTS.CRITICAL_ERROR,
+        eventDetails: { 
+          action: 'uuid_cleanup_failed',
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        },
+        severity: 'medium'
+      });
     }
   }, []);
 
   useEffect(() => {
-    // Attach input validation listeners
+    // Add event listeners
     document.addEventListener('input', validateAndSanitizeInput);
     document.addEventListener('blur', validateAndSanitizeInput, true);
-    
-    // Attach form submission interceptor
     document.addEventListener('submit', interceptFormSubmission);
     
-    // Perform initial cleanup
+    // Initial cleanup
     performPeriodicCleanup();
     
-    // Set up periodic cleanup (every 10 minutes)
-    const cleanupInterval = setInterval(performPeriodicCleanup, 10 * 60 * 1000);
+    // Periodic cleanup every 5 minutes
+    const cleanupInterval = setInterval(performPeriodicCleanup, 5 * 60 * 1000);
     
     return () => {
       document.removeEventListener('input', validateAndSanitizeInput);
