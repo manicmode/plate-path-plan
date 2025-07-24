@@ -62,6 +62,8 @@ export default function BodyScanAI() {
   const [validPoseTimer, setValidPoseTimer] = useState(0);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
+  const [poseStatusHistory, setPoseStatusHistory] = useState<boolean[]>([]);
+  const [stableAlignmentStatus, setStableAlignmentStatus] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
@@ -188,13 +190,37 @@ export default function BodyScanAI() {
           
           // Analyze alignment with body outline
           const alignment = analyzePoseAlignment(pose);
-          setAlignmentFeedback(alignment);
+          
+          // Implement pose stability buffer with debounce
+          setPoseStatusHistory(prev => {
+            const newHistory = [...prev, alignment.isAligned].slice(-10); // Keep last 10 frames (about 500ms at 15fps)
+            
+            // Check if pose has been stable for enough frames
+            const recentFrames = newHistory.slice(-8); // Last ~500ms
+            const stableGood = recentFrames.length >= 8 && recentFrames.every(status => status);
+            const stableBad = recentFrames.length >= 8 && recentFrames.every(status => !status);
+            
+            if (stableGood && stableAlignmentStatus !== true) {
+              setStableAlignmentStatus(true);
+            } else if (stableBad && stableAlignmentStatus !== false) {
+              setStableAlignmentStatus(false);
+            }
+            
+            return newHistory;
+          });
+          
+          // Use stable status for feedback, fallback to current alignment
+          const effectiveAlignment = { 
+            ...alignment, 
+            isAligned: stableAlignmentStatus !== null ? stableAlignmentStatus : alignment.isAligned 
+          };
+          setAlignmentFeedback(effectiveAlignment);
           
           // Draw pose overlay
-          drawPoseOverlay(pose, alignment);
+          drawPoseOverlay(pose, effectiveAlignment);
           
-          // Handle valid pose timing
-          if (alignment.isAligned) {
+          // Handle valid pose timing with stable status
+          if (effectiveAlignment.isAligned) {
             setValidPoseTimer(prev => prev + frameInterval);
           } else {
             setValidPoseTimer(0);
@@ -207,6 +233,8 @@ export default function BodyScanAI() {
           setValidPoseTimer(0);
           setIsCountingDown(false);
           setCountdownSeconds(0);
+          setPoseStatusHistory([]);
+          setStableAlignmentStatus(null);
         }
       } catch (error) {
         console.error('Pose detection error:', error);
@@ -439,7 +467,7 @@ export default function BodyScanAI() {
 
   // Pose analysis functions
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
-    const alignmentThreshold = 0.15; // 15% tolerance
+    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
     const misalignedLimbs: string[] = [];
     let feedback = "";
     
@@ -510,12 +538,24 @@ export default function BodyScanAI() {
     const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
     const alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
     
-    if (misalignedLimbs.length === 0) {
-      feedback = "Perfect pose! Hold steady...";
+    // More forgiving thresholds - green light at 0.8 instead of perfect alignment
+    const isWellAligned = alignmentScore >= 0.8; // 80% threshold instead of 100%
+    const allowMinorMisalignment = misalignedLimbs.length <= 1; // Allow 1 minor issue
+    
+    if (isWellAligned && allowMinorMisalignment) {
+      feedback = "Great pose! Hold steady...";
+    } else if (alignmentScore >= 0.6) {
+      feedback = "Almost there! " + (alignmentScore >= 0.7 ? "Hold still for a moment..." : "Adjust your position slightly");
+    } else {
+      feedback = misalignedLimbs.length > 0 ? 
+        (misalignedLimbs.includes('face') ? "Please face the camera" : 
+         misalignedLimbs.includes('shoulders') ? "Keep shoulders level" :
+         misalignedLimbs.includes('left_arm') || misalignedLimbs.includes('right_arm') ? "Raise arms horizontally" :
+         "Move to center of frame") : "Adjust your position";
     }
     
     return {
-      isAligned: misalignedLimbs.length === 0,
+      isAligned: isWellAligned && allowMinorMisalignment,
       misalignedLimbs,
       alignmentScore,
       feedback
@@ -851,13 +891,16 @@ export default function BodyScanAI() {
       {/* Alignment feedback overlay */}
       {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
-          <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-300 ${
-            alignmentFeedback.alignmentScore > 0.6 
+          <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-500 ease-in-out ${
+            alignmentFeedback.alignmentScore >= 0.7 
+              ? 'bg-yellow-500/90 border-yellow-400' 
+              : alignmentFeedback.alignmentScore >= 0.6
               ? 'bg-orange-500/90 border-orange-400' 
               : 'bg-red-500/90 border-red-400'
           }`}>
             <h3 className="text-white font-bold mb-2 flex items-center">
-              {alignmentFeedback.alignmentScore > 0.6 ? '⚠️' : '❌'} Pose Alignment
+              {alignmentFeedback.alignmentScore >= 0.7 ? '🟡' : alignmentFeedback.alignmentScore >= 0.6 ? '⚠️' : '❌'} 
+              {alignmentFeedback.alignmentScore >= 0.7 ? ' Almost There!' : ' Pose Alignment'}
             </h3>
             <p className="text-white text-sm mb-2">
               Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
@@ -872,16 +915,16 @@ export default function BodyScanAI() {
       {/* Perfect pose indicator */}
       {alignmentFeedback?.isAligned && !hasImageReady && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
-          <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400">
+          <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
             <div className="text-center">
-              <div className="text-2xl mb-2">✅</div>
-              <p className="text-white font-bold text-lg">Perfect Pose!</p>
+              <div className="text-2xl mb-2 animate-pulse">✅</div>
+              <p className="text-white font-bold text-lg">Great Pose!</p>
               <p className="text-white text-sm">Hold steady for auto-capture...</p>
               {validPoseTimer > 0 && (
                 <div className="mt-2">
                   <div className="bg-white/20 rounded-full h-2">
                     <div 
-                      className="bg-white rounded-full h-2 transition-all duration-100"
+                      className="bg-white rounded-full h-2 transition-all duration-300 ease-out"
                       style={{ width: `${Math.min(100, (validPoseTimer / 2000) * 100)}%` }}
                     ></div>
                   </div>
