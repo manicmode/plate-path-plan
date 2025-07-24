@@ -686,10 +686,6 @@ export default function SideBodyScan() {
             }
           }}
           className="w-full h-full object-cover"
-          style={{ 
-            transform: 'scaleX(-1)',
-            WebkitTransform: 'scaleX(-1)'
-          }}
         />
       </div>
       <canvas ref={canvasRef} className="hidden" />
@@ -698,10 +694,6 @@ export default function SideBodyScan() {
       <canvas 
         ref={overlayCanvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-25"
-        style={{ 
-          transform: cameraMode === 'user' ? 'scaleX(-1)' : 'none',
-          WebkitTransform: cameraMode === 'user' ? 'scaleX(-1)' : 'none'
-        }}
       />
       
       {/* Grid Overlay - Fixed behind camera */}
