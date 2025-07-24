@@ -74,20 +74,73 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  // Sanitize CSS values to prevent XSS
+  // Enhanced CSS value sanitization with multiple security layers
   const sanitizeColor = (color: string): string => {
-    // Only allow valid CSS color formats (hex, rgb, hsl, named colors)
-    const colorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\([^)]+\)|hsl\([^)]+\)|[a-zA-Z]+)$/
-    return colorRegex.test(color.trim()) ? color.trim() : ''
+    if (!color || typeof color !== 'string') return ''
+    
+    const trimmedColor = color.trim()
+    
+    // Comprehensive color format validation
+    const validColorPatterns = [
+      /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, // Hex colors
+      /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/, // RGB
+      /^rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*[0-1]?\.?\d*\s*\)$/, // RGBA
+      /^hsl\(\s*\d{1,3}\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*\)$/, // HSL
+      /^hsla\(\s*\d{1,3}\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*[0-1]?\.?\d*\s*\)$/, // HSLA
+      /^(transparent|inherit|initial|unset|currentcolor)$/i, // CSS keywords
+      /^[a-zA-Z]{3,20}$/ // Named colors (limited length)
+    ]
+    
+    // Check if color matches any valid pattern
+    const isValidColor = validColorPatterns.some(pattern => pattern.test(trimmedColor))
+    
+    // Additional security: block potentially dangerous strings
+    const dangerousPatterns = [
+      /javascript:/i,
+      /data:/i,
+      /expression/i,
+      /url\(/i,
+      /@import/i,
+      /\/\*/,
+      /\*\//,
+      /<script/i,
+      /on\w+=/i
+    ]
+    
+    const isDangerous = dangerousPatterns.some(pattern => pattern.test(trimmedColor))
+    
+    return isValidColor && !isDangerous ? trimmedColor : ''
   }
 
-  // Sanitize chart ID to prevent injection
-  const sanitizedId = id.replace(/[^a-zA-Z0-9-_]/g, '')
+  // Enhanced ID sanitization with strict validation
+  const sanitizeId = (inputId: string): string => {
+    if (!inputId || typeof inputId !== 'string') return 'chart-default'
+    
+    // Remove all non-alphanumeric, hyphen, and underscore characters
+    const sanitized = inputId.replace(/[^a-zA-Z0-9-_]/g, '')
+    
+    // Ensure ID starts with a letter or underscore (valid CSS identifier)
+    const validId = /^[a-zA-Z_]/.test(sanitized) ? sanitized : `chart-${sanitized}`
+    
+    // Limit length to prevent excessively long IDs
+    return validId.slice(0, 50)
+  }
 
+  const sanitizedId = sanitizeId(id)
+
+  // Enhanced CSS generation with additional validation
   const cssText = Object.entries(THEMES)
     .map(([theme, prefix]) => {
+      // Validate theme name
+      if (typeof theme !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(theme)) {
+        return null
+      }
+      
       const rules = colorConfig
         .map(([key, itemConfig]) => {
+          // Validate key
+          if (typeof key !== 'string' || key.length > 100) return null
+          
           const color =
             itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
             itemConfig.color
@@ -95,17 +148,29 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
           if (!color) return null
           
           const sanitizedColor = sanitizeColor(color)
-          const sanitizedKey = key.replace(/[^a-zA-Z0-9-_]/g, '')
+          const sanitizedKey = key.replace(/[^a-zA-Z0-9-_]/g, '').slice(0, 50)
           
-          return sanitizedColor ? `  --color-${sanitizedKey}: ${sanitizedColor};` : null
+          // Only include if both key and color are valid
+          return sanitizedColor && sanitizedKey ? 
+            `  --color-${sanitizedKey}: ${sanitizedColor};` : null
         })
         .filter(Boolean)
         .join('\n')
 
-      return rules ? `${prefix} [data-chart=${sanitizedId}] {\n${rules}\n}` : ''
+      // Validate prefix for theme selector
+      const sanitizedPrefix = typeof prefix === 'string' ? 
+        prefix.replace(/[^a-zA-Z0-9-_.\s#]/g, '') : ''
+      
+      return rules ? `${sanitizedPrefix} [data-chart="${sanitizedId}"] {\n${rules}\n}` : ''
     })
     .filter(Boolean)
     .join('\n')
+
+  // Final validation: ensure CSS doesn't exceed reasonable length
+  if (cssText.length > 10000) {
+    console.warn('Chart CSS exceeds safe length, truncating for security')
+    return null
+  }
 
   return (
     <style

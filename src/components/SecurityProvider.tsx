@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
+import { useSecurityAlerts } from '@/hooks/useSecurityAlerts';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -23,6 +24,7 @@ interface SecurityProviderProps {
 
 export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) => {
   const securityMonitoring = useSecurityMonitoring();
+  useSecurityAlerts(); // Initialize security alerts monitoring
 
   return (
     <SecurityContext.Provider value={securityMonitoring}>
