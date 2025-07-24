@@ -12,6 +12,9 @@ import { ChartSecurityEnhancer } from '@/components/security/ChartSecurityEnhanc
 import { SecurityAuditAutomation } from '@/components/security/SecurityAuditAutomation';
 import { CriticalSecurityManager } from '@/components/security/CriticalSecurityManager';
 import { FormSecurityValidator } from '@/components/security/FormSecurityValidator';
+import { AdvancedSecurityMonitor } from '@/components/security/AdvancedSecurityMonitor';
+import { DatabaseValidationEnforcer } from '@/components/security/DatabaseValidationEnforcer';
+import { AutomatedSecurityCompliance } from '@/components/security/AutomatedSecurityCompliance';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -56,6 +59,9 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <SecurityAuditAutomation />
       <CriticalSecurityManager />
       <FormSecurityValidator />
+      <AdvancedSecurityMonitor />
+      <DatabaseValidationEnforcer />
+      <AutomatedSecurityCompliance />
       {children}
     </SecurityContext.Provider>
   );
