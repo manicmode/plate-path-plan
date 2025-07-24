@@ -274,6 +274,14 @@ export default function BodyScanAI() {
           setCountdownSeconds(0);
           setPoseStatusHistory([]);
           setStableAlignmentStatus(null);
+          
+          // Clear overlay canvas when no pose detected
+          if (overlayCanvasRef.current) {
+            const ctx = overlayCanvasRef.current.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+            }
+          }
         }
       } catch (error) {
         console.error('Pose detection error:', error);
@@ -759,14 +767,26 @@ export default function BodyScanAI() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Set canvas size to match video
-    if (canvas.width !== videoRef.current.videoWidth || canvas.height !== videoRef.current.videoHeight) {
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+    // Ensure video metadata is loaded before setting canvas size
+    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+      console.log('Video metadata not ready, skipping pose overlay');
+      return;
+    }
+    
+    // Set canvas size to match video dimensions
+    const videoWidth = videoRef.current.videoWidth;
+    const videoHeight = videoRef.current.videoHeight;
+    
+    if (canvas.width !== videoWidth || canvas.height !== videoHeight) {
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+      console.log(`Canvas resized to ${videoWidth}x${videoHeight}`);
     }
     
     // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    console.log(`Drawing pose overlay with ${pose.keypoints.length} keypoints`);
     
     // Draw pose keypoints with color coding
     pose.keypoints.forEach((keypoint) => {
@@ -912,7 +932,12 @@ export default function BodyScanAI() {
       {/* Pose detection overlay canvas */}
       <canvas 
         ref={overlayCanvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-25"
+        className="absolute inset-0 w-full h-full pointer-events-none z-30"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover'
+        }}
       />
       
       {/* Grid Overlay - Fixed behind camera */}
@@ -1049,15 +1074,17 @@ export default function BodyScanAI() {
             disabled={
               isCapturing || 
               isSaving ||
-              (isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned) ||
+              (isPoseDetectionEnabled && alignmentFeedback !== null && !alignmentFeedback.isAligned) ||
               isCountingDown ||
               showSuccessScreen
             }
             className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
               isPoseDetectionEnabled && alignmentFeedback?.isAligned
                 ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
-                : isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned
+                : isPoseDetectionEnabled && alignmentFeedback !== null && !alignmentFeedback.isAligned
                 ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : !isPoseDetectionEnabled || alignmentFeedback === null
+                ? 'from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 border-gray-400'
                 : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
             }`}
           >
