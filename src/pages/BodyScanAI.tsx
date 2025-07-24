@@ -73,6 +73,49 @@ export default function BodyScanAI() {
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
 
   useEffect(() => {
+    const startCamera = async () => {
+      try {
+        // ✅ 2. CAMERA REQUEST LOGGING
+        console.log("[CAMERA] Requesting camera stream...");
+        
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: { exact: cameraMode },
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          }
+        });
+        
+        // ✅ 3. STREAM RECEIVED LOGGING
+        console.log("[CAMERA] Stream received", mediaStream);
+        console.log("[CAMERA] Video element srcObject set");
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          
+          // ✅ 5. VIDEO PLAY WITH LOGGING
+          videoRef.current.play().then(() => {
+            console.log("[CAMERA] Video playing");
+          }).catch((e) => {
+            console.error("[CAMERA] Error playing video", e);
+          });
+        }
+        setStream(mediaStream);
+      } catch (error) {
+        // ✅ 4. CAMERA ACCESS ERROR HANDLING
+        console.error("[CAMERA] Access denied or failed", error);
+        toast({
+          title: "❌ Camera access denied or failed",
+          description: "Please check permissions and try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
     startCamera();
     return () => {
       if (stream) {
