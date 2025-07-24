@@ -61,31 +61,16 @@ export default function BodyScanAI() {
   const [alignmentFeedback, setAlignmentFeedback] = useState<AlignmentFeedback | null>(null);
   const [isPoseDetectionEnabled, setIsPoseDetectionEnabled] = useState(true);
   const [poseDetectionReady, setPoseDetectionReady] = useState(false);
-  const [validPoseTimer, setValidPoseTimer] = useState(0);
+  
+  // Simple alignment confirmation system
+  const [alignmentFrameCount, setAlignmentFrameCount] = useState(0);
+  const [alignmentConfirmed, setAlignmentConfirmed] = useState(false);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
-  const [poseStatusHistory, setPoseStatusHistory] = useState<boolean[]>([]);
   
-  // Enhanced state for pose smoothing and debugging
-  const [poseHistory, setPoseHistory] = useState<DetectedPose[]>([]);
-  const [debugInfo, setDebugInfo] = useState<{
-    landmarkCount: number;
-    avgConfidence: number;
-    stabilityFrames: number;
-    humanPresenceLevel: 'none' | 'partial' | 'full';
-  }>({ landmarkCount: 0, avgConfidence: 0, stabilityFrames: 0, humanPresenceLevel: 'none' });
-  const [stablePoseFrames, setStablePoseFrames] = useState(0);
-  const [stableAlignmentStatus, setStableAlignmentStatus] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  
-  // Enhanced countdown state
-  const [alignmentStabilityTimer, setAlignmentStabilityTimer] = useState(0);
-  const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
-  const [alignmentStoredAtStart, setAlignmentStoredAtStart] = useState(false);
-  const [lastMisalignmentTime, setLastMisalignmentTime] = useState<number | null>(null);
-  const [playCountdownSound, setPlayCountdownSound] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -211,7 +196,7 @@ export default function BodyScanAI() {
     };
   }, []);
 
-  // Real-time pose detection loop
+  // Clean pose detection loop with debug logging
   useEffect(() => {
     const detectPoseRealTime = async () => {
       if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
@@ -219,86 +204,109 @@ export default function BodyScanAI() {
         return;
       }
 
+      const video = videoRef.current;
+      const overlayCanvas = overlayCanvasRef.current;
+
+      // Debug: Log video and canvas dimensions
+      console.log('🎥 Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+      console.log('🎨 Canvas dimensions:', overlayCanvas?.width, 'x', overlayCanvas?.height);
+
       try {
-        const poses = await poseDetectorRef.current.estimatePoses(videoRef.current);
+        // Detect pose using estimatePoses (MoveNet method)
+        const poses = await poseDetectorRef.current.estimatePoses(video);
         
         if (poses.length > 0) {
           const pose = poses[0] as DetectedPose;
           setPoseDetected(pose);
           
+          console.log('🤖 Pose detected:', pose.keypoints.length, 'keypoints, score:', pose.score);
+          
           // Analyze alignment
           const alignment = analyzePoseAlignment(pose);
           setAlignmentFeedback(alignment);
           
-          // Simple 5-frame stability tracking
-          setPoseStatusHistory(prev => {
-            const newHistory = [...prev, alignment.isAligned].slice(-5);
-            
-            if (newHistory.length === 5) {
-              const isStable = newHistory.every(status => status);
-              setStableAlignmentStatus(isStable);
-              
-              if (isStable && !isCountingDown && !hasImageReady) {
-                setValidPoseTimer(prev => {
-                  const newTimer = prev + 1;
-                  if (newTimer >= 3) { // 3 seconds at ~1fps
-                    setIsCountingDown(true);
-                    setCountdownSeconds(3);
-                  }
-                  return newTimer;
-                });
-              }
-            }
-            
-            return newHistory;
-          });
+          console.log('📐 Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore);
           
-          // Draw pose overlay
+          // Simple 5-frame alignment confirmation
+          if (alignment.isAligned) {
+            setAlignmentFrameCount(prev => {
+              const newCount = prev + 1;
+              console.log('✅ Aligned frame count:', newCount);
+              
+              if (newCount >= 5 && !alignmentConfirmed) {
+                setAlignmentConfirmed(true);
+                console.log('🎯 ALIGNMENT CONFIRMED after 5 frames');
+              }
+              
+              return newCount;
+            });
+          } else {
+            setAlignmentFrameCount(0);
+            if (alignmentConfirmed) {
+              setAlignmentConfirmed(false);
+              console.log('❌ Alignment lost - resetting confirmation');
+            }
+          }
+          
+          // Draw pose overlay with debug logging
+          console.log('🎨 Drawing pose overlay...');
           drawPoseOverlay(pose, alignment);
+          
         } else {
           setPoseDetected(null);
           setAlignmentFeedback(null);
-          setValidPoseTimer(0);
-          setIsCountingDown(false);
-          setCountdownSeconds(0);
-          setPoseStatusHistory([]);
-          setStableAlignmentStatus(null);
+          setAlignmentFrameCount(0);
+          setAlignmentConfirmed(false);
+          
+          console.log('👻 No pose detected');
           
           // Clear overlay canvas
-          if (overlayCanvasRef.current) {
-            const ctx = overlayCanvasRef.current.getContext('2d');
+          if (overlayCanvas) {
+            const ctx = overlayCanvas.getContext('2d');
             if (ctx) {
-              ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+              ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             }
           }
         }
       } catch (error) {
-        console.error('Pose detection error:', error);
+        console.error('❌ Pose detection error:', error);
       }
 
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     };
 
     if (stream && poseDetectionReady && isPoseDetectionEnabled) {
+      console.log('🚀 Starting pose detection loop');
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     }
 
     return () => {
       if (animationFrameRef.current) {
+        console.log('🛑 Cleaning up animation frame');
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled, isCountingDown, hasImageReady]);
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
 
-  // Simple countdown logic
+  // Start countdown when alignment is confirmed
   useEffect(() => {
-    if (isCountingDown) {
-      const countdownInterval = setInterval(() => {
+    if (alignmentConfirmed && !isCountingDown && !hasImageReady) {
+      console.log('🚀 STARTING COUNTDOWN - alignment confirmed');
+      setIsCountingDown(true);
+      setCountdownSeconds(3);
+    }
+  }, [alignmentConfirmed, isCountingDown, hasImageReady]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (isCountingDown && countdownSeconds > 0) {
+      console.log('⏰ Countdown:', countdownSeconds);
+      
+      const timer = setTimeout(() => {
         setCountdownSeconds(prev => {
           if (prev <= 1) {
-            clearInterval(countdownInterval);
+            console.log('📸 COUNTDOWN COMPLETE - triggering capture');
             setIsCountingDown(false);
-            setValidPoseTimer(0);
             playBodyScanCapture();
             captureImage();
             return 0;
@@ -307,9 +315,18 @@ export default function BodyScanAI() {
         });
       }, 1000);
 
-      return () => clearInterval(countdownInterval);
+      return () => clearTimeout(timer);
     }
-  }, [isCountingDown]);
+  }, [isCountingDown, countdownSeconds]);
+
+  // Reset countdown if alignment is lost
+  useEffect(() => {
+    if (isCountingDown && !alignmentConfirmed) {
+      console.log('🛑 COUNTDOWN RESET - alignment lost');
+      setIsCountingDown(false);
+      setCountdownSeconds(0);
+    }
+  }, [isCountingDown, alignmentConfirmed]);
 
   const startCamera = async () => {
     try {
@@ -347,87 +364,59 @@ export default function BodyScanAI() {
   const captureImage = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     
-    // Enhanced defensive validation before capture
-    if (isPoseDetectionEnabled) {
-      // Strict pose validation - must have valid alignment feedback and be aligned
-      if (!alignmentFeedback || alignmentFeedback.isAligned !== true) {
-        console.log('❌ Capture blocked - invalid pose:', { 
-          hasAlignmentFeedback: !!alignmentFeedback, 
-          isAligned: alignmentFeedback?.isAligned,
-          feedback: alignmentFeedback?.feedback 
-        });
-        
-        toast({
-          title: "Pose Alignment Required",
-          description: alignmentFeedback?.feedback || "Please align your pose before capturing",
-          variant: "destructive"
-        });
-        return;
-      }
+    console.log('📸 Capture attempt - checking alignment...');
+    
+    // STRICT VALIDATION: Only capture if alignment is true
+    if (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) {
+      console.log('❌ CAPTURE BLOCKED - alignment not satisfied:', {
+        hasAlignmentFeedback: !!alignmentFeedback,
+        isAligned: alignmentFeedback?.isAligned,
+        feedback: alignmentFeedback?.feedback
+      });
       
-      // Additional validation for pose detection
-      if (!poseDetected || poseDetected.keypoints.length < 10) {
-        console.log('❌ Capture blocked - insufficient pose data');
-        toast({
-          title: "Pose Not Detected",
-          description: "Please ensure you're fully visible in the camera",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    
-    console.log('✅ Capture validation passed - proceeding with save');
-    setIsCapturing(true);
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    
-    if (!context) {
-      setIsCapturing(false);
+      toast({
+        title: "Pose Alignment Required",
+        description: alignmentFeedback?.feedback || "Please align your pose before capturing",
+        variant: "destructive"
+      });
       return;
     }
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0);
-    
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    setCapturedImage(imageData);
+    console.log('✅ CAPTURE APPROVED - alignment satisfied');
     
     try {
-      // Auto-save the scan to Supabase with validation
-      await saveBodyScanToSupabase(imageData);
+      setIsCapturing(true);
       
-      // Only set success state AFTER successful save
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      setCapturedImage(imageDataUrl);
       setHasImageReady(true);
-      setValidPoseTimer(0);
-      setIsCountingDown(false);
       
-      toast({
-        title: "Scan Saved!",
-        description: "Front body scan captured successfully. Ready for side scan.",
-      });
+      console.log('📷 Image captured successfully');
       
-      console.log('✅ Scan capture and save completed successfully');
+      await saveBodyScanToSupabase(imageDataUrl);
       
     } catch (error) {
-      console.error('❌ Failed to save scan:', error);
+      console.error('❌ Capture error:', error);
       toast({
-        title: "Save Failed",
-        description: "Failed to save scan. Please try again.",
+        title: "Capture Failed",
+        description: "Failed to capture image. Please try again.",
         variant: "destructive"
       });
-      
-      // Reset states on save failure
-      setCapturedImage(null);
-      setHasImageReady(false);
+    } finally {
+      setIsCapturing(false);
     }
-    
-    setIsCapturing(false);
   };
-
   // Function to upload image to Supabase Storage and save record
   const saveBodyScanToSupabase = async (imageDataUrl: string) => {
     try {
@@ -531,12 +520,15 @@ export default function BodyScanAI() {
   };
 
   const handleRetake = () => {
+    console.log('🔄 Retaking scan - resetting all state');
     setCapturedImage(null);
     setHasImageReady(false);
     setSavedScanUrl(null);
     setShowSuccessScreen(false);
-    setValidPoseTimer(0);
+    setAlignmentFrameCount(0);
+    setAlignmentConfirmed(false);
     setIsCountingDown(false);
+    setCountdownSeconds(0);
   };
 
   // Enhanced human presence validation with pose smoothing
@@ -581,50 +573,16 @@ export default function BodyScanAI() {
     return { level, validCount, avgConfidence };
   }, []);
 
-  // Pose smoothing function - average poses over multiple frames
+  // Simplified pose data function (removed smoothing dependencies)
   const smoothPoseData = useCallback((currentPose: DetectedPose) => {
-    setPoseHistory(prev => {
-      const maxHistory = 8; // 8 frames for ~500ms smoothing at 15fps
-      const newHistory = [...prev, currentPose].slice(-maxHistory);
-      
-      // Calculate smoothed pose by averaging keypoint positions and confidences
-      const smoothedKeypoints = currentPose.keypoints.map((kp, index) => {
-        const relevantFrames = newHistory.filter(pose => 
-          pose.keypoints[index] && pose.keypoints[index].score > 0.3
-        );
-        
-        if (relevantFrames.length === 0) return kp;
-        
-        const avgX = relevantFrames.reduce((sum, pose) => sum + pose.keypoints[index].x, 0) / relevantFrames.length;
-        const avgY = relevantFrames.reduce((sum, pose) => sum + pose.keypoints[index].y, 0) / relevantFrames.length;
-        const avgScore = relevantFrames.reduce((sum, pose) => sum + pose.keypoints[index].score, 0) / relevantFrames.length;
-        
-        return {
-          ...kp,
-          x: avgX,
-          y: avgY,
-          score: avgScore
-        };
-      });
-      
-      return newHistory;
-    });
-    
-    return currentPose; // For now, return current pose (can be enhanced to return smoothed)
+    // For now, return current pose without smoothing to avoid missing state dependencies
+    return currentPose;
   }, []);
 
   // Enhanced pose analysis with comprehensive validation
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
     // STEP 1: Enhanced human presence validation with tiered levels
     const presenceCheck = validateHumanPresence(pose);
-    
-    // Update debug info state
-    setDebugInfo(prev => ({
-      ...prev,
-      landmarkCount: presenceCheck.validCount,
-      avgConfidence: presenceCheck.avgConfidence,
-      humanPresenceLevel: presenceCheck.level
-    }));
     
     // Immediate return for no human detected
     if (presenceCheck.level === 'none') {
@@ -925,13 +883,14 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Pose detection overlay canvas */}
+      {/* Pose detection overlay canvas - VISIBLE and properly z-indexed */}
       <canvas 
         ref={overlayCanvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
           width: '100%',
-          height: '100%'
+          height: '100%',
+          display: 'block'
         }}
       />
       
@@ -956,25 +915,6 @@ export default function BodyScanAI() {
           <p className="text-white/90 text-sm text-center">
             Stand upright with arms out. Match your body to the glowing outline.
           </p>
-          
-          {/* Enhanced Debug Information */}
-          {process.env.NODE_ENV === 'development' && debugInfo && (
-            <div className="mt-3 p-3 bg-black/40 rounded-xl border border-blue-400/30">
-              <div className="text-xs text-blue-300 grid grid-cols-2 gap-2">
-                <div>🎯 Landmarks: {debugInfo.landmarkCount}/9</div>
-                <div>📊 Confidence: {(debugInfo.avgConfidence * 100).toFixed(0)}%</div>
-                <div>⚡ Stable: {debugInfo.stabilityFrames}f</div>
-                <div>👤 Presence: 
-                  <span className={
-                    debugInfo.humanPresenceLevel === 'full' ? 'text-green-400' :
-                    debugInfo.humanPresenceLevel === 'partial' ? 'text-yellow-400' : 'text-red-400'
-                  }>
-                    {debugInfo.humanPresenceLevel}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -1074,10 +1014,14 @@ export default function BodyScanAI() {
               showSuccessScreen
             }
             className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-              // Use alignmentFeedback for button color
-              (!isPoseDetectionEnabled || (alignmentFeedback && alignmentFeedback.isAligned))
-                ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
-                : 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+              // Button color logic based on alignmentFeedback
+              (!isPoseDetectionEnabled) 
+                ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400'
+                : (alignmentFeedback === null)
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : (alignmentFeedback.isAligned === false)
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)]'
             }`}
           >
             <div className="flex items-center justify-center">
@@ -1148,12 +1092,12 @@ export default function BodyScanAI() {
               <div className="text-2xl mb-2 animate-pulse">✅</div>
               <p className="text-white font-bold text-lg">Great Pose!</p>
               <p className="text-white text-sm">Hold steady for auto-capture...</p>
-              {validPoseTimer > 0 && (
+              {alignmentFrameCount > 0 && (
                 <div className="mt-2">
                   <div className="bg-white/20 rounded-full h-2">
                     <div 
                       className="bg-white rounded-full h-2 transition-all duration-300 ease-out"
-                      style={{ width: `${Math.min(100, (validPoseTimer / 2000) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (alignmentFrameCount / 5) * 100)}%` }}
                     ></div>
                   </div>
                 </div>
