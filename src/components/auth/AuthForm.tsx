@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { User, Lock, Mail, AlertTriangle } from 'lucide-react';
@@ -14,6 +15,7 @@ import { validateEmail } from '@/utils/emailValidation';
 import { validateEmail as validateEmailSecure, validatePassword, sanitizeText } from '@/lib/validation';
 import { validateFormUuids } from '@/lib/uuidValidationMiddleware';
 import { validateNotificationData } from '@/lib/notificationValidation';
+import { supabase } from '@/integrations/supabase/client';
 
 const AuthForm = () => {
   const { login, register, resendEmailConfirmation, user } = useAuth();
@@ -40,6 +42,9 @@ const AuthForm = () => {
   } | null>(null);
   const [currentTab, setCurrentTab] = useState<'login' | 'register'>('login');
   const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [isResetLoading, setIsResetLoading] = useState(false);
 
   // Clear form when user signs out
   useEffect(() => {
@@ -285,6 +290,39 @@ const AuthForm = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!forgotPasswordEmail) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    const sanitizedEmail = sanitizeText(forgotPasswordEmail);
+    if (!validateEmailSecure(sanitizedEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setIsResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('✅ Reset link sent! Check your email');
+      setShowForgotPassword(false);
+      setForgotPasswordEmail('');
+    } catch (error: any) {
+      console.error('Password reset failed:', error);
+      toast.error(error.message || 'Failed to send reset link. Please try again.');
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
   // Show email confirmation screen if needed
   if (emailConfirmationState.show) {
     return (
@@ -416,6 +454,50 @@ const AuthForm = () => {
                 >
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
+                
+                {/* Forgot Password Section */}
+                <div className="text-center space-y-2">
+                  <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="link" 
+                        className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 p-0 h-auto"
+                      >
+                        Forgot your password?
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Reset Password</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="reset-email">Email</Label>
+                          <Input
+                            id="reset-email"
+                            type="email"
+                            placeholder="Enter your email"
+                            value={forgotPasswordEmail}
+                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                            className="glass-button border-0"
+                            disabled={isResetLoading}
+                          />
+                        </div>
+                        <Button 
+                          onClick={handleForgotPassword}
+                          className="w-full gradient-primary"
+                          disabled={isResetLoading}
+                        >
+                          {isResetLoading ? 'Sending...' : 'Send Reset Link'}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    💬 We've recently upgraded our password rules. If your old password no longer works, reset it.
+                  </p>
+                </div>
               </form>
             </TabsContent>
 
