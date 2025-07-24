@@ -177,12 +177,22 @@ export const validateEdgeFunctionInput = (
 export const createSecureResponse = (
   data: any,
   status = 200,
-  additionalHeaders: Record<string, string> = {}
+  additionalHeaders: Record<string, string> = {},
+  rateLimitInfo?: {
+    limit: number;
+    remaining: number;
+    resetTime: number;
+  }
 ): Response => {
   const headers = {
     'Content-Type': 'application/json',
     ...enhancedCorsHeaders,
-    ...additionalHeaders
+    ...additionalHeaders,
+    ...(rateLimitInfo && {
+      'X-RateLimit-Limit': rateLimitInfo.limit.toString(),
+      'X-RateLimit-Remaining': rateLimitInfo.remaining.toString(),
+      'X-RateLimit-Reset': rateLimitInfo.resetTime.toString()
+    })
   };
 
   return new Response(JSON.stringify(data), {

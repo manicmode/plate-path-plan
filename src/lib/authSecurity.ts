@@ -1,5 +1,6 @@
 import { validateEmail, validatePassword } from '@/lib/validation';
 import { supabase } from '@/integrations/supabase/client';
+import { logSecurityEvent, SECURITY_EVENTS } from './securityLogger';
 
 // Security configuration for authentication
 export const authSecurityConfig = {
@@ -44,7 +45,7 @@ export const checkLoginAttempts = (email: string): { allowed: boolean; remaining
   };
 };
 
-export const recordFailedLogin = (email: string): void => {
+export const recordFailedLogin = async (email: string): Promise<void> => {
   const attempts = loginAttempts.get(email) || { count: 0, lastAttempt: 0 };
   const now = Date.now();
 
@@ -52,10 +53,24 @@ export const recordFailedLogin = (email: string): void => {
     count: attempts.count + 1,
     lastAttempt: now
   });
+
+  // Log security event
+  await logSecurityEvent({
+    eventType: SECURITY_EVENTS.LOGIN_FAILURE,
+    eventDetails: { email, attempt_count: attempts.count + 1 },
+    severity: attempts.count >= 3 ? 'high' : 'medium'
+  });
 };
 
-export const recordSuccessfulLogin = (email: string): void => {
+export const recordSuccessfulLogin = async (email: string): Promise<void> => {
   loginAttempts.delete(email);
+  
+  // Log successful login
+  await logSecurityEvent({
+    eventType: SECURITY_EVENTS.LOGIN_SUCCESS,
+    eventDetails: { email },
+    severity: 'low'
+  });
 };
 
 export const validateAuthInput = (email: string, password: string): { isValid: boolean; errors: string[] } => {

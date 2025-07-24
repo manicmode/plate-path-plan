@@ -34,7 +34,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     barcode: initialBarcode
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
@@ -43,7 +43,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
 
     // Validate and sanitize all input data
-    const validatedData = validateApiCall({
+    const validatedData = await validateApiCall({
       name: formData.name,
       calories: formData.calories,
       protein: formData.protein,
