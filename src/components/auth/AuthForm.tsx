@@ -12,6 +12,8 @@ import { User, Lock, Mail, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateEmail } from '@/utils/emailValidation';
 import { validateEmail as validateEmailSecure, validatePassword, sanitizeText } from '@/lib/validation';
+import { validateFormUuids } from '@/lib/uuidValidationMiddleware';
+import { validateNotificationData } from '@/lib/notificationValidation';
 
 const AuthForm = () => {
   const { login, register, resendEmailConfirmation, user } = useAuth();

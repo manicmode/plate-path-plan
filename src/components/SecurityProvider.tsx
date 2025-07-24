@@ -10,6 +10,8 @@ import { AutomatedSecurityAlerts } from '@/components/security/AutomatedSecurity
 import { EnhancedInputValidation } from '@/components/security/EnhancedInputValidation';
 import { ChartSecurityEnhancer } from '@/components/security/ChartSecurityEnhancer';
 import { SecurityAuditAutomation } from '@/components/security/SecurityAuditAutomation';
+import { CriticalSecurityManager } from '@/components/security/CriticalSecurityManager';
+import { FormSecurityValidator } from '@/components/security/FormSecurityValidator';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -52,6 +54,8 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <EnhancedInputValidation />
       <ChartSecurityEnhancer />
       <SecurityAuditAutomation />
+      <CriticalSecurityManager />
+      <FormSecurityValidator />
       {children}
     </SecurityContext.Provider>
   );

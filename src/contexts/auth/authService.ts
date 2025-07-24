@@ -2,10 +2,22 @@
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/lib/authUtils';
 import { toast } from 'sonner';
+import { validateUuidInput, cleanupInvalidUuids } from '@/lib/uuidValidationMiddleware';
+import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
 import type { RegistrationResult } from './types';
 
 export const loginUser = async (email: string, password: string) => {
   try {
+    // Enhanced security: Clean up any invalid UUIDs before login
+    cleanupInvalidUuids();
+    
+    // Log login attempt for security monitoring
+    await logSecurityEvent({
+      eventType: SECURITY_EVENTS.LOGIN_ATTEMPT,
+      eventDetails: { email, timestamp: new Date().toISOString() },
+      severity: 'low'
+    });
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -51,8 +63,30 @@ export const loginUser = async (email: string, password: string) => {
       throw new Error('UNVERIFIED_EMAIL');
     }
     
+    // Log successful login
+    if (data.user) {
+      await logSecurityEvent({
+        eventType: SECURITY_EVENTS.LOGIN_SUCCESS,
+        eventDetails: { userId: data.user.id, email },
+        severity: 'low',
+        userId: data.user.id
+      });
+    }
+    
   } catch (error: any) {
     console.error('Login failed:', error);
+    
+    // Log failed login attempt
+    await logSecurityEvent({
+      eventType: SECURITY_EVENTS.LOGIN_FAILURE,
+      eventDetails: { 
+        email, 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      severity: 'medium'
+    });
+    
     throw error;
   }
 };
@@ -61,8 +95,9 @@ export const registerUser = async (email: string, password: string, name?: strin
   try {
     console.log('🚀 Starting registration process for:', email);
     
-    // Clean up any existing auth state before registration
+    // Enhanced security: Clean up any existing auth state and invalid UUIDs
     cleanupAuthState();
+    cleanupInvalidUuids();
     
     // Add a small delay to ensure cleanup is complete
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -239,8 +274,16 @@ export const signOutUser = async () => {
   try {
     console.log('🔓 Starting sign out process...');
     
-    // Clean up auth state first
+    // Enhanced security: Clean up auth state and invalid UUIDs
     cleanupAuthState();
+    cleanupInvalidUuids();
+    
+    // Log logout event
+    await logSecurityEvent({
+      eventType: SECURITY_EVENTS.LOGOUT,
+      eventDetails: { timestamp: new Date().toISOString() },
+      severity: 'low'
+    });
     
     // Attempt Supabase sign out
     console.log('📤 Calling Supabase signOut...');
