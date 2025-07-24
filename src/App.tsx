@@ -19,6 +19,7 @@ import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 
 // Lazy load components
+const ResetPassword = lazy(() => import('@/components/auth/ResetPassword').then(module => ({ default: module.ResetPassword })));
 const Index = lazy(() => import('@/pages/Index'));
 const Home = lazy(() => import('@/pages/Home'));
 const Camera = lazy(() => import('@/pages/Camera'));
@@ -68,6 +69,7 @@ function AppContent() {
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           {/* Fullscreen pages without Layout */}
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/body-scan-ai" element={
             <ProtectedRoute>
               <BodyScanAI />
