@@ -271,7 +271,7 @@ export default function BodyScanAI() {
           };
           setAlignmentFeedback(effectiveAlignment);
           
-          // Draw pose overlay
+          // Draw pose overlay - now with proper canvas sizing
           drawPoseOverlay(pose, effectiveAlignment);
           
           // Enhanced countdown logic with stability buffer and grace period
@@ -328,7 +328,7 @@ export default function BodyScanAI() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled, stableAlignmentStatus]);
 
   // Enhanced auto-capture countdown logic with stability buffer and grace period
   useEffect(() => {
@@ -838,45 +838,48 @@ export default function BodyScanAI() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Ensure video metadata is loaded before setting canvas size
-    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
-      console.log('Video metadata not ready, skipping pose overlay');
-      return;
-    }
+    // Get display dimensions (CSS dimensions)
+    const displayRect = canvas.getBoundingClientRect();
+    const video = videoRef.current;
     
-    // Set canvas size to match video dimensions
-    const videoWidth = videoRef.current.videoWidth;
-    const videoHeight = videoRef.current.videoHeight;
-    
-    if (canvas.width !== videoWidth || canvas.height !== videoHeight) {
-      canvas.width = videoWidth;
-      canvas.height = videoHeight;
-      console.log(`Canvas resized to ${videoWidth}x${videoHeight}`);
+    // Set canvas buffer size to match video dimensions
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
     }
     
     // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    console.log(`Drawing pose overlay with ${pose.keypoints.length} keypoints`);
+    console.log(`Drawing pose overlay: canvas=${canvas.width}x${canvas.height}, video=${video.videoWidth}x${video.videoHeight}`);
     
-    // Draw pose keypoints with color coding
+    // Draw pose keypoints with enhanced visibility
     pose.keypoints.forEach((keypoint) => {
-      if (keypoint.score > 0.5) {
+      if (keypoint.score > 0.4) { // Lowered threshold for better visibility
         const isAligned = !alignment.misalignedLimbs.some(limb => 
           keypoint.name?.includes(limb.replace('_', ' '))
         );
         
+        // Outer glow
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = isAligned ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 107, 0, 0.3)';
+        ctx.fill();
+        
+        // Main dot
+        ctx.beginPath();
+        ctx.arc(keypoint.x, keypoint.y, 5, 0, 2 * Math.PI);
         ctx.fillStyle = isAligned ? '#00ff00' : '#ff6b00'; // Green for aligned, orange for misaligned
         ctx.fill();
+        
+        // White border for contrast
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
       }
     });
     
-    // Draw skeleton connections
+    // Draw skeleton connections with enhanced visibility
     const connections = [
       ['left_shoulder', 'right_shoulder'],
       ['left_shoulder', 'left_elbow'],
@@ -892,7 +895,16 @@ export default function BodyScanAI() {
       const kpA = pose.keypoints.find(kp => kp.name === pointA);
       const kpB = pose.keypoints.find(kp => kp.name === pointB);
       
-      if (kpA && kpB && kpA.score > 0.5 && kpB.score > 0.5) {
+      if (kpA && kpB && kpA.score > 0.4 && kpB.score > 0.4) {
+        // Shadow/glow line
+        ctx.beginPath();
+        ctx.moveTo(kpA.x, kpA.y);
+        ctx.lineTo(kpB.x, kpB.y);
+        ctx.strokeStyle = alignment.isAligned ? 'rgba(0, 255, 255, 0.6)' : 'rgba(255, 107, 0, 0.6)';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        
+        // Main line
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
@@ -1006,7 +1018,8 @@ export default function BodyScanAI() {
         className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
           width: '100%',
-          height: '100%'
+          height: '100%',
+          objectFit: 'cover'
         }}
       />
       
@@ -1144,18 +1157,17 @@ export default function BodyScanAI() {
             disabled={
               isCapturing || 
               isSaving ||
-              (isPoseDetectionEnabled && alignmentFeedback !== null && !alignmentFeedback.isAligned) ||
+              (isPoseDetectionEnabled && stableAlignmentStatus !== null && !stableAlignmentStatus) ||
               isCountingDown ||
               showSuccessScreen
             }
             className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-              isPoseDetectionEnabled && alignmentFeedback?.isAligned
+              // Use stableAlignmentStatus for button color, fallback to alignmentFeedback
+              (stableAlignmentStatus === true || (!isPoseDetectionEnabled && alignmentFeedback?.isAligned))
                 ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
-                : isPoseDetectionEnabled && alignmentFeedback !== null && !alignmentFeedback.isAligned
+                : (stableAlignmentStatus === false || (isPoseDetectionEnabled && alignmentFeedback !== null && !alignmentFeedback.isAligned))
                 ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                : !isPoseDetectionEnabled || alignmentFeedback === null
-                ? 'from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 border-gray-400'
-                : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
+                : 'from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 border-gray-400'
             }`}
           >
             <div className="flex items-center justify-center">
