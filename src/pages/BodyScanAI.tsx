@@ -77,6 +77,13 @@ export default function BodyScanAI() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  
+  // Enhanced countdown state
+  const [alignmentStabilityTimer, setAlignmentStabilityTimer] = useState(0);
+  const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
+  const [alignmentStoredAtStart, setAlignmentStoredAtStart] = useState(false);
+  const [lastMisalignmentTime, setLastMisalignmentTime] = useState<number | null>(null);
+  const [playCountdownSound, setPlayCountdownSound] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -237,13 +244,25 @@ export default function BodyScanAI() {
           // Draw pose overlay
           drawPoseOverlay(pose, effectiveAlignment);
           
-          // Handle valid pose timing with stable status
+          // Enhanced countdown logic with stability buffer and grace period
           if (effectiveAlignment.isAligned) {
-            setValidPoseTimer(prev => prev + frameInterval);
+            // Increment stability timer
+            setAlignmentStabilityTimer(prev => prev + frameInterval);
+            setLastMisalignmentTime(null); // Clear misalignment timer
           } else {
-            setValidPoseTimer(0);
-            setIsCountingDown(false);
-            setCountdownSeconds(0);
+            // Track misalignment time for grace period
+            const now = Date.now();
+            setLastMisalignmentTime(prev => prev || now);
+            
+            // Reset countdown logic with hysteresis
+            if (effectiveAlignment.alignmentScore < 0.6) { // Lower threshold for reset (hysteresis)
+              setValidPoseTimer(0);
+              setAlignmentStabilityTimer(0);
+              setIsCountingDown(false);
+              setCountdownSeconds(0);
+              setCountdownStartedAt(null);
+              setAlignmentStoredAtStart(false);
+            }
           }
         } else {
           setPoseDetected(null);
@@ -273,30 +292,72 @@ export default function BodyScanAI() {
     };
   }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
 
-  // Auto-capture countdown logic
+  // Enhanced auto-capture countdown logic with stability buffer and grace period
   useEffect(() => {
-    if (validPoseTimer >= 2000 && !isCountingDown && !hasImageReady) { // 2 seconds of valid pose
+    // Start countdown only after 3 seconds of consistent alignment (stability buffer)
+    if (alignmentStabilityTimer >= 3000 && !isCountingDown && !hasImageReady) {
+      console.log('🎯 Starting countdown - 3s stability achieved');
       setIsCountingDown(true);
       setCountdownSeconds(3);
+      setCountdownStartedAt(Date.now());
+      setAlignmentStoredAtStart(alignmentFeedback?.isAligned || false); // Store alignment status
       
       const countdownInterval = setInterval(() => {
         setCountdownSeconds(prev => {
-          if (prev <= 1) {
+          // Play sound/haptic feedback for each step
+          if (prev > 0 && playCountdownSound) {
+            // Subtle haptic feedback if available
+            if ('vibrate' in navigator) {
+              navigator.vibrate(50);
+            }
+          }
+          
+          if (prev <= 0) {
             clearInterval(countdownInterval);
             setIsCountingDown(false);
-            // Auto capture
-            if (alignmentFeedback?.isAligned) {
+            console.log('🔥 AUTO-CAPTURE triggered at countdown 0');
+            
+            // Auto capture using stored alignment status to avoid last-second failures
+            if (alignmentStoredAtStart) {
               captureImage();
+            } else {
+              console.warn('⚠️ Auto-capture cancelled - alignment lost during countdown');
+              toast({
+                title: "Capture Cancelled",
+                description: "Please maintain alignment during countdown",
+                variant: "destructive"
+              });
             }
+            setCountdownStartedAt(null);
+            setAlignmentStoredAtStart(false);
             return 0;
           }
           return prev - 1;
         });
-      }, 1000);
+      }, 1000); // Exactly 1000ms intervals
 
       return () => clearInterval(countdownInterval);
     }
-  }, [validPoseTimer, isCountingDown, hasImageReady, alignmentFeedback]);
+  }, [alignmentStabilityTimer, isCountingDown, hasImageReady, alignmentStoredAtStart, playCountdownSound]);
+
+  // Grace period logic: Reset countdown only if misaligned for more than 500ms
+  useEffect(() => {
+    if (isCountingDown && lastMisalignmentTime) {
+      const gracePeriod = 500; // 500ms grace period
+      const checkGracePeriod = setTimeout(() => {
+        if (lastMisalignmentTime && Date.now() - lastMisalignmentTime > gracePeriod) {
+          console.log('⏸️ Countdown reset - misaligned for >500ms');
+          setIsCountingDown(false);
+          setCountdownSeconds(0);
+          setCountdownStartedAt(null);
+          setAlignmentStoredAtStart(false);
+          setAlignmentStabilityTimer(0);
+        }
+      }, gracePeriod);
+
+      return () => clearTimeout(checkGracePeriod);
+    }
+  }, [isCountingDown, lastMisalignmentTime]);
 
   const startCamera = async () => {
     try {
@@ -1080,13 +1141,48 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* Auto-capture countdown */}
+      {/* Enhanced Auto-capture countdown with progress ring */}
       {isCountingDown && countdownSeconds > 0 && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-          <div className="bg-green-500/95 backdrop-blur-md rounded-full w-24 h-24 flex items-center justify-center border-4 border-white">
-            <span className="text-white text-3xl font-bold animate-pulse">
-              {countdownSeconds}
-            </span>
+          <div className="relative bg-green-500/95 backdrop-blur-md rounded-full w-32 h-32 flex items-center justify-center border-4 border-white shadow-2xl animate-scale-in">
+            {/* Progress ring background */}
+            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <path
+                className="text-white/30"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                className="text-white transition-all duration-1000 ease-out"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeDasharray={`${((4 - countdownSeconds) / 3) * 100}, 100`}
+                strokeLinecap="round"
+              />
+            </svg>
+            
+            {/* Countdown number */}
+            <div className="relative z-10 text-center">
+              <span className="text-white text-4xl font-bold animate-pulse drop-shadow-lg">
+                {countdownSeconds}
+              </span>
+              <div className="text-white text-xs mt-1 opacity-80">
+                {countdownSeconds === 3 ? 'Get Ready' : 
+                 countdownSeconds === 2 ? 'Almost...' : 
+                 countdownSeconds === 1 ? 'Capture!' : ''}
+              </div>
+            </div>
+            
+            {/* Pulsing outer ring */}
+            <div className="absolute inset-0 rounded-full border-2 border-green-300/50 animate-ping"></div>
           </div>
         </div>
       )}
