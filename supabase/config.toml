@@ -2,79 +2,82 @@
 project_id = "uzoiiijqtahohfafqirm"
 
 [functions.generate-weekly-health-report]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-monthly-reports]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-yearly-reports]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-and-save-weekly-health-pdf]
-verify_jwt = false
+verify_jwt = true
 
 [functions.assign-monthly-rankings]
+verify_jwt = true
 
 [functions.generate-monthly-summary]
+verify_jwt = true
 
 [functions.get-trophy-counts]
+verify_jwt = true
 
 [functions.generate-weekly-summary]
-verify_jwt = false
+verify_jwt = true
 
 [functions.health-check-processor]
-verify_jwt = false
+verify_jwt = true
 
 [functions.vision-label-reader]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-coach-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.log-voice]
-verify_jwt = false
+verify_jwt = true
 
 [functions.voice-to-text]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-push-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-food-items]
-verify_jwt = false
+verify_jwt = true
 
 [functions.barcode-lookup-global]
 verify_jwt = false
 
 [functions.detect-flagged-ingredients]
-verify_jwt = false
+verify_jwt = true
 
 [functions.test-function]
 verify_jwt = false
 
 [functions.detect-toxins]
-verify_jwt = false
+verify_jwt = true
 
 [functions.barcode-image-detector]
-verify_jwt = false
+verify_jwt = true
 
 [functions.evaluate-meal-quality]
-verify_jwt = false
+verify_jwt = true
 
 [functions.batch-evaluate-meals]
-verify_jwt = false
+verify_jwt = true
 
 [functions.calculate-daily-performance]
-verify_jwt = false
+verify_jwt = true
 
 [functions.calculate-daily-score]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-monthly-exercise-reports]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-yearly-exercise-reports]
-verify_jwt = false
+verify_jwt = true
 
 [functions.test-yearly-reports]
-verify_jwt = false
+verify_jwt = true

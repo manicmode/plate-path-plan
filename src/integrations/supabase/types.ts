@@ -1824,6 +1824,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       weekly_exercise_insights: {
         Row: {
           created_at: string
@@ -2243,6 +2264,10 @@ export type Database = {
           completion_date: string
         }[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       get_follow_status: {
         Args: { target_user_id: string }
         Returns: {
@@ -2321,6 +2346,13 @@ export type Database = {
         Args: { challenge_id_param: string }
         Returns: boolean
       }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       process_yearly_hall_of_fame: {
         Args: { target_year: number }
         Returns: Json
@@ -2369,6 +2401,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       suggestion_type: "praise" | "warning" | "tip"
     }
     CompositeTypes: {
@@ -2497,6 +2530,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       suggestion_type: ["praise", "warning", "tip"],
     },
   },

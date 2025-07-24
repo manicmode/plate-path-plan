@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/auth';
 import { Users, Trash2, RefreshCw, AlertTriangle, CheckCircle, Award } from 'lucide-react';
 import { toast } from 'sonner';
+import { AdminGuard } from './AdminGuard';
 
 interface CleanupResult {
   deletedUsers: number;
@@ -15,14 +15,10 @@ interface CleanupResult {
 }
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null);
   const [isBatchEvaluating, setIsBatchEvaluating] = useState(false);
   const [batchResult, setBatchResult] = useState<any>(null);
-  
-  // Simple admin check - in a real app, you'd have proper role-based access
-  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('test');
 
   const runBatchMealEvaluation = async () => {
     setIsBatchEvaluating(true);
@@ -92,23 +88,8 @@ const AdminDashboard = () => {
     }
   };
 
-  if (!isAdmin) {
-    return (
-      <Card className="max-w-md mx-auto mt-8">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto" />
-            <h3 className="text-lg font-semibold">Access Restricted</h3>
-            <p className="text-muted-foreground">
-              This admin dashboard is only available to authorized users.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
+    <AdminGuard>
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex items-center space-x-2">
         <Users className="h-6 w-6" />
@@ -332,6 +313,7 @@ const AdminDashboard = () => {
         </CardContent>
       </Card>
     </div>
+    </AdminGuard>
   );
 };
 
