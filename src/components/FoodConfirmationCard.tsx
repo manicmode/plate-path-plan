@@ -15,6 +15,7 @@ import { ReminderToggle } from './reminder/ReminderToggle';
 import { ManualIngredientEntry } from './camera/ManualIngredientEntry';
 import { useIngredientAlert } from '@/hooks/useIngredientAlert';
 import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
+import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FoodItem {
@@ -67,6 +68,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
+  const { playFoodLogConfirm } = useSound();
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
@@ -220,6 +222,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     
     // Call the onConfirm with adjusted food - this should create the nutrition log
     onConfirm(adjustedFood);
+    
+    // Play food log confirmation sound
+    playFoodLogConfirm();
     
     // Evaluate meal quality after logging
     // Note: We need the nutrition_log_id, which should be returned from onConfirm

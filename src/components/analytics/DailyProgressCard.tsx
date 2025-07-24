@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useSound } from '@/hooks/useSound';
 
 interface DailyProgressCardProps {
   title: string;
@@ -13,6 +14,8 @@ interface DailyProgressCardProps {
 
 export const DailyProgressCard = ({ title, value, target, unit, icon, color }: DailyProgressCardProps) => {
   const percentage = Math.min(100, Math.round((value / target) * 100));
+  const { playGoalHit, playProgressUpdate } = useSound();
+  const hasPlayedGoalSound = useRef(false);
   
   const getStatusColor = () => {
     if (percentage >= 100) return 'text-white drop-shadow-sm';
@@ -27,6 +30,18 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
   };
 
   const shouldShowConfetti = percentage >= 100;
+
+  // Play goal hit sound when reaching 100% (only once per component instance)
+  useEffect(() => {
+    if (percentage >= 100 && !hasPlayedGoalSound.current) {
+      playGoalHit();
+      hasPlayedGoalSound.current = true;
+    } else if (percentage >= 50 && percentage < 100 && !hasPlayedGoalSound.current) {
+      // Play progress update sound for significant progress
+      playProgressUpdate();
+      hasPlayedGoalSound.current = true;
+    }
+  }, [percentage, playGoalHit, playProgressUpdate]);
 
   return (
     <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden h-[200px]">

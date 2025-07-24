@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CtaMessage {
@@ -254,6 +255,7 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   const { user } = useAuth();
   const { getTodaysProgress, currentDay, currentCoachCta, clearCoachCta } = useNutrition();
   const isMobile = useIsMobile();
+  const { playReminderChime, playAIThought } = useSound();
   const progress = getTodaysProgress();
 
   const [showCta, setShowCta] = useState(false);
@@ -538,6 +540,9 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
         setCurrentCtaId('coach-dynamic');
         setShowCta(true);
         
+        // Play AI thought sound for coach messages
+        playAIThought();
+        
         // Auto-hide after 15 seconds and clear coach CTA
         setTimeout(() => {
           setShowCta(false);
@@ -559,6 +564,11 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
         // Trigger celebratory effects for ultra-special CTAs
         setTimeout(() => {
           triggerCelebratoryEffects(validCta.id);
+          
+          // Play reminder chime for standard CTAs
+          if (!isUltraSpecialCta(validCta.id)) {
+            playReminderChime();
+          }
         }, 500); // Small delay to let animation start
         
         // Mark CTA as shown

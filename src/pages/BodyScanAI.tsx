@@ -7,6 +7,7 @@ import { useBodyScanNotifications } from '@/hooks/useBodyScanNotifications';
 import ScanTipsModal from '@/components/ScanTipsModal';
 import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
@@ -42,6 +43,7 @@ export default function BodyScanAI() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { playBodyScanCapture } = useSound();
   const { triggerScanCompletedNotification, showInstantFeedback, showPoseQualityFeedback, getTipsModal } = useBodyScanNotifications();
   const tipsModal = getTipsModal();
   
@@ -319,6 +321,7 @@ export default function BodyScanAI() {
             
             // Auto capture using stored alignment status to avoid last-second failures
             if (alignmentStoredAtStart) {
+              playBodyScanCapture();
               captureImage();
             } else {
               console.warn('⚠️ Auto-capture cancelled - alignment lost during countdown');

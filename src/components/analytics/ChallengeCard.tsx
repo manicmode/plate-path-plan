@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { Challenge, useChallenge } from '@/contexts/ChallengeContext';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -40,6 +41,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const [showInviteModal, setShowInviteModal] = useState(false);
   const { joinChallenge, leaveChallenenge } = useChallenge();
   const { toast } = useToast();
+  const { playChallengeWin } = useSound();
 
   const isParticipant = challenge.participants.includes(currentUserId);
   const isCreator = challenge.creatorId === currentUserId;
@@ -78,6 +80,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
 
   const handleJoinChallenge = () => {
     joinChallenge(challenge.id, currentUserId, { name: 'Current User 👤', avatar: '👤' });
+    playChallengeWin();
     toast({
       title: "Joined Challenge! 🎉",
       description: `You are now part of "${challenge.name}"`,

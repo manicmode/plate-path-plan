@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { UserPlus, UserMinus, Loader2, Heart } from 'lucide-react';
 import { useFollow } from '@/hooks/useFollow';
 import { useAuth } from '@/contexts/auth';
+import { useSound } from '@/hooks/useSound';
 import { cn } from '@/lib/utils';
 
 interface FollowButtonProps {
@@ -28,6 +29,7 @@ export const FollowButton = ({
   onFollowChange
 }: FollowButtonProps) => {
   const { user } = useAuth();
+  const { playFriendAdded } = useSound();
   const { 
     isLoading, 
     getFollowStatus, 
@@ -78,6 +80,11 @@ export const FollowButton = ({
       };
       setFollowStatus(newStatus);
       onFollowChange?.(newStatus.isFollowing);
+      
+      // Play friend added sound when following someone
+      if (newStatus.isFollowing) {
+        playFriendAdded();
+      }
     }
     
     setIsUpdating(false);
