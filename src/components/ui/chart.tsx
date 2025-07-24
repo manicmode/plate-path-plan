@@ -172,8 +172,34 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  // Additional security: Check for injection patterns in final CSS
+  const injectionPatterns = [
+    /<script/i,
+    /javascript:/i,
+    /data:/i,
+    /@import/i,
+    /expression\(/i,
+    /url\(/i,
+    /\/\*.*\*\//s,
+    /;.*base64/i
+  ];
+  
+  const containsInjection = injectionPatterns.some(pattern => pattern.test(cssText));
+  
+  if (containsInjection) {
+    console.warn('Potential CSS injection detected, blocking styles');
+    return null;
+  }
+
+  // Use nonce for additional CSP security
+  const nonce = React.useMemo(() => {
+    // Generate a random nonce for this style block
+    return btoa(Math.random().toString()).substring(0, 12);
+  }, [cssText]);
+
   return (
     <style
+      nonce={nonce}
       dangerouslySetInnerHTML={{
         __html: cssText,
       }}

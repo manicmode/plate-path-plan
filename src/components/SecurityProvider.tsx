@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect } from 'react';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { useSecurityAlerts } from '@/hooks/useSecurityAlerts';
 import { useAdvancedThreatDetection } from '@/hooks/useAdvancedThreatDetection';
+import { useCSPViolationReporting } from '@/hooks/useCSPViolationReporting';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -28,6 +29,7 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
   const securityMonitoring = useSecurityMonitoring();
   const { detectAnomalousActivity } = useAdvancedThreatDetection();
   useSecurityAlerts(); // Initialize security alerts monitoring
+  useCSPViolationReporting(); // Initialize CSP violation reporting
 
   const contextValue = {
     ...securityMonitoring,
