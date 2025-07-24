@@ -213,17 +213,8 @@ export default function BodyScanAI() {
 
   // Real-time pose detection loop
   useEffect(() => {
-    let lastTime = 0;
-    const FPS_LIMIT = 15; // 15 FPS for mobile performance
-    const frameInterval = 1000 / FPS_LIMIT;
-
-    const detectPoseRealTime = async (currentTime: number) => {
+    const detectPoseRealTime = async () => {
       if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
-        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
-        return;
-      }
-
-      if (currentTime - lastTime < frameInterval) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
       }
@@ -235,65 +226,35 @@ export default function BodyScanAI() {
           const pose = poses[0] as DetectedPose;
           setPoseDetected(pose);
           
-          // Analyze alignment with body outline
+          // Analyze alignment
           const alignment = analyzePoseAlignment(pose);
+          setAlignmentFeedback(alignment);
           
-          // Enhanced pose stability tracking with 5-frame stability requirement
+          // Simple 5-frame stability tracking
           setPoseStatusHistory(prev => {
-            const newHistory = [...prev, alignment.isAligned].slice(-10); // Keep last 10 frames
+            const newHistory = [...prev, alignment.isAligned].slice(-5);
             
-            // Update stability frames counter
-            setStablePoseFrames(prevFrames => {
-              const recentFrames = newHistory.slice(-5); // Require 5 consistent frames (~300ms at 15fps)
-              const isStableGood = recentFrames.length >= 5 && recentFrames.every(status => status);
-              const isStableBad = recentFrames.length >= 5 && recentFrames.every(status => !status);
+            if (newHistory.length === 5) {
+              const isStable = newHistory.every(status => status);
+              setStableAlignmentStatus(isStable);
               
-              if (isStableGood && stableAlignmentStatus !== true) {
-                setStableAlignmentStatus(true);
-                setDebugInfo(prev => ({ ...prev, stabilityFrames: recentFrames.length }));
-                console.log('🟢 Stable GOOD pose detected for 5+ frames');
-              } else if (isStableBad && stableAlignmentStatus !== false) {
-                setStableAlignmentStatus(false);
-                setDebugInfo(prev => ({ ...prev, stabilityFrames: 0 }));
-                console.log('🔴 Stable BAD pose detected for 5+ frames');
+              if (isStable && !isCountingDown && !hasImageReady) {
+                setValidPoseTimer(prev => {
+                  const newTimer = prev + 1;
+                  if (newTimer >= 3) { // 3 seconds at ~1fps
+                    setIsCountingDown(true);
+                    setCountdownSeconds(3);
+                  }
+                  return newTimer;
+                });
               }
-              
-              return isStableGood ? prevFrames + 1 : 0;
-            });
+            }
             
             return newHistory;
           });
           
-          // Use stable status for feedback, fallback to current alignment
-          const effectiveAlignment = { 
-            ...alignment, 
-            isAligned: stableAlignmentStatus !== null ? stableAlignmentStatus : alignment.isAligned 
-          };
-          setAlignmentFeedback(effectiveAlignment);
-          
-          // Draw pose overlay - now with proper canvas sizing
-          drawPoseOverlay(pose, effectiveAlignment);
-          
-          // Enhanced countdown logic with stability buffer and grace period
-          if (effectiveAlignment.isAligned) {
-            // Increment stability timer
-            setAlignmentStabilityTimer(prev => prev + frameInterval);
-            setLastMisalignmentTime(null); // Clear misalignment timer
-          } else {
-            // Track misalignment time for grace period
-            const now = Date.now();
-            setLastMisalignmentTime(prev => prev || now);
-            
-            // Reset countdown logic with hysteresis
-            if (effectiveAlignment.alignmentScore < 0.6) { // Lower threshold for reset (hysteresis)
-              setValidPoseTimer(0);
-              setAlignmentStabilityTimer(0);
-              setIsCountingDown(false);
-              setCountdownSeconds(0);
-              setCountdownStartedAt(null);
-              setAlignmentStoredAtStart(false);
-            }
-          }
+          // Draw pose overlay
+          drawPoseOverlay(pose, alignment);
         } else {
           setPoseDetected(null);
           setAlignmentFeedback(null);
@@ -303,7 +264,7 @@ export default function BodyScanAI() {
           setPoseStatusHistory([]);
           setStableAlignmentStatus(null);
           
-          // Clear overlay canvas when no pose detected
+          // Clear overlay canvas
           if (overlayCanvasRef.current) {
             const ctx = overlayCanvasRef.current.getContext('2d');
             if (ctx) {
@@ -315,7 +276,6 @@ export default function BodyScanAI() {
         console.error('Pose detection error:', error);
       }
 
-      lastTime = currentTime;
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     };
 
@@ -328,75 +288,28 @@ export default function BodyScanAI() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled, stableAlignmentStatus]);
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled, isCountingDown, hasImageReady]);
 
-  // Enhanced auto-capture countdown logic with stability buffer and grace period
+  // Simple countdown logic
   useEffect(() => {
-    // Start countdown only after 3 seconds of consistent alignment (stability buffer)
-    if (alignmentStabilityTimer >= 3000 && !isCountingDown && !hasImageReady) {
-      console.log('🎯 Starting countdown - 3s stability achieved');
-      setIsCountingDown(true);
-      setCountdownSeconds(3);
-      setCountdownStartedAt(Date.now());
-      setAlignmentStoredAtStart(alignmentFeedback?.isAligned || false); // Store alignment status
-      
+    if (isCountingDown) {
       const countdownInterval = setInterval(() => {
         setCountdownSeconds(prev => {
-          // Play sound/haptic feedback for each step
-          if (prev > 0 && playCountdownSound) {
-            // Subtle haptic feedback if available
-            if ('vibrate' in navigator) {
-              navigator.vibrate(50);
-            }
-          }
-          
-          if (prev <= 0) {
+          if (prev <= 1) {
             clearInterval(countdownInterval);
             setIsCountingDown(false);
-            console.log('🔥 AUTO-CAPTURE triggered at countdown 0');
-            
-            // Auto capture using stored alignment status to avoid last-second failures
-            if (alignmentStoredAtStart) {
-              playBodyScanCapture();
-              captureImage();
-            } else {
-              console.warn('⚠️ Auto-capture cancelled - alignment lost during countdown');
-              toast({
-                title: "Capture Cancelled",
-                description: "Please maintain alignment during countdown",
-                variant: "destructive"
-              });
-            }
-            setCountdownStartedAt(null);
-            setAlignmentStoredAtStart(false);
+            setValidPoseTimer(0);
+            playBodyScanCapture();
+            captureImage();
             return 0;
           }
           return prev - 1;
         });
-      }, 1000); // Exactly 1000ms intervals
+      }, 1000);
 
       return () => clearInterval(countdownInterval);
     }
-  }, [alignmentStabilityTimer, isCountingDown, hasImageReady, alignmentStoredAtStart, playCountdownSound]);
-
-  // Grace period logic: Reset countdown only if misaligned for more than 500ms
-  useEffect(() => {
-    if (isCountingDown && lastMisalignmentTime) {
-      const gracePeriod = 500; // 500ms grace period
-      const checkGracePeriod = setTimeout(() => {
-        if (lastMisalignmentTime && Date.now() - lastMisalignmentTime > gracePeriod) {
-          console.log('⏸️ Countdown reset - misaligned for >500ms');
-          setIsCountingDown(false);
-          setCountdownSeconds(0);
-          setCountdownStartedAt(null);
-          setAlignmentStoredAtStart(false);
-          setAlignmentStabilityTimer(0);
-        }
-      }, gracePeriod);
-
-      return () => clearTimeout(checkGracePeriod);
-    }
-  }, [isCountingDown, lastMisalignmentTime]);
+  }, [isCountingDown]);
 
   const startCamera = async () => {
     try {
@@ -1018,8 +931,7 @@ export default function BodyScanAI() {
         className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
           width: '100%',
-          height: '100%',
-          objectFit: 'cover'
+          height: '100%'
         }}
       />
       
@@ -1157,17 +1069,15 @@ export default function BodyScanAI() {
             disabled={
               isCapturing || 
               isSaving ||
-              (isPoseDetectionEnabled && stableAlignmentStatus !== null && !stableAlignmentStatus) ||
+              (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
               isCountingDown ||
               showSuccessScreen
             }
             className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-              // Use stableAlignmentStatus for button color, fallback to alignmentFeedback
-              (stableAlignmentStatus === true || (!isPoseDetectionEnabled && alignmentFeedback?.isAligned))
+              // Use alignmentFeedback for button color
+              (!isPoseDetectionEnabled || (alignmentFeedback && alignmentFeedback.isAligned))
                 ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)] hover:shadow-[0_0_30px_rgba(61,219,133,0.6)]'
-                : (stableAlignmentStatus === false || (isPoseDetectionEnabled && alignmentFeedback !== null && !alignmentFeedback.isAligned))
-                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                : 'from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 border-gray-400'
+                : 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
             }`}
           >
             <div className="flex items-center justify-center">
