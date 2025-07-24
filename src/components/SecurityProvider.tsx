@@ -15,6 +15,9 @@ import { FormSecurityValidator } from '@/components/security/FormSecurityValidat
 import { AdvancedSecurityMonitor } from '@/components/security/AdvancedSecurityMonitor';
 import { DatabaseValidationEnforcer } from '@/components/security/DatabaseValidationEnforcer';
 import { AutomatedSecurityCompliance } from '@/components/security/AutomatedSecurityCompliance';
+import { DatabaseValidationMiddleware } from '@/components/security/DatabaseValidationMiddleware';
+import { StorageValidationCleaner } from '@/components/security/StorageValidationCleaner';
+import { DatabaseErrorMonitor } from '@/components/security/DatabaseErrorMonitor';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -62,6 +65,9 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <AdvancedSecurityMonitor />
       <DatabaseValidationEnforcer />
       <AutomatedSecurityCompliance />
+      <DatabaseValidationMiddleware />
+      <StorageValidationCleaner />
+      <DatabaseErrorMonitor />
       {children}
     </SecurityContext.Provider>
   );
