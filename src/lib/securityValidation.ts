@@ -191,44 +191,243 @@ export const validateCSP = (content: string): boolean => {
   return !dangerousPatterns.some(pattern => pattern.test(content));
 };
 
-// Input validation wrapper for forms
+// Enhanced input sanitization with pattern detection
+export const enhancedSanitization = {
+  detectAndSanitize: (input: string, context?: string): {
+    sanitized: string;
+    threatsDetected: string[];
+    severity: 'low' | 'medium' | 'high' | 'critical';
+  } => {
+    const threats: string[] = [];
+    let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    let sanitized = input;
+
+    // SQL injection patterns
+    const sqlPatterns = [
+      /(\bunion\b.*\bselect\b)/i,
+      /(\bdrop\b.*\btable\b)/i,
+      /(\binsert\b.*\binto\b)/i,
+      /(\bupdate\b.*\bset\b)/i,
+      /(\bdelete\b.*\bfrom\b)/i,
+      /(--|\/\*|\*\/)/,
+      /(\bor\b.*=.*\bor\b)/i,
+      /('.*=.*')/
+    ];
+
+    // XSS patterns
+    const xssPatterns = [
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /javascript:/i,
+      /vbscript:/i,
+      /on\w+\s*=/i,
+      /<iframe\b[^>]*>/i,
+      /<object\b[^>]*>/i,
+      /<embed\b[^>]*>/i,
+      /<applet\b[^>]*>/i
+    ];
+
+    // Path traversal patterns
+    const pathTraversalPatterns = [
+      /\.\.\/|\.\.\\|%2e%2e%2f|%2e%2e\\/i,
+      /\/etc\/passwd|\/etc\/shadow/i,
+      /\\windows\\system32/i
+    ];
+
+    // Check for SQL injection
+    sqlPatterns.forEach(pattern => {
+      if (pattern.test(input)) {
+        threats.push('SQL injection attempt');
+        severity = 'critical';
+        sanitized = sanitized.replace(pattern, '[BLOCKED]');
+      }
+    });
+
+    // Check for XSS
+    xssPatterns.forEach(pattern => {
+      if (pattern.test(input)) {
+        threats.push('Cross-site scripting attempt');
+        severity = severity === 'critical' ? 'critical' : 'critical';
+        sanitized = sanitized.replace(pattern, '[BLOCKED]');
+      }
+    });
+
+    // Check for path traversal
+    pathTraversalPatterns.forEach(pattern => {
+      if (pattern.test(input)) {
+        threats.push('Path traversal attempt');
+        severity = severity === 'critical' ? 'critical' : 'high';
+        sanitized = sanitized.replace(pattern, '[BLOCKED]');
+      }
+    });
+
+    // Additional sanitization
+    sanitized = sanitizeInput.general(sanitized);
+
+    return { sanitized, threatsDetected: threats, severity };
+  },
+
+  contextAware: (input: string, context: 'email' | 'url' | 'filename' | 'json' | 'sql' | 'html'): string => {
+    switch (context) {
+      case 'email':
+        return input.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase();
+      case 'url':
+        try {
+          const url = new URL(input);
+          return ['http:', 'https:'].includes(url.protocol) ? url.toString() : '';
+        } catch {
+          return '';
+        }
+      case 'filename':
+        return input.replace(/[^a-zA-Z0-9._-]/g, '').substring(0, 255);
+      case 'json':
+        try {
+          return JSON.stringify(JSON.parse(input));
+        } catch {
+          return '{}';
+        }
+      case 'sql':
+        return sanitizeInput.sql(input);
+      case 'html':
+        return sanitizeInput.html(input);
+      default:
+        return sanitizeInput.general(input);
+    }
+  }
+};
+
+// Behavioral analysis for anomaly detection
+export const behavioralAnalysis = {
+  analyzeUserActivity: (events: Array<{ type: string; timestamp: string; metadata?: any }>): {
+    anomalyScore: number;
+    anomalies: string[];
+    riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  } => {
+    const anomalies: string[] = [];
+    let anomalyScore = 0;
+
+    // Check for rapid-fire events
+    const timeWindows = [1000, 5000, 10000]; // 1s, 5s, 10s
+    timeWindows.forEach(window => {
+      const recentEvents = events.filter(e => 
+        Date.now() - new Date(e.timestamp).getTime() < window
+      );
+      
+      if (recentEvents.length > window / 100) { // More than 1 event per 100ms
+        anomalies.push(`Rapid activity: ${recentEvents.length} events in ${window}ms`);
+        anomalyScore += recentEvents.length / 10;
+      }
+    });
+
+    // Check for unusual event patterns
+    const eventTypes = events.map(e => e.type);
+    const uniqueTypes = new Set(eventTypes);
+    
+    if (uniqueTypes.size > 10 && events.length > 50) {
+      anomalies.push('Diverse activity pattern detected');
+      anomalyScore += 5;
+    }
+
+    // Check for error patterns
+    const errorEvents = events.filter(e => e.type.includes('error') || e.type.includes('failure'));
+    if (errorEvents.length > events.length * 0.3) {
+      anomalies.push('High error rate detected');
+      anomalyScore += 10;
+    }
+
+    // Determine risk level
+    let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    if (anomalyScore > 20) riskLevel = 'critical';
+    else if (anomalyScore > 10) riskLevel = 'high';
+    else if (anomalyScore > 5) riskLevel = 'medium';
+
+    return { anomalyScore, anomalies, riskLevel };
+  }
+};
+
+// Input validation wrapper for forms with enhanced security
 export const validateSecureForm = <T extends Record<string, any>>(
   data: T,
   schema: z.ZodSchema<T>,
   userId?: string
-): { success: boolean; data?: T; errors?: string[] } => {
+): {
+  success: boolean;
+  data?: T;
+  errors?: string[];
+  securityWarnings?: string[];
+} => {
+  const securityWarnings: string[] = [];
+
   try {
-    const validated = schema.parse(data);
+    // Pre-validation security checks
+    Object.entries(data).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        const analysis = enhancedSanitization.detectAndSanitize(value, key);
+        if (analysis.threatsDetected.length > 0) {
+          securityWarnings.push(`${key}: ${analysis.threatsDetected.join(', ')}`);
+          // Replace with sanitized value
+          data[key as keyof T] = analysis.sanitized as T[keyof T];
+        }
+      }
+    });
+
+    const validatedData = schema.parse(data);
     
-    // Log successful validation for audit
+    // Log successful validation
     logSecurityEvent({
       eventType: 'form_validation_success',
-      eventDetails: { 
+      eventDetails: {
         formFields: Object.keys(data),
+        securityWarnings: securityWarnings.length > 0 ? securityWarnings : undefined,
         timestamp: new Date().toISOString()
       },
-      severity: 'low',
+      severity: securityWarnings.length > 0 ? 'medium' : 'low',
       userId
     });
-    
-    return { success: true, data: validated };
+
+    return {
+      success: true,
+      data: validatedData,
+      securityWarnings: securityWarnings.length > 0 ? securityWarnings : undefined
+    };
   } catch (error) {
-    const errors = error instanceof z.ZodError 
-      ? error.errors.map(e => e.message)
-      : ['Validation failed'];
-    
-    // Log validation failures for security monitoring
+    if (error instanceof z.ZodError) {
+      // Log validation failure
+      logSecurityEvent({
+        eventType: 'form_validation_failure',
+        eventDetails: {
+          formFields: Object.keys(data),
+          errors: error.errors,
+          securityWarnings,
+          timestamp: new Date().toISOString()
+        },
+        severity: 'medium',
+        userId
+      });
+
+      return {
+        success: false,
+        errors: error.errors.map(err => `${err.path.join('.')}: ${err.message}`),
+        securityWarnings: securityWarnings.length > 0 ? securityWarnings : undefined
+      };
+    }
+
+    // Log unexpected validation error
     logSecurityEvent({
-      eventType: SECURITY_EVENTS.INVALID_INPUT,
-      eventDetails: { 
+      eventType: 'form_validation_error',
+      eventDetails: {
         formFields: Object.keys(data),
-        errors,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        securityWarnings,
         timestamp: new Date().toISOString()
       },
-      severity: 'medium',
+      severity: 'high',
       userId
     });
-    
-    return { success: false, errors };
+
+    return {
+      success: false,
+      errors: ['Validation failed due to unexpected error'],
+      securityWarnings: securityWarnings.length > 0 ? securityWarnings : undefined
+    };
   }
 };
