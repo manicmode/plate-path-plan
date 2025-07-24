@@ -11,6 +11,7 @@ import { GamificationSection } from '@/components/analytics/sections/Gamificatio
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
+import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
 export default function Analytics() {
   const {
@@ -20,6 +21,9 @@ export default function Analytics() {
     stepsData,
     exerciseCaloriesData
   } = useAnalyticsCalculations();
+
+  // Initialize milestone tracking to check for new achievements
+  useMilestoneTracker();
 
   return (
     <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
