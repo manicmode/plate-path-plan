@@ -16,10 +16,22 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const functionName = 'generate-smart-suggestions';
+  const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  
   try {
     // Verify JWT token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      // Log unauthorized access attempt
+      const supabaseLog = createClient(supabaseUrl, supabaseServiceKey);
+      await supabaseLog.from('security_logs').insert({
+        function_name: functionName,
+        ip_address: ipAddress,
+        event_type: 'unauthorized',
+        details: 'Missing authorization header'
+      }).catch(console.error);
+      
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -33,11 +45,28 @@ serve(async (req) => {
     // Verify the user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      // Log invalid token attempt
+      const supabaseLog = createClient(supabaseUrl, supabaseServiceKey);
+      await supabaseLog.from('security_logs').insert({
+        function_name: functionName,
+        ip_address: ipAddress,
+        event_type: 'invalid_token',
+        details: authError?.message || 'Invalid or expired token'
+      }).catch(console.error);
+      
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    // Log successful access
+    await supabase.from('security_logs').insert({
+      user_id: user.id,
+      function_name: functionName,
+      ip_address: ipAddress,
+      event_type: 'success'
+    }).catch(console.error);
 
     const { userInput, userId } = await req.json();
     let suggestions: string[] = [];
