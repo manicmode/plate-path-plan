@@ -96,6 +96,34 @@ export default function BodyScanAI() {
     };
   }, [cameraMode]);
 
+  // Handle video metadata loading for proper canvas sizing
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleLoadedMetadata = () => {
+      console.log(`Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
+      
+      // Set canvas dimensions once video metadata is available
+      if (overlayCanvasRef.current && video.videoWidth > 0 && video.videoHeight > 0) {
+        overlayCanvasRef.current.width = video.videoWidth;
+        overlayCanvasRef.current.height = video.videoHeight;
+        console.log(`Canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
+      }
+    };
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    // If metadata is already loaded, call handler immediately
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      handleLoadedMetadata();
+    }
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [stream]);
+
   useEffect(() => {
     // Lock screen orientation to portrait if supported
     const lockOrientation = async () => {
@@ -406,23 +434,47 @@ export default function BodyScanAI() {
   const captureImage = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     
-    // Pose validation before capture
-    if (isPoseDetectionEnabled && alignmentFeedback && !alignmentFeedback.isAligned) {
-      toast({
-        title: "Pose Alignment Issue",
-        description: `Please adjust: ${alignmentFeedback.feedback}`,
-        variant: "destructive"
-      });
-      return;
+    // Enhanced defensive validation before capture
+    if (isPoseDetectionEnabled) {
+      // Strict pose validation - must have valid alignment feedback and be aligned
+      if (!alignmentFeedback || alignmentFeedback.isAligned !== true) {
+        console.log('❌ Capture blocked - invalid pose:', { 
+          hasAlignmentFeedback: !!alignmentFeedback, 
+          isAligned: alignmentFeedback?.isAligned,
+          feedback: alignmentFeedback?.feedback 
+        });
+        
+        toast({
+          title: "Pose Alignment Required",
+          description: alignmentFeedback?.feedback || "Please align your pose before capturing",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Additional validation for pose detection
+      if (!poseDetected || poseDetected.keypoints.length < 10) {
+        console.log('❌ Capture blocked - insufficient pose data');
+        toast({
+          title: "Pose Not Detected",
+          description: "Please ensure you're fully visible in the camera",
+          variant: "destructive"
+        });
+        return;
+      }
     }
     
+    console.log('✅ Capture validation passed - proceeding with save');
     setIsCapturing(true);
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     
-    if (!context) return;
+    if (!context) {
+      setIsCapturing(false);
+      return;
+    }
     
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -430,18 +482,37 @@ export default function BodyScanAI() {
     
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
     setCapturedImage(imageData);
-    setHasImageReady(true);
+    
+    try {
+      // Auto-save the scan to Supabase with validation
+      await saveBodyScanToSupabase(imageData);
+      
+      // Only set success state AFTER successful save
+      setHasImageReady(true);
+      setValidPoseTimer(0);
+      setIsCountingDown(false);
+      
+      toast({
+        title: "Scan Saved!",
+        description: "Front body scan captured successfully. Ready for side scan.",
+      });
+      
+      console.log('✅ Scan capture and save completed successfully');
+      
+    } catch (error) {
+      console.error('❌ Failed to save scan:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save scan. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Reset states on save failure
+      setCapturedImage(null);
+      setHasImageReady(false);
+    }
+    
     setIsCapturing(false);
-    setValidPoseTimer(0);
-    setIsCountingDown(false);
-    
-    // Auto-save the scan to Supabase
-    await saveBodyScanToSupabase(imageData);
-    
-    toast({
-      title: "Photo Captured!",
-      description: "Front body scan complete. Ready to continue to side scan.",
-    });
   };
 
   // Function to upload image to Supabase Storage and save record
@@ -935,8 +1006,7 @@ export default function BodyScanAI() {
         className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
           width: '100%',
-          height: '100%',
-          objectFit: 'cover'
+          height: '100%'
         }}
       />
       
