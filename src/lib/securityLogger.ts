@@ -63,7 +63,8 @@ export const SECURITY_EVENTS = {
   // Advanced security events
   CSS_INJECTION_ATTEMPT: 'css_injection_attempt',
   CHART_SECURITY_VIOLATION: 'chart_security_violation',
-  AUTOMATED_THREAT_DETECTION: 'automated_threat_detection'
+  AUTOMATED_THREAT_DETECTION: 'automated_threat_detection',
+  SUSPICIOUS_PASTE: 'suspicious_paste'
 } as const;
 
 export type SecurityEventType = typeof SECURITY_EVENTS[keyof typeof SECURITY_EVENTS];

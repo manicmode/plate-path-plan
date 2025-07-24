@@ -21,6 +21,10 @@ import { AutomatedSecurityCompliance } from '@/components/security/AutomatedSecu
 import { DatabaseValidationMiddleware } from '@/components/security/DatabaseValidationMiddleware';
 import { StorageValidationCleaner } from '@/components/security/StorageValidationCleaner';
 import { DatabaseErrorMonitor } from '@/components/security/DatabaseErrorMonitor';
+import { EnhancedChartSecurity } from '@/components/security/EnhancedChartSecurity';
+import { AdvancedInputValidator } from '@/components/security/AdvancedInputValidator';
+import { EnhancedAuthenticationSecurity } from '@/components/security/EnhancedAuthenticationSecurity';
+import { AdvancedThreatCorrelation } from '@/components/security/AdvancedThreatCorrelation';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -76,6 +80,10 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <EnhancedUuidValidator />
       <NotificationConstraintValidator />
       <AdvancedDatabaseErrorDetection />
+      <EnhancedChartSecurity />
+      <AdvancedInputValidator />
+      <EnhancedAuthenticationSecurity />
+      <AdvancedThreatCorrelation />
       
       {children}
     </SecurityContext.Provider>
