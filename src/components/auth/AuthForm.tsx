@@ -456,14 +456,14 @@ const AuthForm = () => {
                 </Button>
                 
                 {/* Forgot Password Section */}
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-3 mt-4">
                   <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
                     <DialogTrigger asChild>
                       <Button 
-                        variant="link" 
-                        className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 p-0 h-auto"
+                        variant="ghost" 
+                        className="text-base font-medium text-primary hover:text-primary/80 underline underline-offset-4 p-2 h-auto border border-border/20 hover:border-border/40 transition-all"
                       >
-                        Forgot your password?
+                        🔑 Forgot your password?
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
