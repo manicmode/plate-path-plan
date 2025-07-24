@@ -20,16 +20,42 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, manual_trigger = false } = await req.json();
-
-    if (!user_id) {
-      return new Response(JSON.stringify({ error: 'User ID is required' }), {
-        status: 400,
+    // Verify JWT token first
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`🔮 Generating mood prediction for user: ${user_id}`);
+    // Create client with auth header for verification
+    const authSupabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify the user is authenticated
+    const { data: { user }, error: authError } = await authSupabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { user_id, manual_trigger = false } = await req.json();
+
+    // Ensure user can only access their own data
+    if (user_id && user_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Access denied' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const verifiedUserId = user_id || user.id;
+
+    console.log(`🔮 Generating mood prediction for user: ${verifiedUserId}`);
 
     // Get data from last 10 days for analysis
     const endDate = new Date();
@@ -40,28 +66,28 @@ serve(async (req) => {
       supabase
         .from('mood_logs')
         .select('date, mood, energy, wellness, ai_detected_tags, trigger_tags')
-        .eq('user_id', user_id)
+        .eq('user_id', verifiedUserId)
         .gte('date', startDate.toISOString().split('T')[0])
         .order('date', { ascending: false }),
       
       supabase
         .from('nutrition_logs')
         .select('created_at, food_name, quality_score, calories, protein, carbs, fat, sugar, sodium, trigger_tags')
-        .eq('user_id', user_id)
+        .eq('user_id', verifiedUserId)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false }),
 
       supabase
         .from('supplement_logs')
         .select('created_at, name, dosage, trigger_tags')
-        .eq('user_id', user_id)
+        .eq('user_id', verifiedUserId)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false }),
 
       supabase
         .from('hydration_logs')
         .select('created_at, volume, type, trigger_tags')
-        .eq('user_id', user_id)
+        .eq('user_id', verifiedUserId)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false })
     ]);
@@ -284,7 +310,7 @@ Keep the message under 120 characters and make it personal and actionable.`;
     const { error: insertError } = await supabase
       .from('mood_predictions')
       .upsert({
-        user_id,
+        user_id: verifiedUserId,
         prediction_date: predictionDate,
         predicted_mood: prediction.predicted_mood,
         predicted_energy: prediction.predicted_energy,

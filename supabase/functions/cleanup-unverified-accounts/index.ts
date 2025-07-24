@@ -19,8 +19,6 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🧹 Starting cleanup of unverified accounts...');
-
     // Initialize Supabase client with service role key for admin operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -29,7 +27,32 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Missing required environment variables');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Create client with auth header for JWT verification
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify the user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    console.log('🧹 Starting cleanup of unverified accounts...');
+    
+    // Create admin client for user deletion operations
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const result: CleanupResult = {
       deletedUsers: 0,
@@ -45,7 +68,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`🕐 Looking for unverified accounts created before: ${cutoffTime}`);
 
     // Get unverified users older than 24 hours using the admin API
-    const { data: users, error: fetchError } = await supabase.auth.admin.listUsers({
+    const { data: users, error: fetchError } = await adminSupabase.auth.admin.listUsers({
       page: 1,
       perPage: 1000, // Process in batches if needed
     });
@@ -81,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`🔄 Processing user: ${user.email} (${user.id})`);
 
         // First, delete the user profile from public.user_profiles
-        const { error: profileError } = await supabase
+        const { error: profileError } = await adminSupabase
           .from('user_profiles')
           .delete()
           .eq('user_id', user.id);
@@ -98,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
         const tables = ['nutrition_logs', 'hydration_logs', 'supplement_logs', 'reminders', 'reminder_logs', 'toxin_detections'];
         
         for (const table of tables) {
-          const { error: tableError } = await supabase
+          const { error: tableError } = await adminSupabase
             .from(table)
             .delete()
             .eq('user_id', user.id);
@@ -109,7 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Finally, delete the user from auth.users using admin API
-        const { error: userError } = await supabase.auth.admin.deleteUser(user.id);
+        const { error: userError } = await adminSupabase.auth.admin.deleteUser(user.id);
 
         if (userError) {
           console.error(`❌ Error deleting user ${user.email}:`, userError);

@@ -81,3 +81,48 @@ verify_jwt = true
 
 [functions.test-yearly-reports]
 verify_jwt = true
+
+[functions.analyze-mood-journal]
+verify_jwt = true
+
+[functions.analyze-weekly-exercise-progress]
+verify_jwt = true
+
+[functions.body-scan-notifications]
+verify_jwt = true
+
+[functions.calculate-daily-meal-averages]
+verify_jwt = true
+
+[functions.calculate-daily-targets]
+verify_jwt = true
+
+[functions.cleanup-unverified-accounts]
+verify_jwt = true
+
+[functions.enhanced-food-filter]
+verify_jwt = true
+
+[functions.generate-meal-suggestions]
+verify_jwt = true
+
+[functions.generate-smart-suggestions]
+verify_jwt = true
+
+[functions.match-branded-product]
+verify_jwt = true
+
+[functions.predict-mood]
+verify_jwt = true
+
+[functions.schedule-mood-notifications]
+verify_jwt = true
+
+[functions.smart-meal-nudges]
+verify_jwt = true
+
+[functions.weekly-exercise-insights-cron]
+verify_jwt = true
+
+[functions.yearly-hall-of-fame]
+verify_jwt = true
