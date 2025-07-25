@@ -9,12 +9,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const getAuthParams = () => {
-  const query = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const params = new URLSearchParams(window.location.search);
+
+  // Fallback: parse from hash if needed
+  if (!params.has("access_token") || !params.has("refresh_token")) {
+    const hash = window.location.hash;
+    const queryString = hash.includes("?") ? hash.split("?")[1] : hash.substring(1);
+    const hashParams = new URLSearchParams(queryString);
+
+    return {
+      access_token: hashParams.get("access_token"),
+      refresh_token: hashParams.get("refresh_token"),
+      type: hashParams.get("type"),
+    };
+  }
+
   return {
-    type: query.get('type') || hash.get('type'),
-    accessToken: query.get('access_token') || hash.get('access_token'),
-    refreshToken: query.get('refresh_token') || hash.get('refresh_token'),
+    access_token: params.get("access_token"),
+    refresh_token: params.get("refresh_token"),
+    type: params.get("type"),
   };
 };
 
@@ -28,7 +41,7 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [tokens, setTokens] = useState<{ accessToken: string; refreshToken: string } | null>(null);
+  const [tokens, setTokens] = useState<{ access_token: string; refresh_token: string } | null>(null);
 
   useEffect(() => {
     console.log('🔄 ResetPassword page mounted');
@@ -37,12 +50,12 @@ const ResetPassword = () => {
     console.log('🔗 Hash:', window.location.hash);
     
     // Check if we have the recovery type and auth tokens in the URL (query or hash)
-    const { type: recoveryType, accessToken, refreshToken } = getAuthParams();
+    const { type: recoveryType, access_token, refresh_token } = getAuthParams();
     
-    console.log("🔑 Parsed tokens:", { type: recoveryType, accessToken, refreshToken });
+    console.log("🔑 Parsed tokens:", { type: recoveryType, access_token, refresh_token });
     console.log("[RESET PAGE] type =", recoveryType);
-    console.log("[RESET PAGE] access_token =", accessToken ? 'present (length: ' + accessToken.length + ')' : 'missing');
-    console.log("[RESET PAGE] refresh_token =", refreshToken ? 'present (length: ' + refreshToken.length + ')' : 'missing');
+    console.log("[RESET PAGE] access_token =", access_token ? 'present (length: ' + access_token.length + ')' : 'missing');
+    console.log("[RESET PAGE] refresh_token =", refresh_token ? 'present (length: ' + refresh_token.length + ')' : 'missing');
     
     // Validate this is actually a password recovery link
     if (recoveryType !== 'recovery') {
@@ -56,7 +69,7 @@ const ResetPassword = () => {
       return;
     }
     
-    if (!accessToken || !refreshToken) {
+    if (!access_token || !refresh_token) {
       console.log('❌ Missing tokens, redirecting to home');
       toast({
         title: "Invalid reset link",
@@ -69,7 +82,7 @@ const ResetPassword = () => {
 
     console.log('✅ Valid recovery tokens found, storing for later use');
     // Store tokens for later use, don't set session yet
-    setTokens({ accessToken, refreshToken });
+    setTokens({ access_token, refresh_token });
   }, [searchParams, navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -107,13 +120,15 @@ const ResetPassword = () => {
     try {
       console.log('🔄 Starting password reset process');
       
+      console.log("🧪 Detected tokens:", { access_token: tokens.access_token, refresh_token: tokens.refresh_token, type: 'recovery' });
+      
       // Set the session with the stored tokens before updating password
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
+      const { data, error: sessionError } = await supabase.auth.setSession({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
       });
 
-      console.log("🧪 setSession() result:", { error: sessionError });
+      console.log("🧪 Supabase setSession result:", { data, error: sessionError });
 
       if (sessionError) {
         console.log('❌ Session error:', sessionError);
