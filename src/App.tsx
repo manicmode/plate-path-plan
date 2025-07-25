@@ -19,7 +19,7 @@ import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 
 // Lazy load components
-const ResetPassword = lazy(() => import('@/components/auth/ResetPassword').then(module => ({ default: module.ResetPassword })));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Index = lazy(() => import('@/pages/Index'));
 const Home = lazy(() => import('@/pages/Home'));
 const Camera = lazy(() => import('@/pages/Camera'));
