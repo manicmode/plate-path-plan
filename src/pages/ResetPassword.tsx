@@ -25,27 +25,43 @@ export default function ResetPassword() {
 
   // Handle hash-based tokens (OAuth redirect from email links)
   useEffect(() => {
+    console.log('🔄 Reset password hash check - type:', type, 'accessToken:', accessToken ? 'present' : 'missing');
+    
     // Only run if searchParams are missing and we haven't already processed the hash
     if (!type || !accessToken) {
       const hash = window.location.hash;
+      console.log('🔍 Checking hash fragment:', hash);
+      
       if (hash && hash.includes('access_token=') && hash.includes('type=recovery')) {
+        console.log('✅ Hash detected with recovery tokens');
+        
         // Parse hash parameters
         const hashParams = new URLSearchParams(hash.substring(1));
         const hashAccessToken = hashParams.get('access_token');
         const hashType = hashParams.get('type');
         
+        console.log('📤 Extracted from hash - accessToken:', hashAccessToken ? 'present' : 'missing', 'type:', hashType);
+        
         if (hashAccessToken && hashType === 'recovery') {
+          console.log('🔄 Triggering URL rewrite to query parameters');
+          
           // Convert hash to query parameters and reload
           const newUrl = new URL(window.location.href);
           newUrl.hash = '';
           newUrl.searchParams.set('access_token', hashAccessToken);
           newUrl.searchParams.set('type', hashType);
           
+          console.log('🔄 Reloading with new URL:', newUrl.toString());
+          
           // Replace current URL to prevent infinite reloads
           window.location.replace(newUrl.toString());
           return;
         }
+      } else {
+        console.log('❌ No hash fragment or missing recovery tokens');
       }
+    } else {
+      console.log('✅ Query params already present - skipping hash conversion');
     }
   }, []); // Empty dependency array - run only once on mount
 
