@@ -1,5 +1,5 @@
 
-import { Suspense, lazy } from 'react';//
+import { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
