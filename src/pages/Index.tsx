@@ -14,6 +14,7 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [inRecoveryFlow, setInRecoveryFlow] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Check for password reset flow using useSearchParams
   useEffect(() => {
@@ -52,7 +53,13 @@ useEffect(() => {
   };
 }, [navigate]);
 
-  console.log('Index component rendering:', { 
+  useEffect(() => {
+    supabase.auth.getSession().finally(() => {
+      setSessionChecked(true);
+    });
+  }, []);
+
+  console.log('Index component rendering:', {
     isAuthenticated, 
     loading,
     searchParams: searchParams.toString(),
@@ -90,7 +97,7 @@ useEffect(() => {
   }
 
   // Redirect to home if authenticated (but not in password reset flow)
-  if (isAuthenticated && !inRecoveryFlow) {
+  if (isAuthenticated && !inRecoveryFlow && sessionChecked) {
     console.log('User authenticated, redirecting to home');
     return <Navigate to="/home" replace />;
   }
