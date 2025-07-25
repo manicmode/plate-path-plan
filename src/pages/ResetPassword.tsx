@@ -21,8 +21,12 @@ export default function ResetPassword() {
   const [isValidToken, setIsValidToken] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
 
-  // Extract code and type from URL hash parameters
-  const queryParams = new URLSearchParams(window.location.hash.substring(1));
+  // Extract code and type from URL query parameters
+const queryParams = new URLSearchParams(window.location.search);
+
+
+
+
   const code = queryParams.get('code');
   const type = queryParams.get('type');
 
@@ -31,7 +35,6 @@ export default function ResetPassword() {
       if (type === 'recovery' && code) {
         try {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
-
           if (!error) {
             setIsValidToken(true);
           } else {
@@ -46,7 +49,6 @@ export default function ResetPassword() {
 
     validateToken();
   }, [code, type]);
-
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
