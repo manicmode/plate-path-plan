@@ -25,25 +25,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileLoading, setProfileLoading] = ReactModule.useState(false);
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
-  // Check if we're in password reset flow anywhere in the app
-  const isPasswordResetFlow = () => {
-    const params = new URLSearchParams(window.location.search);
-    const isRecovery = params.get('type') === 'recovery';
-    const hasTokens = params.has('access_token') && params.has('refresh_token');
-
-    // ✅ NEW check: current path
-    const isOnResetPage = window.location.pathname === '/reset-password';
-    
-    console.log('🔍 AuthContext - Password reset flow check:', {
-      isRecovery,
-      hasTokens,
-      isOnResetPage,
-      pathname: window.location.pathname,
-      searchParams: window.location.search
-    });
-    
-    return (isRecovery && hasTokens) || isOnResetPage;
-  };
 
   // Load user profile in background
   const loadExtendedProfile = async (supabaseUser: any) => {
@@ -102,14 +83,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isRecovery = params.get('type') === 'recovery';
-    
-    if (isRecovery) {
-      console.log("[AUTH] Blocking automatic login during password recovery");
-      setLoading(false);
-      return;
-    }
 
     // Aggressive cleanup of all auth-related storage
     const clearAllAuthTokens = () => {
@@ -146,29 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
     
-    // Check for password reset flow before cleaning auth
-    const isPasswordReset = () => {
-      const url = new URL(window.location.href);
-      const hasRecoveryParams = url.searchParams.get('type') === 'recovery' && 
-                               url.searchParams.get('access_token') && 
-                               url.searchParams.get('refresh_token');
-      const isResetPage = url.pathname === '/reset-password';
-      
-      console.log('[AUTH] Password reset detection:', {
-        pathname: url.pathname,
-        type: url.searchParams.get('type'),
-        hasAccessToken: !!url.searchParams.get('access_token'),
-        hasRefreshToken: !!url.searchParams.get('refresh_token'),
-        hasRecoveryParams,
-        isResetPage,
-        finalResult: hasRecoveryParams || isResetPage
-      });
-      
-      return hasRecoveryParams || isResetPage;
-    };
-
-    // Only cleanup corrupted auth if NOT in password reset flow
-    if (!isPasswordReset()) {
+    // Cleanup corrupted auth tokens
       const hasCorruptedAuth = () => {
         try {
           const keys = Object.keys(localStorage);
@@ -194,16 +145,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }, 1000);
         return;
       }
-    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Don't process auth changes during password reset flow
-        if (isPasswordResetFlow()) {
-          console.log('🔄 AuthContext - Ignoring auth state change during password reset flow:', event);
-          return;
-        }
-
         console.log('🔄 Auth state change:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
@@ -218,15 +162,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     );
 
-    // Get initial session if not in password reset flow
-    if (!isPasswordResetFlow()) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('🔄 AuthContext - Initial session loaded:', !!session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      });
-    }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔄 AuthContext - Initial session loaded:', !!session);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -282,7 +224,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     session,
     loading: loading || signingOut,
-    isAuthenticated: isPasswordResetFlow() ? false : !!session?.user && !!session?.user?.email_confirmed_at,
+    isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,

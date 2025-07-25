@@ -39,42 +39,6 @@ const Index = () => {
   const [inRecoveryFlow, setInRecoveryFlow] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Check for password reset flow using both query params and hash params
-  useEffect(() => {
-    const { type, access_token, refresh_token } = getAuthParams();
-    
-    console.log("[INDEX] Reset flow detection:", {
-      type,
-      hasAccessToken: !!access_token,
-      hasRefreshToken: !!refresh_token,
-      currentPath: window.location.pathname,
-      fullURL: window.location.href,
-      search: window.location.search,
-      hash: window.location.hash
-    });
-    
-    if (type === "recovery" && access_token && refresh_token) {
-      console.log("[INDEX] Valid password recovery URL detected, navigating to reset page...");
-      setInRecoveryFlow(true);
-      navigate("/reset-password", { replace: true });
-    }
-  }, [searchParams, navigate]);
-useEffect(() => {
-  const { data: authListener } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      console.log("🔄 Auth event:", event);
-      if (event === "PASSWORD_RECOVERY") {
-        console.log("🔑 PASSWORD_RECOVERY detected, redirecting...");
-        setInRecoveryFlow(true);
-        navigate("/reset-password", { replace: true });
-      }
-    }
-  );
-
-  return () => {
-    authListener?.subscription.unsubscribe();
-  };
-}, [navigate]);
 
   useEffect(() => {
     supabase.auth.getSession().finally(() => {
