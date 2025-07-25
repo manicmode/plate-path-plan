@@ -39,6 +39,7 @@ const ResetPassword = () => {
     // Check if we have the recovery type and auth tokens in the URL (query or hash)
     const { type: recoveryType, accessToken, refreshToken } = getAuthParams();
     
+    console.log("🔑 Parsed tokens:", { type: recoveryType, accessToken, refreshToken });
     console.log("[RESET PAGE] type =", recoveryType);
     console.log("[RESET PAGE] access_token =", accessToken ? 'present (length: ' + accessToken.length + ')' : 'missing');
     console.log("[RESET PAGE] refresh_token =", refreshToken ? 'present (length: ' + refreshToken.length + ')' : 'missing');
@@ -112,13 +113,16 @@ const ResetPassword = () => {
         refresh_token: tokens.refreshToken,
       });
 
+      console.log("🧪 setSession() result:", { error: sessionError });
+
       if (sessionError) {
         console.log('❌ Session error:', sessionError);
         toast({
-          title: "Password reset failed",
-          description: "Invalid or expired reset link.",
+          title: "Session failed",
+          description: sessionError.message,
           variant: "destructive",
         });
+        navigate("/", { replace: true });
         return;
       }
 
