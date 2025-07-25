@@ -99,124 +99,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, []);
 
-  // Main auth initialization effect
-  ReactModule.useEffect(() => {
-    let mounted = true;
-    
-    console.log('🔐 Starting auth initialization...');
-    
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      
-      console.log('Auth state changed:', event, session?.user?.id);
-      
-      // Handle sign out
-      if (event === 'SIGNED_OUT') {
-        console.log('🔓 Auth state: SIGNED_OUT');
-        setSession(null);
-        setUser(null);
-        setSigningOut(false);
-        setLoading(false);
-        return;
-      }
-      
-      // Skip authentication during password reset flow
-      if (isPasswordResetFlow()) {
-        console.log('🔐 Skipping auth state update during password reset');
-        setLoading(false);
-        return;
-      }
+  useEffect(() => {
+    // Skip auth initialization during password reset flow to avoid conflicts
+    if (isPasswordResetFlow()) {
+      console.log('🔄 AuthContext - Skipping auth initialization for password reset flow');
+      setLoading(false);
+      return;
+    }
 
-      // Update session and user immediately
-      setSession(session);
-      
-      if (session?.user) {
-        // Set basic user info immediately
-        const basicUser = {
-          id: session.user.id,
-          email: session.user.email,
-          created_at: session.user.created_at,
-          selectedTrackers: ['calories', 'hydration', 'supplements']
-        } as ExtendedUser;
-        
-        setUser(basicUser);
-        setLoading(false);
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    // Initialize session check with extended timeout
-    const initializeSession = async () => {
-      try {
-        console.log('📋 Checking for existing session...');
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session check error:', error);
-          cleanupAuthState();
-          if (mounted) {
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Skip session restoration during password reset
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // Don't process auth changes during password reset flow
         if (isPasswordResetFlow()) {
-          console.log('🔐 Skipping session restoration during password reset');
-          if (mounted) {
-            setLoading(false);
-          }
+          console.log('🔄 AuthContext - Ignoring auth state change during password reset flow:', event);
           return;
         }
 
-        if (currentSession?.user && mounted) {
-          console.log('✅ Found existing session');
-          setSession(currentSession);
-          
-          // Set basic user info immediately
-          const basicUser = {
-            id: currentSession.user.id,
-            email: currentSession.user.email,
-            created_at: currentSession.user.created_at,
-            selectedTrackers: ['calories', 'hydration', 'supplements']
-          } as ExtendedUser;
-          
-          setUser(basicUser);
-          setLoading(false);
-        } else {
-          console.log('❌ No existing session found');
-          if (mounted) {
-            setLoading(false);
-          }
-        }
-      } catch (error) {
-        console.error('Session initialization error:', error);
-        cleanupAuthState();
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    // Extended timeout to 12 seconds
-    const timeoutId = setTimeout(() => {
-      if (loading && mounted) {
-        console.warn('⏰ Auth initialization timeout - forcing completion');
+        console.log('🔄 Auth state change:', event, session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
         setLoading(false);
+
+        // Load extended profile when user signs in
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(() => {
+            loadExtendedProfile(session.user);
+          }, 0);
+        }
       }
-    }, 12000);
+    );
 
-    initializeSession();
+    // Get initial session if not in password reset flow
+    if (!isPasswordResetFlow()) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('🔄 AuthContext - Initial session loaded:', !!session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
+    }
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-      clearTimeout(timeoutId);
-    };
-  }, [loading]);
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load extended profile when session is established (only once per session)
+  ReactModule.useEffect(() => {
+    if (session?.user && !profileLoading) {
+      try {
+        loadExtendedProfile(session.user);
+        console.log('Extended profile loading initiated once per session');
+      } catch (error) {
+        console.error('Failed to initiate profile loading:', error);
+        setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
+      }
+    }
+  }, [session?.user?.id]); // Only depend on user ID, not profileLoading state
 
   // Load extended profile when session is established (only once per session)
   ReactModule.useEffect(() => {
