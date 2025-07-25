@@ -11,12 +11,29 @@ import { Loader2, Eye, EyeOff } from 'lucide-react';
 const getAuthParams = () => {
   const params = new URLSearchParams(window.location.search);
 
-  // Fallback: parse from hash if needed
-  if (!params.has("access_token") || !params.has("refresh_token")) {
-    const hash = window.location.hash;
-    const queryString = hash.includes("?") ? hash.split("?")[1] : hash.substring(1);
-    const hashParams = new URLSearchParams(queryString);
+  // Check query params first
+  if (params.has("access_token") && params.has("refresh_token")) {
+    return {
+      access_token: params.get("access_token"),
+      refresh_token: params.get("refresh_token"),
+      type: params.get("type"),
+    };
+  }
 
+  // Fallback: parse from hash (supports both #access_token=... and #/reset-password?access_token=...)
+  const hash = window.location.hash;
+  let queryString = "";
+  
+  if (hash.includes("?")) {
+    // Format: #/reset-password?access_token=...
+    queryString = hash.split("?")[1];
+  } else if (hash.startsWith("#") && hash.includes("=")) {
+    // Format: #access_token=...
+    queryString = hash.substring(1);
+  }
+  
+  if (queryString) {
+    const hashParams = new URLSearchParams(queryString);
     return {
       access_token: hashParams.get("access_token"),
       refresh_token: hashParams.get("refresh_token"),
@@ -24,10 +41,11 @@ const getAuthParams = () => {
     };
   }
 
+  // No tokens found
   return {
-    access_token: params.get("access_token"),
-    refresh_token: params.get("refresh_token"),
-    type: params.get("type"),
+    access_token: null,
+    refresh_token: null,
+    type: null,
   };
 };
 
@@ -42,47 +60,106 @@ const ResetPassword = () => {
   const { toast } = useToast();
 
   const [tokens, setTokens] = useState<{ access_token: string; refresh_token: string } | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [hasTimedOut, setHasTimedOut] = useState(false);
 
   useEffect(() => {
-    console.log('🔄 ResetPassword page mounted');
-    console.log('🔗 Current URL:', window.location.href);
-    console.log('🔗 Search params:', searchParams.toString());
-    console.log('🔗 Hash:', window.location.hash);
+    let timeoutId: NodeJS.Timeout;
     
-    // Check if we have the recovery type and auth tokens in the URL (query or hash)
-    const { type: recoveryType, access_token, refresh_token } = getAuthParams();
-    
-    console.log("🔑 Parsed tokens:", { type: recoveryType, access_token, refresh_token });
-    console.log("[RESET PAGE] type =", recoveryType);
-    console.log("[RESET PAGE] access_token =", access_token ? 'present (length: ' + access_token.length + ')' : 'missing');
-    console.log("[RESET PAGE] refresh_token =", refresh_token ? 'present (length: ' + refresh_token.length + ')' : 'missing');
-    
-    // Validate this is actually a password recovery link
-    if (recoveryType !== 'recovery') {
-      console.log('❌ Not a recovery type, redirecting to home');
-      toast({
-        title: "Invalid reset link",
-        description: "This link is not a valid password reset link.",
-        variant: "destructive",
-      });
-      navigate('/');
-      return;
-    }
-    
-    if (!access_token || !refresh_token) {
-      console.log('❌ Missing tokens, redirecting to home');
-      toast({
-        title: "Invalid reset link",
-        description: "This password reset link is invalid or has expired.",
-        variant: "destructive",
-      });
-      navigate('/');
-      return;
-    }
+    const validateTokens = async () => {
+      try {
+        console.log('🔄 ResetPassword page mounted');
+        console.log('🔗 Current URL:', window.location.href);
+        console.log('🔗 Search params:', searchParams.toString());
+        console.log('🔗 Hash:', window.location.hash);
+        
+        // Set timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          console.log('⏰ Validation timeout reached (10s)');
+          setHasTimedOut(true);
+          setValidationError('Validation took too long. Please try clicking the reset link again.');
+        }, 10000);
+        
+        // Check if we have the recovery type and auth tokens in the URL (query or hash)
+        const { type: recoveryType, access_token, refresh_token } = getAuthParams();
+        
+        console.log("🧪 Tokens extracted:", { type: recoveryType, access_token: access_token ? `present (${access_token.length} chars)` : 'missing', refresh_token: refresh_token ? `present (${refresh_token.length} chars)` : 'missing' });
+        
+        // Validate this is actually a password recovery link
+        if (recoveryType !== 'recovery') {
+          console.log('❌ Not a recovery type, redirecting to home');
+          setValidationError('This link is not a valid password reset link.');
+          toast({
+            title: "Invalid reset link",
+            description: "This link is not a valid password reset link.",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
+        
+        if (!access_token || !refresh_token) {
+          console.log('❌ Missing tokens, redirecting to home');
+          setValidationError('This password reset link is invalid or has expired.');
+          toast({
+            title: "Invalid reset link",
+            description: "This password reset link is invalid or has expired.",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
 
-    console.log('✅ Valid recovery tokens found, storing for later use');
-    // Store tokens for later use, don't set session yet
-    setTokens({ access_token, refresh_token });
+        // Test the session to make sure tokens are valid
+        console.log('🧪 Testing session with extracted tokens...');
+        console.log('🧪 Calling supabase.auth.setSession()...');
+        
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        console.log('🧪 setSession result:', { data: sessionData, error: sessionError });
+
+        if (sessionError) {
+          console.log('❌ Session validation failed:', sessionError);
+          setValidationError(`Session validation failed: ${sessionError.message}`);
+          toast({
+            title: "Invalid session",
+            description: sessionError.message,
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
+
+        // Get user to verify session is working
+        console.log('🧪 Calling getUser() to verify session...');
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        console.log('🧪 getUser result:', { data: userData, error: userError });
+
+        if (userError) {
+          console.log('❌ User fetch failed:', userError);
+          setValidationError(`User verification failed: ${userError.message}`);
+          // Don't redirect, allow password reset to proceed with tokens only
+        }
+
+        console.log('✅ Session validation successful, storing tokens');
+        clearTimeout(timeoutId);
+        setTokens({ access_token, refresh_token });
+        
+      } catch (error) {
+        console.log('❌ Unexpected validation error:', error);
+        setValidationError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        clearTimeout(timeoutId);
+      }
+    };
+
+    validateTokens();
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [searchParams, navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -179,14 +256,60 @@ const ResetPassword = () => {
     }
   };
 
-  // Show loading state while validating tokens
+  // Show loading state while validating tokens or error state if validation failed
   if (!tokens) {
+    if (hasTimedOut || validationError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-destructive">
+                {hasTimedOut ? 'Validation Timeout' : 'Reset Link Invalid'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground text-center">
+                {validationError || 'The reset process took too long to complete.'}
+              </p>
+              <div className="space-y-2">
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  className="w-full"
+                  variant="outline"
+                >
+                  Try Again
+                </Button>
+                <Button 
+                  onClick={() => navigate('/')} 
+                  className="w-full"
+                  variant="secondary"
+                >
+                  Back to Login
+                </Button>
+              </div>
+              <div className="text-xs text-muted-foreground text-center">
+                <p>If this keeps happening:</p>
+                <p>1. Check your email for a fresh reset link</p>
+                <p>2. Make sure you're clicking the link from the same device/browser</p>
+                <p>3. Clear your browser cache and try again</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
             <p className="text-muted-foreground">Validating reset link...</p>
+            {hasTimedOut && (
+              <p className="text-xs text-muted-foreground mt-2">
+                This is taking longer than expected...
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
