@@ -30,9 +30,9 @@ export const ResetPassword = () => {
     const refreshToken = searchParams.get('refresh_token');
     const recoveryType = searchParams.get('type');
     
-    console.log('🔑 Access token:', accessToken ? 'present' : 'missing');
-    console.log('🔑 Refresh token:', refreshToken ? 'present' : 'missing');
-    console.log('🔑 Recovery type:', recoveryType);
+    console.log("[RESET PAGE] type =", recoveryType);
+    console.log("[RESET PAGE] access_token =", accessToken ? 'present (length: ' + accessToken.length + ')' : 'missing');
+    console.log("[RESET PAGE] refresh_token =", refreshToken ? 'present (length: ' + refreshToken.length + ')' : 'missing');
     
     // Validate this is actually a password recovery link
     if (recoveryType !== 'recovery') {
@@ -134,7 +134,7 @@ export const ResetPassword = () => {
         description: "You can now sign in with your new password.",
       });
 
-      // Sign out and redirect to login
+      // Sign out and redirect to login (not /home)
       await supabase.auth.signOut();
       console.log('🔄 Redirecting to login page');
       navigate('/', { replace: true });

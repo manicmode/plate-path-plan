@@ -99,9 +99,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Skip auth initialization during password reset flow to avoid conflicts
-    if (isPasswordResetFlow()) {
-      console.log('🔄 AuthContext - Skipping auth initialization for password reset flow');
+    const params = new URLSearchParams(window.location.search);
+    const isRecovery = params.get('type') === 'recovery';
+    
+    if (isRecovery) {
+      console.log("[AUTH] Blocking automatic login during password recovery");
       setLoading(false);
       return;
     }
