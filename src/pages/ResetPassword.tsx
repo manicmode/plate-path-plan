@@ -27,7 +27,11 @@ const queryParams = new URLSearchParams(window.location.search);
 
 
 
-const access_token = queryParams.get('access_token') || queryParams.get('code');
+const { error } = await supabase.auth.verifyOtp({
+  type: 'recovery',
+  token: access_token,
+});
+
 
 const type = queryParams.get('type');
 
