@@ -75,6 +75,27 @@ export default function BodyScanAI() {
   useEffect(() => {
     const startCamera = async () => {
       try {
+        // ✅ 1. Ensure video element is created and mounted
+        console.log("[VIDEO INIT] videoRef =", videoRef.current);
+        if (!videoRef.current) {
+          console.error("[VIDEO] videoRef is null — video element not mounted");
+          return;
+        }
+
+        // ✅ 3. Confirm HTTPS is enforced on mobile
+        if (location.protocol !== 'https:') {
+          console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
+        }
+
+        // ✅ 4. Confirm camera permissions
+        if (navigator.permissions) {
+          navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
+            console.log("[PERMISSION] Camera permission state:", res.state);
+          }).catch((err) => {
+            console.log("[PERMISSION] Could not query camera permission:", err);
+          });
+        }
+
         // ✅ 2. CAMERA REQUEST LOGGING
         console.log("[CAMERA] Requesting camera stream...");
         
@@ -91,11 +112,16 @@ export default function BodyScanAI() {
         });
         
         // ✅ 3. STREAM RECEIVED LOGGING
-        console.log("[CAMERA] Stream received", mediaStream);
+        console.log("[CAMERA] Stream received:", mediaStream);
         console.log("[CAMERA] Video element srcObject set");
         
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
+          
+          // ✅ 5. Visually confirm that the <video> tag is rendering
+          videoRef.current.style.border = "2px solid red";
+          
+          console.log("[CAMERA] srcObject set, playing video");
           
           // ✅ 5. VIDEO PLAY WITH LOGGING
           videoRef.current.play().then(() => {
@@ -103,14 +129,17 @@ export default function BodyScanAI() {
           }).catch((e) => {
             console.error("[CAMERA] Error playing video", e);
           });
+        } else {
+          console.error("[CAMERA] videoRef.current is null");
         }
         setStream(mediaStream);
       } catch (error) {
         // ✅ 4. CAMERA ACCESS ERROR HANDLING
+        console.error("[CAMERA FAIL] getUserMedia error:", error);
         console.error("[CAMERA] Access denied or failed", error);
         toast({
           title: "❌ Camera access denied or failed",
-          description: "Please check permissions and try again.",
+          description: "[CAMERA ERROR] " + (error as Error).message,
           variant: "destructive"
         });
       }

@@ -253,10 +253,33 @@ export default function SideBodyScan() {
 
   const startCamera = async () => {
     try {
+      // ✅ 1. Ensure video element is created and mounted
+      console.log("[VIDEO INIT] videoRef =", videoRef.current);
+      if (!videoRef.current) {
+        console.error("[VIDEO] videoRef is null — video element not mounted");
+        return;
+      }
+
+      // ✅ 3. Confirm HTTPS is enforced on mobile
+      if (location.protocol !== 'https:') {
+        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
+      }
+
+      // ✅ 4. Confirm camera permissions
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
+          console.log("[PERMISSION] Camera permission state:", res.state);
+        }).catch((err) => {
+          console.log("[PERMISSION] Could not query camera permission:", err);
+        });
+      }
+
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
 
+      // ✅ 2. Add logging inside getUserMedia() block
+      console.log("[CAMERA] Requesting camera stream...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: { exact: cameraMode },
@@ -265,20 +288,32 @@ export default function SideBodyScan() {
         }
       });
       
+      // ✅ 2. Stream received logging
+      console.log("[CAMERA] Stream received:", mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // ✅ 5. Visually confirm that the <video> tag is rendering
+        videoRef.current.style.border = "2px solid red";
+        
+        console.log("[CAMERA] srcObject set, playing video");
         try {
           await videoRef.current.play();
+          console.log("[CAMERA] Video playing successfully");
         } catch (playError) {
-          console.log('Video autoplay prevented, will play on user interaction');
+          console.error("[CAMERA] Video autoplay prevented:", playError);
         }
+      } else {
+        console.error("[CAMERA] videoRef.current is null");
       }
       setStream(mediaStream);
     } catch (error) {
+      // ✅ 2. Enhanced error logging
+      console.error("[CAMERA FAIL] getUserMedia error:", error);
       console.error('Error accessing camera:', error);
       toast({
-        title: "Camera Error",
-        description: "Unable to access camera. Please check permissions and try again.",
+        title: "❌ Camera Error",
+        description: "[CAMERA ERROR] " + (error as Error).message,
         variant: "destructive"
       });
     }

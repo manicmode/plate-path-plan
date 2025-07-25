@@ -28,6 +28,29 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
 
   const startCamera = async () => {
     try {
+      // ✅ 1. Ensure video element is created and mounted
+      console.log("[VIDEO INIT] videoRef =", videoRef.current);
+      if (!videoRef.current) {
+        console.error("[VIDEO] videoRef is null — video element not mounted");
+        return;
+      }
+
+      // ✅ 3. Confirm HTTPS is enforced on mobile
+      if (location.protocol !== 'https:') {
+        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
+      }
+
+      // ✅ 4. Confirm camera permissions
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
+          console.log("[PERMISSION] Camera permission state:", res.state);
+        }).catch((err) => {
+          console.log("[PERMISSION] Could not query camera permission:", err);
+        });
+      }
+
+      // ✅ 2. Add logging inside getUserMedia() block
+      console.log("[CAMERA] Requesting camera stream...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' }, // Use back camera if available
@@ -36,13 +59,24 @@ export const WebBarcodeScanner: React.FC<WebBarcodeScannerProps> = ({
         }
       });
 
+      // ✅ 2. Stream received logging
+      console.log("[CAMERA] Stream received:", mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // ✅ 5. Visually confirm that the <video> tag is rendering
+        videoRef.current.style.border = "2px solid red";
+        
+        console.log("[CAMERA] srcObject set, playing video");
         setStream(mediaStream);
         setIsScanning(true);
         startScanning();
+      } else {
+        console.error("[CAMERA] videoRef.current is null");
       }
     } catch (err) {
+      // ✅ 2. Enhanced error logging
+      console.error("[CAMERA FAIL] getUserMedia error:", err);
       console.error('Camera access error:', err);
       setError('Unable to access camera. Please check permissions and try again.');
     }
