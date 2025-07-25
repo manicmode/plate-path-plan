@@ -27,8 +27,9 @@ const queryParams = new URLSearchParams(window.location.search);
 
 
 
-const code = queryParams.get('code');
+const access_token = queryParams.get('access_token');
 const type = queryParams.get('type');
+
 
 
   useEffect(() => {
