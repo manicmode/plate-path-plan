@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react';
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -22,8 +21,10 @@ export default function ResetPassword() {
   const [isValidToken, setIsValidToken] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
 
-  const accessToken = searchParams.get('access_token');
-  const type = searchParams.get('type');
+  // Extract access_token and type from URL fragment (hash)
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const accessToken = hashParams.get('access_token');
+  const type = hashParams.get('type');
 
   useEffect(() => {
     const validateToken = async () => {
