@@ -32,25 +32,28 @@ const type = queryParams.get('type');
 
 
 
-  useEffect(() => {
-    const validateToken = async () => {
-if (type === 'recovery' && access_token) {
-  const { error } = await supabase.auth.exchangeCodeForSession(access_token);
+useEffect(() => {
+  const validateToken = async () => {
+    try {
+      if (type === 'recovery' && access_token) {
+        const { error } = await supabase.auth.exchangeCodeForSession(access_token);
 
-          if (!error) {
-            setIsValidToken(true);
-          } else {
-            console.error('Token exchange error:', error);
-          }
-        } catch (error) {
-          console.error('Token validation failed:', error);
+        if (!error) {
+          setIsValidToken(true);
+        } else {
+          console.error('Token exchange error:', error);
         }
       }
+    } catch (error) {
+      console.error('Token validation failed:', error);
+    } finally {
       setIsValidating(false);
-    };
+    }
+  };
 
-    validateToken();
-  }, [code, type]);
+  validateToken();
+}, [access_token, type]);
+
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
