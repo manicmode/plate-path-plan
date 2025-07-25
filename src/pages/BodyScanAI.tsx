@@ -243,7 +243,7 @@ export default function BodyScanAI() {
         
         poseDetectorRef.current = model;
         setPoseDetectionReady(true);
-       setIsPoseDetectionEnabled(true); 
+        setIsPoseDetectionEnabled(true); 
 
         // STEP 3: MODEL LOADED DEBUG
         console.log('[MODEL] Model loaded', model);
