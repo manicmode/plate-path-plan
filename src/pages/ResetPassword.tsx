@@ -27,8 +27,9 @@ const queryParams = new URLSearchParams(window.location.search);
 
 
 
-  const code = queryParams.get('code');
-  const type = queryParams.get('type');
+const code = queryParams.get('code');
+const type = queryParams.get('type');
+
 
   useEffect(() => {
     const validateToken = async () => {
