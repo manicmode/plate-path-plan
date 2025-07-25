@@ -1,4 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+
+// This hook converts the #access_token to ?access_token
+useEffect(() => {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#')) {
+    const queryParams = new URLSearchParams(hash.slice(1));
+    const queryString = queryParams.toString();
+    const newUrl = window.location.pathname + '?' + queryString;
+    window.location.replace(newUrl);
+  }
+}, []);
+
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
