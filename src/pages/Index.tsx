@@ -10,11 +10,27 @@ const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
 
+  // Check if we're in password reset flow
+  const isPasswordResetFlow = () => {
+    const params = new URLSearchParams(window.location.search);
+    const isRecovery = params.get('type') === 'recovery';
+    const hasTokens = params.has('access_token') && params.has('refresh_token');
+    return isRecovery && hasTokens;
+  };
+
   console.log('Index component rendering:', { 
     isAuthenticated, 
     loading,
+    isPasswordResetFlow: isPasswordResetFlow(),
+    currentURL: window.location.href,
     timestamp: new Date().toISOString()
   });
+
+  // If we're in password reset flow, redirect to reset password page
+  if (isPasswordResetFlow()) {
+    console.log('🔄 Detected password reset flow, redirecting to /reset-password');
+    return <Navigate to="/reset-password" replace />;
+  }
 
   // Show loading with recovery option
   if (loading) {
@@ -45,7 +61,7 @@ const Index = () => {
     );
   }
 
-  // Redirect to home if authenticated
+  // Redirect to home if authenticated (but not in password reset flow)
   if (isAuthenticated) {
     console.log('User authenticated, redirecting to home');
     return <Navigate to="/home" replace />;

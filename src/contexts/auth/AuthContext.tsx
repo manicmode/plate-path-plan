@@ -25,22 +25,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileLoading, setProfileLoading] = ReactModule.useState(false);
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
-  // Check if we're on password reset page with recovery type
+  // Check if we're in password reset flow anywhere in the app
   const isPasswordResetFlow = () => {
-    const isResetPage = window.location.pathname === '/reset-password';
     const params = new URLSearchParams(window.location.search);
     const isRecovery = params.get('type') === 'recovery';
     const hasTokens = params.has('access_token') && params.has('refresh_token');
     
     console.log('🔍 AuthContext - Password reset flow check:', {
-      isResetPage,
       isRecovery,
       hasTokens,
       pathname: window.location.pathname,
       searchParams: window.location.search
     });
     
-    return isResetPage && isRecovery && hasTokens;
+    // Return true if we detect recovery parameters anywhere, not just on reset page
+    return isRecovery && hasTokens;
   };
 
   // Load user profile in background
