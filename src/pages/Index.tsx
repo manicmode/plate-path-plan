@@ -5,7 +5,7 @@ import { useAuthRecovery } from '@/hooks/useAuthRecovery';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import AuthForm from '@/components/auth/AuthForm';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -13,6 +13,7 @@ const Index = () => {
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [inRecoveryFlow, setInRecoveryFlow] = useState(false);
 
   // Check for password reset flow using useSearchParams
   useEffect(() => {
