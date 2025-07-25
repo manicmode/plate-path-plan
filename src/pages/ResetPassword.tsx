@@ -27,7 +27,8 @@ const queryParams = new URLSearchParams(window.location.search);
 
 
 
-const access_token = queryParams.get('access_token');
+const access_token = queryParams.get('access_token') || queryParams.get('code');
+
 const type = queryParams.get('type');
 
 
