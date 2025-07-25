@@ -22,18 +22,11 @@ export default function ResetPassword() {
   const [isUpdated, setIsUpdated] = useState(false);
 
   // Extract code and type from URL query parameters
+// ✅ Extract token and type from URL query parameters
 const queryParams = new URLSearchParams(window.location.search);
-
-
-
-
-const { error } = await supabase.auth.verifyOtp({
-  type: 'recovery',
-  token: access_token,
-});
-
-
+const access_token = queryParams.get('code'); // Supabase sends `code`, not `access_token`
 const type = queryParams.get('type');
+
 
 
 
@@ -41,12 +34,15 @@ useEffect(() => {
   const validateToken = async () => {
     try {
       if (type === 'recovery' && access_token) {
-        const { error } = await supabase.auth.exchangeCodeForSession(access_token);
+        const { error } = await supabase.auth.verifyOtp({
+          type: 'recovery',
+          token: access_token,
+        });
 
         if (!error) {
           setIsValidToken(true);
         } else {
-          console.error('Token exchange error:', error);
+          console.error('Token verification error:', error);
         }
       }
     } catch (error) {
@@ -58,6 +54,7 @@ useEffect(() => {
 
   validateToken();
 }, [access_token, type]);
+
 
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
