@@ -26,7 +26,7 @@ export default function ResetPassword() {
 const queryParams = new URLSearchParams(window.location.search);
 const access_token = queryParams.get('code'); // Supabase sends `code`, not `access_token`
 const type = queryParams.get('type');
-
+const email = queryParams.get('email'); 
 
 
 
