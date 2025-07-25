@@ -1,6 +1,5 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-// Triggering CodeRabbit review for password reset debug
 
 @keyframes shine {
   0% { transform: translateX(-200%) skewX(-12deg); }
