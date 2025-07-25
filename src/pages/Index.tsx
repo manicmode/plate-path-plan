@@ -23,6 +23,30 @@ const Index = () => {
       setSessionChecked(true);
     });
   }, []);
+ // Handle password reset flow
+useEffect(() => {
+  const type = searchParams.get('type');
+  const accessToken = searchParams.get('access_token');
+  const refreshToken = searchParams.get('refresh_token');
+
+  console.log('URL parameters detected:', {
+    type,
+    hasAccessToken: !!accessToken,
+    hasRefreshToken: !!refreshToken,
+    allParams: searchParams.toString()
+  });
+
+  if (type === 'recovery' && accessToken && refreshToken) {
+    console.log('Password recovery detected, redirecting to reset page');
+    navigate('/reset-password', {
+      state: {
+        accessToken,
+        refreshToken
+      },
+      replace: true
+    });
+  }
+}, [searchParams, navigate]);
 
   console.log('Index component rendering:', {
     isAuthenticated, 
