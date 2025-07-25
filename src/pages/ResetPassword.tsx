@@ -22,7 +22,8 @@ export default function ResetPassword() {
   const [isUpdated, setIsUpdated] = useState(false);
 
   // Extract code and type from URL query parameters
-const queryParams = new URLSearchParams(window.location.hash.substring(1));
+const queryParams = new URLSearchParams(window.location.search);
+
 
   const code = queryParams.get('code');
   const type = queryParams.get('type');
