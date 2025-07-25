@@ -146,21 +146,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Auth state change:', event, session?.user?.id);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  async (event, session) => {
+    console.log('🔄 Auth state change:', event, session?.user?.id);
 
-        // Load extended profile when user signs in
-        if (event === 'SIGNED_IN' && session?.user) {
-          setTimeout(() => {
-            loadExtendedProfile(session.user);
-          }, 0);
-        }
-      }
-    );
+    if (event === 'PASSWORD_RECOVERY') {
+      console.log('🔑 Password recovery session detected');
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      return;
+    }
+
+    if (event === 'TOKEN_REFRESHED' && session) {
+      console.log('🔄 Token refreshed during recovery');
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      return;
+    }
+
+    setSession(session);
+    setUser(session?.user ?? null);
+    setLoading(false);
+
+    if (event === 'SIGNED_IN' && session?.user && event !== 'PASSWORD_RECOVERY') {
+      setTimeout(() => {
+        loadExtendedProfile(session.user);
+      }, 0);
+    }
+  }
+);
+
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
