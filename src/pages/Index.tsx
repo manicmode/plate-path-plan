@@ -23,7 +23,6 @@ const Index = () => {
       setSessionChecked(true);
     });
   }, []);
-// Handle Supabase password recovery flow
 useEffect(() => {
   const type = searchParams.get('type');
   const accessToken = searchParams.get('access_token');
@@ -38,27 +37,15 @@ useEffect(() => {
   });
 
   if (type === 'recovery' && accessToken && refreshToken) {
-    console.log('🔑 Password recovery flow detected - setting session and redirecting');
+    console.log('🔑 Password recovery flow detected - redirecting to reset page');
 
-    supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken
-    }).then(({ data, error }) => {
-      if (error) {
-        console.error('❌ Error setting recovery session:', error);
-        return;
+    navigate('/reset-password', {
+      replace: true,
+      state: {
+        fromRecovery: true,
+        accessToken,
+        refreshToken
       }
-
-      console.log('✅ Recovery session set successfully:', data.session?.user?.id);
-
-      navigate('/reset-password', {
-        replace: true,
-        state: {
-          fromRecovery: true,
-          accessToken,
-          refreshToken
-        }
-      });
     });
   }
 }, [searchParams, navigate]);
