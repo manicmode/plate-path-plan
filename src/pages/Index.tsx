@@ -9,12 +9,25 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 const getAuthParams = () => {
-  const query = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const params = new URLSearchParams(window.location.search);
+
+  // Fallback: parse from hash if needed
+  if (!params.has("access_token") || !params.has("refresh_token")) {
+    const hash = window.location.hash;
+    const queryString = hash.includes("?") ? hash.split("?")[1] : hash.substring(1);
+    const hashParams = new URLSearchParams(queryString);
+
+    return {
+      access_token: hashParams.get("access_token"),
+      refresh_token: hashParams.get("refresh_token"),
+      type: hashParams.get("type"),
+    };
+  }
+
   return {
-    type: query.get('type') || hash.get('type'),
-    accessToken: query.get('access_token') || hash.get('access_token'),
-    refreshToken: query.get('refresh_token') || hash.get('refresh_token'),
+    access_token: params.get("access_token"),
+    refresh_token: params.get("refresh_token"),
+    type: params.get("type"),
   };
 };
 
@@ -28,19 +41,19 @@ const Index = () => {
 
   // Check for password reset flow using both query params and hash params
   useEffect(() => {
-    const { type, accessToken, refreshToken } = getAuthParams();
+    const { type, access_token, refresh_token } = getAuthParams();
     
     console.log("[INDEX] Reset flow detection:", {
       type,
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
+      hasAccessToken: !!access_token,
+      hasRefreshToken: !!refresh_token,
       currentPath: window.location.pathname,
       fullURL: window.location.href,
       search: window.location.search,
       hash: window.location.hash
     });
     
-    if (type === "recovery" && accessToken && refreshToken) {
+    if (type === "recovery" && access_token && refresh_token) {
       console.log("[INDEX] Valid password recovery URL detected, navigating to reset page...");
       setInRecoveryFlow(true);
       navigate("/reset-password", { replace: true });
