@@ -16,9 +16,20 @@ const Index = () => {
   // Check for password reset flow using useSearchParams
   useEffect(() => {
     const type = searchParams.get("type");
-    if (type === "recovery") {
-      console.log("[RESET] Detected password recovery URL, redirecting...");
-      navigate("/reset-password");
+    const accessToken = searchParams.get("access_token");
+    const refreshToken = searchParams.get("refresh_token");
+    
+    console.log("[INDEX] Reset flow detection:", {
+      type,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      currentPath: window.location.pathname,
+      fullURL: window.location.href
+    });
+    
+    if (type === "recovery" && accessToken && refreshToken) {
+      console.log("[INDEX] Valid password recovery URL detected, navigating to reset page...");
+      navigate("/reset-password", { replace: true });
     }
   }, [searchParams, navigate]);
 

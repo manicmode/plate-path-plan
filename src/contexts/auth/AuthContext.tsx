@@ -146,8 +146,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check for password reset flow before cleaning auth
     const isPasswordReset = () => {
       const url = new URL(window.location.href);
-      return url.searchParams.get('type') === 'recovery' || 
-             url.pathname === '/reset-password';
+      const hasRecoveryParams = url.searchParams.get('type') === 'recovery' && 
+                               url.searchParams.get('access_token') && 
+                               url.searchParams.get('refresh_token');
+      const isResetPage = url.pathname === '/reset-password';
+      
+      console.log('[AUTH] Password reset detection:', {
+        pathname: url.pathname,
+        type: url.searchParams.get('type'),
+        hasAccessToken: !!url.searchParams.get('access_token'),
+        hasRefreshToken: !!url.searchParams.get('refresh_token'),
+        hasRecoveryParams,
+        isResetPage,
+        finalResult: hasRecoveryParams || isResetPage
+      });
+      
+      return hasRecoveryParams || isResetPage;
     };
 
     // Only cleanup corrupted auth if NOT in password reset flow
