@@ -108,6 +108,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
+    // Clear any corrupted tokens before setting up auth
+    const clearCorruptedTokens = () => {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase.auth')) {
+          try {
+            const value = localStorage.getItem(key);
+            if (value && value.includes('"access_token"') && value.includes('403')) {
+              console.log('Removing corrupted token:', key);
+              localStorage.removeItem(key);
+            }
+          } catch (e) {
+            // Remove if we can't parse it
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    };
+    
+    clearCorruptedTokens();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         // Don't process auth changes during password reset flow

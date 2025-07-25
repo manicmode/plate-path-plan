@@ -24,26 +24,52 @@ export const loadUserProfile = async (userId: string) => {
 };
 
 export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUser> => {
+  // Check if we have a valid user with proper authentication
+  if (!supabaseUser?.id || !supabaseUser?.email) {
+    console.warn('Invalid user object provided to createExtendedUser');
+    throw new Error('Invalid user data');
+  }
+
   // For new users, profile might not exist yet due to trigger timing
   // Try to load profile with retries for new users
   let profile = null;
-  const userCreatedAt = new Date(supabaseUser.created_at || '');
-  const now = new Date();
-  const isNewUser = (now.getTime() - userCreatedAt.getTime()) < 10000; // Created within last 10 seconds
+  
+  try {
+    const userCreatedAt = new Date(supabaseUser.created_at || '');
+    const now = new Date();
+    const isNewUser = (now.getTime() - userCreatedAt.getTime()) < 10000; // Created within last 10 seconds
 
-  if (isNewUser) {
-    console.log('New user detected, attempting profile load with retries');
-    // For new users, try a few times with delays to handle trigger timing
-    for (let attempt = 0; attempt < 3; attempt++) {
-      profile = await loadUserProfile(supabaseUser.id);
-      if (profile) break;
-      
-      console.log(`Profile not found on attempt ${attempt + 1}, retrying...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Progressive delay
+    if (isNewUser) {
+      console.log('New user detected, attempting profile load with retries');
+      // For new users, try a few times with delays to handle trigger timing
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          profile = await loadUserProfile(supabaseUser.id);
+          if (profile) break;
+          
+          console.log(`Profile not found on attempt ${attempt + 1}, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Progressive delay
+        } catch (error) {
+          console.warn(`Profile load attempt ${attempt + 1} failed:`, error);
+          if (attempt === 2) {
+            // On final attempt failure, continue without profile
+            console.log('All profile load attempts failed, continuing without profile');
+            break;
+          }
+        }
+      }
+    } else {
+      // For existing users, load normally
+      try {
+        profile = await loadUserProfile(supabaseUser.id);
+      } catch (error) {
+        console.warn('Failed to load existing user profile:', error);
+        // Continue without profile rather than failing completely
+      }
     }
-  } else {
-    // For existing users, load normally
-    profile = await loadUserProfile(supabaseUser.id);
+  } catch (error) {
+    console.error('Error in profile loading logic:', error);
+    // Continue without profile
   }
   
   // Ensure exactly 3 trackers using auto-fill logic
