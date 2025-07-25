@@ -34,10 +34,12 @@ useEffect(() => {
   const validateToken = async () => {
     try {
       if (type === 'recovery' && access_token) {
-        const { error } = await supabase.auth.verifyOtp({
-          type: 'recovery',
-          token: access_token,
-        });
+const { error } = await supabase.auth.verifyOtp({
+  type: 'recovery',
+  token: access_token,
+  email: email || '', // 👈 REQUIRED FIELD
+});
+
 
         if (!error) {
           setIsValidToken(true);
