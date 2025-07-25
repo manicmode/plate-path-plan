@@ -87,7 +87,7 @@ function AppContent() {
           } />
           
           {/* Regular pages with Layout */}
-          <Route path="/*" element={
+          <Route path="*" element={
             <Layout>
               <Routes>
                 <Route path="/" element={<Index />} />
