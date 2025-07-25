@@ -18,6 +18,8 @@ export const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [tokens, setTokens] = useState<{ accessToken: string; refreshToken: string } | null>(null);
+
   useEffect(() => {
     // Check if we have the auth tokens in the URL
     const accessToken = searchParams.get('access_token');
@@ -33,11 +35,8 @@ export const ResetPassword = () => {
       return;
     }
 
-    // Set the session with the tokens from the URL
-    supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+    // Store tokens for later use, don't set session yet
+    setTokens({ accessToken, refreshToken });
   }, [searchParams, navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -61,9 +60,24 @@ export const ResetPassword = () => {
       return;
     }
 
+    if (!tokens) {
+      toast({
+        title: "Invalid session",
+        description: "Password reset session is invalid.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Set the session with the stored tokens before updating password
+      await supabase.auth.setSession({
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+      });
+
       const { error } = await supabase.auth.updateUser({
         password: password
       });
