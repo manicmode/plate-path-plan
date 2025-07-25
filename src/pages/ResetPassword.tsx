@@ -23,6 +23,32 @@ export default function ResetPassword() {
   const type = searchParams.get('type');
   const accessToken = searchParams.get('access_token');
 
+  // Handle hash-based tokens (OAuth redirect from email links)
+  useEffect(() => {
+    // Only run if searchParams are missing and we haven't already processed the hash
+    if (!type || !accessToken) {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token=') && hash.includes('type=recovery')) {
+        // Parse hash parameters
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const hashAccessToken = hashParams.get('access_token');
+        const hashType = hashParams.get('type');
+        
+        if (hashAccessToken && hashType === 'recovery') {
+          // Convert hash to query parameters and reload
+          const newUrl = new URL(window.location.href);
+          newUrl.hash = '';
+          newUrl.searchParams.set('access_token', hashAccessToken);
+          newUrl.searchParams.set('type', hashType);
+          
+          // Replace current URL to prevent infinite reloads
+          window.location.replace(newUrl.toString());
+          return;
+        }
+      }
+    }
+  }, []); // Empty dependency array - run only once on mount
+
   useEffect(() => {
     const validateToken = async () => {
       if (type === 'recovery' && accessToken) {
