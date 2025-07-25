@@ -22,15 +22,16 @@ export default function ResetPassword() {
   const [isUpdated, setIsUpdated] = useState(false);
 
   // Extract access_token and type from URL fragment (hash)
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const accessToken = hashParams.get('access_token');
-  const type = hashParams.get('type');
+ const queryParams = new URLSearchParams(window.location.search);
+const code = queryParams.get('code');
+const type = queryParams.get('type');
+
 
   useEffect(() => {
     const validateToken = async () => {
-      if (type === 'recovery' && accessToken) {
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(accessToken);
+   if (type === 'recovery' && code) {
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
           
           if (!error) {
             setIsValidToken(true);
