@@ -27,7 +27,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check if we're on password reset page
   const isPasswordResetPage = () => {
-    return window.location.pathname === '/reset-password';
+    const isResetPage = window.location.pathname === '/reset-password';
+    console.log('🔍 AuthContext - isPasswordResetPage:', isResetPage, 'pathname:', window.location.pathname);
+    return isResetPage;
   };
 
   // Load user profile in background

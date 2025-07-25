@@ -21,11 +21,19 @@ export const ResetPassword = () => {
   const [tokens, setTokens] = useState<{ accessToken: string; refreshToken: string } | null>(null);
 
   useEffect(() => {
+    console.log('🔄 ResetPassword component mounted');
+    console.log('🔗 Current URL:', window.location.href);
+    console.log('🔗 Search params:', searchParams.toString());
+    
     // Check if we have the auth tokens in the URL
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
     
+    console.log('🔑 Access token:', accessToken ? 'present' : 'missing');
+    console.log('🔑 Refresh token:', refreshToken ? 'present' : 'missing');
+    
     if (!accessToken || !refreshToken) {
+      console.log('❌ Missing tokens, redirecting to home');
       toast({
         title: "Invalid reset link",
         description: "This password reset link is invalid or has expired.",
@@ -35,6 +43,7 @@ export const ResetPassword = () => {
       return;
     }
 
+    console.log('✅ Tokens found, storing for later use');
     // Store tokens for later use, don't set session yet
     setTokens({ accessToken, refreshToken });
   }, [searchParams, navigate, toast]);
