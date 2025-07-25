@@ -241,7 +241,10 @@ export default function BodyScanAI() {
           }
         );
         
-        poseDetectorRef.current = model;
+        poseDetectorRef.current = model;if (videoRef.current && canvasRef.current) {
+  runPoseEstimation(); // ⬅️ Start the pose drawing loop
+}
+
         setPoseDetectionReady(true);
         
         // STEP 3: MODEL LOADED DEBUG
