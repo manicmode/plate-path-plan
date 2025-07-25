@@ -23,27 +23,42 @@ const Index = () => {
       setSessionChecked(true);
     });
   }, []);
- // Handle password reset flow
+// Handle Supabase password recovery flow
 useEffect(() => {
   const type = searchParams.get('type');
   const accessToken = searchParams.get('access_token');
   const refreshToken = searchParams.get('refresh_token');
 
-  console.log('URL parameters detected:', {
+  console.log('🔍 Checking URL for recovery parameters:', {
     type,
     hasAccessToken: !!accessToken,
     hasRefreshToken: !!refreshToken,
+    currentURL: window.location.href,
     allParams: searchParams.toString()
   });
 
   if (type === 'recovery' && accessToken && refreshToken) {
-    console.log('Password recovery detected, redirecting to reset page');
-    navigate('/reset-password', {
-      state: {
-        accessToken,
-        refreshToken
-      },
-      replace: true
+    console.log('🔑 Password recovery flow detected - setting session and redirecting');
+
+    supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    }).then(({ data, error }) => {
+      if (error) {
+        console.error('❌ Error setting recovery session:', error);
+        return;
+      }
+
+      console.log('✅ Recovery session set successfully:', data.session?.user?.id);
+
+      navigate('/reset-password', {
+        replace: true,
+        state: {
+          fromRecovery: true,
+          accessToken,
+          refreshToken
+        }
+      });
     });
   }
 }, [searchParams, navigate]);
