@@ -8,35 +8,13 @@ import AuthForm from '@/components/auth/AuthForm';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const getAuthParams = () => {
-  const params = new URLSearchParams(window.location.search);
-
-  // Fallback: parse from hash if needed
-  if (!params.has("access_token") || !params.has("refresh_token")) {
-    const hash = window.location.hash;
-    const queryString = hash.includes("?") ? hash.split("?")[1] : hash.substring(1);
-    const hashParams = new URLSearchParams(queryString);
-
-    return {
-      access_token: hashParams.get("access_token"),
-      refresh_token: hashParams.get("refresh_token"),
-      type: hashParams.get("type"),
-    };
-  }
-
-  return {
-    access_token: params.get("access_token"),
-    refresh_token: params.get("refresh_token"),
-    type: params.get("type"),
-  };
-};
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [inRecoveryFlow, setInRecoveryFlow] = useState(false);
+  
   const [sessionChecked, setSessionChecked] = useState(false);
 
 
@@ -83,8 +61,8 @@ const Index = () => {
     );
   }
 
-  // Redirect to home if authenticated (but not in password reset flow)
-  if (isAuthenticated && !inRecoveryFlow && sessionChecked) {
+  // Redirect to home if authenticated
+  if (isAuthenticated && sessionChecked) {
     console.log('User authenticated, redirecting to home');
     return <Navigate to="/home" replace />;
   }
