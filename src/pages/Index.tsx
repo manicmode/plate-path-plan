@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import AuthForm from '@/components/auth/AuthForm';
 import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
