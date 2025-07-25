@@ -32,6 +32,21 @@ const Index = () => {
       navigate("/reset-password", { replace: true });
     }
   }, [searchParams, navigate]);
+useEffect(() => {
+  const { data: authListener } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      console.log("🔄 Auth event:", event);
+      if (event === "PASSWORD_RECOVERY") {
+        console.log("🔑 PASSWORD_RECOVERY detected, redirecting...");
+        navigate("/reset-password", { replace: true });
+      }
+    }
+  );
+
+  return () => {
+    authListener?.subscription.unsubscribe();
+  };
+}, [navigate]);
 
   console.log('Index component rendering:', { 
     isAuthenticated, 
