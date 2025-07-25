@@ -8,6 +8,16 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
+const getAuthParams = () => {
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return {
+    type: query.get('type') || hash.get('type'),
+    accessToken: query.get('access_token') || hash.get('access_token'),
+    refreshToken: query.get('refresh_token') || hash.get('refresh_token'),
+  };
+};
+
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,11 +34,10 @@ const ResetPassword = () => {
     console.log('🔄 ResetPassword page mounted');
     console.log('🔗 Current URL:', window.location.href);
     console.log('🔗 Search params:', searchParams.toString());
+    console.log('🔗 Hash:', window.location.hash);
     
-    // Check if we have the recovery type and auth tokens in the URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const recoveryType = searchParams.get('type');
+    // Check if we have the recovery type and auth tokens in the URL (query or hash)
+    const { type: recoveryType, accessToken, refreshToken } = getAuthParams();
     
     console.log("[RESET PAGE] type =", recoveryType);
     console.log("[RESET PAGE] access_token =", accessToken ? 'present (length: ' + accessToken.length + ')' : 'missing');

@@ -8,6 +8,16 @@ import AuthForm from '@/components/auth/AuthForm';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const getAuthParams = () => {
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return {
+    type: query.get('type') || hash.get('type'),
+    accessToken: query.get('access_token') || hash.get('access_token'),
+    refreshToken: query.get('refresh_token') || hash.get('refresh_token'),
+  };
+};
+
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
@@ -16,18 +26,18 @@ const Index = () => {
   const [inRecoveryFlow, setInRecoveryFlow] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Check for password reset flow using useSearchParams
+  // Check for password reset flow using both query params and hash params
   useEffect(() => {
-    const type = searchParams.get("type");
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
+    const { type, accessToken, refreshToken } = getAuthParams();
     
     console.log("[INDEX] Reset flow detection:", {
       type,
       hasAccessToken: !!accessToken,
       hasRefreshToken: !!refreshToken,
       currentPath: window.location.pathname,
-      fullURL: window.location.href
+      fullURL: window.location.href,
+      search: window.location.search,
+      hash: window.location.hash
     });
     
     if (type === "recovery" && accessToken && refreshToken) {
