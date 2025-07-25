@@ -14,29 +14,27 @@ export default function ResetPassword() {
   const { toast } = useToast();
   
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [isValidToken, setIsValidToken] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
 
-  const type = searchParams.get('type');
   const accessToken = searchParams.get('access_token');
-
+  const type = searchParams.get('type');
 
   useEffect(() => {
     const validateToken = async () => {
       if (type === 'recovery' && accessToken) {
         try {
-          const { error } = await supabase.auth.setSession({ 
-            access_token: accessToken, 
-            refresh_token: '' 
-          });
+          const { error } = await supabase.auth.exchangeCodeForSession(accessToken);
           
           if (!error) {
             setIsValidToken(true);
           } else {
-            console.error('Session validation error:', error);
+            console.error('Token exchange error:', error);
           }
         } catch (error) {
           console.error('Token validation failed:', error);
@@ -55,6 +53,15 @@ export default function ResetPassword() {
       toast({
         title: "Password too short",
         description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are identical.",
         variant: "destructive"
       });
       return;
@@ -190,11 +197,39 @@ export default function ResetPassword() {
                 </Button>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
             
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading || !password}
+              disabled={isLoading || !password || !confirmPassword}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update Password
