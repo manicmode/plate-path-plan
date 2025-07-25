@@ -25,6 +25,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileLoading, setProfileLoading] = ReactModule.useState(false);
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
+  // Check if we're on password reset page
+  const isPasswordResetPage = () => {
+    return window.location.pathname === '/reset-password';
+  };
+
   // Load user profile in background
   const loadExtendedProfile = async (supabaseUser: any) => {
     if (!supabaseUser) return;
@@ -103,6 +108,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
       
+      // Skip authentication during password reset flow
+      if (isPasswordResetPage()) {
+        console.log('🔐 Skipping auth state update during password reset');
+        setLoading(false);
+        return;
+      }
+
       // Update session and user immediately
       setSession(session);
       
@@ -132,6 +144,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (error) {
           console.error('Session check error:', error);
           cleanupAuthState();
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Skip session restoration during password reset
+        if (isPasswordResetPage()) {
+          console.log('🔐 Skipping session restoration during password reset');
           if (mounted) {
             setLoading(false);
           }
@@ -235,7 +256,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     session,
     loading: loading || signingOut,
-    isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
+    isAuthenticated: isPasswordResetPage() ? false : !!session?.user && !!session?.user?.email_confirmed_at,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,
