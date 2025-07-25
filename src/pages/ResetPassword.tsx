@@ -21,37 +21,31 @@ export default function ResetPassword() {
   const [isValidToken, setIsValidToken] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
 
-  // Extract code and type from URL query parameters
-const queryParams = new URLSearchParams(window.location.hash.substring(1));
-
-
-
+  // Extract code and type from URL hash parameters
+  const queryParams = new URLSearchParams(window.location.hash.substring(1));
   const code = queryParams.get('code');
   const type = queryParams.get('type');
 
- useEffect(() => {
-  const validateToken = async () => {
-    if (type === 'recovery' && accessToken && refreshToken) {
-      try {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
+  useEffect(() => {
+    const validateToken = async () => {
+      if (type === 'recovery' && code) {
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-        if (!error) {
-          setIsValidToken(true);
-        } else {
-          console.error('Token exchange error:', error);
+          if (!error) {
+            setIsValidToken(true);
+          } else {
+            console.error('Token exchange error:', error);
+          }
+        } catch (error) {
+          console.error('Token validation failed:', error);
         }
-      } catch (error) {
-        console.error('Token validation failed:', error);
       }
-    }
-    setIsValidating(false);
-  };
+      setIsValidating(false);
+    };
 
-  validateToken();
-}, [accessToken, refreshToken, type]);
+    validateToken();
+  }, [code, type]);
 
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {

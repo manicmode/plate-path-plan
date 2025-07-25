@@ -170,7 +170,8 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange(
     setUser(session?.user ?? null);
     setLoading(false);
 
-    if (event === 'SIGNED_IN' && session?.user && event !== 'PASSWORD_RECOVERY') {
+    // Don't reset session during password recovery
+    if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
       setTimeout(() => {
         loadExtendedProfile(session.user);
       }, 0);

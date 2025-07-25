@@ -24,28 +24,23 @@ const Index = () => {
     });
   }, []);
 useEffect(() => {
-  const type = searchParams.get('type');
-  const accessToken = searchParams.get('access_token');
-  const refreshToken = searchParams.get('refresh_token');
+  // Check both URL params and hash for recovery parameters
+  const type = searchParams.get('type') || new URLSearchParams(window.location.hash.substring(1)).get('type');
+  const code = searchParams.get('code') || new URLSearchParams(window.location.hash.substring(1)).get('code');
 
   console.log('🔍 Checking URL for recovery parameters:', {
     type,
-    hasAccessToken: !!accessToken,
-    hasRefreshToken: !!refreshToken,
+    hasCode: !!code,
     currentURL: window.location.href,
-    allParams: searchParams.toString()
+    searchParams: searchParams.toString(),
+    hash: window.location.hash
   });
 
-  if (type === 'recovery' && accessToken && refreshToken) {
+  if (type === 'recovery' && code) {
     console.log('🔑 Password recovery flow detected - redirecting to reset page');
 
-    navigate('/reset-password', {
-      replace: true,
-      state: {
-        fromRecovery: true,
-        accessToken,
-        refreshToken
-      }
+    navigate(`/reset-password#code=${code}&type=recovery`, {
+      replace: true
     });
   }
 }, [searchParams, navigate]);
