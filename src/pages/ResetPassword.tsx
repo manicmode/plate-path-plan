@@ -34,9 +34,9 @@ const type = queryParams.get('type');
 
   useEffect(() => {
     const validateToken = async () => {
-      if (type === 'recovery' && code) {
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+if (type === 'recovery' && access_token) {
+  const { error } = await supabase.auth.exchangeCodeForSession(access_token);
+
           if (!error) {
             setIsValidToken(true);
           } else {
