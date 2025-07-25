@@ -31,6 +31,7 @@ const Index = () => {
     
     if (type === "recovery" && accessToken && refreshToken) {
       console.log("[INDEX] Valid password recovery URL detected, navigating to reset page...");
+      setInRecoveryFlow(true);
       navigate("/reset-password", { replace: true });
     }
   }, [searchParams, navigate]);
@@ -40,6 +41,7 @@ useEffect(() => {
       console.log("🔄 Auth event:", event);
       if (event === "PASSWORD_RECOVERY") {
         console.log("🔑 PASSWORD_RECOVERY detected, redirecting...");
+        setInRecoveryFlow(true);
         navigate("/reset-password", { replace: true });
       }
     }
@@ -88,7 +90,7 @@ useEffect(() => {
   }
 
   // Redirect to home if authenticated (but not in password reset flow)
-  if (isAuthenticated) {
+  if (isAuthenticated && !inRecoveryFlow) {
     console.log('User authenticated, redirecting to home');
     return <Navigate to="/home" replace />;
   }
