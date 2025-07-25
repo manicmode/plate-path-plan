@@ -156,19 +156,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [session?.user?.id]); // Only depend on user ID, not profileLoading state
 
-  // Load extended profile when session is established (only once per session)
-  ReactModule.useEffect(() => {
-    if (session?.user && !profileLoading) {
-      try {
-        loadExtendedProfile(session.user);
-        console.log('Extended profile loading initiated once per session');
-      } catch (error) {
-        console.error('Failed to initiate profile loading:', error);
-        setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
-      }
-    }
-  }, [session?.user?.id]); // Only depend on user ID, not profileLoading state
-
   const updateProfile = (profileData: Partial<ExtendedUser>) => {
     if (user) {
       const updatedUser = { ...user, ...profileData };
