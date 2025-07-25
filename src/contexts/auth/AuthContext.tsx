@@ -108,25 +108,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // Clear any corrupted tokens before setting up auth
-    const clearCorruptedTokens = () => {
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sb-') || key.includes('supabase.auth')) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value && value.includes('"access_token"') && value.includes('403')) {
-              console.log('Removing corrupted token:', key);
-              localStorage.removeItem(key);
-            }
-          } catch (e) {
-            // Remove if we can't parse it
+    // Aggressive cleanup of all auth-related storage
+    const clearAllAuthTokens = () => {
+      console.log('🧹 Clearing all auth tokens...');
+      try {
+        // Clear all localStorage items that could contain auth tokens
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-') || 
+              key.includes('supabase') || 
+              key.includes('auth') || 
+              key.includes('session')) {
+            console.log('Removing storage key:', key);
             localStorage.removeItem(key);
           }
-        }
-      });
+        });
+        
+        // Clear sessionStorage too
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.startsWith('sb-') || 
+              key.includes('supabase') || 
+              key.includes('auth') || 
+              key.includes('session')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+        
+        // Force sign out to clear any server-side sessions
+        supabase.auth.signOut({ scope: 'global' }).catch(() => {
+          // Ignore errors during cleanup
+        });
+        
+      } catch (error) {
+        console.warn('Error during auth cleanup:', error);
+      }
     };
     
-    clearCorruptedTokens();
+    // Check for signs of auth corruption and clean if needed
+    const hasCorruptedAuth = () => {
+      try {
+        const keys = Object.keys(localStorage);
+        return keys.some(key => {
+          if (key.includes('supabase') || key.startsWith('sb-')) {
+            const value = localStorage.getItem(key);
+            return value && (value.includes('403') || value.includes('invalid_claim'));
+          }
+          return false;
+        });
+      } catch {
+        return true; // If we can't check, assume corruption
+      }
+    };
+    
+    if (hasCorruptedAuth()) {
+      console.log('🚨 Detected corrupted auth tokens, cleaning up...');
+      clearAllAuthTokens();
+      // Force page reload after cleanup to ensure fresh start
+      setTimeout(() => {
+        console.log('🔄 Forcing page reload after auth cleanup...');
+        window.location.reload();
+      }, 1000);
+      return;
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
