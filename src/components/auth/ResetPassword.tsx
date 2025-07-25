@@ -25,12 +25,26 @@ export const ResetPassword = () => {
     console.log('🔗 Current URL:', window.location.href);
     console.log('🔗 Search params:', searchParams.toString());
     
-    // Check if we have the auth tokens in the URL
+    // Check if we have the recovery type and auth tokens in the URL
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
+    const recoveryType = searchParams.get('type');
     
     console.log('🔑 Access token:', accessToken ? 'present' : 'missing');
     console.log('🔑 Refresh token:', refreshToken ? 'present' : 'missing');
+    console.log('🔑 Recovery type:', recoveryType);
+    
+    // Validate this is actually a password recovery link
+    if (recoveryType !== 'recovery') {
+      console.log('❌ Not a recovery type, redirecting to home');
+      toast({
+        title: "Invalid reset link",
+        description: "This link is not a valid password reset link.",
+        variant: "destructive",
+      });
+      navigate('/');
+      return;
+    }
     
     if (!accessToken || !refreshToken) {
       console.log('❌ Missing tokens, redirecting to home');
@@ -43,7 +57,7 @@ export const ResetPassword = () => {
       return;
     }
 
-    console.log('✅ Tokens found, storing for later use');
+    console.log('✅ Valid recovery tokens found, storing for later use');
     // Store tokens for later use, don't set session yet
     setTokens({ accessToken, refreshToken });
   }, [searchParams, navigate, toast]);
@@ -81,17 +95,31 @@ export const ResetPassword = () => {
     setIsLoading(true);
 
     try {
+      console.log('🔄 Starting password reset process');
+      
       // Set the session with the stored tokens before updating password
-      await supabase.auth.setSession({
+      const { error: sessionError } = await supabase.auth.setSession({
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
       });
 
+      if (sessionError) {
+        console.log('❌ Session error:', sessionError);
+        toast({
+          title: "Password reset failed",
+          description: "Invalid or expired reset link.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Session set, updating password');
       const { error } = await supabase.auth.updateUser({
         password: password
       });
 
       if (error) {
+        console.log('❌ Password update error:', error);
         toast({
           title: "Password reset failed",
           description: error.message,
@@ -100,6 +128,7 @@ export const ResetPassword = () => {
         return;
       }
 
+      console.log('✅ Password updated successfully');
       toast({
         title: "Password updated successfully!",
         description: "You can now sign in with your new password.",
@@ -107,9 +136,11 @@ export const ResetPassword = () => {
 
       // Sign out and redirect to login
       await supabase.auth.signOut();
+      console.log('🔄 Redirecting to login page');
       navigate('/', { replace: true });
       
     } catch (error) {
+      console.log('❌ Unexpected error:', error);
       toast({
         title: "Password reset failed",
         description: "An unexpected error occurred. Please try again.",
@@ -119,6 +150,20 @@ export const ResetPassword = () => {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while validating tokens
+  if (!tokens) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mb-4" />
+            <p className="text-muted-foreground">Validating reset link...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">

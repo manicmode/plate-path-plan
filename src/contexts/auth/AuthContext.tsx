@@ -25,11 +25,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileLoading, setProfileLoading] = ReactModule.useState(false);
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
-  // Check if we're on password reset page
-  const isPasswordResetPage = () => {
+  // Check if we're on password reset page with recovery type
+  const isPasswordResetFlow = () => {
     const isResetPage = window.location.pathname === '/reset-password';
-    console.log('🔍 AuthContext - isPasswordResetPage:', isResetPage, 'pathname:', window.location.pathname);
-    return isResetPage;
+    const params = new URLSearchParams(window.location.search);
+    const isRecovery = params.get('type') === 'recovery';
+    const hasTokens = params.has('access_token') && params.has('refresh_token');
+    
+    console.log('🔍 AuthContext - Password reset flow check:', {
+      isResetPage,
+      isRecovery,
+      hasTokens,
+      pathname: window.location.pathname,
+      searchParams: window.location.search
+    });
+    
+    return isResetPage && isRecovery && hasTokens;
   };
 
   // Load user profile in background
@@ -111,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Skip authentication during password reset flow
-      if (isPasswordResetPage()) {
+      if (isPasswordResetFlow()) {
         console.log('🔐 Skipping auth state update during password reset');
         setLoading(false);
         return;
@@ -153,7 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         // Skip session restoration during password reset
-        if (isPasswordResetPage()) {
+        if (isPasswordResetFlow()) {
           console.log('🔐 Skipping session restoration during password reset');
           if (mounted) {
             setLoading(false);
@@ -258,7 +269,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     session,
     loading: loading || signingOut,
-    isAuthenticated: isPasswordResetPage() ? false : !!session?.user && !!session?.user?.email_confirmed_at,
+    isAuthenticated: isPasswordResetFlow() ? false : !!session?.user && !!session?.user?.email_confirmed_at,
     isEmailConfirmed: !!session?.user?.email_confirmed_at,
     login: loginUser,
     register: registerUser,
