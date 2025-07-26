@@ -827,6 +827,34 @@ const Home = () => {
   const shouldReduceComplexity = isIOSSafari;
   console.log("📱 iOS Safari detected:", isIOSSafari, "Reducing complexity:", shouldReduceComplexity);
 
+  // 🔒 Safe data validation before rendering
+  try {
+    if (!progress) {
+      console.error('HOME RENDER FAIL: Progress data is null/undefined');
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">Home failed to load - missing progress data</p>
+            <Button onClick={() => window.location.reload()}>Reload</Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!selectedTrackers || selectedTrackers.length === 0) {
+      console.error('HOME RENDER FAIL: Selected trackers data is missing');
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">Home failed to load - missing tracker data</p>
+            <Button onClick={() => window.location.reload()}>Reload</Button>
+          </div>
+        </div>
+      );
+    }
+
+    console.log("✅ Data validation passed, proceeding with render");
+
   return (
     <div className={`space-y-12 sm:space-y-16 ${shouldReduceComplexity ? '' : 'animate-fade-in'}`}>
       {/* Celebration Popup */}
@@ -881,7 +909,7 @@ const Home = () => {
 
       {/* Dynamic Tracker Cards based on user selection */}
       <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} ${shouldReduceComplexity ? '' : 'animate-scale-in'} items-stretch relative z-10`}>
-        {displayedTrackers.map((tracker, index) => {
+        {displayedTrackers && displayedTrackers.length > 0 ? displayedTrackers.map((tracker, index) => {
           console.log(`📊 Rendering tracker: ${tracker.name}`);
           return (
           <div 
@@ -970,7 +998,11 @@ const Home = () => {
             </div>
           </div>
           );
-        })}
+        }) : (
+          <div className="col-span-3 text-center text-muted-foreground">
+            No trackers selected
+          </div>
+        )}
       </div>
 
       {/* Enhanced Logging Actions Section with proper spacing */}
@@ -1023,7 +1055,7 @@ const Home = () => {
 
                 {/* Quick Suggestions - Full width clickable blocks */}
                 <div className={`grid grid-cols-1 ${isMobile ? 'gap-2' : 'gap-3'}`}>
-                  {quickLogSuggestions.map((item) => (
+                  {quickLogSuggestions && quickLogSuggestions.length > 0 ? quickLogSuggestions.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => handleQuickLog(item)}
@@ -1054,7 +1086,11 @@ const Home = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center text-muted-foreground p-4">
+                      No quick log suggestions available
+                    </div>
+                  )}
                 </div>
 
                 {/* Increased spacing before expand toggle */}
@@ -1090,7 +1126,7 @@ const Home = () => {
                     Recent & Saved Logs
                   </h5>
                   <div className="space-y-2">
-                    {recentLogs.map((item) => (
+                    {recentLogs && recentLogs.length > 0 ? recentLogs.map((item) => (
                       <div
                         key={item.id}
                         onClick={() => handleQuickLog(item)}
@@ -1119,7 +1155,11 @@ const Home = () => {
                           <span className="text-xs font-medium">Tap to log</span>
                         </div>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="text-center text-muted-foreground p-4">
+                        No recent logs available
+                      </div>
+                    )}
                   </div>
                 </div>
               </CollapsibleContent>
@@ -1406,7 +1446,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
-                {macroCards.map((macro, index) => {
+                {macroCards && macroCards.length > 0 ? macroCards.map((macro, index) => {
                   const percentage = Math.min((macro.current / macro.target) * 100, 100);
                   const Icon = macro.icon;
                   
@@ -1472,7 +1512,11 @@ const Home = () => {
                       </CardContent>
                     </Card>
                   );
-                })}
+                }) : (
+                  <div className="col-span-2 text-center text-muted-foreground">
+                    No macro data available
+                  </div>
+                )}
               </div>
             </div>
             
@@ -1522,7 +1566,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
-                {micronutrientCards.map((micro, index) => {
+                {micronutrientCards && micronutrientCards.length > 0 ? micronutrientCards.map((micro, index) => {
                   const percentage = Math.min((micro.current / micro.target) * 100, 100);
                   const Icon = micro.icon;
                   
@@ -1564,7 +1608,11 @@ const Home = () => {
                       </CardContent>
                     </Card>
                   );
-                })}
+                }) : (
+                  <div className="col-span-2 text-center text-muted-foreground">
+                    No micronutrient data available
+                  </div>
+                )}
               </div>
             </div>
             
@@ -1615,7 +1663,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
-                {realToxinData.map((item, index) => {
+                {realToxinData && realToxinData.length > 0 ? realToxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
@@ -1667,7 +1715,11 @@ const Home = () => {
                       </CardContent>
                     </Card>
                   );
-                })}
+                }) : (
+                  <div className="col-span-2 text-center text-muted-foreground">
+                    No toxin data available
+                  </div>
+                )}
               </div>
             </div>
             
@@ -1755,7 +1807,7 @@ const Home = () => {
               },
             ];
 
-            return exploreTiles.map((tile) => {
+            return exploreTiles && exploreTiles.length > 0 ? exploreTiles.map((tile) => {
               const handleTileClick = (tileId: string) => {
                 if (tileId === 'supplement-hub') {
                   navigate('/supplement-hub');
@@ -1810,7 +1862,11 @@ const Home = () => {
                 </span>
               </Button>
             );
-            });
+            }) : (
+              <div className="text-center text-muted-foreground p-4">
+                No explore tiles available
+              </div>
+            );
           })()}
         </div>
       </div>
@@ -1855,6 +1911,20 @@ const Home = () => {
     </div>
   );
   {(() => { console.log("✅ Home component render complete!"); return null; })()}
+  
+  } catch (error) {
+    console.error('HOME RENDER FAIL', error);
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="text-red-500 text-2xl mb-4">⚠️</div>
+          <p className="text-muted-foreground">Home failed to load</p>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </div>
+      </div>
+    );
+  }
 };
 
 export default Home;
