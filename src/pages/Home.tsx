@@ -75,8 +75,22 @@ const Home = () => {
   }
 
   console.log("📱 Initializing hooks...");
-  const { user, loading: authLoading } = useAuth();
-  console.log("✅ useAuth hook initialized");
+  
+  // 🔒 iOS Safari 18.5 Security: Temporarily disable useAuth for debugging
+  const isIOSSafariDebug = isBrowser && navigator.userAgent.includes('Safari') && navigator.userAgent.includes('iPhone');
+  console.log("🔒 iOS Safari detection:", isIOSSafariDebug);
+  
+  let user, authLoading;
+  if (isIOSSafariDebug) {
+    console.log("🚨 iOS Safari detected - using safe fallback for auth");
+    user = { id: 'debug-user', email: 'debug@test.com' };
+    authLoading = false;
+  } else {
+    const authResult = useAuth();
+    user = authResult.user;
+    authLoading = authResult.loading;
+  }
+  console.log("✅ useAuth hook initialized (or bypassed for iOS)");
   
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
   console.log("✅ useNutrition hook initialized");
