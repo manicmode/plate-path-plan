@@ -13,6 +13,54 @@ interface SoundConfig {
   preload?: boolean;
 }
 
+interface MobileAudioDiagnostics {
+  isMobile: boolean;
+  platform: string;
+  userAgent: string;
+  browser: string;
+  isPWA: boolean;
+  isIOS: boolean;
+  isAndroid: boolean;
+  isIOSSafari: boolean;
+}
+
+// Mobile environment detection utilities
+const getMobileEnvironment = (): MobileAudioDiagnostics => {
+  const userAgent = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(userAgent);
+  const isMobile = isIOS || isAndroid || /Mobile|Tablet/.test(userAgent);
+  
+  let browser = 'Unknown';
+  if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+    browser = 'Safari';
+  } else if (userAgent.includes('Chrome')) {
+    browser = 'Chrome';
+  } else if (userAgent.includes('Firefox')) {
+    browser = 'Firefox';
+  } else if (userAgent.includes('Edge')) {
+    browser = 'Edge';
+  }
+  
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                (window.navigator as any).standalone === true;
+  
+  const isIOSSafari = isIOS && browser === 'Safari';
+  
+  return {
+    isMobile,
+    platform,
+    userAgent,
+    browser,
+    isPWA,
+    isIOS,
+    isAndroid,
+    isIOSSafari
+  };
+};
+
 class SoundManager {
   private audioCache: AudioCache = {};
   private isEnabled: boolean = true;
@@ -20,6 +68,7 @@ class SoundManager {
   private audioContext: AudioContext | null = null;
   private hasUserInteracted: boolean = false;
   private initializationPromise: Promise<void> | null = null;
+  private mobileEnv: MobileAudioDiagnostics;
   
   // Sound file configuration
   private sounds: Record<string, SoundConfig> = {
@@ -71,6 +120,26 @@ class SoundManager {
   };
 
   constructor() {
+    // Initialize mobile environment detection
+    this.mobileEnv = getMobileEnvironment();
+    
+    // Log mobile debugging initialization
+    console.log('🔍 Mobile Sound Debugging Enabled');
+    console.log('📱 Mobile Environment:', {
+      isMobile: this.mobileEnv.isMobile,
+      platform: this.mobileEnv.platform,
+      browser: this.mobileEnv.browser,
+      isIOS: this.mobileEnv.isIOS,
+      isAndroid: this.mobileEnv.isAndroid,
+      isIOSSafari: this.mobileEnv.isIOSSafari,
+      isPWA: this.mobileEnv.isPWA,
+      userAgent: this.mobileEnv.userAgent.substring(0, 100) + '...' // Truncate for readability
+    });
+    
+    if (this.mobileEnv.isIOSSafari) {
+      console.log('🚫 iOS Safari detected - autoplay restrictions likely active');
+    }
+    
     this.loadUserPreferences();
     this.setupUserInteractionListener();
     // Don't preload immediately - wait for user interaction
@@ -88,10 +157,30 @@ class SoundManager {
    * Setup user interaction listener for mobile compatibility
    */
   private setupUserInteractionListener(): void {
-    const handleFirstInteraction = () => {
-      console.log('🔊 First user interaction detected, initializing audio system');
+    const handleFirstInteraction = (event: Event) => {
+      const eventType = event.type;
+      const timestamp = new Date().toISOString();
+      
+      console.log(`🤚 User interaction detected: ${eventType} at ${timestamp}`);
+      console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
+      
       this.hasUserInteracted = true;
-      this.initializeAudioSystem();
+      console.log('✅ hasUserInteracted set to true - audio unlock triggered');
+      
+      this.initializeAudioSystem().then(() => {
+        console.log('🔓 Audio system unlocked via user interaction');
+        
+        // Check if audio context is active after interaction
+        if (this.audioContext) {
+          if (this.audioContext.state === 'running') {
+            console.log('✅ AudioContext is running after user interaction');
+          } else {
+            console.log(`⚠️ AudioContext state after interaction: ${this.audioContext.state}`);
+          }
+        }
+      }).catch((error) => {
+        console.warn('❌ Audio system initialization failed after user interaction:', error);
+      });
       
       // Remove listeners after first interaction
       document.removeEventListener('click', handleFirstInteraction);
@@ -99,6 +188,7 @@ class SoundManager {
       document.removeEventListener('keydown', handleFirstInteraction);
     };
 
+    console.log('🎯 Setting up user interaction listeners for audio unlock');
     document.addEventListener('click', handleFirstInteraction, { passive: true });
     document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
     document.addEventListener('keydown', handleFirstInteraction, { passive: true });
@@ -121,21 +211,53 @@ class SoundManager {
    */
   private async performInitialization(): Promise<void> {
     try {
+      console.log('🔄 Starting audio system initialization...');
+      
       // Initialize AudioContext for better mobile support
       if (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined') {
         this.audioContext = new (AudioContext || (window as any).webkitAudioContext)();
+        console.log(`🔊 AudioContext created - initial state: ${this.audioContext.state}`);
+        
+        // Add state change listener for monitoring
+        this.audioContext.onstatechange = () => {
+          const timestamp = new Date().toISOString();
+          console.log(`🔄 AudioContext state changed to: ${this.audioContext?.state} at ${timestamp}`);
+          console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform}`);
+          
+          if (this.audioContext?.state === 'suspended' && this.mobileEnv.isMobile) {
+            console.log('⚠️ AudioContext suspended on mobile - autoplay policy or tab switch detected');
+          }
+        };
         
         // Resume AudioContext if it's suspended (common on mobile)
         if (this.audioContext.state === 'suspended') {
+          const timestamp = new Date().toISOString();
+          console.log(`🔄 Resuming AudioContext at ${timestamp} - current state: ${this.audioContext.state}`);
+          console.log(`📱 Mobile context: ${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'} ${this.mobileEnv.browser}`);
+          
           await this.audioContext.resume();
+          
+          console.log(`✅ AudioContext resumed - final state: ${this.audioContext.state}`);
+          
+          if (this.audioContext.state === 'suspended' || this.audioContext.state === 'closed') {
+            console.log('❌ AudioContext failed to resume - mobile audio policy block likely');
+            if (this.mobileEnv.isIOSSafari) {
+              console.log('🚫 iOS Safari autoplay restriction confirmed');
+            }
+          }
+        } else {
+          console.log(`✅ AudioContext already in state: ${this.audioContext.state}`);
         }
+      } else {
+        console.warn('❌ AudioContext not available in this browser');
       }
 
       // Preload sounds after initialization
       await this.preloadSounds();
       console.log('🔊 Audio system initialization complete');
     } catch (error) {
-      console.warn('🔊 Audio system initialization failed:', error);
+      console.warn('❌ Audio system initialization failed:', error);
+      console.log(`📱 Failed on: ${this.mobileEnv.browser} ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
     }
   }
 
@@ -177,23 +299,54 @@ class SoundManager {
    */
   private async loadSound(key: string, config: SoundConfig): Promise<HTMLAudioElement> {
     if (this.audioCache[key]) {
+      console.log(`♻️ Sound already cached: ${key}`);
       return this.audioCache[key];
     }
+
+    console.log(`🎵 Loading sound: ${key} from ${config.url}`);
+    console.log(`📱 Loading on: ${this.mobileEnv.browser} ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
 
     return new Promise((resolve, reject) => {
       const audio = new Audio();
       audio.volume = config.volume || 0.7;
       audio.preload = 'auto';
       
+      // Set up timeout for loading
+      const loadTimeout = setTimeout(() => {
+        console.log(`⚠️ Timeout loading ${key} after 10 seconds on ${this.mobileEnv.browser}`);
+        reject(new Error(`Timeout loading ${key}`));
+      }, 10000);
+      
       audio.addEventListener('canplaythrough', () => {
-        console.log(`✅ Loaded sound: ${key}`);
+        clearTimeout(loadTimeout);
+        console.log(`✅ Loaded: ${key} on ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+        
+        if (this.mobileEnv.isMobile) {
+          console.log(`📱 Mobile sound ready: ${key} - canplaythrough fired successfully`);
+        }
+        
         this.audioCache[key] = audio;
         resolve(audio);
       });
 
       audio.addEventListener('error', (e) => {
-        console.warn(`Failed to load sound: ${key}`, e);
+        clearTimeout(loadTimeout);
+        console.log(`❌ Failed to load: ${key} on ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+        console.warn(`Error details:`, e);
+        
+        if (this.mobileEnv.isMobile) {
+          console.log(`📱 Mobile audio load error for ${key}:`, e);
+        }
+        
         reject(e);
+      });
+
+      audio.addEventListener('loadstart', () => {
+        console.log(`🔄 Started loading: ${key}`);
+      });
+
+      audio.addEventListener('loadeddata', () => {
+        console.log(`📥 Data loaded for: ${key}`);
       });
 
       audio.src = config.url;
@@ -204,10 +357,13 @@ class SoundManager {
    * Play a sound by key
    */
   async play(soundKey: string): Promise<void> {
-    console.log(`🔊 SoundManager.play("${soundKey}") - enabled: ${this.isEnabled}, hasUserInteracted: ${this.hasUserInteracted}`);
+    const timestamp = new Date().toISOString();
+    console.log(`🔊 SoundManager.play("${soundKey}") at ${timestamp}`);
+    console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
+    console.log(`🎯 Status: enabled=${this.isEnabled}, hasUserInteracted=${this.hasUserInteracted}, AudioContext=${this.audioContext?.state || 'none'}`);
     
     if (!this.isEnabled) {
-      console.log('🔊 SoundManager: Sound disabled');
+      console.log('🔊 SoundManager: Sound disabled by user preference');
       return;
     }
 
@@ -220,9 +376,17 @@ class SoundManager {
 
     // Wait for user interaction on mobile
     if (!this.hasUserInteracted) {
-      console.log(`🔊 Waiting for user interaction before playing: ${soundKey}`);
+      console.log(`🔊 Waiting for user interaction before playing: ${soundKey} on ${this.mobileEnv.browser}`);
+      if (this.mobileEnv.isMobile) {
+        console.log('📱 Mobile device requires user interaction for audio playback');
+      }
       return;
     }
+
+    // Log first sound play attempt for debugging
+    console.log(`🎵 First sound play attempt for session - ${soundKey}`);
+    console.log(`📊 Audio Status: hasUserInteracted=${this.hasUserInteracted}, AudioContext=${this.audioContext?.state || 'none'}`);
+    console.log(`📱 Device Info: ${this.mobileEnv.browser} ${this.mobileEnv.platform} (PWA: ${this.mobileEnv.isPWA})`);
 
     // Ensure audio system is initialized
     if (!this.initializationPromise) {
@@ -234,7 +398,7 @@ class SoundManager {
     try {
       const config = this.sounds[soundKey];
       if (!config) {
-        console.warn(`Sound not found: ${soundKey}`);
+        console.warn(`❌ Sound configuration not found: ${soundKey}`);
         return;
       }
 
@@ -242,30 +406,82 @@ class SoundManager {
       
       // Load sound if not cached
       if (!audio) {
+        console.log(`🔄 Sound not cached, loading: ${soundKey}`);
         audio = await this.loadSound(soundKey, config);
       }
 
-      // Reset audio to beginning and play
+      // Reset audio to beginning
       audio.currentTime = 0;
       
-      // Resume AudioContext if suspended (important for mobile)
+      // Resume AudioContext if suspended (critical for mobile)
       if (this.audioContext && this.audioContext.state === 'suspended') {
+        console.log(`🔄 Resuming AudioContext before playing ${soundKey} - current state: ${this.audioContext.state}`);
+        console.log(`📱 Mobile context: ${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'} ${this.mobileEnv.browser}`);
+        
         await this.audioContext.resume();
+        
+        console.log(`✅ AudioContext resumed - final state: ${this.audioContext.state}`);
+        
+        if (this.audioContext.state === 'suspended' || this.audioContext.state === 'closed') {
+          console.log(`❌ AudioContext failed to resume - state: ${this.audioContext.state}`);
+          if (this.mobileEnv.isIOSSafari) {
+            console.log('🚫 iOS Safari autoplay restriction likely blocking AudioContext resume');
+          }
+        }
       }
       
-      // Use a promise to handle potential autoplay restrictions
+      // Log play attempt with full context
+      console.log(`▶️ Attempting to play: ${soundKey} on ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+      console.log(`🎵 AudioContext state: ${this.audioContext?.state || 'none'}`);
+      
+      // Use a promise to handle potential autoplay restrictions with comprehensive monitoring
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
-        await playPromise;
-        console.log(`🔊 Successfully played: ${soundKey}`);
-      }
-    } catch (error) {
-      // Handle autoplay restrictions and other errors gracefully
-      if (error.name === 'NotAllowedError') {
-        console.log(`🔊 Sound play blocked by browser policy: ${soundKey}`);
+        try {
+          await playPromise;
+          console.log(`▶️ Played sound: ${soundKey} on ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+          console.log(`✅ Play promise resolved successfully - AudioContext: ${this.audioContext?.state || 'none'}`);
+          
+          if (this.mobileEnv.isMobile) {
+            console.log(`📱 Mobile sound playback successful: ${soundKey}`);
+          }
+        } catch (playError: any) {
+          console.log(`❌ Play failed: ${soundKey} on ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+          console.log(`❌ Play promise rejected:`, playError);
+          
+          if (playError.name === 'NotAllowedError') {
+            console.log(`🚫 NotAllowedError: Browser autoplay policy blocked ${soundKey}`);
+            if (this.mobileEnv.isIOSSafari) {
+              console.log('🚫 iOS Safari autoplay restriction confirmed');
+            } else if (this.mobileEnv.isMobile) {
+              console.log('📱 Mobile browser autoplay policy active');
+            }
+          } else if (playError.name === 'AbortError') {
+            console.log(`⏹️ AbortError: Sound playback interrupted for ${soundKey}`);
+          } else {
+            console.log(`❓ Unknown play error for ${soundKey}:`, playError.name, playError.message);
+          }
+          
+          // Log fallback attempt info
+          console.log(`❌ Mobile sound failed for ${soundKey} - reason: ${playError.name}`);
+          throw playError;
+        }
       } else {
-        console.warn(`🔊 Sound play failed: ${soundKey}`, error);
+        console.log(`⚠️ Play promise is undefined for ${soundKey} - older browser behavior`);
+      }
+    } catch (error: any) {
+      // Handle autoplay restrictions and other errors gracefully
+      console.log(`❌ Sound system error for ${soundKey}:`, error);
+      console.log(`📱 Error on: ${this.mobileEnv.browser} ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
+      
+      if (error.name === 'NotAllowedError') {
+        console.log(`🚫 Browser policy blocked sound: ${soundKey}`);
+        if (this.mobileEnv.isMobile) {
+          console.log('📱 Mobile autoplay restriction detected');
+        }
+      } else {
+        console.warn(`❌ Unexpected sound error: ${soundKey}`, error);
       }
     }
   }
@@ -313,14 +529,76 @@ class SoundManager {
   }
 
   /**
-   * Get audio system status for debugging
+   * Get audio system status for debugging (enhanced with mobile diagnostics)
    */
-  getStatus(): { enabled: boolean; hasUserInteracted: boolean; audioContextState?: string; cachedSounds: number } {
+  getStatus(): { 
+    enabled: boolean; 
+    hasUserInteracted: boolean; 
+    audioContextState?: string; 
+    cachedSounds: number;
+    mobileEnvironment: MobileAudioDiagnostics;
+    loadedSounds: string[];
+  } {
     return {
       enabled: this.isEnabled,
       hasUserInteracted: this.hasUserInteracted,
       audioContextState: this.audioContext?.state,
-      cachedSounds: Object.keys(this.audioCache).length
+      cachedSounds: Object.keys(this.audioCache).length,
+      mobileEnvironment: this.mobileEnv,
+      loadedSounds: Object.keys(this.audioCache)
+    };
+  }
+
+  /**
+   * Get comprehensive mobile audio diagnostics for debugging
+   */
+  getMobileAudioDiagnostics(): {
+    environment: MobileAudioDiagnostics;
+    audioSystem: {
+      contextState: string | undefined;
+      hasUserInteracted: boolean;
+      isEnabled: boolean;
+      cachedSounds: number;
+      loadedSounds: string[];
+    };
+    potentialIssues: string[];
+  } {
+    const potentialIssues: string[] = [];
+    
+    if (this.mobileEnv.isMobile && !this.hasUserInteracted) {
+      potentialIssues.push('Mobile device requires user interaction for audio');
+    }
+    
+    if (this.mobileEnv.isIOSSafari) {
+      potentialIssues.push('iOS Safari has strict autoplay restrictions');
+    }
+    
+    if (this.audioContext?.state === 'suspended') {
+      potentialIssues.push('AudioContext is suspended - likely due to mobile policy');
+    }
+    
+    if (this.audioContext?.state === 'closed') {
+      potentialIssues.push('AudioContext is closed - audio system non-functional');
+    }
+    
+    if (!this.isEnabled) {
+      potentialIssues.push('Sound system disabled by user preference');
+    }
+    
+    if (Object.keys(this.audioCache).length === 0 && this.hasUserInteracted) {
+      potentialIssues.push('No sounds loaded despite user interaction');
+    }
+    
+    return {
+      environment: this.mobileEnv,
+      audioSystem: {
+        contextState: this.audioContext?.state,
+        hasUserInteracted: this.hasUserInteracted,
+        isEnabled: this.isEnabled,
+        cachedSounds: Object.keys(this.audioCache).length,
+        loadedSounds: Object.keys(this.audioCache)
+      },
+      potentialIssues
     };
   }
 
@@ -328,8 +606,12 @@ class SoundManager {
    * Force initialization (useful for testing)
    */
   async forceInitialize(): Promise<void> {
+    console.log('🔧 Force initializing audio system for testing...');
     this.hasUserInteracted = true;
     await this.initializeAudioSystem();
+    
+    const diagnostics = this.getMobileAudioDiagnostics();
+    console.log('📊 Force initialization complete - diagnostics:', diagnostics);
   }
 }
 

@@ -7,7 +7,8 @@ interface SoundContextType {
   isEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
   playSound: (soundKey: string) => Promise<void>;
-  getAudioStatus: () => { enabled: boolean; hasUserInteracted: boolean; audioContextState?: string; cachedSounds: number };
+  getAudioStatus: () => any;
+  getMobileAudioDiagnostics: () => any;
   forceInitialize: () => Promise<void>;
   // Convenience methods for specific sounds
   playAIThought: () => Promise<void>;
@@ -75,6 +76,10 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
     return soundManager.getStatus();
   };
 
+  const getMobileAudioDiagnostics = () => {
+    return soundManager.getMobileAudioDiagnostics();
+  };
+
   const forceInitialize = async () => {
     try {
       await soundManager.forceInitialize();
@@ -104,6 +109,7 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
     setSoundEnabled,
     playSound,
     getAudioStatus,
+    getMobileAudioDiagnostics,
     forceInitialize,
     playAIThought,
     playBodyScanCapture,
