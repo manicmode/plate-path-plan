@@ -115,16 +115,11 @@ class SoundManager {
   
   private setupUserInteractionListeners(): void {
     const interactionHandler = async (event: Event) => {
-      // Mobile compatibility: Check and resume AudioContext on every interaction
-      if (this.audioContext && this.audioContext.state === 'suspended') {
-        console.log('🔊 [SoundManager] 📱 Mobile AudioContext suspended, resuming on interaction');
-        const beforeState = this.audioContext.state;
-        await this.audioContext.resume();
-        const afterState = this.audioContext.state;
-        this.logStateChange('mobile_resume', `AudioContext: ${beforeState} → ${afterState}`);
+      if (this.hasUserInteracted) {
+        // Only resume AudioContext if it's suspended and we're about to play a sound
+        // Don't resume on every click to avoid false audio triggers
+        return;
       }
-      
-      if (this.hasUserInteracted) return;
       
       this.logStateChange('user_interaction', `Detected: ${event.type}`);
       await this.activateAudioSystemOnInteraction();
