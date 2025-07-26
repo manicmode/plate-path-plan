@@ -50,6 +50,7 @@ const loadUserPreferences = () => {
 };
 
 const Home = () => {
+  console.log("🏠 Starting Home component render...");
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
   const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useRealHydrationData();
@@ -687,9 +688,12 @@ const Home = () => {
     );
   }
 
+  console.log("🏠 Home component: Starting main render...");
+
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
       {/* Celebration Popup */}
+      {(() => { console.log("🎉 Rendering Celebration Popup"); return null; })()}
       <CelebrationPopup 
         show={showCelebration} 
         message={celebrationType}
@@ -697,6 +701,7 @@ const Home = () => {
       />
 
       {/* Food Confirmation Card */}
+      {(() => { console.log("🍽️ Rendering Food Confirmation Card"); return null; })()}
       <FoodConfirmationCard
         isOpen={showConfirmationCard}
         onClose={() => {
@@ -708,6 +713,7 @@ const Home = () => {
       />
 
       {/* Exercise Log Form */}
+      {(() => { console.log("🏃 Rendering Exercise Log Form"); return null; })()}
       <ExerciseLogForm
         isOpen={showExerciseForm}
         onClose={() => setShowExerciseForm(false)}
@@ -715,12 +721,14 @@ const Home = () => {
       />
 
       {/* Exercise Reminder Form */}
+      {(() => { console.log("⏰ Rendering Exercise Reminder Form"); return null; })()}
       <ExerciseReminderForm
         isOpen={showExerciseReminder}
         onClose={() => setShowExerciseReminder(false)}
       />
 
       {/* Enhanced Greeting Section */}
+      {(() => { console.log("👋 Rendering Home Header Greeting Section"); return null; })()}
       <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
         <div className="inline-block">
           <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
@@ -826,9 +834,11 @@ const Home = () => {
       </div>
 
       {/* Enhanced Logging Actions Section with proper spacing */}
+      {(() => { console.log("🎬 Rendering Enhanced Logging Actions Section"); return null; })()}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         {/* Primary Action: Log Food - Full Width */}
-        <Card 
+        {(() => { console.log("📸 Rendering Primary Action: Log Food Card"); return null; })()}
+        <Card
           className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
           onClick={() => navigate('/camera')}
         >
@@ -850,6 +860,7 @@ const Home = () => {
         </Card>
 
         {/* Smart Quick-Log Dropdown Section - Same width as Log Food button */}
+        {(() => { console.log("⚡ Rendering Smart Quick-Log Dropdown Section"); return null; })()}
         <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
           <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
             <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
@@ -977,6 +988,7 @@ const Home = () => {
         </Collapsible>
 
         {/* Secondary Actions: Hydration & Supplements */}
+        {(() => { console.log("💧 Rendering Secondary Actions: Hydration & Supplements"); return null; })()}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
           {/* Enhanced Hydration Action Card */}
           <Card 
@@ -1336,6 +1348,7 @@ const Home = () => {
       </div>
 
       {/* Fancy Separator Line */}
+      {(() => { console.log("🥗 Rendering Nutrients Separator Line"); return null; })()}
       <div className="flex items-center justify-center px-4 sm:px-8 my-8">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4">
@@ -1427,6 +1440,7 @@ const Home = () => {
       </div>
 
       {/* Fancy Separator Line */}
+      {(() => { console.log("🧪 Rendering Toxins Separator Line"); return null; })()}
       <div className="flex items-center justify-center px-4 sm:px-8 my-8">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4">
@@ -1438,6 +1452,7 @@ const Home = () => {
       </div>
 
       {/* Toxins & Flags Section - Collapsible */}
+      {(() => { console.log("🚨 Rendering Toxins & Flags Section"); return null; })()}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         <Collapsible open={isToxinsExpanded} onOpenChange={setIsToxinsExpanded}>
           <CollapsibleTrigger asChild>
@@ -1539,6 +1554,7 @@ const Home = () => {
       </div>
 
       {/* Explore Tiles Section */}
+      {(() => { console.log("🎯 Rendering Explore Tiles Section"); return null; })()}
       <div className="flex-1 flex flex-col px-2 sm:px-4">
         <div className="flex-1 grid grid-cols-2 gap-4">
           {(() => {
@@ -1660,6 +1676,7 @@ const Home = () => {
       </div>
 
       {/* Tracker Insights Popup */}
+      {(() => { console.log("📈 Rendering Tracker Insights Popup"); return null; })()}
       {selectedTracker && (
         <TrackerInsightsPopup
           isOpen={isInsightsOpen}
@@ -1671,12 +1688,14 @@ const Home = () => {
       )}
 
       {/* Health Check Modal */}
+      {(() => { console.log("❤️ Rendering Health Check Modal"); return null; })()}
       <HealthCheckModal 
         isOpen={isHealthCheckOpen} 
         onClose={() => setIsHealthCheckOpen(false)} 
       />
       
       {/* Development Test Components */}
+      {(() => { console.log("🛠️ Rendering Development Test Components"); return null; })()}
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-8 space-y-6">
           <CoachCtaDemo />
@@ -1685,6 +1704,7 @@ const Home = () => {
       )}
       
       {/* Coming Soon Popup */}
+      {(() => { console.log("🚀 Rendering Coming Soon Popup"); return null; })()}
       <ComingSoonPopup 
         isOpen={isComingSoonOpen} 
         onClose={() => setIsComingSoonOpen(false)}
@@ -1692,6 +1712,7 @@ const Home = () => {
       />
     </div>
   );
+  {(() => { console.log("✅ Home component render complete!"); return null; })()}
 };
 
 export default Home;
