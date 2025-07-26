@@ -21,7 +21,7 @@ export const useMilestoneTracker = () => {
   const { playProgressUpdate } = useSound();
   
   // Track which milestones have already triggered sounds (session-only)
-  const triggeredSoundMilestones = useRef<string[]>([]);
+  const triggeredMilestones = useRef<Set<string>>(new Set());
   
   const [milestoneState, setMilestoneState] = useState<MilestoneState>(() => {
     try {
@@ -88,18 +88,18 @@ export const useMilestoneTracker = () => {
     if (newMilestones.length > 0) {
       // Check if any of these milestones are truly new (haven't triggered sound before)
       const milestonesNeedingSound = newMilestones.filter(milestone => {
-        const milestoneKey = milestone.split('_').slice(0, 3).join('_'); // e.g., "nutrition_streak_5"
-        return !triggeredSoundMilestones.current.includes(milestoneKey);
+        const milestoneId = milestone.split('_').slice(0, 3).join('_'); // e.g., "nutrition_streak_5"
+        return !triggeredMilestones.current.has(milestoneId);
       });
 
       // Only play sound if there are milestones that haven't triggered sound before
       if (milestonesNeedingSound.length > 0) {
         const milestoneIds = milestonesNeedingSound.map(milestone => milestone.split('_').slice(0, 3).join('_'));
-        console.log("✅ New milestone hit, playing sound:", milestoneIds);
+        console.log("✅ Milestone triggered for sound:", milestoneIds);
         playProgressUpdate();
         
         // Add to triggered sound milestones (session-only)
-        triggeredSoundMilestones.current = [...triggeredSoundMilestones.current, ...milestoneIds];
+        milestoneIds.forEach(id => triggeredMilestones.current.add(id));
       }
       
       const newState = {
