@@ -7,7 +7,6 @@ interface MilestoneState {
   lastCheckedHydrationStreak: number;
   lastCheckedSupplementStreak: number;
   recentMilestones: string[];
-  lastSoundTriggeredFor: string[]; // Track which milestones already triggered sounds
 }
 
 const MILESTONE_STORAGE_KEY = 'milestone_tracker_state';
@@ -20,6 +19,9 @@ const MILESTONE_EXPIRY_HOURS = 24; // Clear recent milestones after 24 hours
 export const useMilestoneTracker = () => {
   const { userStreaks } = useBadges();
   const { playProgressUpdate } = useSound();
+  
+  // Track which milestones have already triggered sounds (session-only)
+  const triggeredSoundMilestones = useRef<string[]>([]);
   
   const [milestoneState, setMilestoneState] = useState<MilestoneState>(() => {
     try {
@@ -35,8 +37,7 @@ export const useMilestoneTracker = () => {
         
         return {
           ...parsed,
-          recentMilestones: validMilestones,
-          lastSoundTriggeredFor: parsed.lastSoundTriggeredFor || []
+          recentMilestones: validMilestones
         };
       }
     } catch (error) {
@@ -47,8 +48,7 @@ export const useMilestoneTracker = () => {
       lastCheckedNutritionStreak: 0,
       lastCheckedHydrationStreak: 0,
       lastCheckedSupplementStreak: 0,
-      recentMilestones: [],
-      lastSoundTriggeredFor: []
+      recentMilestones: []
     };
   });
 
@@ -89,24 +89,24 @@ export const useMilestoneTracker = () => {
       // Check if any of these milestones are truly new (haven't triggered sound before)
       const milestonesNeedingSound = newMilestones.filter(milestone => {
         const milestoneKey = milestone.split('_').slice(0, 3).join('_'); // e.g., "nutrition_streak_5"
-        return !milestoneState.lastSoundTriggeredFor.includes(milestoneKey);
+        return !triggeredSoundMilestones.current.includes(milestoneKey);
       });
 
       // Only play sound if there are milestones that haven't triggered sound before
       if (milestonesNeedingSound.length > 0) {
-        console.log("✅ New milestone hit, playing sound");
+        const milestoneIds = milestonesNeedingSound.map(milestone => milestone.split('_').slice(0, 3).join('_'));
+        console.log("✅ New milestone hit, playing sound:", milestoneIds);
         playProgressUpdate();
+        
+        // Add to triggered sound milestones (session-only)
+        triggeredSoundMilestones.current = [...triggeredSoundMilestones.current, ...milestoneIds];
       }
       
       const newState = {
         lastCheckedNutritionStreak: Math.max(currentNutrition, milestoneState.lastCheckedNutritionStreak),
         lastCheckedHydrationStreak: Math.max(currentHydration, milestoneState.lastCheckedHydrationStreak),
         lastCheckedSupplementStreak: Math.max(currentSupplement, milestoneState.lastCheckedSupplementStreak),
-        recentMilestones: [...milestoneState.recentMilestones, ...newMilestones],
-        lastSoundTriggeredFor: [
-          ...milestoneState.lastSoundTriggeredFor,
-          ...milestonesNeedingSound.map(milestone => milestone.split('_').slice(0, 3).join('_'))
-        ]
+        recentMilestones: [...milestoneState.recentMilestones, ...newMilestones]
       };
 
       setMilestoneState(newState);
