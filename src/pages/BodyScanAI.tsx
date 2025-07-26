@@ -279,132 +279,57 @@ export default function BodyScanAI() {
   // Clean pose detection loop with debug logging
   useEffect(() => {
     const detectPoseRealTime = async () => {
-      // STEP 1: VIDEO DEBUG CHECK
-      console.log("[VIDEO]", videoRef.current);
-      if (videoRef.current?.readyState !== 4) {
-        console.log("[VIDEO] Not ready", videoRef.current?.readyState);
-        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
-        return;
-      }
-      
-      // STEP 8: VIDEO STREAM DIMENSIONS
-      console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
-      
-      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
-        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
-        return;
-      }
-
       const video = videoRef.current;
-      const overlayCanvas = overlayCanvasRef.current;
-
-      // Check if video is actually playing
-      if (video.paused || video.currentTime === 0) {
-        console.warn('[POSE] Video not playing');
+      if (!video || video.readyState < 2) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
       }
 
-      // STEP 2: ANIMATION LOOP DEBUG
-      console.log("[LOOP] Running frame", Date.now());
+      if (!poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
 
       try {
-        console.log('[POSE FRAME] Attempting pose detection...');
-        
-        // STEP 9: CONFIRM MODEL INFERENCE
-        console.log("[ESTIMATE] About to run estimatePoses");
-        
-        // Use canvas to extract a real frame from video
+        // ✅ Draw video frame to temp canvas
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = video.videoWidth;
         tempCanvas.height = video.videoHeight;
         const ctx = tempCanvas.getContext('2d');
-        
-        if (!ctx) {
-          console.warn('[POSE] Could not create canvas context');
-          return;
-        }
-        
-        ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-        
-        // Detect pose using estimatePoses (MoveNet method)
+        ctx?.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+
+        // ✅ Estimate poses from canvas (not video)
         const poses = await poseDetectorRef.current.estimatePoses(tempCanvas);
-        
-        // STEP 6: LOG POSE RESULT
-        console.log("[POSE RESULT]", poses);
-        console.log('[POSE FRAME] Number of poses detected:', poses.length);
-        
-        // STEP 7: LOG KEYPOINTS DETAILS
-        if (poses.length > 0) {
-          const keypoints = poses[0].keypoints || [];
-          console.log("[KEYPOINTS] Count:", keypoints.length);
-          keypoints.forEach((kp, i) => {
-            console.log(`[KEYPOINT ${i}] ${kp.name || i}:`, kp);
-          });
-        } else {
-          console.log("[KEYPOINTS] No pose detected");
-          
-          // STEP 10: RED WARNING TOAST
-          toast({
-            title: "❌ Pose NOT detected",
-            description: "Check camera & lighting",
-            variant: "destructive"
-          });
-        }
-        
+
         if (poses.length > 0) {
           const pose = poses[0] as DetectedPose;
           setPoseDetected(pose);
-          
-          console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
-          
-          // Analyze alignment
+
           const alignment = analyzePoseAlignment(pose);
           setAlignmentFeedback(alignment);
-          
-          console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
-          
-          // Simple 5-frame alignment confirmation
+
           if (alignment.isAligned) {
-            setAlignmentFrameCount(prev => {
+            setAlignmentFrameCount((prev) => {
               const newCount = prev + 1;
-              console.log('[POSE FRAME] ✅ Aligned frame count:', newCount);
-              
               if (newCount >= 5 && !alignmentConfirmed) {
                 setAlignmentConfirmed(true);
-                console.log('[POSE FRAME] 🎯 ALIGNMENT CONFIRMED after 5 frames');
               }
-              
               return newCount;
             });
           } else {
             setAlignmentFrameCount(0);
-            if (alignmentConfirmed) {
-              setAlignmentConfirmed(false);
-              console.log('[POSE FRAME] ❌ Alignment lost - resetting confirmation');
-            }
+            if (alignmentConfirmed) setAlignmentConfirmed(false);
           }
-          
-          console.log('[POSE FRAME] Calling drawPoseOverlay...');
+
           drawPoseOverlay(pose, alignment);
-          
         } else {
           setPoseDetected(null);
           setAlignmentFeedback(null);
           setAlignmentFrameCount(0);
           setAlignmentConfirmed(false);
-          
-          console.log('[POSE FRAME] 👻 No pose detected - clearing overlay');
-          
-          // Clear overlay canvas
-          if (overlayCanvas) {
-            const ctx = overlayCanvas.getContext('2d');
-            if (ctx) {
-              ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            }
-          }
         }
       } catch (error) {
-        console.error('[POSE FRAME] ❌ Pose detection error:', error);
+        console.error('[POSE DETECT ERROR]', error);
       }
 
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
