@@ -298,6 +298,12 @@ export default function BodyScanAI() {
       const video = videoRef.current;
       const overlayCanvas = overlayCanvasRef.current;
 
+      // Check if video is actually playing
+      if (video.paused || video.currentTime === 0) {
+        console.warn('[POSE] Video not playing');
+        return;
+      }
+
       // STEP 2: ANIMATION LOOP DEBUG
       console.log("[LOOP] Running frame", Date.now());
 
@@ -307,8 +313,21 @@ export default function BodyScanAI() {
         // STEP 9: CONFIRM MODEL INFERENCE
         console.log("[ESTIMATE] About to run estimatePoses");
         
+        // Use canvas to extract a real frame from video
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = video.videoWidth;
+        tempCanvas.height = video.videoHeight;
+        const ctx = tempCanvas.getContext('2d');
+        
+        if (!ctx) {
+          console.warn('[POSE] Could not create canvas context');
+          return;
+        }
+        
+        ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+        
         // Detect pose using estimatePoses (MoveNet method)
-        const poses = await poseDetectorRef.current.estimatePoses(video);
+        const poses = await poseDetectorRef.current.estimatePoses(tempCanvas);
         
         // STEP 6: LOG POSE RESULT
         console.log("[POSE RESULT]", poses);
