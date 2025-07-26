@@ -24,47 +24,47 @@ class SoundManager {
   // Sound file configuration
   private sounds: Record<string, SoundConfig> = {
     ai_thought: {
-      url: '/sounds/ai_thought.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/ai_thought.wav',
       volume: 0.6,
       preload: true
     },
     body_scan_camera: {
-      url: '/sounds/body_scan_camera.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/body_scan_camera.wav',
       volume: 0.8,
       preload: true
     },
     challenge_win: {
-      url: '/sounds/challenge_win.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/challenge_win.wav',
       volume: 0.9,
       preload: true
     },
     food_log_confirm: {
-      url: '/sounds/food_log_confirm.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/food_log_confirm.wav',
       volume: 0.7,
       preload: true
     },
     friend_added: {
-      url: '/sounds/friend_added.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/friend_added.wav',
       volume: 0.8,
       preload: true
     },
     goal_hit: {
-      url: '/sounds/goal_hit.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/goal_hit.wav',
       volume: 0.9,
       preload: true
     },
     health_scan_capture: {
-      url: '/sounds/health_scan_capture.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/health_scan_capture.wav',
       volume: 0.7,
       preload: true
     },
     progress_update: {
-      url: '/sounds/progress_update.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/progress_update.wav',
       volume: 0.6,
       preload: true
     },
     reminder_chime: {
-      url: '/sounds/reminder_chime.wav',
+      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/reminder_chime.wav',
       volume: 0.5,
       preload: true
     }
@@ -186,7 +186,6 @@ class SoundManager {
       audio.preload = 'auto';
       
       audio.addEventListener('canplaythrough', () => {
-        console.log(`✅ Loaded sound: ${key}`);
         this.audioCache[key] = audio;
         resolve(audio);
       });
