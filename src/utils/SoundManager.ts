@@ -15,7 +15,7 @@ interface SoundConfig {
 }
 
 interface LoadingStatus {
-  [key: string]: 'pending' | 'loading' | 'loaded' | 'failed';
+  [key: string]: 'pending' | 'loading' | 'loaded' | 'failed' | 'using_fallback';
 }
 
 interface StateChangeLog {
@@ -42,58 +42,58 @@ class SoundManager {
   private initializationStartTime: number = 0;
   private audioContextCreationAttempts: number = 0;
   
-  // Sound configuration with unique audio files
+  // Sound configuration with local audio files (GitHub repo doesn't exist)
   private sounds: Record<string, SoundConfig> = {
     ai_thought: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/ai_thought.wav',
+      url: '/sounds/ai_thought.wav',
       fallbackUrl: '/sounds/ai_thought.wav',
       volume: 0.6,
       preload: true
     },
     body_scan_camera: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/body_scan_camera.wav',
+      url: '/sounds/camera_shutter.wav',
       fallbackUrl: '/sounds/camera_shutter.wav',
       volume: 0.8,
       preload: true
     },
     challenge_win: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/challenge_win.wav',
+      url: '/sounds/celebration.wav',
       fallbackUrl: '/sounds/celebration.wav',
       volume: 0.9,
       preload: true
     },
     food_log_confirm: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/food_log_confirm.wav',
+      url: '/sounds/confirm.wav',
       fallbackUrl: '/sounds/confirm.wav',
       volume: 0.7,
       preload: true
     },
     friend_added: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/friend_added.wav',
+      url: '/sounds/notification.wav',
       fallbackUrl: '/sounds/notification.wav',
       volume: 0.8,
       preload: true
     },
     goal_hit: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/goal_hit.wav',
+      url: '/sounds/success.wav',
       fallbackUrl: '/sounds/success.wav',
       volume: 0.9,
       preload: true
     },
     health_scan_capture: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/health_scan_capture.wav',
+      url: '/sounds/scan_beep.wav',
       fallbackUrl: '/sounds/scan_beep.wav',
       volume: 0.7,
       preload: true
     },
     progress_update: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/progress_update.wav',
+      url: '/sounds/progress.wav',
       fallbackUrl: '/sounds/progress.wav',
       volume: 0.6,
       preload: true
     },
     reminder_chime: {
-      url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/reminder_chime.wav',
+      url: '/sounds/chime.wav',
       fallbackUrl: '/sounds/chime.wav',
       volume: 0.5,
       preload: true
@@ -291,23 +291,29 @@ class SoundManager {
     try {
       const buffer = await this.fetchAndDecodeAudio(config.url);
       this.audioBuffers[key] = buffer;
+      this.logStateChange('buffer_loaded', `✅ ${key} loaded from: ${config.url}`);
       return;
     } catch (primaryError) {
-      console.warn(`🔊 [SoundManager] Primary URL failed for ${key}, trying fallback`);
+      console.warn(`🔊 [SoundManager] Primary URL failed for ${key}: ${primaryError.message}`);
       
       // Try fallback URL
-      if (config.fallbackUrl) {
+      if (config.fallbackUrl && config.fallbackUrl !== config.url) {
         try {
           const buffer = await this.fetchAndDecodeAudio(config.fallbackUrl);
           this.audioBuffers[key] = buffer;
+          this.loadingStatus[key] = 'using_fallback';
+          this.logStateChange('buffer_fallback', `⚠️ ${key} loaded from fallback: ${config.fallbackUrl}`);
           return;
         } catch (fallbackError) {
-          console.error(`🔊 [SoundManager] Both primary and fallback failed for ${key}`);
+          console.error(`🔊 [SoundManager] Fallback also failed for ${key}: ${fallbackError.message}`);
         }
       }
       
-      // Create a minimal click sound buffer as final fallback
+      // Create programmatic fallback only as last resort
+      console.warn(`🔊 [SoundManager] 🚨 Using programmatic beep for ${key} - all real files failed`);
       this.audioBuffers[key] = this.createClickSoundBuffer();
+      this.loadingStatus[key] = 'using_fallback';
+      this.logStateChange('buffer_synthetic', `🔊 ${key} using synthetic beep (real files failed)`);
     }
   }
 

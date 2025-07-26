@@ -200,25 +200,33 @@ export const SoundSystemDashboard: React.FC<SoundSystemDashboardProps> = ({ clas
       {/* Audio Buffer Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Audio Buffer Status & Files</CardTitle>
+          <CardTitle>Audio Buffer Status & Source URLs</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {Object.entries(status.soundLoadingStatus).map(([soundKey, loadingStatus]) => {
               const config = status.soundConfigs?.[soundKey];
               const fileName = config?.url?.split('/').pop() || 'unknown.wav';
-              const fallbackName = config?.fallbackUrl?.split('/').pop() || 'unknown.wav';
+              const isLocalFile = config?.url?.startsWith('/sounds/');
               
               return (
                 <div key={soundKey} className="flex items-center justify-between p-2 border rounded">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{soundKey}</span>
                     <span className="text-xs text-muted-foreground">
-                      {fileName} → {fallbackName}
+                      {isLocalFile ? `Local: ${fileName}` : `External: ${fileName}`}
+                    </span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                      {loadingStatus === 'loaded' && `✅ Loaded from: ${config?.url}`}
+                      {loadingStatus === 'using_fallback' && `⚠️ Using fallback`}
+                      {loadingStatus === 'failed' && `❌ Failed to load`}
+                      {loadingStatus === 'loading' && `⏳ Loading...`}
+                      {loadingStatus === 'pending' && `⏸️ Pending`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {loadingStatus === 'loaded' && <Badge variant="default">Loaded</Badge>}
+                    {loadingStatus === 'loaded' && <Badge variant="default">Real Audio</Badge>}
+                    {loadingStatus === 'using_fallback' && <Badge variant="secondary">Fallback Beep</Badge>}
                     {loadingStatus === 'loading' && <Badge variant="secondary">Loading...</Badge>}
                     {loadingStatus === 'failed' && <Badge variant="destructive">Failed</Badge>}
                     {loadingStatus === 'pending' && <Badge variant="outline">Pending</Badge>}
