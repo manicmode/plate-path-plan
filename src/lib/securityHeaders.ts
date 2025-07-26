@@ -1,6 +1,6 @@
 // Security headers and configuration for Edge Functions
 export const getSecurityHeaders = () => ({
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'nonce-*'; style-src 'self' 'unsafe-inline' 'nonce-*'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests;",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'nonce-*'; style-src 'self' 'unsafe-inline' 'nonce-*'; img-src 'self' data: blob: https:; connect-src 'self' https://tfhub.dev https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests;",
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
