@@ -62,8 +62,20 @@ const Hydration = () => {
       type: drink.name.toLowerCase().includes('water') ? 'water' : 'other',
     });
     
-    // Play success sound
-    playFoodLogConfirm();
+    // Play hydration log confirmation sound
+    console.log('🔊 [Hydration] === HYDRATION LOG SOUND REQUEST ===');
+    console.log(`🔊 [Hydration] Drink logged: ${drink.name} (${drink.volume}ml)`);
+    
+    setTimeout(() => {
+      try {
+        console.log('🔊 [Hydration] Triggering playFoodLogConfirm for hydration...');
+        playFoodLogConfirm().catch(error => {
+          console.warn('🔊 [Hydration] Hydration log sound failed:', error);
+        });
+      } catch (error) {
+        console.error('🔊 [Hydration] Hydration sound playback error:', error);
+      }
+    }, 0);
     
     toast({
       title: "Drink Added!",
@@ -90,8 +102,20 @@ const Hydration = () => {
       image: selectedImage || undefined,
     });
 
-    // Play success sound
-    playFoodLogConfirm();
+    // Play manual hydration log confirmation sound
+    console.log('🔊 [Hydration] === MANUAL HYDRATION LOG SOUND REQUEST ===');
+    console.log(`🔊 [Hydration] Manual drink logged: ${drinkName} (${volume}ml)`);
+    
+    setTimeout(() => {
+      try {
+        console.log('🔊 [Hydration] Triggering playFoodLogConfirm for manual hydration...');
+        playFoodLogConfirm().catch(error => {
+          console.warn('🔊 [Hydration] Manual hydration log sound failed:', error);
+        });
+      } catch (error) {
+        console.error('🔊 [Hydration] Manual hydration sound playback error:', error);
+      }
+    }, 0);
 
     toast({
       title: "Drink Added!",

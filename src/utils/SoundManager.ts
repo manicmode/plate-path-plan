@@ -85,23 +85,65 @@ class SoundManager {
   }
 
   /**
-   * Setup user interaction listener for mobile compatibility
+   * Setup enhanced user interaction listeners for mobile compatibility
+   * Phase 1: Enhanced User Interaction Detection
    */
   private setupUserInteractionListener(): void {
-    const handleFirstInteraction = () => {
-      console.log('🔊 First user interaction detected, initializing audio system');
+    const handleFirstInteraction = (event: Event) => {
+      console.log(`🔊 [SoundManager] User interaction detected via ${event.type}, initializing audio system`);
       this.hasUserInteracted = true;
       this.initializeAudioSystem();
       
-      // Remove listeners after first interaction
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('touchstart', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
+      // Remove all listeners after first interaction
+      this.removeInteractionListeners();
     };
 
-    document.addEventListener('click', handleFirstInteraction, { passive: true });
-    document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
-    document.addEventListener('keydown', handleFirstInteraction, { passive: true });
+    // Store listeners for cleanup
+    this.interactionHandler = handleFirstInteraction;
+
+    // Enhanced interaction detection - capture ANY user interaction
+    const events = ['click', 'touchstart', 'touchend', 'keydown', 'mousedown', 'pointerdown'];
+    events.forEach(eventType => {
+      document.addEventListener(eventType, handleFirstInteraction, { passive: true, once: true });
+    });
+
+    // Add specific app interaction listeners for better detection
+    this.setupAppSpecificListeners(handleFirstInteraction);
+
+    console.log('🔊 [SoundManager] Enhanced interaction listeners established');
+  }
+
+  private interactionHandler: ((event: Event) => void) | null = null;
+
+  /**
+   * Setup app-specific interaction listeners for immediate activation
+   */
+  private setupAppSpecificListeners(handler: (event: Event) => void): void {
+    // Listen for React Router navigation changes
+    window.addEventListener('popstate', handler, { passive: true, once: true });
+    
+    // Listen for any button clicks in the app
+    const buttonClickHandler = (e: Event) => {
+      if ((e.target as Element)?.tagName === 'BUTTON' || (e.target as Element)?.closest('button')) {
+        console.log('🔊 [SoundManager] Button interaction detected');
+        handler(e);
+      }
+    };
+    document.addEventListener('click', buttonClickHandler, { passive: true, once: true });
+  }
+
+  /**
+   * Remove all interaction listeners
+   */
+  private removeInteractionListeners(): void {
+    if (this.interactionHandler) {
+      const events = ['click', 'touchstart', 'touchend', 'keydown', 'mousedown', 'pointerdown'];
+      events.forEach(eventType => {
+        document.removeEventListener(eventType, this.interactionHandler!);
+      });
+      window.removeEventListener('popstate', this.interactionHandler!);
+      this.interactionHandler = null;
+    }
   }
 
   /**
@@ -118,24 +160,45 @@ class SoundManager {
 
   /**
    * Perform actual audio initialization
+   * Phase 2: Proactive Sound System Initialization
    */
   private async performInitialization(): Promise<void> {
+    console.log('🔊 [SoundManager] Starting comprehensive audio initialization...');
+    
     try {
-      // Initialize AudioContext for better mobile support
+      // Phase 2: Eager AudioContext Creation
       if (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined') {
+        console.log('🔊 [SoundManager] Creating AudioContext...');
         this.audioContext = new (AudioContext || (window as any).webkitAudioContext)();
+        
+        console.log(`🔊 [SoundManager] AudioContext state: ${this.audioContext.state}`);
         
         // Resume AudioContext if it's suspended (common on mobile)
         if (this.audioContext.state === 'suspended') {
+          console.log('🔊 [SoundManager] Resuming suspended AudioContext...');
           await this.audioContext.resume();
+          console.log(`🔊 [SoundManager] AudioContext resumed, new state: ${this.audioContext.state}`);
         }
+      } else {
+        console.warn('🔊 [SoundManager] AudioContext not supported in this browser');
       }
 
-      // Preload sounds after initialization
-      await this.preloadSounds();
-      console.log('🔊 Audio system initialization complete');
+      // Phase 2: Preload Verification - ensure all sounds load successfully
+      console.log('🔊 [SoundManager] Starting sound preloading with verification...');
+      const preloadResults = await this.preloadSoundsWithVerification();
+      
+      const successCount = preloadResults.filter(r => r.status === 'fulfilled').length;
+      const totalCount = preloadResults.length;
+      
+      console.log(`🔊 [SoundManager] Audio initialization complete: ${successCount}/${totalCount} sounds loaded`);
+      
+      if (successCount < totalCount) {
+        console.warn('🔊 [SoundManager] Some sounds failed to load, but system is functional');
+      }
+      
     } catch (error) {
-      console.warn('🔊 Audio system initialization failed:', error);
+      console.error('🔊 [SoundManager] Audio system initialization failed:', error);
+      throw error; // Re-throw to be handled by caller
     }
   }
 
@@ -155,20 +218,55 @@ class SoundManager {
   }
 
   /**
-   * Preload frequently used sounds
+   * Preload frequently used sounds with verification
+   * Phase 2: Enhanced preloading with detailed success/failure tracking
    */
-  private async preloadSounds(): Promise<void> {
-    if (!this.isEnabled) return;
+  private async preloadSoundsWithVerification(): Promise<PromiseSettledResult<HTMLAudioElement>[]> {
+    if (!this.isEnabled) {
+      console.log('🔊 [SoundManager] Sound disabled, skipping preload');
+      return [];
+    }
 
+    console.log('🔊 [SoundManager] Starting verified sound preloading...');
+    
     const preloadPromises = Object.entries(this.sounds)
       .filter(([_, config]) => config.preload)
-      .map(([key, config]) => this.loadSound(key, config));
+      .map(async ([key, config]) => {
+        try {
+          console.log(`🔊 [SoundManager] Loading sound: ${key}`);
+          const audio = await this.loadSound(key, config);
+          console.log(`✅ [SoundManager] Successfully loaded: ${key}`);
+          return audio;
+        } catch (error) {
+          console.error(`❌ [SoundManager] Failed to load sound: ${key}`, error);
+          throw error;
+        }
+      });
 
-    try {
-      await Promise.allSettled(preloadPromises);
-      console.log('Sound preloading completed');
-    } catch (error) {
-      console.warn('Some sounds failed to preload:', error);
+    const results = await Promise.allSettled(preloadPromises);
+    
+    // Log detailed results
+    results.forEach((result, index) => {
+      const [key] = Object.entries(this.sounds).filter(([_, config]) => config.preload)[index];
+      if (result.status === 'fulfilled') {
+        console.log(`🔊 [SoundManager] ✅ ${key}: loaded successfully`);
+      } else {
+        console.error(`🔊 [SoundManager] ❌ ${key}: ${result.reason}`);
+      }
+    });
+
+    return results;
+  }
+
+  /**
+   * Legacy preload method (kept for compatibility)
+   */
+  private async preloadSounds(): Promise<void> {
+    const results = await this.preloadSoundsWithVerification();
+    const failedCount = results.filter(r => r.status === 'rejected').length;
+    
+    if (failedCount > 0) {
+      console.warn(`🔊 [SoundManager] ${failedCount} sounds failed to preload`);
     }
   }
 
@@ -200,74 +298,127 @@ class SoundManager {
   }
 
   /**
-   * Play a sound by key
+   * Play a sound by key with comprehensive debugging and error handling
+   * Phase 3: Enhanced Debugging and Error Recovery
    */
   async play(soundKey: string): Promise<void> {
-    console.log(`🔊 SoundManager.play("${soundKey}") - enabled: ${this.isEnabled}, hasUserInteracted: ${this.hasUserInteracted}`);
+    console.log(`🔊 [SoundManager] === PLAY REQUEST: "${soundKey}" ===`);
+    console.log(`🔊 [SoundManager] System Status - enabled: ${this.isEnabled}, userInteracted: ${this.hasUserInteracted}, audioContextState: ${this.audioContext?.state || 'not created'}`);
     
     if (!this.isEnabled) {
-      console.log('🔊 SoundManager: Sound disabled');
+      console.log(`🔊 [SoundManager] ❌ Sound disabled by user preference - skipping "${soundKey}"`);
       return;
     }
 
     // Check for reduced motion preference
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) {
-      console.log('🔊 SoundManager: Reduced motion preference detected, skipping sound');
+      console.log(`🔊 [SoundManager] ❌ Reduced motion preference detected - skipping "${soundKey}"`);
       return;
     }
 
-    // Wait for user interaction on mobile
+    // Enhanced user interaction check with immediate initialization attempt
     if (!this.hasUserInteracted) {
-      console.log(`🔊 Waiting for user interaction before playing: ${soundKey}`);
+      console.warn(`🔊 [SoundManager] ❌ No user interaction detected yet for "${soundKey}"`);
+      console.log('🔊 [SoundManager] 💡 TIP: User must interact with the page before sounds can play');
       return;
-    }
-
-    // Ensure audio system is initialized
-    if (!this.initializationPromise) {
-      await this.initializeAudioSystem();
-    } else {
-      await this.initializationPromise;
     }
 
     try {
+      // Ensure audio system is fully initialized
+      console.log(`🔊 [SoundManager] Ensuring audio system initialization for "${soundKey}"...`);
+      
+      if (!this.initializationPromise) {
+        console.log('🔊 [SoundManager] Starting fresh initialization...');
+        await this.initializeAudioSystem();
+      } else {
+        console.log('🔊 [SoundManager] Waiting for existing initialization...');
+        await this.initializationPromise;
+      }
+
+      console.log(`🔊 [SoundManager] Audio system ready, proceeding with "${soundKey}" playback...`);
+
       const config = this.sounds[soundKey];
       if (!config) {
-        console.warn(`Sound not found: ${soundKey}`);
+        console.error(`🔊 [SoundManager] ❌ Sound configuration not found: "${soundKey}"`);
+        console.log('🔊 [SoundManager] Available sounds:', Object.keys(this.sounds));
         return;
       }
 
       let audio = this.audioCache[soundKey];
       
-      // Load sound if not cached
+      // Load sound if not cached with retry logic
       if (!audio) {
-        audio = await this.loadSound(soundKey, config);
+        console.log(`🔊 [SoundManager] Sound not cached, loading "${soundKey}"...`);
+        try {
+          audio = await this.loadSound(soundKey, config);
+          console.log(`🔊 [SoundManager] ✅ Successfully loaded and cached "${soundKey}"`);
+        } catch (loadError) {
+          console.error(`🔊 [SoundManager] ❌ Failed to load sound "${soundKey}":`, loadError);
+          // Attempt immediate retry for network issues
+          try {
+            console.log(`🔊 [SoundManager] 🔄 Retrying load for "${soundKey}"...`);
+            audio = await this.loadSound(soundKey, config);
+            console.log(`🔊 [SoundManager] ✅ Retry successful for "${soundKey}"`);
+          } catch (retryError) {
+            console.error(`🔊 [SoundManager] ❌ Retry failed for "${soundKey}":`, retryError);
+            throw retryError;
+          }
+        }
+      } else {
+        console.log(`🔊 [SoundManager] Using cached audio for "${soundKey}"`);
       }
 
-      // Reset audio to beginning and play
+      // Comprehensive AudioContext state management
+      if (this.audioContext) {
+        console.log(`🔊 [SoundManager] AudioContext state before playback: ${this.audioContext.state}`);
+        
+        if (this.audioContext.state === 'suspended') {
+          console.log(`🔊 [SoundManager] Resuming suspended AudioContext for "${soundKey}"...`);
+          try {
+            await this.audioContext.resume();
+            console.log(`🔊 [SoundManager] ✅ AudioContext resumed, new state: ${this.audioContext.state}`);
+          } catch (resumeError) {
+            console.error(`🔊 [SoundManager] ❌ Failed to resume AudioContext:`, resumeError);
+          }
+        }
+      }
+
+      // Reset audio position and attempt playback
+      console.log(`🔊 [SoundManager] Attempting playback of "${soundKey}"...`);
       audio.currentTime = 0;
       
-      // Resume AudioContext if suspended (important for mobile)
-      if (this.audioContext && this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-      
-      // Use a promise to handle potential autoplay restrictions
+      // Enhanced playback with comprehensive error handling
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
         await playPromise;
-        console.log(`🔊 Successfully played: ${soundKey}`);
-      }
-    } catch (error) {
-      // Handle autoplay restrictions and other errors gracefully
-      if (error.name === 'NotAllowedError') {
-        console.log(`🔊 Sound play blocked by browser policy: ${soundKey}`);
+        console.log(`🔊 [SoundManager] 🎵 SUCCESS! "${soundKey}" played successfully`);
       } else {
-        console.warn(`🔊 Sound play failed: ${soundKey}`, error);
+        console.log(`🔊 [SoundManager] ⚠️ Play method didn't return a promise for "${soundKey}"`);
       }
+      
+    } catch (error) {
+      // Phase 3: Enhanced Error Recovery and User Feedback
+      console.error(`🔊 [SoundManager] 💥 PLAYBACK FAILED for "${soundKey}":`, error);
+      
+      if (error.name === 'NotAllowedError') {
+        console.error(`🔊 [SoundManager] 🚫 Browser blocked "${soundKey}" - user interaction required`);
+        console.log('🔊 [SoundManager] 💡 This usually means the user hasn\'t interacted with the page yet');
+      } else if (error.name === 'AbortError') {
+        console.error(`🔊 [SoundManager] ⏹️ Playback aborted for "${soundKey}"`);
+      } else if (error.name === 'NotSupportedError') {
+        console.error(`🔊 [SoundManager] 🚫 Audio format not supported for "${soundKey}"`);
+      } else {
+        console.error(`🔊 [SoundManager] 🔥 Unknown error playing "${soundKey}":`, error.message);
+      }
+
+      // Store error for status reporting
+      this.lastError = { soundKey, error: error.message, timestamp: Date.now() };
     }
   }
+
+  private lastError: { soundKey: string; error: string; timestamp: number } | null = null;
 
   /**
    * Play multiple sounds in sequence with delay
@@ -312,23 +463,63 @@ class SoundManager {
   }
 
   /**
-   * Get audio system status for debugging
+   * Get comprehensive audio system status for debugging
+   * Phase 3: Enhanced status reporting
    */
-  getStatus(): { enabled: boolean; hasUserInteracted: boolean; audioContextState?: string; cachedSounds: number } {
+  getStatus(): { 
+    enabled: boolean; 
+    hasUserInteracted: boolean; 
+    audioContextState?: string; 
+    cachedSounds: number;
+    initializationStatus: string;
+    lastError?: { soundKey: string; error: string; timestamp: number };
+    soundUrls: Record<string, string>;
+  } {
     return {
       enabled: this.isEnabled,
       hasUserInteracted: this.hasUserInteracted,
       audioContextState: this.audioContext?.state,
-      cachedSounds: Object.keys(this.audioCache).length
+      cachedSounds: Object.keys(this.audioCache).length,
+      initializationStatus: this.initializationPromise ? 'initialized' : 'pending',
+      lastError: this.lastError,
+      soundUrls: Object.fromEntries(Object.entries(this.sounds).map(([key, config]) => [key, config.url]))
     };
   }
 
   /**
-   * Force initialization (useful for testing)
+   * Force initialization with enhanced logging (useful for testing and login integration)
+   * Phase 2: Proactive initialization support
    */
   async forceInitialize(): Promise<void> {
+    console.log('🔊 [SoundManager] 🚀 FORCE INITIALIZATION requested');
+    console.log('🔊 [SoundManager] Setting hasUserInteracted = true');
+    
     this.hasUserInteracted = true;
-    await this.initializeAudioSystem();
+    
+    try {
+      await this.initializeAudioSystem();
+      console.log('🔊 [SoundManager] ✅ Force initialization completed successfully');
+    } catch (error) {
+      console.error('🔊 [SoundManager] ❌ Force initialization failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Manual user interaction trigger for immediate activation
+   * Phase 1: Enhanced user interaction detection
+   */
+  activateOnUserInteraction(): void {
+    console.log('🔊 [SoundManager] 🎯 Manual user interaction activation');
+    
+    if (!this.hasUserInteracted) {
+      this.hasUserInteracted = true;
+      this.initializeAudioSystem();
+      this.removeInteractionListeners();
+      console.log('🔊 [SoundManager] ✅ Audio system activated via manual trigger');
+    } else {
+      console.log('🔊 [SoundManager] ℹ️ Audio system already activated');
+    }
   }
 }
 

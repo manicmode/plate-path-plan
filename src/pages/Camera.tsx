@@ -1208,8 +1208,24 @@ const CameraPage = () => {
         await refetchSavedFoods();
       }
 
-      // Play success sound
-      playFoodLogConfirm();
+      // Play food log confirmation sound with comprehensive debugging (bulk confirm)
+      console.log('🔊 [Camera] === BULK FOOD LOG SOUND REQUEST ===');
+      console.log(`🔊 [Camera] Bulk confirm - ${recognizedFoods.length} items`);
+      
+      // Defer sound playback to ensure it plays after UI updates
+      setTimeout(() => {
+        try {
+          console.log('🔊 [Camera] Triggering playFoodLogConfirm for bulk confirm...');
+          playFoodLogConfirm().catch(error => {
+            console.warn('🔊 [Camera] Bulk food log sound failed:', error);
+            if (error.name === 'NotAllowedError') {
+              console.log('🔊 [Camera] Audio blocked by browser - user interaction required');
+            }
+          });
+        } catch (error) {
+          console.error('🔊 [Camera] Bulk sound playback error:', error);
+        }
+      }, 0);
       
       toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
       resetState();
@@ -1441,8 +1457,24 @@ const CameraPage = () => {
       const totalItems = pendingItems.length || 1;
       console.log(`🎉 ALL ITEMS PROCESSED - Total logged: ${totalItems}`);
       
-      // Play success sound
-      playFoodLogConfirm();
+      // Play food log confirmation sound with comprehensive debugging
+      console.log('🔊 [Camera] === FOOD LOG SOUND REQUEST ===');
+      console.log(`🔊 [Camera] Total items processed: ${totalItems}`);
+      
+      // Defer sound playback to ensure it plays after UI updates
+      setTimeout(() => {
+        try {
+          console.log('🔊 [Camera] Triggering playFoodLogConfirm...');
+          playFoodLogConfirm().catch(error => {
+            console.warn('🔊 [Camera] Food log sound failed:', error);
+            if (error.name === 'NotAllowedError') {
+              console.log('🔊 [Camera] Audio blocked by browser - user interaction required');
+            }
+          });
+        } catch (error) {
+          console.error('🔊 [Camera] Sound playback error:', error);
+        }
+      }, 0);
       
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
       setShowConfirmation(false);
