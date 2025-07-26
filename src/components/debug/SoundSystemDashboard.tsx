@@ -200,23 +200,34 @@ export const SoundSystemDashboard: React.FC<SoundSystemDashboardProps> = ({ clas
       {/* Audio Buffer Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Audio Buffer Status</CardTitle>
+          <CardTitle>Audio Buffer Status & Files</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {Object.entries(status.soundLoadingStatus).map(([soundKey, loadingStatus]) => (
-              <div key={soundKey} className="flex items-center justify-between p-2 border rounded">
-                <span className="text-sm font-medium">{soundKey}</span>
-                <div className="flex items-center gap-2">
-                  {loadingStatus === 'loaded' && <Badge variant="default">Loaded</Badge>}
-                  {loadingStatus === 'loading' && <Badge variant="secondary">Loading...</Badge>}
-                  {loadingStatus === 'failed' && <Badge variant="destructive">Failed</Badge>}
-                  {loadingStatus === 'pending' && <Badge variant="outline">Pending</Badge>}
-                  
-                  {soundManager.isSoundCached(soundKey) && <CheckCircle className="w-4 h-4 text-green-500" />}
+            {Object.entries(status.soundLoadingStatus).map(([soundKey, loadingStatus]) => {
+              const config = status.soundConfigs?.[soundKey];
+              const fileName = config?.url?.split('/').pop() || 'unknown.wav';
+              const fallbackName = config?.fallbackUrl?.split('/').pop() || 'unknown.wav';
+              
+              return (
+                <div key={soundKey} className="flex items-center justify-between p-2 border rounded">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{soundKey}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {fileName} → {fallbackName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {loadingStatus === 'loaded' && <Badge variant="default">Loaded</Badge>}
+                    {loadingStatus === 'loading' && <Badge variant="secondary">Loading...</Badge>}
+                    {loadingStatus === 'failed' && <Badge variant="destructive">Failed</Badge>}
+                    {loadingStatus === 'pending' && <Badge variant="outline">Pending</Badge>}
+                    
+                    {soundManager.isSoundCached(soundKey) && <CheckCircle className="w-4 h-4 text-green-500" />}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

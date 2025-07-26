@@ -42,59 +42,59 @@ class SoundManager {
   private initializationStartTime: number = 0;
   private audioContextCreationAttempts: number = 0;
   
-  // Sound configuration with local fallbacks
+  // Sound configuration with unique audio files
   private sounds: Record<string, SoundConfig> = {
     ai_thought: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/ai_thought.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/ai_thought.wav',
       volume: 0.6,
       preload: true
     },
     body_scan_camera: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/body_scan_camera.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/camera_shutter.wav',
       volume: 0.8,
       preload: true
     },
     challenge_win: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/challenge_win.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/celebration.wav',
       volume: 0.9,
       preload: true
     },
     food_log_confirm: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/food_log_confirm.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/confirm.wav',
       volume: 0.7,
       preload: true
     },
     friend_added: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/friend_added.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/notification.wav',
       volume: 0.8,
       preload: true
     },
     goal_hit: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/goal_hit.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/success.wav',
       volume: 0.9,
       preload: true
     },
     health_scan_capture: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/health_scan_capture.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/scan_beep.wav',
       volume: 0.7,
       preload: true
     },
     progress_update: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/progress_update.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/progress.wav',
       volume: 0.6,
       preload: true
     },
     reminder_chime: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/reminder_chime.wav',
-      fallbackUrl: '/sounds/click.wav',
+      fallbackUrl: '/sounds/chime.wav',
       volume: 0.5,
       preload: true
     }
@@ -551,6 +551,7 @@ class SoundManager {
       loadedSounds,
       totalSounds,
       soundLoadingStatus: this.loadingStatus,
+      soundConfigs: this.sounds,
       lastError: this.lastError,
       systemHealth: this.calculateSystemHealth(),
       stateChangeLog: this.stateChangeLog.slice(-10),
