@@ -96,6 +96,12 @@ export const TrackerChart = ({
     if (trackerName === 'Micronutrients') {
       return [`${value}%`, name];
     }
+    if (trackerName === 'Steps') {
+      return [`${value.toLocaleString()} steps`, name];
+    }
+    if (trackerName === 'Exercise') {
+      return [`${value} calories`, name];
+    }
     return [`${value}g`, name];
   };
 

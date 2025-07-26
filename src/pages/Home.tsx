@@ -1121,7 +1121,7 @@ const Home = () => {
           {/* Steps Tracker Card - Mobile Optimized */}
           <Card 
             className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
-            onClick={() => navigate('/analytics?section=steps')}
+            onClick={() => openInsights({ type: 'steps', name: 'Steps', color: '#3B82F6' })}
             style={{
               background: 'var(--activity-steps-gradient)',
               boxShadow: 'var(--activity-steps-glow)'
@@ -1165,7 +1165,7 @@ const Home = () => {
           {/* Exercise Card - Mobile Optimized */}
           <Card 
             className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
-            onClick={() => navigate('/analytics?section=exercise')}
+            onClick={() => openInsights({ type: 'exercise', name: 'Exercise', color: '#EF4444' })}
             style={{
               background: 'var(--activity-exercise-gradient)',
               boxShadow: 'var(--activity-exercise-glow)'

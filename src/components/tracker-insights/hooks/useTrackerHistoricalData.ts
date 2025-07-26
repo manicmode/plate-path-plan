@@ -63,6 +63,10 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
       return fetchHydrationDailyData();
     } else if (trackerType === 'supplements') {
       return fetchSupplementDailyData();
+    } else if (trackerType === 'steps') {
+      return fetchStepsDailyData();
+    } else if (trackerType === 'exercise') {
+      return fetchExerciseDailyData();
     }
     return [];
   };
@@ -225,6 +229,76 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
       chartData.push({
         label: dayName,
         value: dailyTotal,
+        date: localDateString,
+      });
+    }
+
+    return chartData;
+  };
+
+  const fetchStepsDailyData = async (): Promise<ChartDataPoint[]> => {
+    console.log(`👟 Fetching steps data using local day bounds`);
+    
+    // Create chart data for last 7 days using local date bounds
+    const chartData: ChartDataPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const { data: exerciseData, error } = await supabase
+        .from('exercise_logs')
+        .select('created_at, steps')
+        .eq('user_id', user!.id)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const dailyTotal = (exerciseData || []).reduce((sum, log) => {
+        return sum + (log.steps || 0);
+      }, 0);
+      
+      chartData.push({
+        label: dayName,
+        value: dailyTotal,
+        date: localDateString,
+      });
+    }
+
+    return chartData;
+  };
+
+  const fetchExerciseDailyData = async (): Promise<ChartDataPoint[]> => {
+    console.log(`🏋️ Fetching exercise data using local day bounds`);
+    
+    // Create chart data for last 7 days using local date bounds
+    const chartData: ChartDataPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const { data: exerciseData, error } = await supabase
+        .from('exercise_logs')
+        .select('created_at, calories_burned')
+        .eq('user_id', user!.id)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const dailyTotal = (exerciseData || []).reduce((sum, log) => {
+        return sum + (log.calories_burned || 0);
+      }, 0);
+      
+      chartData.push({
+        label: dayName,
+        value: Math.round(dailyTotal),
         date: localDateString,
       });
     }
