@@ -284,7 +284,13 @@ export default function BodyScanAI() {
           console.error('[NETWORK] TensorFlow Hub connectivity failed:', networkError);
         }
 
-        // PHASE 9: Model Creation with Detailed Monitoring
+        // PHASE 9: Clear Cache and Model Creation with Detailed Monitoring
+        console.log('[MODEL] Clearing TensorFlow.js model cache...');
+        await tf.disposeVariables();
+        
+        console.log('[MODEL] Adding delay for backend readiness...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         console.log('[MODEL] Starting model creation...');
         console.log('[MODEL] Using SupportedModels.MoveNet:', poseDetection.SupportedModels.MoveNet);
 
@@ -300,8 +306,9 @@ export default function BodyScanAI() {
         const model = await poseDetection.createDetector(
           poseDetection.SupportedModels.MoveNet,
           {
-            ...modelConfig,
-            modelUrl: undefined // force default load path
+            modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+            enableSmoothing: true,
+            modelUrl: undefined  // Force default model behavior
           }
         );
 
