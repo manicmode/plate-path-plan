@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-backend-cpu';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -121,8 +122,22 @@ export default function SideBodyScan() {
     const initializePoseDetection = async () => {
       try {
         console.log('Initializing TensorFlow.js...');
-        await tf.ready();
-        await tf.setBackend('webgl');
+        
+        // Try WebGL backend first for optimal performance
+        try {
+          await tf.setBackend('webgl');
+          await tf.ready();
+          console.log('Using WebGL backend for optimal performance');
+        } catch (webglError) {
+          console.warn('WebGL failed, falling back to CPU:', webglError.message);
+          try {
+            await tf.setBackend('cpu');
+            await tf.ready();
+            console.log('Using CPU backend');
+          } catch (cpuError) {
+            throw new Error('Both WebGL and CPU backends failed');
+          }
+        }
         
         console.log('Loading pose detection model...');
         const detector = await poseDetection.createDetector(
