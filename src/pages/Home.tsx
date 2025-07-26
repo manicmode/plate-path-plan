@@ -191,9 +191,32 @@ const Home = () => {
   const hydrationGoal = getHydrationGoal();
   const actualHydration = realHydrationToday || 0;
   const hydrationPercentage = Math.min((actualHydration / hydrationGoal) * 100, 100);
+  
+  // Debug hydration calculation
+  useEffect(() => {
+    if (!hydrationLoading) {
+      console.log('💧 Hydration Debug:', {
+        realHydrationToday,
+        actualHydration,
+        hydrationGoal,
+        hydrationPercentage,
+        calculation: `${actualHydration} / ${hydrationGoal} * 100 = ${(actualHydration / hydrationGoal) * 100}`
+      });
+    }
+  }, [realHydrationToday, actualHydration, hydrationGoal, hydrationPercentage, hydrationLoading]);
 
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
+
+  // Unified goal validation function
+  const isGoalFullyAchieved = (current: number, target: number, isLoading: boolean = false) => {
+    // Defensive checks
+    if (isLoading || !target || target <= 0 || current < 0) return false;
+    
+    // Must be 100% or more to trigger celebration
+    const percentage = (current / target) * 100;
+    return percentage >= 100;
+  };
 
   // Helper function to check if celebration was already shown today
   const getCelebrationKey = (type: string) => {
@@ -214,20 +237,33 @@ const Home = () => {
 
   // Check for goal completion and trigger celebration (only once per day per goal)
   useEffect(() => {
-    if (progressPercentage >= 100 && progressPercentage < 105 && !hasShownCelebrationToday('calories')) {
+    // Avoid celebrations during loading states
+    if (authLoading || hydrationLoading || scoreLoading) return;
+    
+    // Calories celebration
+    if (isGoalFullyAchieved(currentCalories, totalCalories) && !hasShownCelebrationToday('calories')) {
+      console.log('🎉 Calories goal achieved:', { current: currentCalories, target: totalCalories });
       setCelebrationType('Calories Goal Smashed! 🔥');
       setShowCelebration(true);
       markCelebrationShown('calories');
-    } else if (hydrationPercentage >= 100 && hydrationPercentage < 105 && !hasShownCelebrationToday('hydration')) {
+    }
+    
+    // Hydration celebration - using real hydration data
+    else if (isGoalFullyAchieved(actualHydration, hydrationGoal, hydrationLoading) && !hasShownCelebrationToday('hydration')) {
+      console.log('🎉 Hydration goal achieved:', { current: actualHydration, target: hydrationGoal });
       setCelebrationType('Hydration Goal Achieved! 💧');
       setShowCelebration(true);
       markCelebrationShown('hydration');
-    } else if (supplementPercentage >= 100 && supplementPercentage < 105 && !hasShownCelebrationToday('supplements')) {
+    }
+    
+    // Supplements celebration
+    else if (isGoalFullyAchieved(progress.supplements, supplementGoal) && !hasShownCelebrationToday('supplements')) {
+      console.log('🎉 Supplements goal achieved:', { current: progress.supplements, target: supplementGoal });
       setCelebrationType('Supplements Complete! 💊');
       setShowCelebration(true);
       markCelebrationShown('supplements');
     }
-  }, [progressPercentage, hydrationPercentage, supplementPercentage, user?.id]);
+  }, [currentCalories, totalCalories, actualHydration, hydrationGoal, progress.supplements, supplementGoal, authLoading, hydrationLoading, scoreLoading, user?.id]);
 
   // Use preferences from localStorage/state instead of user object
   const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
