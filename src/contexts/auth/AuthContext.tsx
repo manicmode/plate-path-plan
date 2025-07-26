@@ -1,5 +1,5 @@
 
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState, useRef } from 'react';
 import * as ReactModule from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthContextType, AuthProviderProps, ExtendedUser } from './types';
@@ -127,83 +127,166 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Dedicated useEffect for corrupted token cleanup - runs ONLY after init
-  ReactModule.useEffect(() => {
-    let hasAttemptedCleanup = false;
+  // ✅ STEP 1: Persistent cleanup state using useRef
+  const hasAttemptedCleanup = useRef(false);
+  const lastCleanupTimestamp = useRef<number>(0);
+  const maxCleanupAttempts = useRef(0);
 
-    // Wait for auth to be fully initialized
-    if (loading) return;
+  // 📱 Mobile detection
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Only run once per session
-    if (hasAttemptedCleanup) return;
-
-    const clearAllAuthTokens = () => {
-      console.log('🧹 Clearing all auth tokens...');
-      try {
-        // Clear all localStorage items that could contain auth tokens
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('sb-') || 
-              key.includes('supabase') || 
-              key.includes('auth') || 
-              key.includes('session')) {
-            console.log('Removing storage key:', key);
-            localStorage.removeItem(key);
-          }
-        });
-        
-        // Clear sessionStorage too
-        Object.keys(sessionStorage).forEach(key => {
-          if (key.startsWith('sb-') || 
-              key.includes('supabase') || 
-              key.includes('auth') || 
-              key.includes('session')) {
-            sessionStorage.removeItem(key);
-          }
-        });
-        
-        // Force sign out to clear any server-side sessions
-        supabase.auth.signOut({ scope: 'global' }).catch(() => {
-          // Ignore errors during cleanup
-        });
-        
-      } catch (error) {
-        console.warn('Error during auth cleanup:', error);
-      }
-    };
-    
-    const hasCorruptedAuth = () => {
-      try {
-        const keys = Object.keys(localStorage);
-        return keys.some(key => {
-          if (key.includes('supabase') || key.startsWith('sb-')) {
-            const value = localStorage.getItem(key);
-            return value && (value.includes('403') || value.includes('invalid_claim'));
-          }
-          return false;
-        });
-      } catch {
-        return true; // If we can't check, assume corruption
-      }
-    };
-    
-    // Don't reload if:
-    // 1. Already on login page
-    // 2. Session and user are both null and we've already attempted cleanup
-    const isOnLoginPage = window.location.pathname === '/' || window.location.pathname.includes('auth');
-    const hasNullSessionAndUser = !session && !user;
-    
-    if (hasCorruptedAuth() && !isOnLoginPage && !(hasNullSessionAndUser && hasAttemptedCleanup)) {
-      console.log('🚨 Detected corrupted auth tokens, cleaning up...');
-      hasAttemptedCleanup = true;
-      clearAllAuthTokens();
+  // 🧠 STEP 2: Improved corruption detection logic
+  const hasCorruptedAuth = (): boolean => {
+    try {
+      const keys = Object.keys(localStorage);
+      const authKeys = keys.filter(key => key.includes('supabase') || key.startsWith('sb-'));
       
-      // Add 2-second delay before reload
-      setTimeout(() => {
-        console.log('🔄 Forcing page reload after auth cleanup to prevent infinite loop...');
-        window.location.reload();
-      }, 2000);
+      if (authKeys.length === 0) return false; // No auth data = not corrupted
+      
+      // Check for specific corruption indicators
+      for (const key of authKeys) {
+        const value = localStorage.getItem(key);
+        if (value) {
+          // More specific corruption detection
+          if (value.includes('"error"') && (
+            value.includes('403') || 
+            value.includes('invalid_claim') || 
+            value.includes('JWT expired') ||
+            value.includes('invalid_grant')
+          )) {
+            console.log(`⚠️ Found suspicious key: ${key} = ${value.substring(0, 100)}...`);
+            return true;
+          }
+          
+          // Check for malformed JSON in auth tokens
+          if (key.includes('auth') && !value.startsWith('{') && !value.startsWith('"')) {
+            console.log(`⚠️ Found malformed auth data: ${key} = ${value.substring(0, 50)}...`);
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Error checking auth corruption:', error);
+      return false; // More conservative - don't assume corruption on error
     }
-  }, [loading, session, user]); // Only run after loading is complete
+  };
+
+  // 🧹 Enhanced token cleanup function
+  const clearAllAuthTokens = () => {
+    console.log('🧹 Clearing all auth tokens...');
+    try {
+      // Clear all localStorage items that could contain auth tokens
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || 
+            key.includes('supabase') || 
+            key.includes('auth') || 
+            key.includes('session')) {
+          console.log(`🗑️ Removing storage key: ${key}`);
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clear sessionStorage too
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('sb-') || 
+            key.includes('supabase') || 
+            key.includes('auth') || 
+            key.includes('session')) {
+          console.log(`🗑️ Removing sessionStorage key: ${key}`);
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      // Force sign out to clear any server-side sessions
+      supabase.auth.signOut({ scope: 'global' }).catch(() => {
+        // Ignore errors during cleanup
+      });
+      
+    } catch (error) {
+      console.warn('Error during auth cleanup:', error);
+    }
+  };
+
+  // ⏱ STEP 3: Dedicated useEffect for corrupted token cleanup - runs ONLY after init
+  ReactModule.useEffect(() => {
+    // Wait for auth to be fully initialized
+    if (loading) {
+      console.log('⏳ Waiting for auth initialization...');
+      return;
+    }
+
+    // 🚨 STEP 5: Fail-safe guards
+    // NEVER trigger reload if session is null and no corrupted tokens present
+    if (session === null && !hasCorruptedAuth()) {
+      console.log('✅ Session is null but no corrupted tokens detected - normal state');
+      return;
+    }
+
+    // Don't reload if already on login page or recovery URL
+    const isOnLoginPage = window.location.pathname === '/' || 
+                         window.location.pathname.includes('auth') ||
+                         window.location.hash.includes('type=recovery');
+    
+    if (isOnLoginPage) {
+      console.log('⏭️ On login/recovery page - skipping corruption check');
+      return;
+    }
+
+    // Prevent repeated cleanup attempts
+    if (hasAttemptedCleanup.current && maxCleanupAttempts.current >= 2) {
+      console.log('⏭️ Max cleanup attempts reached - stopping to prevent infinite loop');
+      return;
+    }
+
+    // Rate limiting: Don't attempt cleanup more than once per 10 seconds
+    const now = Date.now();
+    if (now - lastCleanupTimestamp.current < 10000) {
+      console.log('⏭️ Rate limiting: Cleanup attempted too recently');
+      return;
+    }
+
+    // 📱 STEP 6: Mobile-safe timing - Add delay on mobile before checking
+    const checkDelay = isMobile ? 3000 : 1000;
+    
+    console.log(`🔎 Corrupted token check triggered at ${new Date().toISOString()}`);
+    if (isMobile) {
+      console.log('📱 Mobile detected — delaying corruption check by 3s');
+    }
+
+    setTimeout(() => {
+      // Double-check loading state after delay
+      if (loading) {
+        console.log('⏳ Still loading after delay - skipping corruption check');
+        return;
+      }
+
+      const hasCorruption = hasCorruptedAuth();
+      
+      if (hasCorruption) {
+        console.log('🚨 Detected corrupted auth tokens, proceeding with cleanup...');
+        
+        hasAttemptedCleanup.current = true;
+        lastCleanupTimestamp.current = now;
+        maxCleanupAttempts.current += 1;
+        
+        clearAllAuthTokens();
+        
+        // 🪵 STEP 4: Enhanced logging before reload
+        const reloadDelay = isMobile ? 3000 : 2000;
+        console.log(`✅ Cleanup complete, reloading in ${reloadDelay}ms`);
+        console.log(`🔄 [RELOAD TRIGGER] Auth corruption detected - forcing page reload at ${new Date().toISOString()}`);
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, reloadDelay);
+      } else {
+        console.log('✅ No corrupted tokens detected - auth state is clean');
+      }
+    }, checkDelay);
+
+  }, [loading, session]); // Only depend on loading and session state
 
   // Load extended profile when session is established (only once per session)
   ReactModule.useEffect(() => {
