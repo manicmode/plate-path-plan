@@ -287,25 +287,30 @@ class SoundManager {
       throw new Error('AudioContext not available');
     }
 
-    // Try primary URL first
+    // Try primary URL first with detailed logging
+    console.log(`🔊 [SoundManager] Loading audio: ${key} from ${config.url}`);
     try {
       const buffer = await this.fetchAndDecodeAudio(config.url);
       this.audioBuffers[key] = buffer;
+      this.loadingStatus[key] = 'loaded';
       this.logStateChange('buffer_loaded', `✅ ${key} loaded from: ${config.url}`);
+      console.log(`🔊 [SoundManager] ✅ Successfully loaded: ${key}`);
       return;
     } catch (primaryError) {
-      console.warn(`🔊 [SoundManager] Primary URL failed for ${key}: ${primaryError.message}`);
+      console.warn(`🔊 [SoundManager] ❌ Primary URL failed for ${key}: ${primaryError.message}`);
       
-      // Try fallback URL
-      if (config.fallbackUrl && config.fallbackUrl !== config.url) {
+      // Try fallback URL (even if same as primary, for robustness)
+      if (config.fallbackUrl) {
         try {
+          console.log(`🔊 [SoundManager] Trying fallback: ${key} from ${config.fallbackUrl}`);
           const buffer = await this.fetchAndDecodeAudio(config.fallbackUrl);
           this.audioBuffers[key] = buffer;
           this.loadingStatus[key] = 'using_fallback';
           this.logStateChange('buffer_fallback', `⚠️ ${key} loaded from fallback: ${config.fallbackUrl}`);
+          console.log(`🔊 [SoundManager] ⚠️ Fallback success: ${key}`);
           return;
         } catch (fallbackError) {
-          console.error(`🔊 [SoundManager] Fallback also failed for ${key}: ${fallbackError.message}`);
+          console.error(`🔊 [SoundManager] ❌ Fallback also failed for ${key}: ${fallbackError.message}`);
         }
       }
       
@@ -541,9 +546,18 @@ class SoundManager {
 
   async forceInitialize(): Promise<void> {
     this.resetInitialization();
+    
+    // Clear existing buffers to force reload
+    this.audioBuffers = {};
+    Object.keys(this.sounds).forEach(key => {
+      this.loadingStatus[key] = 'pending';
+    });
+    
     await this.createAndResumeAudioContext();
     this.initializeWithTimeout();
     await this.initializationPromise;
+    
+    console.log('🔊 [SoundManager] Force initialization complete - all sounds reloaded');
   }
 
   getStatus() {
