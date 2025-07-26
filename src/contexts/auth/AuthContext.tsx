@@ -152,11 +152,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (error) {
               console.error(`❌ Session fetch error (attempt ${attempt}):`, error);
               if (attempt < 3) {
-                console.log(`🔄 Retrying session fetch in ${attempt * 500}ms...`);
-                setTimeout(() => fetchSessionWithRetry(attempt + 1), attempt * 500);
+                const retryDelay = attempt * 1000; // More conservative retry timing
+                console.log(`🔄 Retrying session fetch in ${retryDelay}ms...`);
+                setTimeout(() => fetchSessionWithRetry(attempt + 1), retryDelay);
                 return;
               }
-              throw error;
+              
+              // Add timeout buffer before marking session null on final failure
+              console.log('⏱️ Adding 2s timeout buffer before marking session null...');
+              setTimeout(() => {
+                setSession(null);
+                setUser(null);
+                isInitialized = true;
+                setLoading(false);
+              }, 2000);
+              return;
             }
             
             console.log(`📱 STEP 3: Initial session resolved - Session: ${session?.user?.id || 'null'}`);
@@ -179,10 +189,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
           } catch (fetchError) {
             console.error('🚨 Failed to fetch initial session after retries:', fetchError);
-            setSession(null);
-            setUser(null);
-            isInitialized = true;
-            setLoading(false);
+            
+            // Add timeout buffer before final failure state
+            console.log('⏱️ Adding 2s timeout buffer before final failure state...');
+            setTimeout(() => {
+              setSession(null);
+              setUser(null);
+              isInitialized = true;
+              setLoading(false);
+            }, 2000);
           }
         };
 
@@ -300,7 +315,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // 🚨 STEP 5: Fail-safe guards
+    // 🚨 STEP 5: Conservative fail-safe guards
     // NEVER trigger reload if session is null and no corrupted tokens present
     if (session === null && !hasCorruptedAuth()) {
       console.log('✅ Session is null but no corrupted tokens detected - normal state');
@@ -310,6 +325,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Don't reload if already on login page or recovery URL
     const isOnLoginPage = window.location.pathname === '/' || 
                          window.location.pathname.includes('auth') ||
+                         window.location.pathname.includes('sign-in') ||
                          window.location.hash.includes('type=recovery');
     
     if (isOnLoginPage) {
@@ -317,21 +333,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // Prevent repeated cleanup attempts
-    if (hasAttemptedCleanup.current && maxCleanupAttempts.current >= 2) {
+    // More conservative: Prevent repeated cleanup attempts
+    if (hasAttemptedCleanup.current && maxCleanupAttempts.current >= 1) {
       console.log('⏭️ Max cleanup attempts reached - stopping to prevent infinite loop');
       return;
     }
 
-    // Rate limiting: Don't attempt cleanup more than once per 10 seconds
+    // More conservative rate limiting: Don't attempt cleanup more than once per 30 seconds
     const now = Date.now();
-    if (now - lastCleanupTimestamp.current < 10000) {
+    if (now - lastCleanupTimestamp.current < 30000) {
       console.log('⏭️ Rate limiting: Cleanup attempted too recently');
       return;
     }
 
-    // 📱 STEP 6: Mobile-safe timing - Add delay on mobile before checking
-    const checkDelay = isMobile ? 3000 : 1000;
+    // 📱 STEP 6: Mobile-safe timing - More conservative delays
+    const checkDelay = isMobile ? 5000 : 2000;
     
     console.log(`🔎 Corrupted token check triggered at ${new Date().toISOString()}`);
     if (isMobile) {

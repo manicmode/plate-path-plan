@@ -10,19 +10,19 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { session, loading, isAuthenticated } = useAuth();
+  const { session, loading, user } = useAuth();
   const location = useLocation();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
 
   console.log('🔒 ProtectedRoute: Checking auth state...', { 
     loading, 
     hasSession: !!session, 
-    isAuthenticated,
+    hasUser: !!user,
     currentPath: location.pathname,
     sessionUserId: session?.user?.id || 'none'
   });
 
-  // Critical: Always show loading while auth is initializing
+  // Critical: Never render or redirect while auth is loading
   if (loading) {
     console.log('⏳ ProtectedRoute: Auth loading, showing spinner...');
     return (
@@ -51,21 +51,15 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // Critical: Only check for null session after loading is complete
-  if (!loading && (session === null || session === undefined)) {
-    console.log('🚨 ProtectedRoute: No session after loading complete, redirecting to / from:', location.pathname);
-    return <Navigate to="/" replace state={{ from: location }} />;
+  // Critical: Clear guard - only redirect when we know user is not authenticated
+  if (!user && !loading) {
+    console.log('🚨 ProtectedRoute: No user after loading complete, redirecting to /sign-in from:', location.pathname);
+    return <Navigate to="/sign-in" replace state={{ from: location }} />;
   }
 
-  // Critical: Double-check authentication state
-  if (!loading && !isAuthenticated) {
-    console.log('🚨 ProtectedRoute: Not authenticated after loading complete, redirecting to / from:', location.pathname);
-    return <Navigate to="/" replace state={{ from: location }} />;
-  }
-
-  // Critical: Ensure we have a valid session with user before rendering protected content
-  if (!loading && session && session.user && isAuthenticated) {
-    console.log('✅ ProtectedRoute: Valid session confirmed, rendering protected content');
+  // Critical: Ensure we have a valid user before rendering protected content
+  if (user && !loading) {
+    console.log('✅ ProtectedRoute: Valid user confirmed, rendering protected content');
     return <>{children}</>;
   }
 

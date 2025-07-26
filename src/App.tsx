@@ -72,6 +72,14 @@ function AppContent() {
     session: !!auth?.session 
   });
 
+  // ✅ CRITICAL: Return immediately if auth is loading - no other logic should run
+  if (auth?.loading) {
+    console.log('⏳ AppContent: Auth still loading, showing loading screen...');
+    return <LoadingScreen />;
+  }
+
+  console.log('✅ AppContent: Auth initialized, rendering routes...');
+
   try {
     const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
     console.log('😊 AppContent: Daily mood scheduler initialized');
@@ -81,14 +89,6 @@ function AppContent() {
     
     useBodyScanSharingReminder();
     console.log('📤 AppContent: Body scan sharing reminder initialized');
-
-    // ✅ CRITICAL: Wait for auth initialization before routing decisions
-    if (auth?.loading) {
-      console.log('⏳ AppContent: Auth still loading, showing loading screen...');
-      return <LoadingScreen />;
-    }
-
-    console.log('✅ AppContent: Auth initialized, rendering routes...');
 
     return (
       <>

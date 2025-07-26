@@ -9,20 +9,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
-  const { isAuthenticated, loading, session } = useAuth();
+  const { user, loading } = useAuth();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
-  const [sessionChecked, setSessionChecked] = useState(false);
-
-  useEffect(() => {
-    console.log('🏠 Index: Starting session check...');
-    supabase.auth.getSession().finally(() => {
-      console.log('🏠 Index: Session check complete');
-      setSessionChecked(true);
-    });
-  }, []);
 
   useEffect(() => {
     // Check both URL params and hash for recovery parameters
@@ -46,18 +36,16 @@ const Index = () => {
   }, [searchParams, navigate]);
 
   console.log('🏠 Index component rendering:', {
-    isAuthenticated, 
+    hasUser: !!user, 
     loading,
-    sessionChecked,
-    hasSession: !!session,
     searchParams: searchParams.toString(),
     currentURL: window.location.href,
     timestamp: new Date().toISOString()
   });
 
-  // Critical: Show loading until both auth and session check are complete
-  if (loading || !sessionChecked) {
-    console.log('🏠 Index: Showing loading state - loading:', loading, 'sessionChecked:', sessionChecked);
+  // Critical: Wait until auth.loading === false before any routing decisions
+  if (loading) {
+    console.log('🏠 Index: Showing loading state - auth loading');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center space-y-6">
@@ -84,20 +72,20 @@ const Index = () => {
     );
   }
 
-  // Critical: Only redirect when we have a confirmed authenticated session
-  if (!loading && sessionChecked && isAuthenticated && session) {
-    console.log('🏠 Index: User authenticated with session, redirecting to home');
+  // Critical: Only redirect to /home when user is authenticated
+  if (user && !loading) {
+    console.log('🏠 Index: User authenticated, redirecting to home');
     return <Navigate to="/home" replace />;
   }
 
-  // Critical: Only show auth form when we're certain user is not authenticated
-  if (!loading && sessionChecked && !isAuthenticated && !session) {
+  // Critical: Only show auth form when auth is resolved and no user
+  if (!user && !loading) {
     console.log('🏠 Index: User not authenticated, showing AuthForm');
     return <AuthForm />;
   }
 
-  // Fallback loading state for edge cases
-  console.log('🏠 Index: Edge case - showing fallback loading');
+  // This should never be reached
+  console.log('🏠 Index: Unexpected state - showing fallback loading');
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
       <div className="text-center space-y-6">
