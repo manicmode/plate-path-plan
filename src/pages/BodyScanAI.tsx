@@ -819,45 +819,20 @@ export default function BodyScanAI() {
   }, []);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
-    // STEP 4: DRAW DEBUG
-    console.log("[DRAW] drawPoseOverlay called");
-    
     if (!overlayCanvasRef.current || !videoRef.current) {
-      console.log('[DRAW] ❌ Missing canvas or video ref');
       return;
     }
     
     const canvas = overlayCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.log('[DRAW] ❌ No canvas context');
       return;
     }
     
-    // STEP 4: DRAW RED TEST BOX
-    ctx.fillStyle = "red";
-    ctx.fillRect(10, 10, 20, 20);
-    console.log("[DRAW] Red test box drawn");
-    
-    const video = videoRef.current;
-    
-    // Set canvas buffer size to match video dimensions
-    if (video.videoWidth > 0 && video.videoHeight > 0) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
-    
-    // Clear previous drawings
+    // Clear previous drawings only once
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // REDRAW TEST BOX AFTER CLEAR
-    ctx.fillStyle = "red";
-    ctx.fillRect(10, 10, 20, 20);
-    
-    console.log(`[DRAW] Canvas setup: ${canvas.width}x${canvas.height}, video: ${video.videoWidth}x${video.videoHeight}`);
-    
     if (!pose?.keypoints?.length) {
-      console.log('[DRAW] ❌ No keypoints to draw, but red box should be visible');
       return;
     }
     
