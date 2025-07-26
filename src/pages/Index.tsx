@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/auth';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthRecovery } from '@/hooks/useAuthRecovery';
@@ -8,7 +7,6 @@ import AuthForm from '@/components/auth/AuthForm';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
@@ -16,46 +14,30 @@ const Index = () => {
   const navigate = useNavigate();
   
   const [sessionChecked, setSessionChecked] = useState(false);
-
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().finally(() => {
       setSessionChecked(true);
+      // Add a small delay to prevent flash on initial load
+      setTimeout(() => setIsInitialLoad(false), 100);
     });
   }, []);
-useEffect(() => {
-  // Check both URL params and hash for recovery parameters
-  const type = searchParams.get('type') || new URLSearchParams(window.location.hash.substring(1)).get('type');
-  const code = searchParams.get('code') || new URLSearchParams(window.location.hash.substring(1)).get('code');
 
-  console.log('🔍 Checking URL for recovery parameters:', {
-    type,
-    hasCode: !!code,
-    currentURL: window.location.href,
-    searchParams: searchParams.toString(),
-    hash: window.location.hash
-  });
+  useEffect(() => {
+    // Check both URL params and hash for recovery parameters
+    const type = searchParams.get('type') || new URLSearchParams(window.location.hash.substring(1)).get('type');
+    const code = searchParams.get('code') || new URLSearchParams(window.location.hash.substring(1)).get('code');
 
-  if (type === 'recovery' && code) {
-    console.log('🔑 Password recovery flow detected - redirecting to reset page');
+    if (type === 'recovery' && code) {
+      navigate(`/reset-password#code=${code}&type=recovery`, {
+        replace: true
+      });
+    }
+  }, [searchParams, navigate]);
 
-    navigate(`/reset-password#code=${code}&type=recovery`, {
-      replace: true
-    });
-  }
-}, [searchParams, navigate]);
-
-  console.log('Index component rendering:', {
-    isAuthenticated, 
-    loading,
-    searchParams: searchParams.toString(),
-    currentURL: window.location.href,
-    timestamp: new Date().toISOString()
-  });
-
-  // Show loading with recovery option
-  if (loading) {
-    console.log('Index showing loading state');
+  // Show loading until we have a definitive auth state AND session is checked
+  if (loading || !sessionChecked || isInitialLoad) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center space-y-6">
@@ -82,14 +64,12 @@ useEffect(() => {
     );
   }
 
-  // Redirect to home if authenticated
-  if (isAuthenticated && sessionChecked) {
-    console.log('User authenticated, redirecting to home');
+  // Redirect to home if authenticated (no flash because of proper loading state above)
+  if (isAuthenticated) {
     return <Navigate to="/home" replace />;
   }
 
-  // Show auth form for unauthenticated users
-  console.log('User not authenticated, showing AuthForm');
+  // Show auth form for unauthenticated users (only after loading is complete)
   return <AuthForm />;
 };
 

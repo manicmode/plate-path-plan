@@ -1,5 +1,5 @@
 
-import { Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -19,7 +19,7 @@ import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 
-// Lazy load components
+// Lazy load components with prefetch optimization
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Index = lazy(() => import('@/pages/Index'));
 const Home = lazy(() => import('@/pages/Home'));
@@ -27,9 +27,11 @@ const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Coach = lazy(() => import('@/pages/Coach'));
 const Explore = lazy(() => import('@/pages/Explore'));
+const Profile = lazy(() => import('@/pages/Profile'));
+
+// Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
-const Profile = lazy(() => import('@/pages/Profile'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
 const Supplements = lazy(() => import('@/pages/Supplements'));
@@ -50,11 +52,25 @@ const BackBodyScan = lazy(() => import('@/pages/BackBodyScan'));
 const BodyScanResults = lazy(() => import('@/pages/BodyScanResults'));
 const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
 
+// Prefetch critical components after initial load
+const prefetchCriticalComponents = () => {
+  // Prefetch main navigation components after the app has loaded
+  setTimeout(() => {
+    import('@/pages/Home');
+    import('@/pages/Camera');
+    import('@/pages/Analytics');
+    import('@/pages/Coach');
+    import('@/pages/Explore');
+    import('@/pages/Profile');
+  }, 1000);
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 1,
+      refetchOnWindowFocus: false, // Reduce unnecessary refetches
     },
   },
 });
@@ -63,6 +79,11 @@ function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
+
+  // Prefetch critical components after app has loaded
+  React.useEffect(() => {
+    prefetchCriticalComponents();
+  }, []);
 
   return (
     <>

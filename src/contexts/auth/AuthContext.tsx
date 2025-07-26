@@ -83,10 +83,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-
     // Aggressive cleanup of all auth-related storage
     const clearAllAuthTokens = () => {
-      console.log('🧹 Clearing all auth tokens...');
       try {
         // Clear all localStorage items that could contain auth tokens
         Object.keys(localStorage).forEach(key => {
@@ -94,7 +92,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               key.includes('supabase') || 
               key.includes('auth') || 
               key.includes('session')) {
-            console.log('Removing storage key:', key);
             localStorage.removeItem(key);
           }
         });
@@ -120,73 +117,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
     
     // Cleanup corrupted auth tokens
-      const hasCorruptedAuth = () => {
-        try {
-          const keys = Object.keys(localStorage);
-          return keys.some(key => {
-            if (key.includes('supabase') || key.startsWith('sb-')) {
-              const value = localStorage.getItem(key);
-              return value && (value.includes('403') || value.includes('invalid_claim'));
-            }
-            return false;
-          });
-        } catch {
-          return true; // If we can't check, assume corruption
-        }
-      };
-      
-      if (hasCorruptedAuth()) {
-        console.log('🚨 Detected corrupted auth tokens, cleaning up...');
-        clearAllAuthTokens();
-        // Force page reload after cleanup to ensure fresh start
-        setTimeout(() => {
-          console.log('🔄 Forcing page reload after auth cleanup...');
-          window.location.reload();
-        }, 1000);
-        return;
+    const hasCorruptedAuth = () => {
+      try {
+        const keys = Object.keys(localStorage);
+        return keys.some(key => {
+          if (key.includes('supabase') || key.startsWith('sb-')) {
+            const value = localStorage.getItem(key);
+            return value && (value.includes('403') || value.includes('invalid_claim'));
+          }
+          return false;
+        });
+      } catch {
+        return true; // If we can't check, assume corruption
       }
-
-const { data: { subscription } } = supabase.auth.onAuthStateChange(
-  async (event, session) => {
-    console.log('🔄 Auth state change:', event, session?.user?.id);
-
-    if (event === 'PASSWORD_RECOVERY') {
-      console.log('🔑 Password recovery session detected');
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      return;
-    }
-
-    if (event === 'TOKEN_REFRESHED' && session) {
-      console.log('🔄 Token refreshed during recovery');
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      return;
-    }
-
-    setSession(session);
-    setUser(session?.user ?? null);
-    setLoading(false);
-
-    // Don't reset session during password recovery
-    if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+    };
+    
+    if (hasCorruptedAuth()) {
+      clearAllAuthTokens();
+      // Force page reload after cleanup to ensure fresh start
       setTimeout(() => {
-        loadExtendedProfile(session.user);
-      }, 0);
+        window.location.reload();
+      }, 1000);
+      return;
     }
-  }
-);
 
-
-    // Get initial session
+    // Get initial session first (synchronous check)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔄 AuthContext - Initial session loaded:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED' && session) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+          return;
+        }
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        // Don't reset session during password recovery
+        if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+          // Load extended profile asynchronously without blocking the UI
+          setTimeout(() => {
+            loadExtendedProfile(session.user);
+          }, 0);
+        }
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);

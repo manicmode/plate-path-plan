@@ -14,7 +14,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
 
-  // Show loading with recovery option
+  // Only show loading if we're actually still loading auth state
+  // This prevents the flash when navigating between protected routes
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
@@ -47,5 +48,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/" replace state={{ from: location }} />;
   }
 
+  // Render children without additional loading or wrapper
   return <>{children}</>;
 };
