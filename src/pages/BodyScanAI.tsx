@@ -824,6 +824,7 @@ export default function BodyScanAI() {
     }
     
     const canvas = overlayCanvasRef.current;
+    const video = videoRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       return;
@@ -836,43 +837,44 @@ export default function BodyScanAI() {
       return;
     }
     
-    console.log(`[DRAW] Drawing ${pose.keypoints.length} keypoints`);
+    // Calculate coordinate transformation from video space to canvas display space
+    const canvasDisplayRect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / canvasDisplayRect.width;
+    const scaleY = canvas.height / canvasDisplayRect.height;
     
-    // Draw GREEN DOTS for pose keypoints - FORCE VISIBLE
-    let drawnKeypoints = 0;
-    pose.keypoints.forEach((keypoint, index) => {
+    // Draw keypoints with proper coordinate mapping
+    pose.keypoints.forEach((keypoint) => {
       if (keypoint.score > 0.2) {
         const isAligned = !alignment.misalignedLimbs.some(limb => 
           keypoint.name?.includes(limb.replace('_', ' '))
         );
         
-        // LARGE OUTER GLOW for visibility
+        // Transform coordinates from video space to canvas buffer space
+        const x = keypoint.x;
+        const y = keypoint.y;
+        
+        // Draw outer glow
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 15, 0, 2 * Math.PI);
+        ctx.arc(x, y, 15, 0, 2 * Math.PI);
         ctx.fillStyle = isAligned ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 107, 0, 0.5)';
         ctx.fill();
         
-        // LARGE GREEN DOT - FORCE VISIBLE
+        // Draw main keypoint
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
         ctx.fillStyle = isAligned ? '#00ff00' : '#ff6b00';
         ctx.fill();
         
-        // WHITE BORDER for maximum contrast
+        // Draw white border for contrast
         ctx.beginPath();
-        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.stroke();
-        
-        drawnKeypoints++;
-        console.log(`[DRAW] ✅ Drew keypoint ${index}: ${keypoint.name} at (${keypoint.x.toFixed(1)}, ${keypoint.y.toFixed(1)})`);
       }
     });
     
-    console.log(`[DRAW] Successfully drew ${drawnKeypoints} GREEN DOTS`);
-    
-    // Draw WHITE SKELETON LINES - FORCE VISIBLE
+    // Draw skeleton connections
     const connections = [
       ['left_shoulder', 'right_shoulder'],
       ['left_shoulder', 'left_elbow'],
@@ -884,13 +886,12 @@ export default function BodyScanAI() {
       ['right_shoulder', 'right_hip'],
     ];
     
-    let drawnConnections = 0;
     connections.forEach(([pointA, pointB]) => {
       const kpA = pose.keypoints.find(kp => kp.name === pointA);
       const kpB = pose.keypoints.find(kp => kp.name === pointB);
       
       if (kpA && kpB && kpA.score > 0.2 && kpB.score > 0.2) {
-        // THICK WHITE SKELETON LINES
+        // Draw thick white skeleton line
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
@@ -898,20 +899,15 @@ export default function BodyScanAI() {
         ctx.lineWidth = 5;
         ctx.stroke();
         
-        // COLORED INNER LINE for alignment feedback
+        // Draw colored inner line for alignment feedback
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
         ctx.strokeStyle = alignment.isAligned ? '#00ffff' : '#ff6b00';
         ctx.lineWidth = 3;
         ctx.stroke();
-        
-        drawnConnections++;
       }
     });
-    
-    console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
-    console.log('[DRAW] ✅ Pose overlay drawing complete');
   }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1011,13 +1007,12 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* STEP 5: CANVAS WITH LIME BORDER */}
+      {/* Pose overlay canvas - positioned above silhouette */}
       <canvas 
         ref={overlayCanvasRef}
         style={{
-          border: '3px solid lime',
           position: 'absolute',
-          zIndex: 99,
+          zIndex: 25,
           top: 0,
           left: 0,
           width: '100%',
