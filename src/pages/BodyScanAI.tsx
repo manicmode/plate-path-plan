@@ -71,18 +71,6 @@ export default function BodyScanAI() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-const runPoseEstimation = async () => {
-  if (!videoRef.current || !poseDetectorRef.current || !canvasRef.current) return;
-
-  const video = videoRef.current;
-  const canvas = canvasRef.current;
-  const context = canvas.getContext("2d");
-
-  const poses = await poseDetectorRef.current.estimatePoses(video);
-  drawPose(poses, context);
-
-  requestAnimationFrame(runPoseEstimation);
-};
 
   useEffect(() => {
     const startCamera = async () => {
