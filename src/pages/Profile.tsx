@@ -4,6 +4,7 @@ import { BadgeProvider } from '@/contexts/BadgeContext';
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth';
+import { SoundSystemDashboard } from '@/components/debug/SoundSystemDashboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StreakBadgesSection } from '@/components/analytics/StreakBadgesSection';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
@@ -341,6 +342,9 @@ const ProfileContent = () => {
           
           {/* Sound System Test Component */}
           <SoundTestComponent />
+          
+          {/* Advanced Sound System Dashboard */}
+          <SoundSystemDashboard />
         </div>
       )}
 

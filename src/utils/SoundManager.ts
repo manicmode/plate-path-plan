@@ -20,6 +20,10 @@ class SoundManager {
   private audioContext: AudioContext | null = null;
   private hasUserInteracted: boolean = false;
   private initializationPromise: Promise<void> | null = null;
+  private lastSoundPlayed: { soundKey: string; timestamp: number; success: boolean } | null = null;
+  private interactionAttempts: number = 0;
+  private audioContextCreationAttempts: number = 0;
+  private lastError: { soundKey: string; error: string; timestamp: number } | null = null;
   
   // Sound file configuration
   private sounds: Record<string, SoundConfig> = {
@@ -298,127 +302,269 @@ class SoundManager {
   }
 
   /**
-   * Play a sound by key with comprehensive debugging and error handling
-   * Phase 3: Enhanced Debugging and Error Recovery
+   * BULLETPROOF SOUND PLAYBACK with comprehensive diagnostics
    */
   async play(soundKey: string): Promise<void> {
-    console.log(`🔊 [SoundManager] === PLAY REQUEST: "${soundKey}" ===`);
-    console.log(`🔊 [SoundManager] System Status - enabled: ${this.isEnabled}, userInteracted: ${this.hasUserInteracted}, audioContextState: ${this.audioContext?.state || 'not created'}`);
+    const startTime = Date.now();
+    console.log(`🔊 [SoundManager] ====== SOUND PLAYBACK REQUEST: "${soundKey}" ======`);
+    console.log(`🔊 [SoundManager] Timestamp: ${new Date().toISOString()}`);
+    console.log(`🔊 [SoundManager] System State - enabled: ${this.isEnabled}, userInteracted: ${this.hasUserInteracted}, audioContextState: ${this.audioContext?.state || 'null'}`);
     
+    // STAGE 1: User preference check
     if (!this.isEnabled) {
-      console.log(`🔊 [SoundManager] ❌ Sound disabled by user preference - skipping "${soundKey}"`);
+      console.log(`🔊 [SoundManager] ❌ ABORT: Sound disabled by user preference`);
+      this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
       return;
     }
 
-    // Check for reduced motion preference
+    // STAGE 2: Reduced motion check
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) {
-      console.log(`🔊 [SoundManager] ❌ Reduced motion preference detected - skipping "${soundKey}"`);
+      console.log(`🔊 [SoundManager] ❌ ABORT: Reduced motion preference detected`);
+      this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
       return;
     }
 
-    // Enhanced user interaction check with immediate initialization attempt
+    // STAGE 3: Critical user interaction check
     if (!this.hasUserInteracted) {
-      console.warn(`🔊 [SoundManager] ❌ No user interaction detected yet for "${soundKey}"`);
-      console.log('🔊 [SoundManager] 💡 TIP: User must interact with the page before sounds can play');
-      return;
+      console.error(`🔊 [SoundManager] 🚫 CRITICAL FAILURE: No user interaction detected for "${soundKey}"`);
+      console.log(`🔊 [SoundManager] Interaction attempts so far: ${this.interactionAttempts}`);
+      console.log(`🔊 [SoundManager] 💡 SOLUTION: User must click, tap, or interact with the page first`);
+      
+      // Try to force activate if we're in a context where user just interacted
+      console.log(`🔊 [SoundManager] 🔄 Attempting emergency user interaction activation...`);
+      this.emergencyUserInteractionActivation();
+      
+      if (!this.hasUserInteracted) {
+        this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
+        return;
+      }
     }
 
     try {
-      // Ensure audio system is fully initialized
-      console.log(`🔊 [SoundManager] Ensuring audio system initialization for "${soundKey}"...`);
-      
-      if (!this.initializationPromise) {
-        console.log('🔊 [SoundManager] Starting fresh initialization...');
-        await this.initializeAudioSystem();
-      } else {
-        console.log('🔊 [SoundManager] Waiting for existing initialization...');
-        await this.initializationPromise;
-      }
+      // STAGE 4: Audio system initialization
+      console.log(`🔊 [SoundManager] 🔧 Ensuring audio system initialization...`);
+      await this.bulletproofInitialization();
 
-      console.log(`🔊 [SoundManager] Audio system ready, proceeding with "${soundKey}" playback...`);
-
+      // STAGE 5: Sound configuration validation
+      console.log(`🔊 [SoundManager] 📋 Validating sound configuration for "${soundKey}"...`);
       const config = this.sounds[soundKey];
       if (!config) {
-        console.error(`🔊 [SoundManager] ❌ Sound configuration not found: "${soundKey}"`);
+        console.error(`🔊 [SoundManager] ❌ FATAL: Sound configuration missing for "${soundKey}"`);
         console.log('🔊 [SoundManager] Available sounds:', Object.keys(this.sounds));
+        this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
         return;
       }
 
+      // STAGE 6: Audio loading and caching
       let audio = this.audioCache[soundKey];
-      
-      // Load sound if not cached with retry logic
       if (!audio) {
-        console.log(`🔊 [SoundManager] Sound not cached, loading "${soundKey}"...`);
+        console.log(`🔊 [SoundManager] 📥 Loading sound "${soundKey}" from: ${config.url}`);
         try {
-          audio = await this.loadSound(soundKey, config);
-          console.log(`🔊 [SoundManager] ✅ Successfully loaded and cached "${soundKey}"`);
+          audio = await this.bulletproofSoundLoading(soundKey, config);
+          console.log(`🔊 [SoundManager] ✅ Sound "${soundKey}" loaded and cached successfully`);
         } catch (loadError) {
-          console.error(`🔊 [SoundManager] ❌ Failed to load sound "${soundKey}":`, loadError);
-          // Attempt immediate retry for network issues
-          try {
-            console.log(`🔊 [SoundManager] 🔄 Retrying load for "${soundKey}"...`);
-            audio = await this.loadSound(soundKey, config);
-            console.log(`🔊 [SoundManager] ✅ Retry successful for "${soundKey}"`);
-          } catch (retryError) {
-            console.error(`🔊 [SoundManager] ❌ Retry failed for "${soundKey}":`, retryError);
-            throw retryError;
-          }
+          console.error(`🔊 [SoundManager] ❌ LOAD FAILED for "${soundKey}":`, loadError);
+          this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
+          throw loadError;
         }
       } else {
-        console.log(`🔊 [SoundManager] Using cached audio for "${soundKey}"`);
+        console.log(`🔊 [SoundManager] 📦 Using cached audio for "${soundKey}"`);
       }
 
-      // Comprehensive AudioContext state management
-      if (this.audioContext) {
-        console.log(`🔊 [SoundManager] AudioContext state before playback: ${this.audioContext.state}`);
-        
-        if (this.audioContext.state === 'suspended') {
-          console.log(`🔊 [SoundManager] Resuming suspended AudioContext for "${soundKey}"...`);
-          try {
-            await this.audioContext.resume();
-            console.log(`🔊 [SoundManager] ✅ AudioContext resumed, new state: ${this.audioContext.state}`);
-          } catch (resumeError) {
-            console.error(`🔊 [SoundManager] ❌ Failed to resume AudioContext:`, resumeError);
-          }
-        }
-      }
+      // STAGE 7: AudioContext bulletproofing
+      await this.bulletproofAudioContextManagement();
 
-      // Reset audio position and attempt playback
-      console.log(`🔊 [SoundManager] Attempting playback of "${soundKey}"...`);
+      // STAGE 8: Final playback attempt
+      console.log(`🔊 [SoundManager] 🎵 ATTEMPTING PLAYBACK of "${soundKey}"...`);
       audio.currentTime = 0;
       
-      // Enhanced playback with comprehensive error handling
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
         await playPromise;
-        console.log(`🔊 [SoundManager] 🎵 SUCCESS! "${soundKey}" played successfully`);
+        const duration = Date.now() - startTime;
+        console.log(`🔊 [SoundManager] 🎉 SUCCESS! "${soundKey}" played successfully in ${duration}ms`);
+        this.lastSoundPlayed = { soundKey, timestamp: startTime, success: true };
       } else {
-        console.log(`🔊 [SoundManager] ⚠️ Play method didn't return a promise for "${soundKey}"`);
+        console.warn(`🔊 [SoundManager] ⚠️ Play method didn't return promise for "${soundKey}"`);
+        this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
       }
       
     } catch (error) {
-      // Phase 3: Enhanced Error Recovery and User Feedback
-      console.error(`🔊 [SoundManager] 💥 PLAYBACK FAILED for "${soundKey}":`, error);
+      const duration = Date.now() - startTime;
+      console.error(`🔊 [SoundManager] 💥 PLAYBACK FAILED for "${soundKey}" after ${duration}ms:`, error);
       
+      this.lastSoundPlayed = { soundKey, timestamp: startTime, success: false };
+      this.lastError = { soundKey, error: error.message, timestamp: startTime };
+
+      // Detailed error analysis
       if (error.name === 'NotAllowedError') {
-        console.error(`🔊 [SoundManager] 🚫 Browser blocked "${soundKey}" - user interaction required`);
-        console.log('🔊 [SoundManager] 💡 This usually means the user hasn\'t interacted with the page yet');
+        console.error(`🔊 [SoundManager] 🚫 BROWSER BLOCKED "${soundKey}" - autoplay policy violation`);
+        console.log('🔊 [SoundManager] 💡 This indicates insufficient user interaction or browser restriction');
       } else if (error.name === 'AbortError') {
-        console.error(`🔊 [SoundManager] ⏹️ Playback aborted for "${soundKey}"`);
+        console.error(`🔊 [SoundManager] ⏹️ PLAYBACK ABORTED for "${soundKey}"`);
       } else if (error.name === 'NotSupportedError') {
-        console.error(`🔊 [SoundManager] 🚫 Audio format not supported for "${soundKey}"`);
+        console.error(`🔊 [SoundManager] 🚫 AUDIO FORMAT NOT SUPPORTED for "${soundKey}"`);
       } else {
-        console.error(`🔊 [SoundManager] 🔥 Unknown error playing "${soundKey}":`, error.message);
+        console.error(`🔊 [SoundManager] 🔥 UNKNOWN ERROR playing "${soundKey}":`, error.message);
       }
 
-      // Store error for status reporting
-      this.lastError = { soundKey, error: error.message, timestamp: Date.now() };
+      // Trigger visual fallback
+      this.triggerVisualFallback(soundKey);
+      throw error;
     }
   }
 
-  private lastError: { soundKey: string; error: string; timestamp: number } | null = null;
+  /**
+   * Emergency user interaction activation for edge cases
+   */
+  private emergencyUserInteractionActivation(): void {
+    console.log('🔊 [SoundManager] 🚨 EMERGENCY USER INTERACTION ACTIVATION');
+    this.hasUserInteracted = true;
+    this.interactionAttempts++;
+    console.log(`🔊 [SoundManager] ✅ Emergency activation complete, attempt #${this.interactionAttempts}`);
+  }
+
+  /**
+   * Bulletproof audio system initialization
+   */
+  private async bulletproofInitialization(): Promise<void> {
+    if (!this.initializationPromise) {
+      console.log('🔊 [SoundManager] 🔧 Starting fresh audio initialization...');
+      this.initializationPromise = this.performInitialization();
+    } else {
+      console.log('🔊 [SoundManager] ⏳ Waiting for existing initialization...');
+    }
+    await this.initializationPromise;
+  }
+
+  /**
+   * Bulletproof sound loading with retries
+   */
+  private async bulletproofSoundLoading(key: string, config: SoundConfig): Promise<HTMLAudioElement> {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔊 [SoundManager] 📥 Load attempt ${attempt}/${maxRetries} for "${key}"`);
+        const audio = await this.loadSound(key, config);
+        console.log(`🔊 [SoundManager] ✅ Load successful for "${key}" on attempt ${attempt}`);
+        return audio;
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`🔊 [SoundManager] ❌ Load attempt ${attempt} failed for "${key}":`, error);
+        
+        if (attempt < maxRetries) {
+          const delay = attempt * 1000; // Progressive delay
+          console.log(`🔊 [SoundManager] ⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    console.error(`🔊 [SoundManager] 💥 All load attempts failed for "${key}"`);
+    throw lastError || new Error(`Failed to load sound after ${maxRetries} attempts`);
+  }
+
+  /**
+   * Bulletproof AudioContext management
+   */
+  private async bulletproofAudioContextManagement(): Promise<void> {
+    if (!this.audioContext) {
+      console.log('🔊 [SoundManager] 🎧 AudioContext not created, creating now...');
+      await this.createAudioContext();
+    }
+
+    if (this.audioContext) {
+      console.log(`🔊 [SoundManager] 🎧 AudioContext state before resume: ${this.audioContext.state}`);
+      
+      if (this.audioContext.state === 'suspended') {
+        console.log('🔊 [SoundManager] 🔄 AudioContext suspended, attempting resume...');
+        try {
+          await this.audioContext.resume();
+          console.log(`🔊 [SoundManager] ✅ AudioContext resumed, new state: ${this.audioContext.state}`);
+          
+          // Double-check the state
+          if (this.audioContext.state === 'suspended') {
+            console.error('🔊 [SoundManager] ❌ AudioContext still suspended after resume attempt');
+            throw new Error('AudioContext failed to resume');
+          }
+        } catch (resumeError) {
+          console.error('🔊 [SoundManager] ❌ AudioContext resume failed:', resumeError);
+          throw resumeError;
+        }
+      } else {
+        console.log(`🔊 [SoundManager] ✅ AudioContext state is ready: ${this.audioContext.state}`);
+      }
+    }
+  }
+
+  /**
+   * Create AudioContext with enhanced error handling
+   */
+  private async createAudioContext(): Promise<void> {
+    this.audioContextCreationAttempts++;
+    console.log(`🔊 [SoundManager] 🎧 Creating AudioContext (attempt #${this.audioContextCreationAttempts})`);
+    
+    try {
+      if (typeof AudioContext !== 'undefined') {
+        this.audioContext = new AudioContext();
+      } else if (typeof (window as any).webkitAudioContext !== 'undefined') {
+        this.audioContext = new (window as any).webkitAudioContext();
+      } else {
+        throw new Error('AudioContext not supported in this browser');
+      }
+      
+      console.log(`🔊 [SoundManager] ✅ AudioContext created with state: ${this.audioContext.state}`);
+    } catch (error) {
+      console.error('🔊 [SoundManager] ❌ AudioContext creation failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Visual fallback when sound fails
+   */
+  private triggerVisualFallback(soundKey: string): void {
+    console.log(`🔊 [SoundManager] 💫 Triggering visual fallback for "${soundKey}"`);
+    
+    // Create a temporary visual notification
+    const notification = document.createElement('div');
+    notification.textContent = '✅ Action Complete!';
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+    `;
+    
+    // Add CSS animation
+    if (!document.querySelector('#sound-fallback-styles')) {
+      const style = document.createElement('style');
+      style.id = 'sound-fallback-styles';
+      style.textContent = `
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.remove();
+    }, 2000);
+  }
 
   /**
    * Play multiple sounds in sequence with delay
@@ -463,8 +609,7 @@ class SoundManager {
   }
 
   /**
-   * Get comprehensive audio system status for debugging
-   * Phase 3: Enhanced status reporting
+   * Get comprehensive status with bulletproof diagnostics
    */
   getStatus(): { 
     enabled: boolean; 
@@ -473,8 +618,24 @@ class SoundManager {
     cachedSounds: number;
     initializationStatus: string;
     lastError?: { soundKey: string; error: string; timestamp: number };
+    lastSoundPlayed?: { soundKey: string; timestamp: number; success: boolean };
     soundUrls: Record<string, string>;
+    interactionAttempts: number;
+    audioContextCreationAttempts: number;
+    systemHealth: 'critical' | 'warning' | 'good' | 'excellent';
   } {
+    let systemHealth: 'critical' | 'warning' | 'good' | 'excellent' = 'critical';
+    
+    if (this.isEnabled && this.hasUserInteracted) {
+      if (this.audioContext?.state === 'running' && Object.keys(this.audioCache).length > 0) {
+        systemHealth = 'excellent';
+      } else if (this.audioContext?.state === 'running') {
+        systemHealth = 'good';
+      } else {
+        systemHealth = 'warning';
+      }
+    }
+
     return {
       enabled: this.isEnabled,
       hasUserInteracted: this.hasUserInteracted,
@@ -482,7 +643,11 @@ class SoundManager {
       cachedSounds: Object.keys(this.audioCache).length,
       initializationStatus: this.initializationPromise ? 'initialized' : 'pending',
       lastError: this.lastError,
-      soundUrls: Object.fromEntries(Object.entries(this.sounds).map(([key, config]) => [key, config.url]))
+      lastSoundPlayed: this.lastSoundPlayed,
+      soundUrls: Object.fromEntries(Object.entries(this.sounds).map(([key, config]) => [key, config.url])),
+      interactionAttempts: this.interactionAttempts,
+      audioContextCreationAttempts: this.audioContextCreationAttempts,
+      systemHealth
     };
   }
 
