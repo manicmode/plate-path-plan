@@ -54,9 +54,6 @@ export const requestNotificationPermission = async () => {
     // Initialize Firebase first
     const { messaging } = await initializeFirebase();
     
-    if (typeof Notification === 'undefined') {
-      throw new Error('Notifications are not supported on this device');
-    }
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       const { getToken } = await import('firebase/messaging');

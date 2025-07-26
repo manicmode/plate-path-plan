@@ -17,9 +17,6 @@ class SoundManager {
   private audioCache: AudioCache = {};
   private isEnabled: boolean = true;
   private isLoading: boolean = false;
-  private hasUserInteracted: boolean = false;
-  private isMobileSafari: boolean = false;
-  private isAudioSupported: boolean = false;
   
   // Sound file configuration
   private sounds: Record<string, SoundConfig> = {
@@ -71,66 +68,16 @@ class SoundManager {
   };
 
   constructor() {
-    this.initializePlatformChecks();
     this.loadUserPreferences();
-    this.setupUserInteractionListener();
-    // Don't preload sounds immediately - wait for user interaction
-  }
-
-  /**
-   * Initialize platform and browser checks
-   */
-  private initializePlatformChecks(): void {
-    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
-      this.isAudioSupported = false;
-      return;
-    }
-
-    this.isAudioSupported = true;
-    
-    // Detect mobile Safari
-    const userAgent = navigator.userAgent;
-    this.isMobileSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
-    
-    console.log('SoundManager: Platform checks completed', {
-      isAudioSupported: this.isAudioSupported,
-      isMobileSafari: this.isMobileSafari
-    });
-  }
-
-  /**
-   * Set up listener for first user interaction
-   */
-  private setupUserInteractionListener(): void {
-    if (!this.isAudioSupported) return;
-
-    const handleUserInteraction = () => {
-      this.hasUserInteracted = true;
-      console.log('SoundManager: User interaction detected, enabling audio');
-      
-      // Now it's safe to preload sounds
-      this.preloadSounds();
-      
-      // Remove listeners after first interaction
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+    this.preloadSounds();
   }
 
   /**
    * Load user sound preferences from localStorage
    */
   private loadUserPreferences(): void {
-    try {
-      const soundEnabled = localStorage.getItem('sound_enabled');
-      this.isEnabled = soundEnabled !== 'false'; // Default to enabled
-    } catch (error) {
-      console.warn('SoundManager: Failed to load preferences from localStorage:', error);
-      this.isEnabled = true;
-    }
+    const soundEnabled = localStorage.getItem('sound_enabled');
+    this.isEnabled = soundEnabled !== 'false'; // Default to enabled
   }
 
   /**
@@ -138,32 +85,21 @@ class SoundManager {
    */
   setSoundEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
-    try {
-      localStorage.setItem('sound_enabled', enabled.toString());
-    } catch (error) {
-      console.warn('SoundManager: Failed to save preferences to localStorage:', error);
-    }
+    localStorage.setItem('sound_enabled', enabled.toString());
   }
 
   /**
-   * Check if sounds are enabled and supported
+   * Check if sounds are enabled
    */
   isSoundEnabled(): boolean {
-    return this.isEnabled && this.isAudioSupported;
+    return this.isEnabled;
   }
 
   /**
-   * Preload frequently used sounds (only after user interaction)
+   * Preload frequently used sounds
    */
   private async preloadSounds(): Promise<void> {
-    if (!this.isEnabled || !this.isAudioSupported || !this.hasUserInteracted) {
-      console.log('SoundManager: Skipping preload - conditions not met', {
-        isEnabled: this.isEnabled,
-        isAudioSupported: this.isAudioSupported,
-        hasUserInteracted: this.hasUserInteracted
-      });
-      return;
-    }
+    if (!this.isEnabled) return;
 
     const preloadPromises = Object.entries(this.sounds)
       .filter(([_, config]) => config.preload)
@@ -171,9 +107,9 @@ class SoundManager {
 
     try {
       await Promise.allSettled(preloadPromises);
-      console.log('SoundManager: Sound preloading completed');
+      console.log('Sound preloading completed');
     } catch (error) {
-      console.warn('SoundManager: Some sounds failed to preload:', error);
+      console.warn('Some sounds failed to preload:', error);
     }
   }
 
@@ -181,35 +117,26 @@ class SoundManager {
    * Load a single sound file into cache
    */
   private async loadSound(key: string, config: SoundConfig): Promise<HTMLAudioElement> {
-    if (!this.isAudioSupported) {
-      throw new Error('Audio not supported on this platform');
-    }
-
     if (this.audioCache[key]) {
       return this.audioCache[key];
     }
 
     return new Promise((resolve, reject) => {
-      try {
-        const audio = new Audio();
-        audio.volume = config.volume || 0.7;
-        audio.preload = 'auto';
-        
-        audio.addEventListener('canplaythrough', () => {
-          this.audioCache[key] = audio;
-          resolve(audio);
-        });
+      const audio = new Audio();
+      audio.volume = config.volume || 0.7;
+      audio.preload = 'auto';
+      
+      audio.addEventListener('canplaythrough', () => {
+        this.audioCache[key] = audio;
+        resolve(audio);
+      });
 
-        audio.addEventListener('error', (e) => {
-          console.warn(`SoundManager: Failed to load sound: ${key}`, e);
-          reject(e);
-        });
+      audio.addEventListener('error', (e) => {
+        console.warn(`Failed to load sound: ${key}`, e);
+        reject(e);
+      });
 
-        audio.src = config.url;
-      } catch (error) {
-        console.warn(`SoundManager: Error creating audio element for ${key}:`, error);
-        reject(error);
-      }
+      audio.src = config.url;
     });
   }
 
@@ -217,35 +144,16 @@ class SoundManager {
    * Play a sound by key
    */
   async play(soundKey: string): Promise<void> {
-    // Early returns for various blocking conditions
-    if (!this.isEnabled || !this.isAudioSupported) {
-      console.log(`SoundManager: Sound playback blocked - enabled: ${this.isEnabled}, supported: ${this.isAudioSupported}`);
-      return;
-    }
-
-    // Block on mobile Safari until user has interacted
-    if (this.isMobileSafari && !this.hasUserInteracted) {
-      console.log('SoundManager: Blocking sound on mobile Safari until user interaction');
-      return;
-    }
+    if (!this.isEnabled) return;
 
     // Check for reduced motion preference
-    try {
-      if (typeof window !== 'undefined' && window.matchMedia) {
-        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (reducedMotion) {
-          console.log('SoundManager: Respecting reduced motion preference');
-          return;
-        }
-      }
-    } catch (error) {
-      console.warn('SoundManager: Failed to check motion preferences:', error);
-    }
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) return;
 
     try {
       const config = this.sounds[soundKey];
       if (!config) {
-        console.warn(`SoundManager: Sound not found: ${soundKey}`);
+        console.warn(`Sound not found: ${soundKey}`);
         return;
       }
 
@@ -253,12 +161,7 @@ class SoundManager {
       
       // Load sound if not cached
       if (!audio) {
-        try {
-          audio = await this.loadSound(soundKey, config);
-        } catch (loadError) {
-          console.warn(`SoundManager: Failed to load sound ${soundKey}:`, loadError);
-          return;
-        }
+        audio = await this.loadSound(soundKey, config);
       }
 
       // Reset audio to beginning and play
@@ -269,11 +172,10 @@ class SoundManager {
       
       if (playPromise !== undefined) {
         await playPromise;
-        console.log(`SoundManager: Successfully played sound: ${soundKey}`);
       }
     } catch (error) {
       // Silently handle autoplay restrictions and other errors
-      console.log(`SoundManager: Sound play blocked or failed: ${soundKey}`, error);
+      console.log(`Sound play blocked or failed: ${soundKey}`, error);
     }
   }
 
@@ -281,16 +183,12 @@ class SoundManager {
    * Play multiple sounds in sequence with delay
    */
   async playSequence(soundKeys: string[], delay: number = 100): Promise<void> {
-    if (!this.isEnabled || !this.isAudioSupported) return;
+    if (!this.isEnabled) return;
 
     for (let i = 0; i < soundKeys.length; i++) {
-      try {
-        await this.play(soundKeys[i]);
-        if (i < soundKeys.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      } catch (error) {
-        console.warn(`SoundManager: Failed to play sound ${soundKeys[i]} in sequence:`, error);
+      await this.play(soundKeys[i]);
+      if (i < soundKeys.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
@@ -299,49 +197,28 @@ class SoundManager {
    * Stop all currently playing sounds
    */
   stopAll(): void {
-    try {
-      Object.values(this.audioCache).forEach(audio => {
-        try {
-          audio.pause();
-          audio.currentTime = 0;
-        } catch (error) {
-          console.warn('SoundManager: Failed to stop audio:', error);
-        }
-      });
-    } catch (error) {
-      console.warn('SoundManager: Failed to stop all sounds:', error);
-    }
+    Object.values(this.audioCache).forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
   }
 
   /**
    * Set volume for all sounds
    */
   setVolume(volume: number): void {
-    try {
-      const clampedVolume = Math.max(0, Math.min(1, volume));
-      Object.values(this.audioCache).forEach(audio => {
-        try {
-          audio.volume = clampedVolume;
-        } catch (error) {
-          console.warn('SoundManager: Failed to set volume for audio:', error);
-        }
-      });
-    } catch (error) {
-      console.warn('SoundManager: Failed to set volume:', error);
-    }
+    const clampedVolume = Math.max(0, Math.min(1, volume));
+    Object.values(this.audioCache).forEach(audio => {
+      audio.volume = clampedVolume;
+    });
   }
 
   /**
    * Clear audio cache (useful for memory management)
    */
   clearCache(): void {
-    try {
-      this.stopAll();
-      this.audioCache = {};
-      console.log('SoundManager: Audio cache cleared');
-    } catch (error) {
-      console.warn('SoundManager: Failed to clear cache:', error);
-    }
+    this.stopAll();
+    this.audioCache = {};
   }
 }
 

@@ -33,7 +33,7 @@ export const usePushNotifications = () => {
 
   useEffect(() => {
     // Set initial permission state
-    if (typeof Notification !== 'undefined' && 'Notification' in window) {
+    if ('Notification' in window) {
       setPermission(Notification.permission);
     }
     
@@ -62,10 +62,6 @@ export const usePushNotifications = () => {
       }
 
       // Request notification permission first
-      if (typeof Notification === 'undefined') {
-        toast.error('Notifications are not supported on this device');
-        return null;
-      }
       const permission = await Notification.requestPermission();
       setPermission(permission);
       

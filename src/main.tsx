@@ -6,7 +6,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/auth";
 import { NutritionProvider } from "./contexts/NutritionContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
-import { MobileDebugOverlay } from "./components/MobileDebugOverlay";
 import { applySecurityHeaders } from "./lib/securityHeaders";
 
 // Apply security headers on app initialization
@@ -141,9 +140,6 @@ root.render(
           </div>
         </div>
       }>
-        {/* Debug overlay for mobile crash inspection */}
-        <MobileDebugOverlay />
-        
         <NutritionProvider>
           <NotificationProvider>
             {isMobile ? (

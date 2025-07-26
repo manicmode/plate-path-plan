@@ -34,28 +34,15 @@ import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { useRealHydrationData } from '@/hooks/useRealHydrationData';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 
-// Safe utility function to get current user preferences from localStorage
+// Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
-  console.log("📱 loadUserPreferences: Checking if browser environment is safe...");
-  
-  // 🔒 iOS Safari Security: Check if we're in a browser environment
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-    console.log("📱 loadUserPreferences: Browser APIs not available, using defaults");
-    return {
-      selectedTrackers: ['calories', 'hydration', 'supplements'],
-    };
-  }
-
   try {
-    console.log("📱 loadUserPreferences: Attempting to access localStorage...");
     const stored = localStorage.getItem('user_preferences');
     if (stored) {
-      console.log("📱 loadUserPreferences: Successfully loaded stored preferences");
       return JSON.parse(stored);
     }
-    console.log("📱 loadUserPreferences: No stored preferences found, using defaults");
   } catch (e) {
-    console.error('📱 loadUserPreferences: Error loading user preferences:', e);
+    console.error('Error loading user preferences:', e);
   }
   return {
     selectedTrackers: ['calories', 'hydration', 'supplements'],
@@ -63,69 +50,14 @@ const loadUserPreferences = () => {
 };
 
 const Home = () => {
-  console.log("🏠 Starting Home component render...");
-  
-  // 🔒 iOS Safari Security: Early browser environment check
-  const isBrowser = typeof window !== 'undefined';
-  console.log("🔒 Browser environment check:", isBrowser);
-  
-  if (!isBrowser) {
-    console.log("🚨 Not in browser environment, rendering minimal fallback");
-    return <div>Loading...</div>;
-  }
-
-  console.log("📱 Initializing hooks...");
-  
-  // Initialize auth hook normally
   const { user, loading: authLoading } = useAuth();
-  console.log("✅ useAuth hook initialized");
-  
-  // 🔒 Critical: Don't render Home content until auth is fully resolved
-  if (authLoading) {
-    console.log("⏳ Home: Auth still loading, showing loading screen");
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // 🔒 Critical: Don't render without authenticated user
-  if (!user) {
-    console.log("🚨 Home: No authenticated user, this should not happen in protected route");
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="text-red-500 text-2xl mb-4">⚠️</div>
-          <p className="text-muted-foreground">Authentication required</p>
-        </div>
-      </div>
-    );
-  }
-  
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
-  console.log("✅ useNutrition hook initialized");
-  
   const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useRealHydrationData();
-  console.log("✅ useRealHydrationData hook initialized");
-  
   const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
-  console.log("✅ useDailyScore hook initialized");
-  
   const navigate = useNavigate();
-  console.log("✅ useNavigate hook initialized");
-  
   const isMobile = useIsMobile();
-  console.log("✅ useIsMobile hook initialized, isMobile:", isMobile);
-  
   const progress = getTodaysProgress();
-  console.log("✅ Progress data retrieved");
-
   const { toast } = useToast();
-  console.log("✅ useToast hook initialized");
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -140,7 +72,6 @@ const Home = () => {
     hydration_ml: null,
     supplement_count: null
   });
-  console.log("✅ dailyTargets state initialized");
   const { toxinData: realToxinData, todayFlaggedCount, isLoading: toxinLoading } = useRealToxinData();
   const { detectToxinsForFood } = useToxinDetections(); // Keep for automatic detection
   
@@ -163,18 +94,9 @@ const Home = () => {
     },
   });
 
-  console.log("✅ Toxin data hooks initialized");
-
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
-  
-  // 🔒 iOS Safari Security: Safe preferences initialization
-  const [preferences, setPreferences] = useState(() => {
-    console.log("📱 Initializing preferences with safe loading...");
-    return loadUserPreferences();
-  });
-  console.log("✅ Preferences state initialized:", preferences);
-
+  const [preferences, setPreferences] = useState(loadUserPreferences());
   const [isQuickLogExpanded, setIsQuickLogExpanded] = useState(false);
   
   // Add confirmation card state
@@ -200,43 +122,25 @@ const Home = () => {
   // Coming Soon Modal state
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
 
-  // 🔒 iOS Safari Security: Safe localStorage listener
+  // Listen for changes to localStorage preferences
   useEffect(() => {
-    console.log("📱 Setting up safe storage listeners...");
-    
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      console.log("📱 Storage APIs not available, skipping listeners");
-      return;
-    }
-
     const handleStorageChange = () => {
-      console.log("📱 Storage change detected, safely updating preferences...");
-      try {
-        const newPreferences = loadUserPreferences();
-        setPreferences(newPreferences);
-      } catch (error) {
-        console.error("📱 Error handling storage change:", error);
-      }
+      const newPreferences = loadUserPreferences();
+      setPreferences(newPreferences);
     };
 
     window.addEventListener('storage', handleStorageChange);
     
     const interval = setInterval(() => {
-      try {
-        const newPreferences = loadUserPreferences();
-        if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
-          console.log("📱 Preferences changed, updating...");
-          setPreferences(newPreferences);
-        }
-      } catch (error) {
-        console.error("📱 Error in preferences polling:", error);
+      const newPreferences = loadUserPreferences();
+      if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
+        setPreferences(newPreferences);
       }
     }, 1000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
-      console.log("📱 Storage listeners cleaned up");
     };
   }, [preferences]);
 
@@ -291,44 +195,21 @@ const Home = () => {
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
 
-  // 🔒 iOS Safari Security: Safe celebration key generation
+  // Helper function to check if celebration was already shown today
   const getCelebrationKey = (type: string) => {
-    if (typeof window === 'undefined' || !user?.id) {
-      console.log("📱 Cannot generate celebration key - browser/user not available");
-      return null;
-    }
-    
-    try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-      const userId = user.id;
-      return `celebration_${type}_${userId}_${today}`;
-    } catch (error) {
-      console.error("📱 Error generating celebration key:", error);
-      return null;
-    }
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const userId = user?.id || 'guest';
+    return `celebration_${type}_${userId}_${today}`;
   };
 
   const hasShownCelebrationToday = (type: string) => {
     const key = getCelebrationKey(type);
-    if (!key) return false;
-    
-    try {
-      return safeGetJSON(key, false);
-    } catch (error) {
-      console.error("📱 Error checking celebration status:", error);
-      return false;
-    }
+    return safeGetJSON(key, false);
   };
 
   const markCelebrationShown = (type: string) => {
     const key = getCelebrationKey(type);
-    if (!key) return;
-    
-    try {
-      safeSetJSON(key, true);
-    } catch (error) {
-      console.error("📱 Error marking celebration shown:", error);
-    }
+    safeSetJSON(key, true);
   };
 
   // Check for goal completion and trigger celebration (only once per day per goal)
@@ -766,20 +647,6 @@ const Home = () => {
     }, 5000);
   };
 
-  // 🔒 iOS Safari Security: Final browser environment safety check before rendering
-  if (!isBrowser || typeof window === 'undefined') {
-    console.log("🚨 Final safety check failed - not safe to render complex UI");
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="text-muted-foreground">Loading dashboard...</div>
-        </div>
-      </div>
-    );
-  }
-
-  console.log("✅ Final safety check passed - proceeding with full render");
-
   // Show loading state with recovery options
   if (authLoading && !hasTimedOut) {
     return (
@@ -820,45 +687,9 @@ const Home = () => {
     );
   }
 
-  console.log("🏠 Home component: Starting main render...");
-
-  // 🔒 iOS Safari Security: Check if we should disable complex animations
-  const isIOSSafari = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const shouldReduceComplexity = isIOSSafari;
-  console.log("📱 iOS Safari detected:", isIOSSafari, "Reducing complexity:", shouldReduceComplexity);
-
-  // 🔒 Safe data validation before rendering
-  try {
-    if (!progress) {
-      console.error('HOME RENDER FAIL: Progress data is null/undefined');
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="text-center space-y-4">
-            <p className="text-muted-foreground">Home failed to load - missing progress data</p>
-            <Button onClick={() => window.location.reload()}>Reload</Button>
-          </div>
-        </div>
-      );
-    }
-
-    if (!selectedTrackers || selectedTrackers.length === 0) {
-      console.error('HOME RENDER FAIL: Selected trackers data is missing');
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="text-center space-y-4">
-            <p className="text-muted-foreground">Home failed to load - missing tracker data</p>
-            <Button onClick={() => window.location.reload()}>Reload</Button>
-          </div>
-        </div>
-      );
-    }
-
-    console.log("✅ Data validation passed, proceeding with render");
-
   return (
-    <div className={`space-y-12 sm:space-y-16 ${shouldReduceComplexity ? '' : 'animate-fade-in'}`}>
+    <div className="space-y-12 sm:space-y-16 animate-fade-in">
       {/* Celebration Popup */}
-      {(() => { console.log("🎉 Rendering Celebration Popup"); return null; })()}
       <CelebrationPopup 
         show={showCelebration} 
         message={celebrationType}
@@ -866,7 +697,6 @@ const Home = () => {
       />
 
       {/* Food Confirmation Card */}
-      {(() => { console.log("🍽️ Rendering Food Confirmation Card"); return null; })()}
       <FoodConfirmationCard
         isOpen={showConfirmationCard}
         onClose={() => {
@@ -878,7 +708,6 @@ const Home = () => {
       />
 
       {/* Exercise Log Form */}
-      {(() => { console.log("🏃 Rendering Exercise Log Form"); return null; })()}
       <ExerciseLogForm
         isOpen={showExerciseForm}
         onClose={() => setShowExerciseForm(false)}
@@ -886,14 +715,12 @@ const Home = () => {
       />
 
       {/* Exercise Reminder Form */}
-      {(() => { console.log("⏰ Rendering Exercise Reminder Form"); return null; })()}
       <ExerciseReminderForm
         isOpen={showExerciseReminder}
         onClose={() => setShowExerciseReminder(false)}
       />
 
       {/* Enhanced Greeting Section */}
-      {(() => { console.log("👋 Rendering Home Header Greeting Section"); return null; })()}
       <div className="text-center space-y-6 sm:space-y-8 py-6 sm:py-8">
         <div className="inline-block">
           <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-gray-100 dark:via-emerald-400 dark:to-blue-400 bg-clip-text text-transparent mb-4 relative overflow-hidden shimmer-text motion-reduce:animate-none`}>
@@ -908,13 +735,11 @@ const Home = () => {
       </div>
 
       {/* Dynamic Tracker Cards based on user selection */}
-      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} ${shouldReduceComplexity ? '' : 'animate-scale-in'} items-stretch relative z-10`}>
-        {displayedTrackers && displayedTrackers.length > 0 ? displayedTrackers.map((tracker, index) => {
-          console.log(`📊 Rendering tracker: ${tracker.name}`);
-          return (
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
+        {displayedTrackers.map((tracker, index) => (
           <div 
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl ${shouldReduceComplexity ? '' : 'hover:scale-105 transition-all duration-500'} cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
             onClick={tracker.onClick}
             title={getMotivationalMessage(tracker.percentage, tracker.name)}
             style={{ 
@@ -997,20 +822,13 @@ const Home = () => {
               </div>
             </div>
           </div>
-          );
-        }) : (
-          <div className="col-span-3 text-center text-muted-foreground">
-            No trackers selected
-          </div>
-        )}
+        ))}
       </div>
 
       {/* Enhanced Logging Actions Section with proper spacing */}
-      {(() => { console.log("🎬 Rendering Enhanced Logging Actions Section"); return null; })()}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         {/* Primary Action: Log Food - Full Width */}
-        {(() => { console.log("📸 Rendering Primary Action: Log Food Card"); return null; })()}
-        <Card
+        <Card 
           className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
           onClick={() => navigate('/camera')}
         >
@@ -1032,7 +850,6 @@ const Home = () => {
         </Card>
 
         {/* Smart Quick-Log Dropdown Section - Same width as Log Food button */}
-        {(() => { console.log("⚡ Rendering Smart Quick-Log Dropdown Section"); return null; })()}
         <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
           <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
             <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
@@ -1055,7 +872,7 @@ const Home = () => {
 
                 {/* Quick Suggestions - Full width clickable blocks */}
                 <div className={`grid grid-cols-1 ${isMobile ? 'gap-2' : 'gap-3'}`}>
-                  {quickLogSuggestions && quickLogSuggestions.length > 0 ? quickLogSuggestions.map((item) => (
+                  {quickLogSuggestions.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => handleQuickLog(item)}
@@ -1086,11 +903,7 @@ const Home = () => {
                         </div>
                       </div>
                     </div>
-                  )) : (
-                    <div className="text-center text-muted-foreground p-4">
-                      No quick log suggestions available
-                    </div>
-                  )}
+                  ))}
                 </div>
 
                 {/* Increased spacing before expand toggle */}
@@ -1126,7 +939,7 @@ const Home = () => {
                     Recent & Saved Logs
                   </h5>
                   <div className="space-y-2">
-                    {recentLogs && recentLogs.length > 0 ? recentLogs.map((item) => (
+                    {recentLogs.map((item) => (
                       <div
                         key={item.id}
                         onClick={() => handleQuickLog(item)}
@@ -1155,11 +968,7 @@ const Home = () => {
                           <span className="text-xs font-medium">Tap to log</span>
                         </div>
                       </div>
-                    )) : (
-                      <div className="text-center text-muted-foreground p-4">
-                        No recent logs available
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               </CollapsibleContent>
@@ -1168,7 +977,6 @@ const Home = () => {
         </Collapsible>
 
         {/* Secondary Actions: Hydration & Supplements */}
-        {(() => { console.log("💧 Rendering Secondary Actions: Hydration & Supplements"); return null; })()}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
           {/* Enhanced Hydration Action Card */}
           <Card 
@@ -1446,7 +1254,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
-                {macroCards && macroCards.length > 0 ? macroCards.map((macro, index) => {
+                {macroCards.map((macro, index) => {
                   const percentage = Math.min((macro.current / macro.target) * 100, 100);
                   const Icon = macro.icon;
                   
@@ -1512,11 +1320,7 @@ const Home = () => {
                       </CardContent>
                     </Card>
                   );
-                }) : (
-                  <div className="col-span-2 text-center text-muted-foreground">
-                    No macro data available
-                  </div>
-                )}
+                })}
               </div>
             </div>
             
@@ -1532,7 +1336,6 @@ const Home = () => {
       </div>
 
       {/* Fancy Separator Line */}
-      {(() => { console.log("🥗 Rendering Nutrients Separator Line"); return null; })()}
       <div className="flex items-center justify-center px-4 sm:px-8 my-8">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4">
@@ -1566,7 +1369,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
-                {micronutrientCards && micronutrientCards.length > 0 ? micronutrientCards.map((micro, index) => {
+                {micronutrientCards.map((micro, index) => {
                   const percentage = Math.min((micro.current / micro.target) * 100, 100);
                   const Icon = micro.icon;
                   
@@ -1608,11 +1411,7 @@ const Home = () => {
                       </CardContent>
                     </Card>
                   );
-                }) : (
-                  <div className="col-span-2 text-center text-muted-foreground">
-                    No micronutrient data available
-                  </div>
-                )}
+                })}
               </div>
             </div>
             
@@ -1628,7 +1427,6 @@ const Home = () => {
       </div>
 
       {/* Fancy Separator Line */}
-      {(() => { console.log("🧪 Rendering Toxins Separator Line"); return null; })()}
       <div className="flex items-center justify-center px-4 sm:px-8 my-8">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4">
@@ -1640,7 +1438,6 @@ const Home = () => {
       </div>
 
       {/* Toxins & Flags Section - Collapsible */}
-      {(() => { console.log("🚨 Rendering Toxins & Flags Section"); return null; })()}
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         <Collapsible open={isToxinsExpanded} onOpenChange={setIsToxinsExpanded}>
           <CollapsibleTrigger asChild>
@@ -1663,7 +1460,7 @@ const Home = () => {
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
               <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
-                {realToxinData && realToxinData.length > 0 ? realToxinData.map((item, index) => {
+                {realToxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
@@ -1715,11 +1512,7 @@ const Home = () => {
                       </CardContent>
                     </Card>
                   );
-                }) : (
-                  <div className="col-span-2 text-center text-muted-foreground">
-                    No toxin data available
-                  </div>
-                )}
+                })}
               </div>
             </div>
             
@@ -1746,7 +1539,6 @@ const Home = () => {
       </div>
 
       {/* Explore Tiles Section */}
-      {(() => { console.log("🎯 Rendering Explore Tiles Section"); return null; })()}
       <div className="flex-1 flex flex-col px-2 sm:px-4">
         <div className="flex-1 grid grid-cols-2 gap-4">
           {(() => {
@@ -1807,7 +1599,7 @@ const Home = () => {
               },
             ];
 
-            return exploreTiles && exploreTiles.length > 0 ? exploreTiles.map((tile) => {
+            return exploreTiles.map((tile) => {
               const handleTileClick = (tileId: string) => {
                 if (tileId === 'supplement-hub') {
                   navigate('/supplement-hub');
@@ -1862,18 +1654,13 @@ const Home = () => {
                 </span>
               </Button>
             );
-            }) : (
-              <div className="text-center text-muted-foreground p-4">
-                No explore tiles available
-              </div>
-            );
+            });
           })()}
         </div>
       </div>
 
       {/* Tracker Insights Popup */}
-      {(() => { console.log("📈 Rendering Tracker Insights Popup"); return null; })()}
-      {!shouldReduceComplexity && selectedTracker && (
+      {selectedTracker && (
         <TrackerInsightsPopup
           isOpen={isInsightsOpen}
           onClose={closeInsights}
@@ -1884,16 +1671,12 @@ const Home = () => {
       )}
 
       {/* Health Check Modal */}
-      {(() => { console.log("❤️ Rendering Health Check Modal"); return null; })()}
-      {!shouldReduceComplexity && (
-        <HealthCheckModal 
-          isOpen={isHealthCheckOpen} 
-          onClose={() => setIsHealthCheckOpen(false)} 
-        />
-      )}
+      <HealthCheckModal 
+        isOpen={isHealthCheckOpen} 
+        onClose={() => setIsHealthCheckOpen(false)} 
+      />
       
       {/* Development Test Components */}
-      {(() => { console.log("🛠️ Rendering Development Test Components"); return null; })()}
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-8 space-y-6">
           <CoachCtaDemo />
@@ -1902,7 +1685,6 @@ const Home = () => {
       )}
       
       {/* Coming Soon Popup */}
-      {(() => { console.log("🚀 Rendering Coming Soon Popup"); return null; })()}
       <ComingSoonPopup 
         isOpen={isComingSoonOpen} 
         onClose={() => setIsComingSoonOpen(false)}
@@ -1910,21 +1692,6 @@ const Home = () => {
       />
     </div>
   );
-  {(() => { console.log("✅ Home component render complete!"); return null; })()}
-  
-  } catch (error) {
-    console.error('HOME RENDER FAIL', error);
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="text-red-500 text-2xl mb-4">⚠️</div>
-          <p className="text-muted-foreground">Home failed to load</p>
-          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
-          <Button onClick={() => window.location.reload()}>Reload</Button>
-        </div>
-      </div>
-    );
-  }
 };
 
 export default Home;

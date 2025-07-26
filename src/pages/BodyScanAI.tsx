@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
-import '@tensorflow/tfjs-backend-cpu';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -72,181 +71,104 @@ export default function BodyScanAI() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  
-  // Mobile optimization and delayed loading
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [scanStarted, setScanStarted] = useState(false);
-  
-  // Detect mobile device
-  const isMobile = /iPhone|Android/i.test(navigator.userAgent);
+const runPoseEstimation = async () => {
+  if (!videoRef.current || !poseDetectorRef.current || !canvasRef.current) return;
 
-  // Start scan function - delayed initialization
-  const startScan = async () => {
-    setIsInitializing(true);
-    setScanStarted(true);
-    
-    try {
-      // Initialize camera first
-      await initializeCamera();
-      
-      // Then initialize pose detection
-      await initializePoseDetection();
-      
-    } catch (error) {
-      console.error('[SCAN START] Failed to initialize:', error);
-      toast({
-        title: "❌ Failed to start scan",
-        description: "Please try again or check camera permissions.",
-        variant: "destructive"
-      });
-      setScanStarted(false);
-    } finally {
-      setIsInitializing(false);
-    }
-  };
+  const video = videoRef.current;
+  const canvas = canvasRef.current;
+  const context = canvas.getContext("2d");
 
-  const initializeCamera = async () => {
-    try {
-      // ✅ 1. Ensure video element is created and mounted
-      console.log("[VIDEO INIT] videoRef =", videoRef.current);
-      if (!videoRef.current) {
-        console.error("[VIDEO] videoRef is null — video element not mounted");
-        return;
-      }
+  const poses = await poseDetectorRef.current.estimatePoses(video);
+  drawPose(poses, context);
 
-      // ✅ 3. Confirm HTTPS is enforced on mobile
-      if (location.protocol !== 'https:') {
-        console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
-      }
+  requestAnimationFrame(runPoseEstimation);
+};
 
-      // ✅ 4. Confirm camera permissions
-      if (navigator.permissions) {
-        try {
-          const permissionResult = await navigator.permissions.query({ name: 'camera' as PermissionName });
-          console.log("[PERMISSION] Camera permission state:", permissionResult.state);
-        } catch (err) {
-          console.log("[PERMISSION] Could not query camera permission:", err);
-        }
-      }
-
-      // ✅ 2. CAMERA REQUEST LOGGING
-      console.log("[CAMERA] Requesting camera stream...");
-      
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: { exact: cameraMode },
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 }
-        }
-      });
-      
-      // ✅ 3. STREAM RECEIVED LOGGING
-      console.log("[CAMERA] Stream received:", mediaStream);
-      console.log("[CAMERA] Video element srcObject set");
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        
-        // ✅ 5. Visually confirm that the <video> tag is rendering
-        videoRef.current.style.border = "2px solid red";
-        
-        console.log("[CAMERA] srcObject set, playing video");
-        
-        // ✅ 5. VIDEO PLAY WITH LOGGING
-        await videoRef.current.play();
-        console.log("[CAMERA] Video playing");
-      } else {
-        console.error("[CAMERA] videoRef.current is null");
-      }
-      setStream(mediaStream);
-    } catch (error) {
-      // ✅ 4. CAMERA ACCESS ERROR HANDLING
-      console.warn("[CAMERA FAIL] getUserMedia error:", error);
-      toast({
-        title: "❌ Camera access denied or failed",
-        description: "[CAMERA ERROR] " + (error as Error).message,
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
-
-  const initializePoseDetection = async () => {
-    try {
-      console.log('[POSE INIT] Starting TensorFlow.js initialization...');
-      
-      // Try WebGL backend first for optimal performance
-      try {
-        await tf.setBackend('webgl');
-        await tf.ready();
-        console.log('[POSE INIT] Using WebGL backend for optimal performance');
-      } catch (webglError) {
-        console.warn('[POSE INIT] WebGL failed, falling back to CPU:', webglError.message);
-        try {
-          await tf.setBackend('cpu');
-          await tf.ready();
-          console.log('[POSE INIT] Using CPU backend');
-        } catch (cpuError) {
-          throw new Error('Both WebGL and CPU backends failed');
-        }
-      }
-      
-      console.log('[POSE INIT] Loading pose detection model...');
-      const model = await poseDetection.createDetector(
-        poseDetection.SupportedModels.MoveNet,
-        {
-          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-          enableSmoothing: true,
-        }
-      );
-      
-      poseDetectorRef.current = model;
-      setPoseDetectionReady(true);
-      setIsPoseDetectionEnabled(true); 
-
-      // STEP 3: MODEL LOADED DEBUG
-      console.log('[MODEL] Model loaded', model);
-      console.log('[MODEL] Model type:', typeof model);
-      console.log('[MODEL] Model methods:', Object.getOwnPropertyNames(model));
-      
-      toast({
-        title: "✅ Pose Detection Ready",
-        description: "AI-powered pose alignment is now active",
-      });
-    } catch (error) {
-      console.warn('[POSE INIT] ❌ Failed to initialize pose detection:', error);
-      
-      toast({
-        title: "❌ Pose detection failed to load",
-        description: "Model initialization error. Basic capture only.",
-        variant: "destructive"
-      });
-      setIsPoseDetectionEnabled(false);
-      throw error;
-    }
-  };
-
-  // Clean up effect
   useEffect(() => {
+    const startCamera = async () => {
+      try {
+        // ✅ 1. Ensure video element is created and mounted
+        console.log("[VIDEO INIT] videoRef =", videoRef.current);
+        if (!videoRef.current) {
+          console.error("[VIDEO] videoRef is null — video element not mounted");
+          return;
+        }
+
+        // ✅ 3. Confirm HTTPS is enforced on mobile
+        if (location.protocol !== 'https:') {
+          console.warn("[SECURITY] Camera requires HTTPS — current protocol:", location.protocol);
+        }
+
+        // ✅ 4. Confirm camera permissions
+        if (navigator.permissions) {
+          navigator.permissions.query({ name: 'camera' as PermissionName }).then((res) => {
+            console.log("[PERMISSION] Camera permission state:", res.state);
+          }).catch((err) => {
+            console.log("[PERMISSION] Could not query camera permission:", err);
+          });
+        }
+
+        // ✅ 2. CAMERA REQUEST LOGGING
+        console.log("[CAMERA] Requesting camera stream...");
+        
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: { exact: cameraMode },
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          }
+        });
+        
+        // ✅ 3. STREAM RECEIVED LOGGING
+        console.log("[CAMERA] Stream received:", mediaStream);
+        console.log("[CAMERA] Video element srcObject set");
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          
+          // ✅ 5. Visually confirm that the <video> tag is rendering
+          videoRef.current.style.border = "2px solid red";
+          
+          console.log("[CAMERA] srcObject set, playing video");
+          
+          // ✅ 5. VIDEO PLAY WITH LOGGING
+          videoRef.current.play().then(() => {
+            console.log("[CAMERA] Video playing");
+          }).catch((e) => {
+            console.error("[CAMERA] Error playing video", e);
+          });
+        } else {
+          console.error("[CAMERA] videoRef.current is null");
+        }
+        setStream(mediaStream);
+      } catch (error) {
+        // ✅ 4. CAMERA ACCESS ERROR HANDLING
+        console.error("[CAMERA FAIL] getUserMedia error:", error);
+        console.error("[CAMERA] Access denied or failed", error);
+        toast({
+          title: "❌ Camera access denied or failed",
+          description: "[CAMERA ERROR] " + (error as Error).message,
+          variant: "destructive"
+        });
+      }
+    };
+
+    startCamera();
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      if (poseDetectorRef.current) {
-        console.log('[POSE INIT] Disposing pose detector');
-        poseDetectorRef.current.dispose();
-      }
     };
-  }, [stream]);
+  }, [cameraMode]);
 
   // Handle video metadata loading for proper canvas sizing
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !scanStarted) return;
+    if (!video) return;
 
     const handleLoadedMetadata = () => {
       console.log(`Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
@@ -269,62 +191,212 @@ export default function BodyScanAI() {
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, [stream, scanStarted]);
+  }, [stream]);
+
+  useEffect(() => {
+    // Lock screen orientation to portrait if supported
+    const lockOrientation = async () => {
+      try {
+        if ('orientation' in screen && 'lock' in screen.orientation) {
+          await (screen.orientation as any).lock('portrait');
+        }
+      } catch (error) {
+        console.log('Orientation lock not supported:', error);
+      }
+    };
+
+    // Handle orientation change for unsupported devices
+    const handleOrientationChange = () => {
+      if (window.innerHeight < window.innerWidth) {
+        setShowOrientationWarning(true);
+      } else {
+        setShowOrientationWarning(false);
+      }
+    };
+
+    lockOrientation();
+    handleOrientationChange();
+    
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      
+      // Unlock orientation when leaving the page
+      try {
+        if ('orientation' in screen && 'unlock' in screen.orientation) {
+          (screen.orientation as any).unlock();
+        }
+      } catch (error) {
+        console.log('Orientation unlock not supported:', error);
+      }
+    };
+  }, []);
+
+  // Initialize pose detection
+  useEffect(() => {
+    const initializePoseDetection = async () => {
+      try {
+        console.log('[POSE INIT] Starting TensorFlow.js initialization...');
+        await tf.ready();
+        await tf.setBackend('webgl');
+        console.log('[POSE INIT] TensorFlow.js backend set to webgl');
+        
+        console.log('[POSE INIT] Loading pose detection model...');
+        const model = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          {
+            modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+            enableSmoothing: true,
+          }
+        );
+        
+        poseDetectorRef.current = model;
+        setPoseDetectionReady(true);
+        
+        // STEP 3: MODEL LOADED DEBUG
+        console.log('[MODEL] Model loaded', model);
+        console.log('[MODEL] Model type:', typeof model);
+        console.log('[MODEL] Model methods:', Object.getOwnPropertyNames(model));
+        
+        toast({
+          title: "✅ Pose Detection Ready",
+          description: "AI-powered pose alignment is now active",
+        });
+      } catch (error) {
+        console.error('[POSE INIT] ❌ Failed to initialize pose detection:', error);
+        
+        toast({
+          title: "❌ Pose detection failed to load",
+          description: "Model initialization error. Basic capture only.",
+          variant: "destructive"
+        });
+        setIsPoseDetectionEnabled(false);
+      }
+    };
+
+    initializePoseDetection();
+
+    return () => {
+      if (poseDetectorRef.current) {
+        console.log('[POSE INIT] Disposing pose detector');
+        poseDetectorRef.current.dispose();
+      }
+    };
+  }, []);
 
   // Clean pose detection loop with debug logging
   useEffect(() => {
     const detectPoseRealTime = async () => {
-      const video = videoRef.current;
-      if (!video || video.readyState < 2) {
+      // STEP 1: VIDEO DEBUG CHECK
+      console.log("[VIDEO]", videoRef.current);
+      if (videoRef.current?.readyState !== 4) {
+        console.log("[VIDEO] Not ready", videoRef.current?.readyState);
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+      
+      // STEP 8: VIDEO STREAM DIMENSIONS
+      console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
+      
+      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
       }
 
-      if (!poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
-        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
-        return;
-      }
+      const video = videoRef.current;
+      const overlayCanvas = overlayCanvasRef.current;
+
+      // STEP 2: ANIMATION LOOP DEBUG
+      console.log("[LOOP] Running frame", Date.now());
 
       try {
-        // ✅ Draw video frame to temp canvas
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = video.videoWidth;
-        tempCanvas.height = video.videoHeight;
-        const ctx = tempCanvas.getContext('2d');
-        ctx?.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-
-        // ✅ Estimate poses from canvas (not video)
-        const poses = await poseDetectorRef.current.estimatePoses(tempCanvas);
-
+        console.log('[POSE FRAME] Attempting pose detection...');
+        
+        // STEP 9: CONFIRM MODEL INFERENCE
+        console.log("[ESTIMATE] About to run estimatePoses");
+        
+        // Detect pose using estimatePoses (MoveNet method)
+        const poses = await poseDetectorRef.current.estimatePoses(video);
+        
+        // STEP 6: LOG POSE RESULT
+        console.log("[POSE RESULT]", poses);
+        console.log('[POSE FRAME] Number of poses detected:', poses.length);
+        
+        // STEP 7: LOG KEYPOINTS DETAILS
+        if (poses.length > 0) {
+          const keypoints = poses[0].keypoints || [];
+          console.log("[KEYPOINTS] Count:", keypoints.length);
+          keypoints.forEach((kp, i) => {
+            console.log(`[KEYPOINT ${i}] ${kp.name || i}:`, kp);
+          });
+        } else {
+          console.log("[KEYPOINTS] No pose detected");
+          
+          // STEP 10: RED WARNING TOAST
+          toast({
+            title: "❌ Pose NOT detected",
+            description: "Check camera & lighting",
+            variant: "destructive"
+          });
+        }
+        
         if (poses.length > 0) {
           const pose = poses[0] as DetectedPose;
           setPoseDetected(pose);
-
+          
+          console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
+          
+          // Analyze alignment
           const alignment = analyzePoseAlignment(pose);
           setAlignmentFeedback(alignment);
-
+          
+          console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
+          
+          // Simple 5-frame alignment confirmation
           if (alignment.isAligned) {
-            setAlignmentFrameCount((prev) => {
+            setAlignmentFrameCount(prev => {
               const newCount = prev + 1;
+              console.log('[POSE FRAME] ✅ Aligned frame count:', newCount);
+              
               if (newCount >= 5 && !alignmentConfirmed) {
                 setAlignmentConfirmed(true);
+                console.log('[POSE FRAME] 🎯 ALIGNMENT CONFIRMED after 5 frames');
               }
+              
               return newCount;
             });
           } else {
             setAlignmentFrameCount(0);
-            if (alignmentConfirmed) setAlignmentConfirmed(false);
+            if (alignmentConfirmed) {
+              setAlignmentConfirmed(false);
+              console.log('[POSE FRAME] ❌ Alignment lost - resetting confirmation');
+            }
           }
-
+          
+          console.log('[POSE FRAME] Calling drawPoseOverlay...');
           drawPoseOverlay(pose, alignment);
+          
         } else {
           setPoseDetected(null);
           setAlignmentFeedback(null);
           setAlignmentFrameCount(0);
           setAlignmentConfirmed(false);
+          
+          console.log('[POSE FRAME] 👻 No pose detected - clearing overlay');
+          
+          // Clear overlay canvas
+          if (overlayCanvas) {
+            const ctx = overlayCanvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+          }
         }
       } catch (error) {
-        console.error('[POSE DETECT ERROR]', error);
+        console.error('[POSE FRAME] ❌ Pose detection error:', error);
       }
 
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
@@ -758,62 +830,85 @@ export default function BodyScanAI() {
   }, []);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
+    // STEP 4: DRAW DEBUG
+    console.log("[DRAW] drawPoseOverlay called");
+    
     if (!overlayCanvasRef.current || !videoRef.current) {
+      console.log('[DRAW] ❌ Missing canvas or video ref');
       return;
     }
     
     const canvas = overlayCanvasRef.current;
-    const video = videoRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
+      console.log('[DRAW] ❌ No canvas context');
       return;
     }
     
-    // Clear previous drawings only once
+    // STEP 4: DRAW RED TEST BOX
+    ctx.fillStyle = "red";
+    ctx.fillRect(10, 10, 20, 20);
+    console.log("[DRAW] Red test box drawn");
+    
+    const video = videoRef.current;
+    
+    // Set canvas buffer size to match video dimensions
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+    
+    // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // REDRAW TEST BOX AFTER CLEAR
+    ctx.fillStyle = "red";
+    ctx.fillRect(10, 10, 20, 20);
+    
+    console.log(`[DRAW] Canvas setup: ${canvas.width}x${canvas.height}, video: ${video.videoWidth}x${video.videoHeight}`);
+    
     if (!pose?.keypoints?.length) {
+      console.log('[DRAW] ❌ No keypoints to draw, but red box should be visible');
       return;
     }
     
-    // Calculate coordinate transformation from video space to canvas display space
-    const canvasDisplayRect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / canvasDisplayRect.width;
-    const scaleY = canvas.height / canvasDisplayRect.height;
+    console.log(`[DRAW] Drawing ${pose.keypoints.length} keypoints`);
     
-    // Draw keypoints with proper coordinate mapping
-    pose.keypoints.forEach((keypoint) => {
+    // Draw GREEN DOTS for pose keypoints - FORCE VISIBLE
+    let drawnKeypoints = 0;
+    pose.keypoints.forEach((keypoint, index) => {
       if (keypoint.score > 0.2) {
         const isAligned = !alignment.misalignedLimbs.some(limb => 
           keypoint.name?.includes(limb.replace('_', ' '))
         );
         
-        // Transform coordinates from video space to canvas buffer space
-        const x = keypoint.x;
-        const y = keypoint.y;
-        
-        // Draw outer glow
+        // LARGE OUTER GLOW for visibility
         ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+        ctx.arc(keypoint.x, keypoint.y, 15, 0, 2 * Math.PI);
         ctx.fillStyle = isAligned ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 107, 0, 0.5)';
         ctx.fill();
         
-        // Draw main keypoint
+        // LARGE GREEN DOT - FORCE VISIBLE
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
         ctx.fillStyle = isAligned ? '#00ff00' : '#ff6b00';
         ctx.fill();
         
-        // Draw white border for contrast
+        // WHITE BORDER for maximum contrast
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.stroke();
+        
+        drawnKeypoints++;
+        console.log(`[DRAW] ✅ Drew keypoint ${index}: ${keypoint.name} at (${keypoint.x.toFixed(1)}, ${keypoint.y.toFixed(1)})`);
       }
     });
     
-    // Draw skeleton connections
+    console.log(`[DRAW] Successfully drew ${drawnKeypoints} GREEN DOTS`);
+    
+    // Draw WHITE SKELETON LINES - FORCE VISIBLE
     const connections = [
       ['left_shoulder', 'right_shoulder'],
       ['left_shoulder', 'left_elbow'],
@@ -825,12 +920,13 @@ export default function BodyScanAI() {
       ['right_shoulder', 'right_hip'],
     ];
     
+    let drawnConnections = 0;
     connections.forEach(([pointA, pointB]) => {
       const kpA = pose.keypoints.find(kp => kp.name === pointA);
       const kpB = pose.keypoints.find(kp => kp.name === pointB);
       
       if (kpA && kpB && kpA.score > 0.2 && kpB.score > 0.2) {
-        // Draw thick white skeleton line
+        // THICK WHITE SKELETON LINES
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
@@ -838,15 +934,20 @@ export default function BodyScanAI() {
         ctx.lineWidth = 5;
         ctx.stroke();
         
-        // Draw colored inner line for alignment feedback
+        // COLORED INNER LINE for alignment feedback
         ctx.beginPath();
         ctx.moveTo(kpA.x, kpA.y);
         ctx.lineTo(kpB.x, kpB.y);
         ctx.strokeStyle = alignment.isAligned ? '#00ffff' : '#ff6b00';
         ctx.lineWidth = 3;
         ctx.stroke();
+        
+        drawnConnections++;
       }
     });
+    
+    console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
+    console.log('[DRAW] ✅ Pose overlay drawing complete');
   }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -946,12 +1047,13 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Pose overlay canvas - positioned above silhouette */}
+      {/* STEP 5: CANVAS WITH LIME BORDER */}
       <canvas 
         ref={overlayCanvasRef}
         style={{
+          border: '3px solid lime',
           position: 'absolute',
-          zIndex: 25,
+          zIndex: 99,
           top: 0,
           left: 0,
           width: '100%',
@@ -1060,94 +1162,70 @@ export default function BodyScanAI() {
             Cancel
           </Button>
 
-          {/* Upload Button - only show when scan started */}
-          {scanStarted && (
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-            >
-              <Upload className="w-5 h-5 mr-2" />
-              📷 Upload Image
-            </Button>
-          )}
+          {/* Upload Button */}
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            📷 Upload Image
+          </Button>
 
           {/* Main Action Button */}
-          {!scanStarted ? (
-            <Button
-              onClick={startScan}
-              disabled={isInitializing}
-              className="relative bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 text-white font-bold py-4 text-lg border-2 transition-all duration-300 disabled:opacity-50"
-            >
-              <div className="flex items-center justify-center">
-                {isInitializing ? (
-                  <>
-                    <RefreshCw className="w-6 h-6 mr-3 animate-spin" />
-                    Initializing Camera & AI...
-                  </>
-                ) : (
-                  <>
-                    <div className="w-6 h-6 mr-3 animate-pulse">🚀</div>
-                    Start Body Scan
-                  </>
-                )}
-              </div>
-            </Button>
-          ) : (
-            <Button
-              onClick={hasImageReady ? handleContinue : captureImage}
-              disabled={
-                isCapturing || 
-                isSaving ||
-                (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
-                isCountingDown ||
-                showSuccessScreen
-              }
-              className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-                // Button color logic based on alignmentFeedback
-                (!isPoseDetectionEnabled) 
-                  ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400'
-                  : (alignmentFeedback === null)
-                  ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                  : (alignmentFeedback.isAligned === false)
-                  ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                  : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)]'
-              }`}
-            >
-              <div className="flex items-center justify-center">
-                {showSuccessScreen ? (
-                  <>
-                    <ArrowRight className="w-6 h-6 mr-3" />
-                    🚀 Continue to Side Scan
-                  </>
-                ) : hasImageReady ? (
-                  <>
-                    <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
-                      {isSaving ? '💾' : '✅'}
-                    </div>
-                    {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
-                  </>
-                ) : (
-                  <>
-                    <div className={`w-6 h-6 mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
-                    {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
-                     isCapturing ? '🔍 SCANNING...' : 
-                     '📸 Capture Front View'}
-                    {/* Pose alignment indicator */}
-                    {isPoseDetectionEnabled && alignmentFeedback && (
-                      <span className="ml-2">
-                        {alignmentFeedback.isAligned ? '✅' : '⚠️'}
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-              {!hasImageReady && !isCapturing && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                             animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
+          <Button
+            onClick={hasImageReady ? handleContinue : captureImage}
+            disabled={
+              isCapturing || 
+              isSaving ||
+              (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
+              isCountingDown ||
+              showSuccessScreen
+            }
+            className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
+              // Button color logic based on alignmentFeedback
+              (!isPoseDetectionEnabled) 
+                ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400'
+                : (alignmentFeedback === null)
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : (alignmentFeedback.isAligned === false)
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)]'
+            }`}
+          >
+            <div className="flex items-center justify-center">
+              {showSuccessScreen ? (
+                <>
+                  <ArrowRight className="w-6 h-6 mr-3" />
+                  🚀 Continue to Side Scan
+                </>
+              ) : hasImageReady ? (
+                <>
+                  <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
+                    {isSaving ? '💾' : '✅'}
+                  </div>
+                  {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
+                </>
+              ) : (
+                <>
+                  <div className={`w-6 h-6 mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
+                  {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
+                   isCapturing ? '🔍 SCANNING...' : 
+                   '📸 Capture Front View'}
+                  {/* Pose alignment indicator */}
+                  {isPoseDetectionEnabled && alignmentFeedback && (
+                    <span className="ml-2">
+                      {alignmentFeedback.isAligned ? '✅' : '⚠️'}
+                    </span>
+                  )}
+                </>
               )}
-            </Button>
-          )}
+            </div>
+            {!hasImageReady && !isCapturing && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                           animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
+            )}
+          </Button>
         </div>
       </div>
 

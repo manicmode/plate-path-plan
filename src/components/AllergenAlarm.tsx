@@ -16,20 +16,12 @@ const AllergenAlarm = ({ detectedAllergens, onDismiss }: AllergenAlarmProps) => 
     if (detectedAllergens.length > 0) {
       setIsVisible(true);
       
-      const playAlarm = async () => {
-        try {
-          // Play alarm sound with platform checks
-          if (typeof Audio !== 'undefined' && typeof window !== 'undefined') {
-            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhAjuY3PCrQhEQXbPn7KJOEAw/muHyvmslBCWT3vK7cyMFl4DB6+6NCAxHmuDt0oUUBYm/8O2eUQ0Kp8nq3Z4QCE2O5/HBdSUGlYHB5+2RRw0OvLrm35IPFAFWl9rxvYYhBF2N3u+2XSkAVpXc8bWFIQRZjdztylsHFVOY2PGxgS0AZY3d7r9iIgJQjOPpzFsFGVqT2+6jQBMNUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3');
-            await audio.play();
-          }
-        } catch (error) {
-          // Silently handle audio failures on mobile Safari and other platforms
-          console.log('AllergenAlarm: Audio alarm failed to play (expected on mobile Safari):', error);
-        }
-      };
-      
-      playAlarm();
+      // Play alarm sound
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhAjuY3PCrQhEQXbPn7KJOEAw/muHyvmslBCWT3vK7cyMFl4DB6+6NCAxHmuDt0oUUBYm/8O2eUQ0Kp8nq3Z4QCE2O5/HBdSUGlYHB5+2RRw0OvLrm35IPFAFWl9rxvYYhBF2N3u+2XSkAVpXc8bWFIQRZjdztylsHFVOY2PGxgS0AZY3d7r9iIgJQjOPpzFsFGVqT2+6jQBMNUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3/HBgCcMUoLi8oOQQwUUhK7u2aAQGVWQ3');
+      audio.play().catch(() => {
+        // Fallback if audio fails to play
+        console.log('Audio alarm failed to play');
+      });
     }
   }, [detectedAllergens]);
 
