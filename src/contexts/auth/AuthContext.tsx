@@ -12,11 +12,15 @@ import { cleanupAuthState } from '@/lib/authUtils';
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  console.log('🔐 AuthProvider: Starting initialization...');
+  
   // Defensive check for React hooks availability
   if (!ReactModule.useState) {
-    console.error('React hooks not available, falling back to basic render');
+    console.error('🚨 AuthProvider: React hooks not available, falling back to basic render');
     return children as React.ReactElement;
   }
+
+  try {
 
   const [user, setUser] = ReactModule.useState<ExtendedUser | null>(null);
   const [session, setSession] = ReactModule.useState<Session | null>(null);
@@ -83,9 +87,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Auth state change:', event, session?.user?.id);
+    console.log('🔄 AuthProvider: Setting up auth state change listener...');
+    
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log('🔄 Auth state change:', event, session?.user?.id);
 
         if (event === 'PASSWORD_RECOVERY') {
           console.log('🔑 Password recovery session detected');
@@ -116,15 +123,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     );
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔄 AuthContext - Initial session loaded:', !!session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+      // Get initial session
+      console.log('🔄 AuthProvider: Fetching initial session...');
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('🔄 AuthContext - Initial session loaded:', !!session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }).catch((error) => {
+        console.error('🚨 AuthProvider: Error fetching initial session:', error);
+        setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+      return () => {
+        console.log('🔄 AuthProvider: Cleaning up auth state listener');
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('🚨 AuthProvider: Error setting up auth listener:', error);
+      setLoading(false);
+    }
   }, []);
 
   // ✅ STEP 1: Persistent cleanup state using useRef
@@ -335,25 +353,85 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[DEBUG] AuthContext: User profile refresh complete');
   };
 
-  const contextValue: AuthContextType = {
-    user,
-    session,
-    loading: loading || signingOut,
-    isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
-    isEmailConfirmed: !!session?.user?.email_confirmed_at,
-    login: loginUser,
-    register: registerUser,
-    resendEmailConfirmation,
-    signOut: handleSignOut,
-    logout: handleSignOut,
-    updateProfile,
-    updateSelectedTrackers,
-    refreshUser,
-  };
+    const contextValue: AuthContextType = {
+      user,
+      session,
+      loading: loading || signingOut,
+      isAuthenticated: !!session?.user && !!session?.user?.email_confirmed_at,
+      isEmailConfirmed: !!session?.user?.email_confirmed_at,
+      login: loginUser,
+      register: registerUser,
+      resendEmailConfirmation,
+      signOut: handleSignOut,
+      logout: handleSignOut,
+      updateProfile,
+      updateSelectedTrackers,
+      refreshUser,
+    };
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+    console.log('✅ AuthProvider: Context value prepared, rendering children');
+
+    return (
+      <AuthContext.Provider value={contextValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+  } catch (error) {
+    console.error('🚨 AuthProvider: Critical error during initialization:', error);
+    
+    // Provide a minimal fallback context to prevent complete app crash
+    const fallbackContextValue: AuthContextType = {
+      user: null,
+      session: null,
+      loading: false,
+      isAuthenticated: false,
+      isEmailConfirmed: false,
+      login: async () => {},
+      register: async () => ({ 
+        requiresEmailConfirmation: false, 
+        message: 'Auth provider crashed',
+        error: { message: 'Auth provider crashed' } 
+      }),
+      resendEmailConfirmation: async () => ({ 
+        success: false,
+        error: { message: 'Auth provider crashed' } 
+      }),
+      signOut: async () => {},
+      logout: async () => {},
+      updateProfile: () => {},
+      updateSelectedTrackers: async () => {},
+      refreshUser: async () => {},
+    };
+
+    return (
+      <AuthContext.Provider value={fallbackContextValue}>
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center space-y-4 max-w-md">
+            <div className="text-4xl mb-4">🔐</div>
+            <h2 className="text-xl font-bold text-foreground">Authentication Error</h2>
+            <p className="text-sm text-muted-foreground">
+              The authentication system failed to initialize properly.
+            </p>
+            <details className="text-left bg-muted p-3 rounded text-xs">
+              <summary className="cursor-pointer font-medium mb-2">Error Details</summary>
+              <p className="text-xs break-words">
+                {error instanceof Error ? error.message : 'Unknown authentication error'}
+              </p>
+            </details>
+            <button 
+              onClick={() => {
+                console.log('🔄 [AUTH RELOAD] User clicked reload after auth error');
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded"
+            >
+              Clear Auth Data & Reload
+            </button>
+          </div>
+        </div>
+      </AuthContext.Provider>
+    );
+  }
 };
