@@ -1,0 +1,45 @@
+import { useState } from 'react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import Coach from '@/pages/Coach';
+import AIFitnessCoach from '@/pages/AIFitnessCoach';
+
+const CoachMain = () => {
+  const [activeTab, setActiveTab] = useState<'nutrition' | 'exercise'>('nutrition');
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Toggle Section */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="flex justify-center py-4">
+          <ToggleGroup 
+            type="single" 
+            value={activeTab} 
+            onValueChange={(value) => value && setActiveTab(value as 'nutrition' | 'exercise')}
+            className="bg-muted/50 rounded-full p-1"
+          >
+            <ToggleGroupItem 
+              value="nutrition" 
+              className="rounded-full text-sm px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+            >
+              Nutrition
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="exercise" 
+              className="rounded-full text-sm px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+            >
+              Exercise
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="relative">
+        {activeTab === 'nutrition' && <Coach />}
+        {activeTab === 'exercise' && <AIFitnessCoach />}
+      </div>
+    </div>
+  );
+};
+
+export default CoachMain;

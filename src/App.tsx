@@ -25,7 +25,7 @@ const Index = lazy(() => import('@/pages/Index'));
 const Home = lazy(() => import('@/pages/Home'));
 const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
-const Coach = lazy(() => import('@/pages/Coach'));
+const CoachMain = lazy(() => import('@/pages/CoachMain'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Profile = lazy(() => import('@/pages/Profile'));
 
@@ -59,7 +59,7 @@ const prefetchCriticalComponents = () => {
     import('@/pages/Home');
     import('@/pages/Camera');
     import('@/pages/Analytics');
-    import('@/pages/Coach');
+    import('@/pages/CoachMain');
     import('@/pages/Explore');
     import('@/pages/Profile');
   }, 1000);
@@ -130,7 +130,7 @@ function AppContent() {
                 } />
                 <Route path="/coach" element={
                   <ProtectedRoute>
-                    <Coach />
+                    <CoachMain />
                   </ProtectedRoute>
                 } />
                 <Route path="/explore" element={
