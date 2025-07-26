@@ -8,6 +8,8 @@ import { TrophyPodium, PodiumWinner } from './TrophyPodium';
 import { TrophyShelf } from './TrophyShelf';
 import { useTrophyPodium, CompletedChallenge } from '@/hooks/useTrophyPodium';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
+import { useAuth } from '@/contexts/auth';
 
 export const MonthlyTrophyPodium: React.FC = () => {
   const [selectedChallenge, setSelectedChallenge] = useState<CompletedChallenge | null>(null);
@@ -15,6 +17,7 @@ export const MonthlyTrophyPodium: React.FC = () => {
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
   const [showPodium, setShowPodium] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [celebrationShown, setCelebrationShown] = useState<Set<string>>(new Set());
   
   const { 
     getPodiumWinners, 
@@ -25,6 +28,8 @@ export const MonthlyTrophyPodium: React.FC = () => {
   } = useTrophyPodium();
   
   const { toast } = useToast();
+  const { playChallengeWin } = useSound();
+  const { user } = useAuth();
 
   useEffect(() => {
     loadCompletedChallenges();
@@ -61,6 +66,31 @@ export const MonthlyTrophyPodium: React.FC = () => {
       const challengeWinners = await getPodiumWinners(challenge.challengeId, currentMonth);
       setWinners(challengeWinners);
       setShowPodium(true);
+      
+      // Check if current user won and trigger celebration
+      const userWin = challengeWinners.find(w => w.userId === user?.id);
+      if (userWin && userWin.podiumPosition <= 3 && 
+          !celebrationShown.has(`${challenge.challengeId}-${currentMonth.getMonth()}`)) {
+        
+        const position = userWin.podiumPosition;
+        const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+        const medal = medals[position as keyof typeof medals] || '🏆';
+        
+        // Trigger celebration popup
+        const celebrationEvent = new CustomEvent('showCelebration', {
+          detail: {
+            message: `You Made the Podium! ${medal}\nPosition #${position} in Monthly Rankings`,
+            type: 'monthly_podium'
+          }
+        });
+        window.dispatchEvent(celebrationEvent);
+        
+        // Play victory sound
+        playChallengeWin();
+        
+        // Mark celebration as shown for this challenge/month
+        setCelebrationShown(prev => new Set([...prev, `${challenge.challengeId}-${currentMonth.getMonth()}`]));
+      }
     } catch (error) {
       toast({
         title: "Error",

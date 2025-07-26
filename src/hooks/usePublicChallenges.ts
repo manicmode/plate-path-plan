@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 
 export interface PublicChallenge {
   id: string;
@@ -48,8 +49,10 @@ export const usePublicChallenges = () => {
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
   const [userParticipations, setUserParticipations] = useState<UserChallengeParticipation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [celebrationShown, setCelebrationShown] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const { toast } = useToast();
+  const { playChallengeWin } = useSound();
 
   const fetchChallenges = async () => {
     try {
@@ -200,6 +203,33 @@ export const usePublicChallenges = () => {
 
       // Refresh user participations
       await fetchUserParticipations();
+
+      // Check for challenge completion and trigger celebration
+      const updatedParticipation = await supabase
+        .from('user_challenge_participations')
+        .select('*')
+        .eq('id', participation.id)
+        .single();
+
+      if (updatedParticipation.data && updatedParticipation.data.completion_percentage >= 100 && 
+          !celebrationShown.has(challengeId)) {
+        
+        // Trigger celebration popup
+        const challengeData = challenges.find(c => c.id === challengeId);
+        const celebrationEvent = new CustomEvent('showCelebration', {
+          detail: {
+            message: `Challenge Completed! 🏆\n"${challengeData?.title || 'Challenge'}" conquered!`,
+            type: 'challenge'
+          }
+        });
+        window.dispatchEvent(celebrationEvent);
+        
+        // Play victory sound
+        playChallengeWin();
+        
+        // Mark celebration as shown
+        setCelebrationShown(prev => new Set([...prev, challengeId]));
+      }
 
       toast({
         title: "Progress Updated!",

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 
 export interface PrivateChallenge {
   id: string;
@@ -53,8 +54,10 @@ export const usePrivateChallenges = () => {
   const [userPrivateParticipations, setUserPrivateParticipations] = useState<PrivateChallengeParticipation[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<ChallengeInvitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [celebrationShown, setCelebrationShown] = useState<Set<string>>(new Set());
   const { user } = useAuth();
   const { toast } = useToast();
+  const { playChallengeWin } = useSound();
 
   const fetchPrivateChallenges = async () => {
     if (!user) return;
@@ -307,6 +310,33 @@ export const usePrivateChallenges = () => {
 
       // Refresh user participations
       await fetchUserPrivateParticipations();
+
+      // Check for challenge completion and trigger celebration
+      const updatedParticipation = await supabase
+        .from('private_challenge_participations')
+        .select('*')
+        .eq('id', participation.id)
+        .single();
+
+      if (updatedParticipation.data && updatedParticipation.data.completion_percentage >= 100 && 
+          !celebrationShown.has(challengeId)) {
+        
+        // Trigger celebration popup
+        const challengeData = privateChallenges.find(c => c.id === challengeId);
+        const celebrationEvent = new CustomEvent('showCelebration', {
+          detail: {
+            message: `Private Challenge Completed! 🏆\n"${challengeData?.title || 'Challenge'}" conquered!`,
+            type: 'private_challenge'
+          }
+        });
+        window.dispatchEvent(celebrationEvent);
+        
+        // Play victory sound
+        playChallengeWin();
+        
+        // Mark celebration as shown
+        setCelebrationShown(prev => new Set([...prev, challengeId]));
+      }
 
       toast({
         title: "Progress Updated!",

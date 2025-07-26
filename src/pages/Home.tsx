@@ -34,6 +34,7 @@ import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { useRealHydrationData } from '@/hooks/useRealHydrationData';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useSound } from '@/hooks/useSound';
+import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -98,6 +99,7 @@ const Home = () => {
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
+  const [celebrationMessage, setCelebrationMessage] = useState('');
   const [preferences, setPreferences] = useState(loadUserPreferences());
   const [isQuickLogExpanded, setIsQuickLogExpanded] = useState(false);
   
@@ -123,6 +125,22 @@ const Home = () => {
   
   // Coming Soon Modal state
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
+  
+  // Team victory celebrations
+  useTeamVictoryCelebrations();
+
+  // Listen for challenge celebration events
+  useEffect(() => {
+    const handleCelebration = (event) => {
+      const { message, type } = event.detail;
+      setCelebrationMessage(message);
+      setCelebrationType(type);
+      setShowCelebration(true);
+    };
+
+    window.addEventListener('showCelebration', handleCelebration);
+    return () => window.removeEventListener('showCelebration', handleCelebration);
+  }, []);
 
   // Listen for changes to localStorage preferences
   useEffect(() => {
@@ -809,7 +827,7 @@ const Home = () => {
       {/* Celebration Popup */}
       <CelebrationPopup 
         show={showCelebration} 
-        message={celebrationType}
+        message={celebrationMessage || celebrationType}
         onClose={() => setShowCelebration(false)}
       />
 

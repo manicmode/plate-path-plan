@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Star, Medal, Play, Volume2, VolumeX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useSound } from '@/hooks/useSound';
+import { useAuth } from '@/contexts/auth';
 
 export interface PodiumWinner {
   userId: string;
@@ -36,6 +38,10 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
   const [animationState, setAnimationState] = useState<'waiting' | 'building' | 'revealing' | 'celebrating' | 'complete'>('waiting');
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [revealedPositions, setRevealedPositions] = useState<Set<number>>(new Set());
+  const [celebrationShown, setCelebrationShown] = useState(false);
+  
+  const { user } = useAuth();
+  const { playChallengeWin } = useSound();
 
   // Sort winners by position for display (2nd left, 1st center, 3rd right)
   const sortedWinners = [...winners].sort((a, b) => a.podiumPosition - b.podiumPosition);
@@ -77,6 +83,29 @@ export const TrophyPodium: React.FC<TrophyPodiumProps> = ({
     // Final celebration
     await new Promise(resolve => setTimeout(resolve, 2000));
     setAnimationState('complete');
+    
+    // Check if current user is in top 3 and trigger celebration
+    const userWin = winners.find(w => w.userId === user?.id);
+    if (userWin && userWin.podiumPosition <= 3 && !celebrationShown) {
+      const position = userWin.podiumPosition;
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+      const medal = medals[position as keyof typeof medals] || '🏆';
+      
+      // Trigger celebration popup
+      const celebrationEvent = new CustomEvent('showCelebration', {
+        detail: {
+          message: `You Made the Podium! ${medal}\nPosition #${position} in ${challengeName}`,
+          type: 'podium'
+        }
+      });
+      window.dispatchEvent(celebrationEvent);
+      
+      // Play victory sound
+      playChallengeWin();
+      
+      setCelebrationShown(true);
+    }
+    
     onComplete?.();
   };
 
