@@ -1383,7 +1383,7 @@ const Home = () => {
       </div>
 
       {/* Decorative Separation Line */}
-      <div className="flex items-center justify-center px-2 sm:px-4 py-6">
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
         <div className="flex-grow h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4 p-2 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-full border border-purple-200/30 dark:border-purple-400/30">
           <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
