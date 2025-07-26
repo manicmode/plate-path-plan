@@ -157,12 +157,26 @@ class SoundManager {
    * Setup user interaction listener for mobile compatibility
    */
   private setupUserInteractionListener(): void {
-    const handleFirstInteraction = (event: Event) => {
+    const handleFirstInteraction = async (event: Event) => {
       const eventType = event.type;
       const timestamp = new Date().toISOString();
       
       console.log(`🤚 User interaction detected: ${eventType} at ${timestamp}`);
       console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
+      
+      // CRITICAL: Resume AudioContext immediately in trusted user event context
+      if (this.audioContext) {
+        try {
+          console.log(`🔄 Immediately resuming AudioContext on ${eventType} - state: ${this.audioContext.state}`);
+          await this.audioContext.resume();
+          console.log(`✅ AudioContext resume successful on user interaction - final state: ${this.audioContext.state}`);
+        } catch (resumeError: any) {
+          console.log(`❌ AudioContext resume failed on user interaction:`, resumeError);
+          console.log(`📱 Resume failed on: ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+        }
+      } else {
+        console.log(`⚠️ No AudioContext available during user interaction`);
+      }
       
       this.hasUserInteracted = true;
       console.log('✅ hasUserInteracted set to true - audio unlock triggered');
