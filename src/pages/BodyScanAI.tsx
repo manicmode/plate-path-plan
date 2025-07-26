@@ -223,44 +223,131 @@ export default function BodyScanAI() {
     };
   }, []);
 
-  // Initialize pose detection
   useEffect(() => {
     const initializePoseDetection = async () => {
       try {
-        console.log('[POSE INIT] Starting TensorFlow.js initialization...');
+        console.log('=== POSE DETECTION INITIALIZATION START ===');
+
+        // PHASE 1: Environment Diagnostics
+        console.log('[DIAGNOSTIC] Window location:', window.location.href);
+        console.log('[DIAGNOSTIC] User agent:', navigator.userAgent);
+        console.log('[DIAGNOSTIC] Online status:', navigator.onLine);
+
+        // PHASE 2: TensorFlow State Analysis
+        console.log('[TFJS] Version:', tf.version);
+        console.log('[TFJS] Current backend before ready:', tf.getBackend());
+        console.log('[TFJS] Available backends:', tf.engine().backendNames);
+        console.log('[TFJS] Memory info:', tf.memory());
+
+        // PHASE 3: Clean Slate
+        console.log('[CLEANUP] Disposing any existing variables...');
+        tf.disposeVariables();
+
+        // PHASE 4: Backend Initialization with Timing
+        console.log('[BACKEND] Waiting for tf.ready()...');
+        const readyStart = performance.now();
         await tf.ready();
+        const readyEnd = performance.now();
+        console.log(`[BACKEND] tf.ready() completed in ${(readyEnd - readyStart).toFixed(2)}ms`);
+
+        console.log('[BACKEND] Current backend after ready:', tf.getBackend());
+
+        // PHASE 5: Force WebGL Backend
+        console.log('[BACKEND] Setting backend to webgl...');
+        const backendStart = performance.now();
         await tf.setBackend('webgl');
-        console.log('[POSE INIT] TensorFlow.js backend set to webgl');
-        
-        console.log('[POSE INIT] Loading pose detection model...');
+        const backendEnd = performance.now();
+        console.log(`[BACKEND] Backend set in ${(backendEnd - backendStart).toFixed(2)}ms`);
+        console.log('[BACKEND] Final backend:', tf.getBackend());
+
+        // PHASE 6: Pose Detection Library Analysis
+        console.log('[POSE LIB] SupportedModels:', Object.keys(poseDetection.SupportedModels));
+        console.log('[POSE LIB] MoveNet config:', poseDetection.movenet);
+        console.log('[POSE LIB] Version info:', 'version not available in this library');
+
+        // PHASE 7: Model Configuration Analysis
+        const modelConfig = {
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+          enableSmoothing: true,
+        };
+        console.log('[MODEL CONFIG] Configuration object:', JSON.stringify(modelConfig, null, 2));
+
+        // PHASE 8: Network Connectivity Test
+        console.log('[NETWORK] Testing connectivity to TensorFlow Hub...');
+        try {
+          const testResponse = await fetch('https://tfhub.dev', {
+            method: 'HEAD',
+            mode: 'no-cors'
+          });
+          console.log('[NETWORK] TensorFlow Hub connectivity test completed');
+        } catch (networkError) {
+          console.error('[NETWORK] TensorFlow Hub connectivity failed:', networkError);
+        }
+
+        // PHASE 9: Model Creation with Detailed Monitoring
+        console.log('[MODEL] Starting model creation...');
+        console.log('[MODEL] Using SupportedModels.MoveNet:', poseDetection.SupportedModels.MoveNet);
+
+        const modelStart = performance.now();
+
+        // Monitor any network requests during model loading
+        const originalFetch = window.fetch;
+        window.fetch = function (...args) {
+          console.log('[NETWORK REQUEST]', args[0]);
+          return originalFetch.apply(this, args);
+        };
+
         const model = await poseDetection.createDetector(
           poseDetection.SupportedModels.MoveNet,
           {
-            modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-            enableSmoothing: true,
+            ...modelConfig,
+            modelUrl: undefined // force default load path
           }
         );
-        
+
+        // Restore fetch
+        window.fetch = originalFetch;
+
+        const modelEnd = performance.now();
+        console.log(`[MODEL] Model created successfully in ${(modelEnd - modelStart).toFixed(2)}ms`);
+
+        console.log('[MODEL] Model type:', typeof model);
+        console.log('[MODEL] Model constructor:', model.constructor.name);
+        console.log('[MODEL] Model methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(model)));
+
+        if (typeof model.estimatePoses === 'function') {
+          console.log('[MODEL] ✅ estimatePoses method is available');
+        } else {
+          console.error('[MODEL] ❌ estimatePoses method is missing');
+        }
+
         poseDetectorRef.current = model;
         setPoseDetectionReady(true);
-        
-        // STEP 3: MODEL LOADED DEBUG
-        console.log('[MODEL] Model loaded', model);
-        console.log('[MODEL] Model type:', typeof model);
-        console.log('[MODEL] Model methods:', Object.getOwnPropertyNames(model));
-        
+
+        console.log('=== POSE DETECTION INITIALIZATION SUCCESS ===');
+
         toast({
           title: "✅ Pose Detection Ready",
           description: "AI-powered pose alignment is now active",
         });
+
       } catch (error) {
-        console.error('[POSE INIT] ❌ Failed to initialize pose detection:', error);
-        
+        console.error('=== POSE DETECTION INITIALIZATION FAILED ===');
+        console.error('[ERROR] Type:', error.constructor.name);
+        console.error('[ERROR] Message:', error.message);
+        console.error('[ERROR] Stack:', error.stack);
+
+        if (error.message.includes('kaggle.com')) {
+          console.error('[ERROR ANALYSIS] Kaggle fallback triggered!');
+          console.error('[ERROR ANALYSIS] Possible causes: CSP block, fallback config, network');
+        }
+
         toast({
-          title: "❌ Pose detection failed to load",
-          description: "Model initialization error. Basic capture only.",
-          variant: "destructive"
+          title: "❌ Pose detection failed",
+          description: `Error: ${error.message}`,
+          variant: "destructive",
         });
+
         setIsPoseDetectionEnabled(false);
       }
     };
@@ -269,8 +356,12 @@ export default function BodyScanAI() {
 
     return () => {
       if (poseDetectorRef.current) {
-        console.log('[POSE INIT] Disposing pose detector');
-        poseDetectorRef.current.dispose();
+        console.log('[CLEANUP] Disposing pose detector');
+        try {
+          poseDetectorRef.current.dispose();
+        } catch (disposeError) {
+          console.warn('[CLEANUP] Dispose error:', disposeError);
+        }
       }
     };
   }, []);
