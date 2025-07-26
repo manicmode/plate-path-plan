@@ -76,119 +76,189 @@ const HomeAIInsights = () => {
   const generateWeeklyReview = async () => {
     if (!user?.id) return null;
 
-    // Get consistency scores for the past 7 days
-    const consistencyScores = await calculateConsistencyScores(user.id, 7);
-    const insights = [];
+    try {
+      // Get consistency scores for the past 7 days
+      const consistencyScores = await calculateConsistencyScores(user.id, 7);
+      const insights = [];
 
-    // Add consistency scores as insights
-    insights.push('📊 Consistency Scores:');
-    consistencyScores.forEach(score => {
-      const emoji = score.percentage >= 90 ? '🔥' : score.percentage >= 70 ? '💪' : score.percentage >= 50 ? '📈' : '⚠️';
-      insights.push(`${emoji} ${score.label}: ${score.percentage}%`);
-      
-      // Add motivational message if it exists and score is below 70%
-      if (score.motivationalMessage && score.percentage < 70) {
-        insights.push(score.motivationalMessage);
+      // Add consistency scores as insights
+      if (consistencyScores && Array.isArray(consistencyScores)) {
+        insights.push('📊 Consistency Scores:');
+        consistencyScores.forEach(score => {
+          if (score && typeof score.percentage === 'number') {
+            const emoji = score.percentage >= 90 ? '🔥' : score.percentage >= 70 ? '💪' : score.percentage >= 50 ? '📈' : '⚠️';
+            insights.push(`${emoji} ${score.label || 'Unknown'}: ${score.percentage}%`);
+            
+            // Add motivational message if it exists and score is below 70%
+            if (score.motivationalMessage && score.percentage < 70) {
+              insights.push(score.motivationalMessage);
+            }
+          }
+        });
       }
-    });
 
-    // Additional insights based on patterns
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+      // Additional insights based on patterns
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
-    const [moodData] = await Promise.all([
-      supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', weekAgoStr)
-    ]);
+      let moodData = null;
+      try {
+        const moodResponse = await supabase
+          .from('mood_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('created_at', weekAgoStr);
+        
+        if (moodResponse.error) {
+          console.error('Error fetching mood data for weekly review:', moodResponse.error);
+        } else {
+          moodData = moodResponse;
+        }
+      } catch (error) {
+        console.error('Failed to fetch mood data for weekly review:', error);
+      }
 
-    // Mood patterns
-    const moodEntries = moodData.data || [];
-    const avgMood = moodEntries.length > 0 ? moodEntries.reduce((sum, m) => sum + (m.mood || 5), 0) / moodEntries.length : 0;
-    if (avgMood >= 7) {
-      insights.push(`😊 Great week for mood! Average rating: ${avgMood.toFixed(1)}/10`);
-    } else if (avgMood < 5 && moodEntries.length > 0) {
-      insights.push(`🤗 Mood averaged ${avgMood.toFixed(1)}/10 - consider reviewing your patterns`);
+      // Mood patterns
+      const moodEntries = moodData?.data || [];
+      if (Array.isArray(moodEntries) && moodEntries.length > 0) {
+        const avgMood = moodEntries.reduce((sum, m) => sum + (typeof m?.mood === 'number' ? m.mood : 5), 0) / moodEntries.length;
+        if (avgMood >= 7) {
+          insights.push(`😊 Great week for mood! Average rating: ${avgMood.toFixed(1)}/10`);
+        } else if (avgMood < 5) {
+          insights.push(`🤗 Mood averaged ${avgMood.toFixed(1)}/10 - consider reviewing your patterns`);
+        }
+      }
+
+      return {
+        title: 'Weekly Review',
+        insights: insights.slice(0, 6), // Show more insights to include consistency scores
+        period: '7 days',
+        consistencyScores: consistencyScores || []
+      };
+    } catch (error) {
+      console.error('Error generating weekly review:', error);
+      return {
+        title: 'Weekly Review',
+        insights: ['🌟 Keep tracking to unlock detailed weekly insights!'],
+        period: '7 days',
+        consistencyScores: []
+      };
     }
-
-    return {
-      title: 'Weekly Review',
-      insights: insights.slice(0, 6), // Show more insights to include consistency scores
-      period: '7 days',
-      consistencyScores
-    };
   };
 
   // Generate monthly review
   const generateMonthlyReview = async () => {
     if (!user?.id) return null;
 
-    // Get consistency scores for the past 30 days
-    const consistencyScores = await calculateConsistencyScores(user.id, 30);
-    const insights = [];
+    try {
+      // Get consistency scores for the past 30 days
+      const consistencyScores = await calculateConsistencyScores(user.id, 30);
+      const insights = [];
 
-    // Add consistency scores as insights
-    insights.push('📊 Monthly Consistency Scores:');
-    consistencyScores.forEach(score => {
-      const emoji = score.percentage >= 90 ? '🔥' : score.percentage >= 70 ? '💪' : score.percentage >= 50 ? '📈' : '⚠️';
-      insights.push(`${emoji} ${score.label}: ${score.percentage}%`);
-      
-      // Add motivational message for top and bottom performers
-      if (score.motivationalMessage && (score.percentage >= 90 || score.percentage < 60)) {
-        insights.push(score.motivationalMessage);
+      // Add consistency scores as insights
+      if (consistencyScores && Array.isArray(consistencyScores)) {
+        insights.push('📊 Monthly Consistency Scores:');
+        consistencyScores.forEach(score => {
+          if (score && typeof score.percentage === 'number') {
+            const emoji = score.percentage >= 90 ? '🔥' : score.percentage >= 70 ? '💪' : score.percentage >= 50 ? '📈' : '⚠️';
+            insights.push(`${emoji} ${score.label || 'Unknown'}: ${score.percentage}%`);
+            
+            // Add motivational message for top and bottom performers
+            if (score.motivationalMessage && (score.percentage >= 90 || score.percentage < 60)) {
+              insights.push(score.motivationalMessage);
+            }
+          }
+        });
       }
-    });
 
-    // Additional monthly insights
-    const monthAgo = new Date();
-    monthAgo.setDate(monthAgo.getDate() - 30);
-    const monthAgoStr = monthAgo.toISOString().split('T')[0];
+      // Additional monthly insights
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      const monthAgoStr = monthAgo.toISOString().split('T')[0];
 
-    const [supplementData, moodData] = await Promise.all([
-      supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
-      supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr)
-    ]);
+      let supplementData = null;
+      let moodData = null;
 
-    // Top supplement
-    const supplementCounts: Record<string, number> = {};
-    supplementData.data?.forEach(s => {
-      supplementCounts[s.name] = (supplementCounts[s.name] || 0) + 1;
-    });
-    const topSupplement = Object.entries(supplementCounts).sort(([,a], [,b]) => (b as number) - (a as number))[0];
-    if (topSupplement) {
-      insights.push(`💊 Top supplement: ${topSupplement[0]} (logged ${topSupplement[1]} times)`);
-    }
+      try {
+        const [supplementResponse, moodResponse] = await Promise.all([
+          supabase.from('supplement_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr),
+          supabase.from('mood_logs').select('*').eq('user_id', user.id).gte('created_at', monthAgoStr)
+        ]);
 
-    // Mood improvements
-    const moodEntries = moodData.data || [];
-    if (moodEntries.length >= 10) {
-      const recentMoods = moodEntries.slice(-10).map(m => m.mood || 5);
-      const earlierMoods = moodEntries.slice(0, 10).map(m => m.mood || 5);
-      const recentAvg = recentMoods.reduce((sum, m) => sum + m, 0) / recentMoods.length;
-      const earlierAvg = earlierMoods.reduce((sum, m) => sum + m, 0) / earlierMoods.length;
-      
-      if (recentAvg > earlierAvg) {
-        const improvement = Math.round(((recentAvg - earlierAvg) / earlierAvg) * 100);
-        insights.push(`🧠 Mood improved by ${improvement}% this month — great progress!`);
+        if (supplementResponse.error) {
+          console.error('Error fetching supplement data for monthly review:', supplementResponse.error);
+        } else {
+          supplementData = supplementResponse;
+        }
+
+        if (moodResponse.error) {
+          console.error('Error fetching mood data for monthly review:', moodResponse.error);
+        } else {
+          moodData = moodResponse;
+        }
+      } catch (error) {
+        console.error('Failed to fetch data for monthly review:', error);
       }
-    }
 
-    if (insights.length === 0) {
-      insights.push(`🌟 Keep tracking to unlock detailed monthly insights!`);
-    }
+      // Top supplement
+      const supplementCounts: Record<string, number> = {};
+      if (supplementData?.data && Array.isArray(supplementData.data)) {
+        supplementData.data.forEach(s => {
+          if (s && s.name && typeof s.name === 'string') {
+            supplementCounts[s.name] = (supplementCounts[s.name] || 0) + 1;
+          }
+        });
+      }
 
-    return {
-      title: 'Monthly Review',
-      insights: insights.slice(0, 8), // Show more insights to include consistency scores
-      period: '30 days',
-      consistencyScores
-    };
+      const topSupplement = Object.entries(supplementCounts).sort(([,a], [,b]) => (b as number) - (a as number))[0];
+      if (topSupplement && topSupplement[0] && topSupplement[1]) {
+        insights.push(`💊 Top supplement: ${topSupplement[0]} (logged ${topSupplement[1]} times)`);
+      }
+
+      // Mood improvements
+      const moodEntries = moodData?.data || [];
+      if (Array.isArray(moodEntries) && moodEntries.length >= 10) {
+        const recentMoods = moodEntries.slice(-10).map(m => typeof m?.mood === 'number' ? m.mood : 5);
+        const earlierMoods = moodEntries.slice(0, 10).map(m => typeof m?.mood === 'number' ? m.mood : 5);
+        
+        if (recentMoods.length > 0 && earlierMoods.length > 0) {
+          const recentAvg = recentMoods.reduce((sum, m) => sum + m, 0) / recentMoods.length;
+          const earlierAvg = earlierMoods.reduce((sum, m) => sum + m, 0) / earlierMoods.length;
+          
+          if (recentAvg > earlierAvg && earlierAvg > 0) {
+            const improvement = Math.round(((recentAvg - earlierAvg) / earlierAvg) * 100);
+            insights.push(`🧠 Mood improved by ${improvement}% this month — great progress!`);
+          }
+        }
+      }
+
+      if (insights.length === 0) {
+        insights.push(`🌟 Keep tracking to unlock detailed monthly insights!`);
+      }
+
+      return {
+        title: 'Monthly Review',
+        insights: insights.slice(0, 8), // Show more insights to include consistency scores
+        period: '30 days',
+        consistencyScores: consistencyScores || []
+      };
+    } catch (error) {
+      console.error('Error generating monthly review:', error);
+      return {
+        title: 'Monthly Review',
+        insights: ['🌟 Keep tracking to unlock detailed monthly insights!'],
+        period: '30 days',
+        consistencyScores: []
+      };
+    }
   };
 
   // Generate AI messages (mood prediction + coach tips)
   const generateAIMessages = () => {
     const userName = user?.name?.split(' ')[0] || 'there';
     const totalCalories = user?.targetCalories || 2000;
-    const currentCalories = progress.calories;
+    const currentCalories = progress?.calories || 0;
     const progressPercentage = Math.min((currentCalories / totalCalories) * 100, 100);
     const currentHour = new Date().getHours();
     const timeOfDay = currentHour < 12 ? 'morning' : currentHour < 17 ? 'afternoon' : 'evening';
@@ -196,17 +266,24 @@ const HomeAIInsights = () => {
     const messages = [];
 
     // AI Mood Prediction Message
-    if (moodPrediction) {
+    if (moodPrediction && typeof moodPrediction === 'object') {
       let moodEmoji = '😊';
       let energyLevel = 'moderate';
       
-      if (moodPrediction.predicted_mood >= 7) moodEmoji = '😄';
-      else if (moodPrediction.predicted_mood >= 4) moodEmoji = '😊';
-      else moodEmoji = '😔';
+      const predictedMood = moodPrediction.predicted_mood;
+      const predictedEnergy = moodPrediction.predicted_energy;
+      
+      if (typeof predictedMood === 'number') {
+        if (predictedMood >= 7) moodEmoji = '😄';
+        else if (predictedMood >= 4) moodEmoji = '😊';
+        else moodEmoji = '😔';
+      }
 
-      if (moodPrediction.predicted_energy >= 7) energyLevel = 'high';
-      else if (moodPrediction.predicted_energy >= 4) energyLevel = 'moderate';
-      else energyLevel = 'low';
+      if (typeof predictedEnergy === 'number') {
+        if (predictedEnergy >= 7) energyLevel = 'high';
+        else if (predictedEnergy >= 4) energyLevel = 'moderate';
+        else energyLevel = 'low';
+      }
 
       messages.push({
         type: 'mood',
@@ -231,7 +308,7 @@ const HomeAIInsights = () => {
     const coachTips = [
       `Rise and fuel, ${userName}! Your body needs energy to start the day strong. A protein-rich breakfast will set you up for success.`,
       `Outstanding work, ${userName}! You've hit your calorie goal. Focus on quality nutrients and staying hydrated for the rest of the day.`,
-      `You're in the home stretch, ${userName}! Just ${Math.round(totalCalories - currentCalories)} calories to go. Choose something nutritious and satisfying.`,
+      `You're in the home stretch, ${userName}! Just ${Math.round(Math.max(0, totalCalories - currentCalories))} calories to go. Choose something nutritious and satisfying.`,
       `Midday boost needed, ${userName}! Your body is asking for fuel. A balanced lunch with protein and complex carbs will energize your afternoon.`,
       `Evening nourishment time, ${userName}! Don't skip dinner - your body needs consistent fuel for recovery and tomorrow's energy.`,
       `Weight loss tip: Focus on high-volume, low-calorie foods like vegetables and lean proteins to stay satisfied while hitting your goals.`,
@@ -393,54 +470,54 @@ const HomeAIInsights = () => {
         {/* Content Area */}
         <div className={`min-h-[140px] ${isMobile ? 'mb-6' : 'mb-8'}`}>
           <div className={`transition-all duration-300 ${fadeState === 'fade-in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}`}>
-            {currentTab.type === 'daily' && currentItem.content && (
+            {currentTab?.type === 'daily' && currentItem?.content && (
               <div className="flex items-start space-x-4">
-                <div className="text-3xl flex-shrink-0 mt-1">{currentItem.content.emoji}</div>
+                <div className="text-3xl flex-shrink-0 mt-1">{currentItem.content.emoji || '🧠'}</div>
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-3">
                     <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
-                      {currentItem.content.title}
+                      {currentItem.content.title || 'AI Insight'}
                     </h4>
                     <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100 px-2 py-1 rounded-full">
-                      {currentItem.content.confidence}
+                      {currentItem.content.confidence || 'Medium'}
                     </span>
                   </div>
                   <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
-                    {currentItem.content.message}
+                    {currentItem.content.message || 'Loading insights...'}
                   </p>
                 </div>
               </div>
             )}
             
-            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && currentItem.content && (
+            {(currentTab?.type === 'weekly' || currentTab?.type === 'monthly') && currentItem?.content && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                  <div className="text-3xl">{currentTab.emoji}</div>
+                  <div className="text-3xl">{currentTab.emoji || '📊'}</div>
                   <div>
                     <h4 className={`${isMobile ? 'text-base' : 'text-lg'} font-bold text-gray-900 dark:text-white`}>
-                      {currentItem.content.title}
+                      {currentItem.content.title || 'Review'}
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Past {currentItem.content.period}
+                      Past {currentItem.content.period || '7 days'}
                     </p>
                   </div>
                 </div>
                 <div className={`space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 ${isMobile ? 'h-36' : 'h-40'}`}>
-                  {currentItem.content.insights.map((insight, index) => (
+                  {Array.isArray(currentItem.content.insights) && currentItem.content.insights.map((insight, index) => (
                     <p key={index} className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 dark:text-gray-300 leading-relaxed`}>
-                      {insight}
+                      {insight || 'Loading insight...'}
                     </p>
                   ))}
                 </div>
               </div>
             )}
 
-            {(currentTab.type === 'weekly' || currentTab.type === 'monthly') && !currentItem.content && (
+            {(currentTab?.type === 'weekly' || currentTab?.type === 'monthly') && !currentItem?.content && (
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <div className="text-3xl mb-2">{currentTab.emoji}</div>
+                  <div className="text-3xl mb-2">{currentTab?.emoji || '📊'}</div>
                   <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400`}>
-                    Generating {currentTab.title.toLowerCase()}...
+                    Generating {currentTab?.title?.toLowerCase() || 'review'}...
                   </p>
                 </div>
               </div>
