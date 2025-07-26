@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, Repeat } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/auth';
+import { useStableAuth } from '@/hooks/useStableAuth';
 import { toast } from 'sonner';
 
 interface SavedFood {
@@ -28,13 +28,18 @@ interface SavedFoodsTabProps {
 export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
   const [savedFoods, setSavedFoods] = useState<SavedFood[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, userReady } = useStableAuth();
 
   useEffect(() => {
     const fetchSavedFoods = async () => {
-      if (!user?.id) return;
+      if (!userReady || !user?.id) {
+        console.log('User not ready or no user ID found, skipping saved foods fetch');
+        setLoading(false);
+        return;
+      }
 
       try {
+        console.log('Fetching saved foods for user:', user.id);
         // Get frequency data with aggregated counts
         const { data, error } = await supabase
           .from('nutrition_logs')
@@ -56,9 +61,14 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
 
         if (error) {
           console.error('Error fetching saved foods:', error);
-          toast.error('Failed to load saved foods');
+          // Only show error toast if there's a real error, not if data is empty
+          if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+            toast.error('Failed to load saved foods');
+          }
           return;
         }
+
+        console.log('Saved foods data retrieved:', data?.length || 0, 'items');
 
         // Group by food name, count frequency, and keep most recent data
         const foodMap = new Map<string, SavedFood>();
@@ -121,7 +131,7 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
     };
 
     fetchSavedFoods();
-  }, [user?.id]);
+  }, [user?.id, userReady]);
 
   const handleRelogFood = (food: SavedFood) => {
     onFoodSelect({
