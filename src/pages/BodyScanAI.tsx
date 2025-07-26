@@ -237,7 +237,6 @@ export default function BodyScanAI() {
           poseDetection.SupportedModels.MoveNet,
           {
             modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-            modelUrl: 'https://tfhub.dev/google/tfjs-model/movenet/singlepose/lightning/4',
             enableSmoothing: true,
           }
         );
