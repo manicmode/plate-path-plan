@@ -13,6 +13,7 @@ import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import AuthForm from '@/components/auth/AuthForm';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import HomePageErrorBoundary from '@/components/HomePageErrorBoundary';
 import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
@@ -87,11 +88,6 @@ function AppContent() {
       return <LoadingScreen />;
     }
 
-    // ✅ Prevent premature mounting of protected content when no session
-    if (!auth?.loading && auth?.session === null && window.location.pathname !== '/' && window.location.pathname !== '/sign-in') {
-      console.log('🚨 AppContent: No session detected on protected route, will let ProtectedRoute handle redirect');
-    }
-
     console.log('✅ AppContent: Auth initialized, rendering routes...');
 
     return (
@@ -122,6 +118,7 @@ function AppContent() {
               <Layout>
                 <Routes>
                   <Route path="/" element={<Index />} />
+                  <Route path="/sign-in" element={<AuthForm />} />
                   <Route path="/home" element={
                     <ProtectedRoute>
                       <HomePageErrorBoundary>

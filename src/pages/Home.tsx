@@ -76,21 +76,35 @@ const Home = () => {
 
   console.log("📱 Initializing hooks...");
   
-  // 🔒 iOS Safari 18.5 Security: Temporarily disable useAuth for debugging
-  const isIOSSafariDebug = isBrowser && navigator.userAgent.includes('Safari') && navigator.userAgent.includes('iPhone');
-  console.log("🔒 iOS Safari detection:", isIOSSafariDebug);
+  // Initialize auth hook normally
+  const { user, loading: authLoading } = useAuth();
+  console.log("✅ useAuth hook initialized");
   
-  let user, authLoading;
-  if (isIOSSafariDebug) {
-    console.log("🚨 iOS Safari detected - using safe fallback for auth");
-    user = { id: 'debug-user', email: 'debug@test.com' };
-    authLoading = false;
-  } else {
-    const authResult = useAuth();
-    user = authResult.user;
-    authLoading = authResult.loading;
+  // 🔒 Critical: Don't render Home content until auth is fully resolved
+  if (authLoading) {
+    console.log("⏳ Home: Auth still loading, showing loading screen");
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
   }
-  console.log("✅ useAuth hook initialized (or bypassed for iOS)");
+  
+  // 🔒 Critical: Don't render without authenticated user
+  if (!user) {
+    console.log("🚨 Home: No authenticated user, this should not happen in protected route");
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="text-red-500 text-2xl mb-4">⚠️</div>
+          <p className="text-muted-foreground">Authentication required</p>
+        </div>
+      </div>
+    );
+  }
   
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
   console.log("✅ useNutrition hook initialized");

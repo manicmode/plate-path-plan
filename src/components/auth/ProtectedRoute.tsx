@@ -18,17 +18,18 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     loading, 
     hasSession: !!session, 
     isAuthenticated,
-    currentPath: location.pathname 
+    currentPath: location.pathname,
+    sessionUserId: session?.user?.id || 'none'
   });
 
-  // Show loading with recovery option
+  // Critical: Always show loading while auth is initializing
   if (loading) {
-    console.log('⏳ ProtectedRoute: Still loading, showing spinner...');
+    console.log('⏳ ProtectedRoute: Auth loading, showing spinner...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center space-y-6">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Authenticating...</p>
           
           {showRecovery && (
             <div className="bg-card p-6 rounded-lg border shadow-sm space-y-4">
@@ -50,18 +51,32 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // ✅ CRITICAL: If loading is false and no session, redirect to sign-in immediately
-  if (!loading && session === null) {
-    console.log('🚨 ProtectedRoute: No session detected, redirecting to /sign-in from:', location.pathname);
-    return <Navigate to="/sign-in" replace state={{ from: location }} />;
+  // Critical: Only check for null session after loading is complete
+  if (!loading && (session === null || session === undefined)) {
+    console.log('🚨 ProtectedRoute: No session after loading complete, redirecting to / from:', location.pathname);
+    return <Navigate to="/" replace state={{ from: location }} />;
   }
 
-  // Additional check: If not authenticated, redirect to sign-in
+  // Critical: Double-check authentication state
   if (!loading && !isAuthenticated) {
-    console.log('🚨 ProtectedRoute: Not authenticated, redirecting to /sign-in from:', location.pathname);
-    return <Navigate to="/sign-in" replace state={{ from: location }} />;
+    console.log('🚨 ProtectedRoute: Not authenticated after loading complete, redirecting to / from:', location.pathname);
+    return <Navigate to="/" replace state={{ from: location }} />;
   }
 
-  console.log('✅ ProtectedRoute: Authenticated, rendering protected content');
-  return <>{children}</>;
+  // Critical: Ensure we have a valid session with user before rendering protected content
+  if (!loading && session && session.user && isAuthenticated) {
+    console.log('✅ ProtectedRoute: Valid session confirmed, rendering protected content');
+    return <>{children}</>;
+  }
+
+  // Fallback: If we get here, something is wrong - show loading
+  console.log('⚠️ ProtectedRoute: Unexpected state, showing fallback loading');
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="text-center space-y-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Validating session...</p>
+      </div>
+    </div>
+  );
 };

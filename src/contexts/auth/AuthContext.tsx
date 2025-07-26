@@ -203,7 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Cleanup function
     return () => {
-      console.log('🔄 AuthProvider: Cleaning up auth state listener');
+      console.log('🧹 AuthProvider: Cleaning up auth initialization...');
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
