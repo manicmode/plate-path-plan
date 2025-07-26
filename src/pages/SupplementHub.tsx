@@ -1304,20 +1304,8 @@ const SupplementHub = () => {
       notifications: [],
     });
 
-    // Play supplement hub log confirmation sound
-    console.log('🔊 [SupplementHub] === SUPPLEMENT HUB LOG SOUND REQUEST ===');
-    console.log(`🔊 [SupplementHub] Supplement added: ${supplement.name}`);
-    
-    setTimeout(() => {
-      try {
-        console.log('🔊 [SupplementHub] Triggering playFoodLogConfirm for supplement hub...');
-        playFoodLogConfirm().catch(error => {
-          console.warn('🔊 [SupplementHub] Supplement hub log sound failed:', error);
-        });
-      } catch (error) {
-        console.error('🔊 [SupplementHub] Supplement hub sound playback error:', error);
-      }
-    }, 0);
+    // Play success sound
+    playFoodLogConfirm();
 
     toast({
       title: "Added to My Supplements!",

@@ -7,7 +7,7 @@ interface SoundContextType {
   isEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
   playSound: (soundKey: string) => Promise<void>;
-  getAudioStatus: () => any;
+  getAudioStatus: () => { enabled: boolean; hasUserInteracted: boolean; audioContextState?: string; cachedSounds: number };
   forceInitialize: () => Promise<void>;
   // Convenience methods for specific sounds
   playAIThought: () => Promise<void>;
@@ -39,24 +39,10 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Proactive Sound System Initialization on Login
+    // Initialize sound system when user logs in
     if (user) {
-      console.log('🔊 [SoundContext] User logged in, proactively initializing Web Audio API system');
-      
-      // Attempt immediate activation since login is a user interaction
-      setTimeout(() => {
-        try {
-          console.log('🔊 [SoundContext] Triggering proactive Web Audio API initialization...');
-          
-          // Force initialization with Web Audio API
-          soundManager.forceInitialize().catch(error => {
-            console.warn('🔊 [SoundContext] Proactive Web Audio API initialization failed:', error);
-          });
-          
-        } catch (error) {
-          console.warn('🔊 [SoundContext] Sound activation on login failed:', error);
-        }
-      }, 100); // Small delay to ensure DOM is ready
+      console.log('🔊 User logged in, preparing sound system');
+      // The sound system will initialize on first user interaction
     }
   }, [user]);
 
@@ -72,40 +58,16 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   };
 
   const playSound = async (soundKey: string) => {
-    console.log(`🔊 [SoundContext] === SOUND REQUEST: "${soundKey}" ===`);
-    console.log(`🔊 [SoundContext] Context state - enabled: ${isEnabled}, user: ${!!user}`);
-    
+    console.log(`🔊 SoundContext: Playing sound "${soundKey}", enabled: ${isEnabled}`);
     if (!isEnabled) {
-      console.log(`🔊 [SoundContext] ❌ Sound disabled by user preference - skipping "${soundKey}"`);
+      console.log('🔊 SoundContext: Sound disabled by user preference');
       return;
     }
-    
     try {
-      // Enhanced debugging for sound playback
-      console.log(`🔊 [SoundContext] Attempting to play "${soundKey}" via SoundManager...`);
       await soundManager.play(soundKey);
-      console.log(`🔊 [SoundContext] ✅ Successfully played "${soundKey}"`);
+      console.log(`🔊 SoundContext: Successfully played "${soundKey}"`);
     } catch (error) {
-      console.error(`🔊 [SoundContext] ❌ Sound playback failed for "${soundKey}":`, error);
-      
-      // Attempt recovery by forcing Web Audio API initialization if needed
-      if (!soundManager.getStatus().hasUserInteracted) {
-        console.log(`🔊 [SoundContext] 🔄 Attempting recovery - force initializing Web Audio API...`);
-        try {
-          await soundManager.forceInitialize();
-          // Retry the sound after initialization
-          setTimeout(async () => {
-            try {
-              await soundManager.play(soundKey);
-              console.log(`🔊 [SoundContext] ✅ Recovery successful for "${soundKey}"`);
-            } catch (retryError) {
-              console.error(`🔊 [SoundContext] ❌ Recovery failed for "${soundKey}":`, retryError);
-            }
-          }, 100);
-        } catch (activationError) {
-          console.error(`🔊 [SoundContext] ❌ Web Audio API recovery failed:`, activationError);
-        }
-      }
+      console.warn('🔊 SoundContext: Sound playback failed:', error);
     }
   };
 

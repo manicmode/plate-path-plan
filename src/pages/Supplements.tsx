@@ -64,20 +64,8 @@ const Supplements = () => {
       notifications: [],
     });
     
-    // Play supplement log confirmation sound
-    console.log('🔊 [Supplements] === SUPPLEMENT LOG SOUND REQUEST ===');
-    console.log(`🔊 [Supplements] Supplement logged: ${supplement.name} (${supplement.dosage}${supplement.unit})`);
-    
-    setTimeout(() => {
-      try {
-        console.log('🔊 [Supplements] Triggering playFoodLogConfirm for supplement...');
-        playFoodLogConfirm().catch(error => {
-          console.warn('🔊 [Supplements] Supplement log sound failed:', error);
-        });
-      } catch (error) {
-        console.error('🔊 [Supplements] Supplement sound playback error:', error);
-      }
-    }, 0);
+    // Play success sound
+    playFoodLogConfirm();
     
     toast({
       title: "Supplement Added!",
@@ -110,20 +98,8 @@ const Supplements = () => {
       image: selectedImage || undefined,
     });
 
-    // Play manual supplement log confirmation sound
-    console.log('🔊 [Supplements] === MANUAL SUPPLEMENT LOG SOUND REQUEST ===');
-    console.log(`🔊 [Supplements] Manual supplement logged: ${supplementName} (${dosageNumber}${dosageUnit})`);
-    
-    setTimeout(() => {
-      try {
-        console.log('🔊 [Supplements] Triggering playFoodLogConfirm for manual supplement...');
-        playFoodLogConfirm().catch(error => {
-          console.warn('🔊 [Supplements] Manual supplement log sound failed:', error);
-        });
-      } catch (error) {
-        console.error('🔊 [Supplements] Manual supplement sound playback error:', error);
-      }
-    }, 0);
+    // Play success sound
+    playFoodLogConfirm();
 
     toast({
       title: "Supplement Added!",
