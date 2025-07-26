@@ -164,7 +164,36 @@ class SoundManager {
       console.log(`🤚 User interaction detected: ${eventType} at ${timestamp}`);
       console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform} (${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'})`);
       
-      // CRITICAL: Resume AudioContext immediately in trusted user event context
+      // CRITICAL: Create AudioContext inside trusted user gesture event (iOS Safari requirement)
+      if (!this.audioContext) {
+        try {
+          if (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined') {
+            console.log(`🔊 Creating AudioContext inside trusted user gesture (${eventType})`);
+            this.audioContext = new (AudioContext || (window as any).webkitAudioContext)();
+            console.log(`✅ AudioContext created successfully - initial state: ${this.audioContext.state}`);
+            
+            // Add state change listener for monitoring
+            this.audioContext.onstatechange = () => {
+              const timestamp = new Date().toISOString();
+              console.log(`🔄 AudioContext state changed to: ${this.audioContext?.state} at ${timestamp}`);
+              console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform}`);
+              
+              if (this.audioContext?.state === 'suspended' && this.mobileEnv.isMobile) {
+                console.log('⚠️ AudioContext suspended on mobile - autoplay policy or tab switch detected');
+              }
+            };
+          } else {
+            console.warn('❌ AudioContext not available in this browser');
+          }
+        } catch (creationError: any) {
+          console.log(`❌ AudioContext creation failed:`, creationError);
+          console.log(`📱 Creation failed on: ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+        }
+      } else {
+        console.log(`♻️ AudioContext already exists - state: ${this.audioContext.state}`);
+      }
+      
+      // CRITICAL: Resume AudioContext immediately after creation in trusted user event context
       if (this.audioContext) {
         try {
           console.log(`🔄 Immediately resuming AudioContext on ${eventType} - state: ${this.audioContext.state}`);
@@ -174,8 +203,6 @@ class SoundManager {
           console.log(`❌ AudioContext resume failed on user interaction:`, resumeError);
           console.log(`📱 Resume failed on: ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
         }
-      } else {
-        console.log(`⚠️ No AudioContext available during user interaction`);
       }
       
       this.hasUserInteracted = true;
@@ -227,43 +254,12 @@ class SoundManager {
     try {
       console.log('🔄 Starting audio system initialization...');
       
-      // Initialize AudioContext for better mobile support
-      if (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined') {
-        this.audioContext = new (AudioContext || (window as any).webkitAudioContext)();
-        console.log(`🔊 AudioContext created - initial state: ${this.audioContext.state}`);
-        
-        // Add state change listener for monitoring
-        this.audioContext.onstatechange = () => {
-          const timestamp = new Date().toISOString();
-          console.log(`🔄 AudioContext state changed to: ${this.audioContext?.state} at ${timestamp}`);
-          console.log(`📱 Device: ${this.mobileEnv.browser} on ${this.mobileEnv.platform}`);
-          
-          if (this.audioContext?.state === 'suspended' && this.mobileEnv.isMobile) {
-            console.log('⚠️ AudioContext suspended on mobile - autoplay policy or tab switch detected');
-          }
-        };
-        
-        // Resume AudioContext if it's suspended (common on mobile)
-        if (this.audioContext.state === 'suspended') {
-          const timestamp = new Date().toISOString();
-          console.log(`🔄 Resuming AudioContext at ${timestamp} - current state: ${this.audioContext.state}`);
-          console.log(`📱 Mobile context: ${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'} ${this.mobileEnv.browser}`);
-          
-          await this.audioContext.resume();
-          
-          console.log(`✅ AudioContext resumed - final state: ${this.audioContext.state}`);
-          
-          if (this.audioContext.state === 'suspended' || this.audioContext.state === 'closed') {
-            console.log('❌ AudioContext failed to resume - mobile audio policy block likely');
-            if (this.mobileEnv.isIOSSafari) {
-              console.log('🚫 iOS Safari autoplay restriction confirmed');
-            }
-          }
-        } else {
-          console.log(`✅ AudioContext already in state: ${this.audioContext.state}`);
-        }
+      // AudioContext is now created in user interaction handler only
+      // Skip AudioContext creation here to comply with iOS Safari PWA requirements
+      if (!this.audioContext) {
+        console.log('⚠️ AudioContext not created yet - waiting for user interaction');
       } else {
-        console.warn('❌ AudioContext not available in this browser');
+        console.log(`🔊 AudioContext already exists - state: ${this.audioContext.state}`);
       }
 
       // Preload sounds after initialization
