@@ -26,7 +26,7 @@ export const FirebaseSetupVerifier = () => {
     status.vapidKey = vapidKeyPresent.length > 50;
 
     // Check notification permission
-    status.notificationPermission = Notification.permission === 'granted';
+    status.notificationPermission = typeof Notification !== 'undefined' && Notification.permission === 'granted';
 
     // Check if FCM token can be generated
     try {

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 export const useReviewNotifications = () => {
   // Schedule weekly and monthly review notifications
   const scheduleReviewNotifications = () => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
+    if (typeof Notification === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
       return;
     }
 
@@ -30,11 +30,13 @@ export const useReviewNotifications = () => {
       }
 
       const weeklyTimeout = setTimeout(() => {
-        new Notification('Weekly Health Review Ready! 📊', {
-          body: 'Your health review is ready! Open NutriCoach to see what\'s working for you 💪',
-          icon: '/favicon.ico',
-          tag: 'weekly-review'
-        });
+        if (typeof Notification !== 'undefined') {
+          new Notification('Weekly Health Review Ready! 📊', {
+            body: 'Your health review is ready! Open NutriCoach to see what\'s working for you 💪',
+            icon: '/favicon.ico',
+            tag: 'weekly-review'
+          });
+        }
         
         // Schedule next week
         scheduleReviewNotifications();
@@ -53,11 +55,13 @@ export const useReviewNotifications = () => {
       }
 
       const monthlyTimeout = setTimeout(() => {
-        new Notification('Monthly Health Review Ready! 🧠', {
-          body: 'Your health review is ready! Open NutriCoach to see what\'s working for you 💪',
-          icon: '/favicon.ico',
-          tag: 'monthly-review'
-        });
+        if (typeof Notification !== 'undefined') {
+          new Notification('Monthly Health Review Ready! 🧠', {
+            body: 'Your health review is ready! Open NutriCoach to see what\'s working for you 💪',
+            icon: '/favicon.ico',
+            tag: 'monthly-review'
+          });
+        }
         
         // Schedule next month
         scheduleReviewNotifications();
@@ -71,12 +75,12 @@ export const useReviewNotifications = () => {
 
   // Request notification permission and schedule
   const setupNotifications = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
+    if (typeof Notification !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         scheduleReviewNotifications();
       }
-    } else if (Notification.permission === 'granted') {
+    } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       scheduleReviewNotifications();
     }
   };
