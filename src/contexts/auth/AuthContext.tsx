@@ -86,63 +86,128 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, []);
 
+  // ⚡ Enhanced auth initialization with proper sequencing for mobile Safari
   useEffect(() => {
-    console.log('🔄 AuthProvider: Setting up auth state change listener...');
+    console.log('🔄 AuthProvider: Starting auth initialization sequence...');
     
-    try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          console.log('🔄 Auth state change:', event, session?.user?.id);
+    let isInitialized = false;
+    let authSubscription: any = null;
+    
+    const initializeAuth = async () => {
+      try {
+        console.log('📱 STEP 1: Setting up auth state change listener...');
+        
+        // Set up auth state change listener FIRST
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log(`🔄 Auth state change: ${event}, Session: ${session?.user?.id || 'null'}, Initialized: ${isInitialized}`);
 
-        if (event === 'PASSWORD_RECOVERY') {
-          console.log('🔑 Password recovery session detected');
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-          return;
-        }
+            if (event === 'PASSWORD_RECOVERY') {
+              console.log('🔑 Password recovery session detected');
+              setSession(session);
+              setUser(session?.user ?? null);
+              setLoading(false);
+              return;
+            }
 
-        if (event === 'TOKEN_REFRESHED' && session) {
-          console.log('🔄 Token refreshed during recovery');
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-          return;
-        }
+            if (event === 'TOKEN_REFRESHED' && session) {
+              console.log('🔄 Token refreshed during recovery');
+              setSession(session);
+              setUser(session?.user ?? null);
+              setLoading(false);
+              return;
+            }
 
-        setSession(session);
-        setUser(session?.user ?? null);
+            // Update session state immediately
+            console.log('📝 Updating session state from auth change...');
+            setSession(session);
+            setUser(session?.user ?? null);
+            
+            // Only set loading to false after first initialization
+            if (isInitialized) {
+              setLoading(false);
+            }
+
+            // Load extended profile for new sign-ins
+            if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+              console.log('👤 Loading extended profile after sign-in...');
+              setTimeout(() => {
+                loadExtendedProfile(session.user);
+              }, 0);
+            }
+          }
+        );
+        
+        authSubscription = subscription;
+        console.log('✅ Auth state listener established');
+
+        // STEP 2: Get initial session with retry logic for mobile Safari
+        console.log('📱 STEP 2: Fetching initial session...');
+        
+        const fetchSessionWithRetry = async (attempt = 1): Promise<void> => {
+          try {
+            console.log(`🔄 Attempt ${attempt}: Getting session from Supabase...`);
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error(`❌ Session fetch error (attempt ${attempt}):`, error);
+              if (attempt < 3) {
+                console.log(`🔄 Retrying session fetch in ${attempt * 500}ms...`);
+                setTimeout(() => fetchSessionWithRetry(attempt + 1), attempt * 500);
+                return;
+              }
+              throw error;
+            }
+            
+            console.log(`📱 STEP 3: Initial session resolved - Session: ${session?.user?.id || 'null'}`);
+            
+            // Update state with session data
+            setSession(session);
+            setUser(session?.user ?? null);
+            isInitialized = true;
+            setLoading(false);
+            
+            // If we have a session, load the extended profile
+            if (session?.user) {
+              console.log('👤 Loading extended profile for existing session...');
+              setTimeout(() => {
+                loadExtendedProfile(session.user);
+              }, 100);
+            }
+            
+            console.log('✅ Auth initialization complete');
+            
+          } catch (fetchError) {
+            console.error('🚨 Failed to fetch initial session after retries:', fetchError);
+            setSession(null);
+            setUser(null);
+            isInitialized = true;
+            setLoading(false);
+          }
+        };
+
+        // Start the session fetch
+        await fetchSessionWithRetry();
+        
+      } catch (initError) {
+        console.error('🚨 Auth initialization failed:', initError);
+        setSession(null);
+        setUser(null);
+        isInitialized = true;
         setLoading(false);
-
-        // Don't reset session during password recovery
-        if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
-          setTimeout(() => {
-            loadExtendedProfile(session.user);
-          }, 0);
-        }
       }
-    );
+    };
 
-      // Get initial session
-      console.log('🔄 AuthProvider: Fetching initial session...');
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('🔄 AuthContext - Initial session loaded:', !!session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }).catch((error) => {
-        console.error('🚨 AuthProvider: Error fetching initial session:', error);
-        setLoading(false);
-      });
+    // Start initialization
+    initializeAuth();
 
-      return () => {
-        console.log('🔄 AuthProvider: Cleaning up auth state listener');
-        subscription.unsubscribe();
-      };
-    } catch (error) {
-      console.error('🚨 AuthProvider: Error setting up auth listener:', error);
-      setLoading(false);
-    }
+    // Cleanup function
+    return () => {
+      console.log('🔄 AuthProvider: Cleaning up auth state listener');
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
   }, []);
 
   // ✅ STEP 1: Persistent cleanup state using useRef
