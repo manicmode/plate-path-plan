@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, Repeat } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useStableAuth } from '@/hooks/useStableAuth';
+import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
 
 interface SavedFood {
@@ -23,20 +23,22 @@ interface SavedFood {
 
 interface SavedFoodsTabProps {
   onFoodSelect: (food: any) => void;
+  onRefetch?: (refetchFunction: () => Promise<void>) => void;
 }
 
-export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
+export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) => {
   const [savedFoods, setSavedFoods] = useState<SavedFood[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, userReady } = useStableAuth();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    const fetchSavedFoods = async () => {
-      if (!userReady || !user?.id) {
-        console.log('User not ready or no user ID found, skipping saved foods fetch');
-        setLoading(false);
-        return;
-      }
+  const fetchSavedFoods = useCallback(async () => {
+    if (!user?.id) {
+      console.log('User not authenticated, skipping saved foods fetch');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
 
       try {
         console.log('Fetching saved foods for user:', user.id);
@@ -61,10 +63,11 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
 
         if (error) {
           console.error('Error fetching saved foods:', error);
-          // Only show error toast if there's a real error, not if data is empty
+          // Only show error toast for real database/network errors
           if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
             toast.error('Failed to load saved foods');
           }
+          setLoading(false);
           return;
         }
 
@@ -124,14 +127,75 @@ export const SavedFoodsTab = ({ onFoodSelect }: SavedFoodsTabProps) => {
         setSavedFoods(uniqueFoods);
       } catch (error) {
         console.error('Error loading saved foods:', error);
-        toast.error('Failed to load saved foods');
+        // Only show error toast for network/database errors, not auth issues
+        if (user?.id) {
+          toast.error('Failed to load saved foods');
+        }
       } finally {
         setLoading(false);
       }
-    };
+    }, [user?.id]);
 
+  useEffect(() => {
     fetchSavedFoods();
-  }, [user?.id, userReady]);
+  }, [fetchSavedFoods]);
+
+  // Register refetch function with parent component
+  useEffect(() => {
+    if (onRefetch) {
+      onRefetch(fetchSavedFoods);
+    }
+  }, [onRefetch, fetchSavedFoods]);
+
+  // Add new food to local state optimistically
+  const addFoodOptimistically = useCallback((newFood: any) => {
+    const normalizedName = newFood.name?.toLowerCase();
+    if (!normalizedName) return;
+
+    setSavedFoods(prev => {
+      const existingIndex = prev.findIndex(food => 
+        food.food_name.toLowerCase() === normalizedName
+      );
+      
+      if (existingIndex >= 0) {
+        // Increment count for existing food
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          log_count: updated[existingIndex].log_count + 1,
+          created_at: new Date().toISOString()
+        };
+        return updated.sort((a, b) => {
+          if (b.log_count !== a.log_count) {
+            return b.log_count - a.log_count;
+          }
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      } else {
+        // Add new food
+        const newSavedFood: SavedFood = {
+          id: `temp-${Date.now()}`,
+          food_name: newFood.name,
+          calories: newFood.calories || 0,
+          protein: newFood.protein || 0,
+          carbs: newFood.carbs || 0,
+          fat: newFood.fat || 0,
+          fiber: newFood.fiber || 0,
+          sugar: newFood.sugar || 0,
+          sodium: newFood.sodium || 0,
+          created_at: new Date().toISOString(),
+          image_url: newFood.image_url,
+          log_count: 1
+        };
+        return [newSavedFood, ...prev].slice(0, 20);
+      }
+    });
+  }, []);
+
+  // Early return if user is not authenticated
+  if (!user?.id) {
+    return null;
+  }
 
   const handleRelogFood = (food: SavedFood) => {
     onFoodSelect({

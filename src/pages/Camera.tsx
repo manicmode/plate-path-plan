@@ -134,6 +134,9 @@ const CameraPage = () => {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
   
+  // Saved foods refetch function
+  const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
@@ -1200,6 +1203,11 @@ const CameraPage = () => {
         }
       }
 
+      // Refresh saved foods list
+      if (refetchSavedFoods) {
+        await refetchSavedFoods();
+      }
+
       // Play success sound
       playFoodLogConfirm();
       
@@ -1392,6 +1400,11 @@ const CameraPage = () => {
       
       confirmationDebug.saveToDatabase = true;
       console.log('✅ DATABASE SAVE SUCCESS - Food logged to nutrition_logs table');
+      
+      // Refresh saved foods list
+      if (refetchSavedFoods) {
+        await refetchSavedFoods();
+      }
       
       // Score the meal quality
       await scoreMealAfterInsert(data, error);
@@ -1699,7 +1712,10 @@ const CameraPage = () => {
                 ← Back
               </Button>
             </div>
-            <SavedFoodsTab onFoodSelect={handleTabFoodSelect} />
+            <SavedFoodsTab 
+              onFoodSelect={handleTabFoodSelect} 
+              onRefetch={setRefetchSavedFoods}
+            />
           </CardContent>
         </Card>
       )}
