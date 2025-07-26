@@ -34,15 +34,28 @@ import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { useRealHydrationData } from '@/hooks/useRealHydrationData';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 
-// Utility function to get current user preferences from localStorage
+// Safe utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
+  console.log("📱 loadUserPreferences: Checking if browser environment is safe...");
+  
+  // 🔒 iOS Safari Security: Check if we're in a browser environment
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    console.log("📱 loadUserPreferences: Browser APIs not available, using defaults");
+    return {
+      selectedTrackers: ['calories', 'hydration', 'supplements'],
+    };
+  }
+
   try {
+    console.log("📱 loadUserPreferences: Attempting to access localStorage...");
     const stored = localStorage.getItem('user_preferences');
     if (stored) {
+      console.log("📱 loadUserPreferences: Successfully loaded stored preferences");
       return JSON.parse(stored);
     }
+    console.log("📱 loadUserPreferences: No stored preferences found, using defaults");
   } catch (e) {
-    console.error('Error loading user preferences:', e);
+    console.error('📱 loadUserPreferences: Error loading user preferences:', e);
   }
   return {
     selectedTrackers: ['calories', 'hydration', 'supplements'],
@@ -51,14 +64,40 @@ const loadUserPreferences = () => {
 
 const Home = () => {
   console.log("🏠 Starting Home component render...");
+  
+  // 🔒 iOS Safari Security: Early browser environment check
+  const isBrowser = typeof window !== 'undefined';
+  console.log("🔒 Browser environment check:", isBrowser);
+  
+  if (!isBrowser) {
+    console.log("🚨 Not in browser environment, rendering minimal fallback");
+    return <div>Loading...</div>;
+  }
+
+  console.log("📱 Initializing hooks...");
   const { user, loading: authLoading } = useAuth();
+  console.log("✅ useAuth hook initialized");
+  
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
+  console.log("✅ useNutrition hook initialized");
+  
   const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useRealHydrationData();
+  console.log("✅ useRealHydrationData hook initialized");
+  
   const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
+  console.log("✅ useDailyScore hook initialized");
+  
   const navigate = useNavigate();
+  console.log("✅ useNavigate hook initialized");
+  
   const isMobile = useIsMobile();
+  console.log("✅ useIsMobile hook initialized, isMobile:", isMobile);
+  
   const progress = getTodaysProgress();
+  console.log("✅ Progress data retrieved");
+
   const { toast } = useToast();
+  console.log("✅ useToast hook initialized");
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -73,6 +112,7 @@ const Home = () => {
     hydration_ml: null,
     supplement_count: null
   });
+  console.log("✅ dailyTargets state initialized");
   const { toxinData: realToxinData, todayFlaggedCount, isLoading: toxinLoading } = useRealToxinData();
   const { detectToxinsForFood } = useToxinDetections(); // Keep for automatic detection
   
@@ -95,9 +135,18 @@ const Home = () => {
     },
   });
 
+  console.log("✅ Toxin data hooks initialized");
+
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('');
-  const [preferences, setPreferences] = useState(loadUserPreferences());
+  
+  // 🔒 iOS Safari Security: Safe preferences initialization
+  const [preferences, setPreferences] = useState(() => {
+    console.log("📱 Initializing preferences with safe loading...");
+    return loadUserPreferences();
+  });
+  console.log("✅ Preferences state initialized:", preferences);
+
   const [isQuickLogExpanded, setIsQuickLogExpanded] = useState(false);
   
   // Add confirmation card state
@@ -123,25 +172,43 @@ const Home = () => {
   // Coming Soon Modal state
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
 
-  // Listen for changes to localStorage preferences
+  // 🔒 iOS Safari Security: Safe localStorage listener
   useEffect(() => {
+    console.log("📱 Setting up safe storage listeners...");
+    
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      console.log("📱 Storage APIs not available, skipping listeners");
+      return;
+    }
+
     const handleStorageChange = () => {
-      const newPreferences = loadUserPreferences();
-      setPreferences(newPreferences);
+      console.log("📱 Storage change detected, safely updating preferences...");
+      try {
+        const newPreferences = loadUserPreferences();
+        setPreferences(newPreferences);
+      } catch (error) {
+        console.error("📱 Error handling storage change:", error);
+      }
     };
 
     window.addEventListener('storage', handleStorageChange);
     
     const interval = setInterval(() => {
-      const newPreferences = loadUserPreferences();
-      if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
-        setPreferences(newPreferences);
+      try {
+        const newPreferences = loadUserPreferences();
+        if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
+          console.log("📱 Preferences changed, updating...");
+          setPreferences(newPreferences);
+        }
+      } catch (error) {
+        console.error("📱 Error in preferences polling:", error);
       }
     }, 1000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
+      console.log("📱 Storage listeners cleaned up");
     };
   }, [preferences]);
 
@@ -196,21 +263,44 @@ const Home = () => {
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
 
-  // Helper function to check if celebration was already shown today
+  // 🔒 iOS Safari Security: Safe celebration key generation
   const getCelebrationKey = (type: string) => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    const userId = user?.id || 'guest';
-    return `celebration_${type}_${userId}_${today}`;
+    if (typeof window === 'undefined' || !user?.id) {
+      console.log("📱 Cannot generate celebration key - browser/user not available");
+      return null;
+    }
+    
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      const userId = user.id;
+      return `celebration_${type}_${userId}_${today}`;
+    } catch (error) {
+      console.error("📱 Error generating celebration key:", error);
+      return null;
+    }
   };
 
   const hasShownCelebrationToday = (type: string) => {
     const key = getCelebrationKey(type);
-    return safeGetJSON(key, false);
+    if (!key) return false;
+    
+    try {
+      return safeGetJSON(key, false);
+    } catch (error) {
+      console.error("📱 Error checking celebration status:", error);
+      return false;
+    }
   };
 
   const markCelebrationShown = (type: string) => {
     const key = getCelebrationKey(type);
-    safeSetJSON(key, true);
+    if (!key) return;
+    
+    try {
+      safeSetJSON(key, true);
+    } catch (error) {
+      console.error("📱 Error marking celebration shown:", error);
+    }
   };
 
   // Check for goal completion and trigger celebration (only once per day per goal)
@@ -648,6 +738,20 @@ const Home = () => {
     }, 5000);
   };
 
+  // 🔒 iOS Safari Security: Final browser environment safety check before rendering
+  if (!isBrowser || typeof window === 'undefined') {
+    console.log("🚨 Final safety check failed - not safe to render complex UI");
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="text-muted-foreground">Loading dashboard...</div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log("✅ Final safety check passed - proceeding with full render");
+
   // Show loading state with recovery options
   if (authLoading && !hasTimedOut) {
     return (
@@ -690,8 +794,13 @@ const Home = () => {
 
   console.log("🏠 Home component: Starting main render...");
 
+  // 🔒 iOS Safari Security: Check if we should disable complex animations
+  const isIOSSafari = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const shouldReduceComplexity = isIOSSafari;
+  console.log("📱 iOS Safari detected:", isIOSSafari, "Reducing complexity:", shouldReduceComplexity);
+
   return (
-    <div className="space-y-12 sm:space-y-16 animate-fade-in">
+    <div className={`space-y-12 sm:space-y-16 ${shouldReduceComplexity ? '' : 'animate-fade-in'}`}>
       {/* Celebration Popup */}
       {(() => { console.log("🎉 Rendering Celebration Popup"); return null; })()}
       <CelebrationPopup 
@@ -743,11 +852,13 @@ const Home = () => {
       </div>
 
       {/* Dynamic Tracker Cards based on user selection */}
-      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
-        {displayedTrackers.map((tracker, index) => (
+      <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} ${shouldReduceComplexity ? '' : 'animate-scale-in'} items-stretch relative z-10`}>
+        {displayedTrackers.map((tracker, index) => {
+          console.log(`📊 Rendering tracker: ${tracker.name}`);
+          return (
           <div 
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
+            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl ${shouldReduceComplexity ? '' : 'hover:scale-105 transition-all duration-500'} cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
             onClick={tracker.onClick}
             title={getMotivationalMessage(tracker.percentage, tracker.name)}
             style={{ 
@@ -830,7 +941,8 @@ const Home = () => {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Enhanced Logging Actions Section with proper spacing */}
@@ -1677,7 +1789,7 @@ const Home = () => {
 
       {/* Tracker Insights Popup */}
       {(() => { console.log("📈 Rendering Tracker Insights Popup"); return null; })()}
-      {selectedTracker && (
+      {!shouldReduceComplexity && selectedTracker && (
         <TrackerInsightsPopup
           isOpen={isInsightsOpen}
           onClose={closeInsights}
@@ -1689,10 +1801,12 @@ const Home = () => {
 
       {/* Health Check Modal */}
       {(() => { console.log("❤️ Rendering Health Check Modal"); return null; })()}
-      <HealthCheckModal 
-        isOpen={isHealthCheckOpen} 
-        onClose={() => setIsHealthCheckOpen(false)} 
-      />
+      {!shouldReduceComplexity && (
+        <HealthCheckModal 
+          isOpen={isHealthCheckOpen} 
+          onClose={() => setIsHealthCheckOpen(false)} 
+        />
+      )}
       
       {/* Development Test Components */}
       {(() => { console.log("🛠️ Rendering Development Test Components"); return null; })()}
