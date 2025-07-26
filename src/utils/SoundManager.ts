@@ -413,21 +413,27 @@ class SoundManager {
       // Reset audio to beginning
       audio.currentTime = 0;
       
-      // Resume AudioContext if suspended (critical for mobile)
-      if (this.audioContext && this.audioContext.state === 'suspended') {
-        console.log(`🔄 Resuming AudioContext before playing ${soundKey} - current state: ${this.audioContext.state}`);
-        console.log(`📱 Mobile context: ${this.mobileEnv.isMobile ? 'Mobile' : 'Desktop'} ${this.mobileEnv.browser}`);
+      // Always attempt to resume AudioContext right before playing (critical for iOS)
+      if (this.audioContext) {
+        try {
+          console.log(`🔄 Attempting AudioContext resume before playing ${soundKey} - current state: ${this.audioContext.state}`);
+          await this.audioContext.resume();
+          console.log(`✅ AudioContext resume successful - final state: ${this.audioContext.state}`);
+        } catch (resumeError: any) {
+          console.log(`❌ AudioContext resume failed before playing ${soundKey}:`, resumeError);
+          console.log(`📱 Resume failed on: ${this.mobileEnv.browser} ${this.mobileEnv.platform}`);
+          // Continue with play attempt even if resume fails
+        }
         
-        await this.audioContext.resume();
-        
-        console.log(`✅ AudioContext resumed - final state: ${this.audioContext.state}`);
-        
+        // Log final state after resume attempt
         if (this.audioContext.state === 'suspended' || this.audioContext.state === 'closed') {
-          console.log(`❌ AudioContext failed to resume - state: ${this.audioContext.state}`);
+          console.log(`⚠️ AudioContext still not running after resume attempt - state: ${this.audioContext.state}`);
           if (this.mobileEnv.isIOSSafari) {
-            console.log('🚫 iOS Safari autoplay restriction likely blocking AudioContext resume');
+            console.log('🚫 iOS Safari likely blocking AudioContext resume');
           }
         }
+      } else {
+        console.log(`⚠️ No AudioContext available for ${soundKey}`);
       }
       
       // Log play attempt with full context
