@@ -29,18 +29,33 @@ const HomeAIInsights = () => {
     const fetchData = async () => {
       if (!user?.id) return;
       
-      // Fetch mood prediction
-      const today = new Date().toISOString().split('T')[0];
-      const { data: moodData } = await supabase
-        .from('mood_predictions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('prediction_date', today)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      setMoodPrediction(moodData);
+      // Fetch mood prediction with safe error handling
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        if (!today || !user.id) {
+          console.log('Skipping mood prediction fetch: invalid date or user ID');
+          return;
+        }
+        
+        const { data: moodData, error } = await supabase
+          .from('mood_predictions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('prediction_date', today)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching mood prediction:', error);
+          setMoodPrediction(null);
+        } else {
+          setMoodPrediction(moodData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch mood prediction:', error);
+        setMoodPrediction(null);
+      }
 
       // Generate weekly review
       const weeklyData = await generateWeeklyReview();
