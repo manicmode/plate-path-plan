@@ -224,7 +224,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     onConfirm(adjustedFood);
     
     // Play food log confirmation sound
-    playFoodLogConfirm();
+    console.log('🔊 Attempting to play food log confirmation sound');
+    playFoodLogConfirm().catch(error => {
+      console.warn('🔊 Food log sound failed:', error);
+    });
     
     // Evaluate meal quality after logging
     // Note: We need the nutrition_log_id, which should be returned from onConfirm

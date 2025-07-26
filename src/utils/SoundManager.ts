@@ -203,11 +203,19 @@ class SoundManager {
    * Play a sound by key
    */
   async play(soundKey: string): Promise<void> {
-    if (!this.isEnabled) return;
+    console.log(`🔊 SoundManager.play("${soundKey}") - enabled: ${this.isEnabled}, hasUserInteracted: ${this.hasUserInteracted}`);
+    
+    if (!this.isEnabled) {
+      console.log('🔊 SoundManager: Sound disabled');
+      return;
+    }
 
     // Check for reduced motion preference
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) return;
+    if (reducedMotion) {
+      console.log('🔊 SoundManager: Reduced motion preference detected, skipping sound');
+      return;
+    }
 
     // Wait for user interaction on mobile
     if (!this.hasUserInteracted) {
