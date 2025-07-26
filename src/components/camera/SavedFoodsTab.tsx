@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Repeat } from 'lucide-react';
+import { Clock, Repeat, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
@@ -27,22 +28,31 @@ interface SavedFoodsTabProps {
 }
 
 export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) => {
-  const [savedFoods, setSavedFoods] = useState<SavedFood[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const [optimisticFoods, setOptimisticFoods] = useState<SavedFood[]>([]);
+  const [debugMode] = useState(process.env.NODE_ENV === 'development');
 
-  const fetchSavedFoods = useCallback(async () => {
-    if (!user?.id) {
-      console.log('User not authenticated, skipping saved foods fetch');
-      setLoading(false);
-      return;
-    }
+  console.log('🔄 SavedFoodsTab render - user?.id:', user?.id);
 
-    setLoading(true);
+  // Fetch saved foods using useQuery
+  const {
+    data: savedFoods = [],
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['savedFoods', user?.id],
+    queryFn: async (): Promise<SavedFood[]> => {
+      console.log('🚀 Starting fetchSavedFoods query for user:', user?.id);
+      
+      if (!user?.id) {
+        console.log('❌ No user ID, throwing error to prevent query');
+        throw new Error('User not authenticated');
+      }
 
       try {
-        console.log('Fetching saved foods for user:', user.id);
-        // Get frequency data with aggregated counts
+        console.log('📡 Making Supabase query...');
         const { data, error } = await supabase
           .from('nutrition_logs')
           .select(`
@@ -61,18 +71,24 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
+        console.log('📊 Supabase response - data length:', data?.length || 0, 'error:', error);
+
         if (error) {
-          console.error('Error fetching saved foods:', error);
+          console.error('❌ Supabase query error:', error);
           // Only show error toast for real database/network errors
           if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
             toast.error('Failed to load saved foods');
           }
-          setLoading(false);
-          return;
+          throw error;
         }
 
-        console.log('Saved foods data retrieved:', data?.length || 0, 'items');
+        if (!data || data.length === 0) {
+          console.log('📦 No data returned, returning empty array');
+          return [];
+        }
 
+        console.log('🔄 Processing', data.length, 'nutrition logs...');
+        
         // Group by food name, count frequency, and keep most recent data
         const foodMap = new Map<string, SavedFood>();
         
@@ -124,35 +140,45 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
           })
           .slice(0, 20); // Limit to top 20
 
-        setSavedFoods(uniqueFoods);
-      } catch (error) {
-        console.error('Error loading saved foods:', error);
-        // Only show error toast for network/database errors, not auth issues
-        if (user?.id) {
-          toast.error('Failed to load saved foods');
-        }
-      } finally {
-        setLoading(false);
+        console.log('✅ Processed saved foods:', uniqueFoods.length, 'unique items');
+        return uniqueFoods;
+      } catch (queryError) {
+        console.error('💥 Query function error:', queryError);
+        throw queryError;
       }
-    }, [user?.id]);
+    },
+    enabled: !!user?.id, // Only run query when user ID exists
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry on auth errors
+      if (error?.message?.includes('not authenticated')) {
+        return false;
+      }
+      return failureCount < 3;
+    }
+  });
 
-  useEffect(() => {
-    fetchSavedFoods();
-  }, [fetchSavedFoods]);
+  console.log('📊 Query state - isLoading:', isLoading, 'isError:', isError, 'savedFoods.length:', savedFoods.length);
 
   // Register refetch function with parent component
   useEffect(() => {
-    if (onRefetch) {
-      onRefetch(fetchSavedFoods);
+    if (onRefetch && refetch) {
+      console.log('🔗 Registering refetch function with parent');
+      onRefetch(async () => {
+        console.log('🔄 Parent requested refetch');
+        await refetch();
+      });
     }
-  }, [onRefetch, fetchSavedFoods]);
+  }, [onRefetch, refetch]);
 
-  // Expose the addFoodOptimistically function for external use
+  // Optimistic update function
   const addFoodOptimistically = useCallback((newFood: any) => {
+    console.log('⚡ Adding food optimistically:', newFood.name);
     const normalizedName = newFood.name?.toLowerCase();
     if (!normalizedName) return;
 
-    setSavedFoods(prev => {
+    setOptimisticFoods(prev => {
       const existingIndex = prev.findIndex(food => 
         food.food_name.toLowerCase() === normalizedName
       );
@@ -192,12 +218,8 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     });
   }, []);
 
-  // Early return if user is not authenticated
-  if (!user?.id) {
-    return null;
-  }
-
   const handleRelogFood = (food: SavedFood) => {
+    console.log('🔄 Re-logging food:', food.food_name);
     onFoodSelect({
       name: food.food_name,
       calories: food.calories || 0,
@@ -211,15 +233,71 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     });
   };
 
-  if (loading) {
+  // Combine server data with optimistic updates
+  const displayFoods = optimisticFoods.length > 0 ? optimisticFoods : savedFoods;
+
+  // Show authentication loading state
+  if (!user?.id) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <Clock className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Authentication Required</h3>
+          <p className="text-muted-foreground">
+            Please log in to view saved foods
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (savedFoods.length === 0) {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading saved foods...</p>
+          {debugMode && (
+            <div className="mt-4 text-xs text-muted-foreground">
+              <p>Debug: user?.id = {user?.id}</p>
+              <p>Debug: isLoading = {String(isLoading)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Error Loading Foods</h3>
+          <p className="text-muted-foreground mb-4">
+            {error?.message || 'Failed to load saved foods'}
+          </p>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            Try Again
+          </Button>
+          {debugMode && (
+            <div className="mt-4 text-xs text-left bg-destructive/5 p-2 rounded">
+              <p>Debug Error: {JSON.stringify(error, null, 2)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state
+  if (displayFoods.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -229,14 +307,45 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
         <p className="text-muted-foreground mb-4">
           Start logging foods to see them here
         </p>
+        {debugMode && (
+          <div className="mt-4 text-xs text-muted-foreground">
+            <p>Debug: user?.id = {user?.id}</p>
+            <p>Debug: savedFoods.length = {savedFoods.length}</p>
+            <p>Debug: optimisticFoods.length = {optimisticFoods.length}</p>
+            <p>Debug: isLoading = {String(isLoading)}</p>
+            <p>Debug: isError = {String(isError)}</p>
+          </div>
+        )}
       </div>
     );
   }
 
+  // Render saved foods list
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold mb-4">Saved Foods</h3>
-      {savedFoods.map((food) => (
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Saved Foods</h3>
+        {debugMode && (
+          <div className="text-xs text-muted-foreground">
+            Debug: {displayFoods.length} foods
+          </div>
+        )}
+      </div>
+      
+      {debugMode && (
+        <div className="bg-muted/50 p-2 rounded text-xs text-muted-foreground mb-4">
+          <p><strong>Debug Info:</strong></p>
+          <p>• user?.id: {user?.id}</p>
+          <p>• isLoading: {String(isLoading)}</p>
+          <p>• isError: {String(isError)}</p>
+          <p>• savedFoods.length: {savedFoods.length}</p>
+          <p>• optimisticFoods.length: {optimisticFoods.length}</p>
+          <p>• displayFoods.length: {displayFoods.length}</p>
+          {error && <p>• error: {error.message}</p>}
+        </div>
+      )}
+      
+      {displayFoods.map((food) => (
         <Card key={food.id} className="hover:shadow-md transition-shadow cursor-pointer">
           <CardContent className="p-4">
             <div className="relative">
