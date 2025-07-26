@@ -60,7 +60,7 @@ const Home = () => {
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
   const { toast } = useToast();
-  const { playGoalHit, playFoodLogConfirm, isEnabled } = useSound();
+  const { playGoalHit, playFoodLogConfirm, isEnabled, getMobileAudioDiagnostics } = useSound();
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -1850,6 +1850,21 @@ const Home = () => {
         onClose={() => setIsComingSoonOpen(false)}
         feature="Influencers"
       />
+      
+      {/* Temporary Audio Diagnostics Test Button */}
+      <div className="mt-8 pb-6 flex justify-center">
+        <Button
+          onClick={() => {
+            const diagnostics = getMobileAudioDiagnostics();
+            console.log('🧠 Mobile Audio Diagnostics:', diagnostics);
+            alert(`🧠 Mobile Audio Diagnostics:\n\n${JSON.stringify(diagnostics, null, 2)}`);
+          }}
+          variant="outline"
+          className="px-6 py-3 font-medium"
+        >
+          🧠 Test Audio Diagnostics
+        </Button>
+      </div>
     </div>
   );
 };
