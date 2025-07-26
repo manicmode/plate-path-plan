@@ -115,6 +115,15 @@ class SoundManager {
   
   private setupUserInteractionListeners(): void {
     const interactionHandler = async (event: Event) => {
+      // Mobile compatibility: Check and resume AudioContext on every interaction
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        console.log('🔊 [SoundManager] 📱 Mobile AudioContext suspended, resuming on interaction');
+        const beforeState = this.audioContext.state;
+        await this.audioContext.resume();
+        const afterState = this.audioContext.state;
+        this.logStateChange('mobile_resume', `AudioContext: ${beforeState} → ${afterState}`);
+      }
+      
       if (this.hasUserInteracted) return;
       
       this.logStateChange('user_interaction', `Detected: ${event.type}`);
@@ -130,7 +139,7 @@ class SoundManager {
     events.forEach(eventType => {
       document.addEventListener(eventType, interactionHandler, { 
         passive: true, 
-        once: true,
+        once: false, // Changed to false for mobile compatibility checking
         capture: true 
       });
     });
@@ -381,9 +390,16 @@ class SoundManager {
         throw new Error(`Failed to load audio buffer: ${soundKey}`);
       }
 
-      // Final AudioContext check
+      // Final AudioContext check with mobile-specific rewiring
       if (this.audioContext?.state === 'suspended') {
+        console.log('🔊 [SoundManager] 📱 AudioContext suspended before playback, resuming');
+        const beforeState = this.audioContext.state;
         await this.audioContext.resume();
+        const afterState = this.audioContext.state;
+        this.logStateChange('pre_playback_resume', `AudioContext: ${beforeState} → ${afterState}`);
+        
+        // Log successful resume for mobile debugging
+        this.logStateChange('mobile_rewire', `AudioContext resumed: ${afterState}`);
       }
 
       // Play using Web Audio API

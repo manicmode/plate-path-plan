@@ -56,6 +56,60 @@ export const SoundSystemDashboard: React.FC<SoundSystemDashboardProps> = ({ clas
     }
   };
 
+  const playRawBeep = async () => {
+    try {
+      // Debug logging before playback
+      const preState = soundManager.getStatus();
+      console.log('🔊 [DEBUG] Pre-beep AudioContext state:', preState.audioContextState);
+      console.log('🔊 [DEBUG] Pre-beep user interaction:', preState.hasUserInteracted);
+      
+      const audioContext = soundManager.isAudioContextReady() ? soundManager.getStatus().audioContextState : 'not-ready';
+      
+      if (!soundManager.isAudioContextReady()) {
+        throw new Error('AudioContext not ready');
+      }
+
+      // Generate raw 400Hz sine wave
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log('🔊 [DEBUG] During-beep new AudioContext state:', context.state);
+      
+      if (context.state === 'suspended') {
+        await context.resume();
+        console.log('🔊 [DEBUG] During-beep resumed AudioContext state:', context.state);
+      }
+
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      oscillator.frequency.setValueAtTime(400, context.currentTime);
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, context.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      oscillator.start(context.currentTime);
+      oscillator.stop(context.currentTime + 0.5);
+      
+      console.log('🔊 [DEBUG] Post-beep oscillator started successfully');
+      
+      oscillator.onended = () => {
+        console.log('🔊 [DEBUG] Raw beep playback completed');
+        context.close();
+      };
+      
+      setTestResults(prev => ({ ...prev, 'raw_beep': true }));
+      toast.success('✅ Raw beep played successfully');
+      
+    } catch (error) {
+      console.error('🔊 [DEBUG] Raw beep failed:', error);
+      setTestResults(prev => ({ ...prev, 'raw_beep': false }));
+      toast.error(`❌ Raw beep failed: ${error.message}`);
+    }
+  };
+
   const getHealthBadge = () => {
     const health = status.systemHealth;
     const colors = {
@@ -122,6 +176,11 @@ export const SoundSystemDashboard: React.FC<SoundSystemDashboardProps> = ({ clas
             <Button onClick={forceInitialize} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Force Initialize
+            </Button>
+            
+            <Button onClick={playRawBeep} variant="outline">
+              <Play className="w-4 h-4 mr-2" />
+              Play Raw Beep
             </Button>
           </div>
           
@@ -229,6 +288,14 @@ export const SoundSystemDashboard: React.FC<SoundSystemDashboardProps> = ({ clas
           <p>• <strong>iOS Safari:</strong> Check silent mode and volume</p>
           <p>• <strong>PWA:</strong> Full audio support after interaction</p>
           <p>• <strong>Fallbacks:</strong> Visual feedback when audio fails</p>
+          
+          {/* Mobile fallback warning */}
+          {Object.values(testResults).some(result => result === false) && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              <AlertTriangle className="w-4 h-4 inline mr-2" />
+              <strong>Mobile Audio Issue:</strong> Your browser may be blocking sound. Try tapping 'Enable Sound' after interacting with the page.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
