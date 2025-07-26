@@ -16,6 +16,20 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
   const percentage = Math.min(100, Math.round((value / target) * 100));
   const { playGoalHit } = useSound();
   
+  // Track if we've already played the sound for this goal to prevent repeated plays
+  const [hasPlayedSound, setHasPlayedSound] = React.useState(false);
+  
+  // Play sound when goal is hit for the first time
+  React.useEffect(() => {
+    if (percentage >= 100 && !hasPlayedSound) {
+      playGoalHit();
+      setHasPlayedSound(true);
+    } else if (percentage < 100) {
+      // Reset sound state if goal is no longer met (for testing purposes)
+      setHasPlayedSound(false);
+    }
+  }, [percentage, hasPlayedSound, playGoalHit]);
+  
   const getStatusColor = () => {
     if (percentage >= 100) return 'text-white drop-shadow-sm';
     if (percentage >= 50) return 'text-gray-900 drop-shadow-sm';

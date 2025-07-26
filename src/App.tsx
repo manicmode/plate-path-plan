@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
+import { SoundProvider } from '@/contexts/SoundContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -229,15 +230,17 @@ function App() {
       <BrowserRouter>
         <ErrorBoundary>
           <ThemeProvider>
-            <TooltipProvider>
-              <IngredientAlertProvider>
-                <BadgeProvider>
-                  <ChatModalProvider>
-                    <AppContent />
-                  </ChatModalProvider>
-                </BadgeProvider>
-              </IngredientAlertProvider>
-            </TooltipProvider>
+            <SoundProvider>
+              <TooltipProvider>
+                <IngredientAlertProvider>
+                  <BadgeProvider>
+                    <ChatModalProvider>
+                      <AppContent />
+                    </ChatModalProvider>
+                  </BadgeProvider>
+                </IngredientAlertProvider>
+              </TooltipProvider>
+            </SoundProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </BrowserRouter>

@@ -35,6 +35,7 @@ import { FollowStatsCard } from '@/components/social/FollowStatsCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
+import { SoundTestComponent } from '@/components/debug/SoundTestComponent';
 
 // Helper function to save preferences
 const saveUserPreferences = (preferences: any) => {
@@ -337,6 +338,9 @@ const ProfileContent = () => {
           
           {/* Mood Logging Test Component */}
           <MoodLogTester />
+          
+          {/* Sound System Test Component */}
+          <SoundTestComponent />
         </div>
       )}
 

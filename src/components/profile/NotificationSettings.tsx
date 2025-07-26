@@ -3,16 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useSound } from '@/contexts/SoundContext';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
   const isMobile = useIsMobile();
   const { preferences, updatePreferences } = useNotification();
   const { permission, requestPermission, hasPermission, isSupported } = usePushNotifications();
+  const { isEnabled: soundEnabled, setSoundEnabled } = useSound();
 
   const smartCoachNotifications = [
     { 
@@ -256,6 +258,28 @@ export const NotificationSettings = () => {
               <SelectItem value="low">Low - Fewer notifications</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Sound Effects */}
+        <div className="space-y-3">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Volume2 className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-blue-600`} />
+            <span>Sound Effects</span>
+          </h4>
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20">
+            <div className="flex-1">
+              <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                Enable Sound Effects
+              </div>
+              <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                Play sounds for goals, celebrations, and achievements
+              </div>
+            </div>
+            <Switch
+              checked={soundEnabled}
+              onCheckedChange={setSoundEnabled}
+            />
+          </div>
         </div>
 
         {/* Quiet Hours */}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Sparkles } from 'lucide-react';
+import { useSound } from '@/contexts/SoundContext';
 
 interface CelebrationPopupProps {
   show: boolean;
@@ -12,9 +13,24 @@ interface CelebrationPopupProps {
 
 const CelebrationPopup = ({ show, message, onClose }: CelebrationPopupProps) => {
   const [fireworks, setFireworks] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
+  const { playSound } = useSound();
 
   useEffect(() => {
     if (show) {
+      // Play celebration sound
+      const playCelebrationSound = async () => {
+        // Determine sound based on message content
+        if (message.toLowerCase().includes('challenge') || message.toLowerCase().includes('leaderboard')) {
+          await playSound('challenge_win');
+        } else if (message.toLowerCase().includes('goal') || message.toLowerCase().includes('target')) {
+          await playSound('goal_hit');
+        } else {
+          await playSound('progress_update');
+        }
+      };
+      
+      playCelebrationSound();
+
       // Generate random firework positions
       const newFireworks = Array.from({ length: 8 }, (_, i) => ({
         id: i,
@@ -31,7 +47,7 @@ const CelebrationPopup = ({ show, message, onClose }: CelebrationPopupProps) => 
 
       return () => clearTimeout(timer);
     }
-  }, [show, onClose]);
+  }, [show, onClose, message, playSound]);
 
   if (!show) return null;
 

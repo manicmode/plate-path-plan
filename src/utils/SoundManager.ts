@@ -17,6 +17,9 @@ class SoundManager {
   private audioCache: AudioCache = {};
   private isEnabled: boolean = true;
   private isLoading: boolean = false;
+  private audioContext: AudioContext | null = null;
+  private hasUserInteracted: boolean = false;
+  private initializationPromise: Promise<void> | null = null;
   
   // Sound file configuration
   private sounds: Record<string, SoundConfig> = {
@@ -69,7 +72,8 @@ class SoundManager {
 
   constructor() {
     this.loadUserPreferences();
-    this.preloadSounds();
+    this.setupUserInteractionListener();
+    // Don't preload immediately - wait for user interaction
   }
 
   /**
@@ -78,6 +82,61 @@ class SoundManager {
   private loadUserPreferences(): void {
     const soundEnabled = localStorage.getItem('sound_enabled');
     this.isEnabled = soundEnabled !== 'false'; // Default to enabled
+  }
+
+  /**
+   * Setup user interaction listener for mobile compatibility
+   */
+  private setupUserInteractionListener(): void {
+    const handleFirstInteraction = () => {
+      console.log('🔊 First user interaction detected, initializing audio system');
+      this.hasUserInteracted = true;
+      this.initializeAudioSystem();
+      
+      // Remove listeners after first interaction
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    document.addEventListener('click', handleFirstInteraction, { passive: true });
+    document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+    document.addEventListener('keydown', handleFirstInteraction, { passive: true });
+  }
+
+  /**
+   * Initialize audio system after user interaction
+   */
+  private async initializeAudioSystem(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = this.performInitialization();
+    return this.initializationPromise;
+  }
+
+  /**
+   * Perform actual audio initialization
+   */
+  private async performInitialization(): Promise<void> {
+    try {
+      // Initialize AudioContext for better mobile support
+      if (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined') {
+        this.audioContext = new (AudioContext || (window as any).webkitAudioContext)();
+        
+        // Resume AudioContext if it's suspended (common on mobile)
+        if (this.audioContext.state === 'suspended') {
+          await this.audioContext.resume();
+        }
+      }
+
+      // Preload sounds after initialization
+      await this.preloadSounds();
+      console.log('🔊 Audio system initialization complete');
+    } catch (error) {
+      console.warn('🔊 Audio system initialization failed:', error);
+    }
   }
 
   /**
@@ -150,6 +209,19 @@ class SoundManager {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) return;
 
+    // Wait for user interaction on mobile
+    if (!this.hasUserInteracted) {
+      console.log(`🔊 Waiting for user interaction before playing: ${soundKey}`);
+      return;
+    }
+
+    // Ensure audio system is initialized
+    if (!this.initializationPromise) {
+      await this.initializeAudioSystem();
+    } else {
+      await this.initializationPromise;
+    }
+
     try {
       const config = this.sounds[soundKey];
       if (!config) {
@@ -167,15 +239,25 @@ class SoundManager {
       // Reset audio to beginning and play
       audio.currentTime = 0;
       
+      // Resume AudioContext if suspended (important for mobile)
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
+      
       // Use a promise to handle potential autoplay restrictions
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
         await playPromise;
+        console.log(`🔊 Successfully played: ${soundKey}`);
       }
     } catch (error) {
-      // Silently handle autoplay restrictions and other errors
-      console.log(`Sound play blocked or failed: ${soundKey}`, error);
+      // Handle autoplay restrictions and other errors gracefully
+      if (error.name === 'NotAllowedError') {
+        console.log(`🔊 Sound play blocked by browser policy: ${soundKey}`);
+      } else {
+        console.warn(`🔊 Sound play failed: ${soundKey}`, error);
+      }
     }
   }
 
@@ -219,6 +301,26 @@ class SoundManager {
   clearCache(): void {
     this.stopAll();
     this.audioCache = {};
+  }
+
+  /**
+   * Get audio system status for debugging
+   */
+  getStatus(): { enabled: boolean; hasUserInteracted: boolean; audioContextState?: string; cachedSounds: number } {
+    return {
+      enabled: this.isEnabled,
+      hasUserInteracted: this.hasUserInteracted,
+      audioContextState: this.audioContext?.state,
+      cachedSounds: Object.keys(this.audioCache).length
+    };
+  }
+
+  /**
+   * Force initialization (useful for testing)
+   */
+  async forceInitialize(): Promise<void> {
+    this.hasUserInteracted = true;
+    await this.initializeAudioSystem();
   }
 }
 
