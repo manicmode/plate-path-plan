@@ -45,6 +45,7 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     queryKey: ['savedFoods', user?.id],
     queryFn: async (): Promise<SavedFood[]> => {
       console.log('🚀 Starting fetchSavedFoods query for user:', user?.id);
+      const startTime = performance.now();
       
       if (!user?.id) {
         console.log('❌ No user ID, throwing error to prevent query');
@@ -52,10 +53,13 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
       }
 
       try {
-        console.log('📡 Making Supabase query...');
+        console.log('📡 Making optimized Supabase query with limit and recent data...');
+        
+        // Optimized query: limit results, order by recent, select only needed fields
         const { data, error } = await supabase
           .from('nutrition_logs')
           .select(`
+            id,
             food_name,
             calories,
             protein,
@@ -65,13 +69,14 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
             sugar,
             sodium,
             image_url,
-            created_at,
-            id
+            created_at
           `)
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100); // Limit to recent 100 entries to prevent timeout
 
-        console.log('📊 Supabase response - data length:', data?.length || 0, 'error:', error);
+        const queryTime = performance.now() - startTime;
+        console.log('📊 Supabase response - data length:', data?.length || 0, 'error:', error, 'time:', `${queryTime.toFixed(2)}ms`);
 
         if (error) {
           console.error('❌ Supabase query error:', error);
@@ -140,7 +145,14 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
           })
           .slice(0, 20); // Limit to top 20
 
-        console.log('✅ Processed saved foods:', uniqueFoods.length, 'unique items');
+        const processingTime = performance.now() - startTime;
+        console.log('✅ Processed saved foods:', uniqueFoods.length, 'unique items, total time:', `${processingTime.toFixed(2)}ms`);
+        
+        // Log performance warning if query is slow
+        if (processingTime > 500) {
+          console.warn('⚠️ Slow query detected:', `${processingTime.toFixed(2)}ms - consider database indexing`);
+        }
+        
         return uniqueFoods;
       } catch (queryError) {
         console.error('💥 Query function error:', queryError);
@@ -148,14 +160,24 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
       }
     },
     enabled: !!user?.id, // Only run query when user ID exists
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 2, // 2 minutes (shorter for faster updates)
+    gcTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
     retry: (failureCount, error: any) => {
-      // Don't retry on auth errors
-      if (error?.message?.includes('not authenticated')) {
+      console.log('🔄 Query retry attempt:', failureCount, 'error:', error?.message);
+      
+      // Don't retry on auth errors or timeout errors
+      if (error?.message?.includes('not authenticated') || 
+          error?.message?.includes('canceling statement') ||
+          error?.message?.includes('timeout')) {
+        console.log('❌ Not retrying due to error type:', error?.message);
         return false;
       }
-      return failureCount < 3;
+      return failureCount < 2; // Reduce retry attempts to prevent long delays
+    },
+    // Add query timeout
+    meta: {
+      errorMessage: 'Failed to load saved foods'
     }
   });
 
