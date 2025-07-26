@@ -10,6 +10,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
 import imageCompression from 'browser-image-compression';
+import { useSound } from '@/hooks/useSound';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
@@ -137,6 +138,7 @@ const CameraPage = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
+  const { playFoodLogConfirm } = useSound();
 
   // Effect to handle reset from navigation
   useEffect(() => {
@@ -1198,6 +1200,9 @@ const CameraPage = () => {
         }
       }
 
+      // Play success sound
+      playFoodLogConfirm();
+      
       toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
       resetState();
     } catch (error) {
@@ -1422,6 +1427,10 @@ const CameraPage = () => {
       // All items processed, reset state and navigate
       const totalItems = pendingItems.length || 1;
       console.log(`🎉 ALL ITEMS PROCESSED - Total logged: ${totalItems}`);
+      
+      // Play success sound
+      playFoodLogConfirm();
+      
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
       setShowConfirmation(false);
       resetState();

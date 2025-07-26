@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 
 const Supplements = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -21,6 +22,7 @@ const Supplements = () => {
   const { addSupplement } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { playFoodLogConfirm } = useSound();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -62,6 +64,9 @@ const Supplements = () => {
       notifications: [],
     });
     
+    // Play success sound
+    playFoodLogConfirm();
+    
     toast({
       title: "Supplement Added!",
       description: `${supplement.name} (${supplement.dosage}${supplement.unit}) logged successfully.`,
@@ -92,6 +97,9 @@ const Supplements = () => {
       notifications: [],
       image: selectedImage || undefined,
     });
+
+    // Play success sound
+    playFoodLogConfirm();
 
     toast({
       title: "Supplement Added!",

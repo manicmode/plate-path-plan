@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { toast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 
 const Hydration = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -20,6 +21,7 @@ const Hydration = () => {
   const { addHydration } = useNutrition();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { playFoodLogConfirm } = useSound();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -60,6 +62,9 @@ const Hydration = () => {
       type: drink.name.toLowerCase().includes('water') ? 'water' : 'other',
     });
     
+    // Play success sound
+    playFoodLogConfirm();
+    
     toast({
       title: "Drink Added!",
       description: `${drink.name} (${drink.volume}ml) logged successfully.`,
@@ -84,6 +89,9 @@ const Hydration = () => {
       type: drinkName.toLowerCase().includes('water') ? 'water' : 'other',
       image: selectedImage || undefined,
     });
+
+    // Play success sound
+    playFoodLogConfirm();
 
     toast({
       title: "Drink Added!",

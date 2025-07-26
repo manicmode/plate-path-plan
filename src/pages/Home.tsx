@@ -33,6 +33,7 @@ import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
 import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { useRealHydrationData } from '@/hooks/useRealHydrationData';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
+import { useSound } from '@/hooks/useSound';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -58,6 +59,7 @@ const Home = () => {
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
   const { toast } = useToast();
+  const { playGoalHit } = useSound();
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -246,6 +248,7 @@ const Home = () => {
       setCelebrationType('Calories Goal Smashed! 🔥');
       setShowCelebration(true);
       markCelebrationShown('calories');
+      playGoalHit(); // Play celebration sound
     }
     
     // Hydration celebration - using real hydration data
@@ -254,6 +257,7 @@ const Home = () => {
       setCelebrationType('Hydration Goal Achieved! 💧');
       setShowCelebration(true);
       markCelebrationShown('hydration');
+      playGoalHit(); // Play celebration sound
     }
     
     // Supplements celebration
@@ -262,6 +266,7 @@ const Home = () => {
       setCelebrationType('Supplements Complete! 💊');
       setShowCelebration(true);
       markCelebrationShown('supplements');
+      playGoalHit(); // Play celebration sound
     }
   }, [currentCalories, totalCalories, actualHydration, hydrationGoal, progress.supplements, supplementGoal, authLoading, hydrationLoading, scoreLoading, user?.id]);
 
@@ -635,6 +640,9 @@ const Home = () => {
       sugar: confirmedFood.sugar,
       sodium: confirmedFood.sodium,
     });
+
+    // Play success sound
+    playGoalHit();
 
     // Reset selected food
     setSelectedFood(null);

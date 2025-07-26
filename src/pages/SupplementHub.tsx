@@ -9,6 +9,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useToast } from '@/hooks/use-toast';
+import { useSound } from '@/hooks/useSound';
 import { SupplementListModal } from '@/components/camera/SupplementListModal';
 import { SupplementDetailModal } from '@/components/camera/SupplementDetailModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,7 @@ const SupplementHub = () => {
   const { user } = useAuth();
   const { currentDay, addSupplement } = useNutrition();
   const { toast } = useToast();
+  const { playFoodLogConfirm } = useSound();
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -1301,6 +1303,9 @@ const SupplementHub = () => {
       unit: 'serving',
       notifications: [],
     });
+
+    // Play success sound
+    playFoodLogConfirm();
 
     toast({
       title: "Added to My Supplements!",
