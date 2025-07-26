@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { getLocalDateString, getLocalDayBounds } from '@/lib/dateUtils';
+import { calculateTotalMicronutrients } from '@/utils/micronutrientCalculations';
 
 interface ChartDataPoint {
   label: string;
@@ -67,6 +68,8 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
       return fetchStepsDailyData();
     } else if (trackerType === 'exercise') {
       return fetchExerciseDailyData();
+    } else if (['iron', 'magnesium', 'calcium', 'zinc', 'vitaminA', 'vitaminB12', 'vitaminC', 'vitaminD'].includes(trackerType)) {
+      return fetchMicronutrientDailyData(trackerType);
     }
     return [];
   };
@@ -299,6 +302,40 @@ export const useTrackerHistoricalData = (trackerType: string, viewType: 'DAY' | 
       chartData.push({
         label: dayName,
         value: Math.round(dailyTotal),
+        date: localDateString,
+      });
+    }
+
+    return chartData;
+  };
+
+  const fetchMicronutrientDailyData = async (micronutrientType: string): Promise<ChartDataPoint[]> => {
+    console.log(`🧪 Fetching ${micronutrientType} data using local day bounds`);
+    
+    const chartData: ChartDataPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - i);
+      const localDateString = getLocalDateString(targetDate);
+      const { start, end } = getLocalDayBounds(localDateString);
+      const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const { data: nutritionLogs, error } = await supabase
+        .from('nutrition_logs')
+        .select('food_name, calories, protein, carbs, fat, fiber, sugar, sodium')
+        .eq('user_id', user!.id)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      if (error) throw error;
+
+      const mappedLogs = (nutritionLogs || []).map(log => ({ ...log, name: log.food_name }));
+      const micronutrients = calculateTotalMicronutrients(mappedLogs);
+      const value = micronutrients[micronutrientType as keyof typeof micronutrients] || 0;
+      
+      chartData.push({
+        label: dayName,
+        value: Math.round(value * 10) / 10,
         date: localDateString,
       });
     }

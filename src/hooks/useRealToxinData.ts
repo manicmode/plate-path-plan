@@ -37,6 +37,56 @@ const TOXIN_THRESHOLDS = {
   gmos: { name: "GMOs", icon: "🧬", threshold: 2, unit: "servings", bgColor: "bg-purple-100" }
 };
 
+// Map flagged ingredients to toxin types
+function mapIngredientToToxinType(ingredient: string): string | null {
+  const lowerIngredient = ingredient.toLowerCase();
+  
+  if (lowerIngredient.includes('oil') && (
+    lowerIngredient.includes('sunflower') || 
+    lowerIngredient.includes('canola') || 
+    lowerIngredient.includes('vegetable') ||
+    lowerIngredient.includes('soybean') ||
+    lowerIngredient.includes('corn')
+  )) {
+    return 'seed_oils';
+  }
+  
+  if (lowerIngredient.includes('sugar') || 
+      lowerIngredient.includes('syrup') || 
+      lowerIngredient.includes('fructose')) {
+    return 'inflammatory_foods';
+  }
+  
+  if (lowerIngredient.includes('aspartame') || 
+      lowerIngredient.includes('sucralose') || 
+      lowerIngredient.includes('stevia') ||
+      lowerIngredient.includes('artificial sweetener')) {
+    return 'artificial_sweeteners';
+  }
+  
+  if (lowerIngredient.includes('sodium') || 
+      lowerIngredient.includes('preservative') || 
+      lowerIngredient.includes('bht') ||
+      lowerIngredient.includes('bha')) {
+    return 'preservatives';
+  }
+  
+  if (lowerIngredient.includes('red') || 
+      lowerIngredient.includes('yellow') || 
+      lowerIngredient.includes('blue') ||
+      lowerIngredient.includes('dye') ||
+      lowerIngredient.includes('color')) {
+    return 'dyes';
+  }
+  
+  if (lowerIngredient.includes('modified') || 
+      lowerIngredient.includes('gmo')) {
+    return 'gmos';
+  }
+  
+  return null;
+}
+
 export const useRealToxinData = (): UseRealToxinDataReturn => {
   const { user } = useAuth();
   const [todayFlaggedCount, setTodayFlaggedCount] = useState(0);
@@ -71,9 +121,9 @@ export const useRealToxinData = (): UseRealToxinDataReturn => {
           .gte('created_at', thirtyDaysAgoStr)
           .order('created_at', { ascending: false });
 
+        // Don't return error if toxin_detections is empty - we'll use ingredient_analysis fallback
         if (toxinError) {
-          setError(toxinError.message);
-          return;
+          console.warn('Toxin detections fetch error:', toxinError.message);
         }
 
         // Fetch nutrition logs with ingredient analysis
@@ -102,6 +152,38 @@ export const useRealToxinData = (): UseRealToxinDataReturn => {
           }
           todayToxinData[detection.toxin_type] += Number(detection.serving_count);
         });
+
+        // FALLBACK: If toxin_detections table is empty, extract toxin data from ingredient_analysis
+        if (todayDetections.length === 0) {
+          const todayNutritionLogs = nutritionLogs?.filter(log => 
+            new Date(log.created_at).toDateString() === today.toDateString()
+          ) || [];
+
+          todayNutritionLogs.forEach(log => {
+            if (log.ingredient_analysis) {
+              try {
+                const analysis = typeof log.ingredient_analysis === 'string' 
+                  ? JSON.parse(log.ingredient_analysis) 
+                  : log.ingredient_analysis;
+                
+                // Map flagged ingredients to toxin types
+                if (analysis.flagged_ingredients && Array.isArray(analysis.flagged_ingredients)) {
+                  analysis.flagged_ingredients.forEach((ingredient: string) => {
+                    const toxinType = mapIngredientToToxinType(ingredient);
+                    if (toxinType) {
+                      if (!todayToxinData[toxinType]) {
+                        todayToxinData[toxinType] = 0;
+                      }
+                      todayToxinData[toxinType] += 0.5; // Each flagged ingredient = 0.5 serving
+                    }
+                  });
+                }
+              } catch (e) {
+                console.warn('Failed to parse ingredient analysis:', e);
+              }
+            }
+          });
+        }
 
         // Process today's flagged ingredients from nutrition logs
         const todayNutritionLogs = nutritionLogs?.filter(log => 

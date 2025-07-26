@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { getLocalDateString } from '@/lib/dateUtils';
+import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
 
 interface FoodItem {
   id: string;
@@ -343,6 +344,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   };
 
   const getTodaysProgress = () => {
+    // Calculate micronutrients from confirmed foods
+    const confirmedFoods = currentDay.foods.filter(food => food.confirmed);
+    const micronutrients = calculateTotalMicronutrients(confirmedFoods);
+    
     return {
       calories: currentDay.totalCalories,
       protein: currentDay.totalProtein,
@@ -350,6 +355,15 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       fat: currentDay.totalFat,
       hydration: currentDay.totalHydration,
       supplements: currentDay.supplements.length,
+      // Add micronutrients to progress
+      iron: micronutrients.iron,
+      magnesium: micronutrients.magnesium,
+      calcium: micronutrients.calcium,
+      zinc: micronutrients.zinc,
+      vitaminA: micronutrients.vitaminA,
+      vitaminB12: micronutrients.vitaminB12,
+      vitaminC: micronutrients.vitaminC,
+      vitaminD: micronutrients.vitaminD,
     };
   };
 
