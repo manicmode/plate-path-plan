@@ -1,5 +1,6 @@
 
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useContext } from 'react';
+import { AuthContext } from './contexts/auth';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -59,9 +60,15 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
+  const auth = useContext(AuthContext);
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
+
+  // Show loading screen while auth is initializing
+  if (auth?.loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <>
