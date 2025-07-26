@@ -1034,7 +1034,7 @@ const Home = () => {
                 onClick={() => setShowExerciseForm(true)}
                 className="action-button-full log-workout-button text-xs px-3 py-2"
               >
-                <Dumbbell className="h-3 w-3" />
+                <Plus className="h-3 w-3" />
                 {isMobile ? 'Workout' : 'Log Workout'}
               </button>
               <button
