@@ -234,6 +234,7 @@ export default function BodyScanAI() {
         console.log('[DIAGNOSTIC] Online status:', navigator.onLine);
 
         // PHASE 2: TensorFlow State Analysis
+        console.log('[VERSION] TensorFlow:', tf.version.tfjs);
         console.log('[TFJS] Version:', tf.version);
         console.log('[TFJS] Current backend before ready:', tf.getBackend());
         console.log('[TFJS] Available backends:', tf.engine().backendNames);
@@ -263,7 +264,7 @@ export default function BodyScanAI() {
         // PHASE 6: Pose Detection Library Analysis
         console.log('[POSE LIB] SupportedModels:', Object.keys(poseDetection.SupportedModels));
         console.log('[POSE LIB] MoveNet config:', poseDetection.movenet);
-        console.log('[POSE LIB] Version info:', 'version not available in this library');
+        console.log('[VERSION] PoseDetection:', 'n/a');
 
         // PHASE 7: Model Configuration Analysis
         const modelConfig = {
