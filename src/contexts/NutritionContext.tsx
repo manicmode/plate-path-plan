@@ -18,6 +18,7 @@ interface FoodItem {
   fiber: number;
   sugar: number;
   sodium: number;
+  saturated_fat: number;
   image?: string;
   confidence?: number;
   timestamp: Date;
@@ -57,13 +58,14 @@ interface DailyNutrition {
   totalFiber: number;
   totalSugar: number;
   totalSodium: number;
+  totalSaturatedFat: number;
   totalHydration: number;
 }
 
 interface NutritionContextType {
   currentDay: DailyNutrition;
   weeklyData: DailyNutrition[];
-  addFood: (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed'>) => void;
+  addFood: (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed' | 'saturated_fat'> & { saturated_fat?: number }) => void;
   addHydration: (hydration: Omit<HydrationItem, 'id' | 'timestamp'>) => void;
   addSupplement: (supplement: Omit<SupplementItem, 'id' | 'timestamp'>) => void;
   confirmFood: (foodId: string) => void;
@@ -74,6 +76,10 @@ interface NutritionContextType {
     protein: number; 
     carbs: number; 
     fat: number; 
+    fiber: number;
+    sugar: number;
+    sodium: number;
+    saturated_fat: number;
     hydration: number;
     supplements: number;
   };
@@ -150,6 +156,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     totalFiber: 0,
     totalSugar: 0,
     totalSodium: 0,
+    totalSaturatedFat: 0,
     totalHydration: 0,
   });
 
@@ -212,6 +219,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       totalFiber: totals.totalFiber + food.fiber,
       totalSugar: totals.totalSugar + food.sugar,
       totalSodium: totals.totalSodium + food.sodium,
+      totalSaturatedFat: totals.totalSaturatedFat + (food.saturated_fat || food.fat * 0.3), // Fallback: 30% of total fat
     }), {
       totalCalories: 0,
       totalProtein: 0,
@@ -220,6 +228,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       totalFiber: 0,
       totalSugar: 0,
       totalSodium: 0,
+      totalSaturatedFat: 0,
     });
 
     const totalHydration = hydration.reduce((total, item) => total + item.volume, 0);
@@ -227,9 +236,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     return { ...foodTotals, totalHydration };
   };
 
-  const addFood = (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed'>) => {
+  const addFood = (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed' | 'saturated_fat'> & { saturated_fat?: number }) => {
     const newFood: FoodItem = {
       ...food,
+      saturated_fat: food.saturated_fat ?? food.fat * 0.3, // Fallback: 30% of total fat
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // More unique ID
       timestamp: new Date(),
       confirmed: true, // Mark as confirmed when added through confirmation flow
@@ -353,6 +363,10 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       protein: currentDay.totalProtein,
       carbs: currentDay.totalCarbs,
       fat: currentDay.totalFat,
+      fiber: currentDay.totalFiber,
+      sugar: currentDay.totalSugar,
+      sodium: currentDay.totalSodium,
+      saturated_fat: currentDay.totalSaturatedFat,
       hydration: currentDay.totalHydration,
       supplements: currentDay.supplements.length,
       // Add micronutrients to progress

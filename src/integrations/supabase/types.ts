@@ -861,6 +861,7 @@ export type Database = {
           quality_reasons: string[] | null
           quality_score: number | null
           quality_verdict: string | null
+          saturated_fat: number | null
           serving_size: string | null
           sodium: number | null
           source: string | null
@@ -884,6 +885,7 @@ export type Database = {
           quality_reasons?: string[] | null
           quality_score?: number | null
           quality_verdict?: string | null
+          saturated_fat?: number | null
           serving_size?: string | null
           sodium?: number | null
           source?: string | null
@@ -907,6 +909,7 @@ export type Database = {
           quality_reasons?: string[] | null
           quality_score?: number | null
           quality_verdict?: string | null
+          saturated_fat?: number | null
           serving_size?: string | null
           sodium?: number | null
           source?: string | null

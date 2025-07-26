@@ -15,6 +15,7 @@ interface FoodItem {
   fiber: number;
   sugar: number;
   sodium: number;
+  saturated_fat: number;
   image?: string;
   confidence?: number;
   timestamp: Date;
@@ -60,6 +61,7 @@ export const useNutritionPersistence = () => {
           fiber: food.fiber,
           sugar: food.sugar,
           sodium: food.sodium,
+          saturated_fat: food.saturated_fat || (food.fat * 0.3), // Fallback: 30% of total fat
           confidence: food.confidence,
           image_url: food.image,
           created_at: food.timestamp.toISOString()

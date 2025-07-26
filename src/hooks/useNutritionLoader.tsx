@@ -15,6 +15,7 @@ interface FoodItem {
   fiber: number;
   sugar: number;
   sodium: number;
+  saturated_fat: number;
   image?: string;
   confidence?: number;
   timestamp: Date;
@@ -131,6 +132,7 @@ export const useNutritionLoader = () => {
         fiber: Number(item.fiber) || 0,
         sugar: Number(item.sugar) || 0,
         sodium: Number(item.sodium) || 0,
+        saturated_fat: Number(item.saturated_fat) || (Number(item.fat) * 0.3), // Fallback: 30% of total fat
         image: item.image_url || undefined,
         confidence: item.confidence || undefined,
         timestamp: new Date(item.created_at),
