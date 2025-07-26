@@ -14,6 +14,7 @@ import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import HomePageErrorBoundary from '@/components/HomePageErrorBoundary';
 import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
 import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
@@ -123,7 +124,9 @@ function AppContent() {
                   <Route path="/" element={<Index />} />
                   <Route path="/home" element={
                     <ProtectedRoute>
-                      <Home />
+                      <HomePageErrorBoundary>
+                        <Home />
+                      </HomePageErrorBoundary>
                     </ProtectedRoute>
                   } />
                   <Route path="/camera" element={
