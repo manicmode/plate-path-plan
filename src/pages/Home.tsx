@@ -889,7 +889,7 @@ const Home = () => {
                               <div className="flex items-center space-x-1">
                                 <span className="text-xs">🕒</span>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {item.usualTime}
+                                  usually {item.usualTime}
                                 </p>
                               </div>
                               <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
