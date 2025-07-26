@@ -7,7 +7,7 @@ interface SoundContextType {
   isEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
   playSound: (soundKey: string) => Promise<void>;
-  getAudioStatus: () => { enabled: boolean; hasUserInteracted: boolean; audioContextState?: string; cachedSounds: number };
+  getAudioStatus: () => any;
   forceInitialize: () => Promise<void>;
   // Convenience methods for specific sounds
   playAIThought: () => Promise<void>;
@@ -39,19 +39,18 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Phase 2: Proactive Sound System Initialization on Login
+    // Proactive Sound System Initialization on Login
     if (user) {
-      console.log('🔊 [SoundContext] User logged in, activating sound system proactively');
+      console.log('🔊 [SoundContext] User logged in, proactively initializing Web Audio API system');
       
       // Attempt immediate activation since login is a user interaction
       setTimeout(() => {
         try {
-          console.log('🔊 [SoundContext] Triggering proactive sound initialization...');
-          soundManager.activateOnUserInteraction();
+          console.log('🔊 [SoundContext] Triggering proactive Web Audio API initialization...');
           
-          // Additional force initialization as backup
+          // Force initialization with Web Audio API
           soundManager.forceInitialize().catch(error => {
-            console.warn('🔊 [SoundContext] Proactive initialization failed:', error);
+            console.warn('🔊 [SoundContext] Proactive Web Audio API initialization failed:', error);
           });
           
         } catch (error) {
@@ -89,12 +88,12 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
     } catch (error) {
       console.error(`🔊 [SoundContext] ❌ Sound playback failed for "${soundKey}":`, error);
       
-      // Attempt recovery by activating user interaction if not already done
+      // Attempt recovery by forcing Web Audio API initialization if needed
       if (!soundManager.getStatus().hasUserInteracted) {
-        console.log(`🔊 [SoundContext] 🔄 Attempting recovery - activating user interaction...`);
+        console.log(`🔊 [SoundContext] 🔄 Attempting recovery - force initializing Web Audio API...`);
         try {
-          soundManager.activateOnUserInteraction();
-          // Retry the sound after activation
+          await soundManager.forceInitialize();
+          // Retry the sound after initialization
           setTimeout(async () => {
             try {
               await soundManager.play(soundKey);
@@ -104,7 +103,7 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
             }
           }, 100);
         } catch (activationError) {
-          console.error(`🔊 [SoundContext] ❌ Activation recovery failed:`, activationError);
+          console.error(`🔊 [SoundContext] ❌ Web Audio API recovery failed:`, activationError);
         }
       }
     }

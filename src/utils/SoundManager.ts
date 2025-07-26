@@ -1,10 +1,10 @@
 /**
- * COMPREHENSIVE SOUND MANAGER - 5-Phase Recovery Implementation
- * Enhanced for bulletproof audio across all platforms
+ * WEB AUDIO API SOUND MANAGER - Complete Architecture Fix
+ * Bulletproof sound system using Web Audio API for cross-platform compatibility
  */
 
-interface AudioCache {
-  [key: string]: HTMLAudioElement;
+interface AudioBufferCache {
+  [key: string]: AudioBuffer;
 }
 
 interface SoundConfig {
@@ -12,6 +12,10 @@ interface SoundConfig {
   volume?: number;
   preload?: boolean;
   fallbackUrl?: string;
+}
+
+interface LoadingStatus {
+  [key: string]: 'pending' | 'loading' | 'loaded' | 'failed';
 }
 
 interface StateChangeLog {
@@ -22,78 +26,75 @@ interface StateChangeLog {
 }
 
 class SoundManager {
-  private audioCache: AudioCache = {};
-  private isEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
+  private audioBuffers: AudioBufferCache = {};
+  private isEnabled: boolean = true;
   private hasUserInteracted: boolean = false;
   private isInitialized: boolean = false;
   private isInitializing: boolean = false;
   private initializationPromise: Promise<void> | null = null;
-  private initializationTimeout: NodeJS.Timeout | null = null;
   private volume: number = 0.7;
   
   // Enhanced tracking
   private lastError: string = '';
-  private lastSoundPlayed: number = 0;
   private stateChangeLog: StateChangeLog[] = [];
-  private interactionAttempts: number = 0;
-  private audioContextCreationAttempts: number = 0;
+  private loadingStatus: LoadingStatus = {};
   private initializationStartTime: number = 0;
-  private soundLoadingStatus: Record<string, 'pending' | 'loading' | 'loaded' | 'failed'> = {};
+  private audioContextCreationAttempts: number = 0;
   
-  // Sound configuration with fallbacks
+  // Sound configuration with local fallbacks
   private sounds: Record<string, SoundConfig> = {
     ai_thought: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/ai_thought.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.6,
       preload: true
     },
     body_scan_camera: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/body_scan_camera.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.8,
       preload: true
     },
     challenge_win: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/challenge_win.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.9,
       preload: true
     },
     food_log_confirm: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/food_log_confirm.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.7,
       preload: true
     },
     friend_added: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/friend_added.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.8,
       preload: true
     },
     goal_hit: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/goal_hit.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.9,
       preload: true
     },
     health_scan_capture: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/health_scan_capture.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.7,
       preload: true
     },
     progress_update: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/progress_update.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.6,
       preload: true
     },
     reminder_chime: {
       url: 'https://raw.githubusercontent.com/manicmode/nutricoach-sounds/main/reminder_chime.wav',
-      fallbackUrl: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=',
+      fallbackUrl: '/sounds/click.wav',
       volume: 0.5,
       preload: true
     }
@@ -102,26 +103,28 @@ class SoundManager {
   constructor() {
     this.loadUserPreferences();
     this.setupUserInteractionListeners();
-    this.logStateChange('constructor', 'SoundManager initialized');
+    this.logStateChange('constructor', 'SoundManager initialized with Web Audio API');
     
-    // Initialize all sound loading status
+    // Initialize loading status
     Object.keys(this.sounds).forEach(key => {
-      this.soundLoadingStatus[key] = 'pending';
+      this.loadingStatus[key] = 'pending';
     });
   }
 
-  // ============= PHASE 1: AGGRESSIVE AUDIOCONTEXT RESUME =============
+  // ============= PHASE 1: AGGRESSIVE AUDIOCONTEXT MANAGEMENT =============
   
   private setupUserInteractionListeners(): void {
-    const interactionHandler = (event: Event) => {
-      this.logStateChange('user_interaction', `Detected: ${event.type}`, `Target: ${event.target?.constructor.name}`);
-      this.activateAudioSystemOnInteraction();
+    const interactionHandler = async (event: Event) => {
+      if (this.hasUserInteracted) return;
+      
+      this.logStateChange('user_interaction', `Detected: ${event.type}`);
+      await this.activateAudioSystemOnInteraction();
     };
 
-    // Comprehensive interaction detection - covers all mobile scenarios
+    // Comprehensive interaction detection
     const events = [
-      'click', 'touchstart', 'touchend', 'touchmove', 'pointerdown', 'pointerup',
-      'keydown', 'mousedown', 'scroll', 'focus', 'visibilitychange'
+      'click', 'touchstart', 'touchend', 'keydown', 'mousedown', 
+      'pointerdown', 'scroll', 'focus', 'visibilitychange'
     ];
     
     events.forEach(eventType => {
@@ -132,12 +135,12 @@ class SoundManager {
       });
     });
 
-    // iOS Safari PWA specific workarounds
+    // iOS Safari & PWA specific workarounds
     if (this.isIOSSafari()) {
       this.setupIOSSpecificListeners(interactionHandler);
     }
 
-    console.log('🔊 [SoundManager] 📱 Enhanced interaction listeners established for all platforms');
+    console.log('🔊 [SoundManager] 📱 Web Audio API interaction listeners established');
   }
 
   private isIOSSafari(): boolean {
@@ -146,36 +149,26 @@ class SoundManager {
   }
 
   private setupIOSSpecificListeners(handler: (event: Event) => void): void {
-    // iOS Safari requires specific interaction patterns
     window.addEventListener('pageshow', handler, { once: true });
     window.addEventListener('focus', handler, { once: true });
-    document.addEventListener('gesturestart', handler, { once: true });
     
-    // PWA specific
+    // PWA specific handling
     if ((window.navigator as any).standalone) {
-      console.log('🔊 [SoundManager] 📱 PWA detected, adding iOS PWA specific listeners');
+      console.log('🔊 [SoundManager] 📱 PWA detected, adding iOS-specific listeners');
       document.addEventListener('touchstart', handler, { once: true, passive: false });
     }
   }
 
   private async activateAudioSystemOnInteraction(): Promise<void> {
-    if (this.hasUserInteracted) {
-      console.log('🔊 [SoundManager] ✅ Audio already activated, skipping');
-      return;
-    }
+    if (this.hasUserInteracted) return;
 
     this.hasUserInteracted = true;
-    this.interactionAttempts++;
-    this.logStateChange('activation', 'User interaction detected', `Attempt #${this.interactionAttempts}`);
+    this.logStateChange('activation', 'User interaction detected, activating Web Audio API');
 
     try {
-      // Immediate aggressive AudioContext creation and resume
       await this.createAndResumeAudioContext();
-      
-      // Start initialization with timeout protection
       this.initializeWithTimeout();
-      
-      console.log('🔊 [SoundManager] ✅ Audio system activated successfully');
+      console.log('🔊 [SoundManager] ✅ Web Audio API system activated');
     } catch (error) {
       this.logStateChange('activation_error', 'Failed to activate audio system', error.message);
       console.error('🔊 [SoundManager] ❌ Audio activation failed:', error);
@@ -186,16 +179,13 @@ class SoundManager {
     this.audioContextCreationAttempts++;
     
     try {
-      // Create AudioContext
       if (!this.audioContext) {
-        if (typeof AudioContext !== 'undefined') {
-          this.audioContext = new AudioContext();
-        } else if (typeof (window as any).webkitAudioContext !== 'undefined') {
-          this.audioContext = new (window as any).webkitAudioContext();
-        } else {
-          throw new Error('AudioContext not supported');
+        const AudioContextConstructor = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextConstructor) {
+          throw new Error('Web Audio API not supported');
         }
         
+        this.audioContext = new AudioContextConstructor();
         this.logStateChange('audiocontext_created', `Created with state: ${this.audioContext.state}`);
       }
 
@@ -205,11 +195,10 @@ class SoundManager {
         
         await this.audioContext.resume();
         
-        // Verify resume with fallback attempts
+        // Verify resume with retry logic
         let resumeAttempts = 0;
         while (this.audioContext.state === 'suspended' && resumeAttempts < 3) {
           resumeAttempts++;
-          this.logStateChange('audiocontext_retry', `Resume attempt #${resumeAttempts}`);
           await new Promise(resolve => setTimeout(resolve, 100));
           await this.audioContext.resume();
         }
@@ -226,7 +215,7 @@ class SoundManager {
     }
   }
 
-  // ============= PHASE 2: BULLETPROOF SOUND LOADING =============
+  // ============= PHASE 2: WEB AUDIO API BUFFER LOADING =============
 
   private initializeWithTimeout(): void {
     if (this.isInitializing) return;
@@ -234,141 +223,141 @@ class SoundManager {
     this.isInitializing = true;
     this.initializationStartTime = Date.now();
     
-    // Set timeout to prevent hanging
-    this.initializationTimeout = setTimeout(() => {
-      this.logStateChange('initialization_timeout', 'Initialization timed out after 10 seconds');
+    // Timeout protection
+    const timeoutId = setTimeout(() => {
+      this.logStateChange('initialization_timeout', 'Initialization timed out after 8 seconds');
       this.resetInitialization();
-    }, 10000);
+    }, 8000);
 
-    this.initializationPromise = this.performBulletproofInitialization();
+    this.initializationPromise = this.performBufferLoading().finally(() => {
+      clearTimeout(timeoutId);
+      this.isInitializing = false;
+    });
   }
 
-  private async performBulletproofInitialization(): Promise<void> {
+  private async performBufferLoading(): Promise<void> {
     try {
-      this.logStateChange('initialization_start', 'Starting bulletproof initialization');
+      this.logStateChange('initialization_start', 'Starting Web Audio API buffer loading');
       
-      // Load sounds with enhanced error handling
-      await this.loadAllSoundsWithFallbacks();
+      await this.loadAllAudioBuffers();
       
       this.isInitialized = true;
-      this.clearInitializationTimeout();
-      
       const duration = Date.now() - this.initializationStartTime;
       this.logStateChange('initialization_complete', `Completed in ${duration}ms`);
       
     } catch (error) {
-      this.logStateChange('initialization_error', 'Initialization failed', error.message);
+      this.logStateChange('initialization_error', 'Buffer loading failed', error.message);
       this.resetInitialization();
       throw error;
-    } finally {
-      this.isInitializing = false;
     }
   }
 
-  private async loadAllSoundsWithFallbacks(): Promise<void> {
+  private async loadAllAudioBuffers(): Promise<void> {
     const loadPromises = Object.entries(this.sounds).map(async ([key, config]) => {
       try {
-        this.soundLoadingStatus[key] = 'loading';
-        await this.loadSoundWithFallback(key, config);
-        this.soundLoadingStatus[key] = 'loaded';
-        this.logStateChange('sound_loaded', `Successfully loaded: ${key}`);
+        this.loadingStatus[key] = 'loading';
+        await this.loadAudioBuffer(key, config);
+        this.loadingStatus[key] = 'loaded';
+        this.logStateChange('buffer_loaded', `Successfully loaded: ${key}`);
       } catch (error) {
-        this.soundLoadingStatus[key] = 'failed';
-        this.logStateChange('sound_failed', `Failed to load: ${key}`, error.message);
-        // Don't throw - allow other sounds to continue loading
+        this.loadingStatus[key] = 'failed';
+        this.logStateChange('buffer_failed', `Failed to load: ${key}`, error.message);
       }
     });
 
     await Promise.allSettled(loadPromises);
     
-    const loadedCount = Object.values(this.soundLoadingStatus).filter(status => status === 'loaded').length;
+    const loadedCount = Object.values(this.loadingStatus).filter(status => status === 'loaded').length;
     const totalCount = Object.keys(this.sounds).length;
     
-    console.log(`🔊 [SoundManager] 📊 Sound loading complete: ${loadedCount}/${totalCount} loaded`);
+    console.log(`🔊 [SoundManager] 📊 Buffer loading complete: ${loadedCount}/${totalCount} loaded`);
   }
 
-  private async loadSoundWithFallback(key: string, config: SoundConfig): Promise<HTMLAudioElement> {
+  private async loadAudioBuffer(key: string, config: SoundConfig): Promise<void> {
+    if (!this.audioContext) {
+      throw new Error('AudioContext not available');
+    }
+
     // Try primary URL first
     try {
-      return await this.loadSingleSound(key, config.url, config.volume || 0.7);
+      const buffer = await this.fetchAndDecodeAudio(config.url);
+      this.audioBuffers[key] = buffer;
+      return;
     } catch (primaryError) {
       console.warn(`🔊 [SoundManager] Primary URL failed for ${key}, trying fallback`);
       
       // Try fallback URL
       if (config.fallbackUrl) {
         try {
-          return await this.loadSingleSound(key, config.fallbackUrl, config.volume || 0.7);
+          const buffer = await this.fetchAndDecodeAudio(config.fallbackUrl);
+          this.audioBuffers[key] = buffer;
+          return;
         } catch (fallbackError) {
           console.error(`🔊 [SoundManager] Both primary and fallback failed for ${key}`);
         }
       }
       
-      // Create silent fallback to prevent crashes
-      return this.createSilentFallback(key);
+      // Create a minimal click sound buffer as final fallback
+      this.audioBuffers[key] = this.createClickSoundBuffer();
     }
   }
 
-  private async loadSingleSound(key: string, url: string, volume: number): Promise<HTMLAudioElement> {
-    return new Promise((resolve, reject) => {
-      const audio = new Audio();
-      audio.volume = volume;
-      audio.preload = 'auto';
-      
-      let timeoutId: NodeJS.Timeout;
-      
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        audio.removeEventListener('canplaythrough', onLoad);
-        audio.removeEventListener('error', onError);
-      };
+  private async fetchAndDecodeAudio(url: string): Promise<AudioBuffer> {
+    if (!this.audioContext) {
+      throw new Error('AudioContext not available');
+    }
 
-      const onLoad = () => {
-        cleanup();
-        this.audioCache[key] = audio;
-        resolve(audio);
-      };
-
-      const onError = (e: any) => {
-        cleanup();
-        reject(new Error(`Failed to load ${url}: ${e.message || 'Unknown error'}`));
-      };
-
-      // Set timeout for loading
-      timeoutId = setTimeout(() => {
-        cleanup();
-        reject(new Error(`Loading timeout for ${url}`));
-      }, 5000);
-
-      audio.addEventListener('canplaythrough', onLoad);
-      audio.addEventListener('error', onError);
-      audio.src = url;
+    const response = await fetch(url, { 
+      mode: 'cors',
+      cache: 'force-cache'
     });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${response.status}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    return await this.audioContext.decodeAudioData(arrayBuffer);
   }
 
-  private createSilentFallback(key: string): HTMLAudioElement {
-    const audio = new Audio();
-    audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1e2+diMFl2+z9qsAAB=';
-    audio.volume = 0;
-    this.audioCache[key] = audio;
-    return audio;
+  private createClickSoundBuffer(): AudioBuffer {
+    if (!this.audioContext) {
+      throw new Error('AudioContext not available');
+    }
+
+    // Create a short click sound programmatically
+    const sampleRate = this.audioContext.sampleRate;
+    const duration = 0.1; // 100ms
+    const frameCount = sampleRate * duration;
+    
+    const buffer = this.audioContext.createBuffer(1, frameCount, sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Generate a click sound
+    for (let i = 0; i < frameCount; i++) {
+      const envelope = Math.exp(-i / (frameCount * 0.1));
+      data[i] = Math.sin(2 * Math.PI * 800 * i / sampleRate) * envelope * 0.3;
+    }
+    
+    return buffer;
   }
 
-  // ============= PHASE 3: BULLETPROOF PLAYBACK =============
+  // ============= PHASE 3: WEB AUDIO API PLAYBACK =============
 
   async play(soundKey: string): Promise<void> {
     const playbackStart = Date.now();
-    console.log(`🔊 [SoundManager] ▶️ PLAY REQUEST: "${soundKey}"`);
+    console.log(`🔊 [SoundManager] ▶️ WEB AUDIO PLAY: "${soundKey}"`);
     
     try {
       // Pre-flight checks
       if (!this.isEnabled) {
-        console.log(`🔊 [SoundManager] 🔇 Sound disabled, skipping "${soundKey}"`);
+        console.log(`🔊 [SoundManager] 🔇 Sound disabled, showing visual feedback for "${soundKey}"`);
         this.showVisualFeedback(soundKey);
         return;
       }
 
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        console.log(`🔊 [SoundManager] ♿ Reduced motion preference, skipping "${soundKey}"`);
+        console.log(`🔊 [SoundManager] ♿ Reduced motion preference, visual feedback for "${soundKey}"`);
         this.showVisualFeedback(soundKey);
         return;
       }
@@ -376,15 +365,20 @@ class SoundManager {
       // Ensure audio system is ready
       await this.ensureAudioSystemReady();
 
-      // Get or load the sound
-      let audio = this.audioCache[soundKey];
-      if (!audio) {
-        console.log(`🔊 [SoundManager] 📥 Loading "${soundKey}" on-demand`);
+      // Get or load the audio buffer
+      let buffer = this.audioBuffers[soundKey];
+      if (!buffer) {
+        console.log(`🔊 [SoundManager] 📥 Loading "${soundKey}" buffer on-demand`);
         const config = this.sounds[soundKey];
         if (!config) {
           throw new Error(`Sound configuration not found: ${soundKey}`);
         }
-        audio = await this.loadSoundWithFallback(soundKey, config);
+        await this.loadAudioBuffer(soundKey, config);
+        buffer = this.audioBuffers[soundKey];
+      }
+
+      if (!buffer) {
+        throw new Error(`Failed to load audio buffer: ${soundKey}`);
       }
 
       // Final AudioContext check
@@ -392,11 +386,9 @@ class SoundManager {
         await this.audioContext.resume();
       }
 
-      // Play the sound
-      audio.currentTime = 0;
-      await audio.play();
+      // Play using Web Audio API
+      await this.playAudioBuffer(buffer, soundKey);
       
-      this.lastSoundPlayed = Date.now();
       const duration = Date.now() - playbackStart;
       console.log(`🔊 [SoundManager] ✅ "${soundKey}" played successfully in ${duration}ms`);
       
@@ -410,51 +402,85 @@ class SoundManager {
     }
   }
 
+  private async playAudioBuffer(buffer: AudioBuffer, soundKey: string): Promise<void> {
+    if (!this.audioContext) {
+      throw new Error('AudioContext not available');
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const source = this.audioContext!.createBufferSource();
+        const gainNode = this.audioContext!.createGain();
+        
+        source.buffer = buffer;
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext!.destination);
+        
+        // Apply volume
+        const config = this.sounds[soundKey];
+        const soundVolume = (config?.volume || 0.7) * this.volume;
+        gainNode.gain.setValueAtTime(soundVolume, this.audioContext!.currentTime);
+        
+        source.onended = () => {
+          clearTimeout(timeoutId);
+          resolve();
+        };
+        
+        // Handle errors by setting up a timeout
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Playback timeout'));
+        }, 5000);
+        
+        source.start(0);
+        
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   private async ensureAudioSystemReady(): Promise<void> {
     // Force user interaction if not detected
     if (!this.hasUserInteracted) {
       console.log('🔊 [SoundManager] 🚨 No user interaction, forcing activation');
-      this.hasUserInteracted = true;
-      await this.createAndResumeAudioContext();
+      await this.activateAudioSystemOnInteraction();
     }
 
     // Wait for initialization if in progress
     if (this.isInitializing && this.initializationPromise) {
-      console.log('🔊 [SoundManager] ⏳ Waiting for initialization to complete');
+      console.log('🔊 [SoundManager] ⏳ Waiting for buffer loading to complete');
       await this.initializationPromise;
     }
 
     // Initialize if not started
     if (!this.isInitialized && !this.isInitializing) {
-      console.log('🔊 [SoundManager] 🔧 Starting initialization');
+      console.log('🔊 [SoundManager] 🔧 Starting buffer loading');
       this.initializeWithTimeout();
       await this.initializationPromise;
     }
   }
 
-  // ============= PHASE 4: VISUAL FEEDBACK & DEBUGGING =============
+  // ============= PHASE 4: VISUAL FEEDBACK & UTILITIES =============
 
   private showVisualFeedback(soundKey: string): void {
-    // Create visual notification when sound fails
     const notification = document.createElement('div');
     notification.textContent = '✅ Action Complete!';
     notification.style.cssText = `
       position: fixed;
       top: 80px;
       right: 20px;
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
+      background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-foreground)));
+      color: hsl(var(--primary-foreground));
       padding: 8px 16px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
       z-index: 10000;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
       animation: slideInFade 2s ease-out forwards;
       pointer-events: none;
     `;
 
-    // Add styles if not exists
     if (!document.querySelector('#sound-feedback-styles')) {
       const style = document.createElement('style');
       style.id = 'sound-feedback-styles';
@@ -470,49 +496,15 @@ class SoundManager {
     }
 
     document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 2100);
-  }
-
-  // ============= UTILITIES & STATUS =============
-
-  private logStateChange(action: string, state: string, details?: string): void {
-    const logEntry: StateChangeLog = {
-      timestamp: Date.now(),
-      action,
-      state,
-      details
-    };
-    
-    this.stateChangeLog.push(logEntry);
-    
-    // Keep only last 50 entries
-    if (this.stateChangeLog.length > 50) {
-      this.stateChangeLog = this.stateChangeLog.slice(-50);
-    }
-    
-    console.log(`🔊 [SoundManager] 📝 ${action}: ${state}${details ? ` (${details})` : ''}`);
-  }
-
-  private clearInitializationTimeout(): void {
-    if (this.initializationTimeout) {
-      clearTimeout(this.initializationTimeout);
-      this.initializationTimeout = null;
-    }
-  }
-
-  private resetInitialization(): void {
-    this.isInitializing = false;
-    this.isInitialized = false;
-    this.initializationPromise = null;
-    this.clearInitializationTimeout();
+    setTimeout(() => notification.remove(), 2000);
   }
 
   // ============= PUBLIC API =============
 
   setSoundEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
-    localStorage.setItem('sound_enabled', enabled.toString());
-    this.logStateChange('preference_change', `Sound ${enabled ? 'enabled' : 'disabled'}`);
+    localStorage.setItem('soundEnabled', enabled.toString());
+    this.logStateChange('settings', `Sound ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   isSoundEnabled(): boolean {
@@ -521,94 +513,102 @@ class SoundManager {
 
   setVolume(volume: number): void {
     this.volume = Math.max(0, Math.min(1, volume));
-    Object.values(this.audioCache).forEach(audio => {
-      audio.volume = this.volume;
-    });
+    localStorage.setItem('soundVolume', this.volume.toString());
+    this.logStateChange('settings', `Volume set to ${Math.round(this.volume * 100)}%`);
   }
 
   async forceInitialize(): Promise<void> {
-    console.log('🔊 [SoundManager] 🚀 FORCE INITIALIZATION');
-    this.hasUserInteracted = true;
+    this.resetInitialization();
     await this.createAndResumeAudioContext();
     this.initializeWithTimeout();
     await this.initializationPromise;
   }
 
   getStatus() {
-    const loadedSounds = Object.values(this.soundLoadingStatus).filter(s => s === 'loaded').length;
+    const loadedSounds = Object.values(this.loadingStatus).filter(status => status === 'loaded').length;
     const totalSounds = Object.keys(this.sounds).length;
     
-    let systemHealth: 'critical' | 'warning' | 'good' | 'excellent' = 'critical';
-    
-    if (this.isEnabled && this.hasUserInteracted && this.audioContext?.state === 'running') {
-      if (loadedSounds === totalSounds) {
-        systemHealth = 'excellent';
-      } else if (loadedSounds > totalSounds / 2) {
-        systemHealth = 'good';
-      } else {
-        systemHealth = 'warning';
-      }
-    }
-
     return {
-      enabled: this.isEnabled,
+      isEnabled: this.isEnabled,
       hasUserInteracted: this.hasUserInteracted,
-      audioContextState: this.audioContext?.state || 'not-created',
-      cachedSounds: Object.keys(this.audioCache).length,
-      totalSounds,
+      audioContextState: this.audioContext?.state || 'none',
       loadedSounds,
-      soundLoadingStatus: { ...this.soundLoadingStatus },
-      isInitialized: this.isInitialized,
-      isInitializing: this.isInitializing,
+      totalSounds,
+      soundLoadingStatus: this.loadingStatus,
       lastError: this.lastError,
-      lastSoundPlayed: this.lastSoundPlayed,
-      interactionAttempts: this.interactionAttempts,
-      audioContextCreationAttempts: this.audioContextCreationAttempts,
-      systemHealth,
-      stateChangeLog: [...this.stateChangeLog],
-      initializationTime: this.initializationStartTime ? Date.now() - this.initializationStartTime : 0
+      systemHealth: this.calculateSystemHealth(),
+      stateChangeLog: this.stateChangeLog.slice(-10),
+      isInitialized: this.isInitialized,
+      isInitializing: this.isInitializing
     };
   }
 
   getHealthScore(): number {
-    const status = this.getStatus();
-    let score = 0;
+    if (!this.hasUserInteracted) return 0;
+    if (this.audioContext?.state !== 'running') return 20;
     
-    if (status.enabled) score += 20;
-    if (status.hasUserInteracted) score += 20;
-    if (status.audioContextState === 'running') score += 30;
-    if (status.isInitialized) score += 15;
-    score += (status.loadedSounds / status.totalSounds) * 15;
+    const loadedSounds = Object.values(this.loadingStatus).filter(status => status === 'loaded').length;
+    const totalSounds = Object.keys(this.sounds).length;
+    const loadingScore = (loadedSounds / totalSounds) * 80;
     
-    return Math.round(score);
+    return Math.round(20 + loadingScore);
+  }
+
+  isAudioContextReady(): boolean {
+    return this.audioContext?.state === 'running';
+  }
+
+  isSoundCached(soundKey: string): boolean {
+    return this.loadingStatus[soundKey] === 'loaded' && !!this.audioBuffers[soundKey];
+  }
+
+  // ============= PRIVATE UTILITIES =============
+
+  private calculateSystemHealth(): 'excellent' | 'good' | 'warning' | 'critical' {
+    const score = this.getHealthScore();
+    if (score >= 90) return 'excellent';
+    if (score >= 70) return 'good';
+    if (score >= 40) return 'warning';
+    return 'critical';
+  }
+
+  private logStateChange(action: string, state: string, details?: string): void {
+    const entry: StateChangeLog = {
+      timestamp: Date.now(),
+      action,
+      state,
+      details
+    };
+    
+    this.stateChangeLog.push(entry);
+    if (this.stateChangeLog.length > 50) {
+      this.stateChangeLog = this.stateChangeLog.slice(-25);
+    }
+  }
+
+  private resetInitialization(): void {
+    this.isInitialized = false;
+    this.isInitializing = false;
+    this.initializationPromise = null;
   }
 
   private loadUserPreferences(): void {
-    const soundEnabled = localStorage.getItem('sound_enabled');
-    this.isEnabled = soundEnabled !== 'false';
+    const soundEnabled = localStorage.getItem('soundEnabled');
+    if (soundEnabled !== null) {
+      this.isEnabled = soundEnabled === 'true';
+    }
+    
+    const soundVolume = localStorage.getItem('soundVolume');
+    if (soundVolume !== null) {
+      this.volume = parseFloat(soundVolume);
+    }
   }
-
-  activateOnUserInteraction(): void {
-    console.log('🔊 [SoundManager] 🎯 Manual activation triggered');
-    this.activateAudioSystemOnInteraction();
-  }
-
-  // Convenience methods
-  playAIThought = () => this.play('ai_thought');
-  playBodyScanCapture = () => this.play('body_scan_camera');
-  playChallengeWin = () => this.play('challenge_win');
-  playFoodLogConfirm = () => this.play('food_log_confirm');
-  playFriendAdded = () => this.play('friend_added');
-  playGoalHit = () => this.play('goal_hit');
-  playHealthScanCapture = () => this.play('health_scan_capture');
-  playProgressUpdate = () => this.play('progress_update');
-  playReminderChime = () => this.play('reminder_chime');
 }
 
-// Export singleton
+// Export singleton instance
 export const soundManager = new SoundManager();
 
-// Export convenience functions
+// Convenience functions for specific sounds
 export const playAIThought = () => soundManager.play('ai_thought');
 export const playBodyScanCapture = () => soundManager.play('body_scan_camera');
 export const playChallengeWin = () => soundManager.play('challenge_win');
