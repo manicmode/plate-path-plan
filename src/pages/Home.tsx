@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { SparkleSeparator } from '@/components/ui/sparkle-separator';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
@@ -1380,6 +1381,11 @@ const Home = () => {
       {/* Tomorrow's Mood Forecast */}
       <div className="px-2 sm:px-4">
         <MoodForecastCard />
+      </div>
+
+      {/* Sparkle Separator */}
+      <div className="px-2 sm:px-4">
+        <SparkleSeparator variant="teal" />
       </div>
 
       {/* Today's Nutrients Section - Collapsible */}
