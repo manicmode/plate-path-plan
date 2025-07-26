@@ -133,9 +133,11 @@ export const useMilestoneTracker = () => {
   useEffect(() => {
     // Only run if userStreaks has actually changed (not just on mount)
     if (userStreaks && userStreaks !== lastUserStreaksRef.current) {
-      console.log("🔍 UserStreaks changed, checking for new milestones...");
+      console.log("🔍 useMilestoneTracker: UserStreaks changed, checking for new milestones...");
       lastUserStreaksRef.current = userStreaks;
       checkForNewMilestones();
+    } else if (userStreaks) {
+      console.log("🔇 useMilestoneTracker: UserStreaks unchanged, skipping milestone check (no sound)");
     }
   }, [userStreaks]);
 

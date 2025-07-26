@@ -12,23 +12,45 @@ interface DailyProgressCardProps {
   color: string;
 }
 
+// Session-only storage for played goal sounds (shared across all instances)
+let playedGoalSounds: Set<string> | null = null;
+
+const getPlayedGoalSounds = (): Set<string> => {
+  if (!playedGoalSounds) {
+    playedGoalSounds = new Set<string>();
+  }
+  return playedGoalSounds;
+};
+
 export const DailyProgressCard = ({ title, value, target, unit, icon, color }: DailyProgressCardProps) => {
   const percentage = Math.min(100, Math.round((value / target) * 100));
   const { playGoalHit } = useSound();
   
-  // Track if we've already played the sound for this goal to prevent repeated plays
-  const [hasPlayedSound, setHasPlayedSound] = React.useState(false);
+  // Create unique goal key for this goal on this date
+  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const goalKey = `${title.toLowerCase()}_${currentDate}`;
   
-  // Play sound when goal is hit for the first time
+  // Use ref to track if we've checked this goal in this render cycle
+  const hasCheckedThisRender = React.useRef(false);
+  
+  // Play sound when goal is hit for the first time per session
   React.useEffect(() => {
-    if (percentage >= 100 && !hasPlayedSound) {
+    const soundsSet = getPlayedGoalSounds();
+    
+    if (percentage >= 100 && !soundsSet.has(goalKey) && !hasCheckedThisRender.current) {
+      console.log(`🔊 Playing goal hit sound for: ${goalKey} (${percentage}%)`);
       playGoalHit();
-      setHasPlayedSound(true);
-    } else if (percentage < 100) {
-      // Reset sound state if goal is no longer met (for testing purposes)
-      setHasPlayedSound(false);
+      soundsSet.add(goalKey);
+      hasCheckedThisRender.current = true;
+    } else if (percentage >= 100 && soundsSet.has(goalKey)) {
+      console.log(`🔇 Skipping sound for ${goalKey} - already played this session (${percentage}%)`);
     }
-  }, [percentage, hasPlayedSound, playGoalHit]);
+    
+    // Reset check flag when component unmounts or percentage changes
+    return () => {
+      hasCheckedThisRender.current = false;
+    };
+  }, [percentage, goalKey, playGoalHit]);
   
   const getStatusColor = () => {
     if (percentage >= 100) return 'text-white drop-shadow-sm';
