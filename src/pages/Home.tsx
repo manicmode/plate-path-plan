@@ -60,7 +60,7 @@ const Home = () => {
   const isMobile = useIsMobile();
   const progress = getTodaysProgress();
   const { toast } = useToast();
-  const { playGoalHit } = useSound();
+  const { playGoalHit, playFoodLogConfirm, isEnabled } = useSound();
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -734,8 +734,24 @@ const Home = () => {
       sodium: confirmedFood.sodium,
     });
 
-    // Play success sound
-    playGoalHit();
+    // Play food log confirmation sound with proper debugging and error handling
+    console.log('🔊 [Home] Attempting to play food log confirmation sound');
+    console.log('🔊 [Home] Sound enabled:', isEnabled);
+    
+    // Defer sound playback to ensure it plays after UI renders
+    setTimeout(() => {
+      try {
+        console.log('🔊 [Home] playFoodLogConfirm triggered');
+        playFoodLogConfirm().catch(error => {
+          console.warn('🔊 [Home] Food log sound failed:', error);
+          if (error.name === 'NotAllowedError') {
+            console.log('🔊 [Home] Audio blocked by browser - user interaction required');
+          }
+        });
+      } catch (error) {
+        console.error('🔊 [Home] Sound playback error:', error);
+      }
+    }, 0);
 
     // Reset selected food
     setSelectedFood(null);
