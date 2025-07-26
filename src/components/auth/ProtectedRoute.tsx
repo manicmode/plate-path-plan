@@ -10,12 +10,20 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { session, loading, isAuthenticated } = useAuth();
   const location = useLocation();
   const { showRecovery, handleRecovery } = useAuthRecovery({ isLoading: loading });
 
+  console.log('🔒 ProtectedRoute: Checking auth state...', { 
+    loading, 
+    hasSession: !!session, 
+    isAuthenticated,
+    currentPath: location.pathname 
+  });
+
   // Show loading with recovery option
   if (loading) {
+    console.log('⏳ ProtectedRoute: Still loading, showing spinner...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center space-y-6">
@@ -42,10 +50,18 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // Redirect to home if not authenticated
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+  // ✅ CRITICAL: If loading is false and no session, redirect to sign-in immediately
+  if (!loading && session === null) {
+    console.log('🚨 ProtectedRoute: No session detected, redirecting to /sign-in from:', location.pathname);
+    return <Navigate to="/sign-in" replace state={{ from: location }} />;
   }
 
+  // Additional check: If not authenticated, redirect to sign-in
+  if (!loading && !isAuthenticated) {
+    console.log('🚨 ProtectedRoute: Not authenticated, redirecting to /sign-in from:', location.pathname);
+    return <Navigate to="/sign-in" replace state={{ from: location }} />;
+  }
+
+  console.log('✅ ProtectedRoute: Authenticated, rendering protected content');
   return <>{children}</>;
 };

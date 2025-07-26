@@ -80,13 +80,18 @@ function AppContent() {
     useBodyScanSharingReminder();
     console.log('📤 AppContent: Body scan sharing reminder initialized');
 
-    // Show loading screen while auth is initializing
+    // ✅ CRITICAL: Wait for auth initialization before routing decisions
     if (auth?.loading) {
-      console.log('⏳ AppContent: Showing loading screen (auth loading)');
+      console.log('⏳ AppContent: Auth still loading, showing loading screen...');
       return <LoadingScreen />;
     }
 
-    console.log('✅ AppContent: Rendering main content...');
+    // ✅ Prevent premature mounting of protected content when no session
+    if (!auth?.loading && auth?.session === null && window.location.pathname !== '/' && window.location.pathname !== '/sign-in') {
+      console.log('🚨 AppContent: No session detected on protected route, will let ProtectedRoute handle redirect');
+    }
+
+    console.log('✅ AppContent: Auth initialized, rendering routes...');
 
     return (
       <>

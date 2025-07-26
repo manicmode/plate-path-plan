@@ -25,6 +25,12 @@ export const MobileDebugOverlay: React.FC = () => {
         isAuthenticated: auth?.isAuthenticated,
         isEmailConfirmed: auth?.isEmailConfirmed
       },
+      routing: {
+        currentPath: window.location.pathname,
+        shouldRedirectToSignIn: !auth?.loading && auth?.session === null,
+        redirectedToSignIn: !auth?.loading && auth?.session === null && window.location.pathname !== '/sign-in',
+        isOnProtectedRoute: !['/sign-in', '/', '/auth', '/reset-password'].includes(window.location.pathname)
+      },
       localStorage: (() => {
         try {
           const keys = Object.keys(localStorage);
