@@ -1,6 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { SparkleSeparator } from '@/components/ui/sparkle-separator';
 import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
@@ -1383,9 +1382,15 @@ const Home = () => {
         <MoodForecastCard />
       </div>
 
-      {/* Sparkle Separator */}
-      <div className="px-2 sm:px-4">
-        <SparkleSeparator variant="teal" />
+      {/* Fancy Separator Line */}
+      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+        <div className="mx-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500/20 to-emerald-500/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
+            <Sparkles className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          </div>
+        </div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
       </div>
 
       {/* Today's Nutrients Section - Collapsible */}
