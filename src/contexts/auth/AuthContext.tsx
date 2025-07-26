@@ -83,8 +83,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state change:', event, session?.user?.id);
 
-    // Aggressive cleanup of all auth-related storage
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('🔑 Password recovery session detected');
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('🔄 Token refreshed during recovery');
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+          return;
+        }
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        // Don't reset session during password recovery
+        if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+          setTimeout(() => {
+            loadExtendedProfile(session.user);
+          }, 0);
+        }
+      }
+    );
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔄 AuthContext - Initial session loaded:', !!session);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Dedicated useEffect for corrupted token cleanup - runs ONLY after init
+  ReactModule.useEffect(() => {
+    let hasAttemptedCleanup = false;
+
+    // Wait for auth to be fully initialized
+    if (loading) return;
+
+    // Only run once per session
+    if (hasAttemptedCleanup) return;
+
     const clearAllAuthTokens = () => {
       console.log('🧹 Clearing all auth tokens...');
       try {
@@ -119,77 +171,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
     
-    // Cleanup corrupted auth tokens
-      const hasCorruptedAuth = () => {
-        try {
-          const keys = Object.keys(localStorage);
-          return keys.some(key => {
-            if (key.includes('supabase') || key.startsWith('sb-')) {
-              const value = localStorage.getItem(key);
-              return value && (value.includes('403') || value.includes('invalid_claim'));
-            }
-            return false;
-          });
-        } catch {
-          return true; // If we can't check, assume corruption
-        }
-      };
-      
-      if (hasCorruptedAuth()) {
-        console.log('🚨 Detected corrupted auth tokens, cleaning up...');
-        clearAllAuthTokens();
-        // Force page reload after cleanup to ensure fresh start
-        setTimeout(() => {
-          console.log('🔄 Forcing page reload after auth cleanup...');
-          window.location.reload();
-        }, 1000);
-        return;
+    const hasCorruptedAuth = () => {
+      try {
+        const keys = Object.keys(localStorage);
+        return keys.some(key => {
+          if (key.includes('supabase') || key.startsWith('sb-')) {
+            const value = localStorage.getItem(key);
+            return value && (value.includes('403') || value.includes('invalid_claim'));
+          }
+          return false;
+        });
+      } catch {
+        return true; // If we can't check, assume corruption
       }
-
-const { data: { subscription } } = supabase.auth.onAuthStateChange(
-  async (event, session) => {
-    console.log('🔄 Auth state change:', event, session?.user?.id);
-
-    if (event === 'PASSWORD_RECOVERY') {
-      console.log('🔑 Password recovery session detected');
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      return;
-    }
-
-    if (event === 'TOKEN_REFRESHED' && session) {
-      console.log('🔄 Token refreshed during recovery');
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      return;
-    }
-
-    setSession(session);
-    setUser(session?.user ?? null);
-    setLoading(false);
-
-    // Don't reset session during password recovery
-    if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+    };
+    
+    // Don't reload if:
+    // 1. Already on login page
+    // 2. Session and user are both null and we've already attempted cleanup
+    const isOnLoginPage = window.location.pathname === '/' || window.location.pathname.includes('auth');
+    const hasNullSessionAndUser = !session && !user;
+    
+    if (hasCorruptedAuth() && !isOnLoginPage && !(hasNullSessionAndUser && hasAttemptedCleanup)) {
+      console.log('🚨 Detected corrupted auth tokens, cleaning up...');
+      hasAttemptedCleanup = true;
+      clearAllAuthTokens();
+      
+      // Add 2-second delay before reload
       setTimeout(() => {
-        loadExtendedProfile(session.user);
-      }, 0);
+        console.log('🔄 Forcing page reload after auth cleanup to prevent infinite loop...');
+        window.location.reload();
+      }, 2000);
     }
-  }
-);
-
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔄 AuthContext - Initial session loaded:', !!session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [loading, session, user]); // Only run after loading is complete
 
   // Load extended profile when session is established (only once per session)
   ReactModule.useEffect(() => {
