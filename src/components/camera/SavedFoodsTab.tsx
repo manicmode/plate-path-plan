@@ -147,7 +147,7 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     }
   }, [onRefetch, fetchSavedFoods]);
 
-  // Add new food to local state optimistically
+  // Expose the addFoodOptimistically function for external use
   const addFoodOptimistically = useCallback((newFood: any) => {
     const normalizedName = newFood.name?.toLowerCase();
     if (!normalizedName) return;
