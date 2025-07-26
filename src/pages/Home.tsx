@@ -210,6 +210,10 @@ const Home = () => {
   const supplementGoal = getSupplementGoal();
   const supplementPercentage = Math.min((progress.supplements / supplementGoal) * 100, 100);
 
+  // Exercise goals
+  const stepsGoal = 10000;
+  const stepsPercentage = Math.min((exerciseSummary.todaySteps / stepsGoal) * 100, 100);
+
   // Unified goal validation function
   const isGoalFullyAchieved = (current: number, target: number, isLoading: boolean = false) => {
     // Defensive checks
@@ -268,7 +272,78 @@ const Home = () => {
       markCelebrationShown('supplements');
       playGoalHit(); // Play celebration sound
     }
-  }, [currentCalories, totalCalories, actualHydration, hydrationGoal, progress.supplements, supplementGoal, authLoading, hydrationLoading, scoreLoading, user?.id]);
+    
+    // Protein celebration
+    else if (isGoalFullyAchieved(progress.protein, dailyTargets.protein || user?.targetProtein || 150) && !hasShownCelebrationToday('protein')) {
+      console.log('🎉 Protein goal achieved:', { current: progress.protein, target: dailyTargets.protein || user?.targetProtein || 150 });
+      setCelebrationType('Protein Goal Crushed! 💪');
+      setShowCelebration(true);
+      markCelebrationShown('protein');
+      playGoalHit(); // Play celebration sound
+    }
+    
+    // Carbs celebration
+    else if (isGoalFullyAchieved(progress.carbs, dailyTargets.carbs || user?.targetCarbs || 200) && !hasShownCelebrationToday('carbs')) {
+      console.log('🎉 Carbs goal achieved:', { current: progress.carbs, target: dailyTargets.carbs || user?.targetCarbs || 200 });
+      setCelebrationType('Carbs Target Hit! 🍞');
+      setShowCelebration(true);
+      markCelebrationShown('carbs');
+      playGoalHit(); // Play celebration sound
+    }
+    
+    // Fat celebration
+    else if (isGoalFullyAchieved(progress.fat, dailyTargets.fat || user?.targetFat || 65) && !hasShownCelebrationToday('fat')) {
+      console.log('🎉 Fat goal achieved:', { current: progress.fat, target: dailyTargets.fat || user?.targetFat || 65 });
+      setCelebrationType('Fat Goal Achieved! 🥑');
+      setShowCelebration(true);
+      markCelebrationShown('fat');
+      playGoalHit(); // Play celebration sound
+    }
+    
+    // Fiber celebration
+    else if (isGoalFullyAchieved((progress as any).fiber || 0, dailyTargets.fiber || 25) && !hasShownCelebrationToday('fiber')) {
+      console.log('🎉 Fiber goal achieved:', { current: (progress as any).fiber || 0, target: dailyTargets.fiber || 25 });
+      setCelebrationType('Fiber Target Reached! 🌾');
+      setShowCelebration(true);
+      markCelebrationShown('fiber');
+      playGoalHit(); // Play celebration sound
+    }
+    
+    // Saturated Fat celebration
+    else if (isGoalFullyAchieved((progress as any).saturated_fat || 0, dailyTargets.saturated_fat || 20) && !hasShownCelebrationToday('saturated_fat')) {
+      console.log('🎉 Saturated Fat goal achieved:', { current: (progress as any).saturated_fat || 0, target: dailyTargets.saturated_fat || 20 });
+      setCelebrationType('Sat Fat Goal Met! 🧈');
+      setShowCelebration(true);
+      markCelebrationShown('saturated_fat');
+      playGoalHit(); // Play celebration sound
+    }
+    
+    // Steps celebration
+    else if (isGoalFullyAchieved(exerciseSummary.todaySteps, stepsGoal) && !hasShownCelebrationToday('steps')) {
+      console.log('🎉 Steps goal achieved:', { current: exerciseSummary.todaySteps, target: stepsGoal });
+      setCelebrationType('Step Goal Crushed! 👟');
+      setShowCelebration(true);
+      markCelebrationShown('steps');
+      playGoalHit(); // Play celebration sound
+    }
+    
+    // Exercise Calories celebration (300 kcal target)
+    else if (isGoalFullyAchieved(exerciseSummary.todayCalories, 300) && !hasShownCelebrationToday('exercise_calories')) {
+      console.log('🎉 Exercise calories goal achieved:', { current: exerciseSummary.todayCalories, target: 300 });
+      setCelebrationType('Workout Goal Achieved! 🏋️');
+      setShowCelebration(true);
+      markCelebrationShown('exercise_calories');
+      playGoalHit(); // Play celebration sound
+    }
+  }, [
+    currentCalories, totalCalories, actualHydration, hydrationGoal, 
+    progress.supplements, supplementGoal, progress.protein, progress.carbs, progress.fat,
+    (progress as any).fiber, (progress as any).saturated_fat,
+    exerciseSummary.todaySteps, exerciseSummary.todayCalories, stepsGoal,
+    dailyTargets.protein, dailyTargets.carbs, dailyTargets.fat, dailyTargets.fiber, dailyTargets.saturated_fat,
+    user?.targetProtein, user?.targetCarbs, user?.targetFat,
+    authLoading, hydrationLoading, scoreLoading, user?.id
+  ]);
 
   // Use preferences from localStorage/state instead of user object
   const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
@@ -676,8 +751,6 @@ const Home = () => {
 
   // Calculate net calories (goal - food intake + burned calories)
   const netCalories = totalCalories - currentCalories + exerciseSummary.todayCalories;
-  const stepsGoal = 10000;
-  const stepsPercentage = Math.min((exerciseSummary.todaySteps / stepsGoal) * 100, 100);
 
   // Emergency recovery handler
   const handleEmergencyRecovery = () => {
