@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Sparkles, Bell, Plus } from "lucide-react";
+import { ArrowLeft, Sparkles, Bell, Plus, Clock, Edit, Trash2 } from "lucide-react";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RemindersList } from "@/components/recovery/RemindersList";
 import { AddReminderModal } from "@/components/recovery/AddReminderModal";
 import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
+import { BreathingReminderModal } from "@/components/breathing/BreathingReminderModal";
 
 interface RecoveryContentPageProps {
   category: string;
@@ -35,6 +36,8 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
   const [editingReminder, setEditingReminder] = useState<any>(null);
   const [isSessionPickerOpen, setIsSessionPickerOpen] = useState(false);
   const [selectedThemeForPicker, setSelectedThemeForPicker] = useState<any>(null);
+  const [breathingReminder, setBreathingReminder] = useState<any>(null);
+  const [isBreathingReminderModalOpen, setIsBreathingReminderModalOpen] = useState(false);
 
   // Fetch reminders
   const fetchReminders = async () => {
@@ -56,8 +59,46 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     }
   };
 
+  // Fetch breathing reminder for breathing category
+  const fetchBreathingReminder = async () => {
+    if (category !== 'breathing') return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('breathing_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setBreathingReminder(data);
+    } catch (error) {
+      console.error('Error fetching breathing reminder:', error);
+    }
+  };
+
+  const handleRemoveBreathingReminder = async () => {
+    try {
+      const { error } = await supabase
+        .from('breathing_reminders')
+        .delete()
+        .eq('id', breathingReminder.id);
+
+      if (error) throw error;
+      setBreathingReminder(null);
+      toast({ title: "Breathing reminder removed" });
+    } catch (error) {
+      console.error('Error removing breathing reminder:', error);
+      toast({ title: "Error removing reminder", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     fetchReminders();
+    fetchBreathingReminder();
   }, [category]);
 
   // Handle reminder save
@@ -269,6 +310,51 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                 </div>
               ))}
             </div>
+
+            {/* Breathing Reminder Display - only for breathing category */}
+            {category === 'breathing' && (
+              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border border-border/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5 text-cyan-600" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Breathing Practice Reminder</h3>
+                      {breathingReminder ? (
+                        <p className="text-sm text-muted-foreground">
+                          Daily at {breathingReminder.reminder_time} ({breathingReminder.recurrence})
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Set a daily reminder to maintain your breathing practice
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsBreathingReminderModalOpen(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      {breathingReminder ? 'Edit' : 'Set Reminder'}
+                    </Button>
+                    {breathingReminder && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveBreathingReminder}
+                        className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="reminders" className="space-y-6">
@@ -326,6 +412,15 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
             } 
           });
         }}
+      />
+
+      <BreathingReminderModal
+        isOpen={isBreathingReminderModalOpen}
+        onClose={() => {
+          setIsBreathingReminderModalOpen(false);
+          fetchBreathingReminder();
+        }}
+        reminder={breathingReminder}
       />
     </div>
   );

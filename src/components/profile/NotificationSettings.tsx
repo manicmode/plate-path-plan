@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2 } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2, Wind } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSound } from '@/contexts/SoundContext';
 import { useMeditationNudges } from '@/hooks/useMeditationNudges';
+import { useBreathingNudges } from '@/hooks/useBreathingNudges';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
@@ -17,6 +18,7 @@ export const NotificationSettings = () => {
   const { permission, requestPermission, hasPermission, isSupported } = usePushNotifications();
   const { isEnabled: soundEnabled, setSoundEnabled } = useSound();
   const { nudgePreferences, updateNudgePreferences } = useMeditationNudges();
+  const { nudgePreferences: breathingNudgePreferences, updateNudgePreferences: updateBreathingNudgePreferences } = useBreathingNudges();
 
   const smartCoachNotifications = [
     { 
@@ -131,6 +133,12 @@ export const NotificationSettings = () => {
   const handleMeditationToggle = async (setting: string, value: boolean) => {
     if (updateNudgePreferences) {
       await updateNudgePreferences({ [setting]: value });
+    }
+  };
+
+  const handleBreathingToggle = async (setting: string, value: boolean) => {
+    if (updateBreathingNudgePreferences) {
+      await updateBreathingNudgePreferences({ [setting]: value });
     }
   };
 
@@ -277,6 +285,50 @@ export const NotificationSettings = () => {
                 />
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Breathing Nudges */}
+        <div className="space-y-4">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Wind className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-cyan-600`} />
+            <span>Breathing Nudges</span>
+          </h4>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-cyan-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Daily Reminder
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Scheduled daily breathing practice reminders
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={breathingNudgePreferences?.nudges_enabled ?? true}
+                onCheckedChange={(value) => handleBreathingToggle('nudges_enabled', value)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Smartphone className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-cyan-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Push Notifications (coming soon)
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Device notifications for breathing reminders
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={breathingNudgePreferences?.push_notifications_enabled ?? true}
+                onCheckedChange={(value) => handleBreathingToggle('push_notifications_enabled', value)}
+              />
+            </div>
           </div>
         </div>
 

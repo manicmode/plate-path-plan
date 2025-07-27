@@ -92,6 +92,57 @@ export type Database = {
         }
         Relationships: []
       }
+      breathing_nudge_preferences: {
+        Row: {
+          created_at: string
+          nudges_enabled: boolean
+          push_notifications_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          nudges_enabled?: boolean
+          push_notifications_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          nudges_enabled?: boolean
+          push_notifications_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      breathing_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          recurrence: string
+          reminder_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recurrence?: string
+          reminder_time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recurrence?: string
+          reminder_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       challenge_invitations: {
         Row: {
           id: string
