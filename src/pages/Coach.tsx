@@ -15,6 +15,7 @@ import { RecipeStorage, type SavedRecipe } from '@/lib/recipeStorage';
 import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
+import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
 
 interface Message {
   id: string;
@@ -514,6 +515,13 @@ const Coach = () => {
       <Card className="glass-card border-0 rounded-3xl">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+        </CardContent>
+      </Card>
+
+      {/* Breathing Nudges Section */}
+      <Card className="glass-card border-0 rounded-3xl">
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+          <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
         </CardContent>
       </Card>
 

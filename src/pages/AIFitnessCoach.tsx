@@ -17,6 +17,7 @@ import { WeeklyExerciseInsightsCard } from '@/components/analytics/WeeklyExercis
 import { AnimatePresence } from 'framer-motion';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
+import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -493,6 +494,13 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         <Card className="glass-card border-0 rounded-3xl">
           <CardContent className="p-6">
             <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+          </CardContent>
+        </Card>
+
+        {/* Breathing Nudges Section */}
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className="p-6">
+            <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
           </CardContent>
         </Card>
 
