@@ -308,12 +308,12 @@ const RecoveryAnalyticsPage = () => {
         {/* Summary Stats - Fixed Heights */}
         <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
           <Card className="visible-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="p-4 h-[100px] flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-2">
+            <CardContent className="p-4 h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm text-blue-700 dark:text-blue-300">This Week</span>
               </div>
-              <div className="flex-1 flex flex-col justify-center">
+              <div className="flex flex-col items-center justify-center flex-1">
                 <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
                   {weeklyStats.totalMinutes}
                 </div>
@@ -323,12 +323,12 @@ const RecoveryAnalyticsPage = () => {
           </Card>
 
           <Card className="visible-card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 border-green-200 dark:border-green-800">
-            <CardContent className="p-4 h-[100px] flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-2">
+            <CardContent className="p-4 h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
                 <span className="text-sm text-green-700 dark:text-green-300">Sessions</span>
               </div>
-              <div className="flex-1 flex flex-col justify-center">
+              <div className="flex flex-col items-center justify-center flex-1">
                 <div className="text-2xl font-bold text-green-900 dark:text-green-100">
                   {weeklyStats.sessionCount}
                 </div>
@@ -338,12 +338,12 @@ const RecoveryAnalyticsPage = () => {
           </Card>
 
           <Card className="visible-card bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
-            <CardContent className="p-4 h-[100px] flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-2">
+            <CardContent className="p-4 h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Award className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                <span className="text-sm text-purple-700 dark:text-purple-300">Meditation Streak</span>
+                <span className="text-sm text-purple-700 dark:text-purple-300">Streak</span>
               </div>
-              <div className="flex-1 flex flex-col justify-center">
+              <div className="flex flex-col items-center justify-center flex-1">
                 <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
                   {weeklyStats.longestStreak}
                 </div>
@@ -353,12 +353,12 @@ const RecoveryAnalyticsPage = () => {
           </Card>
 
           <Card className="visible-card bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20 border-orange-200 dark:border-orange-800">
-            <CardContent className="p-4 h-[100px] flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-2">
+            <CardContent className="p-4 h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 <span className="text-sm text-orange-700 dark:text-orange-300">Most Used</span>
               </div>
-              <div className="flex-1 flex flex-col justify-center">
+              <div className="flex flex-col items-center justify-center flex-1">
                 <div className="text-sm font-semibold text-orange-900 dark:text-orange-100 flex items-center gap-1">
                   {CATEGORY_META[weeklyStats.mostUsedCategory as keyof typeof CATEGORY_META]?.emoji}
                   <span className="truncate">
