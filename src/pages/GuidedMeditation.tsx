@@ -12,6 +12,7 @@ import { RemindersList } from "@/components/recovery/RemindersList";
 import { AddReminderModal } from "@/components/recovery/AddReminderModal";
 import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
 import { MeditationReminderModal } from "@/components/meditation/MeditationReminderModal";
+import { AICoachNudge } from "@/components/meditation/AICoachNudge";
 
 const GuidedMeditation = () => {
   useScrollToTop();
@@ -828,6 +829,9 @@ const GuidedMeditation = () => {
           </div>
         )}
 
+
+        {/* AI Coach Nudge */}
+        <AICoachNudge />
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

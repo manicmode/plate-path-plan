@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSound } from '@/contexts/SoundContext';
+import { useMeditationNudges } from '@/hooks/useMeditationNudges';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
@@ -15,6 +16,7 @@ export const NotificationSettings = () => {
   const { preferences, updatePreferences } = useNotification();
   const { permission, requestPermission, hasPermission, isSupported } = usePushNotifications();
   const { isEnabled: soundEnabled, setSoundEnabled } = useSound();
+  const { nudgePreferences, updateNudgePreferences } = useMeditationNudges();
 
   const smartCoachNotifications = [
     { 
@@ -61,6 +63,23 @@ export const NotificationSettings = () => {
     },
   ];
 
+  const meditationNotifications = [
+    { 
+      key: 'meditationNudges', 
+      label: 'Meditation Nudges', 
+      description: 'Smart suggestions to meditate based on your mood and activity',
+      icon: Brain,
+      setting: 'smart_nudges_enabled'
+    },
+    { 
+      key: 'meditationReminders', 
+      label: 'Daily Meditation Reminders', 
+      description: 'Push notifications for your scheduled meditation times',
+      icon: Bell,
+      setting: 'push_notifications_enabled'
+    }
+  ];
+
   const generalNotifications = [
     { key: 'reminders', label: 'General Reminders', description: 'Daily reminders to stay on track' },
     { key: 'milestones', label: 'Milestone Celebrations', description: 'Celebrate your streaks and achievements' },
@@ -99,6 +118,12 @@ export const NotificationSettings = () => {
       updatePreferences({ quietHoursStart: hour });
     } else {
       updatePreferences({ quietHoursEnd: hour });
+    }
+  };
+
+  const handleMeditationToggle = async (setting: string, value: boolean) => {
+    if (updateNudgePreferences) {
+      await updateNudgePreferences({ [setting]: value });
     }
   };
 
@@ -213,6 +238,35 @@ export const NotificationSettings = () => {
                 <Switch
                   checked={preferences[key as keyof typeof preferences] as boolean}
                   onCheckedChange={(value) => handleToggle(key, value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Meditation Notifications */}
+        <div className="space-y-4">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <Brain className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-blue-600`} />
+            <span>Meditation Notifications</span>
+          </h4>
+          <div className="space-y-3">
+            {meditationNotifications.map(({ key, label, description, icon: Icon, setting }) => (
+              <div key={key} className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                <div className="flex-1 flex items-center space-x-3">
+                  <Icon className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+                  <div>
+                    <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                      {label}
+                    </div>
+                    <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      {description}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={nudgePreferences?.[setting] ?? true}
+                  onCheckedChange={(value) => handleMeditationToggle(setting, value)}
                 />
               </div>
             ))}
