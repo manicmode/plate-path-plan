@@ -583,6 +583,36 @@ export type Database = {
         }
         Relationships: []
       }
+      meditation_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          last_completed_date: string | null
+          total_sessions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_completed_date?: string | null
+          total_sessions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_completed_date?: string | null
+          total_sessions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_exercise_reports: {
         Row: {
           created_at: string

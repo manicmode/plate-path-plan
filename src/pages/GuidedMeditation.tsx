@@ -2,20 +2,27 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Sparkles, Play, Pause, Volume2, VolumeX, Star, Heart } from "lucide-react";
+import { ArrowLeft, Sparkles, Play, Pause, Volume2, VolumeX, Star, Heart, Flame } from "lucide-react";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const GuidedMeditation = () => {
   useScrollToTop();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [isInPlayback, setIsInPlayback] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ambientVolume, setAmbientVolume] = useState(true);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
+  const [meditationStreak, setMeditationStreak] = useState<{
+    currentStreak: number;
+    totalSessions: number;
+  }>({ currentStreak: 0, totalSessions: 0 });
   const progressInterval = useRef<NodeJS.Timeout>();
 
   const meditationThemes = [
@@ -95,6 +102,120 @@ const GuidedMeditation = () => {
 
   const currentTheme = meditationThemes.find(theme => theme.id === selectedTheme);
 
+  // Fetch meditation streak on component mount
+  useEffect(() => {
+    const fetchMeditationStreak = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('meditation_streaks')
+          .select('current_streak, total_sessions')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data) {
+          setMeditationStreak({
+            currentStreak: data.current_streak,
+            totalSessions: data.total_sessions
+          });
+        } else if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching meditation streak:', error);
+        }
+      } catch (error) {
+        console.error('Error fetching meditation streak:', error);
+      }
+    };
+
+    fetchMeditationStreak();
+  }, []);
+
+  // Update streak when session completes
+  const updateMeditationStreak = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data: existingStreak } = await supabase
+        .from('meditation_streaks')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingStreak) {
+        // Check if already completed today
+        if (existingStreak.last_completed_date === today) {
+          return; // Already completed today, don't update streak
+        }
+
+        const lastDate = new Date(existingStreak.last_completed_date || '1970-01-01');
+        const todayDate = new Date(today);
+        const dayDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        let newStreak = existingStreak.current_streak;
+        if (dayDiff === 1) {
+          // Consecutive day
+          newStreak += 1;
+        } else if (dayDiff > 1) {
+          // Streak broken, reset to 1
+          newStreak = 1;
+        }
+
+        const { error } = await supabase
+          .from('meditation_streaks')
+          .update({
+            current_streak: newStreak,
+            total_sessions: existingStreak.total_sessions + 1,
+            last_completed_date: today
+          })
+          .eq('user_id', user.id);
+
+        if (!error) {
+          setMeditationStreak({
+            currentStreak: newStreak,
+            totalSessions: existingStreak.total_sessions + 1
+          });
+          
+          if (newStreak > existingStreak.current_streak) {
+            toast({
+              title: `🔥 ${newStreak}-Day Streak!`,
+              description: "Keep up the great work!",
+              duration: 3000,
+            });
+          }
+        }
+      } else {
+        // First meditation session
+        const { error } = await supabase
+          .from('meditation_streaks')
+          .insert({
+            user_id: user.id,
+            current_streak: 1,
+            total_sessions: 1,
+            last_completed_date: today
+          });
+
+        if (!error) {
+          setMeditationStreak({
+            currentStreak: 1,
+            totalSessions: 1
+          });
+          
+          toast({
+            title: "🎉 First Meditation Complete!",
+            description: "Starting your mindfulness journey",
+            duration: 3000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error updating meditation streak:', error);
+    }
+  };
+
   // Simulate audio progress
   useEffect(() => {
     if (isPlaying && !isSessionComplete) {
@@ -104,6 +225,8 @@ const GuidedMeditation = () => {
           if (newProgress >= 100) {
             setIsPlaying(false);
             setIsSessionComplete(true);
+            // Update meditation streak when session completes
+            updateMeditationStreak();
             return 100;
           }
           return newProgress;
@@ -345,6 +468,23 @@ const GuidedMeditation = () => {
 
       {/* Content */}
       <div className="p-4 max-w-7xl mx-auto">
+        {/* Streak Display */}
+        {meditationStreak.currentStreak > 0 && (
+          <div className="flex justify-center mb-6">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 backdrop-blur-sm">
+              <Flame className="h-5 w-5 text-orange-500" />
+              <span className="text-lg font-bold text-foreground">
+                {meditationStreak.currentStreak}-Day Streak
+              </span>
+              {meditationStreak.totalSessions > 0 && (
+                <span className="text-sm text-muted-foreground ml-2">
+                  ({meditationStreak.totalSessions} total sessions)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-8 mb-8 border border-border/50">
           <div className="relative z-10 text-center">
