@@ -31,6 +31,7 @@ const Profile = lazy(() => import('@/pages/Profile'));
 
 // Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
+const RecoveryCenter = lazy(() => import('@/pages/RecoveryCenter'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
@@ -141,6 +142,11 @@ function AppContent() {
                 <Route path="/exercise-hub" element={
                   <ProtectedRoute>
                     <ExerciseHub />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery-center" element={
+                  <ProtectedRoute>
+                    <RecoveryCenter />
                   </ProtectedRoute>
                 } />
                 <Route path="/ai-fitness-coach" element={

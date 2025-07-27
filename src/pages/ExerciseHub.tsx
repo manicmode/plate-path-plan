@@ -24,7 +24,7 @@ const ExerciseHub = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState('workout-log');
+  const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
@@ -654,18 +654,6 @@ const ExerciseHub = () => {
       title: 'Pre-Made Plans',
       emoji: '🧩',
       content: 'Explore workout plans made for every fitness level.'
-    },
-    {
-      id: 'body-scan-ai',
-      title: 'Body Scan AI',
-      emoji: '📸',
-      content: 'AI-powered body analysis and recommendations.'
-    },
-    {
-      id: 'recovery-center',
-      title: 'Recovery Center',
-      emoji: '🧘',
-      content: 'Your wellness guide for rest, recovery, and mindfulness'
     }
   ];
 
@@ -723,7 +711,7 @@ const ExerciseHub = () => {
       {/* Recovery Center Tab */}
       <div className="w-full mb-6">
         <button
-          onClick={() => setActiveTab('recovery-center')}
+          onClick={() => navigate('/recovery-center')}
           className="w-full p-4 rounded-xl bg-gradient-to-r from-[#FFD580] to-[#FF8C66] dark:from-[#FFB347] dark:to-[#FF7043] hover:from-[#FFE4A3] hover:to-[#FFA07A] dark:hover:from-[#FFC470] dark:hover:to-[#FF8A65] transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#FF8C66]/40 border border-[#FFD580]/30 dark:border-[#FFB347]/30 shadow-xl shadow-[#FF8C66]/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
@@ -757,7 +745,7 @@ const ExerciseHub = () => {
           {tabs.slice(0, 4).map((tab) => (
             <Button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans')}
               variant={activeTab === tab.id ? "default" : "outline"}
               className={`
                 relative h-16 p-3 rounded-xl transition-all duration-300 ease-out
