@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Trophy, Target, Flame, ChevronRight } from 'lucide-react';
 import { useCoachCta } from '@/hooks/useCoachCta';
 import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge';
+import { useRecoveryChallengeCoach } from '@/hooks/useRecoveryChallengeCoach';
 import { useNavigate } from 'react-router-dom';
 
 interface AIRecoveryChallengeChatEntriesProps {
@@ -32,7 +33,8 @@ export const AIRecoveryChallengeChatEntries: React.FC<AIRecoveryChallengeChatEnt
   showOnlyRecent = true
 }) => {
   const { clearCurrentMessage, getQueueInfo } = useCoachCta();
-  const { activeChallenges } = useRecoveryChallenge();
+  const { sendProgressMessage } = useRecoveryChallengeCoach();
+  const { activeChallenges } = useRecoveryChallenge(sendProgressMessage);
   const navigate = useNavigate();
   
   const { currentMessage: currentCoachCta } = getQueueInfo();
