@@ -60,6 +60,7 @@ import { useChallenge } from '@/contexts/ChallengeContext';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
+import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 
 // Types
 interface ChatMessage {
@@ -635,6 +636,9 @@ function GameAndChallengeContent() {
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Recovery leaderboard hook
+  const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
+  
   // Use the scroll-to-top hook
   useScrollToTop();
 
@@ -643,8 +647,9 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Optimize data for mobile
-  const optimizedLeaderboard = optimizeForMobile(mockLeaderboard);
+  // Optimize data for mobile and handle recovery mode
+  const currentLeaderboard = challengeMode === 'recovery' ? recoveryLeaderboard : mockLeaderboard;
+  const optimizedLeaderboard = optimizeForMobile(currentLeaderboard);
   const optimizedFriends = optimizeForMobile(mockFriends);
   const optimizedHallOfFame = optimizeForMobile(mockHallOfFame);
 
@@ -892,9 +897,16 @@ function GameAndChallengeContent() {
           {/* Ranking Arena Section - Hidden on mobile since it's in tabs */}
           {!isMobile && (
             <section id="ranking" className="animate-fade-in">
-            <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
+            <Card className={cn(
+              "overflow-hidden border-2 shadow-xl",
+              challengeMode === 'recovery' 
+                ? "border-teal-200/30 bg-gradient-to-br from-teal-50/50 to-purple-50/50 dark:from-teal-950/20 dark:to-purple-950/20"
+                : "border-primary/20"
+            )}>
               <CardHeader className={cn(
-                "bg-gradient-to-r from-primary/10 to-secondary/10",
+                challengeMode === 'recovery' 
+                  ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/30 dark:to-purple-950/30"
+                  : "bg-gradient-to-r from-primary/10 to-secondary/10",
                 isMobile ? "p-4" : "p-6"
               )}>
                 <div className={cn(
@@ -905,9 +917,19 @@ function GameAndChallengeContent() {
                     "font-bold flex items-center gap-2",
                     isMobile ? "text-xl text-center" : "text-3xl gap-3"
                   )}>
-                    <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                    Live Rankings Arena
-                    <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                    {challengeMode === 'recovery' ? (
+                      <>
+                        <span className="text-2xl">🧘</span>
+                        Top Recovery Warriors
+                        <span className="text-2xl">🌿</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                        Live Rankings Arena
+                        <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                      </>
+                    )}
                   </CardTitle>
                   
                   {/* Create Challenge Button */}
@@ -924,18 +946,58 @@ function GameAndChallengeContent() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
-                <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
-                  {optimizedLeaderboard.map((user, index) => (
+               <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
+                 {challengeMode === 'recovery' && recoveryLoading ? (
+                   <div className="space-y-4">
+                     {[1, 2, 3].map((i) => (
+                       <div key={i} className="animate-pulse flex items-center gap-4 p-4 rounded-xl border-2 border-purple-100 dark:border-purple-900/20">
+                         <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
+                         <div className="flex-1 space-y-2">
+                           <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
+                           <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
+                         </div>
+                         <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
+                       </div>
+                     ))}
+                   </div>
+                 ) : challengeMode === 'recovery' && optimizedLeaderboard.length === 0 ? (
+                   <div className="text-center py-12">
+                     <div className="text-6xl mb-4">🧘‍♂️</div>
+                     <h3 className="text-xl font-semibold mb-2 text-teal-700 dark:text-teal-300">No Recovery Warriors Yet</h3>
+                     <p className="text-muted-foreground mb-6">
+                       Start your meditation, breathing, yoga, sleep, or thermotherapy journey to appear on the leaderboard!
+                     </p>
+                     <Button 
+                       onClick={() => window.location.href = '/exercise-hub?tab=recovery'}
+                       className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white"
+                     >
+                       <span className="mr-2">🧘</span>
+                       Start Recovery Journey
+                     </Button>
+                   </div>
+                 ) : (
+                   <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
+                     {/* Coach CTA for Recovery Leaderboard */}
+                     {challengeMode === 'recovery' && !isMobile && (
+                       <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-teal-100/50 to-purple-100/50 dark:from-teal-950/20 dark:to-purple-950/20 border border-teal-200/30">
+                         <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
+                           🌟 Try to reach the top 10 in Recovery! Practice daily meditation, breathing, or yoga to climb the ranks.
+                         </p>
+                       </div>
+                     )}
                     <div
                       key={user.id}
-                      className={cn(
-                        "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
-                        isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
-                        user.isCurrentUser 
-                          ? "border-primary bg-primary/5 shadow-lg shadow-primary/20 ring-2 ring-primary/30" 
-                          : "border-muted bg-muted/30 hover:border-primary/40"
-                      )}
+                       className={cn(
+                         "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
+                         isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
+                         user.isCurrentUser 
+                           ? challengeMode === 'recovery'
+                             ? "border-teal-400 bg-teal-50/50 dark:bg-teal-950/20 shadow-lg shadow-teal-200/20 ring-2 ring-teal-300/30"
+                             : "border-primary bg-primary/5 shadow-lg shadow-primary/20 ring-2 ring-primary/30"
+                           : challengeMode === 'recovery'
+                             ? "border-purple-200/40 bg-purple-50/30 dark:bg-purple-950/10 hover:border-teal-300/60"
+                             : "border-muted bg-muted/30 hover:border-primary/40"
+                       )}
                       onClick={() => {
                         setSelectedUser(user);
                         setIsUserStatsOpen(true);
@@ -959,7 +1021,7 @@ function GameAndChallengeContent() {
                             "font-bold text-muted-foreground",
                             isMobile ? "text-lg w-8" : "text-2xl w-8"
                           )}>
-                            #{user.rank}
+                           #{user.rank}
                           </div>
                           
                           {/* Enhanced Progress Avatar */}
@@ -972,19 +1034,38 @@ function GameAndChallengeContent() {
                             size={isMobile ? "sm" : "md"}
                           />
                           
-                          {!isMobile && (
-                            <div className="flex items-center gap-3 text-sm">
-                              <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                                <CheckCircle className="h-3 w-3 text-green-600" />
-                                <span className="text-green-700 dark:text-green-400 font-medium">
-                                  {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
-                                </span>
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                Score: {user.score}
-                              </Badge>
-                            </div>
-                          )}
+                           {!isMobile && (
+                             <div className="flex items-center gap-3 text-sm">
+                               {challengeMode === 'recovery' ? (
+                                 <>
+                                   <div className="flex items-center gap-1 px-2 py-1 bg-teal-100 dark:bg-teal-900/20 rounded-full">
+                                     <span className="text-lg">🧘</span>
+                                     <span className="text-teal-700 dark:text-teal-400 font-medium">
+                                       {(user as any).totalSessions || 0} sessions
+                                     </span>
+                                   </div>
+                                   <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/20 rounded-full">
+                                     <Flame className="h-3 w-3 text-purple-600" />
+                                     <span className="text-purple-700 dark:text-purple-400 font-medium">
+                                       {(user as any).currentStreak || 0}d streak
+                                     </span>
+                                   </div>
+                                 </>
+                               ) : (
+                                 <>
+                                   <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                                     <CheckCircle className="h-3 w-3 text-green-600" />
+                                     <span className="text-green-700 dark:text-green-400 font-medium">
+                                       {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
+                                     </span>
+                                   </div>
+                                 </>
+                               )}
+                               <Badge variant="outline" className="text-xs">
+                                 Score: {user.score}
+                               </Badge>
+                             </div>
+                           )}
                         </div>
                         
                         <div className={cn(
@@ -993,13 +1074,26 @@ function GameAndChallengeContent() {
                         )}>
                           {/* Mobile: Compact display */}
                           {isMobile ? (
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs px-1">
-                                🥇{user.gold}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs px-1">
-                                Score: {user.score}
-                              </Badge>
+                             <div className="flex items-center gap-2">
+                               {challengeMode === 'recovery' ? (
+                                 <>
+                                   <Badge variant="secondary" className="text-xs px-1 bg-teal-100 text-teal-700">
+                                     🧘{(user as any).totalSessions || 0}
+                                   </Badge>
+                                   <Badge variant="secondary" className="text-xs px-1 bg-purple-100 text-purple-700">
+                                     🔥{(user as any).currentStreak || 0}d
+                                   </Badge>
+                                 </>
+                               ) : (
+                                 <>
+                                   <Badge variant="secondary" className="text-xs px-1">
+                                     🥇{user.gold}
+                                   </Badge>
+                                 </>
+                               )}
+                               <Badge variant="secondary" className="text-xs px-1">
+                                 Score: {user.score}
+                               </Badge>
                               <div className="flex items-center gap-1 text-green-600">
                                 {user.improvement > 0 ? (
                                   <>
@@ -1047,9 +1141,10 @@ function GameAndChallengeContent() {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
+                   ))
+                   </div>
+                 )}
+               </CardContent>
             </Card>
           </section>
           )}
@@ -1066,14 +1161,34 @@ function GameAndChallengeContent() {
 
               <TabsContent value="ranking" className="mt-4">
                 {/* Mobile Ranking Section */}
-                <Card className="overflow-hidden border-2 border-primary/20 shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4">
+                <Card className={cn(
+                  "overflow-hidden border-2 shadow-xl",
+                  challengeMode === 'recovery' 
+                    ? "border-teal-200/30 bg-gradient-to-br from-teal-50/50 to-purple-50/50 dark:from-teal-950/20 dark:to-purple-950/20"
+                    : "border-primary/20"
+                )}>
+                  <CardHeader className={cn(
+                    challengeMode === 'recovery' 
+                      ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/30 dark:to-purple-950/30"
+                      : "bg-gradient-to-r from-primary/10 to-secondary/10",
+                    "p-4"
+                  )}>
                     <div className="flex flex-col space-y-2">
-                      <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
-                        <Trophy className="h-6 w-6 text-yellow-500" />
-                        Live Rankings Arena
-                        <Trophy className="h-6 w-6 text-yellow-500" />
-                      </CardTitle>
+                       <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
+                         {challengeMode === 'recovery' ? (
+                           <>
+                             <span className="text-xl">🧘</span>
+                             Top Recovery Warriors
+                             <span className="text-xl">🌿</span>
+                           </>
+                         ) : (
+                           <>
+                             <Trophy className="h-6 w-6 text-yellow-500" />
+                             Live Rankings Arena
+                             <Trophy className="h-6 w-6 text-yellow-500" />
+                           </>
+                         )}
+                       </CardTitle>
                       
                       {/* Create Challenge Button */}
                       <Button 
@@ -1088,15 +1203,19 @@ function GameAndChallengeContent() {
                   </CardHeader>
                   <CardContent className="p-3">
                     <div className="space-y-2">
-                      {optimizedLeaderboard.map((user, index) => (
+                     {optimizedLeaderboard.map((user, index) => (
                         <div
                           key={user.id}
-                          className={cn(
-                            "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer",
-                            user.isCurrentUser 
-                              ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md" 
-                              : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
-                          )}
+                           className={cn(
+                             "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer",
+                             user.isCurrentUser 
+                               ? challengeMode === 'recovery'
+                                 ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/20 dark:to-purple-950/20 border-teal-300/30 shadow-md"
+                                 : "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md"
+                               : challengeMode === 'recovery'
+                                 ? "bg-purple-50/30 dark:bg-purple-950/10 border-purple-200/40 hover:bg-purple-50/50 hover:shadow-md"
+                                 : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
+                           )}
                           onClick={() => {
                             setSelectedUser(user);
                             setIsUserStatsOpen(true);
@@ -1122,20 +1241,39 @@ function GameAndChallengeContent() {
                                     <Badge variant="secondary" className="text-xs h-5">YOU</Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>Score: {user.score}</span>
-                                  <span>•</span>
-                                  <span>{user.weeklyProgress}%</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col items-end">
-                            <div className="flex items-center gap-1 text-xs">
-                              <Flame className="h-3 w-3 text-orange-500" />
-                              <span>{user.streak}d</span>
-                            </div>
+                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                   {challengeMode === 'recovery' ? (
+                                     <>
+                                       <span>🧘 {(user as any).totalSessions || 0} sessions</span>
+                                       <span>•</span>
+                                       <span>Score: {user.score}</span>
+                                     </>
+                                   ) : (
+                                     <>
+                                       <span>Score: {user.score}</span>
+                                       <span>•</span>
+                                       <span>{user.weeklyProgress}%</span>
+                                     </>
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                           </div>
+                           
+                           <div className="flex flex-col items-end">
+                             <div className="flex items-center gap-1 text-xs">
+                               {challengeMode === 'recovery' ? (
+                                 <>
+                                   <span className="text-teal-600">🧘</span>
+                                   <span>{(user as any).currentStreak || user.streak || 0}d</span>
+                                 </>
+                               ) : (
+                                 <>
+                                   <Flame className="h-3 w-3 text-orange-500" />
+                                   <span>{user.streak}d</span>
+                                 </>
+                               )}
+                             </div>
                             
                             <div className="flex items-center gap-1 mt-1">
                               {user.improvement > 0 ? (
