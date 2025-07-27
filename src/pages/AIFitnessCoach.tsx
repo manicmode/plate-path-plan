@@ -19,6 +19,7 @@ import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
 import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
+import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -509,6 +510,11 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         <Card className="glass-card border-0 rounded-3xl">
           <CardContent className="p-6">
             <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+          </CardContent>
+        {/* Sleep Nudges Section */}
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className="p-6">
+            <AISleepNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
           </CardContent>
         </Card>
 

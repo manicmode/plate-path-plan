@@ -1650,6 +1650,126 @@ export type Database = {
         }
         Relationships: []
       }
+      sleep_nudge_preferences: {
+        Row: {
+          created_at: string
+          nudges_enabled: boolean
+          push_notifications_enabled: boolean
+          smart_nudges_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          nudges_enabled?: boolean
+          push_notifications_enabled?: boolean
+          smart_nudges_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          nudges_enabled?: boolean
+          push_notifications_enabled?: boolean
+          smart_nudges_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sleep_nudges: {
+        Row: {
+          created_at: string
+          delivered_at: string
+          id: string
+          nudge_message: string
+          nudge_reason: string
+          nudge_type: string
+          updated_at: string
+          user_action: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string
+          id?: string
+          nudge_message: string
+          nudge_reason: string
+          nudge_type: string
+          updated_at?: string
+          user_action?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string
+          id?: string
+          nudge_message?: string
+          nudge_reason?: string
+          nudge_type?: string
+          updated_at?: string
+          user_action?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sleep_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          recurrence: string
+          time_of_day: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recurrence?: string
+          time_of_day?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recurrence?: string
+          time_of_day?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sleep_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          last_completed_date: string | null
+          longest_streak: number
+          total_sessions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          last_completed_date?: string | null
+          longest_streak?: number
+          total_sessions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          last_completed_date?: string | null
+          longest_streak?: number
+          total_sessions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       social_boosts: {
         Row: {
           challenge_id: string | null

@@ -17,6 +17,9 @@ import { BreathingStreakDisplay } from "@/components/breathing/BreathingStreakDi
 import { YogaReminderModal } from "@/components/yoga/YogaReminderModal";
 import { YogaTestButton } from "@/components/yoga/YogaTestButton";
 import { YogaStreakDisplay } from "@/components/yoga/YogaStreakDisplay";
+import { SleepReminderModal } from "@/components/sleep/SleepReminderModal";
+import { SleepTestButton } from "@/components/sleep/SleepTestButton";
+import { SleepStreakDisplay } from "@/components/sleep/SleepStreakDisplay";
 
 interface RecoveryContentPageProps {
   category: string;
@@ -46,6 +49,8 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
   const [isBreathingReminderModalOpen, setIsBreathingReminderModalOpen] = useState(false);
   const [yogaReminder, setYogaReminder] = useState<any>(null);
   const [isYogaReminderModalOpen, setIsYogaReminderModalOpen] = useState(false);
+  const [sleepReminder, setSleepReminder] = useState<any>(null);
+  const [isSleepReminderModalOpen, setIsSleepReminderModalOpen] = useState(false);
 
   // Fetch reminders
   const fetchReminders = async () => {
@@ -109,6 +114,27 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     }
   };
 
+  // Fetch sleep reminder for sleep-preparation category
+  const fetchSleepReminder = async () => {
+    if (category !== 'sleep-preparation') return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('sleep_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setSleepReminder(data);
+    } catch (error) {
+      console.error('Error fetching sleep reminder:', error);
+    }
+  };
+
   const handleRemoveBreathingReminder = async () => {
     try {
       const { error } = await supabase
@@ -141,10 +167,27 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     }
   };
 
+  const handleRemoveSleepReminder = async () => {
+    try {
+      const { error } = await supabase
+        .from('sleep_reminders')
+        .delete()
+        .eq('id', sleepReminder.id);
+
+      if (error) throw error;
+      setSleepReminder(null);
+      toast({ title: "Sleep reminder removed" });
+    } catch (error) {
+      console.error('Error removing sleep reminder:', error);
+      toast({ title: "Error removing reminder", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     fetchReminders();
     fetchBreathingReminder();
     fetchYogaReminder();
+    fetchSleepReminder();
   }, [category]);
 
   // Handle reminder save
@@ -462,6 +505,59 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                 <YogaTestButton />
               </div>
             )}
+
+            {/* Sleep Reminder Display - only for sleep-preparation category */}
+            {category === 'sleep-preparation' && (
+              <div className="mt-8 space-y-4">
+                <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-5 w-5 text-indigo-600" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground">Sleep Preparation Reminder</h3>
+                        {sleepReminder ? (
+                          <p className="text-sm text-muted-foreground">
+                            Daily at {sleepReminder.time_of_day} ({sleepReminder.recurrence})
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Set a daily reminder to maintain your sleep preparation routine
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsSleepReminderModalOpen(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        {sleepReminder ? 'Edit' : 'Set Reminder'}
+                      </Button>
+                      {sleepReminder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveSleepReminder}
+                          className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Sleep Streak Display */}
+                <SleepStreakDisplay />
+                
+                {/* Test Session Button */}
+                <SleepTestButton />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="reminders" className="space-y-6">
@@ -537,6 +633,15 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
           fetchYogaReminder();
         }}
         reminder={yogaReminder}
+      />
+
+      <SleepReminderModal
+        isOpen={isSleepReminderModalOpen}
+        onClose={() => {
+          setIsSleepReminderModalOpen(false);
+          fetchSleepReminder();
+        }}
+        reminder={sleepReminder}
       />
     </div>
   );

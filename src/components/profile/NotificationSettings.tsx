@@ -11,6 +11,7 @@ import { useSound } from '@/contexts/SoundContext';
 import { useMeditationNudges } from '@/hooks/useMeditationNudges';
 import { useBreathingNudges } from '@/hooks/useBreathingNudges';
 import { useYogaNudges } from '@/hooks/useYogaNudges';
+import { useSleepNudges } from '@/hooks/useSleepNudges';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
@@ -21,6 +22,7 @@ export const NotificationSettings = () => {
   const { nudgePreferences, updateNudgePreferences } = useMeditationNudges();
   const { nudgePreferences: breathingNudgePreferences, updateNudgePreferences: updateBreathingNudgePreferences } = useBreathingNudges();
   const { nudgePreferences: yogaNudgePreferences, updateNudgePreferences: updateYogaNudgePreferences } = useYogaNudges();
+  const { nudgePreferences: sleepNudgePreferences, updateNudgePreferences: updateSleepNudgePreferences } = useSleepNudges();
 
   const smartCoachNotifications = [
     { 
@@ -374,7 +376,51 @@ export const NotificationSettings = () => {
                 checked={yogaNudgePreferences?.smart_nudges_enabled ?? true}
                 onCheckedChange={(value) => updateYogaNudgePreferences({ smart_nudges_enabled: value })}
               />
+        </div>
+
+        {/* Sleep Nudges */}
+        <div className="space-y-4">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <span className="text-lg">🌙</span>
+            <span>Sleep Nudges</span>
+          </h4>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-indigo-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Sleep Nudges
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Scheduled daily sleep preparation reminders
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={sleepNudgePreferences?.nudges_enabled ?? true}
+                onCheckedChange={(value) => updateSleepNudgePreferences({ nudges_enabled: value })}
+              />
             </div>
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-indigo-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Smart Sleep Nudges
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    AI-powered sleep suggestions based on your evening activity
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={sleepNudgePreferences?.smart_nudges_enabled ?? true}
+                onCheckedChange={(value) => updateSleepNudgePreferences({ smart_nudges_enabled: value })}
+              />
+            </div>
+          </div>
+        </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
               <div className="flex-1 flex items-center space-x-3">
                 <Smartphone className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
