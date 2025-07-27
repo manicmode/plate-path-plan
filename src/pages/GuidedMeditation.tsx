@@ -532,7 +532,7 @@ const GuidedMeditation = () => {
             {/* Progress Bar */}
             <div className="mb-6">
               <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                <span>{Math.floor((progress / 100) * (currentSession?.duration || parseInt(currentTheme?.duration || '0'))))} min</span>
+                <span>{Math.floor((progress / 100) * (currentSession?.duration || parseInt(currentTheme?.duration || '0')))} min</span>
                 <span>{currentSession ? `${currentSession.duration} min` : currentTheme?.duration}</span>
               </div>
               <Progress value={progress} className="h-2" />
