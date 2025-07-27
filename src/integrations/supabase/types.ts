@@ -179,6 +179,36 @@ export type Database = {
         }
         Relationships: []
       }
+      breathing_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          last_completed_date: string | null
+          longest_streak: number
+          total_sessions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          last_completed_date?: string | null
+          longest_streak?: number
+          total_sessions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          last_completed_date?: string | null
+          longest_streak?: number
+          total_sessions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       challenge_invitations: {
         Row: {
           id: string

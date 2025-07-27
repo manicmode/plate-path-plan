@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +12,7 @@ import { RemindersList } from "@/components/recovery/RemindersList";
 import { AddReminderModal } from "@/components/recovery/AddReminderModal";
 import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
 import { BreathingReminderModal } from "@/components/breathing/BreathingReminderModal";
+import { BreathingTestButton } from "@/components/breathing/BreathingTestButton";
 
 interface RecoveryContentPageProps {
   category: string;
@@ -313,46 +315,51 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
 
             {/* Breathing Reminder Display - only for breathing category */}
             {category === 'breathing' && (
-              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border border-border/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-cyan-600" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">Breathing Practice Reminder</h3>
-                      {breathingReminder ? (
-                        <p className="text-sm text-muted-foreground">
-                          Daily at {breathingReminder.reminder_time} ({breathingReminder.recurrence})
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Set a daily reminder to maintain your breathing practice
-                        </p>
-                      )}
+              <div className="mt-8 space-y-4">
+                <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-5 w-5 text-cyan-600" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground">Breathing Practice Reminder</h3>
+                        {breathingReminder ? (
+                          <p className="text-sm text-muted-foreground">
+                            Daily at {breathingReminder.reminder_time} ({breathingReminder.recurrence})
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Set a daily reminder to maintain your breathing practice
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsBreathingReminderModalOpen(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                      {breathingReminder ? 'Edit' : 'Set Reminder'}
-                    </Button>
-                    {breathingReminder && (
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleRemoveBreathingReminder}
-                        className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                        onClick={() => setIsBreathingReminderModalOpen(true)}
+                        className="flex items-center gap-2"
                       >
-                        <Trash2 className="h-4 w-4" />
-                        Remove
+                        <Edit className="h-4 w-4" />
+                        {breathingReminder ? 'Edit' : 'Set Reminder'}
                       </Button>
-                    )}
+                      {breathingReminder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveBreathingReminder}
+                          className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
+                
+                {/* Test Session Button */}
+                <BreathingTestButton />
               </div>
             )}
           </TabsContent>
