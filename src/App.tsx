@@ -34,6 +34,11 @@ const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
 const RecoveryCenter = lazy(() => import('@/pages/RecoveryCenter'));
 const GuidedMeditation = lazy(() => import('@/pages/GuidedMeditation'));
 const MeditationPlayer = lazy(() => import('@/pages/MeditationPlayer'));
+const BreathingPage = lazy(() => import('@/pages/recovery/BreathingPage'));
+const StretchingPage = lazy(() => import('@/pages/recovery/StretchingPage'));
+const MuscleRecoveryPage = lazy(() => import('@/pages/recovery/MuscleRecoveryPage'));
+const SleepPage = lazy(() => import('@/pages/recovery/SleepPage'));
+const YogaPage = lazy(() => import('@/pages/recovery/YogaPage'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
@@ -239,6 +244,31 @@ function AppContent() {
                 <Route path="/firebase-setup" element={
                   <ProtectedRoute>
                     <FirebaseSetup />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery/breathing" element={
+                  <ProtectedRoute>
+                    <BreathingPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery/stretching" element={
+                  <ProtectedRoute>
+                    <StretchingPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery/muscle-recovery" element={
+                  <ProtectedRoute>
+                    <MuscleRecoveryPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery/sleep" element={
+                  <ProtectedRoute>
+                    <SleepPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/recovery/yoga" element={
+                  <ProtectedRoute>
+                    <YogaPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/security-logs" element={

@@ -128,6 +128,16 @@ const RecoveryCenter = () => {
                 onClick={() => {
                   if (option.id === 'guided-meditation') {
                     navigate('/guided-meditation');
+                  } else if (option.id === 'breathing-exercises') {
+                    navigate('/recovery/breathing');
+                  } else if (option.id === 'stretching-routines') {
+                    navigate('/recovery/stretching');
+                  } else if (option.id === 'muscle-recovery') {
+                    navigate('/recovery/muscle-recovery');
+                  } else if (option.id === 'sleep-preparation') {
+                    navigate('/recovery/sleep');
+                  } else if (option.id === 'yoga-flows') {
+                    navigate('/recovery/yoga');
                   }
                 }}
                 className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${option.gradient} p-6 border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 animate-fade-in cursor-pointer`}
