@@ -105,7 +105,7 @@ const RecoveryCenter = () => {
             size="sm"
             className="absolute top-4 right-4 hover:bg-accent/50 transition-colors"
           >
-            📊 Analytics
+            Analytics
           </Button>
         </div>
       </div>
