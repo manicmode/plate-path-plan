@@ -216,6 +216,15 @@ export default function MyReportsPage() {
             <ArrowLeft className="h-5 w-5" />
             Back
           </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/recovery-analytics')}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-2 border-purple-200 dark:border-purple-800 hover:bg-gradient-to-r hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/30 dark:hover:to-blue-900/30 text-purple-700 dark:text-purple-300 transition-all duration-200 shadow-sm hover:shadow-md"
+          >
+            🧘 Recovery Analytics
+          </Button>
         </div>
 
         {/* Custom Header */}

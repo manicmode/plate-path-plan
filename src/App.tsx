@@ -40,6 +40,7 @@ const MuscleRecoveryPage = lazy(() => import('@/pages/recovery/MuscleRecoveryPag
 const SleepPage = lazy(() => import('@/pages/recovery/SleepPage'));
 const YogaPage = lazy(() => import('@/pages/recovery/YogaPage'));
 const RecoveryAnalytics = lazy(() => import('@/pages/RecoveryAnalytics'));
+const RecoveryAnalyticsPage = lazy(() => import('@/pages/RecoveryAnalyticsPage'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
@@ -274,7 +275,7 @@ function AppContent() {
                 } />
                 <Route path="/recovery-analytics" element={
                   <ProtectedRoute>
-                    <RecoveryAnalytics />
+                    <RecoveryAnalyticsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/security-logs" element={
