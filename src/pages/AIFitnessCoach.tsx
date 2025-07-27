@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -468,6 +468,19 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* New Routine Button */}
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className="p-6">
+            <Button
+              onClick={() => navigate('/exercise-hub')}
+              className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              New Routine
+            </Button>
           </CardContent>
         </Card>
 

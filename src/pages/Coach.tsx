@@ -7,8 +7,7 @@ import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap, AlertCircle, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Send, Bot, User, Loader2, Brain, Save, Copy, Trash2, Heart, ChefHat, Zap, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
@@ -27,7 +26,6 @@ const Coach = () => {
   const { user } = useAuth();
   const { getTodaysProgress, currentDay } = useNutrition();
   const { recordCoachInteraction } = useNotification();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isLowMemory, storageAvailable, optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
@@ -504,19 +502,6 @@ const Coach = () => {
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* New Routine Button */}
-      <Card className="glass-card border-0 rounded-3xl">
-        <CardContent className="p-6">
-          <Button
-            onClick={() => navigate('/exercise-hub')}
-            className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            New Routine
-          </Button>
         </CardContent>
       </Card>
 
