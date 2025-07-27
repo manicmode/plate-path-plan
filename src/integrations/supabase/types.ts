@@ -1153,6 +1153,42 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_reminders: {
+        Row: {
+          content_id: string | null
+          content_type: string
+          created_at: string | null
+          id: string
+          reminder_time: string
+          repeat_pattern: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content_id?: string | null
+          content_type: string
+          created_at?: string | null
+          id?: string
+          reminder_time: string
+          repeat_pattern?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content_id?: string | null
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          reminder_time?: string
+          repeat_pattern?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reminder_logs: {
         Row: {
           id: string
