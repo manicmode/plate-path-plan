@@ -725,31 +725,34 @@ const ExerciseHub = () => {
         </button>
       </div>
 
-      {/* Add Workout Button */}
-      <Card className="w-full shadow-lg border-border bg-card mb-2">
-        <CardContent className="p-6">
-          <Button
-            onClick={() => setIsAddWorkoutModalOpen(true)}
-            className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Add Workout
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Action Buttons Group - Tightly Spaced */}
+      <div className="space-y-1">
+        {/* Add Workout Button */}
+        <Card className="w-full shadow-lg border-border bg-card">
+          <CardContent className="p-6">
+            <Button
+              onClick={() => setIsAddWorkoutModalOpen(true)}
+              className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Add Workout
+            </Button>
+          </CardContent>
+        </Card>
 
-      {/* New Routine Button */}
-      <Card className="w-full shadow-lg border-border bg-card mb-4">
-        <CardContent className="p-6">
-          <Button
-            onClick={() => setIsCreateRoutineModalOpen(true)}
-            className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            New Routine
-          </Button>
-        </CardContent>
-      </Card>
+        {/* New Routine Button */}
+        <Card className="w-full shadow-lg border-border bg-card mb-6">
+          <CardContent className="p-6">
+            <Button
+              onClick={() => setIsCreateRoutineModalOpen(true)}
+              className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              New Routine
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Tab Navigation */}
       <div className="mb-6">
