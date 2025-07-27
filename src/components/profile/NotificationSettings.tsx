@@ -282,7 +282,39 @@ export const NotificationSettings = () => {
                       {description}
                     </div>
                   </div>
+          </div>
+
+          {/* Sleep Nudges */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Moon className="mr-2 h-5 w-5 text-blue-400" />
+              Sleep Nudges
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-white">🌙 Sleep Nudges</p>
+                  <p className="text-sm text-white/70">Get gentle reminders for wind-down routines</p>
                 </div>
+                <Switch
+                  checked={sleepNudges}
+                  onCheckedChange={setSleepNudges}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-white">💤 Smart Sleep Nudges</p>
+                  <p className="text-sm text-white/70">AI-powered sleep preparation suggestions</p>
+                </div>
+                <Switch
+                  checked={smartSleepNudges}
+                  onCheckedChange={setSmartSleepNudges}
+                />
+              </div>
+            </div>
+          </div>
                 <Switch
                   checked={nudgePreferences?.[setting] ?? true}
                   onCheckedChange={(value) => handleMeditationToggle(setting, value)}

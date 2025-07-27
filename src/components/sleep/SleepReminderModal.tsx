@@ -1,143 +1,78 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Moon, CalendarDays } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Moon, Star, Clock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SleepReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  reminder?: {
-    id: string;
-    time_of_day: string;
-    recurrence: string;
-  } | null;
 }
 
-export const SleepReminderModal = ({ isOpen, onClose, reminder }: SleepReminderModalProps) => {
-  const [reminderTime, setReminderTime] = useState('21:30');
+export const SleepReminderModal: React.FC<SleepReminderModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
+  const [timeOfDay, setTimeOfDay] = useState('21:30');
   const [recurrence, setRecurrence] = useState('daily');
-  const [customDays, setCustomDays] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const dayOptions = [
-    { value: 'monday', label: 'Monday' },
-    { value: 'tuesday', label: 'Tuesday' },
-    { value: 'wednesday', label: 'Wednesday' },
-    { value: 'thursday', label: 'Thursday' },
-    { value: 'friday', label: 'Friday' },
-    { value: 'saturday', label: 'Saturday' },
-    { value: 'sunday', label: 'Sunday' }
-  ];
-
   useEffect(() => {
-    if (reminder) {
-      setReminderTime(reminder.time_of_day);
-      setRecurrence(reminder.recurrence);
-      
-      if (reminder.recurrence === 'custom') {
-        setCustomDays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
-      } else if (reminder.recurrence === 'weekdays') {
-        setCustomDays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
-      } else if (reminder.recurrence === 'weekends') {
-        setCustomDays(['saturday', 'sunday']);
-      }
-    } else {
-      setReminderTime('21:30');
-      setRecurrence('daily');
-      setCustomDays([]);
-    }
-  }, [reminder, isOpen]);
+    if (isOpen) {
+      const loadExistingReminder = async () => {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) return;
 
-  const handleRecurrenceChange = (value: string) => {
-    setRecurrence(value);
-    if (value === 'weekdays') {
-      setCustomDays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
-    } else if (value === 'weekends') {
-      setCustomDays(['saturday', 'sunday']);
-    } else if (value === 'daily') {
-      setCustomDays([]);
-    }
-  };
+        const { data } = await supabase
+          .from('sleep_reminders')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .maybeSingle();
 
-  const handleCustomDayToggle = (day: string) => {
-    setCustomDays(prev => 
-      prev.includes(day) 
-        ? prev.filter(d => d !== day)
-        : [...prev, day]
-    );
-  };
+        if (data) {
+          setTimeOfDay(data.time_of_day);
+          setRecurrence(data.recurrence);
+        }
+      };
+
+      loadExistingReminder();
+    }
+  }, [isOpen]);
 
   const handleSave = async () => {
-    if (!reminderTime) {
-      toast({
-        title: "Error",
-        description: "Please select a reminder time",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (recurrence === 'custom' && customDays.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one day for custom recurrence",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
 
-      const reminderData = {
-        user_id: user.id,
-        time_of_day: reminderTime,
-        recurrence: recurrence
-      };
-
-      if (reminder) {
-        // Update existing reminder
-        const { error } = await supabase
-          .from('sleep_reminders')
-          .update(reminderData)
-          .eq('id', reminder.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: "Sleep reminder updated successfully"
+      const { error } = await supabase
+        .from('sleep_reminders')
+        .upsert({
+          user_id: user.user.id,
+          time_of_day: timeOfDay,
+          recurrence: recurrence,
         });
-      } else {
-        // Create new reminder
-        const { error } = await supabase
-          .from('sleep_reminders')
-          .upsert(reminderData, { onConflict: 'user_id' });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Success",
-          description: "Sleep reminder created successfully"
-        });
-      }
+      toast({
+        title: "Sleep reminder set! 🌙",
+        description: `You'll be reminded at ${timeOfDay} ${recurrence}`,
+      });
 
       onClose();
     } catch (error) {
       console.error('Error saving sleep reminder:', error);
       toast({
         title: "Error",
-        description: "Failed to save sleep reminder. Please try again.",
-        variant: "destructive"
+        description: "Failed to save sleep reminder",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -146,84 +81,73 @@ export const SleepReminderModal = ({ isOpen, onClose, reminder }: SleepReminderM
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Moon className="h-5 w-5 text-indigo-600" />
-            {reminder ? 'Edit Sleep Reminder' : 'Set Sleep Reminder'}
+      <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 border-blue-800/50 text-white">
+        <DialogHeader className="space-y-4">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="p-3 rounded-full bg-blue-800/30 backdrop-blur-sm">
+              <Moon className="h-6 w-6 text-blue-300" />
+            </div>
+            <Star className="h-4 w-4 text-yellow-300 animate-pulse" />
+          </div>
+          <DialogTitle className="text-center text-xl font-semibold text-blue-100">
+            Sleep Preparation Reminder
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Time Selection */}
           <div className="space-y-2">
-            <Label htmlFor="reminder-time">Sleep Preparation Time</Label>
-            <Input
-              id="reminder-time"
-              type="time"
-              value={reminderTime}
-              onChange={(e) => setReminderTime(e.target.value)}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Choose when you'd like to start winding down for sleep
-            </p>
-          </div>
-
-          {/* Recurrence Selection */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Recurrence
+            <Label htmlFor="time" className="text-blue-200 flex items-center space-x-2">
+              <Clock className="h-4 w-4" />
+              <span>Reminder Time</span>
             </Label>
-            
-            <div className="space-y-2">
-              {['daily', 'weekdays', 'weekends', 'custom'].map((option) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={option}
-                    checked={recurrence === option}
-                    onCheckedChange={() => handleRecurrenceChange(option)}
-                  />
-                  <Label htmlFor={option} className="capitalize cursor-pointer">
-                    {option === 'weekdays' ? 'Weekdays (Mon-Fri)' : 
-                     option === 'weekends' ? 'Weekends (Sat-Sun)' : 
-                     option === 'custom' ? 'Custom Days' : 'Daily'}
-                  </Label>
-                </div>
-              ))}
-            </div>
-
-            {/* Custom Days Selection */}
-            {recurrence === 'custom' && (
-              <div className="ml-6 space-y-2">
-                <Label className="text-sm text-muted-foreground">Select Days:</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {dayOptions.map((day) => (
-                    <div key={day.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={day.value}
-                        checked={customDays.includes(day.value)}
-                        onCheckedChange={() => handleCustomDayToggle(day.value)}
-                      />
-                      <Label htmlFor={day.value} className="text-sm cursor-pointer">
-                        {day.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <Input
+              id="time"
+              type="time"
+              value={timeOfDay}
+              onChange={(e) => setTimeOfDay(e.target.value)}
+              className="bg-blue-950/50 border-blue-700/50 text-blue-100 focus:border-blue-500"
+            />
           </div>
-        </div>
 
-        <div className="flex gap-3 pt-4">
-          <Button variant="outline" onClick={onClose} className="flex-1">
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isLoading} className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700">
-            {isLoading ? 'Saving...' : reminder ? 'Update Reminder' : 'Set Reminder'}
-          </Button>
+          <div className="space-y-2">
+            <Label className="text-blue-200">Recurrence</Label>
+            <Select value={recurrence} onValueChange={setRecurrence}>
+              <SelectTrigger className="bg-blue-950/50 border-blue-700/50 text-blue-100">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-blue-950 border-blue-700/50">
+                <SelectItem value="daily" className="text-blue-100 focus:bg-blue-800/50">
+                  Every day
+                </SelectItem>
+                <SelectItem value="weekdays" className="text-blue-100 focus:bg-blue-800/50">
+                  Weekdays only
+                </SelectItem>
+                <SelectItem value="weekends" className="text-blue-100 focus:bg-blue-800/50">
+                  Weekends only
+                </SelectItem>
+                <SelectItem value="custom" className="text-blue-100 focus:bg-blue-800/50">
+                  Custom schedule
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <Button 
+              onClick={onClose} 
+              variant="outline" 
+              className="flex-1 border-blue-700/50 text-blue-200 hover:bg-blue-800/30"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave}
+              disabled={isLoading}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+            >
+              {isLoading ? 'Setting...' : 'Set Reminder'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

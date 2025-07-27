@@ -1,118 +1,85 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { Moon, Sparkles, Calendar, ArrowRight } from 'lucide-react'
-import { useSleepNudgeDisplay } from '@/hooks/useSleepNudgeDisplay'
-import { formatDistanceToNow } from 'date-fns'
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Moon, Star, ChevronRight } from 'lucide-react';
+import { useSleepNudgeDisplay } from '@/hooks/useSleepNudgeDisplay';
+import { useNavigate } from 'react-router-dom';
 
 interface AISleepNudgeChatEntriesProps {
-  maxEntries?: number
-  showOnlyRecent?: boolean
+  maxEntries?: number;
+  showOnlyRecent?: boolean;
 }
 
 export const AISleepNudgeChatEntries: React.FC<AISleepNudgeChatEntriesProps> = ({
   maxEntries = 5,
-  showOnlyRecent = true
+  showOnlyRecent = false
 }) => {
-  const navigate = useNavigate()
-  const { recentNudges, acceptNudge } = useSleepNudgeDisplay()
+  const { visibleNudges, handleDismissNudge, handleAcceptNudge } = useSleepNudgeDisplay({
+    showOnlyRecent,
+    maxEntries
+  });
+  const navigate = useNavigate();
 
-  // Filter nudges for AI coach feed
-  const filteredNudges = recentNudges
-    .filter(nudge => {
-      if (showOnlyRecent) {
-        const nudgeAge = Date.now() - new Date(nudge.created_at).getTime()
-        return nudgeAge < 3 * 24 * 60 * 60 * 1000 // Last 3 days
-      }
-      return true
-    })
-    .filter(nudge => nudge.nudge_type === 'ai_coach' || nudge.nudge_type === 'smart_nudge')
-    .slice(0, maxEntries)
-
-  if (filteredNudges.length === 0) return null
-
-  const handleNudgeAccept = async (nudgeId: string) => {
-    await acceptNudge(nudgeId)
-    navigate('/recovery/sleep-preparation')
-  }
-
-  const getNudgeIcon = (nudgeType: string) => {
-    switch (nudgeType) {
-      case 'ai_coach':
-        return <Moon className="h-4 w-4 text-indigo-500" />
-      case 'smart_nudge':
-        return <Sparkles className="h-4 w-4 text-violet-500" />
-      default:
-        return <Moon className="h-4 w-4 text-indigo-500" />
+  const handleStartSleepPrep = async (nudgeId: string) => {
+    try {
+      await handleAcceptNudge(nudgeId);
+      navigate('/exercise-hub?tab=recovery&recovery-tab=sleep');
+    } catch (error) {
+      console.error('Error handling sleep nudge acceptance:', error);
     }
-  }
+  };
 
-  const formatNudgeMessage = (message: string, nudgeType: string) => {
-    // Add some personality based on nudge type
-    const prefix = nudgeType === 'ai_coach' ? '😴 ' : '✨ '
-    return `${prefix}${message}`
+  if (visibleNudges.length === 0) {
+    return null;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center space-x-2 mb-3">
-        <Sparkles className="h-4 w-4 text-indigo-500" />
-        <span className="text-sm font-medium text-muted-foreground">
-          Recent Sleep Suggestions
-        </span>
-      </div>
-
-      {filteredNudges.map((nudge) => (
-        <div
-          key={nudge.id}
-          className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
-            nudge.user_action === 'pending'
-              ? 'bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border-indigo-200 dark:border-indigo-800'
-              : 'bg-muted/50 border-border/50 opacity-75'
-          }`}
-        >
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 mt-1">
-              {getNudgeIcon(nudge.nudge_type)}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {nudge.nudge_type === 'ai_coach' ? 'AI Coach' : 'Smart Nudge'}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(nudge.created_at), { addSuffix: true })}
-                </span>
+    <div className="space-y-3">
+      {visibleNudges.map((nudge) => (
+        <Card key={nudge.id} className="glass-card border-violet-200/20 bg-gradient-to-r from-slate-900/40 via-blue-900/30 to-indigo-900/40">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="p-2 rounded-full bg-blue-800/30 backdrop-blur-sm">
+                  <Moon className="h-4 w-4 text-blue-300" />
+                </div>
               </div>
               
-              <p className="text-sm text-foreground mb-3 leading-relaxed">
-                {formatNudgeMessage(nudge.nudge_message, nudge.nudge_type)}
-              </p>
-              
-              {nudge.user_action === 'pending' && (
-                <div className="flex space-x-2">
+              <div className="flex-1 min-w-0 space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Star className="h-3 w-3 text-yellow-300" />
+                  <p className="text-sm font-medium text-blue-100">Sleep Wellness Nudge</p>
+                </div>
+                
+                <p className="text-sm text-blue-200/90 leading-relaxed">
+                  {nudge.nudge_message}
+                </p>
+                
+                <div className="flex items-center space-x-2 pt-1">
                   <Button
-                    onClick={() => handleNudgeAccept(nudge.id)}
+                    onClick={() => handleStartSleepPrep(nudge.id)}
                     size="sm"
-                    className="text-xs h-7 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full text-xs px-3"
                   >
-                    Wind Down
-                    <ArrowRight className="h-3 w-3 ml-1" />
+                    <Moon className="h-3 w-3 mr-1" />
+                    Start Wind-Down
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleDismissNudge(nudge.id)}
+                    size="sm"
+                    variant="ghost"
+                    className="text-blue-300/70 hover:text-blue-200 hover:bg-blue-800/20 rounded-full text-xs px-3"
+                  >
+                    Maybe later
                   </Button>
                 </div>
-              )}
-              
-              {nudge.user_action === 'accepted' && (
-                <div className="flex items-center space-x-1 text-xs text-green-600">
-                  <Calendar className="h-3 w-3" />
-                  <span>Completed</span>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
-  )
-}
+  );
+};

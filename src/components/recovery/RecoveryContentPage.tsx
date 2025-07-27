@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Sparkles, Bell, Plus, Clock, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Bell, Plus, Clock, Edit, Trash2, Moon } from "lucide-react";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -558,6 +559,32 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                 <SleepTestButton />
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="sleep" className="space-y-6">
+            <div className="space-y-6">
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Sleep Preparation Reminder</h3>
+                      <p className="text-white/70 text-sm">Set your wind-down time for better sleep</p>
+                    </div>
+                    <Button 
+                      onClick={() => setShowSleepReminderModal(true)}
+                      className="bg-gradient-to-r from-slate-700 via-blue-800 to-indigo-800 hover:from-slate-600 hover:via-blue-700 hover:to-indigo-700 text-white"
+                    >
+                      <Moon className="mr-2 h-4 w-4" />
+                      Set Reminder
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <SleepStreakDisplay />
+
+              <SleepTestButton />
+            </div>
           </TabsContent>
 
           <TabsContent value="reminders" className="space-y-6">
