@@ -8,6 +8,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { CreateRoutineModal } from '@/components/CreateRoutineModal';
+import { AIWorkoutRoutineConfigModal } from '@/components/AIWorkoutRoutineConfigModal';
 import { RoutineCard } from '@/components/RoutineCard';
 import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
@@ -27,6 +28,7 @@ const ExerciseHub = () => {
   const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
+  const [isAIRoutineModalOpen, setIsAIRoutineModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
   const [originRoute, setOriginRoute] = useState<string>('/explore');
   const [dateFilter, setDateFilter] = useState('30d');
@@ -922,6 +924,24 @@ const ExerciseHub = () => {
                       <p className="text-muted-foreground">Custom workout plans tailored for you</p>
                     </div>
 
+                    {/* Create Routine Buttons */}
+                    <div className="flex gap-3 mb-6">
+                      <Button
+                        onClick={() => setIsCreateRoutineModalOpen(true)}
+                        className="flex-1 bg-primary hover:bg-primary/90"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Custom Routine
+                      </Button>
+                      <Button
+                        onClick={() => setIsAIRoutineModalOpen(true)}
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
+                      >
+                        <Activity className="mr-2 h-4 w-4" />
+                        AI Generate Routine
+                      </Button>
+                    </div>
+
                     {/* Routines Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {mockRoutines.map((routine) => (
@@ -937,23 +957,32 @@ const ExerciseHub = () => {
                       ))}
                     </div>
 
-                    {/* Empty State (if no routines) */}
-                    {mockRoutines.length === 0 && (
-                       <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
-                        <CardContent className="p-8 text-center">
-                          <div className="text-4xl mb-4">🧠</div>
-                          <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
-                          <p className="text-muted-foreground mb-6">Create your first custom workout routine!</p>
-                          <Button
-                            onClick={() => setIsCreateRoutineModalOpen(true)}
-                            className="bg-gradient-to-r from-purple-400 to-pink-600 hover:from-purple-500 hover:to-pink-700 text-white"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Your First Routine
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    )}
+                     {/* Empty State (if no routines) */}
+                     {mockRoutines.length === 0 && (
+                        <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
+                         <CardContent className="p-8 text-center">
+                           <div className="text-4xl mb-4">🧠</div>
+                           <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
+                           <p className="text-muted-foreground mb-6">Create your first custom workout routine or let AI design one for you!</p>
+                           <div className="flex gap-3 justify-center">
+                             <Button
+                               onClick={() => setIsCreateRoutineModalOpen(true)}
+                               className="bg-primary hover:bg-primary/90"
+                             >
+                               <Plus className="mr-2 h-4 w-4" />
+                               Create Custom
+                             </Button>
+                             <Button
+                               onClick={() => setIsAIRoutineModalOpen(true)}
+                               className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
+                             >
+                               <Activity className="mr-2 h-4 w-4" />
+                               AI Generate
+                             </Button>
+                           </div>
+                         </CardContent>
+                       </Card>
+                     )}
                   </div>
                 ) : tab.id === 'progress-reports' ? (
                   /* Progress & Reports Tab - Enhanced */
@@ -1371,6 +1400,16 @@ const ExerciseHub = () => {
         }}
         onSave={handleSaveRoutine}
         editingRoutine={editingRoutine}
+      />
+
+      {/* AI Routine Generator Modal */}
+      <AIWorkoutRoutineConfigModal
+        isOpen={isAIRoutineModalOpen}
+        onClose={() => setIsAIRoutineModalOpen(false)}
+        onRoutineCreated={(routine) => {
+          console.log('AI Routine created:', routine);
+          // Optionally refresh the routines list or navigate
+        }}
       />
     </div>
   );

@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_routines: {
+        Row: {
+          created_at: string
+          current_day_in_week: number | null
+          current_week: number | null
+          days_per_week: number
+          equipment_needed: string[]
+          estimated_duration_minutes: number
+          fitness_level: string
+          id: string
+          is_active: boolean | null
+          locked_days: Json | null
+          routine_data: Json
+          routine_goal: string
+          routine_name: string
+          split_type: string
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_day_in_week?: number | null
+          current_week?: number | null
+          days_per_week: number
+          equipment_needed?: string[]
+          estimated_duration_minutes: number
+          fitness_level: string
+          id?: string
+          is_active?: boolean | null
+          locked_days?: Json | null
+          routine_data: Json
+          routine_goal: string
+          routine_name: string
+          split_type: string
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_day_in_week?: number | null
+          current_week?: number | null
+          days_per_week?: number
+          equipment_needed?: string[]
+          estimated_duration_minutes?: number
+          fitness_level?: string
+          id?: string
+          is_active?: boolean | null
+          locked_days?: Json | null
+          routine_data?: Json
+          routine_goal?: string
+          routine_name?: string
+          split_type?: string
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           created_at: string
