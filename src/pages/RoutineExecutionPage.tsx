@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRoutineExecution } from '@/hooks/useRoutineExecution';
 import { cn } from '@/lib/utils';
+import { AICoachFeedback } from '@/components/routine/AICoachFeedback';
 
 const RoutineExecutionPage = () => {
   const navigate = useNavigate();
@@ -344,9 +345,9 @@ const RoutineExecutionPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Completion Dialog */}
+      {/* Completion Dialog with AI Feedback */}
       <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center">🎉 Workout Complete!</DialogTitle>
             <DialogDescription className="text-center">
@@ -362,6 +363,16 @@ const RoutineExecutionPage = () => {
               </p>
             </div>
           </div>
+          
+          {/* AI Coach Feedback Section */}
+          <AICoachFeedback 
+            routineName={routine?.title}
+            duration={Math.floor(steps.reduce((acc, step) => acc + (step.duration || 0), 0) / 60)}
+            categories={['strength']}
+            completedSteps={steps.map(step => step.title)}
+            skippedSteps={[]}
+          />
+          
           <DialogFooter className="flex-col sm:flex-col gap-2">
             <Button 
               className="w-full bg-primary hover:bg-primary/90"

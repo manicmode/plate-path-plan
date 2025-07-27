@@ -277,7 +277,8 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
         const totalDuration = steps.reduce((acc, step) => acc + (step.duration || 0), 0);
         const estimatedCalories = Math.round(totalDuration * 0.15); // Rough estimate
         
-        const { error } = await supabase
+        // Log to exercise_logs
+        const { error: exerciseError } = await supabase
           .from('exercise_logs')
           .insert({
             user_id: user.id,
@@ -285,12 +286,54 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
             duration_minutes: Math.round(totalDuration / 60),
             calories_burned: estimatedCalories,
             intensity_level: 'moderate',
-            // Store additional data in a JSON column if available, or we'll add it as separate fields later
           });
           
-        if (error) {
-          console.error('Error logging workout:', error);
-        } else {
+        if (exerciseError) {
+          console.error('Error logging exercise:', exerciseError);
+        }
+
+        // Log to routine history
+        const { error: historyError } = await supabase
+          .from('routine_history')
+          .insert({
+            user_id: user.id,
+            routine_id: routineId,
+            duration_minutes: Math.round(totalDuration / 60),
+            completed_steps: completedSteps,
+            skipped_steps: [], // No skipped steps in current implementation
+            completion_score: 100, // Full completion
+          });
+
+        if (historyError) {
+          console.error('Error logging routine history:', historyError);
+        }
+
+        // Generate AI coach feedback
+        try {
+          const { data: feedbackData } = await supabase.functions.invoke('routine-coach-feedback', {
+            body: {
+              routineName: routine.title,
+              duration: Math.round(totalDuration / 60),
+              categories: ['strength'], // Based on routine type
+              completedSteps: completedSteps,
+              skippedSteps: []
+            }
+          });
+
+          // Store feedback in routine history if generated
+          if (feedbackData?.feedback) {
+            await supabase
+              .from('routine_history')
+              .update({ ai_feedback: feedbackData.feedback })
+              .eq('user_id', user.id)
+              .eq('routine_id', routineId)
+              .eq('date_completed', new Date().toISOString().split('T')[0]);
+          }
+        } catch (feedbackError) {
+          console.error('Error generating AI feedback:', feedbackError);
+        }
+
+        if (!exerciseError && !historyError) {
           toast.success("🎉 Workout logged successfully!", {
             description: `${completedSteps.length} steps completed in ${Math.round(totalDuration / 60)} minutes`
           });
@@ -303,7 +346,7 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
     if (onComplete) {
       onComplete();
     }
-  }, [user, routine, steps, playGoalHit, onComplete]);
+  }, [user, routine, steps, completedSteps, routineId, playGoalHit, onComplete]);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);

@@ -1587,6 +1587,48 @@ export type Database = {
         }
         Relationships: []
       }
+      routine_history: {
+        Row: {
+          ai_feedback: string | null
+          completed_steps: string[]
+          completion_score: number | null
+          created_at: string
+          date_completed: string
+          duration_minutes: number
+          id: string
+          routine_id: string
+          skipped_steps: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_feedback?: string | null
+          completed_steps?: string[]
+          completion_score?: number | null
+          created_at?: string
+          date_completed?: string
+          duration_minutes: number
+          id?: string
+          routine_id: string
+          skipped_steps?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_feedback?: string | null
+          completed_steps?: string[]
+          completion_score?: number | null
+          created_at?: string
+          date_completed?: string
+          duration_minutes?: number
+          id?: string
+          routine_id?: string
+          skipped_steps?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string

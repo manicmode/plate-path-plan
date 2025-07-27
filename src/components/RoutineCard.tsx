@@ -1,9 +1,10 @@
-import React from 'react';
-import { Edit, Copy, Calendar, Clock, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit, Copy, Calendar, Clock, Play, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import { RoutineHistoryModal } from '@/components/routine/RoutineHistoryModal';
 
 interface RoutineCardProps {
   routine: {
@@ -26,6 +27,7 @@ interface RoutineCardProps {
 
 export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) {
   const navigate = useNavigate();
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   
   const getActiveDays = () => {
     return Object.entries(routine.weeklyPlan).filter(([_, exercises]) => exercises.trim().length > 0);
@@ -117,6 +119,15 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
               </div>
             </div>
             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <Button
+                size="icon"
+                variant="secondary"
+                onClick={() => setShowHistoryModal(true)}
+                className="h-8 w-8 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                title="View History"
+              >
+                <History className="h-4 w-4" />
+              </Button>
               <Button
                 size="icon"
                 variant="secondary"
@@ -224,6 +235,14 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
           )}
         </div>
       </CardContent>
+      
+      {/* Routine History Modal */}
+      <RoutineHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        routineId={routine.id.toString()}
+        routineName={routine.title}
+      />
     </Card>
   );
 }
