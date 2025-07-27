@@ -726,10 +726,10 @@ const ExerciseHub = () => {
       </div>
 
       {/* Action Buttons Group - Tightly Spaced */}
-      <div className="space-y-2 mb-6">
+      <div className="space-y-1 mb-6">
         {/* Add Workout Button */}
         <Card className="w-full shadow-lg border-border bg-card">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <Button
               onClick={() => setIsAddWorkoutModalOpen(true)}
               className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
@@ -742,7 +742,7 @@ const ExerciseHub = () => {
 
         {/* New Routine Button */}
         <Card className="w-full shadow-lg border-border bg-card">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <Button
               onClick={() => setIsCreateRoutineModalOpen(true)}
               className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
@@ -806,19 +806,6 @@ const ExerciseHub = () => {
                       <h2 className="text-2xl font-bold text-foreground mb-2">Workout History</h2>
                       <p className="text-muted-foreground">Your complete fitness journey</p>
                     </div>
-
-                    {/* Add Workout Button at Top */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-4">
-                        <Button
-                          onClick={() => setIsAddWorkoutModalOpen(true)}
-                          className="w-full h-12 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add Workout
-                        </Button>
-                      </CardContent>
-                    </Card>
 
                     {/* Workout Entries */}
                     <div className="space-y-4">
