@@ -140,6 +140,26 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     }
   };
 
+  // Fetch thermotherapy reminder for cold-heat-therapy category
+  const fetchThermotherapyReminder = async () => {
+    if (category !== 'cold-heat-therapy') return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('thermotherapy_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+    } catch (error) {
+      console.error('Error fetching thermotherapy reminder:', error);
+    }
+  };
+
   const handleRemoveBreathingReminder = async () => {
     try {
       const { error } = await supabase
@@ -193,6 +213,7 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     fetchBreathingReminder();
     fetchYogaReminder();
     fetchSleepReminder();
+    fetchThermotherapyReminder();
   }, [category]);
 
   // Handle reminder save
@@ -561,6 +582,42 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                 
                 {/* Test Session Button */}
                 <SleepTestButton />
+              </div>
+            )}
+
+            {/* Thermotherapy Reminder Display - only for cold-heat-therapy category */}
+            {category === 'cold-heat-therapy' && (
+              <div className="mt-8 space-y-4">
+                <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 via-white to-red-50 dark:from-blue-900/20 dark:via-gray-900/20 dark:to-red-900/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-5 w-5 bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground">Cold & Heat Therapy Reminder</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Set a daily reminder for contrast therapy sessions
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsThermotherapyReminderModalOpen(true)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-red-50 hover:from-blue-100 hover:to-red-100 dark:from-blue-900/20 dark:to-red-900/20"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Set Reminder
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Thermotherapy Streak Display */}
+                <ThermotherapyStreakDisplay />
+                
+                {/* Test Session Button */}
+                <ThermotherapyTestButton />
               </div>
             )}
           </TabsContent>

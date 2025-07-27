@@ -542,6 +542,13 @@ const Coach = () => {
         </CardContent>
       </Card>
 
+      {/* Thermotherapy Nudges Section */}
+      <Card className="glass-card border-0 rounded-3xl">
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+          <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+        </CardContent>
+      </Card>
+
       {/* Quick Questions - Separate Card */}
       <Card className="glass-card border-0 rounded-3xl">
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
