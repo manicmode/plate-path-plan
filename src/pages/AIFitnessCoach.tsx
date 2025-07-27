@@ -511,6 +511,8 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           <CardContent className="p-6">
             <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
           </CardContent>
+        </Card>
+
         {/* Sleep Nudges Section */}
         <Card className="glass-card border-0 rounded-3xl">
           <CardContent className="p-6">

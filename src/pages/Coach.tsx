@@ -532,6 +532,8 @@ const Coach = () => {
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
         </CardContent>
+      </Card>
+
       {/* Sleep Nudges Section */}
       <Card className="glass-card border-0 rounded-3xl">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
