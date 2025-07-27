@@ -437,11 +437,7 @@ const GuidedMeditation = () => {
 
   // Handle session start from modal
   const handleStartSession = (session: any) => {
-    setCurrentSession(session);
-    setSelectedTheme(session.category);
-    setIsInPlayback(true);
-    setProgress(0);
-    setIsSessionComplete(false);
+    navigate('/recovery-player', { state: { session } });
   };
 
   const handleBackFromPlayback = () => {

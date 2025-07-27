@@ -25,15 +25,15 @@ interface SessionData {
   id: string;
 }
 
-const MeditationPlayer = () => {
+const RecoveryPlayer = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   
   // Get session data from navigation state
-  const sessionData: SessionData = location.state?.sessionData || {
-    title: "Meditation Session",
-    description: "A peaceful meditation session",
+  const sessionData: SessionData = location.state?.session || {
+    title: "Recovery Session",
+    description: "A peaceful recovery session",
     duration: 10,
     audio_url: "",
     category: "general",
@@ -61,8 +61,44 @@ const MeditationPlayer = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Update meditation streak
+  // Category metadata
+  const CATEGORY_META = {
+    // Meditation categories (has streak)
+    'morning-boost': { emoji: '🌅', color: 'from-orange-400 to-yellow-400', hasStreak: true },
+    'sleep-wind-down': { emoji: '🌙', color: 'from-indigo-400 to-purple-400', hasStreak: true },
+    'focus-clarity': { emoji: '🧠', color: 'from-blue-400 to-cyan-400', hasStreak: true },
+    'self-love': { emoji: '💞', color: 'from-pink-400 to-rose-400', hasStreak: true },
+    'anxiety-relief': { emoji: '🌿', color: 'from-green-400 to-emerald-400', hasStreak: true },
+    'gratitude': { emoji: '🙏', color: 'from-amber-400 to-orange-400', hasStreak: true },
+    'deep-healing': { emoji: '🔮', color: 'from-purple-400 to-violet-400', hasStreak: true },
+    'manifestation': { emoji: '🔥', color: 'from-red-400 to-pink-400', hasStreak: true },
+    
+    // Recovery categories (no streak)
+    'breathing': { emoji: '🌬️', color: 'from-teal-400 to-cyan-400', hasStreak: false },
+    'stretching': { emoji: '🧘‍♂️', color: 'from-violet-400 to-purple-400', hasStreak: false },
+    'muscle-recovery': { emoji: '🧪', color: 'from-orange-400 to-red-400', hasStreak: false },
+    'sleep': { emoji: '😴', color: 'from-blue-400 to-indigo-400', hasStreak: false },
+    'yoga': { emoji: '🧎‍♀️', color: 'from-fuchsia-400 to-pink-400', hasStreak: false },
+    
+    // Default
+    'general': { emoji: '🧘‍♀️', color: 'from-primary to-primary-foreground', hasStreak: false }
+  };
+
+  // Update meditation streak (only for meditation categories)
   const updateMeditationStreak = async () => {
+    const categoryMeta = CATEGORY_META[sessionData.category as keyof typeof CATEGORY_META] || CATEGORY_META.general;
+    
+    // Only update streak for meditation categories
+    if (!categoryMeta.hasStreak) {
+      // Show simple completion toast for non-meditation categories
+      toast({
+        title: "✅ Session Complete!",
+        description: `Great work completing your ${sessionData.category} session!`,
+        duration: 3000,
+      });
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -261,7 +297,7 @@ const MeditationPlayer = () => {
       }, 100);
     }
     
-    navigate('/guided-meditation');
+    navigate(-1);
   };
 
   const confirmExit = () => {
@@ -269,20 +305,9 @@ const MeditationPlayer = () => {
     navigateBack();
   };
 
-  // Get category emoji and color
+  // Get category style using CATEGORY_META
   const getCategoryStyle = (category: string) => {
-    const styles = {
-      'morning-boost': { emoji: '🌅', color: 'from-orange-400 to-yellow-400' },
-      'sleep-wind-down': { emoji: '🌙', color: 'from-indigo-400 to-purple-400' },
-      'focus-clarity': { emoji: '🧠', color: 'from-blue-400 to-cyan-400' },
-      'self-love': { emoji: '💞', color: 'from-pink-400 to-rose-400' },
-      'anxiety-relief': { emoji: '🌿', color: 'from-green-400 to-emerald-400' },
-      'gratitude': { emoji: '🙏', color: 'from-amber-400 to-orange-400' },
-      'deep-healing': { emoji: '🔮', color: 'from-purple-400 to-violet-400' },
-      'manifestation': { emoji: '🔥', color: 'from-red-400 to-pink-400' },
-    };
-    
-    return styles[category as keyof typeof styles] || { emoji: '🧘‍♀️', color: 'from-primary to-primary-foreground' };
+    return CATEGORY_META[category as keyof typeof CATEGORY_META] || CATEGORY_META.general;
   };
 
   const categoryStyle = getCategoryStyle(sessionData.category);
@@ -313,7 +338,7 @@ const MeditationPlayer = () => {
               className="w-full gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              Meditate Again
+              Try Again
             </Button>
             
             <Button 
@@ -460,7 +485,7 @@ const MeditationPlayer = () => {
         <div className="text-center">
           <p className="text-white/60">
             {isLoading 
-              ? "Loading meditation..." 
+              ? "Loading session..." 
               : isPlaying 
                 ? "Let the peaceful sounds guide you..." 
                 : "Ready to begin your journey"
@@ -473,9 +498,9 @@ const MeditationPlayer = () => {
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <AlertDialogContent className="bg-slate-800 text-white border-slate-700">
           <AlertDialogHeader>
-            <AlertDialogTitle>Leave Meditation?</AlertDialogTitle>
+            <AlertDialogTitle>Leave Session?</AlertDialogTitle>
             <AlertDialogDescription className="text-white/70">
-              You're in the middle of your meditation session. Are you sure you want to leave? Your progress won't be saved.
+              You're in the middle of your session. Are you sure you want to leave? Your progress won't be saved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -495,4 +520,4 @@ const MeditationPlayer = () => {
   );
 };
 
-export default MeditationPlayer;
+export default RecoveryPlayer;

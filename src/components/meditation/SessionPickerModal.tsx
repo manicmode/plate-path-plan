@@ -125,9 +125,8 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
   };
 
   const handleStartSession = (session: MeditationSession) => {
-    // Store session in sessionStorage for the player
-    sessionStorage.setItem('currentMeditationSession', JSON.stringify(session));
-    navigate('/meditation-player');
+    onStartSession(session);
+    navigate('/recovery-player', { state: { session } });
     onClose();
   };
 

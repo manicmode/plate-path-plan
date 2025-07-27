@@ -317,7 +317,7 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
         onClose={() => setIsSessionPickerOpen(false)}
         theme={selectedThemeForPicker}
         onStartSession={(session) => {
-          navigate('/meditation-player', { 
+          navigate('/recovery-player', { 
             state: { 
               session: {
                 ...session,
