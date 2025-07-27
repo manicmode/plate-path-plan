@@ -19,13 +19,13 @@ const CoachMain = () => {
           >
             <ToggleGroupItem 
               value="nutrition" 
-              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-purple-600 data-[state=on]:text-white data-[state=on]:shadow-sm"
             >
               Nutrition
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="exercise" 
-              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-purple-600 data-[state=on]:text-white data-[state=on]:shadow-sm"
             >
               Exercise
             </ToggleGroupItem>
