@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Sparkles, Play, Pause, Volume2, VolumeX, Star, Heart, Flame } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Sparkles, Play, Pause, Volume2, VolumeX, Star, Heart, Flame, Plus, Bell, BarChart3 } from "lucide-react";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RemindersList } from "@/components/recovery/RemindersList";
+import { AddReminderModal } from "@/components/recovery/AddReminderModal";
 
 const GuidedMeditation = () => {
   useScrollToTop();
@@ -23,6 +26,10 @@ const GuidedMeditation = () => {
     currentStreak: number;
     totalSessions: number;
   }>({ currentStreak: 0, totalSessions: 0 });
+  const [activeTab, setActiveTab] = useState('explore');
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<any>(null);
   const progressInterval = useRef<NodeJS.Timeout>();
 
   const meditationThemes = [
@@ -132,7 +139,161 @@ const GuidedMeditation = () => {
     };
 
     fetchMeditationStreak();
+    fetchReminders();
   }, []);
+
+  // Fetch reminders for meditation
+  const fetchReminders = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('recovery_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('content_type', 'meditation')
+        .order('reminder_time');
+
+      if (error) {
+        console.error('Error fetching reminders:', error);
+        return;
+      }
+
+      setReminders(data || []);
+    } catch (error) {
+      console.error('Error fetching reminders:', error);
+    }
+  };
+
+  // Save reminder (create or update)
+  const handleSaveReminder = async (reminderData: {
+    title: string;
+    reminder_time: string;
+    repeat_pattern: string;
+    content_id?: string;
+  }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (editingReminder) {
+        // Update existing reminder
+        const { error } = await supabase
+          .from('recovery_reminders')
+          .update({
+            title: reminderData.title,
+            reminder_time: reminderData.reminder_time,
+            repeat_pattern: reminderData.repeat_pattern,
+            content_id: reminderData.content_id
+          })
+          .eq('id', editingReminder.id)
+          .eq('user_id', user.id);
+
+        if (!error) {
+          toast({
+            title: "✅ Reminder Updated",
+            description: "Your meditation reminder has been updated successfully.",
+            duration: 3000,
+          });
+          fetchReminders();
+        } else {
+          console.error('Error updating reminder:', error);
+          toast({
+            title: "❌ Update Failed",
+            description: "Failed to update reminder. Please try again.",
+            duration: 3000,
+          });
+        }
+      } else {
+        // Create new reminder
+        const { error } = await supabase
+          .from('recovery_reminders')
+          .insert({
+            user_id: user.id,
+            content_type: 'meditation',
+            title: reminderData.title,
+            reminder_time: reminderData.reminder_time,
+            repeat_pattern: reminderData.repeat_pattern,
+            content_id: reminderData.content_id
+          });
+
+        if (!error) {
+          toast({
+            title: "✅ Reminder Created",
+            description: "Your meditation reminder has been set successfully.",
+            duration: 3000,
+          });
+          fetchReminders();
+        } else {
+          console.error('Error creating reminder:', error);
+          toast({
+            title: "❌ Creation Failed",
+            description: "Failed to create reminder. Please try again.",
+            duration: 3000,
+          });
+        }
+      }
+
+      setEditingReminder(null);
+    } catch (error) {
+      console.error('Error saving reminder:', error);
+      toast({
+        title: "❌ Error",
+        description: "An unexpected error occurred. Please try again.",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Delete reminder
+  const handleDeleteReminder = async (id: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('recovery_reminders')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (!error) {
+        toast({
+          title: "🗑️ Reminder Deleted",
+          description: "Your meditation reminder has been deleted.",
+          duration: 3000,
+        });
+        fetchReminders();
+      } else {
+        console.error('Error deleting reminder:', error);
+        toast({
+          title: "❌ Delete Failed",
+          description: "Failed to delete reminder. Please try again.",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
+      toast({
+        title: "❌ Error",
+        description: "An unexpected error occurred. Please try again.",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Edit reminder
+  const handleEditReminder = (reminder: any) => {
+    setEditingReminder(reminder);
+    setIsReminderModalOpen(true);
+  };
+
+  // Create available sessions for reminder modal
+  const availableSessions = meditationThemes.map(theme => ({
+    id: theme.id,
+    title: theme.title
+  }));
 
   // Update streak when session completes
   const updateMeditationStreak = async () => {
@@ -512,52 +673,183 @@ const GuidedMeditation = () => {
           </div>
         )}
 
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-8 mb-8 border border-border/50">
-          <div className="relative z-10 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-background/50 backdrop-blur-sm rounded-full border border-border/30">
-                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold text-foreground mb-3">
-              Choose Your Journey
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Select a meditation theme that resonates with your current needs. 
-              Each session is designed to guide you toward inner peace and clarity.
-            </p>
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl" />
-        </div>
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="explore" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Explore
+            </TabsTrigger>
+            <TabsTrigger value="progress" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Progress
+            </TabsTrigger>
+            <TabsTrigger value="reminders" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Reminders
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Theme Selector Grid */}
-        <div className={`grid gap-4 mb-8 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
-          {meditationThemes.map((theme, index) => (
-            <div
-              key={theme.id}
-              onClick={() => handleThemeSelect(theme.id)}
-              className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${theme.gradient} p-6 border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 animate-fade-in cursor-pointer hover:scale-105`}
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
+          {/* Explore Tab */}
+          <TabsContent value="explore" className="space-y-6">
+            {/* Hero Section */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-8 border border-border/50">
               <div className="relative z-10 text-center">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">
-                  {theme.emoji}
+                <div className="flex justify-center mb-4">
+                  <div className="p-4 bg-background/50 backdrop-blur-sm rounded-full border border-border/30">
+                    <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
-                  {theme.title}
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  {theme.description}
+                <h2 className="text-3xl font-bold text-foreground mb-3">
+                  Choose Your Journey
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Select a meditation theme that resonates with your current needs. 
+                  Each session is designed to guide you toward inner peace and clarity.
                 </p>
-                <span className="inline-block px-2 py-1 bg-background/70 text-xs rounded-full text-muted-foreground">
-                  {theme.duration}
-                </span>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-br from-background/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl" />
             </div>
-          ))}
-        </div>
+
+            {/* Theme Selector Grid */}
+            <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
+              {meditationThemes.map((theme, index) => (
+                <div
+                  key={theme.id}
+                  onClick={() => handleThemeSelect(theme.id)}
+                  className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${theme.gradient} p-6 border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 animate-fade-in cursor-pointer hover:scale-105`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="relative z-10 text-center">
+                    <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                      {theme.emoji}
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                      {theme.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {theme.description}
+                    </p>
+                    <span className="inline-block px-2 py-1 bg-background/70 text-xs rounded-full text-muted-foreground">
+                      {theme.duration}
+                    </span>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-background/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Progress Tab */}
+          <TabsContent value="progress" className="space-y-6">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-8 border border-border/50">
+              <div className="relative z-10 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="p-4 bg-background/50 backdrop-blur-sm rounded-full border border-border/30">
+                    <BarChart3 className="h-8 w-8 text-primary" />
+                  </div>
+                </div>
+                <h2 className="text-3xl font-bold text-foreground mb-3">
+                  Your Progress
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Track your meditation journey and celebrate your achievements.
+                </p>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl" />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Current Streak Card */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500/10 to-red-500/10 p-6 border border-orange-500/20">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-orange-500/20 rounded-full">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">Current Streak</h3>
+                  </div>
+                  <div className="text-3xl font-bold text-foreground mb-1">
+                    {meditationStreak.currentStreak} days
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Keep up the great work!
+                  </p>
+                </div>
+              </div>
+
+              {/* Total Sessions Card */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-6 border border-blue-500/20">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-500/20 rounded-full">
+                      <Sparkles className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">Total Sessions</h3>
+                  </div>
+                  <div className="text-3xl font-bold text-foreground mb-1">
+                    {meditationStreak.totalSessions}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Meditation sessions completed
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Reminders Tab */}
+          <TabsContent value="reminders" className="space-y-6">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 p-8 border border-border/50">
+              <div className="relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 bg-background/50 backdrop-blur-sm rounded-full border border-border/30">
+                      <Bell className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-bold text-foreground mb-1">
+                        Meditation Reminders
+                      </h2>
+                      <p className="text-lg text-muted-foreground">
+                        Stay consistent with your practice.
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setIsReminderModalOpen(true)}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Reminder
+                  </Button>
+                </div>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl" />
+            </div>
+
+            {/* Reminders List */}
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-muted/30 to-background/50 p-6 border border-border/50">
+              <RemindersList
+                reminders={reminders}
+                onEdit={handleEditReminder}
+                onDelete={handleDeleteReminder}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Add Reminder Modal */}
+        <AddReminderModal
+          isOpen={isReminderModalOpen}
+          onClose={() => {
+            setIsReminderModalOpen(false);
+            setEditingReminder(null);
+          }}
+          onSave={handleSaveReminder}
+          editingReminder={editingReminder}
+          availableSessions={availableSessions}
+        />
 
         {/* Bottom Spacing */}
         <div className="h-20" />
