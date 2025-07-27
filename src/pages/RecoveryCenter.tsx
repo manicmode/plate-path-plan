@@ -79,8 +79,8 @@ const RecoveryCenter = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
-        <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50 relative">
+        <div className="flex items-center p-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -103,7 +103,7 @@ const RecoveryCenter = () => {
             onClick={() => navigate('/recovery-analytics')}
             variant="outline"
             size="sm"
-            className="hover:bg-accent/50 transition-colors"
+            className="absolute top-4 right-4 hover:bg-accent/50 transition-colors"
           >
             📊 Analytics
           </Button>
