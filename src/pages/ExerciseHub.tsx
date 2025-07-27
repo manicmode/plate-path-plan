@@ -810,7 +810,7 @@ const ExerciseHub = () => {
                     {/* Workout Entries */}
                     <div className="space-y-4">
                       {mockWorkouts.map((workout) => (
-                        <Card key={workout.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                        <Card key={workout.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02] mb-0 !mb-0">
                           <CardContent className="p-0">
                             <div className={`bg-gradient-to-r ${workout.gradient} p-1 rounded-t-lg`} />
                             <div className="p-6">
@@ -864,7 +864,7 @@ const ExerciseHub = () => {
 
                     {/* Empty State (if no workouts) */}
                     {mockWorkouts.length === 0 && (
-                      <Card className="w-full shadow-lg border-border bg-card">
+                       <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                         <CardContent className="p-8 text-center">
                           <div className="text-4xl mb-4">📘</div>
                           <h3 className="text-xl font-bold text-foreground mb-2">No workouts logged yet</h3>
@@ -907,7 +907,7 @@ const ExerciseHub = () => {
 
                     {/* Empty State (if no routines) */}
                     {mockRoutines.length === 0 && (
-                      <Card className="w-full shadow-lg border-border bg-card">
+                       <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                         <CardContent className="p-8 text-center">
                           <div className="text-4xl mb-4">🧠</div>
                           <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
@@ -948,7 +948,7 @@ const ExerciseHub = () => {
                     <ExerciseStatsCard stats={mockExerciseStats} />
 
                     {/* Weekly Overview */}
-                    <Card className="w-full shadow-lg border-border bg-card">
+                     <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                       <CardContent className="p-6">
                         <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                           📅 Weekly Activity Overview
@@ -1037,7 +1037,7 @@ const ExerciseHub = () => {
 
                     {/* Empty State (if no plans) */}
                     {mockPreMadePlans.length === 0 && (
-                      <Card className="w-full shadow-lg border-border bg-card">
+                       <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                         <CardContent className="p-8 text-center">
                           <div className="text-4xl mb-4">🧩</div>
                           <h3 className="text-xl font-bold text-foreground mb-2">No plans yet?</h3>
@@ -1060,7 +1060,7 @@ const ExerciseHub = () => {
 
                       {/* Upload Section */}
                       {!bodyScanFile && !bodyScanResult && (
-                        <Card className="w-full shadow-lg border-border bg-card">
+                         <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                           <CardContent className="p-8">
                             <div className="text-center">
                               <div className="mb-6">
@@ -1085,7 +1085,7 @@ const ExerciseHub = () => {
 
                       {/* Loading Section */}
                       {bodyScanLoading && (
-                        <Card className="w-full shadow-lg border-border bg-card">
+                         <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                           <CardContent className="p-8">
                             <div className="text-center">
                               <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
@@ -1098,7 +1098,7 @@ const ExerciseHub = () => {
 
                       {/* Results Section */}
                       {bodyScanResult && !bodyScanLoading && (
-                        <Card className="w-full shadow-lg border-border bg-card">
+                         <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                           <CardHeader>
                             <CardTitle className="text-center">🧠 AI Body Scan Report</CardTitle>
                           </CardHeader>
@@ -1259,7 +1259,7 @@ const ExerciseHub = () => {
                     </div>
                   ) : (
                    /* Other Tabs - Keep Original Design */
-                   <Card className="w-full shadow-lg border-border bg-card">
+                   <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                     <CardContent className="p-8">
                       <div className="text-center space-y-6">
                         {/* Large Emoji */}
