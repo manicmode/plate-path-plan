@@ -18,7 +18,7 @@ interface Reminder {
 interface AddReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (reminderData: {
+  onSave: (reminderData?: {
     title: string;
     reminder_time: string;
     repeat_pattern: string;
@@ -26,6 +26,9 @@ interface AddReminderModalProps {
   }) => void;
   editingReminder?: Reminder | null;
   availableSessions?: Array<{ id: string; title: string; }>;
+  defaultTitle?: string;
+  contentType?: string;
+  contentId?: string;
 }
 
 export const AddReminderModal: React.FC<AddReminderModalProps> = ({
@@ -33,13 +36,16 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
   onClose,
   onSave,
   editingReminder,
-  availableSessions = []
+  availableSessions = [],
+  defaultTitle = 'Meditation Reminder',
+  contentType = 'meditation',
+  contentId
 }) => {
-  const [title, setTitle] = useState('Meditation Reminder');
+  const [title, setTitle] = useState(defaultTitle);
   const [reminderTime, setReminderTime] = useState('09:00');
   const [repeatPattern, setRepeatPattern] = useState('daily');
-  const [isSessionSpecific, setIsSessionSpecific] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [isSessionSpecific, setIsSessionSpecific] = useState(!!contentId);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>(contentId || '');
 
   // Reset form when modal opens/closes or editing changes
   useEffect(() => {
@@ -51,14 +57,14 @@ export const AddReminderModal: React.FC<AddReminderModalProps> = ({
         setIsSessionSpecific(!!editingReminder.content_id);
         setSelectedSessionId(editingReminder.content_id || '');
       } else {
-        setTitle('Meditation Reminder');
+        setTitle(defaultTitle);
         setReminderTime('09:00');
         setRepeatPattern('daily');
-        setIsSessionSpecific(false);
-        setSelectedSessionId('');
+        setIsSessionSpecific(!!contentId);
+        setSelectedSessionId(contentId || '');
       }
     }
-  }, [isOpen, editingReminder]);
+  }, [isOpen, editingReminder, defaultTitle, contentId]);
 
   const handleSave = () => {
     if (!title.trim() || !reminderTime) return;

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Play, Heart, X, Clock } from "lucide-react";
+import { Play, Heart, X, Clock, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AddReminderModal } from "@/components/recovery/AddReminderModal";
+import { useNavigate } from 'react-router-dom';
 
 interface MeditationSession {
   id: string;
@@ -38,10 +40,13 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
   theme,
   onStartSession
 }) => {
+  const navigate = useNavigate();
   const [selectedDuration, setSelectedDuration] = useState<number>(10);
   const [sessions, setSessions] = useState<MeditationSession[]>([]);
   const [favoriteSessionIds, setFavoriteSessionIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [selectedSessionForReminder, setSelectedSessionForReminder] = useState<MeditationSession | null>(null);
   const { toast } = useToast();
 
   const durations = [5, 10, 15, 20];
@@ -120,8 +125,25 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
   };
 
   const handleStartSession = (session: MeditationSession) => {
-    onStartSession(session);
+    // Store session in sessionStorage for the player
+    sessionStorage.setItem('currentMeditationSession', JSON.stringify(session));
+    navigate('/meditation-player');
     onClose();
+  };
+
+  const handleReminderClick = (session: MeditationSession) => {
+    setSelectedSessionForReminder(session);
+    setShowReminderModal(true);
+  };
+
+  const handleReminderSave = () => {
+    setShowReminderModal(false);
+    setSelectedSessionForReminder(null);
+    toast({
+      title: "⏰ Reminder Set",
+      description: "You'll be notified when it's time to meditate!",
+      duration: 3000,
+    });
   };
 
   const filteredSessions = sessions.filter(session => session.duration === selectedDuration);
@@ -228,6 +250,15 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleReminderClick(session)}
+                        className="h-9 w-9 text-muted-foreground hover:text-orange-500"
+                        title="Set Reminder"
+                      >
+                        <AlarmClock className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => toggleFavorite(session.id)}
                         className={`h-9 w-9 ${
                           favoriteSessionIds.has(session.id)
@@ -247,7 +278,7 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
                         className="gap-2"
                       >
                         <Play className="h-4 w-4" />
-                        Play
+                        Start
                       </Button>
                     </div>
                   </div>
@@ -257,6 +288,18 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      {/* Reminder Modal */}
+      {selectedSessionForReminder && (
+        <AddReminderModal
+          isOpen={showReminderModal}
+          onClose={() => setShowReminderModal(false)}
+          onSave={handleReminderSave}
+          defaultTitle={selectedSessionForReminder.title}
+          contentType="meditation"
+          contentId={selectedSessionForReminder.id}
+        />
+      )}
     </Dialog>
   );
 };

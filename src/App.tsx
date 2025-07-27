@@ -33,6 +33,7 @@ const Profile = lazy(() => import('@/pages/Profile'));
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
 const RecoveryCenter = lazy(() => import('@/pages/RecoveryCenter'));
 const GuidedMeditation = lazy(() => import('@/pages/GuidedMeditation'));
+const MeditationPlayer = lazy(() => import('@/pages/MeditationPlayer'));
 const AIFitnessCoach = lazy(() => import('@/pages/AIFitnessCoach'));
 const GameAndChallengePage = lazy(() => import('@/pages/GameAndChallengePage'));
 const SupplementHub = lazy(() => import('@/pages/SupplementHub'));
@@ -94,6 +95,11 @@ function AppContent() {
         <Routes>
           {/* Fullscreen pages without Layout */}
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/meditation-player" element={
+            <ProtectedRoute>
+              <MeditationPlayer />
+            </ProtectedRoute>
+          } />
           <Route path="/body-scan-ai" element={
             <ProtectedRoute>
               <BodyScanAI />
