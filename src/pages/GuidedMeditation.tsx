@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Sparkles, Play, Pause, Volume2, VolumeX, Star, Heart, Flame, Plus, Bell, BarChart3 } from "lucide-react";
+import { ArrowLeft, Sparkles, Play, Pause, Volume2, VolumeX, Star, Heart, Flame, Plus, Bell, BarChart3, Clock } from "lucide-react";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -828,17 +828,6 @@ const GuidedMeditation = () => {
           </div>
         )}
 
-        {/* Set Reminder Button */}
-        <div className="flex justify-center mb-6">
-          <Button 
-            onClick={() => setIsMeditationReminderModalOpen(true)}
-            variant="outline"
-            className="gap-2 bg-gradient-to-r from-primary/10 to-secondary/10 hover:from-primary/20 hover:to-secondary/20 border-primary/30"
-          >
-            <Bell className="h-4 w-4" />
-            ⏰ Set Reminder
-          </Button>
-        </div>
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -1039,6 +1028,73 @@ const GuidedMeditation = () => {
           onSave={handleSaveMeditationReminder}
           editingReminder={editingMeditationReminder}
         />
+
+        {/* Current Meditation Reminder Display */}
+        {meditationReminders.length > 0 && (
+          <div className="mt-8 mb-6">
+            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-4 border border-border/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <Bell className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      🕓 Reminder set for{' '}
+                      {new Date(`2000-01-01T${meditationReminders[0].time_of_day}`).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}{' '}
+                      {meditationReminders[0].recurrence === 'daily' 
+                        ? 'daily'
+                        : meditationReminders[0].recurrence === 'weekdays'
+                        ? 'on weekdays'
+                        : meditationReminders[0].recurrence === 'weekends'
+                        ? 'on weekends'
+                        : `on ${meditationReminders[0].recurrence.split(',').join(', ')}`
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditMeditationReminder(meditationReminders[0])}
+                    className="gap-1"
+                  >
+                    <Clock className="h-3 w-3" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteMeditationReminder(meditationReminders[0].id)}
+                    className="gap-1 text-destructive hover:text-destructive"
+                  >
+                    ❌ Remove
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Set Meditation Reminder Button */}
+        {meditationReminders.length === 0 && (
+          <div className="mt-8 mb-6">
+            <div className="flex justify-center">
+              <Button 
+                onClick={() => setIsMeditationReminderModalOpen(true)}
+                className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+              >
+                <Bell className="h-4 w-4" />
+                ➕ Set Meditation Reminder
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Bottom Spacing */}
         <div className="h-20" />

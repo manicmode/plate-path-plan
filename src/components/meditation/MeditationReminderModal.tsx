@@ -42,8 +42,8 @@ export const MeditationReminderModal: React.FC<MeditationReminderModalProps> = (
     if (isOpen) {
       if (editingReminder) {
         setTimeOfDay(editingReminder.time_of_day);
-        setRecurrenceType(editingReminder.recurrence === 'daily' || editingReminder.recurrence === 'weekdays' ? editingReminder.recurrence : 'custom');
-        if (editingReminder.recurrence !== 'daily' && editingReminder.recurrence !== 'weekdays') {
+        setRecurrenceType(editingReminder.recurrence === 'daily' || editingReminder.recurrence === 'weekdays' || editingReminder.recurrence === 'weekends' ? editingReminder.recurrence : 'custom');
+        if (editingReminder.recurrence !== 'daily' && editingReminder.recurrence !== 'weekdays' && editingReminder.recurrence !== 'weekends') {
           // Parse custom days like "mon,wed,fri"
           setSelectedDays(editingReminder.recurrence.split(','));
         } else {
@@ -125,7 +125,8 @@ export const MeditationReminderModal: React.FC<MeditationReminderModalProps> = (
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekdays">Weekdays Only</SelectItem>
+                <SelectItem value="weekdays">Weekdays</SelectItem>
+                <SelectItem value="weekends">Weekends</SelectItem>
                 <SelectItem value="custom">Custom Days</SelectItem>
               </SelectContent>
             </Select>
