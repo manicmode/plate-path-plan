@@ -16,6 +16,7 @@ import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
+import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
 
 interface Message {
   id: string;
@@ -522,6 +523,13 @@ const Coach = () => {
       <Card className="glass-card border-0 rounded-3xl">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+        </CardContent>
+      </Card>
+
+      {/* Yoga Nudges Section */}
+      <Card className="glass-card border-0 rounded-3xl">
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+          <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
         </CardContent>
       </Card>
 

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2, Wind } from 'lucide-react';
+import { Bell, Clock, Smartphone, Brain, Heart, Droplets, Target, Calendar, AlertCircle, Moon, Volume2, Wind, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -346,7 +346,7 @@ export const NotificationSettings = () => {
                 <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
                 <div>
                   <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
-                    Daily Reminder
+                    Yoga Nudges
                   </div>
                   <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     Scheduled daily yoga practice reminders
@@ -356,6 +356,23 @@ export const NotificationSettings = () => {
               <Switch
                 checked={yogaNudgePreferences?.nudges_enabled ?? true}
                 onCheckedChange={(value) => updateYogaNudgePreferences({ nudges_enabled: value })}
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Smart Yoga Nudges
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    AI-powered yoga suggestions based on your mood and activity
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={yogaNudgePreferences?.smart_nudges_enabled ?? true}
+                onCheckedChange={(value) => updateYogaNudgePreferences({ smart_nudges_enabled: value })}
               />
             </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
