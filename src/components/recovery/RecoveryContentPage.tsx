@@ -13,6 +13,7 @@ import { AddReminderModal } from "@/components/recovery/AddReminderModal";
 import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
 import { BreathingReminderModal } from "@/components/breathing/BreathingReminderModal";
 import { BreathingTestButton } from "@/components/breathing/BreathingTestButton";
+import { BreathingStreakDisplay } from "@/components/breathing/BreathingStreakDisplay";
 
 interface RecoveryContentPageProps {
   category: string;
@@ -357,6 +358,9 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                     </div>
                   </div>
                 </div>
+                
+                {/* Breathing Streak Display */}
+                <BreathingStreakDisplay />
                 
                 {/* Test Session Button */}
                 <BreathingTestButton />
