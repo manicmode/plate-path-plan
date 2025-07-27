@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { RecipeStorage, type SavedRecipe } from '@/lib/recipeStorage';
 import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
+import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 
 interface Message {
   id: string;
@@ -505,6 +506,9 @@ const Coach = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Breathing Nudge Banner */}
+      <BreathingNudgeBanner />
 
       {/* Meditation Nudges Section */}
       <Card className="glass-card border-0 rounded-3xl">

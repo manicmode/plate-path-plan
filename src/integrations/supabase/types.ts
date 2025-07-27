@@ -116,6 +116,42 @@ export type Database = {
         }
         Relationships: []
       }
+      breathing_nudges: {
+        Row: {
+          created_at: string
+          delivered_at: string
+          id: string
+          nudge_message: string
+          nudge_reason: string
+          nudge_type: string
+          updated_at: string
+          user_action: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string
+          id?: string
+          nudge_message: string
+          nudge_reason: string
+          nudge_type: string
+          updated_at?: string
+          user_action?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string
+          id?: string
+          nudge_message?: string
+          nudge_reason?: string
+          nudge_type?: string
+          updated_at?: string
+          user_action?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       breathing_reminders: {
         Row: {
           created_at: string
