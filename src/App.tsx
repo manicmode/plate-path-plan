@@ -19,10 +19,10 @@ import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 
-// Lazy load components with prefetch optimization
+// Eager load critical components to reduce perceived loading time
+import Home from '@/pages/Home';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Index = lazy(() => import('@/pages/Index'));
-const Home = lazy(() => import('@/pages/Home'));
 const Camera = lazy(() => import('@/pages/Camera'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const CoachMain = lazy(() => import('@/pages/CoachMain'));

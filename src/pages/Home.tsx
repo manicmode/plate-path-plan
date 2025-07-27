@@ -20,7 +20,7 @@ import { safeStorage, safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
 import { ExerciseLogForm, ExerciseData } from '@/components/ExerciseLogForm';
 import { ExerciseReminderForm } from '@/components/ExerciseReminderForm';
 import { useToxinDetections } from '@/hooks/useToxinDetections';
-import { useRealToxinData } from '@/hooks/useRealToxinData';
+import { useDeferredToxinData } from '@/hooks/useDeferredToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
@@ -31,10 +31,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
 import { MoodForecastCard } from '@/components/MoodForecastCard';
-import { useRealHydrationData } from '@/hooks/useRealHydrationData';
+import { useDeferredHydrationData } from '@/hooks/useDeferredHydrationData';
+import { useDeferredDailyScore } from '@/hooks/useDeferredDailyScore';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useSound } from '@/hooks/useSound';
 import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
+import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -54,11 +56,25 @@ const loadUserPreferences = () => {
 const Home = () => {
   const { user, loading: authLoading } = useAuth();
   const { getTodaysProgress, getHydrationGoal, getSupplementGoal, addFood } = useNutrition();
-  const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useRealHydrationData();
-  const { todayScore, scoreStats, loading: scoreLoading } = useDailyScore();
+  
+  // Set up deferred loading for different priority data
+  const { shouldLoad: shouldLoadCritical } = useCriticalDataLoading();
+  const { shouldLoad: shouldLoadDeferred } = useDeferredHomeDataLoading();
+  const { shouldLoad: shouldLoadNonCritical } = useNonCriticalDataLoading();
+  
+  // Critical data that loads first (basic nutrition progress)
+  const progress = getTodaysProgress();
+  
+  // Deferred data loading - only after initial render
+  const { todayTotal: realHydrationToday, isLoading: hydrationLoading } = useDeferredHydrationData();
+  const { todayScore, scoreStats, loading: scoreLoading } = useDeferredDailyScore();
+  const { summary: exerciseSummary } = useRealExerciseData('7d');
+  
+  // Non-critical data loading - loads last
+  const { toxinData: realToxinData, todayFlaggedCount, isLoading: toxinLoading } = useDeferredToxinData();
+  
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const progress = getTodaysProgress();
   const { toast } = useToast();
   const { playGoalHit, playFoodLogConfirm, isEnabled } = useSound();
   
@@ -75,7 +91,7 @@ const Home = () => {
     hydration_ml: null,
     supplement_count: null
   });
-  const { toxinData: realToxinData, todayFlaggedCount, isLoading: toxinLoading } = useRealToxinData();
+  
   const { detectToxinsForFood } = useToxinDetections(); // Keep for automatic detection
   
   // Enable automatic toxin detection for new food logs
@@ -111,8 +127,7 @@ const Home = () => {
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [showExerciseReminder, setShowExerciseReminder] = useState(false);
   
-  // Use real exercise data
-  const { summary: exerciseSummary } = useRealExerciseData('7d');
+  // State variables for UI sections
   const [isNutrientsExpanded, setIsNutrientsExpanded] = useState(false);
   const [isMicronutrientsExpanded, setIsMicronutrientsExpanded] = useState(false);
   const [isToxinsExpanded, setIsToxinsExpanded] = useState(false);

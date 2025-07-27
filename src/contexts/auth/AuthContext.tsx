@@ -141,45 +141,81 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // Get initial session first (synchronous check)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    let isMounted = true;
+    
+    // Initialize auth session check and state listener in parallel (not sequential)
+    const initializeAuth = async () => {
+      try {
+        // Start both operations simultaneously for faster initialization
+        const [sessionResponse, authListener] = await Promise.all([
+          supabase.auth.getSession(),
+          Promise.resolve(supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              if (!isMounted) return;
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-          return;
-        }
+              if (event === 'PASSWORD_RECOVERY') {
+                setSession(session);
+                setUser(session?.user ?? null);
+                setLoading(false);
+                return;
+              }
 
-        if (event === 'TOKEN_REFRESHED' && session) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-          return;
-        }
+              if (event === 'TOKEN_REFRESHED' && session) {
+                setSession(session);
+                setUser(session?.user ?? null);
+                setLoading(false);
+                return;
+              }
 
+              setSession(session);
+              setUser(session?.user ?? null);
+              setLoading(false);
+
+              // Don't reset session during password recovery
+              if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+                // Load extended profile asynchronously without blocking the UI
+                setTimeout(() => {
+                  if (isMounted) {
+                    loadExtendedProfile(session.user);
+                  }
+                }, 0);
+              }
+            }
+          ))
+        ]);
+
+        if (!isMounted) return;
+
+        // Set initial session state immediately
+        const { data: { session } } = sessionResponse;
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Don't reset session during password recovery
-        if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
-          // Load extended profile asynchronously without blocking the UI
-          setTimeout(() => {
-            loadExtendedProfile(session.user);
-          }, 0);
+        return authListener.data.subscription;
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setLoading(false);
         }
+        return null;
       }
-    );
+    };
 
-    return () => subscription.unsubscribe();
+    // Start auth initialization
+    initializeAuth().then((subscription) => {
+      if (subscription && isMounted) {
+        // Store subscription for cleanup
+        return () => {
+          isMounted = false;
+          subscription.unsubscribe();
+        };
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Load extended profile when session is established (only once per session)
