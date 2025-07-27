@@ -52,6 +52,7 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
   const [isYogaReminderModalOpen, setIsYogaReminderModalOpen] = useState(false);
   const [sleepReminder, setSleepReminder] = useState<any>(null);
   const [isSleepReminderModalOpen, setIsSleepReminderModalOpen] = useState(false);
+  const [isThermotherapyReminderModalOpen, setIsThermotherapyReminderModalOpen] = useState(false);
 
   // Fetch reminders
   const fetchReminders = async () => {
@@ -666,6 +667,13 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
         isOpen={isSleepReminderModalOpen}
         onClose={() => {
           setIsSleepReminderModalOpen(false);
+        }}
+      />
+
+      <ThermotherapyReminderModal
+        isOpen={isThermotherapyReminderModalOpen}
+        onClose={() => {
+          setIsThermotherapyReminderModalOpen(false);
         }}
       />
     </div>

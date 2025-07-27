@@ -12,6 +12,7 @@ import { useMeditationNudges } from '@/hooks/useMeditationNudges';
 import { useBreathingNudges } from '@/hooks/useBreathingNudges';
 import { useYogaNudges } from '@/hooks/useYogaNudges';
 import { useSleepNudges } from '@/hooks/useSleepNudges';
+import { useThermotherapyNudges } from '@/hooks/useThermotherapyNudges';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
@@ -281,46 +282,88 @@ export const NotificationSettings = () => {
                     <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                       {description}
                     </div>
-                  </div>
-          </div>
-
-          {/* Sleep Nudges */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-              <Moon className="mr-2 h-5 w-5 text-blue-400" />
-              Sleep Nudges
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-white">🌙 Sleep Nudges</p>
-                  <p className="text-sm text-white/70">Get gentle reminders for wind-down routines</p>
+                   </div>
                 </div>
-                <Switch
-                  checked={sleepNudgePreferences?.nudges_enabled ?? true}
-                  onCheckedChange={(value) => updateSleepNudgePreferences?.({ nudges_enabled: value })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-white">💤 Smart Sleep Nudges</p>
-                  <p className="text-sm text-white/70">AI-powered sleep preparation suggestions</p>
-                </div>
-                <Switch
-                  checked={sleepNudgePreferences?.smart_nudges_enabled ?? true}
-                  onCheckedChange={(value) => updateSleepNudgePreferences?.({ smart_nudges_enabled: value })}
-                />
-              </div>
-            </div>
-          </div>
                 <Switch
                   checked={nudgePreferences?.[setting] ?? true}
                   onCheckedChange={(value) => handleMeditationToggle(setting, value)}
                 />
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Sleep Nudges */}
+        <div className="bg-gradient-to-r from-slate-800/40 to-blue-900/40 p-6 rounded-lg border border-white/20 backdrop-blur-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-r from-slate-600 via-blue-700 to-indigo-800 rounded-lg flex items-center justify-center">
+              <Moon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Sleep Optimization</h3>
+              <p className="text-sm text-white/70">Wind-down and sleep notifications</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+              <div>
+                <h4 className="font-medium text-white">🌙 Sleep Nudges</h4>
+                <p className="text-sm text-white/70">Get gentle reminders for wind-down routines</p>
+              </div>
+              <Switch
+                checked={sleepNudgePreferences?.nudges_enabled ?? true}
+                onCheckedChange={(value) => updateSleepNudgePreferences?.({ nudges_enabled: value })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+              <div>
+                <h4 className="font-medium text-white">💤 Smart Sleep Nudges</h4>
+                <p className="text-sm text-white/70">AI-powered sleep preparation suggestions</p>
+              </div>
+              <Switch
+                checked={sleepNudgePreferences?.smart_nudges_enabled ?? true}
+                onCheckedChange={(value) => updateSleepNudgePreferences?.({ smart_nudges_enabled: value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Thermotherapy Nudges */}
+        <div className="bg-gradient-to-r from-blue-900/20 to-red-900/20 p-6 rounded-lg border border-orange-500/30">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-red-600 rounded-lg flex items-center justify-center">
+              🔥❄️
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Cold & Heat Therapy</h3>
+              <p className="text-sm text-white/70">Contrast therapy notifications</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+              <div>
+                <h4 className="font-medium text-white">🔥❄️ Cold & Heat Therapy Nudges</h4>
+                <p className="text-sm text-white/70">Get reminders for thermal recovery sessions</p>
+              </div>
+              <Switch
+                checked={thermotherapyNudgePreferences?.nudges_enabled ?? true}
+                onCheckedChange={(value) => updateThermotherapyNudgePreferences?.({ nudges_enabled: value })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+              <div>
+                <h4 className="font-medium text-white">⚙️ Smart Contrast Nudges</h4>
+                <p className="text-sm text-white/70">AI-powered thermotherapy suggestions</p>
+              </div>
+              <Switch
+                checked={thermotherapyNudgePreferences?.smart_nudges_enabled ?? true}
+                onCheckedChange={(value) => updateThermotherapyNudgePreferences?.({ smart_nudges_enabled: value })}
+              />
+            </div>
           </div>
         </div>
 
@@ -408,51 +451,7 @@ export const NotificationSettings = () => {
                 checked={yogaNudgePreferences?.smart_nudges_enabled ?? true}
                 onCheckedChange={(value) => updateYogaNudgePreferences({ smart_nudges_enabled: value })}
               />
-        </div>
-
-        {/* Sleep Nudges */}
-        <div className="space-y-4">
-          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
-            <span className="text-lg">🌙</span>
-            <span>Sleep Nudges</span>
-          </h4>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20">
-              <div className="flex-1 flex items-center space-x-3">
-                <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-indigo-600`} />
-                <div>
-                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
-                    Sleep Nudges
-                  </div>
-                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                    Scheduled daily sleep preparation reminders
-                  </div>
-                </div>
-              </div>
-              <Switch
-                checked={sleepNudgePreferences?.nudges_enabled ?? true}
-                onCheckedChange={(value) => updateSleepNudgePreferences({ nudges_enabled: value })}
-              />
             </div>
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20">
-              <div className="flex-1 flex items-center space-x-3">
-                <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-indigo-600`} />
-                <div>
-                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
-                    Smart Sleep Nudges
-                  </div>
-                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                    AI-powered sleep suggestions based on your evening activity
-                  </div>
-                </div>
-              </div>
-              <Switch
-                checked={sleepNudgePreferences?.smart_nudges_enabled ?? true}
-                onCheckedChange={(value) => updateSleepNudgePreferences({ smart_nudges_enabled: value })}
-              />
-            </div>
-          </div>
-        </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
               <div className="flex-1 flex items-center space-x-3">
                 <Smartphone className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
