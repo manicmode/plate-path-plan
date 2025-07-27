@@ -583,6 +583,33 @@ export type Database = {
         }
         Relationships: []
       }
+      meditation_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          recurrence: string
+          time_of_day: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recurrence?: string
+          time_of_day: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recurrence?: string
+          time_of_day?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meditation_sessions: {
         Row: {
           audio_url: string

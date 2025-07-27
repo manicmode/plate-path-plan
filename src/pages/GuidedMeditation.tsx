@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RemindersList } from "@/components/recovery/RemindersList";
 import { AddReminderModal } from "@/components/recovery/AddReminderModal";
 import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
+import { MeditationReminderModal } from "@/components/meditation/MeditationReminderModal";
 
 const GuidedMeditation = () => {
   useScrollToTop();
@@ -31,6 +32,9 @@ const GuidedMeditation = () => {
   const [reminders, setReminders] = useState<any[]>([]);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<any>(null);
+  const [meditationReminders, setMeditationReminders] = useState<any[]>([]);
+  const [isMeditationReminderModalOpen, setIsMeditationReminderModalOpen] = useState(false);
+  const [editingMeditationReminder, setEditingMeditationReminder] = useState<any>(null);
   const [isSessionPickerOpen, setIsSessionPickerOpen] = useState(false);
   const [selectedThemeForPicker, setSelectedThemeForPicker] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<any>(null);
@@ -144,6 +148,7 @@ const GuidedMeditation = () => {
 
     fetchMeditationStreak();
     fetchReminders();
+    fetchMeditationReminders();
   }, []);
 
   // Fetch reminders for meditation
@@ -291,6 +296,145 @@ const GuidedMeditation = () => {
   const handleEditReminder = (reminder: any) => {
     setEditingReminder(reminder);
     setIsReminderModalOpen(true);
+  };
+
+  // Fetch meditation reminders
+  const fetchMeditationReminders = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('meditation_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('time_of_day');
+
+      if (error) {
+        console.error('Error fetching meditation reminders:', error);
+        return;
+      }
+
+      setMeditationReminders(data || []);
+    } catch (error) {
+      console.error('Error fetching meditation reminders:', error);
+    }
+  };
+
+  // Save meditation reminder (create or update)
+  const handleSaveMeditationReminder = async (reminderData: {
+    time_of_day: string;
+    recurrence: string;
+  }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (editingMeditationReminder) {
+        // Update existing reminder
+        const { error } = await supabase
+          .from('meditation_reminders')
+          .update({
+            time_of_day: reminderData.time_of_day,
+            recurrence: reminderData.recurrence
+          })
+          .eq('id', editingMeditationReminder.id)
+          .eq('user_id', user.id);
+
+        if (!error) {
+          toast({
+            title: "✅ Reminder Updated",
+            description: "Your meditation reminder has been updated successfully.",
+            duration: 3000,
+          });
+          fetchMeditationReminders();
+        } else {
+          console.error('Error updating meditation reminder:', error);
+          toast({
+            title: "❌ Update Failed",
+            description: "Failed to update reminder. Please try again.",
+            duration: 3000,
+          });
+        }
+      } else {
+        // Create new reminder
+        const { error } = await supabase
+          .from('meditation_reminders')
+          .insert({
+            user_id: user.id,
+            time_of_day: reminderData.time_of_day,
+            recurrence: reminderData.recurrence
+          });
+
+        if (!error) {
+          toast({
+            title: "✅ Reminder Created",
+            description: "Your meditation reminder has been set successfully.",
+            duration: 3000,
+          });
+          fetchMeditationReminders();
+        } else {
+          console.error('Error creating meditation reminder:', error);
+          toast({
+            title: "❌ Creation Failed",
+            description: "Failed to create reminder. Please try again.",
+            duration: 3000,
+          });
+        }
+      }
+
+      setEditingMeditationReminder(null);
+    } catch (error) {
+      console.error('Error saving meditation reminder:', error);
+      toast({
+        title: "❌ Error",
+        description: "An unexpected error occurred. Please try again.",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Delete meditation reminder
+  const handleDeleteMeditationReminder = async (id: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('meditation_reminders')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (!error) {
+        toast({
+          title: "🗑️ Reminder Deleted",
+          description: "Your meditation reminder has been deleted.",
+          duration: 3000,
+        });
+        fetchMeditationReminders();
+      } else {
+        console.error('Error deleting meditation reminder:', error);
+        toast({
+          title: "❌ Delete Failed",
+          description: "Failed to delete reminder. Please try again.",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting meditation reminder:', error);
+      toast({
+        title: "❌ Error",
+        description: "An unexpected error occurred. Please try again.",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Edit meditation reminder
+  const handleEditMeditationReminder = (reminder: any) => {
+    setEditingMeditationReminder(reminder);
+    setIsMeditationReminderModalOpen(true);
   };
 
   // Create available sessions for reminder modal
@@ -684,6 +828,18 @@ const GuidedMeditation = () => {
           </div>
         )}
 
+        {/* Set Reminder Button */}
+        <div className="flex justify-center mb-6">
+          <Button 
+            onClick={() => setIsMeditationReminderModalOpen(true)}
+            variant="outline"
+            className="gap-2 bg-gradient-to-r from-primary/10 to-secondary/10 hover:from-primary/20 hover:to-secondary/20 border-primary/30"
+          >
+            <Bell className="h-4 w-4" />
+            ⏰ Set Reminder
+          </Button>
+        </div>
+
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
@@ -871,6 +1027,17 @@ const GuidedMeditation = () => {
           onSave={handleSaveReminder}
           editingReminder={editingReminder}
           availableSessions={availableSessions}
+        />
+
+        {/* Meditation Reminder Modal */}
+        <MeditationReminderModal
+          isOpen={isMeditationReminderModalOpen}
+          onClose={() => {
+            setIsMeditationReminderModalOpen(false);
+            setEditingMeditationReminder(null);
+          }}
+          onSave={handleSaveMeditationReminder}
+          editingReminder={editingMeditationReminder}
         />
 
         {/* Bottom Spacing */}
