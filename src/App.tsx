@@ -61,7 +61,7 @@ const SideBodyScan = lazy(() => import('@/pages/SideBodyScan'));
 const BackBodyScan = lazy(() => import('@/pages/BackBodyScan'));
 const BodyScanResults = lazy(() => import('@/pages/BodyScanResults'));
 const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
-const RoutineExecution = lazy(() => import('@/pages/RoutineExecution'));
+const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -161,7 +161,7 @@ function AppContent() {
                 } />
                 <Route path="/routine-execution" element={
                   <ProtectedRoute>
-                    <RoutineExecution />
+                    <RoutineExecutionPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/recovery-center" element={
