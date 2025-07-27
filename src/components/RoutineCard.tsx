@@ -3,6 +3,7 @@ import { Edit, Copy, Calendar, Clock, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 interface RoutineCardProps {
   routine: {
@@ -15,12 +16,17 @@ interface RoutineCardProps {
     weeklyPlan: Record<string, string>;
     notes?: string;
     createdAt: string;
+    status?: 'not-started' | 'in-progress' | 'completed';
+    currentDay?: number;
+    routineType?: 'strength' | 'cardio' | 'hiit' | 'yoga' | 'flexibility';
   };
   onEdit: (routine: any) => void;
   onDuplicate: (routine: any) => void;
 }
 
 export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) {
+  const navigate = useNavigate();
+  
   const getActiveDays = () => {
     return Object.entries(routine.weeklyPlan).filter(([_, exercises]) => exercises.trim().length > 0);
   };
@@ -33,6 +39,67 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
     }
     return `${activeDays.length} days/week`;
   };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'in-progress':
+        return 'In Progress';
+      default:
+        return 'Not Started';
+    }
+  };
+
+  const getCurrentDayInfo = () => {
+    const activeDays = getActiveDays();
+    const currentDay = routine.currentDay || 1;
+    
+    if (activeDays.length === 0) return null;
+    
+    const dayIndex = (currentDay - 1) % activeDays.length;
+    const [dayName, exercises] = activeDays[dayIndex];
+    
+    return {
+      dayNumber: currentDay,
+      dayName,
+      exercises: exercises.length > 50 ? `${exercises.slice(0, 50)}...` : exercises
+    };
+  };
+
+  const handleStartRoutine = () => {
+    navigate(`/routine-execution?routineId=${routine.id}`);
+  };
+
+  const getRoutineTypeIcon = (type: string) => {
+    switch (type) {
+      case 'strength':
+        return '🏋️';
+      case 'cardio':
+        return '🏃';
+      case 'hiit':
+        return '⚡';
+      case 'yoga':
+        return '🧘';
+      case 'flexibility':
+        return '🤸';
+      default:
+        return routine.emoji;
+    }
+  };
+
+  const currentDayInfo = getCurrentDayInfo();
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card mb-0 !mb-0">
@@ -72,6 +139,27 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
 
         {/* Content */}
         <div className="p-6 space-y-4">
+          {/* Status and Current Day */}
+          <div className="flex items-center justify-between">
+            <Badge className={`${getStatusColor(routine.status || 'not-started')} border-0`}>
+              {getStatusText(routine.status || 'not-started')}
+            </Badge>
+            {currentDayInfo && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">Day {currentDayInfo.dayNumber}:</span> {currentDayInfo.dayName}
+              </div>
+            )}
+          </div>
+
+          {/* Current Day's Workout Preview */}
+          {currentDayInfo && (
+            <div className="p-3 bg-muted/30 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Today's Focus:</span> {currentDayInfo.exercises}
+              </p>
+            </div>
+          )}
+
           {/* Weekly Breakdown */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -120,10 +208,11 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
             <Button
               size="sm"
               variant="outline"
+              onClick={handleStartRoutine}
               className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
             >
               <Play className="h-3 w-3 mr-1" />
-              Start
+              Start Today's Session
             </Button>
           </div>
 

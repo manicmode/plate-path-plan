@@ -99,15 +99,17 @@ const ExerciseHub = () => {
   };
 
   // Enhanced mock routine data - make it dynamic
-  const [mockRoutines, setMockRoutines] = useState([
+  const [mockRoutines, setMockRoutines] = useState<any[]>([
     {
       id: 1,
       title: "Push/Pull/Legs Split",
       emoji: "🏋️",
       type: "Strength",
-      routineType: "strength",
+      routineType: "strength" as const,
       duration: "60-75 minutes",
       gradient: "from-red-400 to-orange-600",
+      status: "in-progress" as const,
+      currentDay: 4,
       weeklyPlan: {
         Monday: "Push: Bench press 3x8, Shoulder press 3x10, Tricep dips 3x12",
         Tuesday: "Pull: Pull-ups 3x8, Rows 3x10, Bicep curls 3x12",
@@ -125,9 +127,11 @@ const ExerciseHub = () => {
       title: "Morning HIIT Routine",
       emoji: "⚡",
       type: "HIIT",
-      routineType: "hiit",
+      routineType: "hiit" as const,
       duration: "25-30 minutes",
       gradient: "from-yellow-400 to-orange-600",
+      status: "not-started" as const,
+      currentDay: 1,
       weeklyPlan: {
         Monday: "Burpees 30s, Rest 30s, Jump squats 30s, Rest 30s - Repeat 5 rounds",
         Tuesday: "Rest day",
@@ -139,6 +143,28 @@ const ExerciseHub = () => {
       },
       notes: "High intensity intervals for maximum fat burn. Stay hydrated!",
       createdAt: "2024-01-18T08:00:00Z"
+    },
+    {
+      id: 3,
+      title: "Evening Yoga Flow",
+      emoji: "🧘",
+      type: "Flexibility",
+      routineType: "yoga" as const,
+      duration: "30-45 minutes",
+      gradient: "from-purple-400 to-pink-500",
+      status: "completed" as const,
+      currentDay: 14,
+      weeklyPlan: {
+        Monday: "Gentle morning flow: Sun salutations, warrior poses, triangle pose",
+        Tuesday: "Rest day",
+        Wednesday: "Restorative yoga: Child's pose, pigeon pose, savasana",
+        Thursday: "Rest day", 
+        Friday: "Power yoga: Vinyasa flow, arm balances, inversions",
+        Saturday: "Yin yoga: Long holds, hip openers, spinal twists",
+        Sunday: "Meditation & breathwork"
+      },
+      notes: "Focus on breath awareness and mindful movement. Modify poses as needed.",
+      createdAt: "2024-01-15T18:00:00Z"
     }
   ]);
 
@@ -587,14 +613,20 @@ const ExerciseHub = () => {
 
   const handleStartPlan = (plan: any) => {
     // Convert plan to routine format and add to user's routines
+    const routineType = plan.type.toLowerCase();
     const newRoutine = {
       id: Date.now(),
       title: plan.title,
       emoji: plan.emoji,
       type: plan.type,
-      routineType: plan.type.toLowerCase(),
+      routineType: routineType === "strength" ? "strength" as const : 
+                   routineType === "hiit" ? "hiit" as const :
+                   routineType === "cardio" ? "cardio" as const :
+                   routineType === "yoga" ? "yoga" as const : "flexibility" as const,
       duration: plan.timeCommitment,
       gradient: plan.gradient,
+      status: "not-started" as const,
+      currentDay: 1,
       weeklyPlan: plan.weeks["Week 1"], // Use first week as the routine template
       notes: plan.description,
       createdAt: new Date().toISOString()
