@@ -975,18 +975,19 @@ function GameAndChallengeContent() {
                        Start Recovery Journey
                      </Button>
                    </div>
-                 ) : (
-                   <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
-                     {/* Coach CTA for Recovery Leaderboard */}
-                     {challengeMode === 'recovery' && !isMobile && (
-                       <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-teal-100/50 to-purple-100/50 dark:from-teal-950/20 dark:to-purple-950/20 border border-teal-200/30">
-                         <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
-                           🌟 Try to reach the top 10 in Recovery! Practice daily meditation, breathing, or yoga to climb the ranks.
-                         </p>
-                       </div>
-                     )}
-                    <div
-                      key={user.id}
+                  ) : (
+                    <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
+                      {/* Coach CTA for Recovery Leaderboard */}
+                      {challengeMode === 'recovery' && !isMobile && (
+                        <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-teal-100/50 to-purple-100/50 dark:from-teal-950/20 dark:to-purple-950/20 border border-teal-200/30">
+                          <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
+                            🌟 Try to reach the top 10 in Recovery! Practice daily meditation, breathing, or yoga to climb the ranks.
+                          </p>
+                        </div>
+                      )}
+                      {optimizedLeaderboard.map((user) => (
+                     <div
+                       key={user.id}
                        className={cn(
                          "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
                          isMobile ? "p-3 hover:scale-[1.01]" : "p-4 hover:scale-[1.02]",
@@ -1141,8 +1142,8 @@ function GameAndChallengeContent() {
                         </div>
                       </div>
                     </div>
-                   ))
-                   </div>
+                      ))}
+                    </div>
                  )}
                </CardContent>
             </Card>
