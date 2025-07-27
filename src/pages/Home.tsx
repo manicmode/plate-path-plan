@@ -1755,7 +1755,7 @@ const Home = () => {
               },
               {
                 id: 'exercise-hub',
-                title: 'Exercise Hub',
+                title: 'Exercise & Recovery',
                 emoji: '💪',
                 color: 'from-blue-500 via-blue-400 to-blue-600',
                 shadowColor: 'shadow-blue-500/40',

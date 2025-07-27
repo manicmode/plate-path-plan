@@ -41,7 +41,7 @@ const ExerciseHub = () => {
   // Use the optimized scroll-to-top hook
   useScrollToTop();
 
-  // Store the origin route when entering Exercise Hub
+  // Store the origin route when entering Exercise & Recovery
   useEffect(() => {
     const referrer = location.state?.from;
     if (referrer) {
@@ -681,7 +681,7 @@ const ExerciseHub = () => {
           {/* Center Column - Title */}
           <div className="flex items-center justify-center gap-2">
             <span className="text-2xl">🏋️</span>
-            <h1 className="text-xl font-bold whitespace-nowrap">Exercise Hub</h1>
+            <h1 className="text-xl font-bold whitespace-nowrap">Exercise & Recovery</h1>
           </div>
           
           {/* Right Column - Empty for balance */}

@@ -371,7 +371,7 @@ export default function BodyScanResults() {
                 className="mt-4"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Exercise Hub
+                Back to Exercise & Recovery
               </Button>
             </CardContent>
           </Card>
