@@ -15,17 +15,17 @@ const CoachMain = () => {
             type="single" 
             value={activeTab} 
             onValueChange={(value) => value && setActiveTab(value as 'nutrition' | 'exercise')}
-            className="bg-muted/50 rounded-full p-1"
+            className="bg-muted/50 rounded-lg p-1"
           >
             <ToggleGroupItem 
               value="nutrition" 
-              className="rounded-full text-sm px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
             >
               Nutrition
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="exercise" 
-              className="rounded-full text-sm px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
             >
               Exercise
             </ToggleGroupItem>
