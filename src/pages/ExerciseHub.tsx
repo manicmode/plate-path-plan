@@ -721,8 +721,8 @@ const ExerciseHub = () => {
           className="w-full p-4 rounded-xl bg-gradient-to-r from-[#FFD580] to-[#FF8C66] dark:from-[#FFB347] dark:to-[#FF7043] hover:from-[#FFE4A3] hover:to-[#FFA07A] dark:hover:from-[#FFC470] dark:hover:to-[#FF8A65] transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#FF8C66]/40 border border-[#FFD580]/30 dark:border-[#FFB347]/30 shadow-xl shadow-[#FF8C66]/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
-            <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-[robotWave_6s_ease-in-out_infinite]">🧘</span>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recovery Center 🧘</h2>
+            <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-[breathe_4s_ease-in-out_infinite]">🧘</span>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recovery Center</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1">→</span>
           </div>
           <p className="text-gray-700 dark:text-indigo-100 text-sm opacity-90 relative z-10">
