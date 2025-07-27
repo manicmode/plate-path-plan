@@ -252,7 +252,7 @@ const RecoveryAnalyticsPage = () => {
   }, [pieChartData]);
 
   const categoryOptions = [
-    { value: 'all', label: 'All Categories' },
+    { value: 'all', label: 'All' },
     ...Object.entries(CATEGORY_META).map(([key, meta]) => ({
       value: key,
       label: meta.label
