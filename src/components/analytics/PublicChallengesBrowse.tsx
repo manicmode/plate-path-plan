@@ -7,7 +7,13 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { PublicChallengeCard } from './PublicChallengeCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
-export const PublicChallengesBrowse: React.FC = () => {
+interface PublicChallengesBrowseProps {
+  challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
+}
+
+export const PublicChallengesBrowse: React.FC<PublicChallengesBrowseProps> = ({ 
+  challengeMode = 'combined' 
+}) => {
   const {
     globalChallenges,
     quickChallenges,
@@ -20,6 +26,24 @@ export const PublicChallengesBrowse: React.FC = () => {
     getUserParticipation,
   } = usePublicChallenges();
 
+  // Filter challenges based on challenge mode
+  const getFilteredChallenges = (challenges: any[]) => {
+    if (challengeMode === 'combined') return challenges;
+    
+    if (challengeMode === 'recovery') {
+      return challenges.filter(c => 
+        ['meditation', 'breathing', 'yoga', 'sleep', 'thermotherapy'].includes(c.category)
+      );
+    }
+    
+    return challenges.filter(c => c.category === challengeMode);
+  };
+
+  const filteredGlobalChallenges = getFilteredChallenges(globalChallenges);
+  const filteredQuickChallenges = getFilteredChallenges(quickChallenges);
+  const filteredTrendingChallenges = getFilteredChallenges(trendingChallenges);
+  const filteredNewChallenges = getFilteredChallenges(newChallenges);
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -27,9 +51,14 @@ export const PublicChallengesBrowse: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold">Browse Public Challenges</h2>
+        <h2 className="text-2xl font-bold">
+          Browse {challengeMode === 'recovery' ? '🧘 Recovery' : challengeMode === 'combined' ? 'All' : challengeMode.charAt(0).toUpperCase() + challengeMode.slice(1)} Challenges
+        </h2>
         <p className="text-muted-foreground">
-          Join challenges with people from around the world and build healthy habits together
+          {challengeMode === 'recovery' 
+            ? 'Join recovery challenges for meditation, breathing, yoga, sleep, and thermotherapy'
+            : 'Join challenges with people from around the world and build healthy habits together'
+          }
         </p>
       </div>
 
@@ -65,13 +94,16 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {globalChallenges.length === 0 ? (
+              {filteredGlobalChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No global challenges available right now
+                  {challengeMode === 'recovery' 
+                    ? 'No global recovery challenges available right now'
+                    : 'No global challenges available right now'
+                  }
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {globalChallenges.map((challenge) => (
+                  {filteredGlobalChallenges.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -99,13 +131,16 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {quickChallenges.length === 0 ? (
+              {filteredQuickChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No quick challenges available right now
+                  {challengeMode === 'recovery' 
+                    ? 'No quick recovery challenges available right now'
+                    : 'No quick challenges available right now'
+                  }
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {quickChallenges.map((challenge) => (
+                  {filteredQuickChallenges.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -133,13 +168,16 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {trendingChallenges.length === 0 ? (
+              {filteredTrendingChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No trending challenges right now
+                  {challengeMode === 'recovery' 
+                    ? 'No trending recovery challenges right now'
+                    : 'No trending challenges right now'
+                  }
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {trendingChallenges.map((challenge) => (
+                  {filteredTrendingChallenges.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -167,13 +205,16 @@ export const PublicChallengesBrowse: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent>
-              {newChallenges.length === 0 ? (
+              {filteredNewChallenges.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No new challenges available right now
+                  {challengeMode === 'recovery' 
+                    ? 'No new recovery challenges available right now'
+                    : 'No new challenges available right now'
+                  }
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {newChallenges.map((challenge) => (
+                  {filteredNewChallenges.map((challenge) => (
                     <PublicChallengeCard
                       key={challenge.id}
                       challenge={challenge}
@@ -199,26 +240,26 @@ export const PublicChallengesBrowse: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {globalChallenges.length}
+                {filteredGlobalChallenges.length}
               </div>
               <div className="text-sm text-muted-foreground">Global Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {quickChallenges.length}
+                {filteredQuickChallenges.length}
               </div>
               <div className="text-sm text-muted-foreground">Quick Challenges</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {trendingChallenges.length}
+                {filteredTrendingChallenges.length}
               </div>
               <div className="text-sm text-muted-foreground">Trending</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/50">
               <div className="text-2xl font-bold text-primary">
-                {globalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
-                 quickChallenges.reduce((sum, c) => sum + c.participant_count, 0)}
+                {filteredGlobalChallenges.reduce((sum, c) => sum + c.participant_count, 0) + 
+                 filteredQuickChallenges.reduce((sum, c) => sum + c.participant_count, 0)}
               </div>
               <div className="text-sm text-muted-foreground">Total Participants</div>
             </div>

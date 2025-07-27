@@ -10,7 +10,13 @@ import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
 import { useToast } from '@/hooks/use-toast';
 
-export const UserChallengeParticipations: React.FC = () => {
+interface UserChallengeParticipationsProps {
+  challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
+}
+
+export const UserChallengeParticipations: React.FC<UserChallengeParticipationsProps> = ({ 
+  challengeMode = 'combined' 
+}) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { toast } = useToast();
   
@@ -80,9 +86,25 @@ export const UserChallengeParticipations: React.FC = () => {
     }
   }));
 
-  // Separate by type
-  const quickChallenges = allPublicChallenges.filter(item => item?.type === 'quick');
-  const regularPublicChallenges = allPublicChallenges.filter(item => item?.type === 'public');
+  // Filter challenges based on challenge mode
+  const filterChallengesByMode = (challengeList: any[]) => {
+    if (challengeMode === 'combined') return challengeList;
+    
+    return challengeList.filter(item => {
+      if (!item?.challenge) return false;
+      
+      if (challengeMode === 'recovery') {
+        return ['meditation', 'breathing', 'yoga', 'sleep', 'thermotherapy'].includes(item.challenge.category);
+      }
+      
+      return item.challenge.category === challengeMode;
+    });
+  };
+
+  // Separate by type and apply filters
+  const quickChallenges = filterChallengesByMode(allPublicChallenges.filter(item => item?.type === 'quick'));
+  const regularPublicChallenges = filterChallengesByMode(allPublicChallenges.filter(item => item?.type === 'public'));
+  const filteredPrivateChallenges = filterChallengesByMode(privateChallenges);
 
   const handleShare = (challengeName: string) => {
     const shareText = `Join me in the "${challengeName}" challenge! 💪`;
@@ -290,15 +312,20 @@ export const UserChallengeParticipations: React.FC = () => {
     );
   };
 
-  const hasAnyChallenges = privateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
+  const hasAnyChallenges = filteredPrivateChallenges.length > 0 || regularPublicChallenges.length > 0 || quickChallenges.length > 0;
 
   if (!hasAnyChallenges) {
     return (
       <div className="text-center py-12">
         <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No Active Challenges</h3>
+        <h3 className="text-lg font-semibold mb-2">
+          {challengeMode === 'recovery' ? 'No Active Recovery Challenges' : 'No Active Challenges'}
+        </h3>
         <p className="text-muted-foreground mb-6">
-          Browse public challenges or create a private one with friends!
+          {challengeMode === 'recovery' 
+            ? 'Join recovery challenges for meditation, breathing, yoga, sleep, and thermotherapy!'
+            : 'Browse public challenges or create a private one with friends!'
+          }
         </p>
         <div className="flex gap-3 justify-center">
           <Button variant="outline">Browse Public</Button>
@@ -335,12 +362,12 @@ export const UserChallengeParticipations: React.FC = () => {
       )}
 
       {/* My Private Challenges Section */}
-      {privateChallenges.length > 0 && (
+      {filteredPrivateChallenges.length > 0 && (
         <VerticalStack
           title="My Private Challenges"
           icon={Lock}
           iconColor="text-purple-500"
-          challenges={privateChallenges}
+          challenges={filteredPrivateChallenges}
         />
       )}
 

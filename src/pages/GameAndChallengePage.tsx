@@ -631,7 +631,7 @@ function GameAndChallengeContent() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
-  const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'combined'>('combined');
+  const [challengeMode, setChallengeMode] = useState<'nutrition' | 'exercise' | 'recovery' | 'combined'>('combined');
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -756,7 +756,7 @@ function GameAndChallengeContent() {
                   <ToggleGroup 
                     type="single" 
                     value={challengeMode} 
-                    onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'combined')}
+                    onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined')}
                     className="bg-muted/50 rounded-full p-1"
                   >
                     <ToggleGroupItem 
@@ -770,6 +770,12 @@ function GameAndChallengeContent() {
                       className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
                     >
                       Exercise
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="recovery" 
+                      className="rounded-full text-xs px-2 py-1 data-[state=on]:bg-gradient-to-r data-[state=on]:from-teal-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+                    >
+                      🧘 Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
@@ -802,7 +808,7 @@ function GameAndChallengeContent() {
                   <ToggleGroup 
                     type="single" 
                     value={challengeMode} 
-                    onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'combined')}
+                    onValueChange={(value) => value && setChallengeMode(value as 'nutrition' | 'exercise' | 'recovery' | 'combined')}
                     className="bg-muted/50 rounded-full p-1"
                   >
                     <ToggleGroupItem 
@@ -816,6 +822,12 @@ function GameAndChallengeContent() {
                       className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
                     >
                       Exercise
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="recovery" 
+                      className="rounded-full px-4 py-2 data-[state=on]:bg-gradient-to-r data-[state=on]:from-teal-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+                    >
+                      🧘 Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
@@ -1147,12 +1159,12 @@ function GameAndChallengeContent() {
               </TabsContent>
 
               <TabsContent value="challenges" className="mt-4">
-                <PublicChallengesBrowse />
+                <PublicChallengesBrowse challengeMode={challengeMode} />
               </TabsContent>
 
               <TabsContent value="my-challenges" className="mt-4 overflow-x-hidden w-full max-w-full">
                 <div className="space-y-8">
-                  <UserChallengeParticipations />
+                  <UserChallengeParticipations challengeMode={challengeMode} />
                 </div>
               </TabsContent>
 
