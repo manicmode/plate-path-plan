@@ -726,7 +726,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* Add Workout Button */}
-      <Card className="w-full shadow-lg border-border bg-card mb-4">
+      <Card className="w-full shadow-lg border-border bg-card mb-2">
         <CardContent className="p-6">
           <Button
             onClick={() => setIsAddWorkoutModalOpen(true)}
@@ -739,7 +739,7 @@ const ExerciseHub = () => {
       </Card>
 
       {/* New Routine Button */}
-      <Card className="w-full shadow-lg border-border bg-card mb-6">
+      <Card className="w-full shadow-lg border-border bg-card mb-4">
         <CardContent className="p-6">
           <Button
             onClick={() => setIsCreateRoutineModalOpen(true)}
