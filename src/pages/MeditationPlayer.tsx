@@ -1,74 +1,111 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Play, Pause, RotateCcw } from "lucide-react";
-import { useNavigate } from 'react-router-dom';
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, RotateCcw } from "lucide-react";
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface MeditationSession {
   id: string;
-  category: string;
-  duration: number;
   title: string;
   description: string;
+  duration: number;
   audio_url: string;
-  image_url?: string;
+  category: string;
 }
 
-interface MeditationPlayerProps {
-  session?: MeditationSession;
-}
-
-export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) => {
+export default function MeditationPlayer() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
+  // Get session data from navigation state or sessionStorage
+  const sessionData = location.state?.session || 
+    JSON.parse(sessionStorage.getItem('currentMeditationSession') || 'null');
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(sessionData?.duration * 60 || 0);
   const [progress, setProgress] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [calmingMusicEnabled, setCalmingMusicEnabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get session from sessionStorage if not passed as prop
-  const currentSession = session || JSON.parse(sessionStorage.getItem('currentMeditationSession') || 'null');
-
+  // Redirect if no session data
   useEffect(() => {
-    if (!currentSession) {
+    if (!sessionData) {
       navigate('/guided-meditation');
       return;
     }
+  }, [sessionData, navigate]);
 
-    // Initialize audio
-    const audio = new Audio(currentSession.audio_url);
+  // Initialize audio
+  useEffect(() => {
+    if (!sessionData?.audio_url) return;
+
+    const audio = new Audio(sessionData.audio_url);
     audioRef.current = audio;
 
     const updateTime = () => {
       setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
+      const totalDuration = audio.duration || sessionData.duration * 60;
+      setProgress((audio.currentTime / totalDuration) * 100);
     };
 
     const updateDuration = () => {
-      setDuration(audio.duration);
+      setDuration(audio.duration || sessionData.duration * 60);
+      setIsLoading(false);
     };
 
     const onEnded = () => {
       handleSessionComplete();
     };
 
+    const onError = () => {
+      console.error('Audio load error');
+      setIsLoading(false);
+      toast({
+        title: "⚠️ Audio Error",
+        description: "Unable to load audio. Using timer mode instead.",
+        duration: 3000,
+      });
+    };
+
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+    audio.addEventListener('canplaythrough', () => setIsLoading(false));
+
+    // Auto-start playback
+    setTimeout(() => {
+      audio.play().then(() => {
+        setIsPlaying(true);
+        setHasStarted(true);
+      }).catch(() => {
+        setIsLoading(false);
+        toast({
+          title: "🎵 Ready to Begin",
+          description: "Tap the play button to start your meditation",
+          duration: 3000,
+        });
+      });
+    }, 1000);
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
       audio.pause();
       audio.currentTime = 0;
     };
-  }, [currentSession]);
+  }, [sessionData]);
 
   const handlePlayPause = async () => {
     if (!audioRef.current) return;
@@ -103,11 +140,11 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
   const handleSessionComplete = async () => {
     setIsPlaying(false);
     
-    // Fade out audio
-    if (audioRef.current) {
+    // Fade out audio smoothly
+    if (audioRef.current && calmingMusicEnabled) {
       const fadeOutInterval = setInterval(() => {
-        if (audioRef.current && audioRef.current.volume > 0.1) {
-          audioRef.current.volume -= 0.1;
+        if (audioRef.current && audioRef.current.volume > 0.05) {
+          audioRef.current.volume -= 0.05;
         } else {
           clearInterval(fadeOutInterval);
           if (audioRef.current) {
@@ -117,20 +154,11 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
       }, 100);
     }
 
-    // Show completion toast
-    toast({
-      title: "Session Complete! 🧘‍♀️",
-      description: `Great job completing "${currentSession.title}"!`,
-      duration: 4000,
-    });
-
     // Update meditation streak
     await updateMeditationStreak();
     
-    // Navigate back after a delay
-    setTimeout(() => {
-      navigate('/guided-meditation');
-    }, 2000);
+    // Show completion modal
+    setShowCompletionModal(true);
   };
 
   const updateMeditationStreak = async () => {
@@ -183,13 +211,20 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
       } else if (newStreak > 1) {
         toast({
           title: `🔥 ${newStreak} Day Streak!`,
-          description: "Keep up the great work with your meditation practice!",
-          duration: 3000,
+          description: "Amazing consistency with your meditation practice!",
+          duration: 4000,
         });
       }
     } catch (error) {
       console.error('Error updating meditation streak:', error);
     }
+  };
+
+  const handleCloseCompletion = () => {
+    setShowCompletionModal(false);
+    // Clear session data and navigate back
+    sessionStorage.removeItem('currentMeditationSession');
+    navigate('/guided-meditation');
   };
 
   const formatTime = (seconds: number) => {
@@ -198,12 +233,24 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!currentSession) {
+  const getCategoryEmoji = (category: string) => {
+    const emojiMap: { [key: string]: string } = {
+      'morning-boost': '🌞',
+      'stress-relief': '🌿',
+      'sleep-sounds': '🌙',
+      'focus-flow': '🧠',
+      'anxiety-ease': '💚',
+      'deep-rest': '🌊'
+    };
+    return emojiMap[category] || '🧘‍♀️';
+  };
+
+  if (!sessionData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">No session selected</h2>
-          <Button onClick={() => navigate('/guided-meditation')} variant="outline">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <h2 className="text-xl font-semibold mb-2">No session selected</h2>
+          <Button onClick={() => navigate('/guided-meditation')} variant="outline" className="border-white/30 text-white hover:bg-white/10">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Meditation
           </Button>
@@ -213,69 +260,89 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
       {/* Background Animation */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 left-20 w-32 h-32 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-24 h-24 bg-indigo-200 rounded-full opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-pink-200 rounded-full opacity-25 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-20 left-20 w-32 h-32 bg-purple-400/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-24 h-24 bg-blue-400/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-pink-400/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-black/10"></div>
       </div>
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
+      <div className="relative z-10 flex items-center justify-between p-6">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate('/guided-meditation')}
-          className="gap-2"
+          className="text-white/80 hover:text-white hover:bg-white/10"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <div className="text-center">
-          <h1 className="text-lg font-semibold text-gray-800">{currentSession.title}</h1>
-          <p className="text-sm text-gray-600">{currentSession.duration} minutes</p>
-        </div>
-        <div className="w-20"></div> {/* Spacer for centered title */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCalmingMusicEnabled(!calmingMusicEnabled)}
+          className="text-white/80 hover:text-white hover:bg-white/10"
+        >
+          {calmingMusicEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+        </Button>
       </div>
 
-      {/* Main Player */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12">
+      {/* Main Content */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+        {/* Category Badge */}
+        <Badge variant="secondary" className="mb-4 bg-white/10 text-white border-white/20">
+          {getCategoryEmoji(sessionData.category)} {sessionData.category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        </Badge>
+
+        {/* Session Title */}
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 max-w-2xl">
+          {sessionData.title}
+        </h1>
+
+        {/* Description */}
+        <p className="text-white/80 text-lg mb-8 max-w-lg">
+          {sessionData.description}
+        </p>
+
         {/* Breathing Orb */}
         <div className="mb-12">
-          <div className={`relative w-48 h-48 rounded-full bg-gradient-to-br from-purple-300 to-indigo-400 shadow-2xl transition-all duration-4000 ${
+          <div className={`relative w-48 h-48 md:w-64 md:h-64 transition-all duration-4000 ${
             hasStarted ? 'animate-pulse scale-110' : 'scale-100'
           }`}>
-            <div className="absolute inset-4 rounded-full bg-gradient-to-br from-purple-200 to-indigo-300 shadow-inner"></div>
-            <div className="absolute inset-8 rounded-full bg-gradient-to-br from-purple-100 to-indigo-200 shadow-inner"></div>
-            <div className="absolute inset-12 rounded-full bg-white/80 shadow-inner flex items-center justify-center">
-              <div className="text-2xl text-purple-600">🧘‍♀️</div>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 shadow-2xl opacity-80"></div>
+            <div className="absolute inset-4 rounded-full bg-gradient-to-br from-purple-300 to-blue-400 shadow-xl opacity-70"></div>
+            <div className="absolute inset-8 rounded-full bg-gradient-to-br from-purple-200 to-blue-300 shadow-lg opacity-60"></div>
+            <div className="absolute inset-12 rounded-full bg-white/40 shadow-inner flex items-center justify-center">
+              <div className="text-4xl md:text-5xl">🧘‍♀️</div>
             </div>
+            
+            {/* Glow effect */}
+            <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 blur-xl opacity-30 ${
+              isPlaying ? 'animate-pulse' : ''
+            }`}></div>
           </div>
-        </div>
-
-        {/* Session Info */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentSession.title}</h2>
-          <p className="text-gray-600 max-w-md">{currentSession.description}</p>
         </div>
 
         {/* Progress */}
         <div className="w-full max-w-md mb-8">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <div className="flex justify-between text-sm text-white/70 mb-3">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2 bg-white/20" />
         </div>
 
         {/* Controls */}
         <div className="flex items-center gap-6">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={handleRestart}
-            className="h-12 w-12 rounded-full"
+            className="h-12 w-12 rounded-full text-white/80 hover:text-white hover:bg-white/10"
+            disabled={isLoading}
           >
             <RotateCcw className="h-5 w-5" />
           </Button>
@@ -283,9 +350,12 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
           <Button
             size="lg"
             onClick={handlePlayPause}
-            className="h-16 w-16 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-lg"
+            disabled={isLoading}
+            className="h-16 w-16 rounded-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 shadow-xl shadow-purple-500/25"
           >
-            {isPlaying ? (
+            {isLoading ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+            ) : isPlaying ? (
               <Pause className="h-6 w-6" />
             ) : (
               <Play className="h-6 w-6 ml-1" />
@@ -296,14 +366,36 @@ export const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ session }) =
         </div>
 
         {/* Instructions */}
-        {!hasStarted && (
-          <div className="mt-8 text-center animate-fade-in">
-            <p className="text-gray-600 text-sm">
-              Find a comfortable position and press play when you're ready
+        {!hasStarted && !isLoading && (
+          <div className="mt-8 animate-fade-in">
+            <p className="text-white/60 text-sm">
+              Find a comfortable position and let yourself relax
             </p>
           </div>
         )}
       </div>
+
+      {/* Completion Modal */}
+      <Dialog open={showCompletionModal} onOpenChange={() => {}}>
+        <DialogContent className="bg-gradient-to-br from-slate-800 to-purple-900 border-purple-500/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-center">Session Complete! ✅</DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-6">
+            <div className="text-6xl mb-4">🧘‍♀️</div>
+            <h3 className="text-xl font-semibold mb-2">Well Done!</h3>
+            <p className="text-white/80 mb-6">
+              You've completed "{sessionData.title}". Your mind and body thank you for this moment of peace.
+            </p>
+            <Button 
+              onClick={handleCloseCompletion}
+              className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+            >
+              Continue Journey
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
+}
