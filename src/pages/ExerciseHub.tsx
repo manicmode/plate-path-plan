@@ -726,7 +726,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* Action Buttons Group - Tightly Spaced */}
-      <div className="space-y-1">
+      <div className="space-y-2 mb-6">
         {/* Add Workout Button */}
         <Card className="w-full shadow-lg border-border bg-card">
           <CardContent className="p-6">
@@ -741,7 +741,7 @@ const ExerciseHub = () => {
         </Card>
 
         {/* New Routine Button */}
-        <Card className="w-full shadow-lg border-border bg-card mb-6">
+        <Card className="w-full shadow-lg border-border bg-card">
           <CardContent className="p-6">
             <Button
               onClick={() => setIsCreateRoutineModalOpen(true)}
