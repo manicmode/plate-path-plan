@@ -298,8 +298,8 @@ export const NotificationSettings = () => {
                   <p className="text-sm text-white/70">Get gentle reminders for wind-down routines</p>
                 </div>
                 <Switch
-                  checked={sleepNudges}
-                  onCheckedChange={setSleepNudges}
+                  checked={sleepNudgePreferences?.nudges_enabled ?? true}
+                  onCheckedChange={(value) => updateSleepNudgePreferences?.({ nudges_enabled: value })}
                 />
               </div>
 
@@ -309,8 +309,8 @@ export const NotificationSettings = () => {
                   <p className="text-sm text-white/70">AI-powered sleep preparation suggestions</p>
                 </div>
                 <Switch
-                  checked={smartSleepNudges}
-                  onCheckedChange={setSmartSleepNudges}
+                  checked={sleepNudgePreferences?.smart_nudges_enabled ?? true}
+                  onCheckedChange={(value) => updateSleepNudgePreferences?.({ smart_nudges_enabled: value })}
                 />
               </div>
             </div>

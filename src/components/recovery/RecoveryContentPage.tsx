@@ -571,7 +571,7 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                       <p className="text-white/70 text-sm">Set your wind-down time for better sleep</p>
                     </div>
                     <Button 
-                      onClick={() => setShowSleepReminderModal(true)}
+                      onClick={() => setIsSleepReminderModalOpen(true)}
                       className="bg-gradient-to-r from-slate-700 via-blue-800 to-indigo-800 hover:from-slate-600 hover:via-blue-700 hover:to-indigo-700 text-white"
                     >
                       <Moon className="mr-2 h-4 w-4" />
@@ -666,9 +666,7 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
         isOpen={isSleepReminderModalOpen}
         onClose={() => {
           setIsSleepReminderModalOpen(false);
-          fetchSleepReminder();
         }}
-        reminder={sleepReminder}
       />
     </div>
   );

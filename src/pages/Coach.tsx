@@ -18,7 +18,6 @@ import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanne
 import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
 import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
 import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
-import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 
 interface Message {
   id: string;
