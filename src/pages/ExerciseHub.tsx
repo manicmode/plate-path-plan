@@ -726,7 +726,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* Add Workout Button */}
-      <Card className="w-full shadow-lg border-border bg-card mb-6">
+      <Card className="w-full shadow-lg border-border bg-card mb-4">
         <CardContent className="p-6">
           <Button
             onClick={() => setIsAddWorkoutModalOpen(true)}
@@ -734,6 +734,19 @@ const ExerciseHub = () => {
           >
             <Plus className="mr-2 h-5 w-5" />
             Add Workout
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* New Routine Button */}
+      <Card className="w-full shadow-lg border-border bg-card mb-6">
+        <CardContent className="p-6">
+          <Button
+            onClick={() => setIsCreateRoutineModalOpen(true)}
+            className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            New Routine
           </Button>
         </CardContent>
       </Card>
@@ -880,18 +893,6 @@ const ExerciseHub = () => {
                 ) : tab.id === 'my-routines' ? (
                   /* My Routines Tab - Enhanced */
                   <div className="space-y-6">
-                    {/* Create New Routine Button */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-4">
-                        <Button
-                          onClick={() => setIsCreateRoutineModalOpen(true)}
-                          className="w-full h-12 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          New Routine
-                        </Button>
-                      </CardContent>
-                    </Card>
 
                     {/* Your Saved Routines Header */}
                     <div className="text-center mb-4">
