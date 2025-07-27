@@ -14,6 +14,9 @@ import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
 import { BreathingReminderModal } from "@/components/breathing/BreathingReminderModal";
 import { BreathingTestButton } from "@/components/breathing/BreathingTestButton";
 import { BreathingStreakDisplay } from "@/components/breathing/BreathingStreakDisplay";
+import { YogaReminderModal } from "@/components/yoga/YogaReminderModal";
+import { YogaTestButton } from "@/components/yoga/YogaTestButton";
+import { YogaStreakDisplay } from "@/components/yoga/YogaStreakDisplay";
 
 interface RecoveryContentPageProps {
   category: string;
@@ -41,6 +44,8 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
   const [selectedThemeForPicker, setSelectedThemeForPicker] = useState<any>(null);
   const [breathingReminder, setBreathingReminder] = useState<any>(null);
   const [isBreathingReminderModalOpen, setIsBreathingReminderModalOpen] = useState(false);
+  const [yogaReminder, setYogaReminder] = useState<any>(null);
+  const [isYogaReminderModalOpen, setIsYogaReminderModalOpen] = useState(false);
 
   // Fetch reminders
   const fetchReminders = async () => {
@@ -83,6 +88,27 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     }
   };
 
+  // Fetch yoga reminder for yoga category
+  const fetchYogaReminder = async () => {
+    if (category !== 'yoga') return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('yoga_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setYogaReminder(data);
+    } catch (error) {
+      console.error('Error fetching yoga reminder:', error);
+    }
+  };
+
   const handleRemoveBreathingReminder = async () => {
     try {
       const { error } = await supabase
@@ -99,9 +125,26 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
     }
   };
 
+  const handleRemoveYogaReminder = async () => {
+    try {
+      const { error } = await supabase
+        .from('yoga_reminders')
+        .delete()
+        .eq('id', yogaReminder.id);
+
+      if (error) throw error;
+      setYogaReminder(null);
+      toast({ title: "Yoga reminder removed" });
+    } catch (error) {
+      console.error('Error removing yoga reminder:', error);
+      toast({ title: "Error removing reminder", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     fetchReminders();
     fetchBreathingReminder();
+    fetchYogaReminder();
   }, [category]);
 
   // Handle reminder save
@@ -325,7 +368,7 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                         <h3 className="text-lg font-semibold text-foreground">Breathing Practice Reminder</h3>
                         {breathingReminder ? (
                           <p className="text-sm text-muted-foreground">
-                            Daily at {breathingReminder.reminder_time} ({breathingReminder.recurrence})
+                            Daily at {breathingReminder.time_of_day} ({breathingReminder.recurrence})
                           </p>
                         ) : (
                           <p className="text-sm text-muted-foreground">
@@ -364,6 +407,59 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
                 
                 {/* Test Session Button */}
                 <BreathingTestButton />
+              </div>
+            )}
+
+            {/* Yoga Reminder Display - only for yoga category */}
+            {category === 'yoga' && (
+              <div className="mt-8 space-y-4">
+                <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground">Yoga Practice Reminder</h3>
+                        {yogaReminder ? (
+                          <p className="text-sm text-muted-foreground">
+                            Daily at {yogaReminder.time_of_day} ({yogaReminder.recurrence})
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Set a daily reminder to maintain your yoga practice
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsYogaReminderModalOpen(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        {yogaReminder ? 'Edit' : 'Set Reminder'}
+                      </Button>
+                      {yogaReminder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveYogaReminder}
+                          className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Yoga Streak Display */}
+                <YogaStreakDisplay />
+                
+                {/* Test Session Button */}
+                <YogaTestButton />
               </div>
             )}
           </TabsContent>
@@ -432,6 +528,15 @@ const RecoveryContentPage: React.FC<RecoveryContentPageProps> = ({
           fetchBreathingReminder();
         }}
         reminder={breathingReminder}
+      />
+
+      <YogaReminderModal
+        isOpen={isYogaReminderModalOpen}
+        onClose={() => {
+          setIsYogaReminderModalOpen(false);
+          fetchYogaReminder();
+        }}
+        reminder={yogaReminder}
       />
     </div>
   );

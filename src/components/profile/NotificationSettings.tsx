@@ -10,6 +10,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSound } from '@/contexts/SoundContext';
 import { useMeditationNudges } from '@/hooks/useMeditationNudges';
 import { useBreathingNudges } from '@/hooks/useBreathingNudges';
+import { useYogaNudges } from '@/hooks/useYogaNudges';
 import { toast } from 'sonner';
 
 export const NotificationSettings = () => {
@@ -19,6 +20,7 @@ export const NotificationSettings = () => {
   const { isEnabled: soundEnabled, setSoundEnabled } = useSound();
   const { nudgePreferences, updateNudgePreferences } = useMeditationNudges();
   const { nudgePreferences: breathingNudgePreferences, updateNudgePreferences: updateBreathingNudgePreferences } = useBreathingNudges();
+  const { nudgePreferences: yogaNudgePreferences, updateNudgePreferences: updateYogaNudgePreferences } = useYogaNudges();
 
   const smartCoachNotifications = [
     { 
@@ -327,6 +329,50 @@ export const NotificationSettings = () => {
               <Switch
                 checked={breathingNudgePreferences?.push_notifications_enabled ?? true}
                 onCheckedChange={(value) => handleBreathingToggle('push_notifications_enabled', value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Yoga Nudges */}
+        <div className="space-y-4">
+          <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+            <span className="text-lg">🧘‍♀️</span>
+            <span>Yoga Nudges</span>
+          </h4>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Daily Reminder
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Scheduled daily yoga practice reminders
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={yogaNudgePreferences?.nudges_enabled ?? true}
+                onCheckedChange={(value) => updateYogaNudgePreferences({ nudges_enabled: value })}
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
+              <div className="flex-1 flex items-center space-x-3">
+                <Smartphone className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+                <div>
+                  <div className={`font-medium text-gray-900 dark:text-white ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Push Notifications (coming soon)
+                  </div>
+                  <div className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    Device notifications for yoga reminders
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={yogaNudgePreferences?.push_notifications_enabled ?? true}
+                onCheckedChange={(value) => updateYogaNudgePreferences({ push_notifications_enabled: value })}
               />
             </div>
           </div>
