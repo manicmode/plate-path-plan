@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useRecoveryChallengeCoach } from '@/hooks/useRecoveryChallengeCoach';
 
 interface RecoveryActivity {
   category: 'meditation' | 'breathing' | 'yoga' | 'sleep' | 'thermotherapy';
@@ -23,6 +24,7 @@ export interface RecoveryChallengeProgress {
 export const useRecoveryChallenge = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { sendProgressMessage } = useRecoveryChallengeCoach();
   const [activeChallenges, setActiveChallenges] = useState<RecoveryChallengeProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -119,6 +121,9 @@ export const useRecoveryChallenge = () => {
           description: `Your ${activity.category} session counts toward ${totalChallenges} active challenge${totalChallenges > 1 ? 's' : ''}`,
         });
       }
+
+      // Send coach commentary for progress
+      await sendProgressMessage(activity);
 
       // Refresh active challenges
       await fetchActiveChallenges();

@@ -19,6 +19,7 @@ import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingN
 import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
 import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 import { AIThermotherapyNudgeChatEntries } from '@/components/thermotherapy/AIThermotherapyNudgeChatEntries';
+import { AIRecoveryChallengeChatEntries } from '@/components/recovery/AIRecoveryChallengeChatEntries';
 
 interface Message {
   id: string;
@@ -546,6 +547,13 @@ const Coach = () => {
       <Card className="glass-card border-0 rounded-3xl">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+        </CardContent>
+      </Card>
+
+      {/* Recovery Challenge Coach Section */}
+      <Card className="glass-card border-0 rounded-3xl">
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+          <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
         </CardContent>
       </Card>
 
