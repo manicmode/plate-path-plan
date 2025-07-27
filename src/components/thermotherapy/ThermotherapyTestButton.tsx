@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Thermometer, Snowflake, Flame } from 'lucide-react';
+import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge';
 
 export function ThermotherapyTestButton() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { trackRecoveryActivity } = useRecoveryChallenge();
 
   const handleLogSession = async () => {
     setLoading(true);
@@ -34,6 +36,15 @@ export function ThermotherapyTestButton() {
         console.error('Error logging thermotherapy session:', error);
         throw error;
       }
+
+      // Track recovery challenge progress
+      await trackRecoveryActivity({
+        category: 'thermotherapy',
+        sessionId: data.sessionId || 'manual-log',
+        completedAt: new Date().toISOString(),
+        duration: 15, // Default thermotherapy session duration
+        notes: 'Thermotherapy session completed'
+      });
 
       toast({
         title: "Session Logged! 🔥❄️",

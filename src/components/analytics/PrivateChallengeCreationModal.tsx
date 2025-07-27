@@ -26,9 +26,20 @@ const challengePresets = [
   { type: 'nutrition', emoji: '🚫🍭', name: 'Sugar-Free Challenge', metric: 'days_no_sugar', unit: 'days', defaultValue: 1 },
   { type: 'exercise', emoji: '🚶', name: 'Step Master', metric: 'steps', unit: 'steps', defaultValue: 10000 },
   { type: 'nutrition', emoji: '🍎', name: 'Fruit Fiesta', metric: 'fruit_servings', unit: 'servings', defaultValue: 3 },
-  { type: 'mindfulness', emoji: '🧘', name: 'Mindful Moments', metric: 'meditation_minutes', unit: 'minutes', defaultValue: 10 },
   { type: 'nutrition', emoji: '💪', name: 'Protein Power', metric: 'protein_grams', unit: 'grams', defaultValue: 100 },
   { type: 'exercise', emoji: '🏃', name: 'Workout Warrior', metric: 'workout_minutes', unit: 'minutes', defaultValue: 30 },
+  
+  // Recovery & Mindfulness Challenges
+  { type: 'meditation', emoji: '🧘‍♂️', name: 'Meditation Master', metric: 'meditation_sessions', unit: 'sessions', defaultValue: 1 },
+  { type: 'meditation', emoji: '🧘‍♀️', name: 'Daily Mindfulness', metric: 'meditation_minutes', unit: 'minutes', defaultValue: 10 },
+  { type: 'breathing', emoji: '🫁', name: 'Breathing Champion', metric: 'breathing_sessions', unit: 'sessions', defaultValue: 1 },
+  { type: 'breathing', emoji: '💨', name: 'Breath Master', metric: 'breathing_minutes', unit: 'minutes', defaultValue: 5 },
+  { type: 'yoga', emoji: '🧘‍♀️', name: 'Yoga Warrior', metric: 'yoga_sessions', unit: 'sessions', defaultValue: 1 },
+  { type: 'yoga', emoji: '🕉️', name: 'Daily Flow', metric: 'yoga_minutes', unit: 'minutes', defaultValue: 20 },
+  { type: 'sleep', emoji: '🌙', name: 'Sleep Preparation', metric: 'sleep_sessions', unit: 'sessions', defaultValue: 1 },
+  { type: 'sleep', emoji: '💤', name: 'Restful Nights', metric: 'sleep_hours', unit: 'hours', defaultValue: 8 },
+  { type: 'thermotherapy', emoji: '🔥❄️', name: 'Fire & Ice', metric: 'thermotherapy_sessions', unit: 'sessions', defaultValue: 1 },
+  { type: 'thermotherapy', emoji: '🛁', name: 'Contrast Therapy', metric: 'thermotherapy_minutes', unit: 'minutes', defaultValue: 15 },
 ];
 
 const durationOptions = [

@@ -5,9 +5,11 @@ import { Play, Loader2, CheckCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge'
 
 export const YogaTestButton = () => {
   const { user } = useAuth()
+  const { trackRecoveryActivity } = useRecoveryChallenge()
   const [isLogging, setIsLogging] = useState(false)
   const [lastLoggedStreak, setLastLoggedStreak] = useState<any>(null)
 
@@ -28,6 +30,15 @@ export const YogaTestButton = () => {
 
       console.log('Yoga session logged:', data)
       setLastLoggedStreak(data.streak)
+      
+      // Track recovery challenge progress
+      await trackRecoveryActivity({
+        category: 'yoga',
+        sessionId: data.sessionId || 'manual-log',
+        completedAt: new Date().toISOString(),
+        duration: 20, // Default yoga session duration
+        notes: 'Yoga session completed'
+      })
       
       if (data.message.includes('already completed')) {
         toast.info('You already completed a yoga session today!')

@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Moon, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge';
 
 export const SleepTestButton: React.FC = () => {
+  const { trackRecoveryActivity } = useRecoveryChallenge();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -25,6 +27,15 @@ export const SleepTestButton: React.FC = () => {
       });
 
       if (error) throw error;
+
+      // Track recovery challenge progress
+      await trackRecoveryActivity({
+        category: 'sleep',
+        sessionId: data.sessionId || 'manual-log',
+        completedAt: new Date().toISOString(),
+        duration: 30, // Default sleep prep duration
+        notes: 'Sleep preparation completed'
+      });
 
       toast({
         title: "Sleep session logged! 🌙💤",

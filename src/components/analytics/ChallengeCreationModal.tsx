@@ -82,6 +82,39 @@ export const ChallengeCreationModal: React.FC<ChallengeCreationModalProps> = ({
       description: 'Include vegetables in every meal',
       icon: <Apple className="h-5 w-5" />
     },
+    
+    // Recovery & Mindfulness Goals
+    { 
+      value: 'daily-meditation', 
+      label: '🧘‍♂️ Daily Meditation', 
+      description: 'Meditate for 10 minutes daily',
+      icon: <Target className="h-5 w-5" />
+    },
+    { 
+      value: 'breathing-practice', 
+      label: '🫁 Breathing Practice', 
+      description: 'Practice breathing exercises daily',
+      icon: <Target className="h-5 w-5" />
+    },
+    { 
+      value: 'yoga-flow', 
+      label: '🧘‍♀️ Daily Yoga', 
+      description: 'Complete a yoga session daily',
+      icon: <Target className="h-5 w-5" />
+    },
+    { 
+      value: 'sleep-prep', 
+      label: '🌙 Sleep Preparation', 
+      description: 'Complete sleep prep routine',
+      icon: <Target className="h-5 w-5" />
+    },
+    { 
+      value: 'thermotherapy', 
+      label: '🔥❄️ Thermotherapy', 
+      description: 'Hot & cold therapy sessions',
+      icon: <Target className="h-5 w-5" />
+    },
+    
     { 
       value: 'custom', 
       label: '✨ Custom Goal', 

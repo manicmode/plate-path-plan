@@ -5,10 +5,12 @@ import { Play, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
+import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge'
 
 export const BreathingTestButton = () => {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { trackRecoveryActivity } = useRecoveryChallenge()
   const [isLogging, setIsLogging] = useState(false)
   const [streak, setStreak] = useState<any>(null)
 
@@ -31,6 +33,16 @@ export const BreathingTestButton = () => {
       if (error) throw error
 
       setStreak(data.streak)
+      
+      // Track recovery challenge progress
+      await trackRecoveryActivity({
+        category: 'breathing',
+        sessionId: data.sessionId || 'manual-log',
+        completedAt: new Date().toISOString(),
+        duration: 5, // Default breathing session duration
+        notes: 'Breathing exercise completed'
+      })
+
       toast({
         title: "Session logged! 🫁",
         description: data.message || "Breathing session recorded successfully"
