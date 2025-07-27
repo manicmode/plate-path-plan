@@ -88,6 +88,27 @@ const RecoveryPlayer = () => {
   const updateMeditationStreak = async () => {
     const categoryMeta = CATEGORY_META[sessionData.category as keyof typeof CATEGORY_META] || CATEGORY_META.general;
     
+    // Log the completed session for all categories
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('recovery_session_logs')
+          .insert({
+            user_id: user.id,
+            session_id: sessionData.id,
+            category: sessionData.category,
+            duration_minutes: sessionData.duration,
+          });
+
+        if (error) {
+          console.error('Error logging session:', error);
+        }
+      }
+    } catch (logError) {
+      console.error('Failed to log session:', logError);
+    }
+
     // Only update streak for meditation categories
     if (!categoryMeta.hasStreak) {
       // Show simple completion toast for non-meditation categories

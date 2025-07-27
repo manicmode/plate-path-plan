@@ -1225,6 +1225,39 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_session_logs: {
+        Row: {
+          category: string
+          completed_at: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_favorite: boolean
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          completed_at?: string
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          is_favorite?: boolean
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          completed_at?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_favorite?: boolean
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reminder_logs: {
         Row: {
           id: string

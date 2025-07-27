@@ -99,6 +99,14 @@ const RecoveryCenter = () => {
               </p>
             </div>
           </div>
+          <Button
+            onClick={() => navigate('/recovery-analytics')}
+            variant="outline"
+            size="sm"
+            className="hover:bg-accent/50 transition-colors"
+          >
+            📊 Analytics
+          </Button>
         </div>
       </div>
 
