@@ -125,6 +125,11 @@ const RecoveryCenter = () => {
             return (
               <div
                 key={option.id}
+                onClick={() => {
+                  if (option.id === 'guided-meditation') {
+                    navigate('/guided-meditation');
+                  }
+                }}
                 className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${option.gradient} p-6 border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 animate-fade-in cursor-pointer`}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
