@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { RemindersList } from "@/components/recovery/RemindersList";
 import { AddReminderModal } from "@/components/recovery/AddReminderModal";
+import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
 
 const GuidedMeditation = () => {
   useScrollToTop();
@@ -30,6 +31,9 @@ const GuidedMeditation = () => {
   const [reminders, setReminders] = useState<any[]>([]);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<any>(null);
+  const [isSessionPickerOpen, setIsSessionPickerOpen] = useState(false);
+  const [selectedThemeForPicker, setSelectedThemeForPicker] = useState<any>(null);
+  const [currentSession, setCurrentSession] = useState<any>(null);
   const progressInterval = useRef<NodeJS.Timeout>();
 
   const meditationThemes = [
@@ -422,8 +426,19 @@ const GuidedMeditation = () => {
     };
   }, [isPlaying, isSessionComplete]);
 
+  // Handle theme selection - now opens session picker modal
   const handleThemeSelect = (themeId: string) => {
-    setSelectedTheme(themeId);
+    const theme = meditationThemes.find(t => t.id === themeId);
+    if (theme) {
+      setSelectedThemeForPicker(theme);
+      setIsSessionPickerOpen(true);
+    }
+  };
+
+  // Handle session start from modal
+  const handleStartSession = (session: any) => {
+    setCurrentSession(session);
+    setSelectedTheme(session.category);
     setIsInPlayback(true);
     setProgress(0);
     setIsSessionComplete(false);
@@ -467,10 +482,10 @@ const GuidedMeditation = () => {
             </Button>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-foreground bg-clip-text text-transparent">
-                {currentTheme?.title}
+                {currentSession?.title || currentTheme?.title}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {currentTheme?.description}
+                {currentSession?.description || currentTheme?.description}
               </p>
             </div>
           </div>
@@ -517,8 +532,8 @@ const GuidedMeditation = () => {
             {/* Progress Bar */}
             <div className="mb-6">
               <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                <span>{Math.floor((progress / 100) * parseInt(currentTheme?.duration || '0'))} min</span>
-                <span>{currentTheme?.duration}</span>
+                <span>{Math.floor((progress / 100) * (currentSession?.duration || parseInt(currentTheme?.duration || '0'))))} min</span>
+                <span>{currentSession ? `${currentSession.duration} min` : currentTheme?.duration}</span>
               </div>
               <Progress value={progress} className="h-2" />
             </div>
@@ -838,6 +853,17 @@ const GuidedMeditation = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Session Picker Modal */}
+        <SessionPickerModal
+          isOpen={isSessionPickerOpen}
+          onClose={() => {
+            setIsSessionPickerOpen(false);
+            setSelectedThemeForPicker(null);
+          }}
+          theme={selectedThemeForPicker}
+          onStartSession={handleStartSession}
+        />
 
         {/* Add Reminder Modal */}
         <AddReminderModal
