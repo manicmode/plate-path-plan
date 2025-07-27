@@ -37,6 +37,7 @@ import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useSound } from '@/hooks/useSound';
 import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
+import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -855,6 +856,9 @@ const Home = () => {
 
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
+      {/* Meditation Nudge Banner */}
+      <MeditationNudgeBanner />
+
       {/* Celebration Popup */}
       <CelebrationPopup 
         show={showCelebration} 

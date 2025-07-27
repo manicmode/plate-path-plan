@@ -15,6 +15,7 @@ import { NudgeOpportunityCard } from '@/components/NudgeOpportunityCard';
 import { GroupStatsDisplay } from '@/components/GroupStatsDisplay';
 import { WeeklyExerciseInsightsCard } from '@/components/analytics/WeeklyExerciseInsightsCard';
 import { AnimatePresence } from 'framer-motion';
+import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -481,6 +482,13 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
               <Plus className="mr-2 h-5 w-5" />
               New Routine
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Meditation Nudges Section */}
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className="p-6">
+            <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
           </CardContent>
         </Card>
 
