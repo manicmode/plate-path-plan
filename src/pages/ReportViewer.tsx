@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarC
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useReport, ReportType, ReportData } from "@/hooks/useReport";
+import { supabase } from "@/integrations/supabase/client";
 
 
 const chartConfig = {
@@ -77,6 +78,238 @@ const MissingDataCard = ({ title, icon, message }: { title: string; icon: string
     </CardContent>
   </Card>
 );
+
+// Recovery Activities Section Component
+const RecoveryActivitiesSection = ({ reportType, isMobile }: { reportType: ReportType; isMobile: boolean }) => {
+  const [recoveryData, setRecoveryData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecoveryData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.id) return;
+
+        // Fetch all recovery streak data
+        const [meditationRes, breathingRes, yogaRes, sleepRes, thermotherapyRes] = await Promise.all([
+          supabase.from('meditation_streaks').select('*').eq('user_id', user.id).maybeSingle(),
+          supabase.from('breathing_streaks').select('*').eq('user_id', user.id).maybeSingle(),
+          supabase.from('yoga_streaks').select('*').eq('user_id', user.id).maybeSingle(),
+          supabase.from('sleep_streaks').select('*').eq('user_id', user.id).maybeSingle(),
+          supabase.from('thermotherapy_streaks').select('*').eq('user_id', user.id).maybeSingle(),
+        ]);
+
+        const recoveryStats = {
+          meditation: meditationRes.data || { total_sessions: 0, current_streak: 0, longest_streak: 0 },
+          breathing: breathingRes.data || { total_sessions: 0, current_streak: 0, longest_streak: 0 },
+          yoga: yogaRes.data || { total_sessions: 0, current_streak: 0, longest_streak: 0 },
+          sleep: sleepRes.data || { total_sessions: 0, current_streak: 0, longest_streak: 0 },
+          thermotherapy: thermotherapyRes.data || { total_sessions: 0, current_streak: 0, longest_streak: 0 },
+        };
+
+        setRecoveryData(recoveryStats);
+      } catch (error) {
+        console.error('Error fetching recovery data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecoveryData();
+  }, []);
+
+  const recoveryCategories = [
+    { 
+      key: 'meditation', 
+      name: 'Meditation', 
+      icon: '🧘‍♂️', 
+      color: 'from-indigo-500 to-purple-500',
+      bgColor: 'from-indigo-50 to-purple-50',
+      borderColor: 'border-indigo-200',
+      textColor: 'text-indigo-800'
+    },
+    { 
+      key: 'breathing', 
+      name: 'Breathing', 
+      icon: '🫁', 
+      color: 'from-cyan-500 to-blue-500',
+      bgColor: 'from-cyan-50 to-blue-50',
+      borderColor: 'border-cyan-200',
+      textColor: 'text-cyan-800'
+    },
+    { 
+      key: 'yoga', 
+      name: 'Yoga', 
+      icon: '🧘‍♀️', 
+      color: 'from-purple-500 to-pink-500',
+      bgColor: 'from-purple-50 to-pink-50',
+      borderColor: 'border-purple-200',
+      textColor: 'text-purple-800'
+    },
+    { 
+      key: 'sleep', 
+      name: 'Sleep Prep', 
+      icon: '🌙', 
+      color: 'from-slate-600 to-indigo-600',
+      bgColor: 'from-slate-50 to-indigo-50',
+      borderColor: 'border-slate-200',
+      textColor: 'text-slate-800'
+    },
+    { 
+      key: 'thermotherapy', 
+      name: 'Thermotherapy', 
+      icon: '🔥❄️', 
+      color: 'from-blue-500 to-red-500',
+      bgColor: 'from-blue-50 to-red-50',
+      borderColor: 'border-blue-200',
+      textColor: 'text-blue-800'
+    },
+  ];
+
+  const getStreakBadge = (streak: number) => {
+    if (streak >= 30) return { emoji: '🏆', text: 'Master', color: 'bg-yellow-500' };
+    if (streak >= 14) return { emoji: '🥇', text: 'Champion', color: 'bg-yellow-400' };
+    if (streak >= 7) return { emoji: '🎖️', text: 'Warrior', color: 'bg-orange-400' };
+    if (streak >= 3) return { emoji: '⭐', text: 'Rising', color: 'bg-blue-400' };
+    return null;
+  };
+
+  const getProgressToMilestone = (streak: number) => {
+    if (streak >= 30) return { target: 60, progress: ((streak % 30) / 30) * 100, label: '60-day goal' };
+    if (streak >= 14) return { target: 30, progress: ((streak - 14) / 16) * 100, label: '30-day goal' };
+    if (streak >= 7) return { target: 14, progress: ((streak - 7) / 7) * 100, label: '14-day goal' };
+    return { target: 7, progress: (streak / 7) * 100, label: '7-day goal' };
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-32 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!recoveryData) {
+    return (
+      <MissingDataCard
+        title="Recovery Activity Tracking"
+        icon="🧘‍♂️"
+        message="Start logging meditation, breathing, yoga, and sleep sessions to unlock recovery insights."
+      />
+    );
+  }
+
+  const totalSessions = Object.values(recoveryData).reduce((sum: number, data: any) => sum + ((data?.total_sessions as number) || 0), 0);
+  const highestStreak = Math.max(...Object.values(recoveryData).map((data: any) => data?.current_streak || 0));
+  const favoriteCategory = recoveryCategories.find(cat => 
+    (recoveryData[cat.key]?.total_sessions || 0) === Math.max(...Object.values(recoveryData).map((data: any) => data?.total_sessions || 0))
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Recovery Overview */}
+      <div className={`text-center space-y-3 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-blue-200`}>
+        <h4 className={`font-bold ${isMobile ? 'text-base' : 'text-lg'} text-blue-800 mb-2`}>
+          🌟 {reportType.charAt(0).toUpperCase() + reportType.slice(1)} Recovery Summary
+        </h4>
+        <div className={`grid ${isMobile ? 'grid-cols-3' : 'grid-cols-3'} gap-4`}>
+          <div className="text-center">
+            <div className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-blue-600`}>{String(totalSessions)}</div>
+            <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-blue-700`}>Total Sessions</div>
+          </div>
+          <div className="text-center">
+            <div className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-purple-600`}>{highestStreak}</div>
+            <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-purple-700`}>Best Streak</div>
+          </div>
+          <div className="text-center">
+            <div className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-pink-600`}>{favoriteCategory?.icon || '🧘‍♂️'}</div>
+            <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-pink-700`}>{favoriteCategory?.name || 'None'}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Individual Recovery Categories */}
+      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
+        {recoveryCategories.map((category) => {
+          const data = recoveryData[category.key];
+          const sessions = data?.total_sessions || 0;
+          const currentStreak = data?.current_streak || 0;
+          const longestStreak = data?.longest_streak || 0;
+          
+          if (sessions === 0) return null; // Don't show categories with no activity
+          
+          const badge = getStreakBadge(currentStreak);
+          const progress = getProgressToMilestone(currentStreak);
+          
+          return (
+            <div key={category.key} className={`bg-gradient-to-r ${category.bgColor} ${isMobile ? 'p-4' : 'p-5'} rounded-xl border ${category.borderColor} hover:shadow-md transition-shadow`}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>{category.icon}</span>
+                  <div>
+                    <h5 className={`font-semibold ${category.textColor} ${isMobile ? 'text-sm' : ''}`}>{category.name}</h5>
+                    {badge && (
+                      <Badge className={`${badge.color} text-white text-xs mt-1`}>
+                        {badge.emoji} {badge.text}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${category.textColor}`}>{sessions}</div>
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>sessions</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>Current Streak</span>
+                  <span className={`font-semibold ${category.textColor}`}>🔥 {currentStreak} days</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>Best Streak</span>
+                  <span className={`font-semibold ${category.textColor}`}>📈 {longestStreak} days</span>
+                </div>
+                
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>Progress to {progress.label}</span>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium ${category.textColor}`}>
+                      {currentStreak}/{progress.target} days
+                    </span>
+                  </div>
+                  <Progress value={progress.progress} className={`w-full ${isMobile ? 'h-1.5' : 'h-2'}`} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {totalSessions === 0 && (
+        <div className={`text-center ${isMobile ? 'p-6' : 'p-8'} bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200`}>
+          <div className={`${isMobile ? 'text-3xl' : 'text-4xl'} mb-4`}>🌱</div>
+          <h4 className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'} text-gray-700 mb-2`}>
+            Start Your Recovery Journey
+          </h4>
+          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 mb-4`}>
+            Begin with just 5 minutes of meditation, breathing, or yoga to unlock your recovery insights!
+          </p>
+          <Button variant="outline" size="sm" className="gap-2">
+            <span>🧘‍♂️</span>
+            Explore Recovery Hub
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function ReportViewer() {
   const navigate = useNavigate();
@@ -684,6 +917,21 @@ export default function ReportViewer() {
             </CardContent>
           </Card>
         )}
+
+        {/* Recovery & Wellness Activities - Mobile Optimized */}
+        <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.35s' }}>
+          <CardHeader className={isMobile ? "p-4 pb-2" : ""}>
+            <CardTitle className={`flex items-center gap-3 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+              <div className={`${isMobile ? 'p-1.5' : 'p-2'} bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg text-white`}>
+                🧘‍♀️
+              </div>
+              Recovery & Mindfulness Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={`space-y-4 ${isMobile ? 'p-4 pt-0' : ''}`}>
+            <RecoveryActivitiesSection reportType={reportType} isMobile={isMobile} />
+          </CardContent>
+        </Card>
 
         {/* 4. Exercise Activity - Mobile Optimized */}
         <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.3s' }}>
