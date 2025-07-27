@@ -24,6 +24,7 @@ export const NotificationSettings = () => {
   const { nudgePreferences: breathingNudgePreferences, updateNudgePreferences: updateBreathingNudgePreferences } = useBreathingNudges();
   const { nudgePreferences: yogaNudgePreferences, updateNudgePreferences: updateYogaNudgePreferences } = useYogaNudges();
   const { nudgePreferences: sleepNudgePreferences, updateNudgePreferences: updateSleepNudgePreferences } = useSleepNudges();
+  const { nudgePreferences: thermotherapyNudgePreferences, updateNudgePreferences: updateThermotherapyNudgePreferences } = useThermotherapyNudges();
 
   const smartCoachNotifications = [
     { 

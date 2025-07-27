@@ -21,6 +21,9 @@ import { YogaStreakDisplay } from "@/components/yoga/YogaStreakDisplay";
 import { SleepReminderModal } from "@/components/sleep/SleepReminderModal";
 import { SleepTestButton } from "@/components/sleep/SleepTestButton";
 import { SleepStreakDisplay } from "@/components/sleep/SleepStreakDisplay";
+import { ThermotherapyReminderModal } from "@/components/thermotherapy/ThermotherapyReminderModal";
+import { ThermotherapyTestButton } from "@/components/thermotherapy/ThermotherapyTestButton";
+import { ThermotherapyStreakDisplay } from "@/components/thermotherapy/ThermotherapyStreakDisplay";
 
 interface RecoveryContentPageProps {
   category: string;
