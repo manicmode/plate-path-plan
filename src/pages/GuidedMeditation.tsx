@@ -113,15 +113,18 @@ const GuidedMeditation = () => {
           .from('meditation_streaks')
           .select('current_streak, total_sessions')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching meditation streak:', error);
+          return;
+        }
 
         if (data) {
           setMeditationStreak({
             currentStreak: data.current_streak,
             totalSessions: data.total_sessions
           });
-        } else if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching meditation streak:', error);
         }
       } catch (error) {
         console.error('Error fetching meditation streak:', error);
@@ -139,11 +142,16 @@ const GuidedMeditation = () => {
 
       const today = new Date().toISOString().split('T')[0];
       
-      const { data: existingStreak } = await supabase
+      const { data: existingStreak, error: fetchError } = await supabase
         .from('meditation_streaks')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching meditation streak:', fetchError);
+        return;
+      }
 
       if (existingStreak) {
         // Check if already completed today
@@ -157,12 +165,13 @@ const GuidedMeditation = () => {
 
         let newStreak = existingStreak.current_streak;
         if (dayDiff === 1) {
-          // Consecutive day
+          // Yesterday - increment streak
           newStreak += 1;
         } else if (dayDiff > 1) {
-          // Streak broken, reset to 1
+          // Older than yesterday - reset to 1
           newStreak = 1;
         }
+        // If dayDiff === 0, somehow same day but condition above should catch this
 
         const { error } = await supabase
           .from('meditation_streaks')
@@ -179,7 +188,14 @@ const GuidedMeditation = () => {
             totalSessions: existingStreak.total_sessions + 1
           });
           
-          if (newStreak > existingStreak.current_streak) {
+          // Show appropriate toast message
+          if (newStreak === 1 && existingStreak.current_streak > 1) {
+            toast({
+              title: "🌱 Started Today!",
+              description: "Fresh start on your meditation journey",
+              duration: 3000,
+            });
+          } else if (newStreak > existingStreak.current_streak) {
             toast({
               title: `🔥 ${newStreak}-Day Streak!`,
               description: "Keep up the great work!",
@@ -188,7 +204,7 @@ const GuidedMeditation = () => {
           }
         }
       } else {
-        // First meditation session
+        // First meditation session - no existing row
         const { error } = await supabase
           .from('meditation_streaks')
           .insert({
@@ -205,8 +221,8 @@ const GuidedMeditation = () => {
           });
           
           toast({
-            title: "🎉 First Meditation Complete!",
-            description: "Starting your mindfulness journey",
+            title: "🌱 Started Today!",
+            description: "Beginning your mindfulness journey",
             duration: 3000,
           });
         }
@@ -472,10 +488,21 @@ const GuidedMeditation = () => {
         {meditationStreak.currentStreak > 0 && (
           <div className="flex justify-center mb-6">
             <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 backdrop-blur-sm">
-              <Flame className="h-5 w-5 text-orange-500" />
-              <span className="text-lg font-bold text-foreground">
-                {meditationStreak.currentStreak}-Day Streak
-              </span>
+              {meditationStreak.currentStreak === 1 ? (
+                <>
+                  <span className="text-lg">🌱</span>
+                  <span className="text-lg font-bold text-foreground">
+                    Started Today!
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  <span className="text-lg font-bold text-foreground">
+                    {meditationStreak.currentStreak}-Day Streak
+                  </span>
+                </>
+              )}
               {meditationStreak.totalSessions > 0 && (
                 <span className="text-sm text-muted-foreground ml-2">
                   ({meditationStreak.totalSessions} total sessions)
