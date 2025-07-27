@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSound } from '@/hooks/useSound';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { toast } from 'sonner';
 
 export interface ExerciseStep {
   id: string;
@@ -14,6 +15,7 @@ export interface ExerciseStep {
   currentSet?: number;
   instructions?: string;
   imageUrl?: string;
+  exerciseName?: string; // For media lookup
 }
 
 interface UseRoutineExecutionProps {
@@ -30,8 +32,10 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
   const [isCompleted, setIsCompleted] = useState(false);
   const [routine, setRoutine] = useState<any>(null);
   const [currentDay, setCurrentDay] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const [motivationCounter, setMotivationCounter] = useState(0);
   
-  const { playProgressUpdate, playGoalHit } = useSound();
+  const { playProgressUpdate, playGoalHit, playReminderChime } = useSound();
   const { user } = useAuth();
 
   // Load routine data and generate steps
@@ -114,6 +118,7 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
         
         // Add sets for this exercise
         for (let set = 1; set <= setsCount; set++) {
+          const exerciseName = name.trim().toLowerCase().replace(/\s+/g, '-');
           steps.push({
             id: `${index}-${set}`,
             type: 'exercise',
@@ -123,7 +128,9 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
             sets: setsCount,
             currentSet: set,
             duration: 60, // 1 minute for exercise
-            instructions: `Perform ${repsCount} repetitions of ${name.trim()}`
+            instructions: `Perform ${repsCount} repetitions of ${name.trim()}`,
+            exerciseName,
+            imageUrl: `/images/exercises/${exerciseName}.gif`
           });
           
           // Add rest between sets (except after last set of last exercise)
@@ -162,8 +169,8 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // Step completed
-            playProgressUpdate();
-            handleNextStep();
+            playReminderChime(); // Beep sound for step transition
+            handleStepComplete();
             return 0;
           }
           return prev - 1;
@@ -178,6 +185,60 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
   useEffect(() => {
     if (steps[currentStepIndex]?.duration) {
       setTimeRemaining(steps[currentStepIndex].duration);
+    }
+  }, [currentStepIndex, steps]);
+
+  const handleStepComplete = useCallback(() => {
+    const currentStep = steps[currentStepIndex];
+    if (currentStep) {
+      setCompletedSteps(prev => [...prev, currentStep.title]);
+      
+      // Show motivation every ~3 steps
+      setMotivationCounter(prev => {
+        const newCount = prev + 1;
+        if (newCount % 3 === 0 && !isCompleted) {
+          showMotivationMessage(currentStep);
+        }
+        return newCount;
+      });
+    }
+    
+    handleNextStep();
+  }, [currentStepIndex, steps, isCompleted]);
+
+  const showMotivationMessage = useCallback(async (step: ExerciseStep) => {
+    try {
+      const progress = steps.length > 0 ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
+      
+      const response = await supabase.functions.invoke('generate-motivation', {
+        body: {
+          currentStep: step.title,
+          stepType: step.type,
+          progress: Math.round(progress)
+        }
+      });
+      
+      if (response.data?.motivationMessage) {
+        toast.success(response.data.motivationMessage, {
+          duration: 3000,
+          position: 'top-center'
+        });
+      }
+    } catch (error) {
+      console.error('Error generating motivation:', error);
+      // Fallback motivational messages
+      const fallbackMessages = [
+        "🔥 You're crushing it! Keep going!",
+        "💪 You're on fire! One more set!",
+        "🚀 Finish strong – your body will thank you!",
+        "⚡ Amazing work! You've got this!",
+        "🌟 Keep pushing! Every rep counts!"
+      ];
+      const randomMessage = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+      toast.success(randomMessage, {
+        duration: 3000,
+        position: 'top-center'
+      });
     }
   }, [currentStepIndex, steps]);
 
@@ -210,7 +271,7 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
     setIsRunning(false);
     playGoalHit();
     
-    // Log workout to database
+    // Log workout to database with enhanced details
     if (user && routine) {
       try {
         const totalDuration = steps.reduce((acc, step) => acc + (step.duration || 0), 0);
@@ -223,11 +284,16 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
             activity_type: routine.title,
             duration_minutes: Math.round(totalDuration / 60),
             calories_burned: estimatedCalories,
-            intensity_level: 'moderate'
+            intensity_level: 'moderate',
+            // Store additional data in a JSON column if available, or we'll add it as separate fields later
           });
           
         if (error) {
           console.error('Error logging workout:', error);
+        } else {
+          toast.success("🎉 Workout logged successfully!", {
+            description: `${completedSteps.length} steps completed in ${Math.round(totalDuration / 60)} minutes`
+          });
         }
       } catch (error) {
         console.error('Error logging workout:', error);
@@ -260,6 +326,7 @@ export const useRoutineExecution = ({ routineId, onComplete }: UseRoutineExecuti
     routine,
     currentDay,
     progress,
+    completedSteps,
     
     // Actions
     handleStart,
