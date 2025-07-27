@@ -65,17 +65,24 @@ export const NotificationSettings = () => {
 
   const meditationNotifications = [
     { 
-      key: 'meditationNudges', 
-      label: 'Meditation Nudges', 
-      description: 'Smart suggestions to meditate based on your mood and activity',
+      key: 'dailyReminder', 
+      label: 'Daily Reminder', 
+      description: 'Scheduled daily meditation reminders',
+      icon: Bell,
+      setting: 'nudges_enabled'
+    },
+    { 
+      key: 'smartAISuggestions', 
+      label: 'Smart AI Suggestions', 
+      description: 'AI-powered nudges based on your mood and activity patterns',
       icon: Brain,
       setting: 'smart_nudges_enabled'
     },
     { 
-      key: 'meditationReminders', 
-      label: 'Daily Meditation Reminders', 
-      description: 'Push notifications for your scheduled meditation times',
-      icon: Bell,
+      key: 'pushNotifications', 
+      label: 'Push Notifications (coming soon)', 
+      description: 'Device notifications for meditation reminders',
+      icon: Smartphone,
       setting: 'push_notifications_enabled'
     }
   ];
@@ -244,11 +251,11 @@ export const NotificationSettings = () => {
           </div>
         </div>
 
-        {/* Meditation Notifications */}
+        {/* Meditation Nudges */}
         <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
-            <Brain className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-blue-600`} />
-            <span>Meditation Notifications</span>
+            <span className="text-lg">🧘</span>
+            <span>Meditation Nudges</span>
           </h4>
           <div className="space-y-3">
             {meditationNotifications.map(({ key, label, description, icon: Icon, setting }) => (
