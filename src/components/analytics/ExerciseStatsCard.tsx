@@ -27,7 +27,7 @@ const StatItem = ({ icon: Icon, label, value, color }: StatItemProps) => (
 
 export const ExerciseStatsCard = ({ stats }: ExerciseStatsCardProps) => {
   return (
-    <Card className="w-full shadow-lg border-border bg-card">
+    <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-foreground flex items-center gap-2">

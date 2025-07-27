@@ -108,7 +108,7 @@ export const EnhancedDailyAverageCard = ({
   const guidance = getProgressGuidance();
 
   return (
-    <Card className={`bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 group`}>
+    <Card className={`bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 group mb-0 !mb-0`}>
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-3">
           {/* Left side: Icon and main content */}

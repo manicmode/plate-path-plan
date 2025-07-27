@@ -43,7 +43,7 @@ const getDifficultyColor = (difficulty: string) => {
 
 export const PreMadePlanCard = ({ plan, onPreview, onStartPlan }: PreMadePlanCardProps) => {
   return (
-    <Card className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
+    <Card className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden mb-0 !mb-0">
       <CardContent className="p-0">
         {/* Gradient Header */}
         <div className={`bg-gradient-to-r ${plan.gradient} p-4 relative overflow-hidden`}>

@@ -43,7 +43,7 @@ export const DailyMealQualityTracker = () => {
 
   if (loading) {
     return (
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg mb-0 !mb-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <TrendingUp className="h-5 w-5" />
@@ -60,7 +60,7 @@ export const DailyMealQualityTracker = () => {
 
   if (error) {
     return (
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg mb-0 !mb-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <TrendingUp className="h-5 w-5" />
@@ -76,7 +76,7 @@ export const DailyMealQualityTracker = () => {
 
   if (data.length === 0) {
     return (
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg mb-0 !mb-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <TrendingUp className="h-5 w-5" />
@@ -98,7 +98,7 @@ export const DailyMealQualityTracker = () => {
   }));
 
   return (
-    <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+    <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg mb-0 !mb-0">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
           <TrendingUp className="h-5 w-5" />

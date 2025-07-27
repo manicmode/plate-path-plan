@@ -377,7 +377,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         </div>
 
         {/* AI Chat Component */}
-        <Card className="border-2 border-indigo-300 dark:border-indigo-700">
+        <Card className="border-2 border-indigo-300 dark:border-indigo-700 mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-indigo-600" />
@@ -472,8 +472,8 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         </Card>
 
         {/* New Routine Button */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
+        <Card className="glass-card border-0 rounded-3xl mb-0 !mb-0">
+          <CardContent className="p-6 !p-4">
             <Button
               onClick={() => navigate('/exercise-hub')}
               className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
@@ -486,7 +486,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
 
         {/* Social Accountability Section */}
         {(nudgeOpportunities?.length > 0 || groupStats) && (
-          <Card className="border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5">
+          <Card className="border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5 mb-0 !mb-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
@@ -528,7 +528,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         <WeeklyExerciseInsightsCard />
 
         {/* Personalized 8-Week Routine */}
-        <Card className="border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+        <Card className="border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-green-600" />
@@ -764,7 +764,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         </Card>
 
         {/* Discipline & Accountability */}
-        <Card className="border border-orange-200 dark:border-orange-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
+        <Card className="border border-orange-200 dark:border-orange-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-orange-600" />
@@ -806,7 +806,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         </Card>
 
         {/* Fitness Wisdom & Tips */}
-        <Card className="border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+        <Card className="border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-blue-600" />

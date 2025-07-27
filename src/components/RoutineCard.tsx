@@ -35,7 +35,7 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card">
+    <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card mb-0 !mb-0">
       <CardContent className="p-0">
         {/* Gradient Header */}
         <div className={`bg-gradient-to-r ${routine.gradient} p-4 rounded-t-lg`}>

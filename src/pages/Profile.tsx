@@ -283,8 +283,8 @@ const ProfileContent = () => {
         <ContactSync />
 
         {/* Profile Header */}
-      <Card className="animate-slide-up glass-card border-0 rounded-3xl">
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+      <Card className="animate-slide-up glass-card border-0 rounded-3xl mb-0 !mb-0">
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} !p-4`}>
           <ProfileHeader 
             user={user} 
             isEditing={isEditing} 

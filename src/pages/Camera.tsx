@@ -1554,7 +1554,7 @@ const CameraPage = () => {
 
       {/* Validation Warning */}
       {validationWarning && (
-        <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
+        <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800 mb-0 !mb-0">
           <CardContent className="p-4">
             <p className="text-yellow-800 dark:text-yellow-200">{validationWarning}</p>
           </CardContent>
@@ -1563,7 +1563,7 @@ const CameraPage = () => {
 
       {/* Main Camera UI */}
       {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && (
-        <Card className="animate-slide-up">
+        <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
               <div className="space-y-4">
@@ -1701,7 +1701,7 @@ const CameraPage = () => {
 
       {/* Saved Foods Tab */}
       {activeTab === 'saved' && (
-        <Card className="animate-slide-up">
+        <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <Button 
@@ -1722,7 +1722,7 @@ const CameraPage = () => {
 
       {/* Recent Foods Tab */}
       {activeTab === 'recent' && (
-        <Card className="animate-slide-up">
+        <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <Button 
@@ -1751,7 +1751,7 @@ const CameraPage = () => {
 
       {/* Voice Entry Card */}
       {showVoiceEntry && (
-        <Card className="animate-slide-up">
+        <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mic className="h-5 w-5 text-blue-600" />
@@ -1796,7 +1796,7 @@ const CameraPage = () => {
 
       {/* Error Display Card */}
       {showError && (
-        <Card className="animate-slide-up border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
+        <Card className="animate-slide-up border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-200">
               <X className="h-5 w-5" />
@@ -1844,7 +1844,7 @@ const CameraPage = () => {
 
       {/* Manual Edit Card */}
       {showManualEdit && (
-        <Card className="animate-slide-up">
+        <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Edit3 className="h-5 w-5 text-green-600" />
@@ -1899,7 +1899,7 @@ const CameraPage = () => {
 
       {/* Photo Analysis Card - Only show for food images, not barcodes */}
       {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && (
-        <Card className="animate-slide-up">
+        <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
             <CardTitle>Analyze Your Meal</CardTitle>
           </CardHeader>
@@ -2021,7 +2021,7 @@ const CameraPage = () => {
       )}
 
       {/* Enhanced Status Card */}
-      <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+      <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 mb-0 !mb-0">
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
             <Check className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />

@@ -552,7 +552,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             
             <TabsContent value="stats" className="space-y-2 animate-in slide-in-from-bottom-2">
               {/* UNIFIED Lifetime Records */}
-              <Card className="p-2 bg-gradient-to-br from-yellow-500/15 to-orange-500/15 border-yellow-500/30 shadow-lg">
+              <Card className="p-2 bg-gradient-to-br from-yellow-500/15 to-orange-500/15 border-yellow-500/30 shadow-lg mb-0 !mb-0">
                 <CardHeader className="p-0 pb-1">
                   <CardTitle className="text-xl font-bold flex items-center gap-2 justify-center">
                     <Trophy className="h-5 w-5 text-yellow-500 animate-pulse" />
@@ -611,7 +611,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               </Card>
               
               {/* ENHANCED Preferences */}
-              <Card className="p-2 bg-gradient-to-br from-blue-500/15 to-purple-500/15 border-blue-500/30 shadow-lg">
+              <Card className="p-2 bg-gradient-to-br from-blue-500/15 to-purple-500/15 border-blue-500/30 shadow-lg mb-0 !mb-0">
                 <CardHeader className="p-0 pb-1">
                   <CardTitle className="text-xl font-bold flex items-center gap-2 justify-center">
                     <Target className="h-5 w-5 text-blue-500" />

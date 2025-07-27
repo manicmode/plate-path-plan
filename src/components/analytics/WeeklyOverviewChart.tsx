@@ -116,7 +116,7 @@ export const WeeklyOverviewChart = () => {
 
   if (isLoading || exerciseLoading) {
     return (
-      <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg mb-0 !mb-0">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Weekly Overview</CardTitle>
         </CardHeader>
@@ -130,7 +130,7 @@ export const WeeklyOverviewChart = () => {
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg">
+    <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg mb-0 !mb-0">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-gray-900 dark:text-white">Weekly Overview</CardTitle>

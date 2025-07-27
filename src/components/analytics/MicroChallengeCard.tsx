@@ -37,7 +37,7 @@ export function MicroChallengeCard({ challenge, onNudgeFriend }: MicroChallengeC
   const averageProgress = Object.values(challenge.progress).reduce((sum, progress) => sum + progress, 0) / challenge.participants.length;
 
   return (
-    <Card className="min-w-[320px] bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border-2 border-yellow-200 dark:border-yellow-800 hover:shadow-lg transition-all duration-300">
+    <Card className="min-w-[320px] bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border-2 border-yellow-200 dark:border-yellow-800 hover:shadow-lg transition-all duration-300 mb-0 !mb-0">
       <CardContent className="p-4">
         <div className="space-y-4">
           {/* Header */}

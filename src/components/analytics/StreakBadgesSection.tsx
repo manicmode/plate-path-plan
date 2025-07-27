@@ -40,7 +40,7 @@ export function StreakBadgesSection() {
 
   return (
     <>
-      <Card className="overflow-hidden border-2 border-yellow-200 dark:border-yellow-800 shadow-lg">
+      <Card className="overflow-hidden border-2 border-yellow-200 dark:border-yellow-800 shadow-lg mb-0 !mb-0">
         <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-bold flex items-center gap-3">
