@@ -760,7 +760,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* AI Routine Generator Hero Box */}
-      <div className="w-full mb-6">
+      <div className="w-full mb-8">
         <button
           onClick={() => setIsAIRoutineModalOpen(true)}
           className="group w-full p-4 rounded-xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
@@ -787,25 +787,29 @@ const ExerciseHub = () => {
         </button>
       </div>
 
-      {/* Action Buttons Group - Side by Side */}
-      <div className="flex gap-3 mb-6">
-        {/* Add Workout Button */}
-        <Button
-          onClick={() => setIsAddWorkoutModalOpen(true)}
-          className="flex-1 h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Add Workout
-        </Button>
+      {/* Action Buttons Group - Side by Side in Container */}
+      <div className="w-full mb-6">
+        <div className="bg-white dark:bg-gray-100 rounded-2xl p-4">
+          <div className="flex gap-3">
+            {/* Add Workout Button */}
+            <Button
+              onClick={() => setIsAddWorkoutModalOpen(true)}
+              className="flex-1 h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Add Workout
+            </Button>
 
-        {/* New Routine Button */}
-        <Button
-          onClick={() => setIsCreateRoutineModalOpen(true)}
-          className="flex-1 h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          New Routine
-        </Button>
+            {/* New Routine Button */}
+            <Button
+              onClick={() => setIsCreateRoutineModalOpen(true)}
+              className="flex-1 h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              New Routine
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}
