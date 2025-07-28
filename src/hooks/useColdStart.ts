@@ -4,7 +4,7 @@ const COLD_START_KEY = 'nutricoach_session_active';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export const useColdStart = () => {
-  const [isColdStart, setIsColdStart] = useState(false);
+  const [isColdStart, setIsColdStart] = useState(true);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
