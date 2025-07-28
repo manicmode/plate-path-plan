@@ -11,15 +11,14 @@ interface ExerciseProgressChartProps {
 
 export const ExerciseProgressChart = ({ data }: ExerciseProgressChartProps) => {
   return (
-    <Card>
+    <Card className="w-full shadow-lg border-border bg-card">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           📈 Workout Duration Trend
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
-        <div className="space-y-2">
-          <div className="h-64 w-full">
+        <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -55,7 +54,6 @@ export const ExerciseProgressChart = ({ data }: ExerciseProgressChartProps) => {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
         </div>
       </CardContent>
     </Card>
