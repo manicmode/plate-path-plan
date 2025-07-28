@@ -769,6 +769,18 @@ const ExerciseHub = () => {
             Let the AI build your 8-week fitness plan and monitor your progress
           </p>
         </button>
+        
+        {/* View My Plan Button */}
+        <button
+          onClick={() => navigate('/ai-routine-viewer')}
+          className="group w-full p-3 mt-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 ease-out hover:scale-[1.01] hover:shadow-lg border-0"
+        >
+          <div className="flex items-center justify-center gap-3 text-white">
+            <span className="text-2xl">📅</span>
+            <span className="font-semibold">View My 8-Week Plan</span>
+            <span className="text-sm opacity-70">→</span>
+          </div>
+        </button>
       </div>
 
       {/* Recovery Center Tab */}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Activity, Calendar, Target, TrendingUp } from 'lucide-react';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
@@ -138,6 +139,27 @@ export const ExerciseAnalyticsSection = () => {
 
   return (
     <div className="space-y-6">
+      {/* Quick Action Button */}
+      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">📅</div>
+              <div>
+                <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
+                <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => window.location.href = '/ai-routine-viewer'}
+              className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+            >
+              View Plan
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Exercise Stats Overview */}
       <ExerciseStatsCard stats={exerciseStats} />
 
