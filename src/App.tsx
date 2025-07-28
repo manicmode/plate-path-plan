@@ -325,7 +325,9 @@ function AppContent() {
           />
           
           {/* Global Mystery Gift Box - Always Floating */}
-          <MysteryBox />
+          <ErrorBoundary>
+            <MysteryBox />
+          </ErrorBoundary>
           
           <Toaster />
         </>

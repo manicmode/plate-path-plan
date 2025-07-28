@@ -11,6 +11,7 @@ interface MysteryBoxProps {
 }
 
 export function MysteryBox({ position = 'top-right', className }: MysteryBoxProps) {
+  // ✅ ALL HOOKS FIRST - No early returns before hooks
   const { canClaimBox, claimMysteryBox, timeUntilNextBox } = useRewards();
   const [showModal, setShowModal] = useState(false);
   const [claimedReward, setClaimedReward] = useState<Reward | null>(null);
@@ -21,13 +22,11 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
   });
   const [isMoving, setIsMoving] = useState(false);
 
-  // Don't render if box can't be claimed and no countdown needed
-  if (!canClaimBox && timeUntilNextBox <= 0) {
-    return null;
-  }
-
   // ✨ VERIFIED FIX: Immediate movement on mount + regular intervals
   useEffect(() => {
+    // 🔒 DOM GUARD: Only run on client side
+    if (typeof window === 'undefined') return;
+    
     const generateNewPosition = () => {
       setIsMoving(true);
       
@@ -68,6 +67,11 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     }, 300);
   };
 
+  // ✅ CONDITIONAL RENDERING: Don't render if box can't be claimed and no countdown needed
+  if (!canClaimBox && timeUntilNextBox <= 0) {
+    return <></>;
+  }
+
   const formatTimeLeft = (ms: number) => {
     const days = Math.floor(ms / (1000 * 60 * 60 * 24));
     const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -93,10 +97,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           right: `${floatingPosition.right}px`,
           zIndex: 99999,
           pointerEvents: 'auto',
-          transition: 'all 0.8s ease-in-out',
-          // ✨ VISUAL DEBUGGING (temporary):
-          border: '2px dashed red',
-          background: 'rgba(255,255,0,0.4)'
+          transition: 'all 0.8s ease-in-out'
         }}
       >
         <style>{`

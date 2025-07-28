@@ -28,7 +28,14 @@ const RewardsContext = createContext<RewardsContextType | undefined>(undefined);
 export const useRewards = () => {
   const context = useContext(RewardsContext);
   if (!context) {
-    throw new Error('useRewards must be used within a RewardsProvider');
+    // ✅ FALLBACK: Return safe defaults instead of throwing error
+    return {
+      canClaimBox: false,
+      mysteryBoxLastClaimed: null,
+      rewardHistory: [],
+      claimMysteryBox: () => null,
+      timeUntilNextBox: 0,
+    };
   }
   return context;
 };
@@ -68,6 +75,9 @@ export const RewardsProvider: React.FC<RewardsProviderProps> = ({ children }) =>
 
   // Load data from localStorage on mount
   useEffect(() => {
+    // 🔒 DOM GUARD: Only access localStorage on client side
+    if (typeof window === 'undefined') return;
+    
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
       try {
@@ -104,6 +114,9 @@ export const RewardsProvider: React.FC<RewardsProviderProps> = ({ children }) =>
 
   // Save data to localStorage
   const saveData = (lastClaimed: string | null, history: RewardHistory[]) => {
+    // 🔒 DOM GUARD: Only access localStorage on client side
+    if (typeof window === 'undefined') return;
+    
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       lastClaimed,
       history
