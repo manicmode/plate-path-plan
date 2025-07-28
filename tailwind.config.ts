@@ -126,10 +126,10 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fadeIn 0.5s ease-in-out',
 				'slide-up': 'slideUp 0.3s ease-out',
-				'float': 'float 6s ease-in-out infinite',
-				'slow-pulse': 'slow-pulse 3s ease-in-out infinite',
-				'camera-flash': 'cameraFlash 2.5s ease-in-out infinite',
-				'breathe': 'breathe 4s ease-in-out infinite'
+				'float': 'float 8s ease-in-out infinite',
+				'slow-pulse': 'slow-pulse 6s ease-in-out infinite',
+				'camera-flash': 'cameraFlash 6s ease-in-out infinite',
+				'breathe': 'breathe 8s ease-in-out infinite'
 			}
 		}
 	},
