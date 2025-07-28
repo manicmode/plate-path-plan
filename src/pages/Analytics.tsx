@@ -270,14 +270,17 @@ export default function Analytics() {
                 thisWeekWorkouts={weeklyFrequency}
               />
 
-              {/* Smart Insights */}
-              <SmartTrendInsightsCard 
-                trends={trendData}
-                insights={aiInsights}
-              />
+              {/* Smart Insights and Monthly Report - tight spacing */}
+              <div className="space-y-2">
+                {/* Smart Insights */}
+                <SmartTrendInsightsCard 
+                  trends={trendData}
+                  insights={aiInsights}
+                />
 
-              {/* Monthly Report */}
-              <MonthlyExerciseReportCard />
+                {/* Monthly Report */}
+                <MonthlyExerciseReportCard />
+              </div>
 
               {/* Trophy & Motivation */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
