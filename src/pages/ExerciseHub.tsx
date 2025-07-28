@@ -815,6 +815,9 @@ const ExerciseHub = () => {
 
       {/* Tab Navigation */}
       <div className="mb-6" ref={tabsRef}>
+        {/* Separator line to distinguish tabs section */}
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mb-4"></div>
+        
         {/* 4 tabs in grid */}
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'}`}>
           {tabs.slice(0, 4).map((tab) => (
