@@ -62,13 +62,27 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        <TabsContent value="exercise" className="space-y-6 mt-6">
-          <ExerciseAnalyticsSection />
-          <WorkoutTrophyCard />
-          <MotivationCard />
-        </TabsContent>
+<TabsContent value="exercise">
+  <div className="flex flex-col gap-6 pb-24">
+    {/* Place all exercise components inside this container */}
+    <WorkoutPlanCard />
+    <ExerciseStatsCard />
 
-      </Tabs>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <WorkoutFrequencyChart />
+      <WorkoutDurationTrend />
     </div>
-  );
-}
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <MuscleGroupRadarChart />
+      <WorkoutConsistencyChart />
+    </div>
+
+    <StreakTrackerCard />
+    <SmartTrendInsightsCard />
+    <MonthlyExerciseReportCard />
+    <WorkoutTrophyCard />
+    <MotivationCard />
+    <CoachSaysCard />
+  </div>
+</TabsContent>
