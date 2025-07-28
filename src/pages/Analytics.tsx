@@ -179,9 +179,9 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        <TabsContent value="exercise" className="mt-6 pt-4 pb-20">
+        <TabsContent value="exercise" className="flex flex-col gap-4 pt-4 pb-20">
           {exerciseLoading ? (
-            <div className="flex flex-col gap-4 pt-4 pb-20">
+            <>
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
@@ -193,9 +193,9 @@ export default function Analytics() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+            </>
           ) : (
-            <div className="flex flex-col gap-4 pt-4 pb-20">
+            <>
               {/* AI Workout Plan Card */}
               <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
                 <CardContent className="p-6">
@@ -278,7 +278,7 @@ export default function Analytics() {
                 <WorkoutTrophyCard showFullStats={false} />
                 <MotivationCard />
               </div>
-            </div>
+            </>
           )}
         </TabsContent>
       </Tabs>
