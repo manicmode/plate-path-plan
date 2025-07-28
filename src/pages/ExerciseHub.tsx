@@ -20,6 +20,11 @@ import { PlanPreviewModal } from '@/components/PlanPreviewModal';
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 import { YearlyExerciseReportCard } from '@/components/exercise/YearlyExerciseReportCard';
 import { WeeklyExerciseInsightsCard } from "@/components/analytics/WeeklyExerciseInsightsCard";
+import { WorkoutCalendarView } from '@/components/analytics/WorkoutCalendarView';
+import { WorkoutVolumeChart } from '@/components/analytics/WorkoutVolumeChart';
+import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTracker';
+import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
+import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
 
 const ExerciseHub = () => {
   const navigate = useNavigate();
@@ -1024,92 +1029,63 @@ const ExerciseHub = () => {
                      )}
                   </div>
                 ) : tab.id === 'progress-reports' ? (
-                  /* Progress & Reports Tab - Enhanced */
+                  /* Progress & Reports Tab - Enhanced with Visual Experience */
                   <div className="space-y-6">
                     {/* Header with motivational badge */}
                     <div className="text-center mb-6">
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Progress This Month</h2>
-                      <p className="text-muted-foreground mb-4">Track your fitness journey and celebrate your achievements</p>
+                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Fitness Progress</h2>
+                      <p className="text-muted-foreground mb-4">Track your journey with detailed insights and analytics</p>
                       <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-semibold rounded-full shadow-lg">
                         🏆 You're Crushing It!
                       </div>
                     </div>
 
-                    {/* Date Filter */}
-                    <DateFilterSelect value={dateFilter} onValueChange={setDateFilter} />
-
-                    {/* Progress Charts */}
+                    {/* Top Row: Calendar & Streak Tracker */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <ExerciseProgressChart data={mockProgressData} />
-                      <WorkoutTypesChart data={mockWorkoutTypesData} />
+                      <WorkoutCalendarView />
+                      <EnhancedStreakTracker />
                     </div>
 
-                    {/* Exercise Stats */}
-                    <ExerciseStatsCard stats={mockExerciseStats} />
+                    {/* Second Row: Volume Chart & Muscle Group Balance */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <WorkoutVolumeChart />
+                      <div>
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          🎯 Muscle Group Balance
+                        </h4>
+                        <MuscleGroupRadarChart data={[
+                          { muscle: 'Legs', frequency: 12, fullMark: 15 },
+                          { muscle: 'Arms', frequency: 8, fullMark: 15 },
+                          { muscle: 'Core', frequency: 10, fullMark: 15 },
+                          { muscle: 'Back', frequency: 6, fullMark: 15 },
+                          { muscle: 'Chest', frequency: 5, fullMark: 15 },
+                          { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
+                        ]} />
+                      </div>
+                    </div>
 
-                    {/* Weekly Overview */}
-                     <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                          📅 Weekly Activity Overview
-                        </h3>
-                        <div className="space-y-3">
-                          {mockWeeklyData.map((day, index) => (
-                            <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-all duration-200">
-                              <span className="font-medium text-foreground">{day.day}</span>
-                              <div className="flex items-center space-x-3">
-                                <div className="flex-1 bg-muted rounded-full h-2 w-24 overflow-hidden">
-                                  <div 
-                                    className="h-full bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full transition-all duration-500"
-                                    style={{ width: day.height }}
-                                  />
-                                </div>
-                                <span className="text-sm text-muted-foreground min-w-[80px] text-right">
-                                  {day.workouts} workout{day.workouts !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Third Row: AI Progress Overview */}
+                    <ProgressOverviewCard />
 
-                    {/* Report Cards Section - Moved to Bottom */}
+                    {/* Report Cards Section */}
                     <div className="space-y-6 pt-4">
                       <div className="text-center">
-                        <h3 className="text-xl font-bold text-foreground mb-2">📈 Your Exercise Reports</h3>
-                        <p className="text-muted-foreground text-sm">Comprehensive insights into your fitness journey</p>
+                        <h3 className="text-xl font-bold text-foreground mb-2">📊 Detailed Reports</h3>
+                        <p className="text-muted-foreground text-sm">Comprehensive insights and analysis</p>
                       </div>
 
-                      {/* 📈 Workout Duration Trend (Last 30 Days) - This is the ExerciseProgressChart */}
+                      {/* Weekly Exercise Insights */}
                       <div className="w-full">
-                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          📈 Workout Duration Trend (Last 30 Days)
-                        </h4>
-                        <ExerciseProgressChart data={mockProgressData} />
-                      </div>
-
-                      {/* 📅 WeeklyExerciseInsightsCard */}
-                      <div className="w-full">
-                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          📅 Weekly Exercise Insights
-                        </h4>
                         <WeeklyExerciseInsightsCard />
                       </div>
 
-                      {/* 🗓️ MonthlyExerciseReportCard */}
+                      {/* Monthly Exercise Report */}
                       <div className="w-full">
-                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          🗓️ Monthly Exercise Report
-                        </h4>
                         <MonthlyExerciseReportCard />
                       </div>
 
-                      {/* 📊 YearlyExerciseReportCard */}
+                      {/* Yearly Exercise Report */}
                       <div className="w-full">
-                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          📊 Yearly Exercise Report
-                        </h4>
                         <YearlyExerciseReportCard />
                       </div>
                     </div>
