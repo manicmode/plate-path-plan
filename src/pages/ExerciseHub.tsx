@@ -724,7 +724,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* Body Scan AI Tile */}
-      <div className="mb-4 mt-2">
+      <div className="mb-6 mt-2">
         <button
           onClick={() => navigate('/body-scan-ai')}
           className="w-full p-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 dark:from-purple-600 dark:to-blue-700 hover:from-purple-400 hover:to-blue-500 dark:hover:from-purple-500 dark:hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-purple-500/40 border border-purple-500/30 dark:border-purple-600/30 shadow-xl shadow-purple-500/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
@@ -760,7 +760,7 @@ const ExerciseHub = () => {
       </div>
 
       {/* AI Routine Generator Hero Box */}
-      <div className="w-full mb-8">
+      <div className="w-full mb-6">
         <button
           onClick={() => setIsAIRoutineModalOpen(true)}
           className="group w-full p-4 rounded-xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
