@@ -503,6 +503,39 @@ export type Database = {
         }
         Relationships: []
       }
+      exercise_goals: {
+        Row: {
+          ai_adjusted: boolean
+          created_at: string | null
+          id: string
+          last_adjusted_at: string | null
+          sessions_per_week_target: number
+          updated_at: string | null
+          user_id: string
+          weekly_target_minutes: number
+        }
+        Insert: {
+          ai_adjusted?: boolean
+          created_at?: string | null
+          id?: string
+          last_adjusted_at?: string | null
+          sessions_per_week_target?: number
+          updated_at?: string | null
+          user_id: string
+          weekly_target_minutes?: number
+        }
+        Update: {
+          ai_adjusted?: boolean
+          created_at?: string | null
+          id?: string
+          last_adjusted_at?: string | null
+          sessions_per_week_target?: number
+          updated_at?: string | null
+          user_id?: string
+          weekly_target_minutes?: number
+        }
+        Relationships: []
+      }
       exercise_logs: {
         Row: {
           activity_type: string

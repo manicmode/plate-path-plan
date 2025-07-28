@@ -25,6 +25,8 @@ import { WorkoutVolumeChart } from '@/components/analytics/WorkoutVolumeChart';
 import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTracker';
 import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
+import { WeeklyGoalCard } from '@/components/analytics/WeeklyGoalCard';
+import { ExerciseGoalsInitializer } from '@/components/exercise/ExerciseGoalsInitializer';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 
 const ExerciseHub = () => {
@@ -721,6 +723,9 @@ const ExerciseHub = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
+      {/* Silent goal initialization */}
+      <ExerciseGoalsInitializer />
+      
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-3 -mx-4 mb-6">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center">
@@ -1073,6 +1078,9 @@ const ExerciseHub = () => {
                         🏆 You're Crushing It!
                       </div>
                     </div>
+
+                    {/* Top Section: Weekly Goal Card */}
+                    <WeeklyGoalCard />
 
                     {/* Top Row: Calendar & Streak Tracker */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
