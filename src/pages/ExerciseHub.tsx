@@ -770,17 +770,6 @@ const ExerciseHub = () => {
           </p>
         </button>
         
-        {/* View My Plan Button */}
-        <button
-          onClick={() => navigate('/ai-routine-viewer')}
-          className="group w-full p-3 mt-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 ease-out hover:scale-[1.01] hover:shadow-lg border-0"
-        >
-          <div className="flex items-center justify-center gap-3 text-white">
-            <span className="text-2xl">📅</span>
-            <span className="font-semibold">View My 8-Week Plan</span>
-            <span className="text-sm opacity-70">→</span>
-          </div>
-        </button>
       </div>
 
       {/* Recovery Center Tab */}
@@ -968,8 +957,41 @@ const ExerciseHub = () => {
                   /* My Routines Tab - Enhanced */
                   <div className="space-y-6">
 
+                    {/* View My Active AI Routine Section */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6">
+                        <div className="text-center mb-4">
+                          <h3 className="text-xl font-bold text-foreground mb-2 flex items-center justify-center gap-2">
+                            <span className="text-2xl">🤖</span>
+                            View My Active AI Routine
+                          </h3>
+                          <p className="text-muted-foreground">Your personalized 8-week workout plan</p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-muted-foreground">Progress</span>
+                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Week 3 of 8</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 mb-2">
+                            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{ width: '37.5%' }}></div>
+                          </div>
+                          <p className="text-sm text-muted-foreground">Next: Push Day • Upper Body Focus</p>
+                        </div>
+
+                        <Button
+                          onClick={() => navigate('/ai-routine-viewer')}
+                          className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold"
+                        >
+                          <span className="text-lg mr-2">📅</span>
+                          View Full 8-Week Plan
+                          <span className="ml-2 text-sm opacity-80">→</span>
+                        </Button>
+                      </CardContent>
+                    </Card>
+
                     {/* Your Saved Routines Header */}
-                    <div className="text-center mb-4">
+                    <div className="text-center mb-4 mt-8">
                       <h2 className="text-2xl font-bold text-foreground mb-2">Your Saved Routines</h2>
                       <p className="text-muted-foreground">Custom workout plans tailored for you</p>
                     </div>
