@@ -1,50 +1,35 @@
-import React, { useState } from 'react';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@/components/ui/tabs';
-
-import DailyProgressSection from '@/sections/analytics/DailyProgressSection';
-import DailyAveragesSection from '@/sections/analytics/DailyAveragesSection';
-import MealQualityAnalyticsSection from '@/sections/analytics/MealQualityAnalyticsSection';
-import SmartInsightsSection from '@/sections/analytics/SmartInsightsSection';
-import TagInsightsSection from '@/sections/analytics/TagInsightsSection';
-import MacrosHydrationSection from '@/sections/analytics/MacrosHydrationSection';
-import ActivityExerciseSection from '@/sections/analytics/ActivityExerciseSection';
-import AchievementsSection from '@/sections/analytics/AchievementsSection';
-import GamificationSection from '@/sections/analytics/GamificationSection';
-import MonthlySummaryViewer from '@/sections/analytics/MonthlySummaryViewer';
-import MoodWellnessTrendChart from '@/sections/analytics/MoodWellnessTrendChart';
-
-import WorkoutPlanCard from '@/components/WorkoutPlanCard';
-import ExerciseStatsCard from '@/components/ExerciseStatsCard';
-import WorkoutFrequencyChart from '@/components/WorkoutFrequencyChart';
-import WorkoutDurationTrend from '@/components/WorkoutDurationTrend';
-import MuscleGroupRadarChart from '@/components/MuscleGroupRadarChart';
-import WorkoutConsistencyChart from '@/components/WorkoutConsistencyChart';
-import StreakTrackerCard from '@/components/StreakTrackerCard';
-import SmartTrendInsightsCard from '@/components/SmartTrendInsightsCard';
-import MonthlyExerciseReportCard from '@/components/MonthlyExerciseReportCard';
-import WorkoutTrophyCard from '@/components/WorkoutTrophyCard';
-import MotivationCard from '@/components/MotivationCard';
-import CoachSaysCard from '@/components/CoachSaysCard';
-
-import { useWeeklyAverage } from '@/hooks/useWeeklyAverage';
-import { useProgress } from '@/hooks/useProgress';
-import { useMacroData } from '@/hooks/useMacroData';
-import { useStepsData } from '@/hooks/useStepsData';
-import { useExerciseCaloriesData } from '@/hooks/useExerciseCaloriesData';
+import React, { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
+import { DailyAveragesSection } from '@/components/analytics/sections/DailyAveragesSection';
+import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
+import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
+import { TagInsightsSection } from '@/components/analytics/sections/TagInsightsSection';
+import { MacrosHydrationSection } from '@/components/analytics/sections/MacrosHydrationSection';
+import { ActivityExerciseSection } from '@/components/analytics/sections/ActivityExerciseSection';
+import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
+import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
+import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
+import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
+import { ExerciseAnalyticsSection } from '@/components/analytics/sections/ExerciseAnalyticsSection';
+import { MotivationCard } from '@/components/analytics/MotivationCard';
+import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
+import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
+import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('nutrition');
+  const {
+    progress,
+    weeklyAverage,
+    macroData,
+    stepsData,
+    exerciseCaloriesData
+  } = useAnalyticsCalculations();
 
-  const progress = useProgress();
-  const weeklyAverage = useWeeklyAverage();
-  const macroData = useMacroData();
-  const stepsData = useStepsData();
-  const exerciseCaloriesData = useExerciseCaloriesData();
+  // Initialize milestone tracking to check for new achievements
+  useMilestoneTracker();
 
   return (
     <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -63,7 +48,6 @@ export default function Analytics() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Nutrition Content */}
         <TabsContent value="nutrition" className="space-y-6 mt-6">
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
@@ -78,25 +62,12 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        {/* Exercise Content */}
-        <TabsContent value="exercise" className="space-y-6 mt-6 pb-24">
-          <WorkoutPlanCard />
-          <ExerciseStatsCard />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <WorkoutFrequencyChart />
-            <WorkoutDurationTrend />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <MuscleGroupRadarChart />
-            <WorkoutConsistencyChart />
-          </div>
-          <StreakTrackerCard />
-          <SmartTrendInsightsCard />
-          <MonthlyExerciseReportCard />
+        <TabsContent value="exercise" className="space-y-6 mt-6">
+          <ExerciseAnalyticsSection />
           <WorkoutTrophyCard />
           <MotivationCard />
-          <CoachSaysCard />
         </TabsContent>
+
       </Tabs>
     </div>
   );
