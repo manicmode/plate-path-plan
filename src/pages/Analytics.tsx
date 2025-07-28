@@ -1,42 +1,40 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WorkoutPlanCard } from '@/components/analytics/exercise/WorkoutPlanCard';
-import { ExerciseStatsCard } from '@/components/analytics/exercise/ExerciseStatsCard';
-import { WorkoutFrequencyChart } from '@/components/analytics/exercise/WorkoutFrequencyChart';
-import { WorkoutDurationTrend } from '@/components/analytics/exercise/WorkoutDurationTrend';
-import { MuscleGroupRadarChart } from '@/components/analytics/exercise/MuscleGroupRadarChart';
-import { WorkoutConsistencyChart } from '@/components/analytics/exercise/WorkoutConsistencyChart';
-import { StreakTrackerCard } from '@/components/analytics/exercise/StreakTrackerCard';
-import { SmartTrendInsightsCard } from '@/components/analytics/exercise/SmartTrendInsightsCard';
-import { MonthlyExerciseReportCard } from '@/components/analytics/exercise/MonthlyExerciseReportCard';
-import { CoachSaysCard } from '@/components/analytics/exercise/CoachSaysCard';
-import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
-import { MotivationCard } from '@/components/analytics/MotivationCard';
-import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
-import { DailyAveragesSection } from '@/components/analytics/sections/DailyAveragesSection';
-import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
-import { SmartInsightsSection } from '@/components/analytics/sections/SmartInsightsSection';
-import { TagInsightsSection } from '@/components/analytics/sections/TagInsightsSection';
-import { MacrosHydrationSection } from '@/components/analytics/sections/MacrosHydrationSection';
-import { ActivityExerciseSection } from '@/components/analytics/sections/ActivityExerciseSection';
-import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
-import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
-import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
-import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
-import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
-import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
+import React, { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import DailyProgressSection from "@/components/DailyProgressSection";
+import DailyAveragesSection from "@/components/DailyAveragesSection";
+import MealQualityAnalyticsSection from "@/components/MealQualityAnalyticsSection";
+import SmartInsightsSection from "@/components/SmartInsightsSection";
+import TagInsightsSection from "@/components/TagInsightsSection";
+import MacrosHydrationSection from "@/components/MacrosHydrationSection";
+import ActivityExerciseSection from "@/components/ActivityExerciseSection";
+import AchievementsSection from "@/components/AchievementsSection";
+import GamificationSection from "@/components/GamificationSection";
+import MonthlySummaryViewer from "@/components/MonthlySummaryViewer";
+import MoodWellnessTrendChart from "@/components/MoodWellnessTrendChart";
+
+import WorkoutPlanCard from "@/components/WorkoutPlanCard";
+import ExerciseStatsCard from "@/components/ExerciseStatsCard";
+import WorkoutFrequencyChart from "@/components/WorkoutFrequencyChart";
+import WorkoutDurationTrend from "@/components/WorkoutDurationTrend";
+import MuscleGroupRadarChart from "@/components/MuscleGroupRadarChart";
+import WorkoutConsistencyChart from "@/components/WorkoutConsistencyChart";
+import StreakTrackerCard from "@/components/StreakTrackerCard";
+import SmartTrendInsightsCard from "@/components/SmartTrendInsightsCard";
+import MonthlyExerciseReportCard from "@/components/MonthlyExerciseReportCard";
+import WorkoutTrophyCard from "@/components/WorkoutTrophyCard";
+import MotivationCard from "@/components/MotivationCard";
+import CoachSaysCard from "@/components/CoachSaysCard";
+
+// Mock or real data
+const progress = {};
+const weeklyAverage = {};
+const macroData = {};
+const stepsData = {};
+const exerciseCaloriesData = {};
 
 export default function Analytics() {
-  const [activeTab, setActiveTab] = useState('nutrition');
-  const {
-    progress,
-    weeklyAverage,
-    macroData,
-    stepsData,
-    exerciseCaloriesData
-  } = useAnalyticsCalculations();
-
-  useMilestoneTracker();
+  const [activeTab, setActiveTab] = useState("nutrition");
 
   return (
     <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -55,7 +53,7 @@ export default function Analytics() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Nutrition Tab */}
+        {/* nutrition content */}
         <TabsContent value="nutrition" className="space-y-6 mt-6">
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
@@ -70,8 +68,8 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        {/* Exercise Tab */}
-        <TabsContent value="exercise" className="mt-6">
+        {/* exercise content */}
+        <TabsContent value="exercise">
           <div className="flex flex-col gap-6 pb-24">
             <WorkoutPlanCard />
             <ExerciseStatsCard />
