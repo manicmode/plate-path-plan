@@ -18,6 +18,8 @@ import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
 import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
+import { SplashScreen } from '@/components/SplashScreen';
+import { useColdStart } from '@/hooks/useColdStart';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -88,6 +90,7 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
+  const { isColdStart, completeSplash } = useColdStart();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
 
@@ -98,6 +101,12 @@ function AppContent() {
 
   return (
     <>
+      {/* Cold Start Splash Screen */}
+      <SplashScreen 
+        isVisible={isColdStart} 
+        onComplete={completeSplash} 
+      />
+      
       <BodyScanReminderChecker />
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
