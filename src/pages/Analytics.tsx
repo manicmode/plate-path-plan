@@ -225,41 +225,38 @@ export default function Analytics() {
                 <ExerciseStatsCard stats={exerciseStats} />
               </div>
 
-              {/* Charts with tight spacing */}
-              <div className="space-y-2">
-                {/* Charts Row 1 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <WorkoutFrequencyChart data={workoutFrequencyData} />
-                  <ExerciseProgressChart data={durationChartData} />
-                </div>
+              {/* Charts Row 1 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <WorkoutFrequencyChart data={workoutFrequencyData} />
+                <ExerciseProgressChart data={durationChartData} />
+              </div>
 
-                {/* Charts Row 2 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {totalWorkouts > 0 ? (
-                    <MuscleGroupRadarChart data={muscleGroupData} />
-                  ) : (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                          🎯 Muscle Group Coverage
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6">
-                        <div className="space-y-2">
-                          <div className="text-center py-8">
-                            <div className="opacity-60 mb-3">
-                              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
-                                <span className="text-2xl">💪</span>
-                              </div>
+              {/* Charts Row 2 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {totalWorkouts > 0 ? (
+                  <MuscleGroupRadarChart data={muscleGroupData} />
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                        🎯 Muscle Group Coverage
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-2">
+                        <div className="text-center py-8">
+                          <div className="opacity-60 mb-3">
+                            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
+                              <span className="text-2xl">💪</span>
                             </div>
-                            <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
                           </div>
+                          <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                  <WorkoutConsistencyChart completedWorkouts={totalWorkouts} plannedWorkouts={plannedWorkouts} />
-                </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                <WorkoutConsistencyChart completedWorkouts={totalWorkouts} plannedWorkouts={plannedWorkouts} />
               </div>
 
               {/* Streak Tracker */}
