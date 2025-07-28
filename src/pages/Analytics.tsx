@@ -196,31 +196,34 @@ export default function Analytics() {
             </>
           ) : (
             <>
-              {/* AI Workout Plan Card */}
-              <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
-                <CardContent className="p-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">📅</div>
-                        <div>
-                          <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
-                          <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+              {/* AI Workout Plan and Exercise Stats - tight spacing */}
+              <div className="space-y-2">
+                {/* AI Workout Plan Card */}
+                <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
+                  <CardContent className="p-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">📅</div>
+                          <div>
+                            <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
+                            <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+                          </div>
                         </div>
+                        <Button 
+                          onClick={() => window.location.href = '/ai-routine-viewer'}
+                          className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                        >
+                          View Plan
+                        </Button>
                       </div>
-                      <Button 
-                        onClick={() => window.location.href = '/ai-routine-viewer'}
-                        className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-                      >
-                        View Plan
-                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Exercise Stats */}
-              <ExerciseStatsCard stats={exerciseStats} />
+                {/* Exercise Stats */}
+                <ExerciseStatsCard stats={exerciseStats} />
+              </div>
 
               {/* Charts Row 1 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
