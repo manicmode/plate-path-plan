@@ -26,6 +26,7 @@ import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTrac
 import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
 import { WeeklyGoalCard } from '@/components/analytics/WeeklyGoalCard';
+import { MotivationCard } from '@/components/analytics/MotivationCard';
 import { ExerciseGoalsInitializer } from '@/components/exercise/ExerciseGoalsInitializer';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 
@@ -1108,6 +1109,16 @@ const ExerciseHub = () => {
 
                     {/* Third Row: AI Progress Overview */}
                     <ProgressOverviewCard />
+
+                    {/* Coach Motivation Section */}
+                    <Card>
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">💬 Coach Motivation</h3>
+                      </CardHeader>
+                      <CardContent>
+                        <MotivationCard />
+                      </CardContent>
+                    </Card>
 
                     {/* Report Cards Section */}
                     <div className="space-y-6 pt-4">

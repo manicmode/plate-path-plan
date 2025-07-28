@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
 import { DailyAveragesSection } from '@/components/analytics/sections/DailyAveragesSection';
 import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
@@ -12,6 +13,7 @@ import { GamificationSection } from '@/components/analytics/sections/Gamificatio
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
 import { ExerciseAnalyticsSection } from '@/components/analytics/sections/ExerciseAnalyticsSection';
+import { MotivationCard } from '@/components/analytics/MotivationCard';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
@@ -61,6 +63,16 @@ export default function Analytics() {
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
           <ExerciseAnalyticsSection />
+          
+          {/* Weekly AI Motivation Section */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">💬 Weekly AI Motivation</h3>
+            </CardHeader>
+            <CardContent>
+              <MotivationCard />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import confetti from 'canvas-confetti';
+import { MotivationCard } from '@/components/analytics/MotivationCard';
 
 type DifficultyFeedback = 'too_easy' | 'just_right' | 'too_hard';
 
@@ -289,11 +290,10 @@ export const WorkoutCompletionModal = () => {
             </p>
           </div>
 
-          {/* Motivational Message */}
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
-            <p className="text-sm text-center font-medium text-foreground">
-              {motivationalMessage}
-            </p>
+          {/* Coach Says Section */}
+          <div className="space-y-3">
+            <h3 className="text-xl font-semibold text-foreground">💬 Coach Says</h3>
+            <MotivationCard className="border-0 shadow-none bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30" />
           </div>
 
           {/* Action Buttons */}
