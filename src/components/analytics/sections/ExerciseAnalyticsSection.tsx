@@ -144,7 +144,7 @@ export const ExerciseAnalyticsSection = () => {
 return (
   <div className="space-y-6">
     {/* Quick Action Button */}
-    <Card className="w-full shadow-lg bg-card border-2 border-purple-500/60 bg-gradient-to-r from-purple-500/30 to-blue-500/30">
+    <Card className="w-full shadow-lg bg-card !border-2 !border-purple-500/60 bg-gradient-to-r from-purple-500/30 to-blue-500/30">
       <CardContent className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
