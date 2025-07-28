@@ -822,11 +822,12 @@ const ExerciseHub = () => {
               key={tab.id}
               onClick={() => {
                 setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans');
-                // Scroll to position tabs at the top
+                // Scroll to position tabs with proper spacing above
                 if (tabsRef.current) {
-                  tabsRef.current.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
+                  const offsetTop = tabsRef.current.offsetTop - 100; // Add 100px spacing above tabs
+                  window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
                   });
                 }
               }}
