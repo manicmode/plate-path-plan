@@ -15,8 +15,8 @@ interface WorkoutFrequencyChartProps {
 
 export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
   return (
-    <Card className="w-full shadow-lg border-border bg-card">
-      <CardContent className="p-6">
+    <Card className="w-full shadow-lg border-border bg-card space-y-2">
+      <CardContent className="p-6 space-y-2">
         <div className="space-y-2">
           <div className="text-lg font-bold text-foreground flex items-center gap-2">
             📊 Weekly Workout Frequency
