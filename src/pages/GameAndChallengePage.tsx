@@ -797,9 +797,9 @@ function GameAndChallengeContent() {
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="recovery" 
-                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
+                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-gradient-to-r data-[state=on]:from-teal-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
-                      Recovery
+                      🧘‍♂️ Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
@@ -849,9 +849,9 @@ function GameAndChallengeContent() {
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="recovery" 
-                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
+                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-gradient-to-r data-[state=on]:from-teal-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
-                      Recovery
+                      🧘‍♂️ Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
