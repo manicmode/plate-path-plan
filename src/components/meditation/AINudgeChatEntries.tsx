@@ -130,3 +130,22 @@ export const AINudgeChatEntries: React.FC<AINudgeChatEntriesProps> = ({
     </div>
   )
 }
+
+// Helper function to check if component has content
+export const useAINudgeChatEntriesHasContent = (props: AINudgeChatEntriesProps) => {
+  const { recentNudges } = useMeditationNudgeDisplay()
+  const { maxEntries = 5, showOnlyRecent = true } = props
+
+  const filteredNudges = recentNudges
+    .filter(nudge => {
+      if (showOnlyRecent) {
+        const nudgeAge = Date.now() - new Date(nudge.created_at).getTime()
+        return nudgeAge < 3 * 24 * 60 * 60 * 1000 // Last 3 days
+      }
+      return true
+    })
+    .filter(nudge => nudge.nudge_type === 'ai_coach' || nudge.nudge_type === 'smart_nudge')
+    .slice(0, maxEntries)
+
+  return filteredNudges.length > 0
+}

@@ -22,6 +22,9 @@ import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries
 import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 import { AIThermotherapyNudgeChatEntries } from '@/components/thermotherapy/AIThermotherapyNudgeChatEntries';
 import { AIRecoveryChallengeChatEntries } from '@/components/recovery/AIRecoveryChallengeChatEntries';
+import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
+import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
+import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -75,6 +78,9 @@ export default function AIFitnessCoach() {
   
   const { sendNudge } = useSocialAccountability();
   const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set());
+
+  // Check nudge content availability
+  const nudgeContent = useNudgeContentChecker({ maxEntries: 3, showOnlyRecent: true });
 
   const smartPrompts = [
     { emoji: '📊', text: 'How Am I Doing?', message: 'How am I doing this week? Give me a complete analysis of my workout progress and patterns.' },
@@ -494,47 +500,79 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         {/* Breathing Nudge Banner */}
         <BreathingNudgeBanner />
 
-        {/* Meditation Nudges Section */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
-            <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-          </CardContent>
-        </Card>
+        {/* Fitness Nudges Section */}
+        {nudgeContent.isLoading ? (
+          <Card className="glass-card border-0 rounded-3xl">
+            <CardContent className="p-6">
+              <LoadingNudgeState />
+            </CardContent>
+          </Card>
+        ) : nudgeContent.hasAnyContent ? (
+          <>
+            {/* Meditation Nudges Section */}
+            {nudgeContent.hasMeditationContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Breathing Nudges Section */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
-            <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-          </CardContent>
-        </Card>
+            {/* Breathing Nudges Section */}
+            {nudgeContent.hasBreathingContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Yoga Nudges Section */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
-            <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-          </CardContent>
-        </Card>
+            {/* Yoga Nudges Section */}
+            {nudgeContent.hasYogaContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Sleep Nudges Section */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
-            <AISleepNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-          </CardContent>
-        </Card>
+            {/* Sleep Nudges Section */}
+            {nudgeContent.hasSleepContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AISleepNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Thermotherapy Nudges Section */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
-            <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-          </CardContent>
-        </Card>
+            {/* Thermotherapy Nudges Section */}
+            {nudgeContent.hasThermotherapyContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Recovery Challenge Coach Section */}
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className="p-6">
-            <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
-          </CardContent>
-        </Card>
+            {/* Recovery Challenge Coach Section */}
+            {nudgeContent.hasRecoveryContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
+          </>
+        ) : (
+          <Card className="glass-card border-0 rounded-3xl">
+            <CardContent className="p-6">
+              <EmptyNudgeState 
+                message="No recent fitness suggestions available"
+                type="fitness"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Social Accountability Section */}
         {(nudgeOpportunities?.length > 0 || groupStats) && (
