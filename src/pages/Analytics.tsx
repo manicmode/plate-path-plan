@@ -181,11 +181,11 @@ export default function Analytics() {
 
         <TabsContent value="exercise" className="mt-6 pt-4 pb-20">
           {exerciseLoading ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 pt-4 pb-20">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <div className="h-4 bg-muted rounded w-3/4"></div>
                       <div className="h-32 bg-muted rounded"></div>
                       <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -195,24 +195,26 @@ export default function Analytics() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 pt-4 pb-20">
               {/* AI Workout Plan Card */}
               <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">📅</div>
-                      <div>
-                        <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
-                        <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">📅</div>
+                        <div>
+                          <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
+                          <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+                        </div>
                       </div>
+                      <Button 
+                        onClick={() => window.location.href = '/ai-routine-viewer'}
+                        className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                      >
+                        View Plan
+                      </Button>
                     </div>
-                    <Button 
-                      onClick={() => window.location.href = '/ai-routine-viewer'}
-                      className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-                    >
-                      View Plan
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -221,13 +223,13 @@ export default function Analytics() {
               <ExerciseStatsCard stats={exerciseStats} />
 
               {/* Charts Row 1 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <WorkoutFrequencyChart data={workoutFrequencyData} />
                 <ExerciseProgressChart data={durationChartData} />
               </div>
 
               {/* Charts Row 2 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {totalWorkouts > 0 ? (
                   <MuscleGroupRadarChart data={muscleGroupData} />
                 ) : (
@@ -237,13 +239,17 @@ export default function Analytics() {
                         🎯 Muscle Group Coverage
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 text-center py-8">
-                      <div className="opacity-60 mb-3">
-                        <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
-                          <span className="text-2xl">💪</span>
+                    <CardContent className="p-6">
+                      <div className="space-y-2">
+                        <div className="text-center py-8">
+                          <div className="opacity-60 mb-3">
+                            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
+                              <span className="text-2xl">💪</span>
+                            </div>
+                          </div>
+                          <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
                         </div>
                       </div>
-                      <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
                     </CardContent>
                   </Card>
                 )}
@@ -268,7 +274,7 @@ export default function Analytics() {
               <MonthlyExerciseReportCard />
 
               {/* Trophy & Motivation */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <WorkoutTrophyCard showFullStats={false} />
                 <MotivationCard />
               </div>
