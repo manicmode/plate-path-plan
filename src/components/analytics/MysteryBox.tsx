@@ -116,33 +116,39 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
       <div
         id="gift-box"
         onClick={handleBoxClick}
-        className={cn(
-          'fixed w-16 h-16 rounded-full cursor-pointer z-[99999]',
-          'bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500',
-          'shadow-lg shadow-amber-500/50 hover:shadow-xl hover:shadow-amber-500/60',
-          'border-2 border-white/30 backdrop-blur-sm',
-          'flex items-center justify-center',
-          'transition-all duration-800 ease-in-out',
-          'hover:scale-110 active:scale-95',
-          'animate-pulse',
-          isAnimating && 'scale-125 rotate-12',
-          className
-        )}
         style={{
+          position: 'fixed',
           bottom: `${floatingPosition.bottom}px`,
           right: `${floatingPosition.right}px`,
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #FFB200, #FF7F00)',
+          boxShadow: '0 0 12px 4px rgba(255, 174, 0, 0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999,
+          cursor: 'pointer',
+          animation: 'gift-pulse 2s infinite',
+          transition: 'transform 0.2s ease',
           pointerEvents: 'auto'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1) translateY(0)';
         }}
       >
         <Gift 
-          size={28} 
-          className="text-white drop-shadow-md" 
-          style={{ pointerEvents: 'none' }}
+          size={32} 
+          color="white" 
+          style={{ 
+            filter: 'drop-shadow(0 0 2px white)', 
+            pointerEvents: 'none' 
+          }} 
         />
-        
-        {/* Sparkle effects */}
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full opacity-80 animate-ping" />
-        <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-amber-200 rounded-full opacity-60 animate-ping" style={{ animationDelay: '0.5s' }} />
       </div>
 
       {/* Reward Modal */}
