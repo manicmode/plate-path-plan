@@ -179,9 +179,9 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        <TabsContent value="exercise" className="mt-6 pt-4 pb-20">
+        <TabsContent value="exercise" className="flex flex-col gap-6 pb-20">
           {exerciseLoading ? (
-            <div className="flex flex-col gap-4 pt-4 pb-20">
+            <div className="flex flex-col gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
@@ -195,7 +195,7 @@ export default function Analytics() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-3 pt-4 pb-20">
+            <>
               {/* AI Workout Plan Card */}
               <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
                 <CardContent className="p-6">
@@ -223,13 +223,13 @@ export default function Analytics() {
               <ExerciseStatsCard stats={exerciseStats} />
 
               {/* Charts Row 1 */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <WorkoutFrequencyChart data={workoutFrequencyData} />
                 <ExerciseProgressChart data={durationChartData} />
               </div>
 
               {/* Charts Row 2 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {totalWorkouts > 0 ? (
                   <MuscleGroupRadarChart data={muscleGroupData} />
                 ) : (
@@ -274,11 +274,11 @@ export default function Analytics() {
               <MonthlyExerciseReportCard />
 
               {/* Trophy & Motivation */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <WorkoutTrophyCard showFullStats={false} />
                 <MotivationCard />
               </div>
-            </div>
+            </>
           )}
         </TabsContent>
       </Tabs>
