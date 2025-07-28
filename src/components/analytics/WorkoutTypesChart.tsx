@@ -13,7 +13,7 @@ interface WorkoutTypesChartProps {
 
 export const WorkoutTypesChart = ({ data }: WorkoutTypesChartProps) => {
   return (
-    <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
+    <Card className="w-full shadow-lg border-border bg-card">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           📊 Workout Types Breakdown
