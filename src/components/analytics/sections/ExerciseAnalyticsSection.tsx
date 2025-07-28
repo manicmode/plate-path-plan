@@ -142,7 +142,7 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <div className="space-y-4">
+  <div className="flex flex-col space-y-3">
     {/* Quick Action Button */}
     <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
       <CardContent className="p-6 pb-4">
@@ -200,22 +200,25 @@ return (
       />
     </div>
 
-    {/* Streak Tracker */}
-    <StreakTrackerCard 
-      currentStreak={workoutStreak}
-      longestStreak={longestStreak}
-      weeklyGoal={4}
-      thisWeekWorkouts={weeklyFrequency}
-    />
+    {/* Tightly grouped final components */}
+    <div className="flex flex-col gap-1">
+      {/* Streak Tracker */}
+      <StreakTrackerCard 
+        currentStreak={workoutStreak}
+        longestStreak={longestStreak}
+        weeklyGoal={4}
+        thisWeekWorkouts={weeklyFrequency}
+      />
 
-    {/* Smart Trend Insights */}
-    <SmartTrendInsightsCard 
-      trends={trendData}
-      insights={aiInsights}
-    />
+      {/* Smart Trend Insights */}
+      <SmartTrendInsightsCard 
+        trends={trendData}
+        insights={aiInsights}
+      />
 
-    {/* Monthly Exercise Report */}
-    <MonthlyExerciseReportCard />
+      {/* Monthly Exercise Report */}
+      <MonthlyExerciseReportCard />
+    </div>
   </div>
 );
 
