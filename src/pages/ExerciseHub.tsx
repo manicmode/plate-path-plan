@@ -8,7 +8,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { CreateRoutineModal } from '@/components/CreateRoutineModal';
-import { AIWorkoutRoutineConfigModal } from '@/components/AIWorkoutRoutineConfigModal';
+import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 import { RoutineCard } from '@/components/RoutineCard';
 import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
@@ -29,7 +29,7 @@ const ExerciseHub = () => {
   const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
-  const [isAIRoutineModalOpen, setIsAIRoutineModalOpen] = useState(false);
+  const [isWorkoutPreferencesModalOpen, setIsWorkoutPreferencesModalOpen] = useState(false);
   const [isExploreMoreModalOpen, setIsExploreMoreModalOpen] = useState(false);
   const [originRoute, setOriginRoute] = useState<string>('/explore');
   const [dateFilter, setDateFilter] = useState('30d');
@@ -746,7 +746,7 @@ const ExerciseHub = () => {
       {/* AI Routine Generator Hero Box */}
       <div className="w-full mb-6">
         <button
-          onClick={() => setIsAIRoutineModalOpen(true)}
+          onClick={() => setIsWorkoutPreferencesModalOpen(true)}
           className="group w-full p-4 rounded-xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
         >
           {/* Floating particles animation */}
@@ -1407,10 +1407,10 @@ const ExerciseHub = () => {
         editingRoutine={editingRoutine}
       />
 
-      {/* AI Routine Generator Modal */}
-      <AIWorkoutRoutineConfigModal
-        isOpen={isAIRoutineModalOpen}
-        onClose={() => setIsAIRoutineModalOpen(false)}
+      {/* Workout Preferences Modal */}
+      <WorkoutPreferencesModal
+        isOpen={isWorkoutPreferencesModalOpen}
+        onClose={() => setIsWorkoutPreferencesModalOpen(false)}
         onRoutineCreated={(routine) => {
           console.log('AI Routine created:', routine);
           // Optionally refresh the routines list or navigate

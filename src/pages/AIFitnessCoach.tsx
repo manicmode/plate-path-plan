@@ -25,6 +25,7 @@ import { AIRecoveryChallengeChatEntries } from '@/components/recovery/AIRecovery
 import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
 import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
 import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
+import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -49,15 +50,7 @@ export default function AIFitnessCoach() {
   const [isLoading, setIsLoading] = useState(false);
   
   // Workout routine generation state
-  const [showRoutineDialog, setShowRoutineDialog] = useState(false);
-  const [routinePreferences, setRoutinePreferences] = useState({
-    fitnessGoal: '',
-    trainingSplit: '',
-    workoutTime: '',
-    equipment: '',
-    weeklyFrequency: ''
-  });
-  const [isGeneratingRoutine, setIsGeneratingRoutine] = useState(false);
+  const [showWorkoutPreferencesModal, setShowWorkoutPreferencesModal] = useState(false);
   
   // Weekly plan and regeneration state
   const [weeklyPlan, setWeeklyPlan] = useState<Array<{
@@ -126,82 +119,15 @@ export default function AIFitnessCoach() {
     handleSendMessage(promptMessage);
   };
 
-  const handleGenerateRoutine = async () => {
-    if (!routinePreferences.fitnessGoal || !routinePreferences.trainingSplit || 
-        !routinePreferences.workoutTime || !routinePreferences.equipment || 
-        !routinePreferences.weeklyFrequency) {
-      return;
-    }
-
-    setIsGeneratingRoutine(true);
-    setShowRoutineDialog(false);
-
-    // Create the detailed prompt with user preferences
-    const routinePrompt = `🧠 "You are NutriCoach's AI Fitness Coach. Use the user's full profile data (goals, health conditions, fitness level, current nutrition, available equipment, and past workout activity) to generate a fully personalized 8-week workout routine.
-
-Based on the user's preferences:
-- Fitness Goal: ${routinePreferences.fitnessGoal}
-- Training Split Style: ${routinePreferences.trainingSplit}
-- Workout Time per Day: ${routinePreferences.workoutTime}
-- Equipment Available: ${routinePreferences.equipment}
-- Weekly Frequency: ${routinePreferences.weeklyFrequency}
-
-Generate a complete week-by-week plan that includes:
-
-🗓️ **Week 1-8 Breakdown:**
-- Daily plan titles (e.g., "Upper Body Strength," "HIIT & Core," "Mobility & Recovery")
-- Targeted muscle groups
-- Example exercises with sets/reps
-- Rest days intelligently placed
-- Visual variation in style and difficulty across weeks
-
-Each week should contain 5–6 intelligently varied training days. Consider muscle group recovery times and avoid repeating the same muscle groups on consecutive days. Alternate between strength, cardio, functional, and rest/recovery as needed.
-
-Make it sound exciting, supportive, and customized. Mention any health-based modifications if needed based on the user's profile data."`;
-
-    // Add user message
-    const newMessages = [...messages, { 
-      role: 'user' as const, 
-      content: `Generate my personalized 8-week workout routine with these preferences: ${routinePreferences.fitnessGoal}, ${routinePreferences.trainingSplit}, ${routinePreferences.workoutTime}, ${routinePreferences.equipment}, ${routinePreferences.weeklyFrequency} per week` 
-    }];
-    setMessages(newMessages);
-
-    // Simulate AI generation
-    setTimeout(() => {
-      const coachResponse = processUserInput(routinePrompt);
-      // Generate mock weekly plan data when routine is created
-      const mockWeeklyPlan = [
-        { day: 'Monday', title: 'Upper Body Strength', muscleGroups: ['chest', 'triceps'], exercises: [
-          { name: 'Push-ups', sets: '3', reps: '10-12' },
-          { name: 'Tricep Dips', sets: '3', reps: '8-10' }
-        ], isLocked: false },
-        { day: 'Tuesday', title: 'Lower Body Power', muscleGroups: ['legs', 'glutes'], exercises: [
-          { name: 'Squats', sets: '4', reps: '12-15' },
-          { name: 'Lunges', sets: '3', reps: '10 each leg' }
-        ], isLocked: false },
-        { day: 'Wednesday', title: 'Pull Focus', muscleGroups: ['back', 'biceps'], exercises: [
-          { name: 'Pull-ups', sets: '3', reps: '6-8' },
-          { name: 'Bicep Curls', sets: '3', reps: '12-15' }
-        ], isLocked: false },
-        { day: 'Thursday', title: 'HIIT Cardio', muscleGroups: ['cardio', 'core'], exercises: [
-          { name: 'Burpees', sets: '4', reps: '30s' },
-          { name: 'Mountain Climbers', sets: '4', reps: '30s' }
-        ], isLocked: false },
-        { day: 'Friday', title: 'Full Body', muscleGroups: ['full body'], exercises: [
-          { name: 'Deadlifts', sets: '3', reps: '8-10' },
-          { name: 'Plank', sets: '3', reps: '45s' }
-        ], isLocked: false }
-      ];
-      
-      setWeeklyPlan(mockWeeklyPlan);
-
-      setMessages([...newMessages, { 
-        role: 'assistant', 
-        content: coachResponse.message,
-        emoji: '🏋️‍♂️'
-      }]);
-      setIsGeneratingRoutine(false);
-    }, 3000); // Longer generation time for routine
+  const handleRoutineCreated = (routine: any) => {
+    // Handle routine creation success
+    const successMessage = `🎉 Amazing! I've generated your personalized 8-week workout routine: "${routine.routine_name}". This plan is specifically designed for your ${routine.routine_goal} goal with ${routine.split_type} training. You can find it in your Exercise Hub and start your fitness journey today!`;
+    
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: successMessage,
+      emoji: '🏋️‍♂️'
+    }]);
   };
 
   const handleRegenerateDay = async (dayIndex: number) => {
@@ -250,10 +176,10 @@ Current Context:
 - Next day (${nextDay?.day || 'Rest'}): ${nextDay?.muscleGroups.join(', ') || 'No workout'}
 
 User Preferences:
-- Fitness Goal: ${routinePreferences.fitnessGoal}
-- Training Split: ${routinePreferences.trainingSplit}
-- Workout Time: ${routinePreferences.workoutTime}
-- Equipment: ${routinePreferences.equipment}
+- Fitness Goal: General Fitness
+- Training Split: Full Body
+- Workout Time: 45 minutes
+- Equipment: Bodyweight
 
 Smart Balancing Rules:
 - Avoid repeating the same primary muscle groups from the day before
@@ -422,11 +348,11 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                     </div>
                   </div>
                 ))}
-                {(isLoading || isGeneratingRoutine) && (
+                 {isLoading && (
                   <div className="flex justify-start">
                     <div className="bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                       <div className="flex items-center gap-3">
-                        <span className="text-lg">{isGeneratingRoutine ? '🏋️‍♂️' : '🤖'}</span>
+                        <span className="text-lg">🤖</span>
                         <div className="flex flex-col gap-1">
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
@@ -434,7 +360,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {isGeneratingRoutine ? 'Creating your personalized 8-week routine...' : 'Analyzing your fitness data...'}
+                            Analyzing your fitness data...
                           </p>
                         </div>
                       </div>
@@ -453,7 +379,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                       variant="outline"
                       onClick={() => handlePromptClick(prompt.message)}
                       className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
-                      disabled={isLoading || isGeneratingRoutine}
+                      disabled={isLoading}
                     >
                       <span className="mr-2 text-lg">{prompt.emoji}</span>
                       <span className="text-sm font-medium">{prompt.text}</span>
@@ -470,11 +396,11 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                   className="flex-1"
-                  disabled={isLoading || isGeneratingRoutine}
+                  disabled={isLoading}
                 />
                 <Button
                   onClick={() => handleSendMessage(inputMessage)}
-                  disabled={isLoading || isGeneratingRoutine || !inputMessage.trim()}
+                  disabled={isLoading || !inputMessage.trim()}
                   className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
                 >
                   <Send className="h-4 w-4" />
@@ -487,7 +413,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         {/* AI Routine Generator Hero Box */}
         <div className="w-full mb-6">
           <button
-            onClick={() => setShowRoutineDialog(true)}
+            onClick={() => setShowWorkoutPreferencesModal(true)}
             className="group w-full h-20 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
           >
             {/* Floating particles animation */}
@@ -764,119 +690,13 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                 </div>
               )}
 
-              <Dialog open={showRoutineDialog} onOpenChange={setShowRoutineDialog}>
-                <DialogTrigger asChild>
-                  <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white">
-                    <Zap className="h-4 w-4 mr-2" />
-                    Generate New Routine
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Target className="h-5 w-5 text-green-600" />
-                      Workout Preferences
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fitness-goal">Fitness Goal</Label>
-                      <Select value={routinePreferences.fitnessGoal} onValueChange={(value) => 
-                        setRoutinePreferences(prev => ({ ...prev, fitnessGoal: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your goal" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="weight-loss">Weight Loss</SelectItem>
-                          <SelectItem value="muscle-gain">Muscle Gain</SelectItem>
-                          <SelectItem value="tone-sculpt">Tone & Sculpt</SelectItem>
-                          <SelectItem value="general-wellness">General Wellness</SelectItem>
-                          <SelectItem value="strength">Build Strength</SelectItem>
-                          <SelectItem value="endurance">Improve Endurance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="training-split">Training Split Style</Label>
-                      <Select value={routinePreferences.trainingSplit} onValueChange={(value) => 
-                        setRoutinePreferences(prev => ({ ...prev, trainingSplit: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select training style" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="full-body">Full Body</SelectItem>
-                          <SelectItem value="push-pull-legs">Push/Pull/Legs</SelectItem>
-                          <SelectItem value="upper-lower">Upper/Lower</SelectItem>
-                          <SelectItem value="muscle-group">Muscle Group Isolation</SelectItem>
-                          <SelectItem value="functional">Functional Training</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="workout-time">Workout Time per Day</Label>
-                      <Select value={routinePreferences.workoutTime} onValueChange={(value) => 
-                        setRoutinePreferences(prev => ({ ...prev, workoutTime: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="20-min">20 minutes</SelectItem>
-                          <SelectItem value="30-min">30 minutes</SelectItem>
-                          <SelectItem value="45-min">45 minutes</SelectItem>
-                          <SelectItem value="60-min">60 minutes</SelectItem>
-                          <SelectItem value="90-min">90+ minutes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="equipment">Equipment Available</Label>
-                      <Select value={routinePreferences.equipment} onValueChange={(value) => 
-                        setRoutinePreferences(prev => ({ ...prev, equipment: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select equipment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bodyweight">Bodyweight Only</SelectItem>
-                          <SelectItem value="dumbbells">Dumbbells</SelectItem>
-                          <SelectItem value="resistance-bands">Resistance Bands</SelectItem>
-                          <SelectItem value="home-gym">Home Gym Setup</SelectItem>
-                          <SelectItem value="full-gym">Full Gym Access</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="frequency">Weekly Frequency</Label>
-                      <Select value={routinePreferences.weeklyFrequency} onValueChange={(value) => 
-                        setRoutinePreferences(prev => ({ ...prev, weeklyFrequency: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="3x">3x per week</SelectItem>
-                          <SelectItem value="4x">4x per week</SelectItem>
-                          <SelectItem value="5x">5x per week</SelectItem>
-                          <SelectItem value="6x">6x per week</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button 
-                      onClick={handleGenerateRoutine}
-                      disabled={!routinePreferences.fitnessGoal || !routinePreferences.trainingSplit || 
-                               !routinePreferences.workoutTime || !routinePreferences.equipment || 
-                               !routinePreferences.weeklyFrequency}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-                    >
-                      <Zap className="h-4 w-4 mr-2" />
-                      Generate My 8-Week Routine
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                onClick={() => setShowWorkoutPreferencesModal(true)}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Generate New Routine
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -956,6 +776,13 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           </CardContent>
         </Card>
       </div>
+
+      {/* Workout Preferences Modal */}
+      <WorkoutPreferencesModal
+        isOpen={showWorkoutPreferencesModal}
+        onClose={() => setShowWorkoutPreferencesModal(false)}
+        onRoutineCreated={handleRoutineCreated}
+      />
     </div>
   );
 }
