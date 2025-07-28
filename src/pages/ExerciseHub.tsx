@@ -27,6 +27,8 @@ import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCar
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
 import { WeeklyGoalCard } from '@/components/analytics/WeeklyGoalCard';
 import { MotivationCard } from '@/components/analytics/MotivationCard';
+import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
+import { WorkoutProgressCalendar } from '@/components/analytics/WorkoutProgressCalendar';
 import { ExerciseGoalsInitializer } from '@/components/exercise/ExerciseGoalsInitializer';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 
@@ -1080,12 +1082,15 @@ const ExerciseHub = () => {
                       </div>
                     </div>
 
-                    {/* Top Section: Weekly Goal Card */}
-                    <WeeklyGoalCard />
-
-                    {/* Top Row: Calendar & Streak Tracker */}
+                    {/* Top Section: Trophy & Weekly Goal Cards */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <WorkoutCalendarView />
+                      <WorkoutTrophyCard />
+                      <WeeklyGoalCard />
+                    </div>
+
+                    {/* Top Row: Progress Calendar & Streak Tracker */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <WorkoutProgressCalendar />
                       <EnhancedStreakTracker />
                     </div>
 

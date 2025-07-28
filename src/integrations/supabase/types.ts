@@ -1162,6 +1162,39 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_workout_awards: {
+        Row: {
+          award_level: string
+          created_at: string | null
+          id: string
+          month: number
+          updated_at: string | null
+          user_id: string
+          workout_count: number
+          year: number
+        }
+        Insert: {
+          award_level: string
+          created_at?: string | null
+          id?: string
+          month: number
+          updated_at?: string | null
+          user_id: string
+          workout_count?: number
+          year: number
+        }
+        Update: {
+          award_level?: string
+          created_at?: string | null
+          id?: string
+          month?: number
+          updated_at?: string | null
+          user_id?: string
+          workout_count?: number
+          year?: number
+        }
+        Relationships: []
+      }
       mood_logs: {
         Row: {
           ai_detected_tags: string[] | null
