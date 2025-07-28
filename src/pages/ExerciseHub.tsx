@@ -782,7 +782,7 @@ const ExerciseHub = () => {
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
           </div>
           <p className="text-white/90 dark:text-black/90 text-sm opacity-90 relative z-10">
-            Let the AI build your 8-week fitness plan
+            Let the AI build your 8-week fitness plan and monitor your progress
           </p>
         </button>
       </div>
