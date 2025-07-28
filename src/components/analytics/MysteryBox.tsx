@@ -27,17 +27,24 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
 
   // Floating movement every 5 seconds
   useEffect(() => {
-    if (!canClaimBox) return;
-    
-    const interval = setInterval(() => {
-      setFloatingPosition({
+    // Generate random position function
+    const generateNewPosition = () => {
+      const newPosition = {
         bottom: Math.floor(Math.random() * (300 - 60 + 1)) + 60, // 60px to 300px
         right: Math.floor(Math.random() * (150 - 10 + 1)) + 10   // 10px to 150px
-      });
-    }, 5000);
+      };
+      console.log('🎁 Gift box moving to new position:', newPosition);
+      setFloatingPosition(newPosition);
+    };
+
+    // Set initial random position immediately
+    generateNewPosition();
+    
+    // Continue moving every 5 seconds regardless of claimable status
+    const interval = setInterval(generateNewPosition, 5000);
 
     return () => clearInterval(interval);
-  }, [canClaimBox]);
+  }, []); // Remove canClaimBox dependency to always float
 
   const handleBoxClick = () => {
     if (!canClaimBox) return;
