@@ -1,6 +1,6 @@
 import React from 'react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface MuscleGroupRadarChartProps {
   data: Array<{
@@ -13,13 +13,11 @@ interface MuscleGroupRadarChartProps {
 export const MuscleGroupRadarChart = ({ data }: MuscleGroupRadarChartProps) => {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-          🎯 Muscle Group Coverage
-        </CardTitle>
-      </CardHeader>
       <CardContent className="p-6">
         <div className="space-y-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+            🎯 Muscle Group Coverage
+          </h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={data}>
