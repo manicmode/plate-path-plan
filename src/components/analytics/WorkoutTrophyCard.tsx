@@ -23,7 +23,7 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
             <span>Monthly Achievement</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-6">
           {/* Trophy skeleton */}
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 bg-muted animate-pulse rounded-full"></div>
@@ -61,7 +61,7 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
             <span>Monthly Achievement</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-6">
           <p className="text-sm text-muted-foreground">
             Unable to load achievement data right now.
           </p>
@@ -138,100 +138,102 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="space-y-3">
-        {/* Trophy Display */}
-        <div className="flex items-center gap-4">
-          <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${awardConfig.gradient} flex items-center justify-center text-3xl shadow-lg`}>
-            {awardConfig.emoji}
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-foreground">
-              {awardConfig.title}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {currentMonthAward.workoutCount} workouts this month
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {getNextGoalText()}
-            </p>
-          </div>
-        </div>
-
-        {/* Motivational Message */}
-        <div className={`p-3 rounded-lg ${awardConfig.bgColor} border ${awardConfig.borderColor}`}>
-          <p className="text-sm font-medium text-center text-foreground">
-            {getMotivationalMessage()}
-          </p>
-        </div>
-
-        {/* Stats Grid */}
-        {showFullStats && (
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <Flame className="h-4 w-4 text-orange-500" />
-                <span className="text-xs text-muted-foreground">Current Streak</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">
-                {streak.currentStreak}
-                <span className="text-sm font-normal text-muted-foreground ml-1">days</span>
-              </p>
+      <CardContent className="p-6">
+        <div className="space-y-2">
+          {/* Trophy Display */}
+          <div className="flex items-center gap-4">
+            <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${awardConfig.gradient} flex items-center justify-center text-3xl shadow-lg`}>
+              {awardConfig.emoji}
             </div>
-            
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <Award className="h-4 w-4 text-purple-500" />
-                <span className="text-xs text-muted-foreground">Best Streak</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">
-                {streak.longestStreak}
-                <span className="text-sm font-normal text-muted-foreground ml-1">days</span>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-foreground">
+                {awardConfig.title}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {currentMonthAward.workoutCount} workouts this month
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {getNextGoalText()}
               </p>
             </div>
           </div>
-        )}
 
-        {/* Progress towards next level */}
-        {currentMonthAward.awardLevel !== 'gold' && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Progress to next level</span>
-              <span>
-                {currentMonthAward.workoutCount}/
-                {currentMonthAward.awardLevel === 'silver' ? '16' : 
-                 currentMonthAward.awardLevel === 'bronze' ? '12' : '8'}
-              </span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={`h-full bg-gradient-to-r ${awardConfig.gradient} transition-all duration-500`}
-                style={{
-                  width: `${Math.min(100, (currentMonthAward.workoutCount / 
-                    (currentMonthAward.awardLevel === 'silver' ? 16 : 
-                     currentMonthAward.awardLevel === 'bronze' ? 12 : 8)) * 100)}%`
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Last Workout Info */}
-        {streak.lastWorkoutDate && (
-          <div className="text-center pt-2 border-t border-border/50">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Calendar className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-muted-foreground">Last Workout</span>
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              {new Date(streak.lastWorkoutDate).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
+          {/* Motivational Message */}
+          <div className={`p-3 rounded-lg ${awardConfig.bgColor} border ${awardConfig.borderColor}`}>
+            <p className="text-sm font-medium text-center text-foreground">
+              {getMotivationalMessage()}
             </p>
           </div>
-        )}
+
+          {/* Stats Grid */}
+          {showFullStats && (
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Flame className="h-4 w-4 text-orange-500" />
+                  <span className="text-xs text-muted-foreground">Current Streak</span>
+                </div>
+                <p className="text-lg font-bold text-foreground">
+                  {streak.currentStreak}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">days</span>
+                </p>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Award className="h-4 w-4 text-purple-500" />
+                  <span className="text-xs text-muted-foreground">Best Streak</span>
+                </div>
+                <p className="text-lg font-bold text-foreground">
+                  {streak.longestStreak}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">days</span>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Progress towards next level */}
+          {currentMonthAward.awardLevel !== 'gold' && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Progress to next level</span>
+                <span>
+                  {currentMonthAward.workoutCount}/
+                  {currentMonthAward.awardLevel === 'silver' ? '16' : 
+                   currentMonthAward.awardLevel === 'bronze' ? '12' : '8'}
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={`h-full bg-gradient-to-r ${awardConfig.gradient} transition-all duration-500`}
+                  style={{
+                    width: `${Math.min(100, (currentMonthAward.workoutCount / 
+                      (currentMonthAward.awardLevel === 'silver' ? 16 : 
+                       currentMonthAward.awardLevel === 'bronze' ? 12 : 8)) * 100)}%`
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Last Workout Info */}
+          {streak.lastWorkoutDate && (
+            <div className="text-center pt-2 border-t border-border/50">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Calendar className="h-4 w-4 text-green-500" />
+                <span className="text-xs text-muted-foreground">Last Workout</span>
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {new Date(streak.lastWorkoutDate).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

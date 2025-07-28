@@ -22,7 +22,7 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
             <span>Coach Says</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-6">
           {/* Message skeleton */}
           <div className="space-y-3">
             <div className="h-4 bg-muted animate-pulse rounded-md w-3/4"></div>
@@ -56,7 +56,7 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
             <span>Coach Says</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-6">
           <p className="text-sm text-muted-foreground">
             Unable to load your motivation message right now.
           </p>
@@ -129,58 +129,60 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-3">
-        {/* Category Badge */}
-        <Badge 
-          variant="outline" 
-          className={`${config.badge} flex items-center gap-1 w-fit`}
-        >
-          <CategoryIcon className="h-3 w-3" />
-          {config.badgeText}
-        </Badge>
+      <CardContent className="p-6">
+        <div className="space-y-2">
+          {/* Category Badge */}
+          <Badge 
+            variant="outline" 
+            className={`${config.badge} flex items-center gap-1 w-fit`}
+          >
+            <CategoryIcon className="h-3 w-3" />
+            {config.badgeText}
+          </Badge>
 
-        {/* Motivational Message */}
-        <blockquote className="text-base font-medium leading-relaxed text-foreground/90 relative">
-          <div className="absolute -left-2 -top-1 text-3xl text-primary/30 font-serif">"</div>
-          <div className="pl-6">
-            {motivationData.message}
+          {/* Motivational Message */}
+          <blockquote className="text-base font-medium leading-relaxed text-foreground/90 relative">
+            <div className="absolute -left-2 -top-1 text-3xl text-primary/30 font-serif">"</div>
+            <div className="pl-6">
+              {motivationData.message}
+            </div>
+            <div className="absolute -right-2 -bottom-2 text-3xl text-primary/30 font-serif">"</div>
+          </blockquote>
+
+          {/* Progress Stats */}
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">This Week</p>
+              <p className="text-lg font-bold text-foreground">
+                {motivationData.completion.totalMinutesThisWeek}
+                <span className="text-sm font-normal text-muted-foreground ml-1">min</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                of {motivationData.completion.goalMinutes} goal
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Sessions</p>
+              <p className="text-lg font-bold text-foreground">
+                {motivationData.completion.sessionsThisWeek}
+                <span className="text-sm font-normal text-muted-foreground ml-1">done</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                of {motivationData.completion.goalSessions} target
+              </p>
+            </div>
           </div>
-          <div className="absolute -right-2 -bottom-2 text-3xl text-primary/30 font-serif">"</div>
-        </blockquote>
 
-        {/* Progress Stats */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-1">This Week</p>
-            <p className="text-lg font-bold text-foreground">
-              {motivationData.completion.totalMinutesThisWeek}
-              <span className="text-sm font-normal text-muted-foreground ml-1">min</span>
+          {/* Completion Percentage */}
+          <div className="text-center pt-2">
+            <p className="text-2xl font-bold text-primary">
+              {motivationData.completion.completionPercentage}%
             </p>
             <p className="text-xs text-muted-foreground">
-              of {motivationData.completion.goalMinutes} goal
+              Weekly Goal Progress
             </p>
           </div>
-          
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-1">Sessions</p>
-            <p className="text-lg font-bold text-foreground">
-              {motivationData.completion.sessionsThisWeek}
-              <span className="text-sm font-normal text-muted-foreground ml-1">done</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              of {motivationData.completion.goalSessions} target
-            </p>
-          </div>
-        </div>
-
-        {/* Completion Percentage */}
-        <div className="text-center pt-2">
-          <p className="text-2xl font-bold text-primary">
-            {motivationData.completion.completionPercentage}%
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Weekly Goal Progress
-          </p>
         </div>
       </CardContent>
     </Card>

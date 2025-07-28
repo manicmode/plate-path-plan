@@ -119,176 +119,178 @@ export function MonthlyExerciseReportCard() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="relative space-y-3">
-          <p className="text-sm leading-relaxed">
-            {latestReport.personalized_message}
-          </p>
+        <CardContent className="p-6">
+          <div className="space-y-2">
+            <p className="text-sm leading-relaxed">
+              {latestReport.personalized_message}
+            </p>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <span className="text-2xl font-bold">{latestReport.total_workouts_completed}</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-2xl font-bold">{latestReport.total_workouts_completed}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Workouts</p>
               </div>
-              <p className="text-xs text-muted-foreground">Workouts</p>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-2xl font-bold">
+                    {formatDuration(latestReport.total_duration_minutes)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Total Time</p>
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-2xl font-bold">
-                  {formatDuration(latestReport.total_duration_minutes)}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">Total Time</p>
+            <div className="flex flex-wrap gap-2">
+              {latestReport.most_frequent_muscle_groups.slice(0, 3).map((activity) => (
+                <Badge key={activity} variant="secondary" className="text-xs">
+                  {activity}
+                </Badge>
+              ))}
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            {latestReport.most_frequent_muscle_groups.slice(0, 3).map((activity) => (
-              <Badge key={activity} variant="secondary" className="text-xs">
-                {activity}
-              </Badge>
-            ))}
-          </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full" onClick={() => setSelectedReport(latestReport)}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View Full Report
+                </Button>
+              </DialogTrigger>
+              
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                {selectedReport && (
+                  <>
+                    <DialogHeader>
+                      <DialogTitle className="text-xl">
+                        {selectedReport.motivational_title}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Complete fitness report for {format(parseISO(selectedReport.month_start), "MMMM yyyy")}
+                      </DialogDescription>
+                    </DialogHeader>
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full" onClick={() => setSelectedReport(latestReport)}>
-                <BookOpen className="h-4 w-4 mr-2" />
-                View Full Report
-              </Button>
-            </DialogTrigger>
-            
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              {selectedReport && (
-                <>
-                  <DialogHeader>
-                    <DialogTitle className="text-xl">
-                      {selectedReport.motivational_title}
-                    </DialogTitle>
-                    <DialogDescription>
-                      Complete fitness report for {format(parseISO(selectedReport.month_start), "MMMM yyyy")}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-6">
-                    {/* Key Metrics */}
-                    <div>
-                      <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Key Metrics
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <Target className="h-5 w-5 mx-auto mb-1 text-primary" />
-                          <div className="text-2xl font-bold">{selectedReport.total_workouts_completed}</div>
-                          <div className="text-xs text-muted-foreground">Workouts</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <Clock className="h-5 w-5 mx-auto mb-1 text-primary" />
-                          <div className="text-2xl font-bold">{formatDuration(selectedReport.total_duration_minutes)}</div>
-                          <div className="text-xs text-muted-foreground">Total Time</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <Flame className="h-5 w-5 mx-auto mb-1 text-primary" />
-                          <div className="text-2xl font-bold">{Math.round(selectedReport.total_calories_burned)}</div>
-                          <div className="text-xs text-muted-foreground">Calories</div>
-                        </div>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <Calendar className="h-5 w-5 mx-auto mb-1 text-primary" />
-                          <div className="text-2xl font-bold">{selectedReport.days_skipped}</div>
-                          <div className="text-xs text-muted-foreground">Days Skipped</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Weekly Averages */}
-                    {selectedReport.report_data.weekly_averages && (
+                    <div className="space-y-6">
+                      {/* Key Metrics */}
                       <div>
-                        <h3 className="font-semibold mb-3">Weekly Averages</h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <h3 className="font-semibold mb-3 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          Key Metrics
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="text-center p-3 bg-muted rounded-lg">
-                            <div className="text-lg font-bold">
-                              {selectedReport.report_data.weekly_averages.workouts_per_week}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Workouts/Week</div>
+                            <Target className="h-5 w-5 mx-auto mb-1 text-primary" />
+                            <div className="text-2xl font-bold">{selectedReport.total_workouts_completed}</div>
+                            <div className="text-xs text-muted-foreground">Workouts</div>
                           </div>
                           <div className="text-center p-3 bg-muted rounded-lg">
-                            <div className="text-lg font-bold">
-                              {formatDuration(Math.round(selectedReport.report_data.weekly_averages.duration_per_week))}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Duration/Week</div>
+                            <Clock className="h-5 w-5 mx-auto mb-1 text-primary" />
+                            <div className="text-2xl font-bold">{formatDuration(selectedReport.total_duration_minutes)}</div>
+                            <div className="text-xs text-muted-foreground">Total Time</div>
                           </div>
                           <div className="text-center p-3 bg-muted rounded-lg">
-                            <div className="text-lg font-bold">
-                              {Math.round(selectedReport.report_data.weekly_averages.calories_per_week)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Calories/Week</div>
+                            <Flame className="h-5 w-5 mx-auto mb-1 text-primary" />
+                            <div className="text-2xl font-bold">{Math.round(selectedReport.total_calories_burned)}</div>
+                            <div className="text-xs text-muted-foreground">Calories</div>
+                          </div>
+                          <div className="text-center p-3 bg-muted rounded-lg">
+                            <Calendar className="h-5 w-5 mx-auto mb-1 text-primary" />
+                            <div className="text-2xl font-bold">{selectedReport.days_skipped}</div>
+                            <div className="text-xs text-muted-foreground">Days Skipped</div>
                           </div>
                         </div>
                       </div>
-                    )}
 
-                    <Separator />
+                      <Separator />
 
-                    {/* Activity Breakdown */}
-                    {selectedReport.report_data.activity_breakdown && (
+                      {/* Weekly Averages */}
+                      {selectedReport.report_data.weekly_averages && (
+                        <div>
+                          <h3 className="font-semibold mb-3">Weekly Averages</h3>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center p-3 bg-muted rounded-lg">
+                              <div className="text-lg font-bold">
+                                {selectedReport.report_data.weekly_averages.workouts_per_week}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Workouts/Week</div>
+                            </div>
+                            <div className="text-center p-3 bg-muted rounded-lg">
+                              <div className="text-lg font-bold">
+                                {formatDuration(Math.round(selectedReport.report_data.weekly_averages.duration_per_week))}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Duration/Week</div>
+                            </div>
+                            <div className="text-center p-3 bg-muted rounded-lg">
+                              <div className="text-lg font-bold">
+                                {Math.round(selectedReport.report_data.weekly_averages.calories_per_week)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Calories/Week</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <Separator />
+
+                      {/* Activity Breakdown */}
+                      {selectedReport.report_data.activity_breakdown && (
+                        <div>
+                          <h3 className="font-semibold mb-3">Most Frequent Activities</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(selectedReport.report_data.activity_breakdown)
+                              .sort(([,a], [,b]) => (b as number) - (a as number))
+                              .slice(0, 6)
+                              .map(([activity, count]) => (
+                                <Badge key={activity} variant="outline" className="text-sm">
+                                  {activity} ({count})
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <Separator />
+
+                      {/* Personalized Message */}
                       <div>
-                        <h3 className="font-semibold mb-3">Most Frequent Activities</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(selectedReport.report_data.activity_breakdown)
-                            .sort(([,a], [,b]) => (b as number) - (a as number))
-                            .slice(0, 6)
-                            .map(([activity, count]) => (
-                              <Badge key={activity} variant="outline" className="text-sm">
-                                {activity} ({count})
-                              </Badge>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <Separator />
-
-                    {/* Personalized Message */}
-                    <div>
-                      <h3 className="font-semibold mb-3">Your Progress</h3>
-                      <p className="text-sm leading-relaxed mb-4">
-                        {selectedReport.personalized_message}
-                      </p>
-                    </div>
-
-                    {/* Smart Suggestions */}
-                    <div>
-                      <h3 className="font-semibold mb-3">Smart Suggestions</h3>
-                      <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                        <p className="text-sm leading-relaxed">
-                          {selectedReport.smart_suggestions}
+                        <h3 className="font-semibold mb-3">Your Progress</h3>
+                        <p className="text-sm leading-relaxed mb-4">
+                          {selectedReport.personalized_message}
                         </p>
                       </div>
-                    </div>
 
-                    {/* Missed Areas */}
-                    {selectedReport.missed_target_areas.length > 0 && (
+                      {/* Smart Suggestions */}
                       <div>
-                        <h3 className="font-semibold mb-3">Areas to Explore</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedReport.missed_target_areas.map((area) => (
-                            <Badge key={area} variant="outline" className="text-sm">
-                              {area}
-                            </Badge>
-                          ))}
+                        <h3 className="font-semibold mb-3">Smart Suggestions</h3>
+                        <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                          <p className="text-sm leading-relaxed">
+                            {selectedReport.smart_suggestions}
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
+
+                      {/* Missed Areas */}
+                      {selectedReport.missed_target_areas.length > 0 && (
+                        <div>
+                          <h3 className="font-semibold mb-3">Areas to Explore</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedReport.missed_target_areas.map((area) => (
+                              <Badge key={area} variant="outline" className="text-sm">
+                                {area}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardContent>
       </Card>
     </>
