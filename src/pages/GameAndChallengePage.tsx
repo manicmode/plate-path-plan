@@ -647,8 +647,27 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Optimize data for mobile and handle recovery mode
-  const currentLeaderboard = challengeMode === 'recovery' ? recoveryLeaderboard : mockLeaderboard;
+  // Optimize data for mobile and handle recovery mode with sorting
+  let currentLeaderboard;
+  
+  if (challengeMode === 'recovery') {
+    // Apply sorting for recovery leaderboard
+    currentLeaderboard = [...recoveryLeaderboard].sort((a, b) => {
+      switch (sortBy) {
+        case 'sessions':
+          return b.totalSessions - a.totalSessions;
+        case 'streak':
+          return b.currentStreak - a.currentStreak;
+        case 'improvement':
+          return b.improvement - a.improvement;
+        default: // 'score'
+          return b.score - a.score;
+      }
+    }).map((user, index) => ({ ...user, rank: index + 1 }));
+  } else {
+    currentLeaderboard = mockLeaderboard;
+  }
+  
   const optimizedLeaderboard = optimizeForMobile(currentLeaderboard);
   const optimizedFriends = optimizeForMobile(mockFriends);
   const optimizedHallOfFame = optimizeForMobile(mockHallOfFame);
@@ -860,11 +879,22 @@ function GameAndChallengeContent() {
                 <SelectTrigger className={cn(isMobile ? "w-32 h-8 text-xs" : "w-40")}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-background border z-50">
-                  <SelectItem value="score">Score</SelectItem>
-                  <SelectItem value="consistency">Consistency</SelectItem>
-                  <SelectItem value="improvement">Most Improved</SelectItem>
-                </SelectContent>
+                 <SelectContent className="bg-background border z-50">
+                   {challengeMode === 'recovery' ? (
+                     <>
+                       <SelectItem value="score">Recovery Score</SelectItem>
+                       <SelectItem value="sessions">Total Sessions</SelectItem>
+                       <SelectItem value="streak">Current Streak</SelectItem>
+                       <SelectItem value="improvement">Most Improved</SelectItem>
+                     </>
+                   ) : (
+                     <>
+                       <SelectItem value="score">Score</SelectItem>
+                       <SelectItem value="consistency">Consistency</SelectItem>
+                       <SelectItem value="improvement">Most Improved</SelectItem>
+                     </>
+                   )}
+                 </SelectContent>
               </Select>
             </div>
           )}

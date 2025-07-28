@@ -19,6 +19,7 @@ export interface RecoveryLeaderboardUser {
   yogaStreak: number;
   sleepStreak: number;
   thermotherapyStreak: number;
+  dominantRecoveryType: string;
 }
 
 export const useRecoveryLeaderboard = () => {
@@ -69,12 +70,28 @@ export const useRecoveryLeaderboard = () => {
         const currentStreak = Math.max(...allStreaks, 0);
         const longestStreak = currentStreak; // For now, using current as longest
         
-        // Calculate score based on sessions and streaks
+        // Calculate score based on sessions and streaks with weighted categories
         const score = totalSessions * 2 + currentStreak * 5;
 
-        // Generate recovery-themed avatars
+        // Determine dominant recovery type and mood icon
+        const recoveryTypes = [
+          { type: 'meditation', sessions: meditation.total_sessions, streak: meditation.current_streak, icon: '🧘‍♂️' },
+          { type: 'breathing', sessions: breathing.total_sessions, streak: breathing.current_streak, icon: '🌬️' },
+          { type: 'yoga', sessions: yoga.total_sessions, streak: yoga.current_streak, icon: '🧘‍♀️' },
+          { type: 'sleep', sessions: sleep.total_sessions, streak: sleep.current_streak, icon: '😴' },
+          { type: 'thermotherapy', sessions: thermotherapy.total_sessions, streak: thermotherapy.current_streak, icon: '🔥' }
+        ];
+        
+        // Find the dominant recovery type (highest combined score)
+        const dominantType = recoveryTypes.reduce((prev, current) => {
+          const prevScore = prev.sessions * 2 + prev.streak * 3;
+          const currentScore = current.sessions * 2 + current.streak * 3;
+          return currentScore > prevScore ? current : prev;
+        }, recoveryTypes[0]);
+
+        // Use the icon from dominant type, or fallback to general recovery avatars
         const recoveryAvatars = ['🧘‍♂️', '🧘‍♀️', '🌿', '🕯️', '🌸', '💆‍♂️', '💆‍♀️', '🧘', '🌺', '🌻', '🦋', '🍃'];
-        const avatar = recoveryAvatars[Math.floor(Math.random() * recoveryAvatars.length)];
+        const avatar = dominantType.sessions > 0 ? dominantType.icon : recoveryAvatars[Math.floor(Math.random() * recoveryAvatars.length)];
 
         userRecoveryData.set(profile.user_id, {
           id: profile.user_id,
@@ -94,6 +111,7 @@ export const useRecoveryLeaderboard = () => {
           yogaStreak: yoga.current_streak,
           sleepStreak: sleep.current_streak,
           thermotherapyStreak: thermotherapy.current_streak,
+          dominantRecoveryType: dominantType.type,
         });
       });
 
