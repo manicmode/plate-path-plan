@@ -138,62 +138,76 @@ export const ExerciseAnalyticsSection = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Quick Action Button */}
-      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">📅</div>
-              <div>
-                <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
-                <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+      <div className="mb-8">
+        <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">📅</div>
+                <div>
+                  <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
+                  <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+                </div>
               </div>
+              <Button 
+                onClick={() => window.location.href = '/ai-routine-viewer'}
+                className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+              >
+                View Plan
+              </Button>
             </div>
-            <Button 
-              onClick={() => window.location.href = '/ai-routine-viewer'}
-              className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-            >
-              View Plan
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Exercise Stats Overview */}
-      <ExerciseStatsCard stats={exerciseStats} />
+      <div className="mb-8">
+        <ExerciseStatsCard stats={exerciseStats} />
+      </div>
 
       {/* Workout Frequency & Duration Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WorkoutFrequencyChart data={workoutFrequencyData} />
-        <ExerciseProgressChart data={durationChartData} />
+      <div className="mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <WorkoutFrequencyChart data={workoutFrequencyData} />
+          <ExerciseProgressChart data={durationChartData} />
+        </div>
       </div>
 
       {/* Muscle Groups & Consistency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <MuscleGroupRadarChart data={muscleGroupData} />
-        <WorkoutConsistencyChart 
-          completedWorkouts={totalWorkouts} 
-          plannedWorkouts={plannedWorkouts} 
-        />
+      <div className="mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MuscleGroupRadarChart data={muscleGroupData} />
+          <WorkoutConsistencyChart 
+            completedWorkouts={totalWorkouts} 
+            plannedWorkouts={plannedWorkouts} 
+          />
+        </div>
       </div>
 
       {/* Streak Tracker */}
-      <StreakTrackerCard 
-        currentStreak={workoutStreak}
-        longestStreak={longestStreak}
-        weeklyGoal={4}
-        thisWeekWorkouts={weeklyFrequency}
-      />
+      <div className="mb-8">
+        <StreakTrackerCard 
+          currentStreak={workoutStreak}
+          longestStreak={longestStreak}
+          weeklyGoal={4}
+          thisWeekWorkouts={weeklyFrequency}
+        />
+      </div>
 
       {/* Smart Trend Insights */}
-      <SmartTrendInsightsCard 
-        trends={trendData}
-        insights={aiInsights}
-      />
+      <div className="mb-8">
+        <SmartTrendInsightsCard 
+          trends={trendData}
+          insights={aiInsights}
+        />
+      </div>
 
       {/* Monthly Exercise Report */}
-      <MonthlyExerciseReportCard />
+      <div className="mb-8">
+        <MonthlyExerciseReportCard />
+      </div>
     </div>
   );
 };
