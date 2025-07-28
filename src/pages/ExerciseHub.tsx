@@ -764,11 +764,11 @@ const ExerciseHub = () => {
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <div className="flex items-center gap-4">
               <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-camera-flash">📸</span>
-              <h2 className="text-xl font-bold text-white dark:text-black">Body Scan AI</h2>
+              <h2 className="text-xl font-bold text-black dark:text-white">Body Scan AI</h2>
             </div>
-            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
+            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-black dark:text-white">→</span>
           </div>
-          <p className="text-white/90 dark:text-black/90 text-sm opacity-90 relative z-10">
+          <p className="text-black/90 dark:text-white/90 text-sm opacity-90 relative z-10">
             Analyze your physique to unlock personalized posture and muscle balance insights
           </p>
         </button>
@@ -792,11 +792,11 @@ const ExerciseHub = () => {
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <div className="flex items-center gap-4">
               <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-extra-slow-pulse">🤖</span>
-              <h2 className="text-xl font-bold text-white dark:text-black">AI Routine Generator</h2>
+              <h2 className="text-xl font-bold text-black dark:text-white">AI Routine Generator</h2>
             </div>
-            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
+            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-black dark:text-white">→</span>
           </div>
-          <p className="text-white/90 dark:text-black/90 text-sm opacity-90 relative z-10">
+          <p className="text-black/90 dark:text-white/90 text-sm opacity-90 relative z-10">
             Let the AI build your 8-week fitness plan and monitor your progress
           </p>
         </button>
@@ -811,10 +811,10 @@ const ExerciseHub = () => {
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-breathe drop-shadow-lg">🧘</span>
-            <h2 className="text-xl font-bold text-white dark:text-black">Recovery Center</h2>
-            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
+            <h2 className="text-xl font-bold text-black dark:text-white">Recovery Center</h2>
+            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-black dark:text-white">→</span>
           </div>
-          <p className="text-white/90 dark:text-black/90 text-sm opacity-90 relative z-10">
+          <p className="text-black/90 dark:text-white/90 text-sm opacity-90 relative z-10">
             Your wellness guide for rest, recovery, and mindfulness
           </p>
         </button>
