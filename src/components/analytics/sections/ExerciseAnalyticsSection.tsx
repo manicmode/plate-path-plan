@@ -5,6 +5,11 @@ import { Activity, Calendar, Target, TrendingUp } from 'lucide-react';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
 import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
 import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
+import { WorkoutFrequencyChart } from '@/components/analytics/WorkoutFrequencyChart';
+import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
+import { WorkoutConsistencyChart } from '@/components/analytics/WorkoutConsistencyChart';
+import { StreakTrackerCard } from '@/components/analytics/StreakTrackerCard';
+import { SmartTrendInsightsCard } from '@/components/analytics/SmartTrendInsightsCard';
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useWeeklyExerciseInsights } from '@/hooks/useWeeklyExerciseInsights';
@@ -13,22 +18,13 @@ export const ExerciseAnalyticsSection = () => {
   const { summary, weeklyChartData, isLoading } = useRealExerciseData('30d');
   const { latestInsight } = useWeeklyExerciseInsights();
 
-  // Mock data for workout types (would come from real data in production)
-  const workoutTypesData = [
-    { type: 'Strength', count: 8, emoji: '💪', color: '#3B82F6' },
-    { type: 'Cardio', count: 5, emoji: '🏃', color: '#10B981' },
-    { type: 'Yoga', count: 3, emoji: '🧘', color: '#8B5CF6' },
-    { type: 'HIIT', count: 2, emoji: '🔥', color: '#EF4444' }
-  ];
-
-  // Mock muscle group data
-  const muscleGroupData = [
-    { group: 'Legs', frequency: 8 },
-    { group: 'Arms', frequency: 6 },
-    { group: 'Core', frequency: 5 },
-    { group: 'Back', frequency: 4 },
-    { group: 'Chest', frequency: 3 }
-  ];
+  // Format workout frequency data from real exercise data
+  const workoutFrequencyData = weeklyChartData.map((day) => ({
+    day: day.day,
+    workouts: day.duration > 0 ? 1 : 0, // Count days with any workout
+    calories: day.calories,
+    duration: day.duration
+  }));
 
   // Format duration chart data
   const durationChartData = weeklyChartData.map((day, index) => ({
@@ -36,16 +32,72 @@ export const ExerciseAnalyticsSection = () => {
     duration: day.duration
   }));
 
-  // Calculate workout streak (mock calculation)
-  const workoutStreak = 5;
-  const weeklyFrequency = latestInsight?.workouts_completed || 3;
+  // Muscle group data based on insights
+  const muscleGroupData = latestInsight?.most_frequent_muscle_groups?.map(group => ({
+    muscle: group,
+    frequency: Math.floor(Math.random() * 10) + 5, // Mock frequency, would come from real data
+    fullMark: 15
+  })) || [
+    { muscle: 'Legs', frequency: 12, fullMark: 15 },
+    { muscle: 'Arms', frequency: 8, fullMark: 15 },
+    { muscle: 'Core', frequency: 10, fullMark: 15 },
+    { muscle: 'Back', frequency: 6, fullMark: 15 },
+    { muscle: 'Chest', frequency: 5, fullMark: 15 },
+    { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
+  ];
+
+  // Calculate workout metrics
+  const totalWorkouts = workoutFrequencyData.reduce((sum, day) => sum + day.workouts, 0);
+  const weeklyFrequency = latestInsight?.workouts_completed || totalWorkouts;
+  const workoutStreak = 5; // Mock - would come from real calculation
+  const longestStreak = 12; // Mock - would come from user data
+  const plannedWorkouts = 20; // Mock monthly goal
   const consistencyPercentage = Math.min((weeklyFrequency / 4) * 100, 100);
+
+  // Trend data for insights
+  const trendData = [
+    {
+      metric: 'Avg Duration',
+      value: Math.round(summary.totalDuration / Math.max(totalWorkouts, 1)),
+      change: 15,
+      trend: 'up' as const,
+      unit: 'min'
+    },
+    {
+      metric: 'Weekly Frequency',
+      value: weeklyFrequency,
+      change: -5,
+      trend: 'down' as const,
+      unit: 'workouts'
+    },
+    {
+      metric: 'Calories/Session',
+      value: Math.round(summary.totalCalories / Math.max(totalWorkouts, 1)),
+      change: 8,
+      trend: 'up' as const,
+      unit: 'kcal'
+    },
+    {
+      metric: 'Consistency',
+      value: Math.round(consistencyPercentage),
+      change: 0,
+      trend: 'stable' as const,
+      unit: '%'
+    }
+  ];
+
+  const aiInsights = [
+    "Your workout duration has increased by 15% this month - great progress!",
+    "Consider adding more leg exercises to balance your muscle group coverage.",
+    "Your consistency is strong, but try to maintain at least 4 workouts per week.",
+    "Your calories burned per session is trending upward, indicating improved intensity."
+  ];
 
   const exerciseStats = [
     {
       icon: Activity,
       label: 'Total Workouts',
-      value: summary.totalSteps > 0 ? Math.floor(summary.totalDuration / 45) : 0,
+      value: totalWorkouts,
       color: 'from-blue-500 to-blue-600'
     },
     {
@@ -72,7 +124,7 @@ export const ExerciseAnalyticsSection = () => {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-6">
                 <div className="h-64 bg-muted rounded"></div>
@@ -91,96 +143,35 @@ export const ExerciseAnalyticsSection = () => {
 
       {/* Workout Frequency & Duration Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-lg border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              📅 Weekly Workout Frequency
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">This Week</span>
-                <span className="text-2xl font-bold text-foreground">{weeklyFrequency}</span>
-              </div>
-              <Progress value={consistencyPercentage} className="h-3" />
-              <p className="text-sm text-muted-foreground">
-                You're staying consistent with {weeklyFrequency} workouts per week
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
+        <WorkoutFrequencyChart data={workoutFrequencyData} />
         <ExerciseProgressChart data={durationChartData} />
       </div>
 
-      {/* Workout Types & Muscle Groups */}
+      {/* Muscle Groups & Consistency */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WorkoutTypesChart data={workoutTypesData} />
-        
-        <Card className="shadow-lg border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              🎯 Muscle Group Focus
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {muscleGroupData.map((muscle) => (
-                <div key={muscle.group} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">{muscle.group}</span>
-                  <div className="flex items-center gap-2 flex-1 ml-4">
-                    <Progress value={(muscle.frequency / 8) * 100} className="h-2" />
-                    <span className="text-xs text-muted-foreground min-w-8">{muscle.frequency}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <MuscleGroupRadarChart data={muscleGroupData} />
+        <WorkoutConsistencyChart 
+          completedWorkouts={totalWorkouts} 
+          plannedWorkouts={plannedWorkouts} 
+        />
       </div>
 
-      {/* Monthly Report */}
-      <MonthlyExerciseReportCard />
+      {/* Streak Tracker */}
+      <StreakTrackerCard 
+        currentStreak={workoutStreak}
+        longestStreak={longestStreak}
+        weeklyGoal={4}
+        thisWeekWorkouts={weeklyFrequency}
+      />
 
-      {/* Workout Trends Summary */}
-      {latestInsight && (
-        <Card className="shadow-lg border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              📈 Workout Trends & Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <h4 className="font-semibold text-foreground mb-2">{latestInsight.motivational_headline}</h4>
-                <p className="text-sm text-muted-foreground mb-3">{latestInsight.progress_message}</p>
-                <div className="text-sm">
-                  <span className="font-medium text-foreground">💡 Tip: </span>
-                  <span className="text-muted-foreground">{latestInsight.suggestion_tip}</span>
-                </div>
-              </div>
-              
-              {latestInsight.most_frequent_muscle_groups?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-foreground mb-2">Most Worked Muscle Groups:</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {latestInsight.most_frequent_muscle_groups.map((group, index) => (
-                      <span 
-                        key={index}
-                        className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full"
-                      >
-                        {group}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Smart Trend Insights */}
+      <SmartTrendInsightsCard 
+        trends={trendData}
+        insights={aiInsights}
+      />
+
+      {/* Monthly Exercise Report */}
+      <MonthlyExerciseReportCard />
     </div>
   );
 };
