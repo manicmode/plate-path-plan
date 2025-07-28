@@ -142,7 +142,7 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <div className="space-y-4">
+  <div className="flex flex-col gap-2">
     {/* Quick Action Button */}
     <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
       <CardContent className="p-6 pb-4">
@@ -168,13 +168,13 @@ return (
     <ExerciseStatsCard stats={exerciseStats} />
 
     {/* Workout Frequency & Duration Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div className="grid gap-2 md:grid-cols-2">
       <WorkoutFrequencyChart data={workoutFrequencyData} />
       <ExerciseProgressChart data={durationChartData} />
     </div>
 
     {/* Muscle Groups & Consistency */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div className="grid gap-2 md:grid-cols-2">
       {totalWorkouts > 0 ? (
         <MuscleGroupRadarChart data={muscleGroupData} />
       ) : (
