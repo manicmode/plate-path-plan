@@ -168,13 +168,13 @@ return (
     <ExerciseStatsCard stats={exerciseStats} />
 
     {/* Workout Frequency & Duration Charts */}
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <WorkoutFrequencyChart data={workoutFrequencyData} />
       <ExerciseProgressChart data={durationChartData} />
     </div>
 
     {/* Muscle Groups & Consistency */}
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {totalWorkouts > 0 ? (
         <MuscleGroupRadarChart data={muscleGroupData} />
       ) : (
