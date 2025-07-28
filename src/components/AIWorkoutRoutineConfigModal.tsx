@@ -164,10 +164,16 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" showCloseButton={false}>
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto border border-white/8 shadow-2xl backdrop-blur-md bg-background/95" 
+        showCloseButton={false}
+        style={{
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 40px rgba(0, 255, 200, 0.1)'
+        }}
+      >
         <DialogHeader className="pr-12">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 font-semibold text-base bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               <Sparkles className="h-5 w-5 text-primary" />
               AI Routine Generator
             </DialogTitle>
@@ -175,44 +181,45 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="absolute top-4 right-4 rounded-full hover:bg-muted z-10"
+              className="absolute top-4 right-4 rounded-full hover:bg-muted z-10 transition-all duration-200"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Routine Name */}
           <div className="space-y-2">
-            <Label htmlFor="routine-name">Routine Name (Optional)</Label>
+            <Label htmlFor="routine-name" className="font-medium text-sm">Routine Name (Optional)</Label>
             <Input
               id="routine-name"
               placeholder="e.g., My Summer Shred Plan"
               value={formData.preferred_routine_name}
               onChange={(e) => setFormData(prev => ({ ...prev, preferred_routine_name: e.target.value }))}
+              className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
             />
           </div>
 
           {/* Goal Selection */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
+          <div className="space-y-4">
+            <Label className="flex items-center gap-2 font-semibold text-sm bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              <Target className="h-4 w-4 text-primary" />
               Fitness Goal *
             </Label>
             <div className="grid grid-cols-2 gap-3">
               {goals.map((goal) => (
                 <Card
                   key={goal.value}
-                  className={`cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-all duration-300 rounded-[18px] hover:scale-[1.03] ${
                     formData.routine_goal === goal.value
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
+                      ? 'ring-2 ring-primary bg-primary/10 shadow-[0_0_6px_rgba(0,255,200,0.15)] border-primary/30'
+                      : 'hover:bg-muted/50 shadow-[0_0_6px_rgba(0,255,200,0.05)] hover:shadow-[0_0_10px_rgba(0,255,200,0.15)]'
                   }`}
                   onClick={() => setFormData(prev => ({ ...prev, routine_goal: goal.value }))}
                 >
-                  <CardContent className="p-3 text-center">
-                    <div className="text-2xl mb-1">{goal.emoji}</div>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl mb-2">{goal.emoji}</div>
                     <div className="text-sm font-medium">{goal.label}</div>
                   </CardContent>
                 </Card>
@@ -221,22 +228,24 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
           </div>
 
           {/* Split Type */}
-          <div className="space-y-3">
-            <Label>Workout Split Type *</Label>
-            <div className="space-y-2">
+          <div className="space-y-4">
+            <Label className="font-semibold text-sm bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              Workout Split Type *
+            </Label>
+            <div className="space-y-3">
               {splitTypes.map((split) => (
                 <Card
                   key={split.value}
-                  className={`cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-all duration-300 rounded-[18px] hover:scale-[1.02] ${
                     formData.split_type === split.value
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
+                      ? 'ring-2 ring-primary bg-primary/10 shadow-[0_0_6px_rgba(0,255,200,0.15)] border-primary/30'
+                      : 'hover:bg-muted/50 shadow-[0_0_6px_rgba(0,255,200,0.05)] hover:shadow-[0_0_10px_rgba(0,255,200,0.15)]'
                   }`}
                   onClick={() => setFormData(prev => ({ ...prev, split_type: split.value }))}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-4">
                     <div className="font-medium">{split.label}</div>
-                    <div className="text-sm text-muted-foreground">{split.description}</div>
+                    <div className="text-sm text-muted-foreground mt-1">{split.description}</div>
                   </CardContent>
                 </Card>
               ))}
@@ -246,18 +255,18 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
           {/* Days Per Week & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
+              <Label className="flex items-center gap-2 font-medium text-sm">
+                <Calendar className="h-4 w-4 text-primary" />
                 Days Per Week
               </Label>
               <Select
                 value={formData.days_per_week.toString()}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, days_per_week: parseInt(value) }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background/95 backdrop-blur-md border border-white/10 z-50">
                   <SelectItem value="3">3 days</SelectItem>
                   <SelectItem value="4">4 days</SelectItem>
                   <SelectItem value="5">5 days</SelectItem>
@@ -267,18 +276,18 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
+              <Label className="flex items-center gap-2 font-medium text-sm">
+                <Clock className="h-4 w-4 text-primary" />
                 Time Per Session
               </Label>
               <Select
                 value={formData.available_time_per_day.toString()}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, available_time_per_day: parseInt(value) }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background/95 backdrop-blur-md border border-white/10 z-50">
                   <SelectItem value="30">30 minutes</SelectItem>
                   <SelectItem value="45">45 minutes</SelectItem>
                   <SelectItem value="60">60 minutes</SelectItem>
@@ -290,25 +299,25 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
           </div>
 
           {/* Fitness Level */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+          <div className="space-y-4">
+            <Label className="flex items-center gap-2 font-semibold text-sm bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              <User className="h-4 w-4 text-primary" />
               Fitness Level *
             </Label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {fitnessLevels.map((level) => (
                 <Card
                   key={level.value}
-                  className={`cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-all duration-300 rounded-[18px] hover:scale-[1.02] ${
                     formData.fitness_level === level.value
-                      ? 'ring-2 ring-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
+                      ? 'ring-2 ring-primary bg-primary/10 shadow-[0_0_6px_rgba(0,255,200,0.15)] border-primary/30'
+                      : 'hover:bg-muted/50 shadow-[0_0_6px_rgba(0,255,200,0.05)] hover:shadow-[0_0_10px_rgba(0,255,200,0.15)]'
                   }`}
                   onClick={() => setFormData(prev => ({ ...prev, fitness_level: level.value }))}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-4">
                     <div className="font-medium">{level.label}</div>
-                    <div className="text-sm text-muted-foreground">{level.description}</div>
+                    <div className="text-sm text-muted-foreground mt-1">{level.description}</div>
                   </CardContent>
                 </Card>
               ))}
@@ -316,9 +325,9 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
           </div>
 
           {/* Equipment */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Dumbbell className="h-4 w-4" />
+          <div className="space-y-4">
+            <Label className="flex items-center gap-2 font-semibold text-sm bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              <Dumbbell className="h-4 w-4 text-primary" />
               Available Equipment *
             </Label>
             <div className="flex flex-wrap gap-2">
@@ -326,7 +335,11 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
                 <Badge
                   key={equipment}
                   variant={formData.equipment_available.includes(equipment) ? "default" : "outline"}
-                  className="cursor-pointer"
+                  className={`cursor-pointer transition-all duration-200 py-1.5 px-3.5 rounded-full hover:scale-105 ${
+                    formData.equipment_available.includes(equipment) 
+                      ? 'bg-primary/20 text-primary border-primary/40 shadow-[0_0_8px_rgba(0,255,200,0.3)]' 
+                      : 'hover:border-primary/50 hover:shadow-[0_0_6px_rgba(0,255,200,0.1)]'
+                  }`}
                   onClick={() => handleEquipmentToggle(equipment)}
                 >
                   {equipment.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -335,19 +348,29 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
             </div>
           </div>
 
+          {/* Tooltip */}
+          <div className="text-center p-3 bg-primary/5 rounded-lg border border-primary/20">
+            <p className="text-sm text-muted-foreground">
+              👀 Preview your full AI routine instantly — personalized to your goals.
+            </p>
+          </div>
+
           {/* Generate Button */}
           <div className="flex gap-3 pt-4">
             <Button
               variant="outline"
               onClick={onClose}
-              className="flex-1"
+              className="flex-1 transition-all duration-200 hover:bg-muted/50"
             >
               Cancel
             </Button>
             <Button
               onClick={handleGenerate}
               disabled={loading}
-              className="flex-1 bg-primary hover:bg-primary/90"
+              className="flex-1 bg-gradient-to-r from-[#00f0ff] to-[#00ffa1] hover:from-[#00e6f5] hover:to-[#00f096] text-black font-medium transition-all duration-200 hover:scale-[0.98] active:scale-95 shadow-[0_0_12px_rgba(0,255,200,0.3)] hover:shadow-[0_0_20px_rgba(0,255,200,0.4)]"
+              style={{
+                boxShadow: '0 0 12px rgba(0, 255, 200, 0.3)'
+              }}
             >
               {loading ? (
                 <>
