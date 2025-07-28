@@ -19,6 +19,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     bottom: 120,
     right: 80
   });
+  const [isMoving, setIsMoving] = useState(false);
 
   // Don't render if box can't be claimed and no countdown needed
   if (!canClaimBox && timeUntilNextBox <= 0) {
@@ -27,14 +28,20 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
 
   // Floating movement every 5 seconds
   useEffect(() => {
-    // Generate random position function
+    // Generate random position function with proper bounds
     const generateNewPosition = () => {
+      setIsMoving(true);
+      
       const newPosition = {
-        bottom: Math.floor(Math.random() * (300 - 60 + 1)) + 60, // 60px to 300px
-        right: Math.floor(Math.random() * (150 - 10 + 1)) + 10   // 10px to 150px
+        bottom: Math.floor(Math.random() * 250) + 100, // Min: 100px (above nav), Max: 350px
+        right: Math.floor(Math.random() * 140) + 10     // Min: 10px, Max: 150px (stays on screen)
       };
+      
       console.log('🎁 Gift box moving to new position:', newPosition);
       setFloatingPosition(newPosition);
+      
+      // Reset moving state after transition completes
+      setTimeout(() => setIsMoving(false), 800);
     };
 
     // Set initial random position immediately
@@ -96,7 +103,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           className
         )}
         style={{
-          zIndex: 9999,
+          zIndex: 99999,
           ...positionStyle
         }}
       >
@@ -130,8 +137,16 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
                 <Sparkles className="h-3 w-3 text-pink-400 absolute -bottom-1 -right-1 animate-bounce" style={{ animationDelay: '600ms' }} />
               </div>
               
-              {/* Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-purple-500 to-pink-500 rounded-xl blur-md opacity-30 animate-pulse" />
+              {/* Enhanced Glow Effect - Extra bright when moving */}
+              <div className={cn(
+                "absolute inset-0 bg-gradient-to-r from-yellow-400 via-purple-500 to-pink-500 rounded-xl blur-md animate-pulse",
+                isMoving ? "opacity-50 blur-lg" : "opacity-30"
+              )} />
+              
+              {/* Moving Attention Ring */}
+              {isMoving && (
+                <div className="absolute -inset-4 border-2 border-yellow-300 rounded-full animate-ping opacity-75" />
+              )}
             </>
           )}
           
