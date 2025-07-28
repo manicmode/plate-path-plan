@@ -99,8 +99,8 @@ export function AddWorkoutModal({ isOpen, onClose, onSave }: AddWorkoutModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-background border-border animate-in slide-in-from-bottom-4 fade-in-0 duration-300">
-        <DialogHeader className="space-y-3">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-background border-border animate-in slide-in-from-bottom-4 fade-in-0 duration-300" showCloseButton={false}>
+        <DialogHeader className="space-y-3 pr-12">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Add New Workout
@@ -109,7 +109,7 @@ export function AddWorkoutModal({ isOpen, onClose, onSave }: AddWorkoutModalProp
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="rounded-full hover:bg-muted"
+              className="absolute top-4 right-4 rounded-full hover:bg-muted z-10"
             >
               <X className="h-4 w-4" />
             </Button>
