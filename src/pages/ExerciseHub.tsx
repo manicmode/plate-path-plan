@@ -952,23 +952,6 @@ const ExerciseHub = () => {
                       <p className="text-muted-foreground">Custom workout plans tailored for you</p>
                     </div>
 
-                    {/* Create Routine Buttons */}
-                    <div className="flex gap-3 mb-6">
-                      <Button
-                        onClick={() => setIsCreateRoutineModalOpen(true)}
-                        className="flex-1 bg-primary hover:bg-primary/90"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create Custom Routine
-                      </Button>
-                      <Button
-                        onClick={() => setIsAIRoutineModalOpen(true)}
-                        className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
-                      >
-                        <Activity className="mr-2 h-4 w-4" />
-                        AI Generate Routine
-                      </Button>
-                    </div>
 
                     {/* Routines Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -992,22 +975,6 @@ const ExerciseHub = () => {
                            <div className="text-4xl mb-4">🧠</div>
                            <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
                            <p className="text-muted-foreground mb-6">Create your first custom workout routine or let AI design one for you!</p>
-                           <div className="flex gap-3 justify-center">
-                             <Button
-                               onClick={() => setIsCreateRoutineModalOpen(true)}
-                               className="bg-primary hover:bg-primary/90"
-                             >
-                               <Plus className="mr-2 h-4 w-4" />
-                               Create Custom
-                             </Button>
-                             <Button
-                               onClick={() => setIsAIRoutineModalOpen(true)}
-                               className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
-                             >
-                               <Activity className="mr-2 h-4 w-4" />
-                               AI Generate
-                             </Button>
-                           </div>
                          </CardContent>
                        </Card>
                      )}
