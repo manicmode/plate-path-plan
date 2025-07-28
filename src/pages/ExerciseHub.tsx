@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ const ExerciseHub = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const tabsRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
@@ -813,13 +814,22 @@ const ExerciseHub = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="mb-6">
+      <div className="mb-6" ref={tabsRef}>
         {/* 4 tabs in grid */}
         <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'}`}>
           {tabs.slice(0, 4).map((tab) => (
             <Button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans')}
+              onClick={() => {
+                setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans');
+                // Scroll to position tabs at the top
+                if (tabsRef.current) {
+                  tabsRef.current.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                  });
+                }
+              }}
               variant={activeTab === tab.id ? "default" : "outline"}
               className={`
                 relative h-16 p-3 rounded-xl transition-all duration-300 ease-out
