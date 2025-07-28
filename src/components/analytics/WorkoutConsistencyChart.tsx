@@ -18,7 +18,7 @@ export const WorkoutConsistencyChart = ({ completedWorkouts, plannedWorkouts }: 
   const consistencyPercentage = plannedWorkouts > 0 ? Math.round((completedWorkouts / plannedWorkouts) * 100) : 0;
 
   return (
-    <Card className="w-full shadow-lg border-border bg-card">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           🔄 Workout Consistency

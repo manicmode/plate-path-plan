@@ -228,13 +228,13 @@ export default function Analytics() {
                 {totalWorkouts > 0 ? (
                   <MuscleGroupRadarChart data={muscleGroupData} />
                 ) : (
-                  <Card className="w-full shadow-lg border-border bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                        🎯 Muscle Group Coverage
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center py-12">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              🎯 Muscle Group Coverage
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center py-12">
                       <div className="opacity-60 mb-4">
                         <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
                           <span className="text-2xl">💪</span>
