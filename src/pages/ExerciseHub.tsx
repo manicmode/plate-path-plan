@@ -825,9 +825,9 @@ const ExerciseHub = () => {
               key={tab.id}
               onClick={() => {
                 setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans');
-                // Scroll to position tabs with proper spacing above
+                // Scroll to completely hide the section above the tabs
                 if (tabsRef.current) {
-                  const offsetTop = tabsRef.current.offsetTop - 120; // Increased spacing to hide the section above
+                  const offsetTop = tabsRef.current.offsetTop - 200; // Much larger offset to completely hide the section above
                   window.scrollTo({
                     top: offsetTop,
                     behavior: 'smooth'
