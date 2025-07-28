@@ -1072,7 +1072,7 @@ const ExerciseHub = () => {
                   </div>
                 ) : tab.id === 'progress-reports' ? (
                   /* Progress & Reports Tab - Enhanced with Visual Experience */
-                  <div className="space-y-8">
+                  <div>
                     {/* Header with motivational badge */}
                     <div className="text-center mb-8">
                       <h2 className="text-2xl font-bold text-foreground mb-2">Your Fitness Progress</h2>
@@ -1082,42 +1082,48 @@ const ExerciseHub = () => {
                       </div>
                     </div>
 
-                    {/* Top Section: Trophy & Weekly Goal Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                      <WorkoutTrophyCard />
-                      <WeeklyGoalCard />
-                    </div>
-
-                    {/* Top Row: Progress Calendar & Streak Tracker */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                      <WorkoutProgressCalendar />
-                      <EnhancedStreakTracker />
-                    </div>
-
-                    {/* Second Row: Volume Chart & Muscle Group Balance */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                      <WorkoutVolumeChart />
-                      <div>
-                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          🎯 Muscle Group Balance
-                        </h4>
-                        <MuscleGroupRadarChart data={[
-                          { muscle: 'Legs', frequency: 12, fullMark: 15 },
-                          { muscle: 'Arms', frequency: 8, fullMark: 15 },
-                          { muscle: 'Core', frequency: 10, fullMark: 15 },
-                          { muscle: 'Back', frequency: 6, fullMark: 15 },
-                          { muscle: 'Chest', frequency: 5, fullMark: 15 },
-                          { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
-                        ]} />
+                    {/* Monthly Achievement & Weekly Goal Cards */}
+                    <div className="mb-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <WorkoutTrophyCard />
+                        <WeeklyGoalCard />
                       </div>
                     </div>
 
-                    {/* Third Row: AI Progress Overview */}
+                    {/* Monthly Progress Calendar & Streak Tracker */}
+                    <div className="mb-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <WorkoutProgressCalendar />
+                        <EnhancedStreakTracker />
+                      </div>
+                    </div>
+
+                    {/* Weekly Training Volume & Muscle Group Balance */}
+                    <div className="mb-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <WorkoutVolumeChart />
+                        <div>
+                          <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                            🎯 Muscle Group Balance
+                          </h4>
+                          <MuscleGroupRadarChart data={[
+                            { muscle: 'Legs', frequency: 12, fullMark: 15 },
+                            { muscle: 'Arms', frequency: 8, fullMark: 15 },
+                            { muscle: 'Core', frequency: 10, fullMark: 15 },
+                            { muscle: 'Back', frequency: 6, fullMark: 15 },
+                            { muscle: 'Chest', frequency: 5, fullMark: 15 },
+                            { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
+                          ]} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AI Insights */}
                     <div className="mb-8">
                       <ProgressOverviewCard />
                     </div>
 
-                    {/* Coach Motivation Section */}
+                    {/* Coach Card */}
                     <div className="mb-8">
                       <Card>
                         <CardHeader>
@@ -1129,27 +1135,27 @@ const ExerciseHub = () => {
                       </Card>
                     </div>
 
-                    {/* Report Cards Section */}
-                    <div className="space-y-8 pt-4">
+                    {/* Detailed Reports Header */}
+                    <div className="mb-8">
                       <div className="text-center">
                         <h3 className="text-xl font-bold text-foreground mb-2">📊 Detailed Reports</h3>
                         <p className="text-muted-foreground text-sm">Comprehensive insights and analysis</p>
                       </div>
+                    </div>
 
-                      {/* Weekly Exercise Insights */}
-                      <div className="w-full mb-6">
-                        <WeeklyExerciseInsightsCard />
-                      </div>
+                    {/* Weekly Exercise Insights */}
+                    <div className="mb-8">
+                      <WeeklyExerciseInsightsCard />
+                    </div>
 
-                      {/* Monthly Exercise Report */}
-                      <div className="w-full mb-6">
-                        <MonthlyExerciseReportCard />
-                      </div>
+                    {/* Monthly Exercise Report */}
+                    <div className="mb-8">
+                      <MonthlyExerciseReportCard />
+                    </div>
 
-                      {/* Yearly Exercise Report */}
-                      <div className="w-full">
-                        <YearlyExerciseReportCard />
-                      </div>
+                    {/* Yearly Exercise Report */}
+                    <div className="mb-8">
+                      <YearlyExerciseReportCard />
                     </div>
                   </div>
                 ) : tab.id === 'pre-made-plans' ? (
