@@ -1072,9 +1072,9 @@ const ExerciseHub = () => {
                   </div>
                 ) : tab.id === 'progress-reports' ? (
                   /* Progress & Reports Tab - Enhanced with Visual Experience */
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     {/* Header with motivational badge */}
-                    <div className="text-center mb-6">
+                    <div className="text-center mb-8">
                       <h2 className="text-2xl font-bold text-foreground mb-2">Your Fitness Progress</h2>
                       <p className="text-muted-foreground mb-4">Track your journey with detailed insights and analytics</p>
                       <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-semibold rounded-full shadow-lg">
@@ -1083,19 +1083,19 @@ const ExerciseHub = () => {
                     </div>
 
                     {/* Top Section: Trophy & Weekly Goal Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                       <WorkoutTrophyCard />
                       <WeeklyGoalCard />
                     </div>
 
                     {/* Top Row: Progress Calendar & Streak Tracker */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                       <WorkoutProgressCalendar />
                       <EnhancedStreakTracker />
                     </div>
 
                     {/* Second Row: Volume Chart & Muscle Group Balance */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                       <WorkoutVolumeChart />
                       <div>
                         <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -1113,32 +1113,36 @@ const ExerciseHub = () => {
                     </div>
 
                     {/* Third Row: AI Progress Overview */}
-                    <ProgressOverviewCard />
+                    <div className="mb-8">
+                      <ProgressOverviewCard />
+                    </div>
 
                     {/* Coach Motivation Section */}
-                    <Card>
-                      <CardHeader>
-                        <h3 className="text-lg font-semibold">💬 Coach Motivation</h3>
-                      </CardHeader>
-                      <CardContent>
-                        <MotivationCard />
-                      </CardContent>
-                    </Card>
+                    <div className="mb-8">
+                      <Card>
+                        <CardHeader>
+                          <h3 className="text-lg font-semibold">💬 Coach Motivation</h3>
+                        </CardHeader>
+                        <CardContent>
+                          <MotivationCard />
+                        </CardContent>
+                      </Card>
+                    </div>
 
                     {/* Report Cards Section */}
-                    <div className="space-y-6 pt-4">
+                    <div className="space-y-8 pt-4">
                       <div className="text-center">
                         <h3 className="text-xl font-bold text-foreground mb-2">📊 Detailed Reports</h3>
                         <p className="text-muted-foreground text-sm">Comprehensive insights and analysis</p>
                       </div>
 
                       {/* Weekly Exercise Insights */}
-                      <div className="w-full">
+                      <div className="w-full mb-6">
                         <WeeklyExerciseInsightsCard />
                       </div>
 
                       {/* Monthly Exercise Report */}
-                      <div className="w-full">
+                      <div className="w-full mb-6">
                         <MonthlyExerciseReportCard />
                       </div>
 
