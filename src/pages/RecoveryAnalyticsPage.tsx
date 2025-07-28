@@ -263,31 +263,29 @@ const RecoveryAnalyticsPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
-        <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-              className="hover:bg-accent/50 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-foreground bg-clip-text text-transparent">
-                Recovery Analytics
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Premium insights into your wellness journey
-              </p>
+        <div className="p-4 max-w-7xl mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                className="hover:bg-accent/50 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-foreground bg-clip-text text-transparent">
+                  Recovery Analytics
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Premium insights into your wellness journey
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="p-4 max-w-7xl mx-auto space-y-6">
-        {/* Tab Filters - Fixed for Mobile */}
-        <div className="w-full">
+          
+          {/* Category Filters */}
           <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
             {categoryOptions.map((option) => (
               <button
@@ -304,6 +302,9 @@ const RecoveryAnalyticsPage = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="p-4 max-w-7xl mx-auto space-y-6">
 
         {/* Summary Stats - Fixed Heights */}
         <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
