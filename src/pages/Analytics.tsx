@@ -149,7 +149,7 @@ export default function Analytics() {
   useMilestoneTracker();
 
   return (
-    <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 space-y-4 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>
@@ -165,7 +165,7 @@ export default function Analytics() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="nutrition" className="space-y-6 mt-6">
+        <TabsContent value="nutrition" className="space-y-4 mt-6">
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
           <MealQualityAnalyticsSection />
@@ -195,7 +195,7 @@ export default function Analytics() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-4 pt-4 pb-20">
+            <div className="flex flex-col gap-3 pt-4 pb-20">
               {/* AI Workout Plan Card */}
               <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
                 <CardContent className="p-6">
@@ -223,17 +223,17 @@ export default function Analytics() {
               <ExerciseStatsCard stats={exerciseStats} />
 
               {/* Charts Row 1 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <WorkoutFrequencyChart data={workoutFrequencyData} />
                 <ExerciseProgressChart data={durationChartData} />
               </div>
 
               {/* Charts Row 2 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {totalWorkouts > 0 ? (
                   <MuscleGroupRadarChart data={muscleGroupData} />
                 ) : (
-                  <Card>
+                  <Card className="w-full shadow-lg !border-2 !border-orange-500/60 bg-gradient-to-r from-orange-500/30 to-red-500/30 bg-card">
                     <CardHeader>
                       <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
                         🎯 Muscle Group Coverage
@@ -274,7 +274,7 @@ export default function Analytics() {
               <MonthlyExerciseReportCard />
 
               {/* Trophy & Motivation */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <WorkoutTrophyCard showFullStats={false} />
                 <MotivationCard />
               </div>

@@ -142,7 +142,7 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <div className="space-y-6">
+  <div className="space-y-4">
     {/* Quick Action Button */}
     <Card className="w-full shadow-lg bg-card !border-2 !border-purple-500/60 bg-gradient-to-r from-purple-500/30 to-blue-500/30">
       <CardContent className="p-6 pb-4">
@@ -168,17 +168,17 @@ return (
     <ExerciseStatsCard stats={exerciseStats} />
 
     {/* Workout Frequency & Duration Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
       <WorkoutFrequencyChart data={workoutFrequencyData} />
       <ExerciseProgressChart data={durationChartData} />
     </div>
 
     {/* Muscle Groups & Consistency */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
       {totalWorkouts > 0 ? (
         <MuscleGroupRadarChart data={muscleGroupData} />
       ) : (
-        <Card className="w-full shadow-lg border-border bg-card">
+        <Card className="w-full shadow-lg !border-2 !border-orange-500/60 bg-gradient-to-r from-orange-500/30 to-red-500/30 bg-card">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
               🎯 Muscle Group Coverage
