@@ -141,81 +141,82 @@ export const ExerciseAnalyticsSection = () => {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Quick Action Button */}
-      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">📅</div>
-              <div>
-                <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
-                <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+return (
+  <>
+    {/* Quick Action Button */}
+    <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-2xl">📅</div>
+            <div>
+              <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
+              <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
+            </div>
+          </div>
+          <Button 
+            onClick={() => window.location.href = '/ai-routine-viewer'}
+            className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+          >
+            View Plan
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Exercise Stats Overview */}
+    <ExerciseStatsCard stats={exerciseStats} />
+
+    {/* Workout Frequency & Duration Charts */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <WorkoutFrequencyChart data={workoutFrequencyData} />
+      <ExerciseProgressChart data={durationChartData} />
+    </div>
+
+    {/* Muscle Groups & Consistency */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {totalWorkouts > 0 ? (
+        <MuscleGroupRadarChart data={muscleGroupData} />
+      ) : (
+        <Card className="w-full shadow-lg border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              🎯 Muscle Group Coverage
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center py-12">
+            <div className="opacity-60 mb-4">
+              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
+                <span className="text-2xl">💪</span>
               </div>
             </div>
-            <Button 
-              onClick={() => window.location.href = '/ai-routine-viewer'}
-              className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-            >
-              View Plan
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Exercise Stats Overview */}
-      <ExerciseStatsCard stats={exerciseStats} />
-
-      {/* Workout Frequency & Duration Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WorkoutFrequencyChart data={workoutFrequencyData} />
-        <ExerciseProgressChart data={durationChartData} />
-      </div>
-
-      {/* Muscle Groups & Consistency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {totalWorkouts > 0 ? (
-          <MuscleGroupRadarChart data={muscleGroupData} />
-        ) : (
-          <Card className="w-full shadow-lg border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                🎯 Muscle Group Coverage
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center py-12">
-              <div className="opacity-60 mb-4">
-                <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
-                  <span className="text-2xl">💪</span>
-                </div>
-              </div>
-              <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
-            </CardContent>
-          </Card>
-        )}
-        <WorkoutConsistencyChart 
-          completedWorkouts={totalWorkouts} 
-          plannedWorkouts={plannedWorkouts} 
-        />
-      </div>
-
-      {/* Streak Tracker */}
-      <StreakTrackerCard 
-        currentStreak={workoutStreak}
-        longestStreak={longestStreak}
-        weeklyGoal={4}
-        thisWeekWorkouts={weeklyFrequency}
+            <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
+          </CardContent>
+        </Card>
+      )}
+      <WorkoutConsistencyChart 
+        completedWorkouts={totalWorkouts} 
+        plannedWorkouts={plannedWorkouts} 
       />
-
-      {/* Smart Trend Insights */}
-      <SmartTrendInsightsCard 
-        trends={trendData}
-        insights={aiInsights}
-      />
-
-      {/* Monthly Exercise Report */}
-      <MonthlyExerciseReportCard />
     </div>
-  );
+
+    {/* Streak Tracker */}
+    <StreakTrackerCard 
+      currentStreak={workoutStreak}
+      longestStreak={longestStreak}
+      weeklyGoal={4}
+      thisWeekWorkouts={weeklyFrequency}
+    />
+
+    {/* Smart Trend Insights */}
+    <SmartTrendInsightsCard 
+      trends={trendData}
+      insights={aiInsights}
+    />
+
+    {/* Monthly Exercise Report */}
+    <MonthlyExerciseReportCard />
+  </>
+);
+
 };
