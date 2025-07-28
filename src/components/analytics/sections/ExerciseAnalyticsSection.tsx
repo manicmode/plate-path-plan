@@ -142,9 +142,9 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <>
+  <div className="space-y-6">
     {/* Quick Action Button */}
-    <Card className="w-full shadow-lg border-border bg-card mb-6">
+    <Card className="w-full shadow-lg border-border bg-card">
       <CardContent className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -165,18 +165,16 @@ return (
     </Card>
 
     {/* Exercise Stats Overview */}
-    <div className="mb-6">
-      <ExerciseStatsCard stats={exerciseStats} />
-    </div>
+    <ExerciseStatsCard stats={exerciseStats} />
 
     {/* Workout Frequency & Duration Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <WorkoutFrequencyChart data={workoutFrequencyData} />
       <ExerciseProgressChart data={durationChartData} />
     </div>
 
     {/* Muscle Groups & Consistency */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {totalWorkouts > 0 ? (
         <MuscleGroupRadarChart data={muscleGroupData} />
       ) : (
@@ -203,26 +201,22 @@ return (
     </div>
 
     {/* Streak Tracker */}
-    <div className="mb-6">
-      <StreakTrackerCard 
-        currentStreak={workoutStreak}
-        longestStreak={longestStreak}
-        weeklyGoal={4}
-        thisWeekWorkouts={weeklyFrequency}
-      />
-    </div>
+    <StreakTrackerCard 
+      currentStreak={workoutStreak}
+      longestStreak={longestStreak}
+      weeklyGoal={4}
+      thisWeekWorkouts={weeklyFrequency}
+    />
 
     {/* Smart Trend Insights */}
-    <div className="mb-6">
-      <SmartTrendInsightsCard 
-        trends={trendData}
-        insights={aiInsights}
-      />
-    </div>
+    <SmartTrendInsightsCard 
+      trends={trendData}
+      insights={aiInsights}
+    />
 
     {/* Monthly Exercise Report */}
     <MonthlyExerciseReportCard />
-  </>
+  </div>
 );
 
 };
