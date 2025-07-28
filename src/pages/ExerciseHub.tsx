@@ -789,7 +789,7 @@ const ExerciseHub = () => {
 
       {/* Action Buttons Group - Side by Side in Container */}
       <div className="w-full mb-6">
-        <div className="bg-white dark:bg-gray-100 rounded-2xl p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
           <div className="flex gap-3">
             {/* Add Workout Button */}
             <Button
