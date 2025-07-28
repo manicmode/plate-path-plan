@@ -67,23 +67,8 @@ export default function Analytics() {
           
           {/* Trophy & Motivation Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold">🏆 Monthly Trophy Status</h3>
-              </CardHeader>
-              <CardContent>
-                <WorkoutTrophyCard showFullStats={false} />
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold">💬 Weekly AI Motivation</h3>
-              </CardHeader>
-              <CardContent>
-                <MotivationCard />
-              </CardContent>
-            </Card>
+            <WorkoutTrophyCard showFullStats={false} />
+            <MotivationCard />
           </div>
         </TabsContent>
       </Tabs>
