@@ -12,7 +12,7 @@ interface MuscleGroupRadarChartProps {
 
 export const MuscleGroupRadarChart = ({ data }: MuscleGroupRadarChartProps) => {
   return (
-    <Card>
+    <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-red-500/20 to-pink-500/20 backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           🎯 Muscle Group Coverage

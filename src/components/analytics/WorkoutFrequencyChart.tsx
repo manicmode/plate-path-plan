@@ -13,7 +13,7 @@ interface WorkoutFrequencyChartProps {
 
 export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
   return (
-    <Card>
+    <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm">
       <CardContent className="p-6">
         <div className="space-y-2">
           <h3 className="text-lg font-bold text-foreground flex items-center gap-2">

@@ -27,7 +27,7 @@ const StatItem = ({ icon: Icon, label, value, color }: StatItemProps) => (
 
 export const ExerciseStatsCard = ({ stats }: ExerciseStatsCardProps) => {
   return (
-    <Card>
+    <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-sm">
       <CardContent className="p-6">
         <div className="space-y-2">
           <div className="flex items-center justify-between">

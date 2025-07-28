@@ -19,7 +19,7 @@ export const StreakTrackerCard = ({
   const weeklyProgress = Math.min((thisWeekWorkouts / weeklyGoal) * 100, 100);
 
   return (
-    <Card>
+    <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-purple-500/20 to-violet-500/20 backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           🔥 Streak Tracker
