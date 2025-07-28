@@ -11,7 +11,7 @@ interface ExerciseProgressChartProps {
 
 export const ExerciseProgressChart = ({ data }: ExerciseProgressChartProps) => {
   return (
-    <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-orange-500/20 to-amber-500/20 backdrop-blur-sm">
+    <Card className="w-full shadow-lg bg-card border-2 border-orange-500/60 bg-gradient-to-r from-orange-500/30 to-amber-500/30">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           📈 Workout Duration Trend

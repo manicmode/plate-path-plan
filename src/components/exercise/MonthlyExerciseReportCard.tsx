@@ -106,7 +106,7 @@ export function MonthlyExerciseReportCard() {
 
   return (
     <>
-      <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-slate-500/20 to-gray-500/20 backdrop-blur-sm relative overflow-hidden">
+      <Card className="w-full shadow-lg bg-card border-2 border-slate-500/60 bg-gradient-to-r from-slate-500/30 to-gray-500/30 relative overflow-hidden">
         <div className={`absolute inset-0 opacity-10 ${getMotivationColor(latestReport.total_workouts_completed)}`} />
         
         <CardHeader className="relative">

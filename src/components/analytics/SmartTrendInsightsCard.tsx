@@ -39,7 +39,7 @@ export const SmartTrendInsightsCard = ({ trends, insights }: SmartTrendInsightsC
   };
 
   return (
-    <Card className="w-full shadow-lg bg-card border-2 border-transparent bg-gradient-to-r from-indigo-500/20 to-blue-500/20 backdrop-blur-sm">
+    <Card className="w-full shadow-lg bg-card border-2 border-indigo-500/60 bg-gradient-to-r from-indigo-500/30 to-blue-500/30">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           📈 Smart Trend Insights
