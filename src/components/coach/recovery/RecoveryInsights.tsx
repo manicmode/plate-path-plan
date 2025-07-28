@@ -111,7 +111,7 @@ export const RecoveryInsights = () => {
     <Card className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <BarChart3 className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+          <BarChart3 className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
           <span>📊 Recovery Insights</span>
         </CardTitle>
       </CardHeader>
@@ -133,7 +133,7 @@ export const RecoveryInsights = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
             <div className="text-center">
-              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-purple-600`}>
+              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-blue-600`}>
                 {recoveryData.meditationSessions}
               </div>
               <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
@@ -144,7 +144,7 @@ export const RecoveryInsights = () => {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
             <div className="text-center">
-              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-blue-600`}>
+              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-cyan-600`}>
                 {recoveryData.breathingExercises}
               </div>
               <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
@@ -155,7 +155,7 @@ export const RecoveryInsights = () => {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
             <div className="text-center">
-              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-indigo-600`}>
+              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-teal-600`}>
                 {recoveryData.sleepQuality}/10
               </div>
               <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
@@ -166,7 +166,7 @@ export const RecoveryInsights = () => {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
             <div className="text-center">
-              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-amber-600`}>
+              <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-blue-500`}>
                 {recoveryData.stressLevel}/10
               </div>
               <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>

@@ -67,28 +67,28 @@ export const RecoveryTips = () => {
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <CardTitle className={`flex items-center justify-between ${isMobile ? 'text-base' : 'text-lg'}`}>
           <div className="flex items-center space-x-2">
-            <Lightbulb className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-amber-500`} />
+            <Lightbulb className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-500`} />
             <span>💡 Daily Recovery Tip</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={getNextTip}
-            className="h-8 w-8 p-0 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+            className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
-            <RefreshCw className="h-4 w-4 text-amber-600" />
+            <RefreshCw className="h-4 w-4 text-blue-600" />
           </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-4 border border-amber-200 dark:border-amber-700">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-700">
           <div className="flex items-start space-x-3">
             <div className="text-2xl">{tip.icon}</div>
             <div className="flex-1">
-              <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-amber-800 dark:text-amber-200 mb-2`}>
+              <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-blue-800 dark:text-blue-200 mb-2`}>
                 {tip.title}
               </h3>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-amber-700 dark:text-amber-300 leading-relaxed`}>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-blue-700 dark:text-blue-300 leading-relaxed`}>
                 {tip.tip}
               </p>
             </div>
