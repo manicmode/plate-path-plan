@@ -1239,7 +1239,7 @@ function GameAndChallengeContent() {
                          <div
                            key={user.id}
                             className={cn(
-                              "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer",
+                              "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer min-h-[60px]",
                               user.isCurrentUser 
                                 ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md"
                                 : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
@@ -1249,9 +1249,9 @@ function GameAndChallengeContent() {
                              setIsUserStatsOpen(true);
                            }}
                          >
-                           <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-3 flex-1 min-w-0">
                              <div className={cn(
-                               "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
+                               "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0",
                                index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white" :
                                index === 1 ? "bg-gradient-to-r from-gray-300 to-gray-500 text-white" :
                                index === 2 ? "bg-gradient-to-r from-amber-500 to-amber-700 text-white" :
@@ -1260,13 +1260,13 @@ function GameAndChallengeContent() {
                                {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${user.rank}`}
                              </div>
                              
-                             <div className="flex items-center gap-2">
-                               <div className="text-lg">{user.avatar}</div>
-                               <div>
-                                 <div className="font-semibold text-sm flex items-center gap-1">
-                                   {user.nickname}
+                             <div className="flex items-center gap-2 flex-1 min-w-0">
+                               <div className="text-lg flex-shrink-0">{user.avatar}</div>
+                               <div className="flex-1 min-w-0">
+                                 <div className="font-semibold text-sm flex items-center gap-1 truncate">
+                                   <span className="truncate">{user.nickname}</span>
                                    {user.isCurrentUser && (
-                                     <Badge variant="secondary" className="text-xs h-5">YOU</Badge>
+                                     <Badge variant="secondary" className="text-xs h-5 flex-shrink-0">YOU</Badge>
                                    )}
                                  </div>
                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
