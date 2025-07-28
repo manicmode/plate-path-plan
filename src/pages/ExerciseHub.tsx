@@ -1074,56 +1074,64 @@ const ExerciseHub = () => {
                   /* Progress & Reports Tab - Enhanced with Visual Experience */
                   <div>
                     {/* Header with motivational badge */}
-                    <div className="text-center mb-8">
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Your Fitness Progress</h2>
-                      <p className="text-muted-foreground mb-4">Track your journey with detailed insights and analytics</p>
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-semibold rounded-full shadow-lg">
-                        🏆 You're Crushing It!
-                      </div>
-                    </div>
-
-                    {/* Monthly Achievement & Weekly Goal Cards */}
                     <div className="mb-8">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <WorkoutTrophyCard />
-                        <WeeklyGoalCard />
-                      </div>
-                    </div>
-
-                    {/* Monthly Progress Calendar & Streak Tracker */}
-                    <div className="mb-8">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <WorkoutProgressCalendar />
-                        <EnhancedStreakTracker />
-                      </div>
-                    </div>
-
-                    {/* Weekly Training Volume & Muscle Group Balance */}
-                    <div className="mb-8">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <WorkoutVolumeChart />
-                        <div>
-                          <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            🎯 Muscle Group Balance
-                          </h4>
-                          <MuscleGroupRadarChart data={[
-                            { muscle: 'Legs', frequency: 12, fullMark: 15 },
-                            { muscle: 'Arms', frequency: 8, fullMark: 15 },
-                            { muscle: 'Core', frequency: 10, fullMark: 15 },
-                            { muscle: 'Back', frequency: 6, fullMark: 15 },
-                            { muscle: 'Chest', frequency: 5, fullMark: 15 },
-                            { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
-                          ]} />
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold text-foreground mb-2">Your Fitness Progress</h2>
+                        <p className="text-muted-foreground mb-4">Track your journey with detailed insights and analytics</p>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-semibold rounded-full shadow-lg">
+                          🏆 You're Crushing It!
                         </div>
                       </div>
                     </div>
 
-                    {/* AI Insights */}
+                    {/* Monthly Achievement Card */}
+                    <div className="mb-8">
+                      <WorkoutTrophyCard />
+                    </div>
+
+                    {/* Weekly Goal Card */}
+                    <div className="mb-8">
+                      <WeeklyGoalCard />
+                    </div>
+
+                    {/* Monthly Progress Calendar */}
+                    <div className="mb-8">
+                      <WorkoutProgressCalendar />
+                    </div>
+
+                    {/* Workout Streak & Progress */}
+                    <div className="mb-8">
+                      <EnhancedStreakTracker />
+                    </div>
+
+                    {/* Weekly Training Volume Chart */}
+                    <div className="mb-8">
+                      <WorkoutVolumeChart />
+                    </div>
+
+                    {/* Muscle Group Balance Chart */}
+                    <div className="mb-8">
+                      <div>
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          🎯 Muscle Group Balance
+                        </h4>
+                        <MuscleGroupRadarChart data={[
+                          { muscle: 'Legs', frequency: 12, fullMark: 15 },
+                          { muscle: 'Arms', frequency: 8, fullMark: 15 },
+                          { muscle: 'Core', frequency: 10, fullMark: 15 },
+                          { muscle: 'Back', frequency: 6, fullMark: 15 },
+                          { muscle: 'Chest', frequency: 5, fullMark: 15 },
+                          { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
+                        ]} />
+                      </div>
+                    </div>
+
+                    {/* AI Progress Overview */}
                     <div className="mb-8">
                       <ProgressOverviewCard />
                     </div>
 
-                    {/* Coach Card */}
+                    {/* Coach Motivation Card */}
                     <div className="mb-8">
                       <Card>
                         <CardHeader>
@@ -1143,17 +1151,17 @@ const ExerciseHub = () => {
                       </div>
                     </div>
 
-                    {/* Weekly Exercise Insights */}
+                    {/* Weekly Exercise Insights Card */}
                     <div className="mb-8">
                       <WeeklyExerciseInsightsCard />
                     </div>
 
-                    {/* Monthly Exercise Report */}
+                    {/* Monthly Exercise Report Card */}
                     <div className="mb-8">
                       <MonthlyExerciseReportCard />
                     </div>
 
-                    {/* Yearly Exercise Report */}
+                    {/* Yearly Exercise Report Card */}
                     <div className="mb-8">
                       <YearlyExerciseReportCard />
                     </div>
