@@ -119,7 +119,7 @@ export function MonthlyExerciseReportCard() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="relative space-y-4">
+        <CardContent className="relative space-y-3">
           <p className="text-sm leading-relaxed">
             {latestReport.personalized_message}
           </p>

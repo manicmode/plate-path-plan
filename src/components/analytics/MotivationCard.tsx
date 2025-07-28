@@ -22,7 +22,7 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
             <span>Coach Says</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {/* Message skeleton */}
           <div className="space-y-3">
             <div className="h-4 bg-muted animate-pulse rounded-md w-3/4"></div>
@@ -56,7 +56,7 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
             <span>Coach Says</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Unable to load your motivation message right now.
           </p>
@@ -129,7 +129,7 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {/* Category Badge */}
         <Badge 
           variant="outline" 

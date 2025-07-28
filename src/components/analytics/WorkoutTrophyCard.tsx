@@ -23,7 +23,7 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
             <span>Monthly Achievement</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {/* Trophy skeleton */}
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 bg-muted animate-pulse rounded-full"></div>
@@ -61,7 +61,7 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
             <span>Monthly Achievement</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Unable to load achievement data right now.
           </p>
@@ -138,7 +138,7 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {/* Trophy Display */}
         <div className="flex items-center gap-4">
           <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${awardConfig.gradient} flex items-center justify-center text-3xl shadow-lg`}>
