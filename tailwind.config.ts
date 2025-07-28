@@ -1,5 +1,6 @@
 
 import type { Config } from "tailwindcss";
+import colors from "tailwindcss/colors";
 
 export default {
 	darkMode: ["class"],
@@ -23,6 +24,9 @@ export default {
 				sans: ['Inter', 'SF Pro Display', 'IBM Plex Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
 			},
 			colors: {
+				// Import all default Tailwind colors
+				...colors,
+				// Override with custom semantic colors
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
