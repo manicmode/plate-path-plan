@@ -205,9 +205,7 @@ export const ExerciseAnalyticsSection = () => {
       </div>
 
       {/* Monthly Exercise Report */}
-      <div className="mb-8">
-        <MonthlyExerciseReportCard />
-      </div>
+      <MonthlyExerciseReportCard />
     </div>
   );
 };
