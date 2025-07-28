@@ -947,19 +947,19 @@ function GameAndChallengeContent() {
                     "font-bold flex items-center gap-2",
                     isMobile ? "text-xl text-center" : "text-3xl gap-3"
                   )}>
-                    {challengeMode === 'recovery' ? (
-                      <>
-                        <span className="text-2xl">🧘</span>
-                        Top Recovery Warriors
-                        <span className="text-2xl">🌿</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                        Live Rankings Arena
-                        <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
-                      </>
-                    )}
+                     {challengeMode === 'recovery' ? (
+                       <>
+                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                         Live Rankings Arena
+                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                       </>
+                     ) : (
+                       <>
+                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                         Live Rankings Arena
+                         <Trophy className={cn(isMobile ? "h-6 w-6" : "h-8 w-8", "text-yellow-500")} />
+                       </>
+                     )}
                   </CardTitle>
                   
                   {/* Create Challenge Button */}
@@ -1065,38 +1065,32 @@ function GameAndChallengeContent() {
                             size={isMobile ? "sm" : "md"}
                           />
                           
-                           {!isMobile && (
-                             <div className="flex items-center gap-3 text-sm">
-                               {challengeMode === 'recovery' ? (
-                                 <>
-                                   <div className="flex items-center gap-1 px-2 py-1 bg-teal-100 dark:bg-teal-900/20 rounded-full">
-                                     <span className="text-lg">🧘</span>
-                                     <span className="text-teal-700 dark:text-teal-400 font-medium">
-                                       {(user as any).totalSessions || 0} sessions
-                                     </span>
-                                   </div>
-                                   <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/20 rounded-full">
-                                     <Flame className="h-3 w-3 text-purple-600" />
-                                     <span className="text-purple-700 dark:text-purple-400 font-medium">
-                                       {(user as any).currentStreak || 0}d streak
-                                     </span>
-                                   </div>
-                                 </>
-                               ) : (
-                                 <>
-                                   <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                                     <CheckCircle className="h-3 w-3 text-green-600" />
-                                     <span className="text-green-700 dark:text-green-400 font-medium">
-                                       {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
-                                     </span>
-                                   </div>
-                                 </>
-                               )}
-                               <Badge variant="outline" className="text-xs">
-                                 Score: {user.score}
-                               </Badge>
-                             </div>
-                           )}
+                            {!isMobile && (
+                              <div className="flex items-center gap-3 text-sm">
+                                {challengeMode === 'recovery' ? (
+                                  <>
+                                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                                      <CheckCircle className="h-3 w-3 text-green-600" />
+                                      <span className="text-green-700 dark:text-green-400 font-medium">
+                                        {(user as any).totalSessions || 0} sessions
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                                      <CheckCircle className="h-3 w-3 text-green-600" />
+                                      <span className="text-green-700 dark:text-green-400 font-medium">
+                                        {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  Score: {user.score}
+                                </Badge>
+                              </div>
+                            )}
                         </div>
                         
                         <div className={cn(
@@ -1105,27 +1099,24 @@ function GameAndChallengeContent() {
                         )}>
                           {/* Mobile: Compact display */}
                           {isMobile ? (
-                             <div className="flex items-center gap-2">
-                               {challengeMode === 'recovery' ? (
-                                 <>
-                                   <Badge variant="secondary" className="text-xs px-1 bg-teal-100 text-teal-700">
-                                     🧘{(user as any).totalSessions || 0}
-                                   </Badge>
-                                   <Badge variant="secondary" className="text-xs px-1 bg-purple-100 text-purple-700">
-                                     🔥{(user as any).currentStreak || 0}d
-                                   </Badge>
-                                 </>
-                               ) : (
-                                 <>
-                                   <Badge variant="secondary" className="text-xs px-1">
-                                     🥇{user.gold}
-                                   </Badge>
-                                 </>
-                               )}
-                               <Badge variant="secondary" className="text-xs px-1">
-                                 Score: {user.score}
-                               </Badge>
-                              <div className="flex items-center gap-1 text-green-600">
+                              <div className="flex items-center gap-2">
+                                {challengeMode === 'recovery' ? (
+                                  <>
+                                    <Badge variant="secondary" className="text-xs px-1">
+                                      🧘{(user as any).totalSessions || 0}
+                                    </Badge>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Badge variant="secondary" className="text-xs px-1">
+                                      🥇{user.gold}
+                                    </Badge>
+                                  </>
+                                )}
+                                <Badge variant="secondary" className="text-xs px-1">
+                                  Score: {user.score}
+                                </Badge>
+                               <div className="flex items-center gap-1 text-green-600">
                                 {user.improvement > 0 ? (
                                   <>
                                     <TrendingUp className="h-3 w-3" />
@@ -1205,21 +1196,21 @@ function GameAndChallengeContent() {
                     "p-4"
                   )}>
                     <div className="flex flex-col space-y-2">
-                       <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
-                         {challengeMode === 'recovery' ? (
-                           <>
-                             <span className="text-xl">🧘</span>
-                             Top Recovery Warriors
-                             <span className="text-xl">🌿</span>
-                           </>
-                         ) : (
-                           <>
-                             <Trophy className="h-6 w-6 text-yellow-500" />
-                             Live Rankings Arena
-                             <Trophy className="h-6 w-6 text-yellow-500" />
-                           </>
-                         )}
-                       </CardTitle>
+                        <CardTitle className="text-xl font-bold flex items-center gap-2 text-center justify-center">
+                          {challengeMode === 'recovery' ? (
+                            <>
+                              <Trophy className="h-6 w-6 text-yellow-500" />
+                              Live Rankings Arena
+                              <Trophy className="h-6 w-6 text-yellow-500" />
+                            </>
+                          ) : (
+                            <>
+                              <Trophy className="h-6 w-6 text-yellow-500" />
+                              Live Rankings Arena
+                              <Trophy className="h-6 w-6 text-yellow-500" />
+                            </>
+                          )}
+                        </CardTitle>
                       
                       {/* Create Challenge Button */}
                       <Button 
@@ -1302,39 +1293,39 @@ function GameAndChallengeContent() {
                                     <Badge variant="secondary" className="text-xs h-5">YOU</Badge>
                                   )}
                                 </div>
-                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                   {challengeMode === 'recovery' ? (
-                                     <>
-                                       <span>🧘 {(user as any).totalSessions || 0} sessions</span>
-                                       <span>•</span>
-                                       <span>Score: {user.score}</span>
-                                     </>
-                                   ) : (
-                                     <>
-                                       <span>Score: {user.score}</span>
-                                       <span>•</span>
-                                       <span>{user.weeklyProgress}%</span>
-                                     </>
-                                   )}
-                                 </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    {challengeMode === 'recovery' ? (
+                                      <>
+                                        <span>🧘 {(user as any).totalSessions || 0} sessions</span>
+                                        <span>•</span>
+                                        <span>Score: {user.score}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span>Score: {user.score}</span>
+                                        <span>•</span>
+                                        <span>{user.weeklyProgress}%</span>
+                                      </>
+                                    )}
+                                  </div>
                                </div>
                              </div>
                            </div>
                            
                            <div className="flex flex-col items-end">
-                             <div className="flex items-center gap-1 text-xs">
-                               {challengeMode === 'recovery' ? (
-                                 <>
-                                   <span className="text-teal-600">🧘</span>
-                                   <span>{(user as any).currentStreak || user.streak || 0}d</span>
-                                 </>
-                               ) : (
-                                 <>
-                                   <Flame className="h-3 w-3 text-orange-500" />
-                                   <span>{user.streak}d</span>
-                                 </>
-                               )}
-                             </div>
+                              <div className="flex items-center gap-1 text-xs">
+                                {challengeMode === 'recovery' ? (
+                                  <>
+                                    <Flame className="h-3 w-3 text-orange-500" />
+                                    <span>{(user as any).currentStreak || user.streak || 0}d</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Flame className="h-3 w-3 text-orange-500" />
+                                    <span>{user.streak}d</span>
+                                  </>
+                                )}
+                              </div>
                             
                             <div className="flex items-center gap-1 mt-1">
                               {user.improvement > 0 ? (
