@@ -827,7 +827,7 @@ const ExerciseHub = () => {
                 setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans');
                 // Scroll to completely hide the section above the tabs
                 if (tabsRef.current) {
-                  const offsetTop = tabsRef.current.offsetTop - 200; // Much larger offset to completely hide the section above
+                  const offsetTop = tabsRef.current.offsetTop - 80; // Smaller offset to scroll higher and hide buttons
                   window.scrollTo({
                     top: offsetTop,
                     behavior: 'smooth'
