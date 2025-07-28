@@ -1,15 +1,13 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export interface Challenge {
+export interface RecoveryChallenge {
   id: string;
   name: string;
   type: 'public' | 'private' | 'micro';
   creatorId: string;
   creatorName: string;
-  goalType: 'no-sugar' | 'log-meals' | 'drink-water' | 'eat-veggies' | 'custom' | 'meditation' | 'breathing' | 'yoga' | 'sleep' | 'stretching' | 'muscle-recovery' | 'recovery-mixed';
-  customGoal?: string;
-  recoveryTypes?: ('meditation' | 'breathing' | 'yoga' | 'sleep' | 'stretching' | 'muscle-recovery')[];
-  description?: string;
+  recoveryTypes: ('meditation' | 'breathing' | 'yoga' | 'sleep' | 'stretching' | 'muscle-recovery')[];
+  description: string;
   startDate: Date;
   endDate: Date;
   participants: string[];
@@ -19,62 +17,37 @@ export interface Challenge {
   inviteCode?: string;
   isActive: boolean;
   trending?: boolean;
-  sessions?: { [userId: string]: { [recoveryType: string]: number } };
+  sessions: { [userId: string]: { [recoveryType: string]: number } };
 }
 
-interface ChallengeContextType {
-  challenges: Challenge[];
-  microChallenges: Challenge[];
-  activeUserChallenges: Challenge[];
-  createChallenge: (challenge: Omit<Challenge, 'id' | 'isActive'>) => void;
+interface RecoveryChallengeContextType {
+  challenges: RecoveryChallenge[];
+  microChallenges: RecoveryChallenge[];
+  activeUserChallenges: RecoveryChallenge[];
+  createChallenge: (challenge: Omit<RecoveryChallenge, 'id' | 'isActive'>) => void;
   joinChallenge: (challengeId: string, userId: string, userDetails: { name: string; avatar: string }) => void;
-  leaveChallenenge: (challengeId: string, userId: string) => void;
-  updateProgress: (challengeId: string, userId: string, progress: number) => void;
+  leaveChallenge: (challengeId: string, userId: string) => void;
+  updateProgress: (challengeId: string, userId: string, recoveryType: string, sessions: number) => void;
   deleteChallenge: (challengeId: string) => void;
   nudgeFriend: (challengeId: string, friendId: string) => void;
 }
 
-const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
+const RecoveryChallengeContext = createContext<RecoveryChallengeContextType | undefined>(undefined);
 
-export const useChallenge = () => {
-  const context = useContext(ChallengeContext);
+export const useRecoveryChallenge = () => {
+  const context = useContext(RecoveryChallengeContext);
   if (!context) {
-    throw new Error('useChallenge must be used within a ChallengeProvider');
+    throw new Error('useRecoveryChallenge must be used within a RecoveryChallengeProvider');
   }
   return context;
 };
 
-interface ChallengeProviderProps {
+interface RecoveryChallengeProviderProps {
   children: ReactNode;
 }
 
-export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }) => {
-  const [challenges, setChallenges] = useState<Challenge[]>([
-    // Mock nutrition/exercise challenges
-    {
-      id: '1',
-      name: '7-Day No Sugar Challenge 🍯',
-      type: 'public',
-      creatorId: 'user-1',
-      creatorName: 'Maya 🌟',
-      goalType: 'no-sugar',
-      startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      participants: ['user-1', 'user-2', 'user-3'],
-      participantDetails: {
-        'user-1': { name: 'Maya 🌟', avatar: '🌟' },
-        'user-2': { name: 'Alex 🦄', avatar: '🦄' },
-        'user-3': { name: 'Sam 🔥', avatar: '🔥' },
-      },
-      progress: {
-        'user-1': 85,
-        'user-2': 92,
-        'user-3': 67,
-      },
-      maxParticipants: 10,
-      isActive: true,
-      trending: true,
-    },
+export const RecoveryChallengeProvider: React.FC<RecoveryChallengeProviderProps> = ({ children }) => {
+  const [challenges, setChallenges] = useState<RecoveryChallenge[]>([
     // Mock recovery challenges
     {
       id: 'recovery-1',
@@ -82,7 +55,6 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       type: 'public',
       creatorId: 'user-1',
       creatorName: 'Zen Master Maya 🌸',
-      goalType: 'meditation',
       recoveryTypes: ['meditation'],
       description: 'Build a consistent meditation practice with daily sessions',
       startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
@@ -113,7 +85,6 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       type: 'public',
       creatorId: 'user-4',
       creatorName: 'Breathing Coach Jordan 💨',
-      goalType: 'breathing',
       recoveryTypes: ['breathing'],
       description: 'Master your breath with daily breathing exercises',
       startDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
@@ -140,7 +111,6 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       type: 'private',
       creatorId: 'user-6',
       creatorName: 'Yoga Guru Sarah 🕉️',
-      goalType: 'recovery-mixed',
       recoveryTypes: ['yoga', 'stretching'],
       description: 'Start each day with gentle yoga and stretching',
       startDate: new Date(),
@@ -161,28 +131,6 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       inviteCode: 'YOGA123',
       isActive: true,
     },
-    // Keep existing nutrition challenges...
-    {
-      id: '2',
-      name: 'Hydration Heroes 💧',
-      type: 'public',
-      creatorId: 'user-4',
-      creatorName: 'Jordan 🚀',
-      goalType: 'drink-water',
-      startDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      participants: ['user-4', 'user-5'],
-      participantDetails: {
-        'user-4': { name: 'Jordan 🚀', avatar: '🚀' },
-        'user-5': { name: 'Casey 🌈', avatar: '🌈' },
-      },
-      progress: {
-        'user-4': 78,
-        'user-5': 45,
-      },
-      maxParticipants: 5,
-      isActive: true,
-    },
     // Micro recovery challenges
     {
       id: 'recovery-micro-1',
@@ -190,7 +138,6 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
       type: 'micro',
       creatorId: 'user-2',
       creatorName: 'Mindful Alex 🧘',
-      goalType: 'meditation',
       recoveryTypes: ['meditation'],
       description: 'Quick meditation session to center yourself',
       startDate: new Date(),
@@ -215,11 +162,12 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
     },
   ]);
 
-  const createChallenge = (challengeData: Omit<Challenge, 'id' | 'isActive'>) => {
-    const newChallenge: Challenge = {
+  const createChallenge = (challengeData: Omit<RecoveryChallenge, 'id' | 'isActive'>) => {
+    const newChallenge: RecoveryChallenge = {
       ...challengeData,
-      id: `challenge-${Date.now()}`,
+      id: `recovery-challenge-${Date.now()}`,
       isActive: true,
+      sessions: {},
     };
     setChallenges(prev => [...prev, newChallenge]);
   };
@@ -238,36 +186,51 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
             ...challenge.progress,
             [userId]: 0,
           },
+          sessions: {
+            ...challenge.sessions,
+            [userId]: challenge.recoveryTypes.reduce((acc, type) => ({...acc, [type]: 0}), {}),
+          },
         };
       }
       return challenge;
     }));
   };
 
-  const leaveChallenenge = (challengeId: string, userId: string) => {
+  const leaveChallenge = (challengeId: string, userId: string) => {
     setChallenges(prev => prev.map(challenge => {
       if (challenge.id === challengeId) {
         const { [userId]: removedProgress, ...restProgress } = challenge.progress;
         const { [userId]: removedDetails, ...restDetails } = challenge.participantDetails;
+        const { [userId]: removedSessions, ...restSessions } = challenge.sessions;
         return {
           ...challenge,
           participants: challenge.participants.filter(id => id !== userId),
           participantDetails: restDetails,
           progress: restProgress,
+          sessions: restSessions,
         };
       }
       return challenge;
     }));
   };
 
-  const updateProgress = (challengeId: string, userId: string, progress: number) => {
+  const updateProgress = (challengeId: string, userId: string, recoveryType: string, sessions: number) => {
     setChallenges(prev => prev.map(challenge => {
       if (challenge.id === challengeId) {
+        const userSessions = { ...challenge.sessions[userId], [recoveryType]: sessions };
+        const totalSessions = Object.values(userSessions).reduce((sum, count) => sum + count, 0);
+        const daysInChallenge = Math.ceil((Date.now() - challenge.startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const progress = Math.min(100, (totalSessions / Math.max(1, daysInChallenge)) * 100);
+
         return {
           ...challenge,
+          sessions: {
+            ...challenge.sessions,
+            [userId]: userSessions,
+          },
           progress: {
             ...challenge.progress,
-            [userId]: Math.min(100, Math.max(0, progress)),
+            [userId]: Math.round(progress),
           },
         };
       }
@@ -280,8 +243,7 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
   };
 
   const nudgeFriend = (challengeId: string, friendId: string) => {
-    // Simulate sending a nudge notification
-    console.log(`Nudging friend ${friendId} for challenge ${challengeId}`);
+    console.log(`Nudging friend ${friendId} for recovery challenge ${challengeId}`);
   };
 
   // Get challenges where current user is participating
@@ -293,21 +255,21 @@ export const ChallengeProvider: React.FC<ChallengeProviderProps> = ({ children }
   const microChallenges = challenges.filter(c => c.type === 'micro' && c.isActive);
   const regularChallenges = challenges.filter(c => c.type !== 'micro' && c.isActive);
 
-  const value: ChallengeContextType = {
+  const value: RecoveryChallengeContextType = {
     challenges: regularChallenges,
     microChallenges,
     activeUserChallenges,
     createChallenge,
     joinChallenge,
-    leaveChallenenge,
+    leaveChallenge,
     updateProgress,
     deleteChallenge,
     nudgeFriend,
   };
 
   return (
-    <ChallengeContext.Provider value={value}>
+    <RecoveryChallengeContext.Provider value={value}>
       {children}
-    </ChallengeContext.Provider>
+    </RecoveryChallengeContext.Provider>
   );
 };
