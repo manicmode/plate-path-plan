@@ -62,11 +62,11 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        <TabsContent value="exercise" className="mt-6">
+        <TabsContent value="exercise" className="space-y-6 mt-6">
           <ExerciseAnalyticsSection />
           
           {/* Trophy & Motivation Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-semibold">🏆 Monthly Trophy Status</h3>
