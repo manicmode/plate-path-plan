@@ -33,7 +33,7 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
 
   const handleNudgeAccept = async (nudgeId: string) => {
     await acceptNudge(nudgeId)
-    navigate('/recovery?tab=breathing')
+    navigate('/recovery/breathing')
   }
 
   const getNudgeIcon = (nudgeType: string) => {

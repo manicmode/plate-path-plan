@@ -19,7 +19,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     await acceptNudge(activeNudge.id)
     onAccept?.()
     // Navigate to breathing tab
-    navigate('/recovery?tab=breathing')
+    navigate('/recovery/breathing')
   }
 
   const handleDismiss = async () => {
