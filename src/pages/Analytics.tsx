@@ -1,40 +1,40 @@
-import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-import DailyProgressSection from "@/components/DailyProgressSection";
-import DailyAveragesSection from "@/components/DailyAveragesSection";
-import MealQualityAnalyticsSection from "@/components/MealQualityAnalyticsSection";
-import SmartInsightsSection from "@/components/SmartInsightsSection";
-import TagInsightsSection from "@/components/TagInsightsSection";
-import MacrosHydrationSection from "@/components/MacrosHydrationSection";
-import ActivityExerciseSection from "@/components/ActivityExerciseSection";
-import AchievementsSection from "@/components/AchievementsSection";
-import GamificationSection from "@/components/GamificationSection";
-import MonthlySummaryViewer from "@/components/MonthlySummaryViewer";
-import MoodWellnessTrendChart from "@/components/MoodWellnessTrendChart";
+import DailyProgressSection from '../components/DailyProgressSection';
+import DailyAveragesSection from '../components/DailyAveragesSection';
+import MealQualityAnalyticsSection from '../components/MealQualityAnalyticsSection';
+import SmartInsightsSection from '../components/SmartInsightsSection';
+import TagInsightsSection from '../components/TagInsightsSection';
+import MacrosHydrationSection from '../components/MacrosHydrationSection';
+import ActivityExerciseSection from '../components/ActivityExerciseSection';
+import AchievementsSection from '../components/AchievementsSection';
+import GamificationSection from '../components/GamificationSection';
+import MonthlySummaryViewer from '../components/MonthlySummaryViewer';
+import MoodWellnessTrendChart from '../components/MoodWellnessTrendChart';
 
-import WorkoutPlanCard from "@/components/WorkoutPlanCard";
-import ExerciseStatsCard from "@/components/ExerciseStatsCard";
-import WorkoutFrequencyChart from "@/components/WorkoutFrequencyChart";
-import WorkoutDurationTrend from "@/components/WorkoutDurationTrend";
-import MuscleGroupRadarChart from "@/components/MuscleGroupRadarChart";
-import WorkoutConsistencyChart from "@/components/WorkoutConsistencyChart";
-import StreakTrackerCard from "@/components/StreakTrackerCard";
-import SmartTrendInsightsCard from "@/components/SmartTrendInsightsCard";
-import MonthlyExerciseReportCard from "@/components/MonthlyExerciseReportCard";
-import WorkoutTrophyCard from "@/components/WorkoutTrophyCard";
-import MotivationCard from "@/components/MotivationCard";
-import CoachSaysCard from "@/components/CoachSaysCard";
+import WorkoutPlanCard from '../components/WorkoutPlanCard';
+import ExerciseStatsCard from '../components/ExerciseStatsCard';
+import WorkoutFrequencyChart from '../components/WorkoutFrequencyChart';
+import WorkoutDurationTrend from '../components/WorkoutDurationTrend';
+import MuscleGroupRadarChart from '../components/MuscleGroupRadarChart';
+import WorkoutConsistencyChart from '../components/WorkoutConsistencyChart';
+import StreakTrackerCard from '../components/StreakTrackerCard';
+import SmartTrendInsightsCard from '../components/SmartTrendInsightsCard';
+import MonthlyExerciseReportCard from '../components/MonthlyExerciseReportCard';
+import WorkoutTrophyCard from '../components/WorkoutTrophyCard';
+import MotivationCard from '../components/MotivationCard';
+import CoachSaysCard from '../components/CoachSaysCard';
 
-// Mock or real data
-const progress = {};
-const weeklyAverage = {};
-const macroData = {};
-const stepsData = {};
-const exerciseCaloriesData = {};
+const Analytics = () => {
+  const [activeTab, setActiveTab] = useState('nutrition');
 
-export default function Analytics() {
-  const [activeTab, setActiveTab] = useState("nutrition");
+  // Placeholder data (replace with real data)
+  const progress = {};
+  const weeklyAverage = {};
+  const macroData = {};
+  const stepsData = {};
+  const exerciseCaloriesData = {};
 
   return (
     <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -53,7 +53,7 @@ export default function Analytics() {
           </TabsTrigger>
         </TabsList>
 
-        {/* nutrition content */}
+        {/* Nutrition Tab */}
         <TabsContent value="nutrition" className="space-y-6 mt-6">
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
@@ -68,28 +68,28 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        {/* exercise content */}
-        <TabsContent value="exercise">
-          <div className="flex flex-col gap-6 pb-24">
-            <WorkoutPlanCard />
-            <ExerciseStatsCard />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <WorkoutFrequencyChart />
-              <WorkoutDurationTrend />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <MuscleGroupRadarChart />
-              <WorkoutConsistencyChart />
-            </div>
-            <StreakTrackerCard />
-            <SmartTrendInsightsCard />
-            <MonthlyExerciseReportCard />
-            <WorkoutTrophyCard />
-            <MotivationCard />
-            <CoachSaysCard />
+        {/* Exercise Tab */}
+        <TabsContent value="exercise" className="space-y-6 mt-6">
+          <WorkoutPlanCard />
+          <ExerciseStatsCard />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <WorkoutFrequencyChart />
+            <WorkoutDurationTrend />
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <MuscleGroupRadarChart />
+            <WorkoutConsistencyChart />
+          </div>
+          <StreakTrackerCard />
+          <SmartTrendInsightsCard />
+          <MonthlyExerciseReportCard />
+          <WorkoutTrophyCard />
+          <MotivationCard />
+          <CoachSaysCard />
         </TabsContent>
       </Tabs>
     </div>
   );
-}
+};
+
+export default Analytics;
