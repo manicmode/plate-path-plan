@@ -24,7 +24,7 @@ export const WorkoutConsistencyChart = ({ completedWorkouts, plannedWorkouts }: 
           🔄 Workout Consistency
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="text-center">
             <div className="text-3xl font-bold text-foreground">{consistencyPercentage}%</div>

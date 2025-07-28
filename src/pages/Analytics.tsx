@@ -234,7 +234,7 @@ export default function Analytics() {
               🎯 Muscle Group Coverage
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center py-12">
+          <CardContent className="p-6 text-center py-12">
                       <div className="opacity-60 mb-4">
                         <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
                           <span className="text-2xl">💪</span>

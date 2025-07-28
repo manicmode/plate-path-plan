@@ -19,7 +19,7 @@ export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
           📊 Weekly Workout Frequency
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>

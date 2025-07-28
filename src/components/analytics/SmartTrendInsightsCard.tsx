@@ -39,13 +39,13 @@ export const SmartTrendInsightsCard = ({ trends, insights }: SmartTrendInsightsC
   };
 
   return (
-    <Card className="w-full shadow-lg border-border bg-card">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           📈 Smart Trend Insights
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="p-6 space-y-6">
         {/* Trend Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {trends.map((trend, index) => (

@@ -18,7 +18,7 @@ export const MuscleGroupRadarChart = ({ data }: MuscleGroupRadarChartProps) => {
           🎯 Muscle Group Coverage
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={data}>
