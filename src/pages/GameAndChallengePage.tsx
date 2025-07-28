@@ -778,7 +778,7 @@ function GameAndChallengeContent() {
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="recovery" 
-                      className="rounded-full text-xs px-2 py-1 data-[state=on]:bg-gradient-to-r data-[state=on]:from-teal-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+                      className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
                     >
                       🧘 Recovery
                     </ToggleGroupItem>
@@ -830,7 +830,7 @@ function GameAndChallengeContent() {
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="recovery" 
-                      className="rounded-full px-4 py-2 data-[state=on]:bg-gradient-to-r data-[state=on]:from-teal-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+                      className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
                     >
                       🧘 Recovery
                     </ToggleGroupItem>
