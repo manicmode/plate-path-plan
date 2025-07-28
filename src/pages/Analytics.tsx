@@ -179,7 +179,7 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        <TabsContent value="exercise" className="flex flex-col gap-4 pt-4 pb-20">
+        <TabsContent value="exercise" className="space-y-4 pt-4 pb-20">
           {exerciseLoading ? (
             <>
               {[1, 2, 3, 4, 5, 6].map((i) => (
