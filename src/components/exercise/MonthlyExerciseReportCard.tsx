@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { RecoveryOverviewCard } from "@/components/reports/RecoveryOverviewCard";
 
 interface MonthlyExerciseReport {
   id: string;
@@ -105,7 +106,14 @@ export function MonthlyExerciseReportCard() {
   }
 
   return (
-    <>
+    <div className="space-y-6">
+      {/* Recovery Overview Card */}
+      <RecoveryOverviewCard 
+        reportType="monthly" 
+        reportDate={parseISO(latestReport.month_start)} 
+      />
+
+      {/* Exercise Report Card */}
       <Card className="w-full shadow-lg bg-card !border-2 !border-slate-500/60 bg-gradient-to-r from-slate-500/30 to-gray-500/30 relative overflow-hidden">
         <div className={`absolute inset-0 opacity-10 ${getMotivationColor(latestReport.total_workouts_completed)}`} />
         
@@ -293,6 +301,6 @@ export function MonthlyExerciseReportCard() {
           </div>
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }

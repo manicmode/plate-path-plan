@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { RecoveryOverviewCard } from "@/components/reports/RecoveryOverviewCard";
 
 interface YearlyExerciseReport {
   id: string;
@@ -229,7 +230,14 @@ export function YearlyExerciseReportCard() {
   const yearOverYear = latestReport.year_over_year_progress;
 
   return (
-    <>
+    <div className="space-y-6">
+      {/* Recovery Overview Card */}
+      <RecoveryOverviewCard 
+        reportType="yearly" 
+        reportDate={parseISO(latestReport.year_start)} 
+      />
+
+      {/* Exercise Report Card */}
       <Card className="relative overflow-hidden border-2 dark:!border-2 dark:!border-teal-500/60 dark:bg-gradient-to-r dark:from-teal-500/30 dark:to-cyan-500/30">
         <div className={`absolute inset-0 opacity-15 ${getYearlyMotivationColor(latestReport.total_workouts_completed)}`} />
         
@@ -494,9 +502,9 @@ export function YearlyExerciseReportCard() {
                 <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </>
+            </div>
+          </CardContent>
+        </Card>
+    </div>
   );
 }
