@@ -21,11 +21,21 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     right: 80
   });
   const [isMoving, setIsMoving] = useState(false);
+  const [movementInterval, setMovementInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // ✨ VERIFIED FIX: Immediate movement on mount + regular intervals
+  // ✨ VERIFIED FIX: Immediate movement on mount + regular intervals (only when claimable)
   useEffect(() => {
     // 🔒 DOM GUARD: Only run on client side
     if (typeof window === 'undefined') return;
+    
+    // 🛑 STOP MOVEMENT: Don't move if box can't be claimed
+    if (!canClaimBox) {
+      if (movementInterval) {
+        clearInterval(movementInterval);
+        setMovementInterval(null);
+      }
+      return;
+    }
     
     const generateNewPosition = () => {
       setIsMoving(true);
@@ -45,58 +55,15 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     // 🔧 IMMEDIATE MOVEMENT on mount - no waiting
     generateNewPosition();
     
-    // Continue moving every 5 seconds - NO STATE DEPENDENCIES
+    // Continue moving every 5 seconds - only when claimable
     const interval = setInterval(generateNewPosition, 5000);
+    setMovementInterval(interval);
 
-    return () => clearInterval(interval);
-  }, []); // EMPTY dependency array - always float regardless of claim status
-
-  // 🔍 DOM OVERLAY SCANNER - Find what's blocking clicks
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const scanForBlockers = () => {
-      // Calculate gift box position
-      const giftBoxX = window.innerWidth - floatingPosition.right;
-      const giftBoxY = window.innerHeight - floatingPosition.bottom;
-      
-      console.log('🔍 Scanning for click blockers at position:', { x: giftBoxX, y: giftBoxY });
-      
-      // Get all elements at the gift box position
-      const elementsAtPoint = document.elementsFromPoint(giftBoxX, giftBoxY);
-      
-      console.log('📋 Elements at gift box position (top to bottom):');
-      elementsAtPoint.forEach((element, index) => {
-        const computedStyle = window.getComputedStyle(element);
-        const info = {
-          index,
-          tagName: element.tagName,
-          id: element.id || 'no-id',
-          className: element.className || 'no-class',
-          pointerEvents: computedStyle.pointerEvents,
-          zIndex: computedStyle.zIndex,
-          position: computedStyle.position,
-          backgroundColor: computedStyle.backgroundColor,
-          isGiftBox: element.id === 'gift-box'
-        };
-        
-        console.log(`${index === 0 ? '🔴' : '⚪'} Element ${index}:`, info);
-        
-        // Identify potential blockers
-        if (index === 0 && element.id !== 'gift-box') {
-          console.log('🚨 BLOCKER FOUND! Top element is not the gift box:', info);
-        }
-        
-        if (computedStyle.pointerEvents === 'auto' && element.id !== 'gift-box') {
-          console.log('⚠️  Potential blocker with pointer-events: auto:', info);
-        }
-      });
+    return () => {
+      if (interval) clearInterval(interval);
     };
-    
-    // Scan after position updates
-    const timeout = setTimeout(scanForBlockers, 1000);
-    return () => clearTimeout(timeout);
-  }, [floatingPosition]);
+  }, [canClaimBox]); // Depend on canClaimBox to stop movement after claiming
+
 
   const handleBoxClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -128,8 +95,8 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     }, 300);
   };
 
-  // ✅ CONDITIONAL RENDERING: Don't render if box can't be claimed and no countdown needed
-  if (!canClaimBox && timeUntilNextBox <= 0) {
+  // ✅ CONDITIONAL RENDERING: Hide box during cooldown period
+  if (!canClaimBox) {
     return <></>;
   }
 
@@ -149,30 +116,33 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
       <div
         id="gift-box"
         onClick={handleBoxClick}
-        onMouseDown={() => console.log("🎁 Mouse down")}
-        onMouseUp={() => console.log("🎁 Mouse up")}
+        className={cn(
+          'fixed w-16 h-16 rounded-full cursor-pointer z-[99999]',
+          'bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500',
+          'shadow-lg shadow-amber-500/50 hover:shadow-xl hover:shadow-amber-500/60',
+          'border-2 border-white/30 backdrop-blur-sm',
+          'flex items-center justify-center',
+          'transition-all duration-800 ease-in-out',
+          'hover:scale-110 active:scale-95',
+          'animate-pulse',
+          isAnimating && 'scale-125 rotate-12',
+          className
+        )}
         style={{
-          position: 'fixed',
           bottom: `${floatingPosition.bottom}px`,
           right: `${floatingPosition.right}px`,
-          width: '64px',
-          height: '64px',
-          backgroundColor: 'rgba(255, 200, 0, 0.5)',
-          border: '2px solid red',
-          zIndex: 99999,
-          pointerEvents: 'auto',
-          cursor: 'pointer',
-          transform: 'translate(0, 0)',
-          willChange: 'transform',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          transition: 'all 0.8s ease-in-out'
+          pointerEvents: 'auto'
         }}
       >
-        <div style={{ pointerEvents: 'none' }}>
-          <Gift size={32} color="white" />
-        </div>
+        <Gift 
+          size={28} 
+          className="text-white drop-shadow-md" 
+          style={{ pointerEvents: 'none' }}
+        />
+        
+        {/* Sparkle effects */}
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full opacity-80 animate-ping" />
+        <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-amber-200 rounded-full opacity-60 animate-ping" style={{ animationDelay: '0.5s' }} />
       </div>
 
       {/* Reward Modal */}
