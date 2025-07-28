@@ -15,11 +15,29 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
   const [showModal, setShowModal] = useState(false);
   const [claimedReward, setClaimedReward] = useState<Reward | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [floatingPosition, setFloatingPosition] = useState({
+    bottom: 120,
+    right: 80
+  });
 
   // Don't render if box can't be claimed and no countdown needed
   if (!canClaimBox && timeUntilNextBox <= 0) {
     return null;
   }
+
+  // Floating movement every 5 seconds
+  useEffect(() => {
+    if (!canClaimBox) return;
+    
+    const interval = setInterval(() => {
+      setFloatingPosition({
+        bottom: Math.floor(Math.random() * (300 - 60 + 1)) + 60, // 60px to 300px
+        right: Math.floor(Math.random() * (150 - 10 + 1)) + 10   // 10px to 150px
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [canClaimBox]);
 
   const handleBoxClick = () => {
     if (!canClaimBox) return;
@@ -47,22 +65,46 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     return `${minutes}m`;
   };
 
-  const positionClasses = {
-    'top-left': 'top-4 left-4',
-    'top-right': 'top-4 right-4',
-    'bottom-left': 'bottom-4 left-4',
-    'bottom-right': 'bottom-4 right-4',
+  const getStaticPosition = () => {
+    const positionClasses = {
+      'top-left': { top: '16px', left: '16px' },
+      'top-right': { top: '16px', right: '16px' },
+      'bottom-left': { bottom: '16px', left: '16px' },
+      'bottom-right': { bottom: '16px', right: '16px' },
+    };
+    return positionClasses[position];
   };
+
+  const positionStyle = canClaimBox ? {
+    bottom: `${floatingPosition.bottom}px`,
+    right: `${floatingPosition.right}px`,
+    transition: 'all 0.8s ease-in-out'
+  } : getStaticPosition();
 
   return (
     <>
       <div 
         className={cn(
-          "fixed z-50 select-none",
-          positionClasses[position],
+          "fixed select-none floating-gift-box",
           className
         )}
+        style={{
+          zIndex: 9999,
+          ...positionStyle
+        }}
       >
+        <style>{`
+          @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            75% { transform: rotate(-5deg); }
+          }
+          
+          .floating-gift-box:hover .gift-box-inner {
+            animation: wiggle 0.4s ease-in-out infinite;
+            cursor: pointer;
+          }
+        `}</style>
         <div
           className={cn(
             "relative cursor-pointer transition-all duration-300",
@@ -89,7 +131,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           {/* Main Box */}
           <div 
             className={cn(
-              "relative w-16 h-16 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-xl shadow-xl",
+              "relative w-16 h-16 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-xl shadow-xl gift-box-inner",
               "flex items-center justify-center transform transition-transform duration-300",
               canClaimBox ? "animate-mystery-float" : ""
             )}
