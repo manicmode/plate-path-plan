@@ -169,35 +169,43 @@ return (
 
     {/* Workout Frequency & Duration Charts */}
     <div className="flex flex-col gap-2">
-      <WorkoutFrequencyChart data={workoutFrequencyData} />
-      <ExerciseProgressChart data={durationChartData} />
+      <div className="min-h-[200px]">
+        <WorkoutFrequencyChart data={workoutFrequencyData} />
+      </div>
+      <div className="min-h-[200px]">
+        <ExerciseProgressChart data={durationChartData} />
+      </div>
     </div>
 
     {/* Muscle Groups & Consistency */}
     <div className="flex flex-col gap-2">
-      {totalWorkouts > 0 ? (
-        <MuscleGroupRadarChart data={muscleGroupData} />
-      ) : (
-        <Card className="w-full shadow-lg border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              🎯 Muscle Group Coverage
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center py-12">
-            <div className="opacity-60 mb-4">
-              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
-                <span className="text-2xl">💪</span>
+      <div className="min-h-[200px]">
+        {totalWorkouts > 0 ? (
+          <MuscleGroupRadarChart data={muscleGroupData} />
+        ) : (
+          <Card className="w-full shadow-lg border-border bg-card">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                🎯 Muscle Group Coverage
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-12">
+              <div className="opacity-60 mb-4">
+                <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
+                  <span className="text-2xl">💪</span>
+                </div>
               </div>
-            </div>
-            <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
-          </CardContent>
-        </Card>
-      )}
-      <WorkoutConsistencyChart 
-        completedWorkouts={totalWorkouts} 
-        plannedWorkouts={plannedWorkouts} 
-      />
+              <p className="text-muted-foreground">Start logging workouts to see your muscle group stats!</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      <div className="min-h-[200px]">
+        <WorkoutConsistencyChart 
+          completedWorkouts={totalWorkouts} 
+          plannedWorkouts={plannedWorkouts} 
+        />
+      </div>
     </div>
 
     {/* Streak Tracker */}
