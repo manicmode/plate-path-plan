@@ -1048,12 +1048,12 @@ function GameAndChallengeContent() {
                           "flex items-center",
                           isMobile ? "w-full justify-between" : "gap-4"
                         )}>
-                          <div className={cn(
-                            "font-bold text-muted-foreground",
-                            isMobile ? "text-lg w-8" : "text-2xl w-8"
-                          )}>
-                           #{user.rank}
-                          </div>
+                           <div className={cn(
+                             "font-bold text-muted-foreground",
+                             isMobile ? "text-lg w-8" : "text-2xl w-8"
+                           )}>
+                            {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
+                           </div>
                           
                           {/* Enhanced Progress Avatar */}
                           <ProgressAvatar 
@@ -1065,32 +1065,22 @@ function GameAndChallengeContent() {
                             size={isMobile ? "sm" : "md"}
                           />
                           
-                            {!isMobile && (
-                              <div className="flex items-center gap-3 text-sm">
-                                {challengeMode === 'recovery' ? (
-                                  <>
-                                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                                      <CheckCircle className="h-3 w-3 text-green-600" />
-                                      <span className="text-green-700 dark:text-green-400 font-medium">
-                                        {(user as any).totalSessions || 0} sessions
-                                      </span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                                      <CheckCircle className="h-3 w-3 text-green-600" />
-                                      <span className="text-green-700 dark:text-green-400 font-medium">
-                                        {user.mealsLoggedThisWeek}/{user.totalMealsThisWeek}
-                                      </span>
-                                    </div>
-                                  </>
-                                )}
-                                <Badge variant="outline" className="text-xs">
-                                  Score: {user.score}
-                                </Badge>
-                              </div>
-                            )}
+                             {!isMobile && (
+                               <div className="flex items-center gap-3 text-sm">
+                                 <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                                   <CheckCircle className="h-3 w-3 text-green-600" />
+                                   <span className="text-green-700 dark:text-green-400 font-medium">
+                                     {challengeMode === 'recovery' ? 
+                                       `${(user as any).totalSessions || 0} sessions` :
+                                       `${user.mealsLoggedThisWeek}/${user.totalMealsThisWeek}`
+                                     }
+                                   </span>
+                                 </div>
+                                 <Badge variant="outline" className="text-xs">
+                                   Score: {user.score}
+                                 </Badge>
+                               </div>
+                             )}
                         </div>
                         
                         <div className={cn(
@@ -1098,38 +1088,28 @@ function GameAndChallengeContent() {
                           isMobile ? "w-full justify-between text-xs" : "gap-6"
                         )}>
                           {/* Mobile: Compact display */}
-                          {isMobile ? (
-                              <div className="flex items-center gap-2">
-                                {challengeMode === 'recovery' ? (
-                                  <>
-                                    <Badge variant="secondary" className="text-xs px-1">
-                                      🧘{(user as any).totalSessions || 0}
-                                    </Badge>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Badge variant="secondary" className="text-xs px-1">
-                                      🥇{user.gold}
-                                    </Badge>
-                                  </>
-                                )}
-                                <Badge variant="secondary" className="text-xs px-1">
-                                  Score: {user.score}
-                                </Badge>
-                               <div className="flex items-center gap-1 text-green-600">
-                                {user.improvement > 0 ? (
-                                  <>
-                                    <TrendingUp className="h-3 w-3" />
-                                    <span className="text-xs">+{user.improvement}</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <TrendingDown className="h-3 w-3" />
-                                    <span className="text-xs">{user.improvement}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
+                           {isMobile ? (
+                               <div className="flex items-center gap-2">
+                                 <Badge variant="secondary" className="text-xs px-1">
+                                   🥇{user.gold}
+                                 </Badge>
+                                 <Badge variant="secondary" className="text-xs px-1">
+                                   Score: {user.score}
+                                 </Badge>
+                                <div className="flex items-center gap-1 text-green-600">
+                                 {user.improvement > 0 ? (
+                                   <>
+                                     <TrendingUp className="h-3 w-3" />
+                                     <span className="text-xs">+{user.improvement}</span>
+                                   </>
+                                 ) : (
+                                   <>
+                                     <TrendingDown className="h-3 w-3" />
+                                     <span className="text-xs">{user.improvement}</span>
+                                   </>
+                                 )}
+                               </div>
+                             </div>
                           ) : (
                             <>
                               {/* Desktop: Full display */}
@@ -1255,94 +1235,71 @@ function GameAndChallengeContent() {
                        </div>
                      ) : (
                        <div className="space-y-2">
-                        {optimizedLeaderboard.map((user, index) => (
-                        <div
-                          key={user.id}
-                           className={cn(
-                             "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer",
-                             user.isCurrentUser 
-                               ? challengeMode === 'recovery'
-                                 ? "bg-gradient-to-r from-teal-100/60 to-purple-100/60 dark:from-teal-950/20 dark:to-purple-950/20 border-teal-300/30 shadow-md"
-                                 : "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md"
-                               : challengeMode === 'recovery'
-                                 ? "bg-purple-50/30 dark:bg-purple-950/10 border-purple-200/40 hover:bg-purple-50/50 hover:shadow-md"
-                                 : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
-                           )}
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setIsUserStatsOpen(true);
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
-                              index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white" :
-                              index === 1 ? "bg-gradient-to-r from-gray-300 to-gray-500 text-white" :
-                              index === 2 ? "bg-gradient-to-r from-amber-500 to-amber-700 text-white" :
-                              "bg-muted text-muted-foreground"
-                            )}>
-                              #{user.rank}
+                         {optimizedLeaderboard.map((user, index) => (
+                         <div
+                           key={user.id}
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer",
+                              user.isCurrentUser 
+                                ? "bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/30 shadow-md"
+                                : "bg-muted/30 border-muted hover:bg-muted/50 hover:shadow-md"
+                            )}
+                           onClick={() => {
+                             setSelectedUser(user);
+                             setIsUserStatsOpen(true);
+                           }}
+                         >
+                           <div className="flex items-center gap-3">
+                             <div className={cn(
+                               "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
+                               index === 0 ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white" :
+                               index === 1 ? "bg-gradient-to-r from-gray-300 to-gray-500 text-white" :
+                               index === 2 ? "bg-gradient-to-r from-amber-500 to-amber-700 text-white" :
+                               "bg-muted text-muted-foreground"
+                             )}>
+                               {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${user.rank}`}
+                             </div>
+                             
+                             <div className="flex items-center gap-2">
+                               <div className="text-lg">{user.avatar}</div>
+                               <div>
+                                 <div className="font-semibold text-sm flex items-center gap-1">
+                                   {user.nickname}
+                                   {user.isCurrentUser && (
+                                     <Badge variant="secondary" className="text-xs h-5">YOU</Badge>
+                                   )}
+                                 </div>
+                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                     <span>Score: {user.score}</span>
+                                     <span>•</span>
+                                     <span>{user.weeklyProgress}%</span>
+                                   </div>
+                                </div>
+                              </div>
                             </div>
                             
-                            <div className="flex items-center gap-2">
-                              <div className="text-lg">{user.avatar}</div>
-                              <div>
-                                <div className="font-semibold text-sm flex items-center gap-1">
-                                  {user.nickname}
-                                  {user.isCurrentUser && (
-                                    <Badge variant="secondary" className="text-xs h-5">YOU</Badge>
-                                  )}
-                                </div>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    {challengeMode === 'recovery' ? (
-                                      <>
-                                        <span>🧘 {(user as any).totalSessions || 0} sessions</span>
-                                        <span>•</span>
-                                        <span>Score: {user.score}</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span>Score: {user.score}</span>
-                                        <span>•</span>
-                                        <span>{user.weeklyProgress}%</span>
-                                      </>
-                                    )}
-                                  </div>
+                            <div className="flex flex-col items-end">
+                               <div className="flex items-center gap-1 text-xs">
+                                 <Flame className="h-3 w-3 text-orange-500" />
+                                 <span>{(user as any).currentStreak || user.streak || 0}d</span>
                                </div>
+                             
+                             <div className="flex items-center gap-1 mt-1">
+                               {user.improvement > 0 ? (
+                                 <>
+                                   <TrendingUp className="h-3 w-3 text-green-600" />
+                                   <span className="text-xs text-green-600">+{user.improvement}</span>
+                                 </>
+                               ) : (
+                                 <>
+                                   <TrendingDown className="h-3 w-3" />
+                                   <span className="text-xs">{user.improvement}</span>
+                                 </>
+                               )}
                              </div>
                            </div>
-                           
-                           <div className="flex flex-col items-end">
-                              <div className="flex items-center gap-1 text-xs">
-                                {challengeMode === 'recovery' ? (
-                                  <>
-                                    <Flame className="h-3 w-3 text-orange-500" />
-                                    <span>{(user as any).currentStreak || user.streak || 0}d</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Flame className="h-3 w-3 text-orange-500" />
-                                    <span>{user.streak}d</span>
-                                  </>
-                                )}
-                              </div>
-                            
-                            <div className="flex items-center gap-1 mt-1">
-                              {user.improvement > 0 ? (
-                                <>
-                                  <TrendingUp className="h-3 w-3 text-green-600" />
-                                  <span className="text-xs text-green-600">+{user.improvement}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <TrendingDown className="h-3 w-3" />
-                                  <span className="text-xs">{user.improvement}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                         ))}
+                         </div>
+                          ))}
                        </div>
                      )}
                   </CardContent>
