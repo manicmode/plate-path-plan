@@ -760,7 +760,7 @@ const ExerciseHub = () => {
           
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <div className="flex items-center gap-4">
-              <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-pulse">🤖</span>
+              <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-extra-slow-pulse">🤖</span>
               <h2 className="text-xl font-bold text-white dark:text-black">AI Routine Generator</h2>
             </div>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
@@ -778,7 +778,7 @@ const ExerciseHub = () => {
           className="w-full p-4 rounded-xl bg-gradient-to-r from-[#FFD580] to-[#FF8C66] dark:from-[#FFB347] dark:to-[#FF7043] hover:from-[#FFE4A3] hover:to-[#FFA07A] dark:hover:from-[#FFC470] dark:hover:to-[#FF8A65] transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#FF8C66]/40 border border-[#FFD580]/30 dark:border-[#FFB347]/30 shadow-xl shadow-[#FF8C66]/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
-            <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-[breathe_4s_ease-in-out_infinite]">🧘</span>
+            <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-breathe">🧘</span>
             <h2 className="text-xl font-bold text-white dark:text-black">Recovery Center</h2>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
           </div>
@@ -1208,7 +1208,7 @@ const ExerciseHub = () => {
                     <div className="space-y-8">
                       {/* Welcome Section */}
                       <div className="text-center mb-8">
-                        <div className="text-6xl mb-4 animate-[breathe_4s_ease-in-out_infinite]">🧘</div>
+                        <div className="text-6xl mb-4 animate-breathe">🧘</div>
                         <h2 className="text-3xl font-bold text-foreground mb-3">Recovery Center</h2>
                         <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
                           Find your inner peace and restore your body with guided wellness practices
@@ -1220,7 +1220,7 @@ const ExerciseHub = () => {
                         {/* Guided Meditation */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/20 border-0 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/30 dark:to-indigo-900/30 rounded-3xl overflow-hidden">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[float_6s_ease-in-out_infinite]">🧘</div>
+                            <div className="text-5xl mb-4 group-hover:animate-gentle-float">🧘</div>
                             <h3 className="text-xl font-bold text-foreground">Guided Meditation</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Peaceful guided sessions to calm your mind and reduce stress
@@ -1234,7 +1234,7 @@ const ExerciseHub = () => {
                         {/* Breathing Exercises */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 border-0 bg-gradient-to-br from-cyan-50 to-teal-100 dark:from-cyan-950/30 dark:to-teal-900/30 rounded-3xl overflow-hidden">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[breathe_8s_ease-in-out_infinite]">🌬️</div>
+                            <div className="text-5xl mb-4 group-hover:animate-breathe">🌬️</div>
                             <h3 className="text-xl font-bold text-foreground">Breathing Exercises</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Controlled breathing techniques to center yourself and improve focus
@@ -1248,7 +1248,7 @@ const ExerciseHub = () => {
                         {/* Stretching Routines */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-green-500/20 border-0 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950/30 dark:to-emerald-900/30 rounded-3xl overflow-hidden">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[float_7s_ease-in-out_infinite]">🤸</div>
+                            <div className="text-5xl mb-4 group-hover:animate-gentle-float">🤸</div>
                             <h3 className="text-xl font-bold text-foreground">Stretching Routines</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Gentle stretches to improve flexibility and release muscle tension
@@ -1262,7 +1262,7 @@ const ExerciseHub = () => {
                         {/* Yoga Flows */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20 border-0 bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950/30 dark:to-violet-900/30 rounded-3xl overflow-hidden">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[float_8s_ease-in-out_infinite]">🧎</div>
+                            <div className="text-5xl mb-4 group-hover:animate-gentle-float">🧎</div>
                             <h3 className="text-xl font-bold text-foreground">Yoga Flows</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Flowing sequences to build strength, flexibility, and mindfulness
@@ -1276,7 +1276,7 @@ const ExerciseHub = () => {
                         {/* Muscle Recovery */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/20 border-0 bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-950/30 dark:to-amber-900/30 rounded-3xl overflow-hidden">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[slow-pulse_6s_ease-in-out_infinite]">💆</div>
+                            <div className="text-5xl mb-4 group-hover:animate-slow-pulse">💆</div>
                             <h3 className="text-xl font-bold text-foreground">Muscle Recovery</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Targeted techniques to relieve muscle soreness and aid recovery
@@ -1290,7 +1290,7 @@ const ExerciseHub = () => {
                         {/* Sleep Preparation */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/20 border-0 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-indigo-950/30 dark:to-slate-900/30 rounded-3xl overflow-hidden">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[breathe_8s_ease-in-out_infinite]">💤</div>
+                            <div className="text-5xl mb-4 group-hover:animate-breathe">💤</div>
                             <h3 className="text-xl font-bold text-foreground">Sleep Preparation</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Relaxing practices to prepare your body and mind for restful sleep
@@ -1304,7 +1304,7 @@ const ExerciseHub = () => {
                         {/* Mindfulness Prompts */}
                         <Card className="group cursor-pointer transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-pink-500/20 border-0 bg-gradient-to-br from-pink-50 to-rose-100 dark:from-pink-950/30 dark:to-rose-900/30 rounded-3xl overflow-hidden md:col-span-2 lg:col-span-1">
                           <CardContent className="p-8 text-center space-y-4">
-                            <div className="text-5xl mb-4 group-hover:animate-[float_7s_ease-in-out_infinite]">💭</div>
+                            <div className="text-5xl mb-4 group-hover:animate-gentle-float">💭</div>
                             <h3 className="text-xl font-bold text-foreground">Mindfulness Prompts</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               Daily affirmations and mindful exercises to cultivate inner peace
