@@ -371,7 +371,7 @@ const RecoveryAnalyticsPage = () => {
         </div>
 
         {/* Trend Chart */}
-        <Card className="visible-card">
+        <Card className="visible-card dark:border-cyan-500/60 dark:border-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -417,7 +417,7 @@ const RecoveryAnalyticsPage = () => {
         </Card>
 
         {/* Category Breakdown */}
-        <Card className="visible-card">
+        <Card className="visible-card dark:border-purple-500/60 dark:border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-gradient-to-r from-primary to-secondary"></div>
@@ -478,7 +478,7 @@ const RecoveryAnalyticsPage = () => {
         </Card>
 
         {/* Session Logs */}
-        <Card className="visible-card">
+        <Card className="visible-card dark:border-emerald-500/60 dark:border-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -552,7 +552,7 @@ const RecoveryAnalyticsPage = () => {
         </Card>
 
         {/* AI Summary */}
-        <Card className="visible-card border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
+        <Card className="visible-card border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5 dark:border-blue-500/60 dark:border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary">
               <Sparkles className="h-5 w-5" />
