@@ -1,7 +1,5 @@
 import React from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface WorkoutFrequencyChartProps {
@@ -14,49 +12,45 @@ interface WorkoutFrequencyChartProps {
 }
 
 export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
-  const hasData = data && data.length > 0;
-
   return (
-    <Card className="w-full shadow-lg border-border bg-card">
-      <CardContent className="p-6 space-y-2">
-        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-          📊 Weekly Workout Frequency
-        </h3>
-        <div className={hasData ? "w-full" : "w-full min-h-[100px] h-auto"}>
-          {hasData ? (
+    <Card>
+      <CardContent className="p-6">
+        <div className="space-y-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+            📊 Weekly Workout Frequency
+          </h3>
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis
-                  dataKey="day"
+                <XAxis 
+                  dataKey="day" 
                   tick={{ fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis
+                <YAxis 
                   tick={{ fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip
+                <Tooltip 
                   formatter={(value: number) => [`${value} workouts`, 'Workouts']}
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                 />
-                <Bar
-                  dataKey="workouts"
+                <Bar 
+                  dataKey="workouts" 
                   radius={[4, 4, 0, 0]}
                   fill="hsl(var(--primary))"
                 />
               </BarChart>
             </ResponsiveContainer>
-          ) : (
-            <div className="text-muted-foreground text-sm text-center py-8">No data available</div>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>

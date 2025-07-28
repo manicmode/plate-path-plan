@@ -179,9 +179,9 @@ export default function Analytics() {
           <MoodWellnessTrendChart />
         </TabsContent>
 
-        <TabsContent value="exercise" className="space-y-4 pt-4 pb-20">
+        <TabsContent value="exercise" className="mt-6 pt-4 pb-20">
           {exerciseLoading ? (
-            <>
+            <div className="flex flex-col gap-4 pt-4 pb-20">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
@@ -193,37 +193,34 @@ export default function Analytics() {
                   </CardContent>
                 </Card>
               ))}
-            </>
+            </div>
           ) : (
-            <>
-              {/* AI Workout Plan and Exercise Stats - tight spacing */}
-              <div className="space-y-2">
-                {/* AI Workout Plan Card */}
-                <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
-                  <CardContent className="p-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="text-2xl">📅</div>
-                          <div>
-                            <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
-                            <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
-                          </div>
+            <div className="flex flex-col gap-4 pt-4 pb-20">
+              {/* AI Workout Plan Card */}
+              <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">📅</div>
+                        <div>
+                          <h4 className="font-semibold text-foreground">AI Workout Plan</h4>
+                          <p className="text-sm text-muted-foreground">View your complete 8-week routine</p>
                         </div>
-                        <Button 
-                          onClick={() => window.location.href = '/ai-routine-viewer'}
-                          className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-                        >
-                          View Plan
-                        </Button>
                       </div>
+                      <Button 
+                        onClick={() => window.location.href = '/ai-routine-viewer'}
+                        className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                      >
+                        View Plan
+                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* Exercise Stats */}
-                <ExerciseStatsCard stats={exerciseStats} />
-              </div>
+              {/* Exercise Stats */}
+              <ExerciseStatsCard stats={exerciseStats} />
 
               {/* Charts Row 1 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -281,7 +278,7 @@ export default function Analytics() {
                 <WorkoutTrophyCard showFullStats={false} />
                 <MotivationCard />
               </div>
-            </>
+            </div>
           )}
         </TabsContent>
       </Tabs>

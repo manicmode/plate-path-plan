@@ -1,6 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ExerciseProgressChartProps {
   data: Array<{
@@ -12,11 +12,13 @@ interface ExerciseProgressChartProps {
 export const ExerciseProgressChart = ({ data }: ExerciseProgressChartProps) => {
   return (
     <Card>
+      <CardHeader>
+        <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+          📈 Workout Duration Trend
+        </CardTitle>
+      </CardHeader>
       <CardContent className="p-6">
         <div className="space-y-2">
-          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-            📈 Workout Duration Trend
-          </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
