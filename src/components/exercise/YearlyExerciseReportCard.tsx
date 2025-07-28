@@ -188,7 +188,7 @@ export function YearlyExerciseReportCard() {
 
   if (!latestReport) {
     return (
-      <Card className="border-dashed">
+      <Card className="border-dashed dark:!border-2 dark:!border-teal-500/60 dark:bg-gradient-to-r dark:from-teal-500/30 dark:to-cyan-500/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-muted-foreground" />
@@ -230,7 +230,7 @@ export function YearlyExerciseReportCard() {
 
   return (
     <>
-      <Card className="relative overflow-hidden border-2">
+      <Card className="relative overflow-hidden border-2 dark:!border-2 dark:!border-teal-500/60 dark:bg-gradient-to-r dark:from-teal-500/30 dark:to-cyan-500/30">
         <div className={`absolute inset-0 opacity-15 ${getYearlyMotivationColor(latestReport.total_workouts_completed)}`} />
         
         <CardHeader className="relative pb-4">

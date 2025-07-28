@@ -32,7 +32,7 @@ export const EnhancedStreakTracker = ({ className }: EnhancedStreakTrackerProps)
   };
 
   return (
-    <Card className={`shadow-lg border-border bg-card ${className}`}>
+    <Card className={`shadow-lg border-border bg-card dark:!border-2 dark:!border-orange-500/60 dark:bg-gradient-to-r dark:from-orange-500/30 dark:to-red-500/30 ${className}`}>
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           🔥 Workout Streak & Progress

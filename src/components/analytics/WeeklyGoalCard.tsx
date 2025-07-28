@@ -29,7 +29,7 @@ export const WeeklyGoalCard = ({ className }: WeeklyGoalCardProps) => {
 
   if (!goal) {
     return (
-      <Card className={`shadow-lg border-border bg-card ${className}`}>
+      <Card className={`shadow-lg border-border bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-violet-500/30 ${className}`}>
         <CardContent className="p-6 text-center">
           <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-muted-foreground">No workout goals set</p>
@@ -59,7 +59,7 @@ export const WeeklyGoalCard = ({ className }: WeeklyGoalCardProps) => {
   };
 
   return (
-    <Card className={`shadow-lg border-border bg-card ${className}`}>
+    <Card className={`shadow-lg border-border bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-violet-500/30 ${className}`}>
       <CardHeader>
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           <Target className="h-5 w-5 text-primary" />

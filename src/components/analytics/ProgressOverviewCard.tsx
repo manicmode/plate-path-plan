@@ -48,7 +48,7 @@ export const ProgressOverviewCard = ({ className }: ProgressOverviewCardProps) =
   };
 
   return (
-    <Card className={`shadow-lg border-border bg-card ${className}`}>
+    <Card className={`shadow-lg border-border bg-card dark:!border-2 dark:!border-pink-500/60 dark:bg-gradient-to-r dark:from-pink-500/30 dark:to-purple-500/30 ${className}`}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
