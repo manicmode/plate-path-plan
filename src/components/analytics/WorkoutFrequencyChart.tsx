@@ -21,7 +21,7 @@ export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
           <div className="text-lg font-bold text-foreground flex items-center gap-2">
             📊 Weekly Workout Frequency
           </div>
-          <div className="h-64 w-full">
+          <div className="w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
