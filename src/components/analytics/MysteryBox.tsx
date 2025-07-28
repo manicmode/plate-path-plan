@@ -51,6 +51,53 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     return () => clearInterval(interval);
   }, []); // EMPTY dependency array - always float regardless of claim status
 
+  // 🔍 DOM OVERLAY SCANNER - Find what's blocking clicks
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const scanForBlockers = () => {
+      // Calculate gift box position
+      const giftBoxX = window.innerWidth - floatingPosition.right;
+      const giftBoxY = window.innerHeight - floatingPosition.bottom;
+      
+      console.log('🔍 Scanning for click blockers at position:', { x: giftBoxX, y: giftBoxY });
+      
+      // Get all elements at the gift box position
+      const elementsAtPoint = document.elementsFromPoint(giftBoxX, giftBoxY);
+      
+      console.log('📋 Elements at gift box position (top to bottom):');
+      elementsAtPoint.forEach((element, index) => {
+        const computedStyle = window.getComputedStyle(element);
+        const info = {
+          index,
+          tagName: element.tagName,
+          id: element.id || 'no-id',
+          className: element.className || 'no-class',
+          pointerEvents: computedStyle.pointerEvents,
+          zIndex: computedStyle.zIndex,
+          position: computedStyle.position,
+          backgroundColor: computedStyle.backgroundColor,
+          isGiftBox: element.id === 'gift-box'
+        };
+        
+        console.log(`${index === 0 ? '🔴' : '⚪'} Element ${index}:`, info);
+        
+        // Identify potential blockers
+        if (index === 0 && element.id !== 'gift-box') {
+          console.log('🚨 BLOCKER FOUND! Top element is not the gift box:', info);
+        }
+        
+        if (computedStyle.pointerEvents === 'auto' && element.id !== 'gift-box') {
+          console.log('⚠️  Potential blocker with pointer-events: auto:', info);
+        }
+      });
+    };
+    
+    // Scan after position updates
+    const timeout = setTimeout(scanForBlockers, 1000);
+    return () => clearTimeout(timeout);
+  }, [floatingPosition]);
+
   const handleBoxClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
