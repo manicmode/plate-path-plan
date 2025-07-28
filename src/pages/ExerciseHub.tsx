@@ -790,24 +790,24 @@ const ExerciseHub = () => {
 
       {/* Action Buttons Group - Side by Side in Container */}
       <div className="w-full mb-6">
-        <div className="bg-white dark:bg-gray-700 rounded-2xl p-4 shadow-lg border border-gray-200 dark:border-gray-500">
-          <div className="flex gap-4">
+        <div className="bg-white dark:bg-gray-700 rounded-2xl p-3 md:p-4 shadow-lg border border-gray-200 dark:border-gray-500">
+          <div className="flex gap-3 md:gap-4">
             {/* Add Workout Button */}
             <Button
               onClick={() => setIsAddWorkoutModalOpen(true)}
-              className="flex-1 h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110 flex items-center justify-center"
+              className="flex-1 h-12 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-medium text-sm md:text-base rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110 flex items-center justify-center min-w-0"
             >
-              <Plus className="mr-2 h-5 w-5 flex-shrink-0" />
-              <span>Add Workout</span>
+              <Plus className="mr-1.5 md:mr-2 h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+              <span className="truncate">Add Workout</span>
             </Button>
 
             {/* New Routine Button */}
             <Button
               onClick={() => setIsCreateRoutineModalOpen(true)}
-              className="flex-1 h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110 flex items-center justify-center"
+              className="flex-1 h-12 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-medium text-sm md:text-base rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110 flex items-center justify-center min-w-0"
             >
-              <Plus className="mr-2 h-5 w-5 flex-shrink-0" />
-              <span>New Routine</span>
+              <Plus className="mr-1.5 md:mr-2 h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+              <span className="truncate">New Routine</span>
             </Button>
           </div>
         </div>
