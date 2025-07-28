@@ -780,7 +780,7 @@ function GameAndChallengeContent() {
                       value="recovery" 
                       className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
                     >
-                      🧘 Recovery
+                      Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
@@ -832,7 +832,7 @@ function GameAndChallengeContent() {
                       value="recovery" 
                       className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
                     >
-                      🧘 Recovery
+                      Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
