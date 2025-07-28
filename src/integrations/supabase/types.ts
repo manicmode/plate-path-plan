@@ -1558,6 +1558,60 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_challenge_metrics: {
+        Row: {
+          breathing_sessions: number | null
+          created_at: string
+          final_recovery_score: number | null
+          id: string
+          meditation_sessions: number | null
+          month_year: string
+          muscle_recovery_sessions: number | null
+          rank_position: number | null
+          recovery_streak_bonus: number | null
+          sleep_sessions: number | null
+          stretching_sessions: number | null
+          total_recovery_sessions: number | null
+          updated_at: string
+          user_id: string
+          yoga_sessions: number | null
+        }
+        Insert: {
+          breathing_sessions?: number | null
+          created_at?: string
+          final_recovery_score?: number | null
+          id?: string
+          meditation_sessions?: number | null
+          month_year: string
+          muscle_recovery_sessions?: number | null
+          rank_position?: number | null
+          recovery_streak_bonus?: number | null
+          sleep_sessions?: number | null
+          stretching_sessions?: number | null
+          total_recovery_sessions?: number | null
+          updated_at?: string
+          user_id: string
+          yoga_sessions?: number | null
+        }
+        Update: {
+          breathing_sessions?: number | null
+          created_at?: string
+          final_recovery_score?: number | null
+          id?: string
+          meditation_sessions?: number | null
+          month_year?: string
+          muscle_recovery_sessions?: number | null
+          rank_position?: number | null
+          recovery_streak_bonus?: number | null
+          sleep_sessions?: number | null
+          stretching_sessions?: number | null
+          total_recovery_sessions?: number | null
+          updated_at?: string
+          user_id?: string
+          yoga_sessions?: number | null
+        }
+        Relationships: []
+      }
       recovery_reminders: {
         Row: {
           content_id: string | null
@@ -3227,6 +3281,10 @@ export type Database = {
         Args: { contact_user_id: string }
         Returns: boolean
       }
+      assign_monthly_recovery_rankings: {
+        Args: { target_month_year?: string }
+        Returns: undefined
+      }
       auto_assign_teams: {
         Args: { challenge_id_param: string; team_size_param?: number }
         Returns: number
@@ -3246,6 +3304,18 @@ export type Database = {
       calculate_private_challenge_progress: {
         Args: { participation_id_param: string }
         Returns: undefined
+      }
+      calculate_recovery_score: {
+        Args: {
+          meditation_count: number
+          breathing_count: number
+          yoga_count: number
+          sleep_count: number
+          stretching_count: number
+          muscle_recovery_count: number
+          streak_bonus?: number
+        }
+        Returns: number
       }
       calculate_yearly_score: {
         Args: { target_user_id: string; target_year: number }
@@ -3430,13 +3500,21 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      update_recovery_challenge_metrics: {
+        Args: { target_user_id: string; target_month_year: string }
+        Returns: undefined
+      }
       update_team_scores: {
         Args: { challenge_id_param: string }
         Returns: undefined
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "recovery_challenge_participant"
       suggestion_type: "praise" | "warning" | "tip"
     }
     CompositeTypes: {
@@ -3565,7 +3643,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "recovery_challenge_participant",
+      ],
       suggestion_type: ["praise", "warning", "tip"],
     },
   },
