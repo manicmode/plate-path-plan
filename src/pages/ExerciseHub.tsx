@@ -763,7 +763,7 @@ const ExerciseHub = () => {
       <div className="w-full mb-6">
         <button
           onClick={() => setIsAIRoutineModalOpen(true)}
-          className="group w-full h-20 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
+          className="group w-full p-4 rounded-xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
         >
           {/* Floating particles animation */}
           <div className="absolute inset-0 opacity-30">
@@ -777,43 +777,35 @@ const ExerciseHub = () => {
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <div className="flex items-center gap-4">
               <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-pulse">🤖</span>
-              <h2 className="text-xl font-bold text-white">AI Routine Generator</h2>
+              <h2 className="text-xl font-bold text-white dark:text-black">AI Routine Generator</h2>
             </div>
-            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white">→</span>
+            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white dark:text-black">→</span>
           </div>
-          <p className="text-white/90 text-sm opacity-90 relative z-10">
+          <p className="text-white/90 dark:text-black/90 text-sm opacity-90 relative z-10">
             Let the AI build your 8-week fitness plan
           </p>
         </button>
       </div>
 
-      {/* Action Buttons Group - Tightly Spaced */}
-      <div className="space-y-1 mb-6">
+      {/* Action Buttons Group - Side by Side */}
+      <div className="flex gap-3 mb-6">
         {/* Add Workout Button */}
-        <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
-          <CardContent className="p-4 !p-4">
-            <Button
-              onClick={() => setIsAddWorkoutModalOpen(true)}
-              className="w-full h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-            >
-              <Plus className="mr-2 h-5 w-5" />
-              Add Workout
-            </Button>
-          </CardContent>
-        </Card>
+        <Button
+          onClick={() => setIsAddWorkoutModalOpen(true)}
+          className="flex-1 h-14 bg-gradient-to-r from-emerald-400 via-cyan-500 to-blue-500 hover:from-emerald-300 hover:via-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Add Workout
+        </Button>
 
         {/* New Routine Button */}
-        <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
-          <CardContent className="p-4 !p-4">
-            <Button
-              onClick={() => setIsCreateRoutineModalOpen(true)}
-              className="w-full h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
-            >
-              <Plus className="mr-2 h-5 w-5" />
-              New Routine
-            </Button>
-          </CardContent>
-        </Card>
+        <Button
+          onClick={() => setIsCreateRoutineModalOpen(true)}
+          className="flex-1 h-14 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 hover:from-purple-300 hover:via-pink-400 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 hover:brightness-110"
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          New Routine
+        </Button>
       </div>
 
       {/* Tab Navigation */}
