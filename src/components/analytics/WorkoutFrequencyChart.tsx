@@ -14,15 +14,17 @@ interface WorkoutFrequencyChartProps {
 }
 
 export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
+  const hasData = data && data.length > 0;
+
   return (
-    <Card className="w-full shadow-lg border-border bg-card space-y-2">
+    <Card className="w-full shadow-lg border-border bg-card">
       <CardContent className="p-6 space-y-2">
-        <div className="space-y-2">
-          <div className="text-lg font-bold text-foreground flex items-center gap-2">
-            📊 Weekly Workout Frequency
-          </div>
-          <div className="w-full">
-            <ResponsiveContainer width="100%" height="100%">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          📊 Weekly Workout Frequency
+        </h3>
+        <div className={hasData ? "w-full" : "w-full min-h-[100px] h-auto"}>
+          {hasData ? (
+            <ResponsiveContainer width="100%" height={200}>
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis
@@ -52,7 +54,9 @@ export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
                 />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          ) : (
+            <div className="text-muted-foreground text-sm text-center py-8">No data available</div>
+          )}
         </div>
       </CardContent>
     </Card>
