@@ -766,25 +766,25 @@ function GameAndChallengeContent() {
                   >
                     <ToggleGroupItem 
                       value="nutrition" 
-                      className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Nutrition
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="exercise" 
-                      className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Exercise
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="recovery" 
-                      className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
-                      className="rounded-full text-xs px-3 py-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full text-xs px-3 py-1 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Combined
                     </ToggleGroupItem>
@@ -818,25 +818,25 @@ function GameAndChallengeContent() {
                   >
                     <ToggleGroupItem 
                       value="nutrition" 
-                      className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Nutrition
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="exercise" 
-                      className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Exercise
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="recovery" 
-                      className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Recovery
                     </ToggleGroupItem>
                     <ToggleGroupItem 
                       value="combined" 
-                      className="rounded-full px-4 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+                      className="rounded-full px-4 py-2 font-medium transition-all duration-200 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:hover:bg-muted data-[state=on]:shadow-sm"
                     >
                       Combined
                     </ToggleGroupItem>
