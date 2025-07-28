@@ -142,7 +142,7 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <div className="space-y-4">
+  <div className="flex flex-col">
     {/* Quick Action Button */}
     <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
       <CardContent className="p-6 pb-4">
@@ -165,16 +165,18 @@ return (
     </Card>
 
     {/* Exercise Stats Overview */}
-    <ExerciseStatsCard stats={exerciseStats} />
+    <div className="mt-2">
+      <ExerciseStatsCard stats={exerciseStats} />
+    </div>
 
     {/* Workout Frequency & Duration Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
       <WorkoutFrequencyChart data={workoutFrequencyData} />
       <ExerciseProgressChart data={durationChartData} />
     </div>
 
     {/* Muscle Groups & Consistency */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
       {totalWorkouts > 0 ? (
         <MuscleGroupRadarChart data={muscleGroupData} />
       ) : (
@@ -201,21 +203,27 @@ return (
     </div>
 
     {/* Streak Tracker */}
-    <StreakTrackerCard 
-      currentStreak={workoutStreak}
-      longestStreak={longestStreak}
-      weeklyGoal={4}
-      thisWeekWorkouts={weeklyFrequency}
-    />
+    <div className="mt-4">
+      <StreakTrackerCard 
+        currentStreak={workoutStreak}
+        longestStreak={longestStreak}
+        weeklyGoal={4}
+        thisWeekWorkouts={weeklyFrequency}
+      />
+    </div>
 
     {/* Smart Trend Insights */}
-    <SmartTrendInsightsCard 
-      trends={trendData}
-      insights={aiInsights}
-    />
+    <div className="mt-2">
+      <SmartTrendInsightsCard 
+        trends={trendData}
+        insights={aiInsights}
+      />
+    </div>
 
     {/* Monthly Exercise Report */}
-    <MonthlyExerciseReportCard />
+    <div className="mt-2">
+      <MonthlyExerciseReportCard />
+    </div>
   </div>
 );
 
