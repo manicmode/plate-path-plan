@@ -1232,9 +1232,39 @@ function GameAndChallengeContent() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-3">
-                    <div className="space-y-2">
-                     {optimizedLeaderboard.map((user, index) => (
+                   <CardContent className="p-3">
+                     {challengeMode === 'recovery' && recoveryLoading ? (
+                       <div className="space-y-3">
+                         {[1, 2, 3].map((i) => (
+                           <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
+                             <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
+                             <div className="flex-1 space-y-2">
+                               <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
+                               <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
+                             </div>
+                             <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
+                           </div>
+                         ))}
+                       </div>
+                     ) : challengeMode === 'recovery' && optimizedLeaderboard.length === 0 ? (
+                       <div className="text-center py-12">
+                         <div className="text-4xl mb-4">🧘‍♂️</div>
+                         <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">No Recovery Warriors Yet</h3>
+                         <p className="text-muted-foreground text-sm mb-4">
+                           Start your recovery journey today! 🧘🌿
+                         </p>
+                         <Button 
+                           onClick={() => window.location.href = '/exercise-hub?tab=recovery'}
+                           className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white text-xs"
+                           size="sm"
+                         >
+                           <span className="mr-1">🧘</span>
+                           Start Recovery
+                         </Button>
+                       </div>
+                     ) : (
+                       <div className="space-y-2">
+                        {optimizedLeaderboard.map((user, index) => (
                         <div
                           key={user.id}
                            className={cn(
@@ -1321,8 +1351,9 @@ function GameAndChallengeContent() {
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                         ))}
+                       </div>
+                     )}
                   </CardContent>
                 </Card>
               </TabsContent>
