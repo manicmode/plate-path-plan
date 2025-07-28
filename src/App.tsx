@@ -20,6 +20,8 @@ import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
 import { SplashScreen } from '@/components/SplashScreen';
 import { useColdStart } from '@/hooks/useColdStart';
+import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
+import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -337,7 +339,10 @@ function App() {
                 <IngredientAlertProvider>
                   <BadgeProvider>
                     <ChatModalProvider>
-                      <AppContent />
+                      <WorkoutCompletionProvider>
+                        <AppContent />
+                        <WorkoutCompletionModal />
+                      </WorkoutCompletionProvider>
                     </ChatModalProvider>
                   </BadgeProvider>
                 </IngredientAlertProvider>

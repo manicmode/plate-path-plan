@@ -2763,6 +2763,60 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_completions: {
+        Row: {
+          completed_at: string
+          created_at: string
+          difficulty_feedback: string | null
+          duration_minutes: number
+          exercises_count: number
+          id: string
+          journal_entry: string | null
+          motivational_message: string | null
+          muscles_worked: string[]
+          sets_count: number
+          updated_at: string
+          user_id: string
+          workout_data: Json | null
+          workout_id: string | null
+          workout_type: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          difficulty_feedback?: string | null
+          duration_minutes: number
+          exercises_count?: number
+          id?: string
+          journal_entry?: string | null
+          motivational_message?: string | null
+          muscles_worked?: string[]
+          sets_count?: number
+          updated_at?: string
+          user_id: string
+          workout_data?: Json | null
+          workout_id?: string | null
+          workout_type: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          difficulty_feedback?: string | null
+          duration_minutes?: number
+          exercises_count?: number
+          id?: string
+          journal_entry?: string | null
+          motivational_message?: string | null
+          muscles_worked?: string[]
+          sets_count?: number
+          updated_at?: string
+          user_id?: string
+          workout_data?: Json | null
+          workout_id?: string | null
+          workout_type?: string
+        }
+        Relationships: []
+      }
       yearly_exercise_reports: {
         Row: {
           created_at: string

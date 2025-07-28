@@ -25,8 +25,10 @@ import { WorkoutVolumeChart } from '@/components/analytics/WorkoutVolumeChart';
 import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTracker';
 import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
+import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 
 const ExerciseHub = () => {
+  const { showCompletionModal } = useWorkoutCompletion();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -701,6 +703,22 @@ const ExerciseHub = () => {
     navigate(originRoute);
   };
 
+  // Demo function to test workout completion modal
+  const handleDemoWorkoutComplete = () => {
+    showCompletionModal({
+      workoutId: 'demo-workout',
+      workoutType: 'manual',
+      durationMinutes: 45,
+      exercisesCount: 6,
+      setsCount: 18,
+      musclesWorked: ['Chest', 'Triceps', 'Shoulders'],
+      workoutData: {
+        title: 'Upper Body Push Day',
+        difficulty: 'intermediate'
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
       {/* Header */}
@@ -991,6 +1009,22 @@ const ExerciseHub = () => {
                           <span className="text-lg mr-2">📅</span>
                           View Full 8-Week Plan
                           <span className="ml-2 text-sm opacity-80">→</span>
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Demo Workout Completion Button */}
+                    <Card className="w-full shadow-lg border-border bg-card">
+                      <CardContent className="p-6 text-center">
+                        <h3 className="text-lg font-bold text-foreground mb-2 flex items-center justify-center gap-2">
+                          🧪 Test Workout Completion
+                        </h3>
+                        <p className="text-muted-foreground mb-4">Demo the new workout completion modal</p>
+                        <Button
+                          onClick={handleDemoWorkoutComplete}
+                          className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold"
+                        >
+                          🎉 Complete Demo Workout
                         </Button>
                       </CardContent>
                     </Card>

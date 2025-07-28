@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Check, RotateCcw, Lock, Clock, Target, Zap } from 'lucide-react';
@@ -48,10 +49,30 @@ export const WorkoutDetailModal = ({
   onClose, 
   onMarkComplete 
 }: WorkoutDetailModalProps) => {
+  const { showCompletionModal } = useWorkoutCompletion();
+  
   if (!workout.workout) return null;
 
   const handleMarkComplete = () => {
     onMarkComplete(workout);
+    
+    // Show completion modal with workout data
+    showCompletionModal({
+      workoutId: `${workout.dayName}-week-${week}`,
+      workoutType: 'ai_routine',
+      durationMinutes: workout.workout.duration,
+      exercisesCount: workout.workout.exercises.length,
+      setsCount: workout.workout.exercises.reduce((total, exercise) => total + exercise.sets, 0),
+      musclesWorked: workout.workout.muscleGroups,
+      workoutData: {
+        week,
+        day: workout.dayName,
+        title: workout.workout.title,
+        difficulty: workout.workout.difficulty
+      }
+    });
+    
+    onClose();
   };
 
   const getDifficultyColor = (difficulty: string) => {
