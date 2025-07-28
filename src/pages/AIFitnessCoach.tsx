@@ -484,6 +484,34 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           </CardContent>
         </Card>
 
+        {/* AI Routine Generator Hero Box */}
+        <div className="w-full mb-6">
+          <button
+            onClick={() => setShowRoutineDialog(true)}
+            className="group w-full h-20 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
+          >
+            {/* Floating particles animation */}
+            <div className="absolute inset-0 opacity-30">
+              <div className="absolute top-2 left-4 w-2 h-2 bg-white rounded-full animate-[float_3s_ease-in-out_infinite]"></div>
+              <div className="absolute top-4 right-8 w-1 h-1 bg-white rounded-full animate-[float_4s_ease-in-out_infinite_1s]"></div>
+              <div className="absolute bottom-6 left-12 w-1.5 h-1.5 bg-white rounded-full animate-[float_5s_ease-in-out_infinite_2s]"></div>
+              <div className="absolute bottom-3 right-6 w-1 h-1 bg-white rounded-full animate-[float_3.5s_ease-in-out_infinite_1.5s]"></div>
+              <div className="absolute top-1/2 left-1/3 w-1 h-1 bg-white rounded-full animate-[float_4.5s_ease-in-out_infinite_0.5s]"></div>
+            </div>
+            
+            <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
+              <div className="flex items-center gap-4">
+                <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-pulse">🤖</span>
+                <h2 className="text-xl font-bold text-white">AI Routine Generator</h2>
+              </div>
+              <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white">→</span>
+            </div>
+            <p className="text-white/90 text-sm opacity-90 relative z-10">
+              Let the AI build your 8-week fitness plan
+            </p>
+          </button>
+        </div>
+
         {/* New Routine Button */}
         <Card className="glass-card border-0 rounded-3xl mb-0 !mb-0">
           <CardContent className="p-6 !p-4">
@@ -616,34 +644,6 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
 
         {/* Weekly Exercise Insights */}
         <WeeklyExerciseInsightsCard />
-
-        {/* AI Routine Generator Hero Box */}
-        <div className="w-full mb-6">
-          <button
-            onClick={() => setShowRoutineDialog(true)}
-            className="group w-full h-20 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-700 to-fuchsia-600 hover:from-purple-500 hover:via-violet-600 hover:to-fuchsia-500 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/30 border-0 overflow-hidden relative"
-          >
-            {/* Floating particles animation */}
-            <div className="absolute inset-0 opacity-30">
-              <div className="absolute top-2 left-4 w-2 h-2 bg-white rounded-full animate-[float_3s_ease-in-out_infinite]"></div>
-              <div className="absolute top-4 right-8 w-1 h-1 bg-white rounded-full animate-[float_4s_ease-in-out_infinite_1s]"></div>
-              <div className="absolute bottom-6 left-12 w-1.5 h-1.5 bg-white rounded-full animate-[float_5s_ease-in-out_infinite_2s]"></div>
-              <div className="absolute bottom-3 right-6 w-1 h-1 bg-white rounded-full animate-[float_3.5s_ease-in-out_infinite_1.5s]"></div>
-              <div className="absolute top-1/2 left-1/3 w-1 h-1 bg-white rounded-full animate-[float_4.5s_ease-in-out_infinite_0.5s]"></div>
-            </div>
-            
-            <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
-              <div className="flex items-center gap-4">
-                <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-pulse">🤖</span>
-                <h2 className="text-xl font-bold text-white">AI Routine Generator</h2>
-              </div>
-              <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white">→</span>
-            </div>
-            <p className="text-white/90 text-sm opacity-90 relative z-10">
-              Let the AI build your 8-week fitness plan
-            </p>
-          </button>
-        </div>
 
         {/* Personalized 8-Week Routine */}
         <Card className="border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 mb-0 !mb-0">
