@@ -144,8 +144,8 @@ export const ExerciseAnalyticsSection = () => {
 return (
   <>
     {/* Quick Action Button */}
-    <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-800">
-      <CardContent className="p-4">
+    <Card className="w-full shadow-lg border-border bg-card mb-6">
+      <CardContent className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="text-2xl">📅</div>
@@ -165,16 +165,18 @@ return (
     </Card>
 
     {/* Exercise Stats Overview */}
-    <ExerciseStatsCard stats={exerciseStats} />
+    <div className="mb-6">
+      <ExerciseStatsCard stats={exerciseStats} />
+    </div>
 
     {/* Workout Frequency & Duration Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       <WorkoutFrequencyChart data={workoutFrequencyData} />
       <ExerciseProgressChart data={durationChartData} />
     </div>
 
     {/* Muscle Groups & Consistency */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       {totalWorkouts > 0 ? (
         <MuscleGroupRadarChart data={muscleGroupData} />
       ) : (
@@ -184,7 +186,7 @@ return (
               🎯 Muscle Group Coverage
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center py-12">
+          <CardContent className="p-6 pb-4">
             <div className="opacity-60 mb-4">
               <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3">
                 <span className="text-2xl">💪</span>
@@ -201,18 +203,22 @@ return (
     </div>
 
     {/* Streak Tracker */}
-    <StreakTrackerCard 
-      currentStreak={workoutStreak}
-      longestStreak={longestStreak}
-      weeklyGoal={4}
-      thisWeekWorkouts={weeklyFrequency}
-    />
+    <div className="mb-6">
+      <StreakTrackerCard 
+        currentStreak={workoutStreak}
+        longestStreak={longestStreak}
+        weeklyGoal={4}
+        thisWeekWorkouts={weeklyFrequency}
+      />
+    </div>
 
     {/* Smart Trend Insights */}
-    <SmartTrendInsightsCard 
-      trends={trendData}
-      insights={aiInsights}
-    />
+    <div className="mb-6">
+      <SmartTrendInsightsCard 
+        trends={trendData}
+        insights={aiInsights}
+      />
+    </div>
 
     {/* Monthly Exercise Report */}
     <MonthlyExerciseReportCard />
