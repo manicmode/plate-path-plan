@@ -52,6 +52,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
   }, []); // EMPTY dependency array - always float regardless of claim status
 
   const handleBoxClick = () => {
+    console.log('🎁 Gift clicked!', { canClaimBox, timeUntilNextBox });
     if (!canClaimBox) return;
     
     setIsAnimating(true);
@@ -60,6 +61,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     setTimeout(() => {
       const reward = claimMysteryBox();
       if (reward) {
+        console.log('🎉 Reward claimed:', reward);
         setClaimedReward(reward);
         setShowModal(true);
       }
@@ -87,7 +89,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     <>
       <div 
         className={cn(
-          "fixed select-none pointer-events-auto",
+          "fixed select-none cursor-pointer",
           className
         )}
         style={{
@@ -99,6 +101,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           pointerEvents: 'auto',
           transition: 'all 0.8s ease-in-out'
         }}
+        onClick={handleBoxClick}
       >
         <style>{`
           @keyframes wiggle {
@@ -114,11 +117,10 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
         `}</style>
         <div
           className={cn(
-            "relative cursor-pointer transition-all duration-300",
-            canClaimBox ? "hover:scale-110" : "cursor-not-allowed opacity-60",
+            "relative transition-all duration-300",
+            canClaimBox ? "hover:scale-110 cursor-pointer" : "cursor-not-allowed opacity-60",
             isAnimating && "animate-pulse scale-95"
           )}
-          onClick={handleBoxClick}
         >
           {/* Sparkle Aura - Enhanced visibility when moving */}
           {canClaimBox && (
