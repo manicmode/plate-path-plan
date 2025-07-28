@@ -5,11 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Trophy, Star, Crown, Medal, Award, Sparkles, Quote, Calendar, ArrowRight, Heart, ThumbsUp, Smile, Pin, MessageCircle, Eye, Loader2, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHallOfFame, Trophy as TrophyType, Tribute as TributeType } from '@/hooks/useHallOfFame';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useExerciseHallOfFame } from '@/hooks/useExerciseHallOfFame';
 
 interface HallOfFameEntry {
   id: number;
@@ -26,13 +28,16 @@ interface HallOfFameEntry {
 
 interface HallOfFameProps {
   champions: HallOfFameEntry[];
+  challengeMode?: 'nutrition' | 'exercise' | 'recovery' | 'combined';
 }
 
 export const HallOfFame: React.FC<HallOfFameProps> = ({ 
-  champions
+  champions,
+  challengeMode = 'nutrition'
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { monthlyAwards, isLoading: exerciseLoading, error: exerciseError } = useExerciseHallOfFame();
   const [showAllModal, setShowAllModal] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [showAllTributes, setShowAllTributes] = useState(false);
@@ -93,14 +98,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
     }
   };
 
-  const getTrophyRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'legendary': return 'from-yellow-400 to-orange-500 border-yellow-400';
-      case 'rare': return 'from-blue-400 to-cyan-500 border-blue-400';
-      default: return 'from-gray-400 to-gray-500 border-gray-400';
-    }
-  };
-
   const getBadgeTypeStyle = (rarity: string) => {
     switch (rarity) {
       case 'legendary':
@@ -125,62 +122,155 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
     }
   };
 
+  const getExerciseTrophyEmoji = (awardLevel: string) => {
+    switch (awardLevel) {
+      case 'gold': return '🥇';
+      case 'silver': return '🥈';
+      case 'bronze': return '🥉';
+      default: return '💪';
+    }
+  };
+
+  const getExerciseTrophyTitle = (awardLevel: string) => {
+    switch (awardLevel) {
+      case 'gold': return 'Gold Achiever';
+      case 'silver': return 'Silver Champion';
+      case 'bronze': return 'Bronze Warrior';
+      default: return 'Keep Going!';
+    }
+  };
+
+  const getMonthName = (month: number) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
+  };
+
   const handleCardCelebration = (championId: number) => {
     setCelebratingCard(championId);
-    // Clear celebration after animation
-    setTimeout(() => {
-      setCelebratingCard(null);
-    }, 3000);
+    setTimeout(() => setCelebratingCard(null), 3000);
+  };
+
+  const renderCelebrationAnimation = (championId: number) => {
+    if (celebratingCard !== championId) return null;
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-50">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div key={`celebration-${i}`} className="absolute text-3xl animate-bounce" style={{
+            left: `${Math.random() * 80 + 10}%`, top: `${Math.random() * 80 + 10}%`,
+            animationDelay: `${Math.random() * 1}s`
+          }}>🎉</div>
+        ))}
+      </div>
+    );
   };
 
   const handleSubmitTribute = async () => {
-    if (!newTribute.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a tribute message",
-        variant: "destructive"
-      });
+    if (!newTribute.trim() || !championUserId || !user) {
+      toast({ title: "Error", description: "Unable to post tribute", variant: "destructive" });
       return;
     }
-    
-    if (!championUserId) {
-      toast({
-        title: "Error",
-        description: "Cannot post tribute - champion not found",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!user) {
-      toast({
-        title: "Error", 
-        description: "You must be logged in to post tributes",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    console.log('Attempting to post tribute:', {
-      championUserId,
-      message: newTribute,
-      user: user.id
-    });
-    
     const success = await postTribute(newTribute);
     if (success) {
       setNewTribute('');
-      toast({
-        title: "Success",
-        description: "Your tribute has been posted!",
-      });
+      toast({ title: "Success", description: "Your tribute has been posted!" });
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to post tribute. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to post tribute", variant: "destructive" });
     }
+  };
+
+  const renderExerciseHallOfFame = () => {
+    if (exerciseLoading) {
+      return (
+        <div className="space-y-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 p-4 rounded-lg border animate-pulse">
+              <div className="h-16 w-16 bg-muted rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-muted rounded w-1/3"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </div>
+              <div className="h-6 w-20 bg-muted rounded"></div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (exerciseError) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <Dumbbell className="h-16 w-16 mx-auto mb-4 opacity-30" />
+          <p className="text-lg font-medium mb-2">Unable to load exercise awards</p>
+          <p className="text-sm">{exerciseError}</p>
+        </div>
+      );
+    }
+
+    if (monthlyAwards.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <Dumbbell className="h-16 w-16 mx-auto mb-4 opacity-30" />
+          <p className="text-lg font-medium mb-2">No workout trophies yet</p>
+          <p className="text-sm">Complete workouts to earn your first trophy! 💪</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {monthlyAwards.map((award) => (
+          <div
+            key={award.id}
+            className={cn(
+              "p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 cursor-pointer relative overflow-hidden",
+              "bg-background/80 backdrop-blur-sm",
+              award.awardLevel === 'gold' && "border-yellow-300 shadow-yellow-200 dark:shadow-yellow-900/50",
+              award.awardLevel === 'silver' && "border-gray-300 shadow-gray-200 dark:shadow-gray-900/50",
+              award.awardLevel === 'bronze' && "border-amber-300 shadow-amber-200 dark:shadow-amber-900/50",
+              award.awardLevel === 'none' && "border-blue-300 shadow-blue-200 dark:shadow-blue-900/50"
+            )}
+          >
+            {/* Personal Best Badge */}
+            {award.isPersonalBest && (
+              <div className="absolute top-2 right-2">
+                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
+                  🏆 Personal Best
+                </Badge>
+              </div>
+            )}
+
+            {/* Trophy Display */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className={cn(
+                "h-16 w-16 rounded-full flex items-center justify-center text-3xl shadow-lg",
+                award.awardLevel === 'gold' && "bg-gradient-to-br from-yellow-400 to-yellow-600",
+                award.awardLevel === 'silver' && "bg-gradient-to-br from-gray-400 to-gray-600",
+                award.awardLevel === 'bronze' && "bg-gradient-to-br from-amber-400 to-amber-600",
+                award.awardLevel === 'none' && "bg-gradient-to-br from-blue-400 to-blue-600"
+              )}>
+                {getExerciseTrophyEmoji(award.awardLevel)}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg">
+                  {getExerciseTrophyTitle(award.awardLevel)}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {award.workoutCount} workouts
+                </p>
+              </div>
+            </div>
+
+            {/* Month/Year Display */}
+            <div className="text-center">
+              <Badge variant="outline" className="mb-2">
+                <Calendar className="h-3 w-3 mr-1" />
+                {getMonthName(award.month)} {award.year}
+              </Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // Show first 6 in the preview
@@ -189,89 +279,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
   const pinnedTributes = tributes.filter(t => t.isPinned);
   const unpinnedTributes = tributes.filter(t => !t.isPinned);
   const sortedTributes = [...pinnedTributes, ...unpinnedTributes];
-
-  const renderCelebrationAnimation = (championId: number) => {
-    if (celebratingCard !== championId) return null;
-    
-    const celebrationEmojis = ['🎉', '🎇', '✨', '🏆', '⭐', '🌟', '💫', '🎊', '🥇', '🎈'];
-    
-    return (
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-50">
-        {/* Large floating emojis */}
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={`celebration-${i}`}
-            className="absolute text-3xl animate-bounce"
-            style={{
-              left: `${Math.random() * 80 + 10}%`,
-              top: `${Math.random() * 80 + 10}%`,
-              animationDelay: `${Math.random() * 1}s`,
-              animationDuration: `${1.5 + Math.random()}s`,
-              transform: `rotate(${Math.random() * 360}deg)`,
-              opacity: 0.9,
-              filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.6))',
-            }}
-          >
-            {celebrationEmojis[Math.floor(Math.random() * celebrationEmojis.length)]}
-          </div>
-        ))}
-        
-        {/* Golden sparkles */}
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={`sparkle-${i}`}
-            className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${0.5 + Math.random() * 0.5}s`,
-              boxShadow: '0 0 10px rgba(255, 215, 0, 0.8)',
-            }}
-          />
-        ))}
-        
-        {/* Rising stars from center */}
-        {Array.from({ length: 15 }).map((_, i) => (
-          <div
-            key={`rising-star-${i}`}
-            className="absolute text-2xl animate-bounce"
-            style={{
-              left: '50%',
-              top: '50%',
-              transform: `translate(-50%, -50%) translateY(${-50 - i * 20}px) rotate(${Math.random() * 360}deg)`,
-              animationDelay: `${i * 0.1}s`,
-              animationDuration: `${2 + Math.random()}s`,
-              opacity: 0.8,
-              filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.7))',
-            }}
-          >
-            ⭐
-          </div>
-        ))}
-        
-        {/* Border sparkles */}
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={`border-sparkle-${i}`}
-            className="absolute text-xl animate-pulse"
-            style={{
-              ...(i < 3 ? { top: '5%', left: `${20 + i * 20}%` } :
-                  i < 6 ? { right: '5%', top: `${20 + (i - 3) * 20}%` } :
-                  i < 9 ? { bottom: '5%', right: `${20 + (i - 6) * 20}%` } :
-                  { left: '5%', bottom: `${20 + (i - 9) * 20}%` }),
-              animationDelay: `${i * 0.2}s`,
-              animationDuration: `${1 + Math.random() * 0.5}s`,
-              color: '#ffd700',
-              filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.9))',
-            }}
-          >
-            ✨
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-8">
@@ -289,215 +296,248 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
             🏆 Hall of Fame
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2 relative z-10">
-            Legends who made their mark in nutrition history
+            {challengeMode === 'exercise' 
+              ? 'Your monthly workout achievements and trophies'
+              : 'Legends who made their mark in nutrition history'
+            }
           </p>
         </CardHeader>
         
         <CardContent className="p-6">
-          <ScrollArea className="w-full">
-            <div className="flex gap-6 pb-4 min-w-max">
-              {previewChampions.map((champion, index) => (
-                <div
-                  key={champion.id}
-                  className={cn(
-                    "flex-shrink-0 w-80 p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer relative overflow-hidden",
-                    "hover:scale-105 hover:shadow-2xl transform-gpu",
-                    getCardGlowColor(champion.trophy),
-                    hoveredCard === champion.id 
-                      ? "border-primary shadow-xl shadow-primary/20" 
-                      : "border-muted bg-background/80 backdrop-blur-sm"
-                  )}
-                  onMouseEnter={() => setHoveredCard(champion.id)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  onClick={() => handleCardCelebration(champion.id)}
-                  style={{
-                    animation: `slideInFromRight 0.8s ease-out ${index * 150}ms both`,
-                  }}
-                >
-                  <div className={cn(
-                    "absolute inset-0 bg-gradient-to-br opacity-5 transition-opacity duration-300",
-                    champion.trophy === 'gold' && "from-yellow-400 to-orange-400",
-                    champion.trophy === 'silver' && "from-gray-300 to-gray-500",
-                    champion.trophy === 'bronze' && "from-amber-400 to-amber-600",
-                    champion.trophy === 'special' && "from-purple-400 to-pink-400",
-                    hoveredCard === champion.id && "opacity-20"
-                  )} />
-
-                  {hoveredCard === champion.id && (
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div className="absolute top-4 left-4 text-yellow-400 animate-bounce">🎊</div>
-                      <div className="absolute top-6 right-6 text-pink-400 animate-bounce" style={{ animationDelay: '0.2s' }}>🎉</div>
-                      <div className="absolute bottom-8 left-8 text-blue-400 animate-bounce" style={{ animationDelay: '0.4s' }}>⭐</div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-start mb-4 relative z-10">
-                    <Badge className={cn("flex items-center gap-2 text-sm font-bold", getTrophyBadgeColor(champion.trophy))}>
-                      {getTrophyIcon(champion.trophy)}
-                      {champion.trophy.toUpperCase()}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {champion.month} {champion.year}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-center mb-4 relative z-10">
-                    <div className={cn(
-                      "relative transition-transform duration-300",
-                      hoveredCard === champion.id && "scale-110"
-                    )}>
-                      <Avatar className="h-20 w-20 text-4xl border-4 border-background shadow-lg">
-                        <AvatarFallback className="text-4xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                          {champion.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      {champion.trophy === 'gold' && (
-                        <div className="absolute inset-0 rounded-full bg-yellow-400/20 animate-ping" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="text-center mb-4 relative z-10">
-                    <h3 className="font-bold text-lg mb-2">{champion.nickname}</h3>
-                    <div className="text-sm font-semibold text-primary mb-2">
-                      {champion.achievement}
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {champion.score.toLocaleString()} points
-                    </Badge>
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="bg-muted/50 rounded-lg p-4 relative">
-                      <Quote className="h-4 w-4 text-muted-foreground absolute top-2 left-2" />
-                      <blockquote className="text-sm italic text-center mt-2 leading-relaxed">
-                        "{champion.quote}"
-                      </blockquote>
-                    </div>
-                  </div>
-
-                  {hoveredCard === champion.id && champion.trophy === 'gold' && (
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                      <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full animate-ping opacity-75" />
-                      <div className="absolute -top-2 -right-2 w-3 h-3 bg-orange-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.5s' }} />
-                      <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-yellow-500 rounded-full animate-ping opacity-75" style={{ animationDelay: '1s' }} />
-                      <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-amber-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '1.5s' }} />
-                    </div>
-                  )}
-
-                  {/* Celebration Animation */}
-                  {renderCelebrationAnimation(champion.id)}
+          {challengeMode === 'exercise' ? (
+            <Tabs defaultValue="monthly-awards" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="monthly-awards" className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />
+                  Monthly Awards
+                </TabsTrigger>
+                <TabsTrigger value="achievements" className="flex items-center gap-2">
+                  <Star className="h-4 w-4" />
+                  Achievements
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="monthly-awards" className="mt-6">
+                {renderExerciseHallOfFame()}
+              </TabsContent>
+              
+              <TabsContent value="achievements" className="mt-6">
+                <div className="text-center py-8 text-muted-foreground">
+                  <Award className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg font-medium mb-2">Coming Soon</p>
+                  <p className="text-sm">Special exercise achievements will be displayed here</p>
                 </div>
-              ))}
-
-              <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-muted bg-muted/20 hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center min-h-[400px]">
-                <div className="text-center space-y-4">
-                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                    <Sparkles className="h-10 w-10 text-primary animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg mb-2">View All Champions</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Discover more legendary stories and achievements from our hall of fame
-                    </p>
-                  </div>
-                  <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
-                    <DialogTrigger asChild>
-                      <Button className="flex items-center gap-2">
-                        <Trophy className="h-4 w-4" />
-                        See All
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
-
-      {/* Trophy Showcase Section - Reduced top margin */}
-      <Card className="-mt-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
-        <CardHeader className="p-6">
-          <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
-            🏆 Trophy Showcase {new Date().getFullYear()}
-          </CardTitle>
-          <p className="text-center text-muted-foreground">
-            All badges and trophies earned this year
-          </p>
-        </CardHeader>
-        <CardContent className="p-6">
-          {yearlyTrophies.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Trophy className="h-16 w-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium mb-2">No trophies yet for this year</p>
-              <p className="text-sm">Keep grinding 💪</p>
-            </div>
+              </TabsContent>
+            </Tabs>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {yearlyTrophies.map((trophy) => {
-                const badgeTypeStyle = getBadgeTypeStyle(trophy.rarity);
-                
-                return (
+            <ScrollArea className="w-full">
+              <div className="flex gap-6 pb-4 min-w-max">
+                {previewChampions.map((champion, index) => (
                   <div
-                    key={trophy.id}
+                    key={champion.id}
                     className={cn(
-                      "p-6 rounded-lg border-2 bg-gradient-to-br text-center transition-all duration-300 hover:scale-105 cursor-pointer relative overflow-hidden",
-                      badgeTypeStyle.border,
-                      badgeTypeStyle.background
+                      "flex-shrink-0 w-80 p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer relative overflow-hidden",
+                      "hover:scale-105 hover:shadow-2xl transform-gpu",
+                      getCardGlowColor(champion.trophy),
+                      hoveredCard === champion.id 
+                        ? "border-primary shadow-xl shadow-primary/20" 
+                        : "border-muted bg-background/80 backdrop-blur-sm"
                     )}
+                    onMouseEnter={() => setHoveredCard(champion.id)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    onClick={() => handleCardCelebration(champion.id)}
+                    style={{
+                      animation: `slideInFromRight 0.8s ease-out ${index * 150}ms both`,
+                    }}
                   >
-                    {trophy.rarity === 'legendary' && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] animate-[shine_3s_ease-in-out_infinite]" />
+                    <div className={cn(
+                      "absolute inset-0 bg-gradient-to-br opacity-5 transition-opacity duration-300",
+                      champion.trophy === 'gold' && "from-yellow-400 to-orange-400",
+                      champion.trophy === 'silver' && "from-gray-300 to-gray-500",
+                      champion.trophy === 'bronze' && "from-amber-400 to-amber-600",
+                      champion.trophy === 'special' && "from-purple-400 to-pink-400",
+                      hoveredCard === champion.id && "opacity-20"
+                    )} />
+
+                    {hoveredCard === champion.id && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute top-4 left-4 text-yellow-400 animate-bounce">🎊</div>
+                        <div className="absolute top-6 right-6 text-pink-400 animate-bounce" style={{ animationDelay: '0.2s' }}>🎉</div>
+                        <div className="absolute bottom-8 left-8 text-blue-400 animate-bounce" style={{ animationDelay: '0.4s' }}>⭐</div>
+                      </div>
                     )}
-                    
-                    <div className="text-6xl mb-4">{trophy.icon}</div>
-                    <h4 className="font-bold text-white text-lg mb-2">{trophy.name}</h4>
-                    
-                    <div className="mb-3">
-                      <Badge 
-                        variant="secondary" 
-                        className={cn("text-xs font-semibold", badgeTypeStyle.badgeClass)}
-                      >
-                        {trophy.rarity.toUpperCase()}
+
+                    <div className="flex justify-between items-start mb-4 relative z-10">
+                      <Badge className={cn("flex items-center gap-2 text-sm font-bold", getTrophyBadgeColor(champion.trophy))}>
+                        {getTrophyIcon(champion.trophy)}
+                        {champion.trophy.toUpperCase()}
+                      </Badge>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {champion.month} {champion.year}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center mb-4 relative z-10">
+                      <div className={cn(
+                        "relative transition-transform duration-300",
+                        hoveredCard === champion.id && "scale-110"
+                      )}>
+                        <Avatar className="h-20 w-20 text-4xl border-4 border-background shadow-lg">
+                          <AvatarFallback className="text-4xl bg-gradient-to-br from-primary/20 to-secondary/20">
+                            {champion.avatar}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        {champion.trophy === 'gold' && (
+                          <div className="absolute inset-0 rounded-full bg-yellow-400/20 animate-ping" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-center mb-4 relative z-10">
+                      <h3 className="font-bold text-lg mb-2">{champion.nickname}</h3>
+                      <div className="text-sm font-semibold text-primary mb-2">
+                        {champion.achievement}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {champion.score.toLocaleString()} points
                       </Badge>
                     </div>
-                    
-                    {trophy.badgeType && (
-                      <p className="text-sm text-white/80 mb-2 font-medium">
-                        {trophy.badgeType}
-                      </p>
+
+                    <div className="relative z-10">
+                      <div className="bg-muted/50 rounded-lg p-4 relative">
+                        <Quote className="h-4 w-4 text-muted-foreground absolute top-2 left-2" />
+                        <blockquote className="text-sm italic text-center mt-2 leading-relaxed">
+                          "{champion.quote}"
+                        </blockquote>
+                      </div>
+                    </div>
+
+                    {hoveredCard === champion.id && champion.trophy === 'gold' && (
+                      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full animate-ping opacity-75" />
+                        <div className="absolute -top-2 -right-2 w-3 h-3 bg-orange-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '0.5s' }} />
+                        <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-yellow-500 rounded-full animate-ping opacity-75" style={{ animationDelay: '1s' }} />
+                        <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-amber-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '1.5s' }} />
+                      </div>
                     )}
-                    
-                    <p className="text-xs text-white/60">
-                      {new Date(trophy.dateEarned).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </p>
+
+                    {/* Celebration Animation */}
+                    {renderCelebrationAnimation(champion.id)}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+
+                <div className="flex-shrink-0 w-80 p-6 rounded-xl border-2 border-dashed border-muted bg-muted/20 hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center min-h-[400px]">
+                  <div className="text-center space-y-4">
+                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                      <Sparkles className="h-10 w-10 text-primary animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">View All Champions</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Discover more legendary stories and achievements from our hall of fame
+                      </p>
+                    </div>
+                    <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
+                      <DialogTrigger asChild>
+                        <Button className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4" />
+                          See All
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
 
-      {/* Tributes & Comments Section - Standardized padding */}
-      <Card>
-        <CardHeader className="p-6">
-          <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            <MessageCircle className="h-6 w-6 text-primary" />
-            Tributes & Comments
-            <Badge variant="outline">{tributes.length}</Badge>
-          </CardTitle>
-          <p className="text-muted-foreground">
-            Congratulatory messages from the community
-          </p>
-        </CardHeader>
+      {/* Trophy Showcase Section - Only show for nutrition mode */}
+      {challengeMode !== 'exercise' && (
+        <Card className="-mt-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-400/30">
+          <CardHeader className="p-6">
+            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-orange-400 via-yellow-400 to-yellow-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
+              🏆 Trophy Showcase {new Date().getFullYear()}
+            </CardTitle>
+            <p className="text-center text-muted-foreground">
+              All badges and trophies earned this year
+            </p>
+          </CardHeader>
+          <CardContent className="p-6">
+            {yearlyTrophies.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Trophy className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <p className="text-lg font-medium mb-2">No trophies yet for this year</p>
+                <p className="text-sm">Keep grinding 💪</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {yearlyTrophies.map((trophy) => {
+                  const badgeTypeStyle = getBadgeTypeStyle(trophy.rarity);
+                  
+                  return (
+                    <div
+                      key={trophy.id}
+                      className={cn(
+                        "p-6 rounded-lg border-2 bg-gradient-to-br text-center transition-all duration-300 hover:scale-105 cursor-pointer relative overflow-hidden",
+                        badgeTypeStyle.border,
+                        badgeTypeStyle.background
+                      )}
+                    >
+                      {trophy.rarity === 'legendary' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] animate-[shine_3s_ease-in-out_infinite]" />
+                      )}
+                      
+                      <div className="text-6xl mb-4">{trophy.icon}</div>
+                      <h4 className="font-bold text-white text-lg mb-2">{trophy.name}</h4>
+                      
+                      <div className="mb-3">
+                        <Badge 
+                          variant="secondary" 
+                          className={cn("text-xs font-semibold", badgeTypeStyle.badgeClass)}
+                        >
+                          {trophy.rarity.toUpperCase()}
+                        </Badge>
+                      </div>
+                      
+                      {trophy.badgeType && (
+                        <p className="text-sm text-white/80 mb-2 font-medium">
+                          {trophy.badgeType}
+                        </p>
+                      )}
+                      
+                      <p className="text-xs text-white/60">
+                        {new Date(trophy.dateEarned).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tributes & Comments Section - Only show for nutrition mode */}
+      {challengeMode !== 'exercise' && (
+        <Card>
+          <CardHeader className="p-6">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <MessageCircle className="h-6 w-6 text-primary" />
+              Tributes & Comments
+              <Badge variant="outline">{tributes.length}</Badge>
+            </CardTitle>
+            <p className="text-muted-foreground">
+              Congratulatory messages from the community
+            </p>
+          </CardHeader>
         <CardContent className="space-y-6 p-6">
           {/* Add new tribute form - Only show if we have a valid champion */}
           {championUserId ? (
@@ -655,8 +695,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Dialog for viewing all champions */}
       <Dialog open={showAllModal} onOpenChange={setShowAllModal}>

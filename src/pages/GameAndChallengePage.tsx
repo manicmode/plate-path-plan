@@ -1496,7 +1496,7 @@ function GameAndChallengeContent() {
 
               {/* Hall of Fame Section */}
               <section id="hall-of-fame" className="animate-fade-in">
-                <HallOfFame champions={optimizedHallOfFame} />
+                <HallOfFame champions={optimizedHallOfFame} challengeMode={challengeMode} />
               </section>
             </>
           )}
