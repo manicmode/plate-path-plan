@@ -824,7 +824,7 @@ const ExerciseHub = () => {
                 setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans');
                 // Scroll to position tabs with proper spacing above
                 if (tabsRef.current) {
-                  const offsetTop = tabsRef.current.offsetTop - 100; // Add 100px spacing above tabs
+                  const offsetTop = tabsRef.current.offsetTop - 120; // Increased spacing to hide the section above
                   window.scrollTo({
                     top: offsetTop,
                     behavior: 'smooth'
