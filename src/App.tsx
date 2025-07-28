@@ -10,11 +10,13 @@ import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import { SoundProvider } from '@/contexts/SoundContext';
+import { RewardsProvider } from '@/contexts/RewardsContext';
 import Layout from '@/components/Layout';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
+import { MysteryBox } from '@/components/analytics/MysteryBox';
 import { useDailyMoodScheduler } from '@/hooks/useDailyMoodScheduler';
 import { useBodyScanTimelineReminder } from '@/hooks/useBodyScanTimelineReminder';
 import { useBodyScanSharingReminder } from '@/hooks/useBodyScanSharingReminder';
@@ -321,6 +323,10 @@ function AppContent() {
             isOpen={showMoodModal} 
             onClose={() => setShowMoodModal(false)} 
           />
+          
+          {/* Global Mystery Gift Box - Always Floating */}
+          <MysteryBox />
+          
           <Toaster />
         </>
       )}
@@ -339,10 +345,12 @@ function App() {
                 <IngredientAlertProvider>
                   <BadgeProvider>
                     <ChatModalProvider>
-                      <WorkoutCompletionProvider>
-                        <AppContent />
-                        <WorkoutCompletionModal />
-                      </WorkoutCompletionProvider>
+                      <RewardsProvider>
+                        <WorkoutCompletionProvider>
+                          <AppContent />
+                          <WorkoutCompletionModal />
+                        </WorkoutCompletionProvider>
+                      </RewardsProvider>
                     </ChatModalProvider>
                   </BadgeProvider>
                 </IngredientAlertProvider>

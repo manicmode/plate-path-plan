@@ -904,12 +904,7 @@ function GameAndChallengeContent() {
       {/* Main Content Container */}
       <div className="overflow-x-hidden w-full max-w-full relative">
         {/* Mystery Boxes - Hidden on mobile for performance */}
-        {!isMobile && (
-          <>
-            <MysteryBox position="top-right" />
-            <MysteryBox position="bottom-left" />
-          </>
-        )}
+        {/* Mystery Box is now global - removed from here */}
 
         {/* Pull to Refresh Indicator */}
         {isRefreshing && isMobile && (

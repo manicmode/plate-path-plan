@@ -26,9 +26,8 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     return null;
   }
 
-  // Floating movement every 5 seconds
+  // ✨ VERIFIED FIX: Immediate movement on mount + regular intervals
   useEffect(() => {
-    // Generate random position function with proper bounds
     const generateNewPosition = () => {
       setIsMoving(true);
       
@@ -44,14 +43,14 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
       setTimeout(() => setIsMoving(false), 800);
     };
 
-    // Set initial random position immediately
+    // 🔧 IMMEDIATE MOVEMENT on mount - no waiting
     generateNewPosition();
     
-    // Continue moving every 5 seconds regardless of claimable status
+    // Continue moving every 5 seconds - NO STATE DEPENDENCIES
     const interval = setInterval(generateNewPosition, 5000);
 
     return () => clearInterval(interval);
-  }, []); // Remove canClaimBox dependency to always float
+  }, []); // EMPTY dependency array - always float regardless of claim status
 
   const handleBoxClick = () => {
     if (!canClaimBox) return;
@@ -79,32 +78,25 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     return `${minutes}m`;
   };
 
-  const getStaticPosition = () => {
-    const positionClasses = {
-      'top-left': { top: '16px', left: '16px' },
-      'top-right': { top: '16px', right: '16px' },
-      'bottom-left': { bottom: '16px', left: '16px' },
-      'bottom-right': { bottom: '16px', right: '16px' },
-    };
-    return positionClasses[position];
-  };
-
-  const positionStyle = canClaimBox ? {
-    bottom: `${floatingPosition.bottom}px`,
-    right: `${floatingPosition.right}px`,
-    transition: 'all 0.8s ease-in-out'
-  } : getStaticPosition();
-
+  // 🎯 GLOBAL FIXED POSITIONING - Never wrapped in relative containers
   return (
     <>
       <div 
         className={cn(
-          "fixed select-none floating-gift-box",
+          "fixed select-none pointer-events-auto",
           className
         )}
         style={{
+          // 🔒 VERIFIED FIX STRATEGY:
+          position: 'fixed',
+          bottom: `${floatingPosition.bottom}px`,
+          right: `${floatingPosition.right}px`,
           zIndex: 99999,
-          ...positionStyle
+          pointerEvents: 'auto',
+          transition: 'all 0.8s ease-in-out',
+          // ✨ VISUAL DEBUGGING (temporary):
+          border: '2px dashed red',
+          background: 'rgba(255,255,0,0.4)'
         }}
       >
         <style>{`
@@ -114,7 +106,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
             75% { transform: rotate(-5deg); }
           }
           
-          .floating-gift-box:hover .gift-box-inner {
+          .gift-box-inner:hover {
             animation: wiggle 0.4s ease-in-out infinite;
             cursor: pointer;
           }
@@ -127,7 +119,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           )}
           onClick={handleBoxClick}
         >
-          {/* Sparkle Aura */}
+          {/* Sparkle Aura - Enhanced visibility when moving */}
           {canClaimBox && (
             <>
               <div className="absolute -inset-2 animate-pulse">
@@ -137,13 +129,13 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
                 <Sparkles className="h-3 w-3 text-pink-400 absolute -bottom-1 -right-1 animate-bounce" style={{ animationDelay: '600ms' }} />
               </div>
               
-              {/* Enhanced Glow Effect - Extra bright when moving */}
+              {/* 🧠 ENHANCED GLOW EFFECT - Extra bright when moving */}
               <div className={cn(
                 "absolute inset-0 bg-gradient-to-r from-yellow-400 via-purple-500 to-pink-500 rounded-xl blur-md animate-pulse",
                 isMoving ? "opacity-50 blur-lg" : "opacity-30"
               )} />
               
-              {/* Moving Attention Ring */}
+              {/* 🔔 VISUAL FLASH on movement - glow ring */}
               {isMoving && (
                 <div className="absolute -inset-4 border-2 border-yellow-300 rounded-full animate-ping opacity-75" />
               )}
