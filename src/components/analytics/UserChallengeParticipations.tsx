@@ -8,6 +8,7 @@ import { Clock, Target, Trophy, Flame, Plus, Lock, Users, Share2, MessageCircle,
 import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 import { PrivateChallengeCreationModal } from './PrivateChallengeCreationModal';
+import { PrivateRecoveryChallenges } from './PrivateRecoveryChallenges';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserChallengeParticipationsProps {
@@ -338,6 +339,11 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
     );
   }
 
+  // If challenge mode is recovery, show specialized component
+  if (challengeMode === 'recovery') {
+    return <PrivateRecoveryChallenges />;
+  }
+
   return (
     <div className="space-y-8 min-h-screen">
 
@@ -371,6 +377,11 @@ export const UserChallengeParticipations: React.FC<UserChallengeParticipationsPr
         />
       )}
 
+      {/* Private Challenge Creation Modal */}
+      <PrivateChallengeCreationModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 };
