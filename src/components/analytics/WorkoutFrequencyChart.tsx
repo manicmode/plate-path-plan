@@ -1,5 +1,7 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface WorkoutFrequencyChartProps {
@@ -13,38 +15,38 @@ interface WorkoutFrequencyChartProps {
 
 export const WorkoutFrequencyChart = ({ data }: WorkoutFrequencyChartProps) => {
   return (
-    <Card>
+    <Card className="w-full shadow-lg border-border bg-card">
       <CardContent className="p-6">
         <div className="space-y-2">
-          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <div className="text-lg font-bold text-foreground flex items-center gap-2">
             📊 Weekly Workout Frequency
-          </h3>
+          </div>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="day" 
+                <XAxis
+                  dataKey="day"
                   tick={{ fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => [`${value} workouts`, 'Workouts']}
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
                 />
-                <Bar 
-                  dataKey="workouts" 
+                <Bar
+                  dataKey="workouts"
                   radius={[4, 4, 0, 0]}
                   fill="hsl(var(--primary))"
                 />
