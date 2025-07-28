@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
 import { DailyAveragesSection } from '@/components/analytics/sections/DailyAveragesSection';
 import { MealQualityAnalyticsSection } from '@/components/analytics/sections/MealQualityAnalyticsSection';
@@ -10,10 +11,12 @@ import { AchievementsSection } from '@/components/analytics/sections/Achievement
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
+import { ExerciseAnalyticsSection } from '@/components/analytics/sections/ExerciseAnalyticsSection';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
 export default function Analytics() {
+  const [activeTab, setActiveTab] = useState('nutrition');
   const {
     progress,
     weeklyAverage,
@@ -29,20 +32,37 @@ export default function Analytics() {
     <div className="p-4 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Track your nutrition progress and patterns</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Track your progress and patterns</p>
       </div>
 
-      <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
-      <DailyAveragesSection weeklyAverage={weeklyAverage} />
-      <MealQualityAnalyticsSection />
-      <SmartInsightsSection />
-      <TagInsightsSection />
-      <MacrosHydrationSection macroData={macroData} progress={progress} />
-      <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} />
-      <AchievementsSection />
-      <GamificationSection />
-      <MonthlySummaryViewer />
-      <MoodWellnessTrendChart />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
+          <TabsTrigger value="nutrition" className="text-sm font-medium">
+            🍎 Nutrition
+          </TabsTrigger>
+          <TabsTrigger value="exercise" className="text-sm font-medium">
+            💪 Exercise
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="nutrition" className="space-y-6 mt-6">
+          <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
+          <DailyAveragesSection weeklyAverage={weeklyAverage} />
+          <MealQualityAnalyticsSection />
+          <SmartInsightsSection />
+          <TagInsightsSection />
+          <MacrosHydrationSection macroData={macroData} progress={progress} />
+          <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} />
+          <AchievementsSection />
+          <GamificationSection />
+          <MonthlySummaryViewer />
+          <MoodWellnessTrendChart />
+        </TabsContent>
+
+        <TabsContent value="exercise" className="space-y-6 mt-6">
+          <ExerciseAnalyticsSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
