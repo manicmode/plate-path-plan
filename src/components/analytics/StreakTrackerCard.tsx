@@ -25,7 +25,7 @@ export const StreakTrackerCard = ({
           🔥 Streak Tracker
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-6 space-y-4">
         {/* Current Streak */}
         <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-lg">
           <div className="flex items-center gap-3">
