@@ -51,10 +51,22 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     return () => clearInterval(interval);
   }, []); // EMPTY dependency array - always float regardless of claim status
 
-  const handleBoxClick = () => {
-    console.log('🎁 Gift clicked!', { canClaimBox, timeUntilNextBox });
-    if (!canClaimBox) return;
+  const handleBoxClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🎁 Gift clicked! Event details:', { 
+      canClaimBox, 
+      timeUntilNextBox,
+      target: e.target,
+      currentTarget: e.currentTarget 
+    });
     
+    if (!canClaimBox) {
+      console.log('❌ Cannot claim box - not ready yet');
+      return;
+    }
+    
+    console.log('✅ Processing gift claim...');
     setIsAnimating(true);
     
     // Delay to show the click animation
@@ -89,19 +101,26 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     <>
       <div 
         className={cn(
-          "fixed select-none cursor-pointer",
+          "fixed select-none",
           className
         )}
         style={{
-          // 🔒 VERIFIED FIX STRATEGY:
           position: 'fixed',
           bottom: `${floatingPosition.bottom}px`,
           right: `${floatingPosition.right}px`,
           zIndex: 99999,
           pointerEvents: 'auto',
-          transition: 'all 0.8s ease-in-out'
+          cursor: 'pointer',
+          transform: 'translate(0, 0)',
+          willChange: 'transform',
+          transition: 'all 0.8s ease-in-out',
+          // 🔍 DEBUG: Temporary visual confirmation of clickable zone
+          border: '2px solid red',
+          background: 'rgba(255, 255, 0, 0.3)'
         }}
         onClick={handleBoxClick}
+        onMouseDown={() => console.log('🎁 Mouse down on gift box!')}
+        onMouseUp={() => console.log('🎁 Mouse up on gift box!')}
       >
         <style>{`
           @keyframes wiggle {
@@ -118,29 +137,30 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
         <div
           className={cn(
             "relative transition-all duration-300",
-            canClaimBox ? "hover:scale-110 cursor-pointer" : "cursor-not-allowed opacity-60",
+            canClaimBox ? "hover:scale-110" : "opacity-60",
             isAnimating && "animate-pulse scale-95"
           )}
+          style={{ pointerEvents: 'none' }} // Prevent child from intercepting clicks
         >
           {/* Sparkle Aura - Enhanced visibility when moving */}
           {canClaimBox && (
             <>
-              <div className="absolute -inset-2 animate-pulse">
-                <Sparkles className="h-4 w-4 text-yellow-400 absolute -top-1 -left-1 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <Sparkles className="h-3 w-3 text-purple-400 absolute -top-1 -right-1 animate-bounce" style={{ animationDelay: '200ms' }} />
-                <Sparkles className="h-4 w-4 text-blue-400 absolute -bottom-1 -left-1 animate-bounce" style={{ animationDelay: '400ms' }} />
-                <Sparkles className="h-3 w-3 text-pink-400 absolute -bottom-1 -right-1 animate-bounce" style={{ animationDelay: '600ms' }} />
+              <div className="absolute -inset-2 animate-pulse" style={{ pointerEvents: 'none' }}>
+                <Sparkles className="h-4 w-4 text-yellow-400 absolute -top-1 -left-1 animate-bounce" style={{ animationDelay: '0ms', pointerEvents: 'none' }} />
+                <Sparkles className="h-3 w-3 text-purple-400 absolute -top-1 -right-1 animate-bounce" style={{ animationDelay: '200ms', pointerEvents: 'none' }} />
+                <Sparkles className="h-4 w-4 text-blue-400 absolute -bottom-1 -left-1 animate-bounce" style={{ animationDelay: '400ms', pointerEvents: 'none' }} />
+                <Sparkles className="h-3 w-3 text-pink-400 absolute -bottom-1 -right-1 animate-bounce" style={{ animationDelay: '600ms', pointerEvents: 'none' }} />
               </div>
               
               {/* 🧠 ENHANCED GLOW EFFECT - Extra bright when moving */}
               <div className={cn(
                 "absolute inset-0 bg-gradient-to-r from-yellow-400 via-purple-500 to-pink-500 rounded-xl blur-md animate-pulse",
                 isMoving ? "opacity-50 blur-lg" : "opacity-30"
-              )} />
+              )} style={{ pointerEvents: 'none' }} />
               
               {/* 🔔 VISUAL FLASH on movement - glow ring */}
               {isMoving && (
-                <div className="absolute -inset-4 border-2 border-yellow-300 rounded-full animate-ping opacity-75" />
+                <div className="absolute -inset-4 border-2 border-yellow-300 rounded-full animate-ping opacity-75" style={{ pointerEvents: 'none' }} />
               )}
             </>
           )}
