@@ -4,7 +4,7 @@ import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { AIWorkoutRoutineConfigModal } from '@/components/AIWorkoutRoutineConfigModal';
+import { CreateRoutineModal } from '@/components/CreateRoutineModal';
 import { useToast } from '@/hooks/use-toast';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIntelligentFitnessCoach } from '@/hooks/useIntelligentFitnessCoach';
@@ -797,11 +797,11 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         </Card>
       </div>
       
-      {/* AI Workout Routine Config Modal */}
-      <AIWorkoutRoutineConfigModal
+      {/* Create Routine Modal */}
+      <CreateRoutineModal
         isOpen={showRoutineModal}
         onClose={() => setShowRoutineModal(false)}
-        onRoutineCreated={handleRoutineCreated}
+        onSave={handleRoutineCreated}
       />
     </div>
   );

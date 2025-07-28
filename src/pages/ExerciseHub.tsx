@@ -8,7 +8,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { CreateRoutineModal } from '@/components/CreateRoutineModal';
-import { AIWorkoutRoutineConfigModal } from '@/components/AIWorkoutRoutineConfigModal';
+
 import { RoutineCard } from '@/components/RoutineCard';
 import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
@@ -1408,10 +1408,10 @@ const ExerciseHub = () => {
       />
 
       {/* AI Routine Generator Modal */}
-      <AIWorkoutRoutineConfigModal
+      <CreateRoutineModal
         isOpen={isAIRoutineModalOpen}
         onClose={() => setIsAIRoutineModalOpen(false)}
-        onRoutineCreated={(routine) => {
+        onSave={(routine) => {
           console.log('AI Routine created:', routine);
           // Optionally refresh the routines list or navigate
         }}
