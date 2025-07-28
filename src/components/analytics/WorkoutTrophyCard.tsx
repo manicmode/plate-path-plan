@@ -125,7 +125,7 @@ export const WorkoutTrophyCard = ({ className, showFullStats = true }: WorkoutTr
   };
 
   return (
-    <Card className={`relative overflow-hidden bg-gradient-to-br ${awardConfig.bgColor} ${awardConfig.borderColor} !border-2 !border-indigo-500/60 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 ${className}`}>
+    <Card className={`relative overflow-hidden dark:bg-gradient-to-br ${awardConfig.bgColor} ${awardConfig.borderColor} dark:!border-2 dark:!border-indigo-500/60 dark:bg-gradient-to-r dark:from-indigo-500/30 dark:to-purple-500/30 ${className}`}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center justify-between text-lg font-semibold">
           <div className="flex items-center gap-2">

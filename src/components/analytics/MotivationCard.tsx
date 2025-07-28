@@ -111,7 +111,7 @@ export const MotivationCard = ({ className }: MotivationCardProps) => {
   const CategoryIcon = config.icon;
 
   return (
-    <Card className={`relative overflow-hidden bg-gradient-to-br ${config.gradient} ${config.border} !border-2 !border-emerald-500/60 bg-gradient-to-r from-emerald-500/30 to-green-500/30 ${className}`}>
+    <Card className={`relative overflow-hidden dark:bg-gradient-to-br ${config.gradient} ${config.border} dark:!border-2 dark:!border-emerald-500/60 dark:bg-gradient-to-r dark:from-emerald-500/30 dark:to-green-500/30 ${className}`}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg font-semibold">
