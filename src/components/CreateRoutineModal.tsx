@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Calendar, Clock, Tag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { useCustomRoutines, type CustomRoutine } from '@/hooks/useCustomRoutines';
 
 interface CreateRoutineModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (routine: any) => void;
-  editingRoutine?: any;
+  onSave?: (routine: any) => void; // Made optional since we handle saving internally now
+  editingRoutine?: CustomRoutine | any; // Support both old format and new
 }
 
 const routineTypes = [
@@ -38,16 +39,35 @@ const daysOfWeek = [
 ];
 
 export function CreateRoutineModal({ isOpen, onClose, onSave, editingRoutine }: CreateRoutineModalProps) {
+  const { createRoutine, updateRoutine } = useCustomRoutines();
+  const [saving, setSaving] = useState(false);
+  
   const [formData, setFormData] = useState({
-    title: editingRoutine?.title || '',
-    routineType: editingRoutine?.routineType || '',
-    duration: editingRoutine?.duration || '',
-    notes: editingRoutine?.notes || '',
-    weeklyPlan: editingRoutine?.weeklyPlan || daysOfWeek.reduce((acc, day) => {
+    title: '',
+    routineType: '',
+    duration: '',
+    notes: '',
+    weeklyPlan: daysOfWeek.reduce((acc, day) => {
       acc[day] = '';
       return acc;
     }, {} as Record<string, string>)
   });
+
+  // Reset form when modal opens/closes or when editing different routine
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: editingRoutine?.title || '',
+        routineType: editingRoutine?.routine_type || editingRoutine?.routineType || '',
+        duration: editingRoutine?.duration || '',
+        notes: editingRoutine?.notes || '',
+        weeklyPlan: editingRoutine?.weekly_plan || editingRoutine?.weeklyPlan || daysOfWeek.reduce((acc, day) => {
+          acc[day] = '';
+          return acc;
+        }, {} as Record<string, string>)
+      });
+    }
+  }, [isOpen, editingRoutine]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -60,40 +80,81 @@ export function CreateRoutineModal({ isOpen, onClose, onSave, editingRoutine }: 
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title || !formData.routineType) {
       return; // Basic validation
     }
 
-    const selectedType = routineTypes.find(type => type.value === formData.routineType);
-    const routine = {
-      id: editingRoutine?.id || Date.now(),
-      title: formData.title,
-      emoji: selectedType?.emoji || '💪',
-      type: selectedType?.label || 'Custom',
-      routineType: formData.routineType,
-      duration: formData.duration || 'Not specified',
-      gradient: routineGradients[formData.routineType as keyof typeof routineGradients] || routineGradients.custom,
-      weeklyPlan: formData.weeklyPlan,
-      notes: formData.notes,
-      createdAt: editingRoutine?.createdAt || new Date().toISOString()
-    };
+    setSaving(true);
+    try {
+      const routineData = {
+        title: formData.title,
+        routine_type: formData.routineType,
+        duration: formData.duration || 'Not specified',
+        weekly_plan: formData.weeklyPlan,
+        notes: formData.notes || undefined,
+      };
 
-    onSave(routine);
-    
-    // Reset form
-    setFormData({
-      title: '',
-      routineType: '',
-      duration: '',
-      notes: '',
-      weeklyPlan: daysOfWeek.reduce((acc, day) => {
-        acc[day] = '';
-        return acc;
-      }, {} as Record<string, string>)
-    });
-    
-    onClose();
+      if (editingRoutine?.id) {
+        // Update existing routine
+        const success = await updateRoutine(editingRoutine.id, routineData);
+        if (success && onSave) {
+          // Call the old onSave for backward compatibility
+          const selectedType = routineTypes.find(type => type.value === formData.routineType);
+          const legacyRoutine = {
+            id: editingRoutine.id,
+            title: formData.title,
+            emoji: selectedType?.emoji || '💪',
+            type: selectedType?.label || 'Custom',
+            routineType: formData.routineType,
+            duration: formData.duration || 'Not specified',
+            gradient: routineGradients[formData.routineType as keyof typeof routineGradients] || routineGradients.custom,
+            weeklyPlan: formData.weeklyPlan,
+            notes: formData.notes,
+            createdAt: editingRoutine?.created_at || editingRoutine?.createdAt || new Date().toISOString()
+          };
+          onSave(legacyRoutine);
+        }
+      } else {
+        // Create new routine
+        const newRoutine = await createRoutine(routineData);
+        if (newRoutine && onSave) {
+          // Call the old onSave for backward compatibility
+          const selectedType = routineTypes.find(type => type.value === formData.routineType);
+          const legacyRoutine = {
+            id: newRoutine.id,
+            title: newRoutine.title,
+            emoji: selectedType?.emoji || '💪',
+            type: selectedType?.label || 'Custom',
+            routineType: newRoutine.routine_type,
+            duration: newRoutine.duration,
+            gradient: routineGradients[newRoutine.routine_type as keyof typeof routineGradients] || routineGradients.custom,
+            weeklyPlan: newRoutine.weekly_plan,
+            notes: newRoutine.notes,
+            createdAt: newRoutine.created_at
+          };
+          onSave(legacyRoutine);
+        }
+      }
+      
+      // Reset form and close
+      setFormData({
+        title: '',
+        routineType: '',
+        duration: '',
+        notes: '',
+        weeklyPlan: daysOfWeek.reduce((acc, day) => {
+          acc[day] = '';
+          return acc;
+        }, {} as Record<string, string>)
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error saving routine:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getActiveDays = () => {
@@ -235,10 +296,10 @@ export function CreateRoutineModal({ isOpen, onClose, onSave, editingRoutine }: 
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!formData.title || !formData.routineType}
+            disabled={!formData.title || !formData.routineType || saving}
             className="px-8 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
           >
-            {editingRoutine ? 'Update Routine' : 'Save Routine'}
+            {saving ? 'Saving...' : editingRoutine ? 'Update Routine' : 'Save Routine'}
           </Button>
         </div>
       </DialogContent>

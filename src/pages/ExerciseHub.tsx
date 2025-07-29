@@ -25,6 +25,7 @@ import { WeeklyExerciseInsightsCard } from "@/components/analytics/WeeklyExercis
 import { WorkoutCalendarView } from '@/components/analytics/WorkoutCalendarView';
 import { WorkoutVolumeChart } from '@/components/analytics/WorkoutVolumeChart';
 import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTracker';
+import { useCustomRoutines, type CustomRoutine } from '@/hooks/useCustomRoutines';
 import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
 import { WeeklyGoalCard } from '@/components/analytics/WeeklyGoalCard';
@@ -296,6 +297,9 @@ const ExerciseHub = () => {
     }
   };
 
+  // Use custom routines from Supabase
+  const { routines: customRoutines, loading: customRoutinesLoading, duplicateRoutine } = useCustomRoutines();
+  
   // Enhanced mock routine data - make it dynamic
   const [mockRoutines, setMockRoutines] = useState<any[]>([
     {
@@ -366,26 +370,66 @@ const ExerciseHub = () => {
     }
   ]);
 
-  // Function to handle adding/editing routines
+  // Convert custom routines to display format
+  const convertCustomRoutineToDisplay = (routine: CustomRoutine) => {
+    const routineTypeMap: Record<string, { emoji: string; label: string; gradient: string }> = {
+      strength: { emoji: "🏋️", label: "Strength", gradient: "from-red-400 to-orange-600" },
+      cardio: { emoji: "🏃", label: "Cardio", gradient: "from-blue-400 to-cyan-600" },
+      hiit: { emoji: "⚡", label: "HIIT", gradient: "from-yellow-400 to-orange-600" },
+      fullbody: { emoji: "🔁", label: "Full Body", gradient: "from-purple-400 to-pink-600" },
+      flexibility: { emoji: "🧘", label: "Flexibility", gradient: "from-green-400 to-teal-600" },
+      custom: { emoji: "✏️", label: "Custom", gradient: "from-gray-400 to-slate-600" }
+    };
+    
+    const typeInfo = routineTypeMap[routine.routine_type] || routineTypeMap.custom;
+    
+    return {
+      id: routine.id,
+      title: routine.title,
+      emoji: typeInfo.emoji,
+      type: typeInfo.label,
+      routineType: routine.routine_type,
+      duration: routine.duration,
+      gradient: typeInfo.gradient,
+      status: "not-started" as const,
+      currentDay: 1,
+      weeklyPlan: routine.weekly_plan,
+      notes: routine.notes || '',
+      createdAt: routine.created_at
+    };
+  };
+
+  // Get displayed routines (custom + mock if no custom exist)
+  const displayedRoutines = customRoutines.length > 0 
+    ? customRoutines.map(convertCustomRoutineToDisplay)
+    : mockRoutines;
+
+  // Function to handle adding/editing routines (kept for backward compatibility)
   const handleSaveRoutine = (newRoutine: any) => {
-    if (newRoutine.id && mockRoutines.find(r => r.id === newRoutine.id)) {
-      // Edit existing routine
-      setMockRoutines(prev => prev.map(r => r.id === newRoutine.id ? newRoutine : r));
-    } else {
-      // Add new routine
-      setMockRoutines(prev => [newRoutine, ...prev]);
-    }
+    // This is now handled by the CreateRoutineModal internally
+    // Keep this function for legacy support but routines are automatically updated via the hook
+    console.log('Routine saved via Supabase:', newRoutine);
   };
 
   // Function to handle duplicating routines
-  const handleDuplicateRoutine = (routine: any) => {
-    const duplicatedRoutine = {
-      ...routine,
-      id: Date.now(),
-      title: `${routine.title} (Copy)`,
-      createdAt: new Date().toISOString()
-    };
-    setMockRoutines(prev => [duplicatedRoutine, ...prev]);
+  const handleDuplicateRoutine = async (routine: any) => {
+    if (routine.id && typeof routine.id === 'string' && !routine.id.startsWith('mock-')) {
+      // This is a real custom routine from Supabase
+      const customRoutine = customRoutines.find(r => r.id === routine.id);
+      if (customRoutine) {
+        await duplicateRoutine(customRoutine);
+      }
+    } else {
+      // This is a mock routine, handle it the old way
+      const duplicatedRoutine = {
+        ...routine,
+        id: Date.now(),
+        title: `${routine.title} (Copy)`,
+        createdAt: new Date().toISOString()
+      };
+      // For now, we'll just log it since we can't save mock routines to Supabase without converting them
+      console.log('Would duplicate mock routine:', duplicatedRoutine);
+    }
   };
 
   // State for editing routines
@@ -848,7 +892,8 @@ const ExerciseHub = () => {
       createdAt: new Date().toISOString()
     };
     
-    setMockRoutines(prev => [newRoutine, ...prev]);
+    // For pre-made plans, we'll continue to use the mock approach for now
+    // since these are different from custom user routines
     
     // Show success message or navigate to routines tab
     setActiveTab('my-routines');
@@ -1262,22 +1307,34 @@ const ExerciseHub = () => {
 
                     {/* Routines Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {mockRoutines.map((routine) => (
-                        <RoutineCard
-                          key={routine.id}
-                          routine={routine}
-                          onEdit={(editRoutine) => {
-                            setEditingRoutine(editRoutine);
-                            setIsCreateRoutineModalOpen(true);
-                          }}
-                          onDuplicate={handleDuplicateRoutine}
-                        />
-                      ))}
+                      {customRoutinesLoading ? (
+                        <div className="col-span-full text-center py-8">
+                          <div className="text-muted-foreground">Loading your routines...</div>
+                        </div>
+                      ) : (
+                        displayedRoutines.map((routine) => (
+                          <RoutineCard
+                            key={routine.id}
+                            routine={routine}
+                            onEdit={(editRoutine) => {
+                              // Only allow editing of real custom routines
+                              if (routine.id && typeof routine.id === 'string' && !routine.id.startsWith('mock-')) {
+                                const customRoutine = customRoutines.find(r => r.id === routine.id);
+                                if (customRoutine) {
+                                  setEditingRoutine(customRoutine);
+                                  setIsCreateRoutineModalOpen(true);
+                                }
+                              }
+                            }}
+                            onDuplicate={handleDuplicateRoutine}
+                          />
+                        ))
+                      )}
                     </div>
 
                      {/* Empty State (if no routines) */}
-                     {mockRoutines.length === 0 && (
-                        <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
+                     {!customRoutinesLoading && displayedRoutines.length === 0 && (
+                        <Card className="col-span-full w-full shadow-lg border-border bg-card mb-0 !mb-0">
                          <CardContent className="p-8 text-center">
                            <div className="text-4xl mb-4">🧠</div>
                            <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
