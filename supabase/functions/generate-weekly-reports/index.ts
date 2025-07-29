@@ -52,11 +52,26 @@ interface WeeklyReportData {
     severityBreakdown: Record<string, number>;
     totalExposure: number;
   };
+  recovery: {
+    totalSessions: number;
+    avgMood: number;
+    avgStress: number;
+    mostUsedTypes: Array<{type: string, count: number}>;
+    currentStreak: number;
+    overallScore: number;
+    smartInsight: string;
+    dailyData: Array<{date: string, sessions: number, avgMood: number, avgStress: number}>;
+    typeBreakdown: Record<string, number>;
+    consistencyScore: number;
+    moodImprovement: number;
+    stressReduction: number;
+  };
   streaks: {
     nutrition: number;
     hydration: number;
     supplements: number;
     exercise: number;
+    recovery: number;
   };
   weeklyScores: {
     nutrition: number;
@@ -64,6 +79,7 @@ interface WeeklyReportData {
     exercise: number;
     hydration: number;
     supplements: number;
+    recovery: number;
     overall: number;
   };
   weekStats: {
@@ -72,6 +88,7 @@ interface WeeklyReportData {
     totalExercises: number;
     avgHydration: number;
     supplementDays: number;
+    recoverySessions: number;
   };
   achievements: string[];
   improvements: string[];
@@ -272,6 +289,22 @@ async function collectUserWeekData(supabase: any, userId: string, startDate: Dat
     .lte('created_at', endDate.toISOString())
     .order('created_at');
 
+  // Fetch recovery session logs
+  const { data: recoveryLogs } = await supabase
+    .from('recovery_session_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('completed_at', startDate.toISOString())
+    .lte('completed_at', endDate.toISOString())
+    .order('completed_at');
+
+  // Fetch meditation streaks for recovery streak data
+  const { data: meditationStreak } = await supabase
+    .from('meditation_streaks')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
   // Process nutrition data
   const nutritionData = processNutritionData(nutritionLogs || [], profile);
   
@@ -289,6 +322,9 @@ async function collectUserWeekData(supabase: any, userId: string, startDate: Dat
   
   // Process toxin data
   const toxinData = processToxinData(toxinDetections || []);
+  
+  // Process recovery data
+  const recoveryData = processRecoveryData(recoveryLogs || [], moodLogs || [], meditationStreak);
 
   // Calculate scores
   const nutritionScore = calculateNutritionScore(nutritionData, profile);
@@ -296,20 +332,22 @@ async function collectUserWeekData(supabase: any, userId: string, startDate: Dat
   const exerciseScore = calculateExerciseScore(exerciseData);
   const hydrationScore = calculateHydrationScore(hydrationData);
   const supplementScore = calculateSupplementScore(supplementData);
+  const recoveryScore = calculateRecoveryScore(recoveryData);
   
   const overallScore = (
-    nutritionScore * 0.35 +
-    moodScore * 0.20 +
+    nutritionScore * 0.30 +
+    moodScore * 0.18 +
     exerciseScore * 0.15 +
-    hydrationScore * 0.15 +
+    hydrationScore * 0.12 +
     supplementScore * 0.10 +
-    (100 - Math.min(toxinData.totalExposure * 10, 50)) * 0.05
+    recoveryScore * 0.12 +
+    (100 - Math.min(toxinData.totalExposure * 10, 50)) * 0.03
   );
 
   // Generate insights
-  const achievements = generateAchievements(nutritionData, moodData, exerciseData, hydrationData, supplementData);
-  const improvements = generateImprovements(nutritionData, moodData, exerciseData);
-  const recommendations = generateRecommendations(nutritionData, moodData, exerciseData, hydrationData, profile);
+  const achievements = generateAchievements(nutritionData, moodData, exerciseData, hydrationData, supplementData, recoveryData);
+  const improvements = generateImprovements(nutritionData, moodData, exerciseData, recoveryData);
+  const recommendations = generateRecommendations(nutritionData, moodData, exerciseData, hydrationData, recoveryData, profile);
 
   return {
     nutrition: nutritionData,
@@ -318,11 +356,13 @@ async function collectUserWeekData(supabase: any, userId: string, startDate: Dat
     hydration: hydrationData,
     supplements: supplementData,
     toxins: toxinData,
+    recovery: recoveryData,
     streaks: {
       nutrition: profile?.current_nutrition_streak || 0,
       hydration: profile?.current_hydration_streak || 0,
       supplements: profile?.current_supplement_streak || 0,
-      exercise: calculateExerciseStreak(exerciseLogs || [])
+      exercise: calculateExerciseStreak(exerciseLogs || []),
+      recovery: recoveryData.currentStreak
     },
     weeklyScores: {
       nutrition: Math.round(nutritionScore),
@@ -330,6 +370,7 @@ async function collectUserWeekData(supabase: any, userId: string, startDate: Dat
       exercise: Math.round(exerciseScore),
       hydration: Math.round(hydrationScore),
       supplements: Math.round(supplementScore),
+      recovery: Math.round(recoveryScore),
       overall: Math.round(overallScore)
     },
     weekStats: {
@@ -337,7 +378,8 @@ async function collectUserWeekData(supabase: any, userId: string, startDate: Dat
       avgMoodScore: moodData.avgMood,
       totalExercises: exerciseData.totalWorkouts,
       avgHydration: hydrationData.avgDailyVolume,
-      supplementDays: supplementData.totalDoses > 0 ? 7 - supplementData.missedDays : 0
+      supplementDays: supplementData.totalDoses > 0 ? 7 - supplementData.missedDays : 0,
+      recoverySessions: recoveryData.totalSessions
     },
     achievements,
     improvements,
@@ -594,6 +636,166 @@ function processToxinData(detections: any[]) {
   };
 }
 
+function processRecoveryData(recoveryLogs: any[], moodLogs: any[], meditationStreak: any) {
+  console.log('🧘 Processing recovery data...', { recoveryCount: recoveryLogs.length, moodCount: moodLogs.length });
+  
+  // Initialize daily data map for 7 days
+  const dailyMap = new Map();
+  for (let i = 0; i < 7; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    dailyMap.set(date.toISOString().split('T')[0], { 
+      sessions: 0, 
+      avgMood: 0, 
+      avgStress: 0, 
+      moodCount: 0,
+      stressCount: 0 
+    });
+  }
+
+  // Process recovery sessions by date
+  const typeBreakdown: Record<string, number> = {};
+  
+  recoveryLogs.forEach(log => {
+    const date = log.completed_at.split('T')[0];
+    const category = log.category || 'meditation'; // Default to meditation
+    
+    // Count sessions by type
+    typeBreakdown[category] = (typeBreakdown[category] || 0) + 1;
+    
+    // Update daily data
+    if (dailyMap.has(date)) {
+      dailyMap.get(date).sessions++;
+    }
+  });
+
+  // Process mood data to get averages by date
+  moodLogs.forEach(log => {
+    const date = log.date;
+    if (dailyMap.has(date)) {
+      const day = dailyMap.get(date);
+      if (log.mood) {
+        day.avgMood = ((day.avgMood * day.moodCount) + log.mood) / (day.moodCount + 1);
+        day.moodCount++;
+      }
+      // Note: We don't have stress_logs table, so we'll calculate stress from wellness (10 - wellness)
+      if (log.wellness) {
+        const stressLevel = Math.max(1, 10 - log.wellness); // Inverse of wellness as stress
+        day.avgStress = ((day.avgStress * day.stressCount) + stressLevel) / (day.stressCount + 1);
+        day.stressCount++;
+      }
+    }
+  });
+
+  // Calculate totals and averages
+  const totalSessions = recoveryLogs.length;
+  const avgMood = moodLogs.length > 0 
+    ? moodLogs.reduce((sum, log) => sum + (log.mood || 0), 0) / moodLogs.length 
+    : 0;
+  
+  // Calculate average stress from wellness (inverse relationship)
+  const avgStress = moodLogs.length > 0 
+    ? moodLogs.reduce((sum, log) => sum + Math.max(1, 10 - (log.wellness || 5)), 0) / moodLogs.length 
+    : 5;
+
+  // Get most used recovery types
+  const mostUsedTypes = Object.entries(typeBreakdown)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, count]) => ({ type, count }));
+
+  // Get current streak from meditation streaks (representing overall recovery streak)
+  const currentStreak = meditationStreak?.current_streak || 0;
+
+  // Calculate consistency score (days with recovery activities)
+  const activeDays = Array.from(dailyMap.values()).filter(day => day.sessions > 0).length;
+  const consistencyScore = (activeDays / 7) * 100;
+
+  // Calculate mood improvement (compare first half vs second half of week)
+  const dailyData = Array.from(dailyMap.entries()).map(([date, data]) => ({
+    date,
+    sessions: data.sessions,
+    avgMood: Math.round(data.avgMood * 10) / 10 || 0,
+    avgStress: Math.round(data.avgStress * 10) / 10 || 0
+  }));
+
+  const firstHalfMood = dailyData.slice(0, 4).reduce((sum, day) => sum + day.avgMood, 0) / 4;
+  const secondHalfMood = dailyData.slice(3).reduce((sum, day) => sum + day.avgMood, 0) / 4;
+  const moodImprovement = secondHalfMood - firstHalfMood;
+
+  const firstHalfStress = dailyData.slice(0, 4).reduce((sum, day) => sum + day.avgStress, 0) / 4;
+  const secondHalfStress = dailyData.slice(3).reduce((sum, day) => sum + day.avgStress, 0) / 4;
+  const stressReduction = firstHalfStress - secondHalfStress;
+
+  // Calculate overall recovery score using weighted formula
+  const sessionScore = Math.min(totalSessions * 15, 40); // Up to 40 points for sessions
+  const consistencyPoints = (consistencyScore / 100) * 20; // Up to 20 points for consistency
+  const moodPoints = Math.max(0, avgMood - 5) * 4; // Up to 20 points for good mood (above 5)
+  const stressPoints = Math.max(0, 8 - avgStress) * 2.5; // Up to 12.5 points for low stress
+  const streakBonus = Math.min(currentStreak * 2, 10); // Up to 10 points for streak
+  const improvementBonus = Math.max(0, moodImprovement) * 5 + Math.max(0, stressReduction) * 2.5; // Bonus for improvements
+
+  const overallScore = Math.min(100, sessionScore + consistencyPoints + moodPoints + stressPoints + streakBonus + improvementBonus);
+
+  // Generate smart insight
+  const smartInsight = generateRecoveryInsight(totalSessions, consistencyScore, moodImprovement, stressReduction, mostUsedTypes[0]?.type);
+
+  return {
+    totalSessions,
+    avgMood: Math.round(avgMood * 10) / 10,
+    avgStress: Math.round(avgStress * 10) / 10,
+    mostUsedTypes,
+    currentStreak,
+    overallScore: Math.round(overallScore),
+    smartInsight,
+    dailyData,
+    typeBreakdown,
+    consistencyScore: Math.round(consistencyScore),
+    moodImprovement: Math.round(moodImprovement * 10) / 10,
+    stressReduction: Math.round(stressReduction * 10) / 10
+  };
+}
+
+function generateRecoveryInsight(totalSessions: number, consistencyScore: number, moodImprovement: number, stressReduction: number, topType?: string): string {
+  if (totalSessions === 0) {
+    return "Consider starting a recovery routine to improve your overall wellness and stress management.";
+  }
+
+  const insights = [];
+
+  if (consistencyScore >= 80) {
+    insights.push("Excellent recovery consistency this week!");
+  } else if (consistencyScore >= 60) {
+    insights.push("Good recovery routine established.");
+  }
+
+  if (moodImprovement > 1) {
+    insights.push("Your recovery sessions significantly improved your mood this week.");
+  } else if (moodImprovement > 0.5) {
+    insights.push("Recovery activities helped boost your mood.");
+  }
+
+  if (stressReduction > 1) {
+    insights.push("Great stress reduction through your recovery practices.");
+  } else if (stressReduction > 0.5) {
+    insights.push("Recovery sessions helped reduce stress levels.");
+  }
+
+  if (topType) {
+    insights.push(`${topType.charAt(0).toUpperCase() + topType.slice(1)} was your most beneficial recovery activity.`);
+  }
+
+  if (totalSessions >= 10) {
+    insights.push("Outstanding recovery commitment with frequent sessions.");
+  } else if (totalSessions >= 5) {
+    insights.push("Solid recovery routine maintained this week.");
+  }
+
+  return insights.length > 0 
+    ? insights.slice(0, 2).join(' ')
+    : "Keep building your recovery practice for better stress management and mood balance.";
+}
+
 // Scoring functions
 function calculateNutritionScore(nutritionData: any, profile: any): number {
   let score = 70; // Base score
@@ -671,6 +873,11 @@ function calculateSupplementScore(supplementData: any): number {
   return Math.min(100, Math.max(0, score));
 }
 
+function calculateRecoveryScore(recoveryData: any): number {
+  // The recovery score is already calculated in processRecoveryData
+  return recoveryData.overallScore || 50; // Default to 50 if no data
+}
+
 function calculateExerciseStreak(logs: any[]): number {
   // Simple calculation - could be more sophisticated
   const today = new Date().toISOString().split('T')[0];
@@ -726,6 +933,13 @@ function generateSummaryText(data: WeeklyReportData): string {
     insights.push(`Excellent hydration with ${data.hydration.goalComplianceDays} days meeting goals`);
   }
 
+  // Recovery insights
+  if (data.recovery.totalSessions >= 5) {
+    insights.push(`Strong recovery practice with ${data.recovery.totalSessions} sessions`);
+  } else if (data.recovery.consistencyScore >= 60) {
+    insights.push(`Good recovery consistency this week`);
+  }
+
   return insights.slice(0, 3).join('. ') + (insights.length > 0 ? '.' : 'Keep up the great work on your health journey!');
 }
 
@@ -739,7 +953,7 @@ function generateWeekTitle(startDate: Date): string {
   return `${month} – Week ${weekOfMonth}`;
 }
 
-function generateAchievements(nutrition: any, mood: any, exercise: any, hydration: any, supplements: any): string[] {
+function generateAchievements(nutrition: any, mood: any, exercise: any, hydration: any, supplements: any, recovery: any): string[] {
   const achievements = [];
   
   if (nutrition.proteinGoalPercentage >= 95) achievements.push("Protein Champion");
@@ -748,21 +962,27 @@ function generateAchievements(nutrition: any, mood: any, exercise: any, hydratio
   if (hydration.goalComplianceDays >= 6) achievements.push("Hydration Hero");
   if (supplements.compliancePercentage >= 90) achievements.push("Supplement Superstar");
   if (nutrition.avgQualityScore >= 8) achievements.push("Quality Food Advocate");
+  if (recovery.overallScore >= 85) achievements.push("Recovery Champion");
+  if (recovery.currentStreak >= 7) achievements.push("Mindfulness Master");
+  if (recovery.consistencyScore >= 85) achievements.push("Wellness Warrior");
   
   return achievements.slice(0, 4);
 }
 
-function generateImprovements(nutrition: any, mood: any, exercise: any): string[] {
+function generateImprovements(nutrition: any, mood: any, exercise: any, recovery: any): string[] {
   const improvements = [];
   
   if (mood.trendDirection === 'improving') improvements.push("Mood improved significantly");
   if (exercise.activeDays >= 5) improvements.push("Exercise consistency up");
   if (nutrition.avgQualityScore >= 7) improvements.push("Food quality enhanced");
+  if (recovery.moodImprovement > 0.5) improvements.push("Recovery boosted weekly mood");
+  if (recovery.stressReduction > 0.5) improvements.push("Stress levels reduced through recovery");
+  if (recovery.consistencyScore >= 70) improvements.push("Recovery routine established");
   
   return improvements.slice(0, 3);
 }
 
-function generateRecommendations(nutrition: any, mood: any, exercise: any, hydration: any, profile: any): string[] {
+function generateRecommendations(nutrition: any, mood: any, exercise: any, hydration: any, recovery: any, profile: any): string[] {
   const recommendations = [];
   
   if (nutrition.proteinGoalPercentage < 80) recommendations.push("Increase protein-rich foods");
@@ -770,6 +990,9 @@ function generateRecommendations(nutrition: any, mood: any, exercise: any, hydra
   if (exercise.totalWorkouts < 3) recommendations.push("Add more physical activity");
   if (mood.avgMood < 6) recommendations.push("Focus on stress management");
   if (nutrition.avgQualityScore < 6) recommendations.push("Choose more whole foods");
+  if (recovery.totalSessions < 3) recommendations.push("Try more recovery activities");
+  if (recovery.avgStress > 6) recommendations.push("Prioritize stress-reducing practices");
+  if (recovery.consistencyScore < 50) recommendations.push("Build a regular recovery routine");
   
   return recommendations.slice(0, 4);
 }
