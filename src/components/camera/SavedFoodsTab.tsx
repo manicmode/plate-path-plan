@@ -30,6 +30,9 @@ interface SavedFoodsTabProps {
 export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) => {
   const { user } = useAuth();
   const [optimisticFoods, setOptimisticFoods] = useState<SavedFood[]>([]);
+  const [debugMode] = useState(process.env.NODE_ENV === 'development');
+
+  console.log('🔄 SavedFoodsTab render - user?.id:', user?.id);
 
   // Fetch saved foods using useQuery
   const {
@@ -178,7 +181,7 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     }
   });
 
-  
+  console.log('📊 Query state - isLoading:', isLoading, 'isError:', isError, 'savedFoods.length:', savedFoods.length);
 
   // Register refetch function with parent component
   useEffect(() => {
@@ -279,6 +282,12 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading saved foods...</p>
+          {debugMode && (
+            <div className="mt-4 text-xs text-muted-foreground">
+              <p>Debug: user?.id = {user?.id}</p>
+              <p>Debug: isLoading = {String(isLoading)}</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -299,6 +308,11 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
           <Button onClick={() => refetch()} variant="outline" size="sm">
             Try Again
           </Button>
+          {debugMode && (
+            <div className="mt-4 text-xs text-left bg-destructive/5 p-2 rounded">
+              <p>Debug Error: {JSON.stringify(error, null, 2)}</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -315,6 +329,15 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
         <p className="text-muted-foreground mb-4">
           Start logging foods to see them here
         </p>
+        {debugMode && (
+          <div className="mt-4 text-xs text-muted-foreground">
+            <p>Debug: user?.id = {user?.id}</p>
+            <p>Debug: savedFoods.length = {savedFoods.length}</p>
+            <p>Debug: optimisticFoods.length = {optimisticFoods.length}</p>
+            <p>Debug: isLoading = {String(isLoading)}</p>
+            <p>Debug: isError = {String(isError)}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -324,7 +347,25 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Saved Foods</h3>
+        {debugMode && (
+          <div className="text-xs text-muted-foreground">
+            Debug: {displayFoods.length} foods
+          </div>
+        )}
       </div>
+      
+      {debugMode && (
+        <div className="bg-muted/50 p-2 rounded text-xs text-muted-foreground mb-4">
+          <p><strong>Debug Info:</strong></p>
+          <p>• user?.id: {user?.id}</p>
+          <p>• isLoading: {String(isLoading)}</p>
+          <p>• isError: {String(isError)}</p>
+          <p>• savedFoods.length: {savedFoods.length}</p>
+          <p>• optimisticFoods.length: {optimisticFoods.length}</p>
+          <p>• displayFoods.length: {displayFoods.length}</p>
+          {error && <p>• error: {error.message}</p>}
+        </div>
+      )}
       
       {displayFoods.map((food) => (
         <Card key={food.id} className="hover:shadow-md transition-shadow cursor-pointer">
