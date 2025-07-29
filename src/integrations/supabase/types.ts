@@ -574,6 +574,42 @@ export type Database = {
           },
         ]
       }
+      custom_routines: {
+        Row: {
+          created_at: string
+          duration: string
+          id: string
+          notes: string | null
+          routine_type: string
+          title: string
+          updated_at: string
+          user_id: string
+          weekly_plan: Json
+        }
+        Insert: {
+          created_at?: string
+          duration: string
+          id?: string
+          notes?: string | null
+          routine_type?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          weekly_plan?: Json
+        }
+        Update: {
+          created_at?: string
+          duration?: string
+          id?: string
+          notes?: string | null
+          routine_type?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          weekly_plan?: Json
+        }
+        Relationships: []
+      }
       daily_nutrition_targets: {
         Row: {
           calculated_at: string
