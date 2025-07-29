@@ -12,6 +12,7 @@ import { WorkoutConsistencyChart } from '@/components/analytics/WorkoutConsisten
 import { StreakTrackerCard } from '@/components/analytics/StreakTrackerCard';
 import { SmartTrendInsightsCard } from '@/components/analytics/SmartTrendInsightsCard';
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
+import { PerformanceChartsSection } from '@/components/analytics/PerformanceChartsSection';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useWeeklyExerciseInsights } from '@/hooks/useWeeklyExerciseInsights';
 
@@ -216,6 +217,9 @@ return (
 
     {/* Monthly Exercise Report */}
     <MonthlyExerciseReportCard />
+
+    {/* Performance Charts Section */}
+    <PerformanceChartsSection />
   </div>
 );
 
