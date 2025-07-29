@@ -39,7 +39,7 @@ import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
 import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
-import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
+
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 
 // Utility function to get current user preferences from localStorage
@@ -1058,13 +1058,6 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* AI Quick Predictions Section - Mobile Optimized */}
-        <div className="bg-gradient-to-br from-slate-900/90 via-blue-900/80 to-indigo-900/90 rounded-3xl p-6 backdrop-blur-sm border border-blue-200/20">
-          <SavedFoodsTab 
-            onFoodSelect={addFood}
-            isAIQuickPredictions={true}
-          />
-        </div>
 
         {/* Enhanced Net Calorie Card */}
         <Card 
