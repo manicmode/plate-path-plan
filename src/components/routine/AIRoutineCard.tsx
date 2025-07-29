@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +31,6 @@ interface AIRoutineCardProps {
 }
 
 export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, onDelete }) => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -80,7 +78,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
       toast.success('Routine started! 🚀');
       // Navigate to routine execution
-      navigate(`/routine-execution?routineId=${routine.id}&type=ai`);
+      window.location.href = `/routine-execution?routineId=${routine.id}&type=ai`;
     } catch (error) {
       console.error('Error starting routine:', error);
       toast.error('Failed to start routine');
@@ -88,7 +86,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
   };
 
   const handleContinueWorkout = () => {
-    navigate(`/routine-execution?routineId=${routine.id}&type=ai`);
+    window.location.href = `/routine-execution?routineId=${routine.id}&type=ai`;
   };
 
   const handleRegenerateDay = async () => {

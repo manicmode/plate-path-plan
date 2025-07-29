@@ -8,7 +8,6 @@ import { ArrowLeft, Save, Trophy, Calendar, Clock } from 'lucide-react';
 import { WeekSelector } from '@/components/routine/WeekSelector';
 import { DayCard } from '@/components/routine/DayCard';
 import { WorkoutDetailModal } from '@/components/routine/WorkoutDetailModal';
-import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -51,7 +50,6 @@ export default function AIRoutineViewer() {
   const [weekData, setWeekData] = useState<WeekData[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutDay | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
 
   useEffect(() => {
     loadRoutineData();
@@ -62,47 +60,37 @@ export default function AIRoutineViewer() {
 
     try {
       setIsLoading(true);
-      console.log('AIRoutineViewer: Loading routine data for user:', user.id);
       
-      // First try to get the user's active AI routine
-      const { data: activeRoutine, error: activeError } = await supabase
+      // Get the user's active AI routine
+      const { data: routine, error } = await supabase
         .from('ai_routines')
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .single();
 
-      if (activeRoutine) {
-        console.log('AIRoutineViewer: Found active routine:', activeRoutine.id);
-        setRoutineData(activeRoutine);
-        generateWeekData(activeRoutine);
+      if (error) {
+        console.error('Error loading routine:', error);
+        toast({
+          title: "No Routine Found",
+          description: "Generate a new AI routine from the Exercise Hub first.",
+          variant: "destructive"
+        });
+        navigate('/exercise-hub');
         return;
       }
 
-      // If no active routine, try to find any routine
-      const { data: anyRoutine, error: anyError } = await supabase
-        .from('ai_routines')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (anyRoutine) {
-        console.log('AIRoutineViewer: Found inactive routine:', anyRoutine.id);
-        setRoutineData(anyRoutine);
-        generateWeekData(anyRoutine);
-        return;
-      }
-
-      // No routines found at all
-      console.log('AIRoutineViewer: No routines found for user');
-      setRoutineData(null);
+      setRoutineData(routine);
+      generateWeekData(routine);
     } catch (error) {
-      console.error('Error loading routine data:', error);
-      setRoutineData(null);
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your routine data.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -265,101 +253,18 @@ export default function AIRoutineViewer() {
     );
   }
 
-  const handleActivateRoutine = async (routineId: string) => {
-    if (!user?.id) return;
-    
-    try {
-      // Deactivate all existing routines
-      await supabase
-        .from('ai_routines')
-        .update({ is_active: false })
-        .eq('user_id', user.id);
-      
-      // Activate the selected routine
-      const { error } = await supabase
-        .from('ai_routines')
-        .update({ is_active: true })
-        .eq('id', routineId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Routine Activated! 🚀",
-        description: "This routine is now your active workout plan.",
-      });
-      
-      // Reload data to reflect changes
-      loadRoutineData();
-    } catch (error) {
-      console.error('Error activating routine:', error);
-      toast({
-        title: "Error",
-        description: "Failed to activate routine.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleGenerateNewRoutine = () => {
-    console.log('AIRoutineViewer: Generate New Routine button clicked');
-    setShowPreferencesModal(true);
-  };
-
-  const handleRoutineCreated = async (newRoutine: any) => {
-    console.log('AIRoutineViewer: New routine created:', newRoutine);
-    // Reload routine data to show the new routine
-    await loadRoutineData();
-    setShowPreferencesModal(false);
-  };
-
   if (!routineData) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-bold mb-2">No Routine Found</h2>
+            <p className="text-muted-foreground mb-4">Generate a new AI routine to get started!</p>
+            <Button onClick={() => navigate('/exercise-hub')}>
+              Go to Exercise Hub
             </Button>
-          </div>
-
-          {/* No Active Routine Found */}
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="max-w-lg mx-auto shadow-lg">
-              <CardContent className="pt-8 pb-6 text-center space-y-6">
-                <div className="text-6xl mb-4">🏋️‍♂️</div>
-                <div>
-                  <h2 className="text-2xl font-bold mb-2">No Active Routine Found</h2>
-                  <p className="text-muted-foreground mb-6">
-                    You can create a new one below or view past routines.
-                  </p>
-                </div>
-                
-                <div className="space-y-3">
-                  <Button 
-                    onClick={handleGenerateNewRoutine}
-                    className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-                  >
-                    Generate New Routine
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={() => navigate('/exercise-hub')}
-                    className="w-full"
-                  >
-                    View Past Routines
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -378,40 +283,23 @@ export default function AIRoutineViewer() {
             Back
           </Button>
           
-          <div className="flex items-center gap-2">
-            {!routineData?.is_active && (
-              <Button
-                onClick={() => handleActivateRoutine(routineData.id)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Trophy className="h-4 w-4" />
-                Activate This Routine
-              </Button>
-            )}
-            <Button
-              onClick={handleSaveAsFavorite}
-              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-            >
-              <Save className="h-4 w-4" />
-              Save as Favorite
-            </Button>
-          </div>
+          <Button
+            onClick={handleSaveAsFavorite}
+            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+          >
+            <Save className="h-4 w-4" />
+            Save as Favorite
+          </Button>
         </div>
 
         {/* Title Section */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {routineData?.routine_name || 'My 8-Week Workout Plan'}
+            My 8-Week Workout Plan
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Tap each day to see details or regenerate a workout 💪
           </p>
-          {!routineData?.is_active && (
-            <Badge variant="outline" className="text-orange-600 border-orange-300">
-              Inactive Routine
-            </Badge>
-          )}
           {routineData && (
             <div className="flex justify-center gap-4 mt-4">
               <Badge variant="secondary" className="flex items-center gap-1">
@@ -512,13 +400,6 @@ export default function AIRoutineViewer() {
             onMarkComplete={(dayData) => handleMarkComplete(dayData, selectedWeek)}
           />
         )}
-
-        {/* Workout Preferences Modal */}
-        <WorkoutPreferencesModal
-          isOpen={showPreferencesModal}
-          onClose={() => setShowPreferencesModal(false)}
-          onRoutineCreated={handleRoutineCreated}
-        />
       </div>
     </div>
   );
