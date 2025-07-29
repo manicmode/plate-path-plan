@@ -99,7 +99,7 @@ serve(async (req) => {
           max_tokens: 4000
         }),
       }),
-      25000 // 25 second timeout
+      60000 // 60 second timeout
     );
 
     if (!response.ok) {
