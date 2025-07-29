@@ -77,6 +77,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_nudges: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          nudge_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          nudge_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          nudge_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_predictions: {
         Row: {
           confidence: number | null
