@@ -20,7 +20,7 @@ const RecoveryCoachSection = () => {
             </div>
           </div>
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mb-2`}>
-            🧘 Recovery Coach
+            Recovery Coach
           </h1>
           <p className={`text-orange-600 dark:text-orange-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>
             Your personal recovery guide, powered by AI
