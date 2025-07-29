@@ -84,6 +84,7 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
 
     try {
       setLoading(true);
+      console.log('Starting routine generation with preferences:', formData);
       
       // Generate routine plan using AI
       const { data: planData, error: planError } = await supabase.functions.invoke('generate-routine-plan', {
@@ -99,11 +100,17 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
         }
       });
 
-      if (planError) throw planError;
+      if (planError) {
+        console.error('Edge function error:', planError);
+        throw planError;
+      }
       
       if (!planData?.success || !planData?.plan) {
-        throw new Error('Failed to generate routine plan');
+        console.error('Invalid plan data:', planData);
+        throw new Error('Routine generation failed. Please try again.');
       }
+
+      console.log('Generated plan received, saving to database...');
 
       // Save the generated routine to database
       const { data: routine, error: saveError } = await supabase
@@ -118,12 +125,17 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
           fitness_level: 'intermediate',
           equipment_needed: [formData.equipment],
           routine_data: planData.plan,
-          is_active: false
+          is_active: true
         })
         .select()
         .single();
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('Database save error:', saveError);
+        throw saveError;
+      }
+
+      console.log('Routine saved successfully:', routine);
 
       toast.success('🎉 Your 8-Week Routine is Ready!', {
         description: 'Your personalized workout plan has been generated successfully.'
@@ -143,7 +155,8 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
 
     } catch (error) {
       console.error('Error generating routine:', error);
-      toast.error('Failed to generate routine. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate routine. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -180,8 +193,12 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
           {/* Fitness Goal */}
           <div className="space-y-3">
             <Label className="text-white font-medium">Fitness Goal</Label>
-            <Select value={formData.fitnessGoal} onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessGoal: value }))}>
-              <SelectTrigger className="h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+            <Select 
+              value={formData.fitnessGoal} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessGoal: value }))}
+              disabled={loading}
+            >
+              <SelectTrigger className={`h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Select your goal" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 text-white z-50">
@@ -197,8 +214,12 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
           {/* Training Split Style */}
           <div className="space-y-3">
             <Label className="text-white font-medium">Training Split Style</Label>
-            <Select value={formData.trainingSplit} onValueChange={(value) => setFormData(prev => ({ ...prev, trainingSplit: value }))}>
-              <SelectTrigger className="h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+            <Select 
+              value={formData.trainingSplit} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, trainingSplit: value }))}
+              disabled={loading}
+            >
+              <SelectTrigger className={`h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Select training style" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 text-white z-50">
@@ -214,8 +235,12 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
           {/* Workout Time per Day */}
           <div className="space-y-3">
             <Label className="text-white font-medium">Workout Time per Day</Label>
-            <Select value={formData.workoutTime} onValueChange={(value) => setFormData(prev => ({ ...prev, workoutTime: value }))}>
-              <SelectTrigger className="h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+            <Select 
+              value={formData.workoutTime} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, workoutTime: value }))}
+              disabled={loading}
+            >
+              <SelectTrigger className={`h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Select duration" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 text-white z-50">
@@ -231,8 +256,12 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
           {/* Equipment Available */}
           <div className="space-y-3">
             <Label className="text-white font-medium">Equipment Available</Label>
-            <Select value={formData.equipment} onValueChange={(value) => setFormData(prev => ({ ...prev, equipment: value }))}>
-              <SelectTrigger className="h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+            <Select 
+              value={formData.equipment} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, equipment: value }))}
+              disabled={loading}
+            >
+              <SelectTrigger className={`h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Select equipment" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 text-white z-50">
@@ -248,8 +277,12 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
           {/* Weekly Frequency */}
           <div className="space-y-3">
             <Label className="text-white font-medium">Weekly Frequency</Label>
-            <Select value={formData.weeklyFrequency} onValueChange={(value) => setFormData(prev => ({ ...prev, weeklyFrequency: value }))}>
-              <SelectTrigger className="h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+            <Select 
+              value={formData.weeklyFrequency} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, weeklyFrequency: value }))}
+              disabled={loading}
+            >
+              <SelectTrigger className={`h-12 bg-gray-800 border-gray-600 text-white focus:border-green-500 focus:ring-green-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Select frequency" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600 text-white z-50">

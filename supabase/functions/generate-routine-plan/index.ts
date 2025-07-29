@@ -46,6 +46,8 @@ serve(async (req) => {
       preferred_routine_name
     });
 
+    console.log('Sending request to OpenAI API...');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -53,7 +55,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -66,21 +68,42 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      console.error('OpenAI API error:', response.status, response.statusText);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('OpenAI API response received, parsing...');
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error('Invalid OpenAI response structure:', data);
+      throw new Error('Invalid response from OpenAI API');
+    }
+
     const generatedPlan = data.choices[0].message.content;
 
     // Parse the JSON response
     let routinePlan;
     try {
+      if (!generatedPlan || generatedPlan.trim() === '') {
+        throw new Error('Empty response from OpenAI');
+      }
+      
       routinePlan = JSON.parse(generatedPlan);
+      console.log('Successfully parsed routine plan:', routinePlan.routine_name);
+      
+      // Validate that the plan has required structure
+      if (!routinePlan.routine_name || !routinePlan.weeks) {
+        throw new Error('Invalid routine plan structure');
+      }
+      
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', parseError);
+      console.error('Raw response:', generatedPlan);
       throw new Error('Invalid JSON response from AI');
     }
 
+    console.log('Routine generation completed successfully');
     return new Response(JSON.stringify({
       success: true,
       plan: routinePlan
