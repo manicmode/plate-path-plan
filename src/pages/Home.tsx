@@ -1009,59 +1009,6 @@ const Home = () => {
           </CardContent>
         </Card>
 
-        {/* Smart Quick-Log Dropdown Section - Same width as Log Food button */}
-        <Collapsible open={isQuickLogExpanded} onOpenChange={setIsQuickLogExpanded}>
-          <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
-            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-              {/* Quick Log Actions - Collapsed State */}
-              <div className="space-y-4">
-
-                {/* Increased spacing before expand toggle */}
-                <div className="pt-4">
-                  <CollapsibleTrigger asChild>
-                    <div className="flex justify-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                      >
-                        {isQuickLogExpanded ? (
-                          <>
-                            <ChevronUp className="h-4 w-4 mr-1" />
-                            Show less
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-4 w-4 mr-1" />
-                            Show more
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CollapsibleTrigger>
-                </div>
-              </div>
-
-              {/* Expanded Content */}
-              <CollapsibleContent className="mt-4">
-                <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-600">
-                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Recent & Saved Logs
-                  </h5>
-                  <div className="space-y-3">
-                    <RecentFoodsTab 
-                      onFoodSelect={handleFoodSelect}
-                      onBarcodeSelect={(barcode) => {
-                        console.log('Barcode selected:', barcode);
-                        // Handle barcode selection if needed
-                      }}
-                    />
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </CardContent>
-          </Card>
-        </Collapsible>
 
 
         {/* Secondary Actions: Hydration & Supplements */}
