@@ -1037,30 +1037,24 @@ export type Database = {
       }
       meditation_streaks: {
         Row: {
-          created_at: string
-          current_streak: number
-          id: string
+          current_streak: number | null
           last_completed_date: string | null
-          total_sessions: number
-          updated_at: string
+          total_sessions: number | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
-          current_streak?: number
-          id?: string
+          current_streak?: number | null
           last_completed_date?: string | null
-          total_sessions?: number
-          updated_at?: string
+          total_sessions?: number | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
-          current_streak?: number
-          id?: string
+          current_streak?: number | null
           last_completed_date?: string | null
-          total_sessions?: number
-          updated_at?: string
+          total_sessions?: number | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
