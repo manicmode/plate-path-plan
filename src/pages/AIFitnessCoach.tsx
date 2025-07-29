@@ -302,22 +302,18 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-4 space-y-8 pb-20">
         {/* Hero Section */}
-        <div className="text-center space-y-4 py-8">
+        <div className="text-center py-6">
           <div className="flex justify-center mb-4">
             <div className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-600 rounded-full flex items-center justify-center neon-glow animate-float shadow-2xl`}>
               <Dumbbell className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} text-white animate-pulse`} />
             </div>
           </div>
-          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent`}>
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2`}>
             AI Fitness Coach
           </h1>
-          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-indigo-600 dark:text-indigo-400 font-semibold max-w-2xl mx-auto`}>
+          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-indigo-600 dark:text-indigo-400 font-semibold max-w-2xl mx-auto mb-6`}>
             Your personal fitness guide, powered by AI
           </p>
-        </div>
-
-        {/* Level & XP Progress Bar */}
-        <div className="mb-6">
           <LevelProgressBar theme="exercise" />
         </div>
 
