@@ -2752,6 +2752,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_levels: {
+        Row: {
+          current_xp: number
+          last_leveled_up_at: string | null
+          level: number
+          user_id: string
+          xp_to_next_level: number
+        }
+        Insert: {
+          current_xp?: number
+          last_leveled_up_at?: string | null
+          level?: number
+          user_id: string
+          xp_to_next_level?: number
+        }
+        Update: {
+          current_xp?: number
+          last_leveled_up_at?: string | null
+          level?: number
+          user_id?: string
+          xp_to_next_level?: number
+        }
+        Relationships: []
+      }
       user_notifications: {
         Row: {
           created_at: string
@@ -3583,6 +3607,42 @@ export type Database = {
           },
         ]
       }
+      workout_xp_logs: {
+        Row: {
+          base_xp: number
+          bonus_xp: number
+          created_at: string | null
+          id: string
+          performance_score: number | null
+          reason: string | null
+          routine_id: string | null
+          total_xp: number
+          user_id: string
+        }
+        Insert: {
+          base_xp?: number
+          bonus_xp?: number
+          created_at?: string | null
+          id?: string
+          performance_score?: number | null
+          reason?: string | null
+          routine_id?: string | null
+          total_xp?: number
+          user_id: string
+        }
+        Update: {
+          base_xp?: number
+          bonus_xp?: number
+          created_at?: string | null
+          id?: string
+          performance_score?: number | null
+          reason?: string | null
+          routine_id?: string | null
+          total_xp?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       yearly_exercise_reports: {
         Row: {
           created_at: string
@@ -3926,6 +3986,15 @@ export type Database = {
       add_friend_from_contact: {
         Args: { contact_user_id: string }
         Returns: boolean
+      }
+      add_workout_xp: {
+        Args: {
+          p_user_id: string
+          p_routine_id: string
+          p_score: number
+          p_reason?: string
+        }
+        Returns: undefined
       }
       assign_monthly_recovery_rankings: {
         Args: { target_month_year?: string }
