@@ -117,7 +117,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
   const currentData = getCurrentData();
 
   return (
-    <div className={`bg-slate-100/80 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
+    <div className={`bg-gradient-to-br from-background/95 to-background/90 dark:from-gray-900/95 dark:to-gray-800/90 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-gradient-to-r from-primary/80 to-primary/60 rounded-xl shadow-sm">
@@ -140,7 +140,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
             onClick={() => setActiveTab('smart')}
             className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
               activeTab === 'smart' 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' 
+                ? 'bg-primary text-primary-foreground shadow-md' 
                 : 'text-muted-foreground hover:bg-muted/80'
             }`}
           >
@@ -150,7 +150,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
             onClick={() => setActiveTab('saved')}
             className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
               activeTab === 'saved' 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' 
+                ? 'bg-primary text-primary-foreground shadow-md' 
                 : 'text-muted-foreground hover:bg-muted/80'
             }`}
           >
@@ -160,7 +160,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
             onClick={() => setActiveTab('recent')}
             className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
               activeTab === 'recent' 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' 
+                ? 'bg-primary text-primary-foreground shadow-md' 
                 : 'text-muted-foreground hover:bg-muted/80'
             }`}
           >
@@ -175,7 +175,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
           {currentData.map((food, index) => (
             <div
               key={index}
-              className="bg-card dark:bg-gradient-to-br dark:from-slate-800/80 dark:to-slate-700/60 dark:shadow-lg dark:shadow-slate-900/20 rounded-2xl p-4 border border-border/30 shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in hover:border-border/50 flex flex-col min-h-[140px]"
+              className="bg-card dark:bg-card/95 rounded-2xl p-4 border border-border/30 shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in hover:border-border/50 flex flex-col min-h-[140px]"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               {/* Food Info */}
@@ -194,7 +194,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
               {/* Tap to Log Button */}
               <button
                 onClick={() => handleFoodLog(food)}
-                className={`w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium rounded-full ${isMobile ? 'py-2 text-xs' : 'py-2.5 text-sm'} transition-all duration-300 transform hover:scale-105 shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 mt-auto`}
+                className={`w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground font-medium rounded-full ${isMobile ? 'py-2 text-xs' : 'py-2.5 text-sm'} transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg mt-auto`}
               >
                 ✅ Tap to log
               </button>
