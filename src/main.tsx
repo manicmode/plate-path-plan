@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/auth";
 import { NutritionProvider } from "./contexts/NutritionContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
 
 // Apply security headers on app initialization
@@ -120,6 +121,17 @@ if (isIOS && isSafari) {
   }
 }
 
+// Create QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false, // Reduce unnecessary refetches
+    },
+  },
+});
+
 // Conditionally wrap with StrictMode for non-mobile devices
 console.log('Rendering app...', { strictMode: !isMobile });
 
@@ -140,17 +152,19 @@ root.render(
           </div>
         </div>
       }>
-        <NutritionProvider>
-          <NotificationProvider>
-            {isMobile ? (
-              <App />
-            ) : (
-              <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <NutritionProvider>
+            <NotificationProvider>
+              {isMobile ? (
                 <App />
-              </StrictMode>
-            )}
-          </NotificationProvider>
-        </NutritionProvider>
+              ) : (
+                <StrictMode>
+                  <App />
+                </StrictMode>
+              )}
+            </NotificationProvider>
+          </NutritionProvider>
+        </QueryClientProvider>
       </ErrorBoundary>
     </AuthProvider>
   </ErrorBoundary>
