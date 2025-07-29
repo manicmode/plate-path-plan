@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Check, RotateCcw, Lock, Clock, Target, Zap } from 'lucide-react';
+import { Check, RotateCcw, Lock, Clock, Target, Zap, Play } from 'lucide-react';
 
 interface WorkoutDay {
   day: number;
@@ -49,6 +50,7 @@ export const WorkoutDetailModal = ({
   onClose, 
   onMarkComplete 
 }: WorkoutDetailModalProps) => {
+  const navigate = useNavigate();
   const { showCompletionModal } = useWorkoutCompletion();
   
   if (!workout.workout) return null;
@@ -209,12 +211,20 @@ export const WorkoutDetailModal = ({
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <Button
+              onClick={() => {
+                onClose();
+                navigate(`/routine-player/${week}/${workout.day}`);
+              }}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Start Workout
+            </Button>
+            
+            <Button
               onClick={handleMarkComplete}
-              className={`flex-1 ${
-                workout.isCompleted
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-primary hover:bg-primary/90'
-              }`}
+              variant="outline"
+              className="flex-1"
             >
               <Check className="h-4 w-4 mr-2" />
               {workout.isCompleted ? 'Mark Incomplete' : 'Mark Complete'}
