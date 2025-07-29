@@ -117,7 +117,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
   const currentData = getCurrentData();
 
   return (
-    <div className={`bg-gradient-to-br from-background/95 to-background/90 dark:from-gray-900/95 dark:to-gray-800/90 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
+    <div className={`bg-slate-100/80 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-gradient-to-r from-primary/80 to-primary/60 rounded-xl shadow-sm">
