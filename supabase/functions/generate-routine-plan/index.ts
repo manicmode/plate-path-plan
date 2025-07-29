@@ -60,31 +60,55 @@ serve(async (req) => {
       equipment_available
     });
 
-    const prompt = buildRoutinePrompt({
-      routine_goal,
-      split_type,
-      days_per_week,
-      available_time_per_day,
-      fitness_level,
-      equipment_available,
-      preferred_routine_name
-    });
+    // Build simplified prompt
+    const userPrompt = `Create a 1-week workout plan:
+- Goal: ${routine_goal}
+- Split: ${split_type} 
+- Equipment: ${equipment_available}
+- Frequency: ${days_per_week} days/week${available_time_per_day ? `\n- Time: ${available_time_per_day} minutes/session` : ''}`;
+
+    const systemPrompt = `You are an expert fitness trainer. Based on the user's fitness goal, split style, equipment, and weekly frequency, return a 1-week workout plan in JSON format like this:
+
+{
+  "week": [
+    {
+      "day": "Day 1",
+      "muscle_group": "Chest and Triceps",
+      "exercises": [
+        { "name": "Bench Press", "sets": 4, "reps": "8-10" },
+        { "name": "Incline Dumbbell Press", "sets": 3, "reps": "10-12" }
+      ]
+    },
+    {
+      "day": "Day 2",
+      "muscle_group": "Back and Biceps",
+      "exercises": [
+        { "name": "Pull-Ups", "sets": 3, "reps": "To failure" },
+        { "name": "Barbell Row", "sets": 4, "reps": "8-10" }
+      ]
+    }
+  ]
+}
+
+Return only the JSON as shown above. No intro, no explanations, no markdown, no bullet points, no emojis.`;
 
     const messages = [
-      {
-        role: 'system',
-        content: `You are an expert fitness trainer and routine designer. Create comprehensive, progressive workout routines that are safe, effective, and tailored to the user's specific needs. Always provide proper progression, rest periods, and exercise variations. Format your response as valid JSON only - no additional text.`
-      },
-      { role: 'user', content: prompt }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
     ];
+
+    // 🧠 DIAGNOSTIC: Log final prompt length
+    const totalPromptLength = systemPrompt.length + userPrompt.length;
+    console.log(`🧠 Final prompt length (characters): ${totalPromptLength}`);
 
     const startTime = Date.now();
     console.log("📤 Sending to OpenAI:", {
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       temperature: 0.7,
-      max_tokens: 4000,
-      promptLength: prompt.length,
-      messages: messages
+      max_tokens: 1500,
+      promptLength: totalPromptLength,
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPrompt.length
     });
 
     const response = await withTimeout(
@@ -95,10 +119,10 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           messages: messages,
           temperature: 0.7,
-          max_tokens: 4000
+          max_tokens: 1500
         }),
       }),
       60000 // 60 second timeout
@@ -122,8 +146,11 @@ serve(async (req) => {
     const duration = endTime - startTime;
     console.log(`✅ OpenAI responded in ${duration}ms`);
     
+    // 📊 DIAGNOSTIC: Log token usage and duration
     if (data.usage) {
       console.log("📊 Token usage:", data.usage);
+      console.log(`⏱️ Request duration: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
+      console.log(`🎯 Tokens per second: ${(data.usage.total_tokens / (duration / 1000)).toFixed(1)}`);
     }
     
     console.log('✅ OpenAI API response received, parsing...');
@@ -141,7 +168,6 @@ serve(async (req) => {
 
     const generatedPlan = data.choices[0].message.content;
     console.log('📝 Raw response length:', generatedPlan?.length || 0);
-    console.log("🔹 First 500 characters of response:\n", generatedPlan?.slice(0, 500));
 
     // Parse the JSON response
     let routinePlan;
@@ -158,13 +184,13 @@ serve(async (req) => {
       }
       
       routinePlan = JSON.parse(generatedPlan);
-      console.log('✅ Successfully parsed routine plan:', routinePlan.routine_name);
+      console.log('✅ Successfully parsed routine plan');
       
       // Validate that the plan has required structure
-      if (!routinePlan.routine_name || !routinePlan.weeks) {
+      if (!routinePlan.week || !Array.isArray(routinePlan.week)) {
         console.error('❌ Invalid routine plan structure:', { 
-          hasName: !!routinePlan.routine_name,
-          hasWeeks: !!routinePlan.weeks
+          hasWeek: !!routinePlan.week,
+          isWeekArray: Array.isArray(routinePlan.week)
         });
         return new Response(JSON.stringify({
           success: false,
