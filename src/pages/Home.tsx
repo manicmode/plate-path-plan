@@ -1063,34 +1063,6 @@ const Home = () => {
           </Card>
         </Collapsible>
 
-        {/* AI Quick Predictions */}
-        <Card className="border-0 rounded-3xl overflow-hidden bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500">
-          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-white" />
-                  </div>
-                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-semibold text-gray-800 dark:text-gray-200`}>
-                    AI Quick Predictions
-                  </h4>
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-1">
-                  <Clock className="h-3 w-3" />
-                  <span>Smart suggestions</span>
-                </div>
-              </div>
-
-              {/* Smart Suggestions - Using Real Data */}
-              <div className="space-y-3">
-                <SavedFoodsTab 
-                  onFoodSelect={handleFoodSelect}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Secondary Actions: Hydration & Supplements */}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
