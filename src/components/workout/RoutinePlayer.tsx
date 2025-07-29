@@ -12,7 +12,10 @@ import {
   Timer, 
   Dumbbell,
   CheckCircle,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { useSound } from '@/contexts/SoundContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,6 +82,8 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const [activeWorkout, setActiveWorkout] = useState<typeof workout>(workout);
+  const [showAdaptationInfo, setShowAdaptationInfo] = useState(false);
+  const [currentAdaptation, setCurrentAdaptation] = useState<any>(null);
 
   // Check for AI adaptations and load adapted workout if available
   useEffect(() => {
@@ -88,12 +93,51 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     
     if (adaptation && adaptation.adapted_workout_data) {
       console.log('[ADAPTATION] Using AI-adapted workout for week', week, 'day', day);
+      console.log('[ADAPTATION] Badge shown for adaptation type:', adaptation.adaptation_type);
       setActiveWorkout(adaptation.adapted_workout_data);
+      setCurrentAdaptation(adaptation);
     } else {
       console.log('[ADAPTATION] No AI adaptation found — loading original workout.');
       setActiveWorkout(workout);
+      setCurrentAdaptation(null);
     }
   }, [workout, week, day, user, getAdaptationForDay]);
+
+  // Helper functions for adaptation badge
+  const getAdaptationBadgeText = (adaptationType: string): string => {
+    switch (adaptationType) {
+      case 'increase_intensity':
+        return '🔥 Boosted';
+      case 'decrease_difficulty':
+        return '💤 Eased';
+      case 'adjust_rest':
+        return '⏱️ Tuned';
+      case 'maintain_current':
+        return '✅ Stable';
+      default:
+        return '🧠 Adapted';
+    }
+  };
+
+  const getAdaptationFullText = (adaptationType: string): string => {
+    switch (adaptationType) {
+      case 'increase_intensity':
+        return 'Intensity Increased';
+      case 'decrease_difficulty':
+        return 'Difficulty Reduced';
+      case 'adjust_rest':
+        return 'Rest Time Adjusted';
+      case 'maintain_current':
+        return 'Current Level Maintained';
+      default:
+        return 'Workout Adapted';
+    }
+  };
+
+  const handleAdaptationBadgeClick = () => {
+    setShowAdaptationInfo(!showAdaptationInfo);
+    console.log('[ADAPTATION] Info box', showAdaptationInfo ? 'collapsed' : 'expanded');
+  };
 
   // Generate workout steps from exercise data
   useEffect(() => {
@@ -382,12 +426,72 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         {/* Header */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">{activeWorkout?.title || workout.title}</CardTitle>
+            <div className="relative">
+              <CardTitle className="text-center">{activeWorkout?.title || workout.title}</CardTitle>
+              
+              {/* AI Adaptation Badge */}
+              {currentAdaptation && (
+                <div className="absolute top-0 right-0">
+                  <Badge 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-950/30 dark:to-blue-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                    onClick={handleAdaptationBadgeClick}
+                  >
+                    {getAdaptationBadgeText(currentAdaptation.adaptation_type)}
+                    {showAdaptationInfo ? (
+                      <ChevronUp className="h-3 w-3 ml-1" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    )}
+                  </Badge>
+                </div>
+              )}
+            </div>
+            
             <div className="text-center">
               <Badge variant="secondary">
                 Week {week} • Day {day}
               </Badge>
             </div>
+            
+            {/* Expandable Adaptation Info Box */}
+            {currentAdaptation && showAdaptationInfo && (
+              <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border border-purple-200 dark:border-purple-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span className="font-semibold text-purple-800 dark:text-purple-200">
+                    {getAdaptationFullText(currentAdaptation.adaptation_type)}
+                  </span>
+                </div>
+                
+                {currentAdaptation.ai_coach_feedback && (
+                  <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">
+                    {currentAdaptation.ai_coach_feedback}
+                  </p>
+                )}
+                
+                {currentAdaptation.performance_metrics && (
+                  <div className="text-xs text-purple-600 dark:text-purple-400 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Completion Rate:</span>
+                      <span>{Math.round((currentAdaptation.performance_metrics.completed_sets || 0) / Math.max(1, currentAdaptation.performance_metrics.total_sets || 1) * 100)}%</span>
+                    </div>
+                    {currentAdaptation.performance_metrics.difficulty_rating && (
+                      <div className="flex justify-between">
+                        <span>Difficulty:</span>
+                        <span className="capitalize">{currentAdaptation.performance_metrics.difficulty_rating.replace('_', ' ')}</span>
+                      </div>
+                    )}
+                    {currentAdaptation.performance_metrics.skipped_steps > 0 && (
+                      <div className="flex justify-between">
+                        <span>Skipped Steps:</span>
+                        <span>{currentAdaptation.performance_metrics.skipped_steps}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </CardHeader>
         </Card>
 

@@ -389,6 +389,16 @@ export const WorkoutCompletionModal = () => {
           <div className="space-y-3">
             <h3 className="text-xl font-semibold text-foreground">💬 Coach Says</h3>
             <MotivationCard className="border-0 shadow-none bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30" />
+            
+            {/* Future Adaptation Message for AI Routine Workouts */}
+            {workoutData.workoutType === 'ai_routine' && difficultyFeedback && (
+              <div className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-lg border border-blue-200 dark:border-purple-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <span className="text-lg">🧠</span>
+                  Your next workout will be automatically adapted based on today's performance.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
