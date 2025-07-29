@@ -47,6 +47,16 @@ interface MonthlyReportData {
     missedDays: number;
     dailyData: Array<{date: string, count: number}>;
   };
+  recovery: {
+    total_sessions: number;
+    avg_mood: number;
+    avg_stress: number;
+    top_recovery_types: Array<{type: string, count: number}>;
+    best_streak: number;
+    recovery_score: number;
+    insights: string[];
+    dailyData: Array<{date: string, sessions: number, mood: number, stress: number}>;
+  };
   toxins: {
     flaggedFoodCount: number;
     severityBreakdown: Record<string, number>;
@@ -64,6 +74,7 @@ interface MonthlyReportData {
     exercise: number;
     hydration: number;
     supplements: number;
+    recovery: number;
     overall: number;
   };
   monthStats: {
@@ -285,6 +296,22 @@ async function collectUserMonthData(supabase: any, userId: string, startDate: Da
     .lte('created_at', endDate.toISOString())
     .order('created_at');
 
+  // Fetch recovery session logs
+  const { data: recoveryLogs } = await supabase
+    .from('recovery_session_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('completed_at', startDate.toISOString())
+    .lte('completed_at', endDate.toISOString())
+    .order('completed_at');
+
+  // Fetch meditation streaks for recovery data
+  const { data: meditationStreak } = await supabase
+    .from('meditation_streaks')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
   // Process all data
   const nutritionData = processNutritionData(nutritionLogs || [], profile, getDaysInMonth(startDate));
   const moodData = processMoodData(moodLogs || []);
@@ -292,6 +319,7 @@ async function collectUserMonthData(supabase: any, userId: string, startDate: Da
   const supplementData = processSupplementData(supplementLogs || [], getDaysInMonth(startDate));
   const exerciseData = processExerciseData(exerciseLogs || []);
   const toxinData = processToxinData(toxinDetections || []);
+  const recoveryData = processRecoveryData(recoveryLogs || [], moodLogs || [], meditationStreak, getDaysInMonth(startDate));
 
   // Calculate scores
   const nutritionScore = calculateNutritionScore(nutritionData, profile);
@@ -299,13 +327,15 @@ async function collectUserMonthData(supabase: any, userId: string, startDate: Da
   const exerciseScore = calculateExerciseScore(exerciseData);
   const hydrationScore = calculateHydrationScore(hydrationData);
   const supplementScore = calculateSupplementScore(supplementData);
+  const recoveryScore = calculateRecoveryScore(recoveryData);
   
   const overallScore = (
-    nutritionScore * 0.35 +
-    moodScore * 0.20 +
+    nutritionScore * 0.30 +
+    moodScore * 0.15 +
     exerciseScore * 0.15 +
     hydrationScore * 0.15 +
     supplementScore * 0.10 +
+    recoveryScore * 0.10 +
     (100 - Math.min(toxinData.totalExposure * 10, 50)) * 0.05
   );
 
@@ -320,6 +350,7 @@ async function collectUserMonthData(supabase: any, userId: string, startDate: Da
     exercise: exerciseData,
     hydration: hydrationData,
     supplements: supplementData,
+    recovery: recoveryData,
     toxins: toxinData,
     streaks: {
       nutrition: profile?.current_nutrition_streak || 0,
@@ -333,6 +364,7 @@ async function collectUserMonthData(supabase: any, userId: string, startDate: Da
       exercise: Math.round(exerciseScore),
       hydration: Math.round(hydrationScore),
       supplements: Math.round(supplementScore),
+      recovery: Math.round(recoveryScore),
       overall: Math.round(overallScore)
     },
     monthStats: {
@@ -821,4 +853,142 @@ function generateRecommendations(nutrition: any, mood: any, exercise: any, hydra
   if (nutrition.avgQualityScore < 6) recommendations.push("Choose more whole foods");
   
   return recommendations.slice(0, 4);
+}
+
+function processRecoveryData(recoveryLogs: any[], moodLogs: any[], meditationStreak: any, daysInMonth: number) {
+  console.log(`🧘 Processing recovery data: ${recoveryLogs.length} sessions, ${moodLogs.length} mood entries`);
+
+  const dailyData = getDailyRecoveryData(recoveryLogs, moodLogs, daysInMonth);
+  const totalSessions = recoveryLogs.length;
+  
+  // Calculate average mood and stress from mood logs
+  const avgMood = moodLogs.length > 0 
+    ? moodLogs.reduce((sum, log) => sum + (log.mood || 0), 0) / moodLogs.length
+    : 0;
+  
+  // Use wellness as inverse stress indicator (higher wellness = lower stress)
+  const avgStress = moodLogs.length > 0
+    ? 10 - (moodLogs.reduce((sum, log) => sum + (log.wellness || 5), 0) / moodLogs.length)
+    : 5;
+
+  // Calculate top recovery types
+  const typeCount = new Map();
+  recoveryLogs.forEach(log => {
+    const type = log.category || 'Unknown';
+    typeCount.set(type, (typeCount.get(type) || 0) + 1);
+  });
+
+  const topRecoveryTypes = Array.from(typeCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, count]) => ({ type, count }));
+
+  // Get best streak from meditation data
+  const bestStreak = meditationStreak?.current_streak || 0;
+
+  // Calculate recovery score using weighted formula
+  const sessionScore = Math.min(totalSessions * 2, 30); // Max 30 points for sessions
+  const consistencyScore = Math.min((totalSessions / daysInMonth) * 25, 25); // Max 25 points for consistency  
+  const moodScore = avgMood * 2; // Max 20 points for mood
+  const stressScore = Math.max(0, (10 - avgStress) * 2); // Max 20 points for low stress
+  const streakBonus = Math.min(bestStreak, 5); // Max 5 bonus points for streak
+
+  const recoveryScore = sessionScore + consistencyScore + moodScore + stressScore + streakBonus;
+
+  // Generate insights
+  const insights = generateRecoveryInsights(totalSessions, avgMood, avgStress, topRecoveryTypes, bestStreak);
+
+  return {
+    total_sessions: totalSessions,
+    avg_mood: Math.round(avgMood * 10) / 10,
+    avg_stress: Math.round(avgStress * 10) / 10,
+    top_recovery_types: topRecoveryTypes,
+    best_streak: bestStreak,
+    recovery_score: Math.round(Math.min(100, recoveryScore)),
+    insights,
+    dailyData
+  };
+}
+
+function getDailyRecoveryData(recoveryLogs: any[], moodLogs: any[], daysInMonth: number) {
+  const dailyMap = new Map();
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  // Initialize all days of the month
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = new Date(currentYear, currentMonth, i);
+    const dateStr = date.toISOString().split('T')[0];
+    dailyMap.set(dateStr, { sessions: 0, mood: 0, stress: 5, moodCount: 0 });
+  }
+
+  // Add recovery sessions
+  recoveryLogs.forEach(log => {
+    const date = log.completed_at.split('T')[0];
+    if (dailyMap.has(date)) {
+      dailyMap.get(date).sessions++;
+    }
+  });
+
+  // Add mood data
+  moodLogs.forEach(log => {
+    const date = log.date;
+    if (dailyMap.has(date)) {
+      const dayData = dailyMap.get(date);
+      dayData.mood = log.mood || 0;
+      dayData.stress = log.wellness ? 10 - log.wellness : 5; // Inverse of wellness
+      dayData.moodCount = 1;
+    }
+  });
+
+  return Array.from(dailyMap.entries()).map(([date, data]) => ({
+    date,
+    sessions: data.sessions,
+    mood: data.mood,
+    stress: data.stress
+  }));
+}
+
+function generateRecoveryInsights(totalSessions: number, avgMood: number, avgStress: number, topTypes: any[], bestStreak: number): string[] {
+  const insights = [];
+
+  if (totalSessions >= 20) {
+    insights.push("Excellent recovery consistency this month!");
+  } else if (totalSessions >= 10) {
+    insights.push("Good recovery practice momentum building");
+  } else if (totalSessions > 0) {
+    insights.push("Starting your recovery journey - keep it up!");
+  } else {
+    insights.push("Consider adding recovery sessions to your routine");
+  }
+
+  if (avgMood >= 8) {
+    insights.push("Your mood levels show great emotional balance");
+  } else if (avgMood >= 6) {
+    insights.push("Mood trending positively with recovery practice");
+  }
+
+  if (avgStress <= 3) {
+    insights.push("Stress levels well-managed through recovery");
+  } else if (avgStress <= 5) {
+    insights.push("Recovery helping moderate stress levels");
+  }
+
+  if (bestStreak >= 7) {
+    insights.push(`Impressive ${bestStreak}-day recovery streak!`);
+  } else if (bestStreak >= 3) {
+    insights.push(`Building momentum with ${bestStreak}-day streak`);
+  }
+
+  if (topTypes.length > 0) {
+    const topType = topTypes[0];
+    insights.push(`${topType.type} is your preferred recovery method`);
+  }
+
+  return insights.slice(0, 4);
+}
+
+function calculateRecoveryScore(recoveryData: any): number {
+  return recoveryData.recovery_score;
 }

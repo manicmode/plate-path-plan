@@ -47,6 +47,16 @@ interface YearlyReportData {
     missedDays: number;
     monthlyData: Array<{month: string, count: number}>;
   };
+  recovery: {
+    total_sessions: number;
+    avg_mood: number;
+    avg_stress: number;
+    top_recovery_types: Array<{type: string, count: number}>;
+    best_streak: number;
+    recovery_score: number;
+    insights: string[];
+    monthlyData: Array<{month: string, sessions: number, mood: number, stress: number}>;
+  };
   toxins: {
     flaggedFoodCount: number;
     severityBreakdown: Record<string, number>;
@@ -71,6 +81,7 @@ interface YearlyReportData {
     exercise: number;
     hydration: number;
     supplements: number;
+    recovery: number;
     overall: number;
   };
   yearStats: {
@@ -241,7 +252,7 @@ async function collectUserYearData(supabase: any, userId: string, startDate: Dat
     .single();
 
   // Fetch all logs for the entire year
-  const [nutritionLogs, moodLogs, hydrationLogs, supplementLogs, exerciseLogs, toxinDetections] = await Promise.all([
+  const [nutritionLogs, moodLogs, hydrationLogs, supplementLogs, exerciseLogs, toxinDetections, recoveryLogs, meditationStreak] = await Promise.all([
     supabase
       .from('nutrition_logs')
       .select('*')
@@ -288,7 +299,21 @@ async function collectUserYearData(supabase: any, userId: string, startDate: Dat
       .eq('user_id', userId)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
-      .order('created_at')
+      .order('created_at'),
+
+    supabase
+      .from('recovery_session_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('completed_at', startDate.toISOString())
+      .lte('completed_at', endDate.toISOString())
+      .order('completed_at'),
+
+    supabase
+      .from('meditation_streaks')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
   ]);
 
   // Process all data with yearly aggregations
@@ -298,6 +323,7 @@ async function collectUserYearData(supabase: any, userId: string, startDate: Dat
   const supplementData = processYearlySupplementData(supplementLogs.data || []);
   const exerciseData = processYearlyExerciseData(exerciseLogs.data || []);
   const toxinData = processYearlyToxinData(toxinDetections.data || []);
+  const recoveryData = processYearlyRecoveryData(recoveryLogs.data || [], moodLogs.data || [], meditationStreak.data);
 
   // Calculate scores
   const nutritionScore = calculateYearlyNutritionScore(nutritionData, profile);
@@ -305,13 +331,15 @@ async function collectUserYearData(supabase: any, userId: string, startDate: Dat
   const exerciseScore = calculateYearlyExerciseScore(exerciseData);
   const hydrationScore = calculateYearlyHydrationScore(hydrationData);
   const supplementScore = calculateYearlySupplementScore(supplementData);
+  const recoveryScore = calculateYearlyRecoveryScore(recoveryData);
   
   const overallScore = (
-    nutritionScore * 0.35 +
-    moodScore * 0.20 +
+    nutritionScore * 0.30 +
+    moodScore * 0.15 +
     exerciseScore * 0.15 +
     hydrationScore * 0.15 +
     supplementScore * 0.10 +
+    recoveryScore * 0.10 +
     (100 - Math.min(toxinData.totalExposure * 5, 50)) * 0.05
   );
 
@@ -327,6 +355,7 @@ async function collectUserYearData(supabase: any, userId: string, startDate: Dat
     exercise: exerciseData,
     hydration: hydrationData,
     supplements: supplementData,
+    recovery: recoveryData,
     toxins: toxinData,
     streaks: {
       nutrition: profile?.current_nutrition_streak || 0,
@@ -346,6 +375,7 @@ async function collectUserYearData(supabase: any, userId: string, startDate: Dat
       exercise: Math.round(exerciseScore),
       hydration: Math.round(hydrationScore),
       supplements: Math.round(supplementScore),
+      recovery: Math.round(recoveryScore),
       overall: Math.round(overallScore)
     },
     yearStats: {
@@ -987,4 +1017,148 @@ function generateYearlyRecommendations(nutrition: any, mood: any, exercise: any,
   if (exercise.avgSteps < 7000) recommendations.push("Aim for more daily movement and walking");
   
   return recommendations.slice(0, 5);
+}
+
+function processYearlyRecoveryData(recoveryLogs: any[], moodLogs: any[], meditationStreak: any) {
+  console.log(`🧘 Processing yearly recovery data: ${recoveryLogs.length} sessions, ${moodLogs.length} mood entries`);
+
+  const monthlyData = getMonthlyRecoveryData(recoveryLogs, moodLogs);
+  const totalSessions = recoveryLogs.length;
+  
+  // Calculate average mood and stress from mood logs
+  const avgMood = moodLogs.length > 0 
+    ? moodLogs.reduce((sum, log) => sum + (log.mood || 0), 0) / moodLogs.length
+    : 0;
+  
+  // Use wellness as inverse stress indicator (higher wellness = lower stress)
+  const avgStress = moodLogs.length > 0
+    ? 10 - (moodLogs.reduce((sum, log) => sum + (log.wellness || 5), 0) / moodLogs.length)
+    : 5;
+
+  // Calculate top recovery types
+  const typeCount = new Map();
+  recoveryLogs.forEach(log => {
+    const type = log.category || 'Unknown';
+    typeCount.set(type, (typeCount.get(type) || 0) + 1);
+  });
+
+  const topRecoveryTypes = Array.from(typeCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, count]) => ({ type, count }));
+
+  // Get best streak from meditation data (yearly context)
+  const bestStreak = meditationStreak?.longest_streak || meditationStreak?.current_streak || 0;
+
+  // Calculate yearly recovery score using weighted formula
+  const sessionScore = Math.min(totalSessions * 0.5, 30); // Max 30 points for sessions
+  const consistencyScore = Math.min((totalSessions / 365) * 25, 25); // Max 25 points for consistency  
+  const moodScore = avgMood * 2; // Max 20 points for mood
+  const stressScore = Math.max(0, (10 - avgStress) * 2); // Max 20 points for low stress
+  const streakBonus = Math.min(bestStreak * 0.5, 5); // Max 5 bonus points for streak
+
+  const recoveryScore = sessionScore + consistencyScore + moodScore + stressScore + streakBonus;
+
+  // Generate insights for yearly context
+  const insights = generateYearlyRecoveryInsights(totalSessions, avgMood, avgStress, topRecoveryTypes, bestStreak);
+
+  return {
+    total_sessions: totalSessions,
+    avg_mood: Math.round(avgMood * 10) / 10,
+    avg_stress: Math.round(avgStress * 10) / 10,
+    top_recovery_types: topRecoveryTypes,
+    best_streak: bestStreak,
+    recovery_score: Math.round(Math.min(100, recoveryScore)),
+    insights,
+    monthlyData
+  };
+}
+
+function getMonthlyRecoveryData(recoveryLogs: any[], moodLogs: any[]) {
+  const monthlyMap = new Map();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  // Initialize all months
+  for (let i = 0; i < 12; i++) {
+    monthlyMap.set(monthNames[i], { sessions: 0, mood: 0, stress: 5, moodCount: 0 });
+  }
+
+  // Add recovery sessions
+  recoveryLogs.forEach(log => {
+    const date = new Date(log.completed_at);
+    const month = monthNames[date.getMonth()];
+    if (monthlyMap.has(month)) {
+      monthlyMap.get(month).sessions++;
+    }
+  });
+
+  // Add mood data
+  moodLogs.forEach(log => {
+    const date = new Date(log.date);
+    const month = monthNames[date.getMonth()];
+    if (monthlyMap.has(month)) {
+      const monthData = monthlyMap.get(month);
+      monthData.mood += log.mood || 0;
+      monthData.stress += log.wellness ? 10 - log.wellness : 5; // Inverse of wellness
+      monthData.moodCount++;
+    }
+  });
+
+  return Array.from(monthlyMap.entries()).map(([month, data]) => ({
+    month,
+    sessions: data.sessions,
+    mood: data.moodCount > 0 ? Math.round((data.mood / data.moodCount) * 10) / 10 : 0,
+    stress: data.moodCount > 0 ? Math.round((data.stress / data.moodCount) * 10) / 10 : 5
+  }));
+}
+
+function generateYearlyRecoveryInsights(totalSessions: number, avgMood: number, avgStress: number, topTypes: any[], bestStreak: number): string[] {
+  const insights = [];
+
+  if (totalSessions >= 100) {
+    insights.push("Outstanding recovery practice throughout the year!");
+  } else if (totalSessions >= 50) {
+    insights.push("Solid foundation in recovery practices established");
+  } else if (totalSessions >= 25) {
+    insights.push("Good progress in developing recovery habits");
+  } else if (totalSessions > 0) {
+    insights.push("Beginning your recovery journey - great first steps!");
+  } else {
+    insights.push("Consider incorporating recovery sessions into your routine");
+  }
+
+  if (avgMood >= 8) {
+    insights.push("Exceptional emotional well-being maintained year-round");
+  } else if (avgMood >= 7) {
+    insights.push("Strong emotional balance achieved through the year");
+  } else if (avgMood >= 6) {
+    insights.push("Positive mood trends developed throughout the year");
+  }
+
+  if (avgStress <= 3) {
+    insights.push("Excellent stress management throughout the year");
+  } else if (avgStress <= 4) {
+    insights.push("Good stress control maintained consistently");
+  } else if (avgStress <= 5) {
+    insights.push("Stress levels kept in healthy range");
+  }
+
+  if (bestStreak >= 30) {
+    insights.push(`Remarkable ${bestStreak}-day recovery streak achieved!`);
+  } else if (bestStreak >= 14) {
+    insights.push(`Strong ${bestStreak}-day recovery streak built`);
+  } else if (bestStreak >= 7) {
+    insights.push(`Good ${bestStreak}-day recovery consistency developed`);
+  }
+
+  if (topTypes.length > 0) {
+    const topType = topTypes[0];
+    insights.push(`${topType.type} became your go-to recovery method (${topType.count} sessions)`);
+  }
+
+  return insights.slice(0, 5);
+}
+
+function calculateYearlyRecoveryScore(recoveryData: any): number {
+  return recoveryData.recovery_score;
 }
