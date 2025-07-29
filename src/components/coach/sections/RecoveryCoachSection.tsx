@@ -5,6 +5,7 @@ import { RecoveryNudgeSection } from '@/components/coach/recovery/RecoveryNudgeS
 import { RecoveryTips } from '@/components/coach/recovery/RecoveryTips';
 import { RecoveryInsights } from '@/components/coach/recovery/RecoveryInsights';
 import { Sparkles } from 'lucide-react';
+import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 
 const RecoveryCoachSection = () => {
   const isMobile = useIsMobile();
@@ -25,6 +26,11 @@ const RecoveryCoachSection = () => {
           <p className={`text-orange-600 dark:text-orange-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>
             Your personal recovery guide, powered by AI
           </p>
+        </div>
+
+        {/* Level & XP Progress Bar */}
+        <div className="mb-6">
+          <LevelProgressBar theme="recovery" />
         </div>
 
         {/* AI Chat Box */}

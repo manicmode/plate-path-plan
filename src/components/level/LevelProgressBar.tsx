@@ -7,10 +7,35 @@ import { Zap, Star } from 'lucide-react';
 
 interface LevelProgressBarProps {
   className?: string;
+  theme?: 'nutrition' | 'exercise' | 'recovery';
 }
 
-export const LevelProgressBar: React.FC<LevelProgressBarProps> = ({ className = '' }) => {
+export const LevelProgressBar: React.FC<LevelProgressBarProps> = ({ className = '', theme = 'nutrition' }) => {
   const { userLevel, loading } = useUserLevel();
+
+  // Theme configurations
+  const themeConfig = {
+    nutrition: {
+      badgeGradient: 'from-purple-600 to-indigo-600',
+      badgeGlow: 'from-purple-400/20 to-indigo-400/20',
+      textGradient: 'from-purple-600 to-indigo-600',
+      progressBg: 'from-purple-500/20 via-indigo-500/20 to-emerald-500/20'
+    },
+    exercise: {
+      badgeGradient: 'from-indigo-600 to-purple-700',
+      badgeGlow: 'from-indigo-400/20 to-purple-400/20',
+      textGradient: 'from-indigo-600 to-purple-700',
+      progressBg: 'from-indigo-500/20 via-purple-500/20 to-violet-500/20'
+    },
+    recovery: {
+      badgeGradient: 'from-orange-600 to-pink-600',
+      badgeGlow: 'from-orange-400/20 to-pink-400/20',
+      textGradient: 'from-orange-600 to-pink-600',
+      progressBg: 'from-orange-500/20 via-pink-500/20 to-rose-500/20'
+    }
+  };
+
+  const currentTheme = themeConfig[theme];
 
   if (loading || !userLevel) {
     return (
@@ -36,9 +61,9 @@ export const LevelProgressBar: React.FC<LevelProgressBarProps> = ({ className = 
             <TooltipTrigger asChild>
               <Badge 
                 variant="secondary" 
-                className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 relative overflow-hidden"
+                className={`px-3 py-1 bg-gradient-to-r ${currentTheme.badgeGradient} text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 relative overflow-hidden`}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-indigo-400/20 animate-pulse"></div>
+                <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.badgeGlow} animate-pulse`}></div>
                 <Star className="w-3 h-3 mr-1 relative z-10" />
                 <span className="font-bold relative z-10">Lv. {userLevel.level}</span>
               </Badge>
@@ -57,7 +82,7 @@ export const LevelProgressBar: React.FC<LevelProgressBarProps> = ({ className = 
                     value={progressPercentage} 
                     className="h-3 bg-gradient-to-r from-muted via-muted/80 to-muted border border-border/50 shadow-inner"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-indigo-500/20 to-emerald-500/20 rounded-full animate-pulse opacity-50"></div>
+                  <div className={`absolute inset-0 bg-gradient-to-r ${currentTheme.progressBg} rounded-full animate-pulse opacity-50`}></div>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -69,7 +94,7 @@ export const LevelProgressBar: React.FC<LevelProgressBarProps> = ({ className = 
           {/* XP Text */}
           <div className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
             <Zap className="w-3 h-3 text-yellow-500" />
-            <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            <span className={`bg-gradient-to-r ${currentTheme.textGradient} bg-clip-text text-transparent`}>
               {userLevel.current_xp}/{userLevel.xp_to_next_level} XP
             </span>
           </div>

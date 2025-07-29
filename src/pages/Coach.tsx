@@ -410,7 +410,7 @@ const Coach = () => {
 
       {/* Level & XP Progress Bar */}
       <div className="mb-6">
-        <LevelProgressBar />
+        <LevelProgressBar theme="nutrition" />
       </div>
 
       {/* Chat Interface with enhanced mobile optimization */}

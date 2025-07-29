@@ -24,6 +24,7 @@ import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
 import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
 import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
 import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
+import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -311,6 +312,11 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Get smarter, stronger, and more consistent — with a coach who never sleeps
           </p>
+        </div>
+
+        {/* Level & XP Progress Bar */}
+        <div className="mb-6">
+          <LevelProgressBar theme="exercise" />
         </div>
 
         {/* AI Chat Component */}
