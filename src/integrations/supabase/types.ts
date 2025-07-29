@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generated_routines: {
+        Row: {
+          created_at: string
+          days_per_week: number
+          equipment_available: string[]
+          fitness_level: string
+          generation_metadata: Json
+          id: string
+          is_active: boolean
+          locked_days: number[]
+          muscle_group_schedule: Json
+          parent_routine_id: string | null
+          primary_goals: string[]
+          routine_name: string
+          session_duration_minutes: number
+          split_type: string
+          updated_at: string
+          user_id: string
+          version_number: number
+          weekly_routine_data: Json
+        }
+        Insert: {
+          created_at?: string
+          days_per_week: number
+          equipment_available?: string[]
+          fitness_level: string
+          generation_metadata?: Json
+          id?: string
+          is_active?: boolean
+          locked_days?: number[]
+          muscle_group_schedule?: Json
+          parent_routine_id?: string | null
+          primary_goals?: string[]
+          routine_name: string
+          session_duration_minutes: number
+          split_type: string
+          updated_at?: string
+          user_id: string
+          version_number?: number
+          weekly_routine_data?: Json
+        }
+        Update: {
+          created_at?: string
+          days_per_week?: number
+          equipment_available?: string[]
+          fitness_level?: string
+          generation_metadata?: Json
+          id?: string
+          is_active?: boolean
+          locked_days?: number[]
+          muscle_group_schedule?: Json
+          parent_routine_id?: string | null
+          primary_goals?: string[]
+          routine_name?: string
+          session_duration_minutes?: number
+          split_type?: string
+          updated_at?: string
+          user_id?: string
+          version_number?: number
+          weekly_routine_data?: Json
+        }
+        Relationships: []
+      }
       ai_routines: {
         Row: {
           created_at: string
@@ -1767,6 +1830,50 @@ export type Database = {
         }
         Relationships: []
       }
+      routine_generation_history: {
+        Row: {
+          created_at: string
+          generation_parameters: Json
+          generation_type: string
+          id: string
+          new_routine_data: Json | null
+          previous_routine_data: Json | null
+          routine_id: string
+          target_day: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generation_parameters?: Json
+          generation_type: string
+          id?: string
+          new_routine_data?: Json | null
+          previous_routine_data?: Json | null
+          routine_id: string
+          target_day?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generation_parameters?: Json
+          generation_type?: string
+          id?: string
+          new_routine_data?: Json | null
+          previous_routine_data?: Json | null
+          routine_id?: string
+          target_day?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_generation_history_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generated_routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routine_history: {
         Row: {
           ai_feedback: string | null
@@ -2375,6 +2482,57 @@ export type Database = {
           contact_type?: string
           created_at?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_fitness_preferences: {
+        Row: {
+          available_equipment: string[]
+          created_at: string
+          days_per_week: number
+          fitness_level: string
+          id: string
+          injury_considerations: string[]
+          intensity_preference: string
+          preferred_split: string
+          preferred_workout_times: string[]
+          primary_goals: string[]
+          rest_preferences: Json
+          session_duration_minutes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_equipment?: string[]
+          created_at?: string
+          days_per_week?: number
+          fitness_level?: string
+          id?: string
+          injury_considerations?: string[]
+          intensity_preference?: string
+          preferred_split?: string
+          preferred_workout_times?: string[]
+          primary_goals?: string[]
+          rest_preferences?: Json
+          session_duration_minutes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_equipment?: string[]
+          created_at?: string
+          days_per_week?: number
+          fitness_level?: string
+          id?: string
+          injury_considerations?: string[]
+          intensity_preference?: string
+          preferred_split?: string
+          preferred_workout_times?: string[]
+          primary_goals?: string[]
+          rest_preferences?: Json
+          session_duration_minutes?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
