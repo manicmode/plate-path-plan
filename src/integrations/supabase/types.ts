@@ -1922,6 +1922,39 @@ export type Database = {
         }
         Relationships: []
       }
+      report_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          layout: Json | null
+          logic_config: Json | null
+          report_type: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          layout?: Json | null
+          logic_config?: Json | null
+          report_type: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          layout?: Json | null
+          logic_config?: Json | null
+          report_type?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       routine_generation_history: {
         Row: {
           created_at: string
