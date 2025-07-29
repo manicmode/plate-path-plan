@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Activity, Calendar, Target, TrendingUp } from 'lucide-react';
+import { Activity, Calendar, Target, TrendingUp, BarChart3 } from 'lucide-react';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
 import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
 import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
@@ -142,7 +142,19 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <div className="space-y-4">
+  <div className="space-y-6">
+    {/* Section Header */}
+    <div className="flex items-center gap-3 mb-6">
+      <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl shadow-lg">
+        <BarChart3 className="h-6 w-6 text-white" />
+      </div>
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Activity & Exercise</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Steps and calories burned</p>
+      </div>
+    </div>
+
+    <div className="space-y-4">
     {/* Quick Action Button */}
     <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
       <CardContent className="p-6 pb-4">
@@ -216,6 +228,7 @@ return (
 
     {/* Monthly Exercise Report */}
     <MonthlyExerciseReportCard />
+    </div>
   </div>
 );
 
