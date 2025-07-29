@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Repeat, AlertCircle } from 'lucide-react';
+import { Clock, Repeat, AlertCircle, ChevronDown, Sparkles } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -34,6 +35,7 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch, isAIQuickPredictions = 
   const isMobile = useIsMobile();
   const [optimisticFoods, setOptimisticFoods] = useState<SavedFood[]>([]);
   const [debugMode] = useState(process.env.NODE_ENV === 'development');
+  const [isRecentLogsOpen, setIsRecentLogsOpen] = useState(false);
 
   console.log('🔄 SavedFoodsTab render - user?.id:', user?.id);
 
@@ -358,72 +360,72 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch, isAIQuickPredictions = 
     const limitedFoods = displayFoods.slice(0, 6); // Show max 6 items
     
     return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-            <span className="text-blue-500 text-lg">🧠</span>
-          </div>
-          <div>
-            <h2 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'}`}>
-              AI Quick Predictions
-            </h2>
-            <p className={`text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>
-              Smart food suggestions based on your patterns
-            </p>
-          </div>
-        </div>
-
-        {/* Food Grid - Mobile optimized */}
-        <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-3 gap-4'}`}>
-          {limitedFoods.map((food) => (
-            <div
-              key={food.id}
-              className={`bg-gray-800/60 backdrop-blur-sm rounded-2xl p-4 cursor-pointer hover:bg-gray-700/60 transition-all duration-200 ${
-                isMobile ? 'h-32' : 'h-36'
-              }`}
-              onClick={() => handleRelogFood(food)}
-            >
-              <div className="flex flex-col h-full justify-between">
-                <div>
-                  <h3 className={`font-semibold text-white truncate ${isMobile ? 'text-sm' : 'text-base'}`}>
-                    {food.food_name}
-                  </h3>
-                  <p className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                    usually {getTimeOfDay(food)}
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                    {food.calories} cal
-                  </p>
-                  <button className="w-full bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition-colors">
-                    tap to log
-                  </button>
-                </div>
-              </div>
+        <div className="modern-action-card ai-insights-card rounded-2xl p-6 shadow-xl border">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl">
+              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
-          ))}
-        </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">AI Quick Predictions</h3>
+              <p className="text-sm text-muted-foreground">Smart food suggestions based on your patterns</p>
+            </div>
+          </div>
 
-        {/* Recent & Saved Logs section */}
-        <div className="pt-4">
-          <button className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2">
-            <span className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
-              📈 Recent & Saved Logs
-            </span>
-            <svg 
-              className={`transform transition-transform ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+          {/* Food Grid */}
+          <div className={`grid gap-3 mb-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {limitedFoods.map((food, index) => (
+              <div
+                key={`${food.food_name}-${index}`}
+                className="modern-nutrient-card rounded-xl p-3 border hover:scale-105 transition-all cursor-pointer"
+                onClick={() => handleRelogFood(food)}
+              >
+                <div className="text-sm font-medium text-foreground mb-1">{food.food_name}</div>
+                <div className="text-xs text-muted-foreground mb-2">usually {getTimeOfDay(food)}</div>
+                <div className="text-lg font-bold text-foreground mb-2">{Math.round(food.calories)} cal</div>
+                <button className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg">
+                  tap to log
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent & Saved Logs Collapsible */}
+          <Collapsible open={isRecentLogsOpen} onOpenChange={setIsRecentLogsOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm w-full justify-between p-2 rounded-lg hover:bg-accent/50">
+                <span className="flex items-center gap-2">
+                  <span>📋 Recent & Saved Logs</span>
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isRecentLogsOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <div className="modern-nutrient-card rounded-xl p-3 space-y-2">
+                <div className="text-xs text-muted-foreground mb-2">Recent entries</div>
+                {displayFoods && displayFoods.length > 6 ? (
+                  <div className="space-y-2">
+                    {displayFoods.slice(6, 9).map((food, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-accent/20 hover:bg-accent/40 transition-colors">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-foreground">{food.food_name}</div>
+                          <div className="text-xs text-muted-foreground">{Math.round(food.calories)} cal</div>
+                        </div>
+                        <button 
+                          onClick={() => handleRelogFood(food)}
+                          className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-xs font-medium py-1 px-3 rounded-md transition-all duration-200"
+                        >
+                          tap to log
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">No recent logs to display</div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
-      </div>
     );
   }
 
