@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Unlock, RefreshCw, Loader2, Clock, Target, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WorkoutPlayer } from './WorkoutPlayer';
 
 interface Exercise {
   id: string;
@@ -32,6 +34,7 @@ interface WeeklyRoutineDayProps {
   onToggleLock: () => void;
   onRegenerate: () => void;
   muscleGroups: string[];
+  routineId?: string;
 }
 
 export function WeeklyRoutineDay({
@@ -41,9 +44,14 @@ export function WeeklyRoutineDay({
   isRegenerating,
   onToggleLock,
   onRegenerate,
-  muscleGroups
+  muscleGroups,
+  routineId
 }: WeeklyRoutineDayProps) {
+  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  
   const isRestDay = dayData?.focus === 'Rest' || !dayData?.exercises?.length;
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const dayIndex = daysOfWeek.indexOf(day.toLowerCase());
   
   const getIntensityColor = (focus: string) => {
     if (focus === 'Rest') return 'text-muted-foreground';
@@ -192,11 +200,11 @@ export function WeeklyRoutineDay({
             )}
 
             {/* Start Workout Button */}
-            {dayData?.exercises && dayData.exercises.length > 0 && (
+            {dayData?.exercises && dayData.exercises.length > 0 && routineId && (
               <Button 
+                onClick={() => setShowWorkoutModal(true)}
                 size="sm" 
                 className="w-full mt-4"
-                variant="outline"
               >
                 <Play className="mr-2 h-4 w-4" />
                 Start {day.charAt(0).toUpperCase() + day.slice(1)} Workout
@@ -205,6 +213,18 @@ export function WeeklyRoutineDay({
           </div>
         )}
       </CardContent>
+
+      {/* Workout Player */}
+      {showWorkoutModal && dayData?.exercises && routineId && (
+        <WorkoutPlayer
+          isOpen={showWorkoutModal}
+          onClose={() => setShowWorkoutModal(false)}
+          routineId={routineId}
+          dayName={day}
+          dayIndex={dayIndex}
+          exercises={dayData.exercises}
+        />
+      )}
     </Card>
   );
 }

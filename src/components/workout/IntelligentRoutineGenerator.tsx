@@ -305,6 +305,7 @@ export function IntelligentRoutineGenerator() {
               onToggleLock={() => toggleDayLock(day)}
               onRegenerate={() => regenerateDay(day)}
               muscleGroups={currentRoutine.muscle_group_schedule?.[day] || []}
+              routineId={currentRoutine.id}
             />
           ))}
         </div>
