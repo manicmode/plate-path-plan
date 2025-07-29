@@ -176,9 +176,48 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     const actualDurationMinutes = workoutStartTime 
       ? Math.round((endTime - workoutStartTime) / 60000) 
       : workout?.duration || 0;
-    
-    // Mark workout as completed in database
+
+    // Log detailed performance data
     try {
+      const performanceData = {
+        user_id: user?.id,
+        routine_id: 'current_routine',
+        week_number: week,
+        day_number: day,
+        workout_title: workout?.title || 'AI Routine Workout',
+        total_duration_minutes: actualDurationMinutes,
+        planned_duration_minutes: workout?.duration || 45,
+        completed_exercises_count: workout?.exercises.length || 0,
+        total_exercises_count: workout?.exercises.length || 0,
+        completed_sets_count: completedSteps,
+        total_sets_count: workoutSteps.length,
+        skipped_steps_count: Math.max(0, workoutSteps.length - completedSteps),
+        extra_rest_seconds: Math.max(0, (actualDurationMinutes - (workout?.duration || 45)) * 60),
+        difficulty_rating: null, // Will be set by user in completion modal
+        energy_level: null,
+        muscle_groups_worked: [...new Set(workout?.exercises.map(ex => {
+          const name = ex.name.toLowerCase();
+          if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
+          if (name.includes('pull') || name.includes('row')) return 'Back';
+          if (name.includes('squat') || name.includes('leg')) return 'Legs';
+          if (name.includes('curl') || name.includes('bicep')) return 'Biceps';
+          if (name.includes('tricep') || name.includes('dip')) return 'Triceps';
+          if (name.includes('shoulder') || name.includes('lateral')) return 'Shoulders';
+          return 'Full Body';
+        }) || [])],
+        notes: null
+      };
+
+      // Log performance data
+      const { error: perfError } = await supabase
+        .from('workout_performance_logs')
+        .insert(performanceData);
+
+      if (perfError) {
+        console.error('Error logging performance:', perfError);
+      }
+
+      // Mark workout as completed in database
       const { data: routine, error: fetchError } = await supabase
         .from('ai_routines')
         .select('*')
@@ -208,18 +247,6 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
       console.error('Error marking workout complete:', error);
     }
 
-    // Get muscle groups from exercises
-    const musclesWorked = workout?.exercises.map(ex => {
-      const name = ex.name.toLowerCase();
-      if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
-      if (name.includes('pull') || name.includes('row')) return 'Back';
-      if (name.includes('squat') || name.includes('leg')) return 'Legs';
-      if (name.includes('curl') || name.includes('bicep')) return 'Biceps';
-      if (name.includes('tricep') || name.includes('dip')) return 'Triceps';
-      if (name.includes('shoulder') || name.includes('lateral')) return 'Shoulders';
-      return 'Full Body';
-    }) || [];
-
     // Show completion modal with workout stats
     showCompletionModal({
       workoutType: 'ai_routine',
@@ -228,13 +255,23 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
       setsCount: workoutSteps.reduce((total, step) => 
         step.type === 'exercise' ? total + 1 : total, 0
       ),
-      musclesWorked: [...new Set(musclesWorked)],
+      musclesWorked: [...new Set(workout?.exercises.map(ex => {
+        const name = ex.name.toLowerCase();
+        if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
+        if (name.includes('pull') || name.includes('row')) return 'Back';
+        if (name.includes('squat') || name.includes('leg')) return 'Legs';
+        if (name.includes('curl') || name.includes('bicep')) return 'Biceps';
+        if (name.includes('tricep') || name.includes('dip')) return 'Triceps';
+        if (name.includes('shoulder') || name.includes('lateral')) return 'Shoulders';
+        return 'Full Body';
+      }) || [])],
       workoutData: {
         title: workout?.title,
         week,
         day,
         completedSteps,
-        totalSteps: workoutSteps.length
+        totalSteps: workoutSteps.length,
+        routineId: 'current_routine'
       }
     });
   };
