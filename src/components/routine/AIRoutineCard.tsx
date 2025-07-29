@@ -3,10 +3,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, Target, Activity, RefreshCw, Lock, LockOpen, Sparkles } from 'lucide-react';
+import { Calendar, Clock, Target, Activity, RefreshCw, Lock, LockOpen, Sparkles, History, Edit, Copy, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
+import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButton';
 
 interface AIRoutineCardProps {
   routine: {
@@ -33,6 +34,7 @@ interface AIRoutineCardProps {
 export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, onDelete }) => {
   const { user } = useAuth();
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [currentDay, setCurrentDay] = useState<any>(null);
 
@@ -89,20 +91,28 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     window.location.href = `/routine-execution?routineId=${routine.id}&type=ai`;
   };
 
-  const handleRegenerateDay = async () => {
-    if (!currentDay || !user) return;
+  const handleRegenerateDay = async (weekIndex: number, dayName: string) => {
+    if (!user) return;
 
     try {
       setRegenerating(true);
+
+      const weekData = routine.routine_data?.weeks?.[weekIndex];
+      const dayData = weekData?.days?.[dayName];
+
+      if (!dayData) {
+        toast.error('No workout data found for this day');
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke('regenerate-day', {
         body: {
           user_id: user.id,
           routine_id: routine.id,
-          current_week: currentDay.week,
-          current_day: currentDay.dayName,
-          workout_type: currentDay.data.workout_type,
-          target_muscles: currentDay.data.target_muscles,
+          current_week: weekIndex + 1,
+          current_day: dayName,
+          workout_type: dayData.workout_type,
+          target_muscles: dayData.target_muscles,
           fitness_level: routine.fitness_level,
           equipment_available: routine.equipment_needed.join(', '),
           time_available: routine.estimated_duration_minutes
@@ -114,7 +124,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
       if (data?.success && data?.day) {
         // Update the routine data with the new day
         const updatedRoutineData = { ...routine.routine_data };
-        updatedRoutineData.weeks[currentDay.week - 1].days[currentDay.dayName] = data.day;
+        updatedRoutineData.weeks[weekIndex].days[dayName] = data.day;
 
         const { error: updateError } = await supabase
           .from('ai_routines')
@@ -124,13 +134,14 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
         if (updateError) throw updateError;
 
         toast.success('Day regenerated with fresh exercises! 🔄');
-        setShowRegenerateModal(false);
         
-        // Refresh the current day data
-        setCurrentDay({
-          ...currentDay,
-          data: data.day
-        });
+        // Refresh current day data if it matches
+        if (currentDay && currentDay.week === weekIndex + 1 && currentDay.dayName === dayName) {
+          setCurrentDay({
+            ...currentDay,
+            data: data.day
+          });
+        }
       }
     } catch (error) {
       console.error('Error regenerating day:', error);
@@ -138,6 +149,49 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     } finally {
       setRegenerating(false);
     }
+  };
+
+  const handleEditRoutine = () => {
+    setShowEditModal(true);
+  };
+
+  const handleCopyRoutine = async () => {
+    if (!user) return;
+
+    try {
+      const copyName = `${routine.routine_name} (Copy)`;
+      
+      const { error } = await supabase
+        .from('ai_routines')
+        .insert({
+          user_id: user.id,
+          routine_name: copyName,
+          routine_goal: routine.routine_goal,
+          split_type: routine.split_type,
+          days_per_week: routine.days_per_week,
+          estimated_duration_minutes: routine.estimated_duration_minutes,
+          fitness_level: routine.fitness_level,
+          equipment_needed: routine.equipment_needed,
+          routine_data: routine.routine_data,
+          is_active: false,
+          current_week: 1,
+          current_day_in_week: 1
+        });
+
+      if (error) throw error;
+
+      toast.success('Routine copied successfully! 📋');
+      // Trigger refresh if callback exists
+      if (onEdit) onEdit(routine);
+    } catch (error) {
+      console.error('Error copying routine:', error);
+      toast.error('Failed to copy routine');
+    }
+  };
+
+  const handleViewHistory = () => {
+    // Navigate to routine history or show history modal
+    toast.info('History feature coming soon! 📅');
   };
 
   const getStatusColor = () => {
@@ -157,9 +211,13 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     return emojiMap[goal] || '🎯';
   };
 
+  const hasWorkouts = routine.routine_data?.weeks?.some((week: any) => 
+    Object.values(week.days || {}).some((day: any) => day && Object.keys(day).length > 0)
+  );
+
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-300 border-border bg-card">
+      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card">
         <div className={`h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-lg`}></div>
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-4">
@@ -177,6 +235,37 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                   </Badge>
                 </div>
               </div>
+            </div>
+            
+            {/* Always visible top-right icons */}
+            <div className="flex gap-2">
+              <Button
+                size="icon"
+                variant="secondary"
+                onClick={handleViewHistory}
+                className="h-8 w-8 bg-white/20 border-white/30 text-foreground hover:bg-white/30"
+                title="View History"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="secondary"
+                onClick={handleEditRoutine}
+                className="h-8 w-8 bg-white/20 border-white/30 text-foreground hover:bg-white/30"
+                title="Edit Routine"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="secondary"
+                onClick={handleCopyRoutine}
+                className="h-8 w-8 bg-white/20 border-white/30 text-foreground hover:bg-white/30"
+                title="Copy Routine"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
@@ -203,7 +292,14 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
               </div>
             </div>
 
-            {routine.is_active && currentDay && (
+            {/* Current day info or fallback message */}
+            {!hasWorkouts ? (
+              <div className="bg-muted/30 rounded-lg p-3 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No workouts planned yet. Tap edit to set or regenerate your week.
+                </p>
+              </div>
+            ) : routine.is_active && currentDay ? (
               <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 mt-3">
                 <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
                   Week {currentDay.week} • {currentDay.data.workout_type}
@@ -212,41 +308,125 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                   Today: {currentDay.data.target_muscles?.join(', ') || 'Full body workout'}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
-          <div className="flex gap-2">
-            {!routine.is_active ? (
-              <Button
-                onClick={handleStartRoutine}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
-              >
-                Start Routine
-              </Button>
-            ) : (
-              <>
+          {/* Action buttons with proper alignment */}
+          <div className="flex items-center justify-between pt-4 border-t border-border/50">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                <span>{routine.estimated_duration_minutes} min</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>{routine.days_per_week}/7 days</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              {!routine.is_active ? (
                 <Button
-                  onClick={handleContinueWorkout}
-                  className="flex-1 bg-primary hover:bg-primary/90"
-                >
-                  Continue Workout
-                </Button>
-                <Button
-                  onClick={() => setShowRegenerateModal(true)}
+                  size="sm"
+                  onClick={handleStartRoutine}
+                  className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
                   variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                  title="Regenerate Today"
                 >
-                  <RefreshCw className="h-4 w-4" />
+                  <Play className="h-3 w-3 mr-1" />
+                  Start
                 </Button>
-              </>
-            )}
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleContinueWorkout}
+                    className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
+                  >
+                    <Play className="h-3 w-3 mr-1" />
+                    Continue
+                  </Button>
+                  
+                  <WorkoutCompleteButton
+                    routine_id={routine.id}
+                    intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
+                    duration_minutes={routine.estimated_duration_minutes}
+                    difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
+                    className="text-xs px-3 py-1 h-8"
+                  />
+                </>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Regenerate Day Modal */}
+      {/* Edit Routine Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Routine: {routine.routine_name}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <p className="text-muted-foreground">
+              Regenerate individual days or weeks to customize your workout plan.
+            </p>
+            
+            {routine.routine_data?.weeks?.map((week: any, weekIndex: number) => (
+              <div key={weekIndex} className="border rounded-lg p-4">
+                <h4 className="font-semibold mb-3">Week {weekIndex + 1}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(week.days || {}).map(([dayName, dayData]: [string, any]) => (
+                    <div key={dayName} className="bg-muted/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium capitalize">{dayName}</div>
+                          {dayData && Object.keys(dayData).length > 0 ? (
+                            <>
+                              <div className="text-sm text-muted-foreground">
+                                {dayData.workout_type || 'Workout'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {dayData.target_muscles?.join(', ') || 'Full body'}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">Rest day</div>
+                          )}
+                        </div>
+                        {dayData && Object.keys(dayData).length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRegenerateDay(weekIndex, dayName)}
+                            disabled={regenerating}
+                            className="h-8 w-8 p-0"
+                          >
+                            <RefreshCw className={`h-3 w-3 ${regenerating ? 'animate-spin' : ''}`} />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditModal(false)}
+                className="flex-1"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Regenerate Today Modal (simplified) */}
       <Dialog open={showRegenerateModal} onOpenChange={setShowRegenerateModal}>
         <DialogContent>
           <DialogHeader>
@@ -280,7 +460,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                 Cancel
               </Button>
               <Button
-                onClick={handleRegenerateDay}
+                onClick={() => currentDay && handleRegenerateDay(currentDay.week - 1, currentDay.dayName)}
                 disabled={regenerating}
                 className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
               >
