@@ -77,6 +77,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_predictions: {
+        Row: {
+          confidence: number | null
+          context: Json | null
+          created_at: string | null
+          id: string
+          predicted_value: string | null
+          prediction_type: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          predicted_value?: string | null
+          prediction_type: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          predicted_value?: string | null
+          prediction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_routines: {
         Row: {
           created_at: string
