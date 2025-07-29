@@ -1058,33 +1058,6 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* AI Quick Predictions Section */}
-        <Card className="border-0 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-500">
-          <CardContent className={`${isMobile ? 'p-5' : 'p-6'}`}>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className={`${isMobile ? 'w-12 h-12' : 'w-14 h-14'} bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg`}>
-                <Sparkles className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-white`} />
-              </div>
-              <div>
-                <h4 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 dark:text-gray-100`}>
-                  AI Quick Predictions
-                </h4>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400`}>
-                  Smart food suggestions based on your patterns
-                </p>
-              </div>
-            </div>
-            
-            <SavedFoodsTab 
-              onFoodSelect={(food) => {
-                setSelectedFood(food);
-                setShowConfirmationCard(true);
-              }}
-              onRefetch={() => {}} 
-            />
-          </CardContent>
-        </Card>
-
         {/* Enhanced Net Calorie Card */}
         <Card 
           className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
