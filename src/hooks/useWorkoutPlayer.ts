@@ -330,8 +330,7 @@ export function useWorkoutPlayer(
     currentLog,
     timerSeconds,
     isTimerActive,
-    sessionNotes,
-    setSessionNotes,
+    sessionStartTime,
     
     // Actions
     initializeSession,
