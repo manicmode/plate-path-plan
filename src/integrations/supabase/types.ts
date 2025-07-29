@@ -3208,6 +3208,57 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_adaptations: {
+        Row: {
+          adaptation_reasons: Json
+          adaptation_type: string
+          adapted_workout_data: Json
+          ai_coach_feedback: string | null
+          created_at: string
+          day_number: number
+          id: string
+          is_active: boolean
+          original_workout_data: Json
+          performance_metrics: Json
+          routine_id: string
+          updated_at: string
+          user_id: string
+          week_number: number
+        }
+        Insert: {
+          adaptation_reasons?: Json
+          adaptation_type: string
+          adapted_workout_data?: Json
+          ai_coach_feedback?: string | null
+          created_at?: string
+          day_number: number
+          id?: string
+          is_active?: boolean
+          original_workout_data?: Json
+          performance_metrics?: Json
+          routine_id: string
+          updated_at?: string
+          user_id: string
+          week_number: number
+        }
+        Update: {
+          adaptation_reasons?: Json
+          adaptation_type?: string
+          adapted_workout_data?: Json
+          ai_coach_feedback?: string | null
+          created_at?: string
+          day_number?: number
+          id?: string
+          is_active?: boolean
+          original_workout_data?: Json
+          performance_metrics?: Json
+          routine_id?: string
+          updated_at?: string
+          user_id?: string
+          week_number?: number
+        }
+        Relationships: []
+      }
       workout_completions: {
         Row: {
           completed_at: string
@@ -3329,6 +3380,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workout_performance_logs: {
+        Row: {
+          completed_exercises_count: number
+          completed_sets_count: number
+          created_at: string
+          day_number: number
+          difficulty_rating: string | null
+          energy_level: number | null
+          extra_rest_seconds: number
+          id: string
+          muscle_groups_worked: string[]
+          notes: string | null
+          performance_score: number | null
+          planned_duration_minutes: number | null
+          routine_id: string
+          skipped_steps_count: number
+          total_duration_minutes: number
+          total_exercises_count: number
+          total_sets_count: number
+          user_id: string
+          week_number: number
+          workout_title: string
+        }
+        Insert: {
+          completed_exercises_count?: number
+          completed_sets_count?: number
+          created_at?: string
+          day_number: number
+          difficulty_rating?: string | null
+          energy_level?: number | null
+          extra_rest_seconds?: number
+          id?: string
+          muscle_groups_worked?: string[]
+          notes?: string | null
+          performance_score?: number | null
+          planned_duration_minutes?: number | null
+          routine_id: string
+          skipped_steps_count?: number
+          total_duration_minutes: number
+          total_exercises_count?: number
+          total_sets_count?: number
+          user_id: string
+          week_number: number
+          workout_title: string
+        }
+        Update: {
+          completed_exercises_count?: number
+          completed_sets_count?: number
+          created_at?: string
+          day_number?: number
+          difficulty_rating?: string | null
+          energy_level?: number | null
+          extra_rest_seconds?: number
+          id?: string
+          muscle_groups_worked?: string[]
+          notes?: string | null
+          performance_score?: number | null
+          planned_duration_minutes?: number | null
+          routine_id?: string
+          skipped_steps_count?: number
+          total_duration_minutes?: number
+          total_exercises_count?: number
+          total_sets_count?: number
+          user_id?: string
+          week_number?: number
+          workout_title?: string
+        }
+        Relationships: []
       }
       workout_routines: {
         Row: {
@@ -3826,6 +3946,17 @@ export type Database = {
       calculate_next_trigger: {
         Args: { reminder_id: string }
         Returns: string
+      }
+      calculate_performance_score: {
+        Args: {
+          completed_sets: number
+          total_sets: number
+          completed_exercises: number
+          total_exercises: number
+          skipped_steps: number
+          difficulty_rating: string
+        }
+        Returns: number
       }
       calculate_private_challenge_progress: {
         Args: { participation_id_param: string }
