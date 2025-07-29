@@ -39,6 +39,8 @@ import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
 import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
+import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
+import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -704,25 +706,9 @@ const Home = () => {
 
   // Use real toxin detection data
 
-  // Mock data for Smart Quick-Log (placeholder for future AI integration)
-  const quickLogSuggestions = [
-    { id: 1, name: 'Greek Yogurt', usualTime: '8:30 AM', calories: 150, protein: 15, carbs: 12, fat: 0, fiber: 0, sugar: 12, sodium: 50 },
-    { id: 2, name: 'Chicken Salad', usualTime: '12:45 PM', calories: 420, protein: 35, carbs: 8, fat: 28, fiber: 3, sugar: 5, sodium: 890 },
-    { id: 3, name: 'Protein Shake', usualTime: '6:00 PM', calories: 280, protein: 25, carbs: 15, fat: 12, fiber: 2, sugar: 8, sodium: 120 },
-  ];
-
-  const recentLogs = [
-    { id: 4, name: 'Oatmeal with Berries', usualTime: '7:15 AM', calories: 320, protein: 8, carbs: 65, fat: 4, fiber: 8, sugar: 12, sodium: 5 },
-    { id: 5, name: 'Turkey Sandwich', usualTime: '1:00 PM', calories: 380, protein: 28, carbs: 42, fat: 12, fiber: 4, sugar: 6, sodium: 1200 },
-    { id: 6, name: 'Apple', usualTime: '3:30 PM', calories: 95, protein: 0, carbs: 25, fat: 0, fiber: 4, sugar: 19, sodium: 2 },
-    { id: 7, name: 'Grilled Salmon', usualTime: '7:30 PM', calories: 450, protein: 40, carbs: 2, fat: 32, fiber: 0, sugar: 0, sodium: 380 },
-    { id: 8, name: 'Almonds', usualTime: '10:00 AM', calories: 160, protein: 6, carbs: 6, fat: 14, fiber: 3, sugar: 1, sodium: 0 },
-    { id: 9, name: 'Green Tea', usualTime: '4:00 PM', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, sugar: 0, sodium: 2 },
-    { id: 10, name: 'Dark Chocolate', usualTime: '9:00 PM', calories: 70, protein: 1, carbs: 8, fat: 4, fiber: 1, sugar: 6, sodium: 2 },
-  ];
-
-  const handleQuickLog = (foodItem: typeof quickLogSuggestions[0]) => {
-    console.log('Quick logging:', foodItem);
+  // Real food selection handler - opens confirmation card for ALL food selections
+  const handleFoodSelect = (foodItem: any) => {
+    console.log('Food selected:', foodItem);
     
     // Show confirmation card for all food selections
     setSelectedFood({
@@ -1044,40 +1030,11 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Quick Suggestions - Full width clickable blocks */}
-                <div className={`grid grid-cols-1 ${isMobile ? 'gap-2' : 'gap-3'}`}>
-                  {quickLogSuggestions.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleQuickLog(item)}
-                      className={`${isMobile ? 'p-4' : 'p-5'} bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-md group w-full`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="text-3xl">🍽️</div>
-                          <div className="flex-1">
-                            <p className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors`}>
-                              {item.name}
-                            </p>
-                            <div className="flex items-center space-x-3 mt-1">
-                              <div className="flex items-center space-x-1">
-                                <span className="text-xs">🕒</span>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  usually {item.usualTime}
-                                </p>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
-                                {item.calories} cal
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-emerald-500 group-hover:scale-110 transition-transform">
-                          <span className="text-sm font-medium">Tap to log</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                {/* Smart Suggestions - Using Real Data */}
+                <div className="space-y-3">
+                  <SavedFoodsTab 
+                    onFoodSelect={handleFoodSelect}
+                  />
                 </div>
 
                 {/* Increased spacing before expand toggle */}
@@ -1112,37 +1069,14 @@ const Home = () => {
                   <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     Recent & Saved Logs
                   </h5>
-                  <div className="space-y-2">
-                    {recentLogs.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleQuickLog(item)}
-                        className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-md group w-full"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="text-2xl">🍽️</div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                              {item.name}
-                            </p>
-                            <div className="flex items-center space-x-3 mt-1">
-                              <div className="flex items-center space-x-1">
-                                <span className="text-xs">🕒</span>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Usually {item.usualTime}
-                                </p>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-300">
-                                {item.calories} cal
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-emerald-500 group-hover:scale-110 transition-transform">
-                          <span className="text-xs font-medium">Tap to log</span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    <RecentFoodsTab 
+                      onFoodSelect={handleFoodSelect}
+                      onBarcodeSelect={(barcode) => {
+                        console.log('Barcode selected:', barcode);
+                        // Handle barcode selection if needed
+                      }}
+                    />
                   </div>
                 </div>
               </CollapsibleContent>
