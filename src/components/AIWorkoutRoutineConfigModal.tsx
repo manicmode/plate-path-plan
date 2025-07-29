@@ -96,8 +96,13 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
     try {
       setLoading(true);
       
-      // Generate routine plan using AI
-      const { data: planData, error: planError } = await supabase.functions.invoke('generate-routine-plan', {
+      // 📊 DIAGNOSTIC: Log fetch start timestamp
+      const fetchStartTime = Date.now();
+      const fetchStartTimestamp = new Date().toISOString();
+      console.log(`🚀 [DIAGNOSTIC] Fetch request started at: ${fetchStartTimestamp} (${fetchStartTime})`);
+      
+      // Generate routine plan using AI with diagnostic timing
+      const fetchPromise = supabase.functions.invoke('generate-routine-plan', {
         body: {
           user_id: user.id,
           routine_goal: formData.routine_goal,
@@ -109,6 +114,29 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
           preferred_routine_name: formData.preferred_routine_name || `AI ${formData.routine_goal} Routine`
         }
       });
+
+      // 📊 DIAGNOSTIC: Add client-side timeout of 60 seconds
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('CLIENT_TIMEOUT: Request timeout after 60 seconds')), 60000)
+      );
+
+      const { data: planData, error: planError } = await Promise.race([
+        fetchPromise,
+        timeoutPromise
+      ]) as any;
+
+      // 📊 DIAGNOSTIC: Log fetch completion
+      const fetchEndTime = Date.now();
+      const fetchEndTimestamp = new Date().toISOString();
+      const fetchDuration = fetchEndTime - fetchStartTime;
+      console.log(`✅ [DIAGNOSTIC] Fetch request completed at: ${fetchEndTimestamp} (${fetchEndTime})`);
+      console.log(`⏱️ [DIAGNOSTIC] Total fetch duration: ${fetchDuration}ms (${(fetchDuration / 1000).toFixed(2)}s)`);
+      
+      if (planError) {
+        console.error(`❌ [DIAGNOSTIC] Fetch failed with error:`, planError);
+        console.log(`🔍 [DIAGNOSTIC] Error type: ${planError.constructor.name}`);
+        console.log(`🔍 [DIAGNOSTIC] Error message: ${planError.message}`);
+      }
 
       if (planError) throw planError;
       
@@ -155,8 +183,27 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
       });
 
     } catch (error) {
-      console.error('Error generating routine:', error);
-      toast.error('Failed to generate routine. Please try again.');
+      // 📊 DIAGNOSTIC: Log detailed error information
+      const errorTimestamp = new Date().toISOString();
+      console.error(`❌ [DIAGNOSTIC] Error caught at: ${errorTimestamp}`, error);
+      console.log(`🔍 [DIAGNOSTIC] Error type: ${error?.constructor?.name || 'Unknown'}`);
+      console.log(`🔍 [DIAGNOSTIC] Error message: ${error?.message || 'No message'}`);
+      console.log(`🔍 [DIAGNOSTIC] Full error object:`, error);
+      
+      let errorMessage = 'Failed to generate routine. Please try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('CLIENT_TIMEOUT')) {
+          console.warn(`⏰ [DIAGNOSTIC] Client-side timeout detected after 60 seconds`);
+          errorMessage = 'Request timed out after 60 seconds. Please try again.';
+        } else if (error.message.includes('timeout')) {
+          console.warn(`⏰ [DIAGNOSTIC] Server-side timeout detected`);
+          errorMessage = 'Server timeout. Please try again.';
+        } else {
+          errorMessage = `Generation failed: ${error.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
