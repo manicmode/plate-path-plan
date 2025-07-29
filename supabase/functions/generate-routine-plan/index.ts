@@ -68,7 +68,22 @@ serve(async (req) => {
       preferred_routine_name
     });
 
-    console.log('🚀 Sending request to OpenAI API...');
+    const messages = [
+      {
+        role: 'system',
+        content: `You are an expert fitness trainer and routine designer. Create comprehensive, progressive workout routines that are safe, effective, and tailored to the user's specific needs. Always provide proper progression, rest periods, and exercise variations. Format your response as valid JSON only - no additional text.`
+      },
+      { role: 'user', content: prompt }
+    ];
+
+    const startTime = Date.now();
+    console.log("📤 Sending to OpenAI:", {
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 4000,
+      promptLength: prompt.length,
+      messages: messages
+    });
 
     const response = await withTimeout(
       fetch('https://api.openai.com/v1/chat/completions', {
@@ -79,14 +94,9 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: `You are an expert fitness trainer and routine designer. Create comprehensive, progressive workout routines that are safe, effective, and tailored to the user's specific needs. Always provide proper progression, rest periods, and exercise variations. Format your response as valid JSON only - no additional text.`
-            },
-            { role: 'user', content: prompt }
-          ],
+          messages: messages,
           temperature: 0.7,
+          max_tokens: 4000
         }),
       }),
       25000 // 25 second timeout
@@ -106,6 +116,14 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    console.log(`✅ OpenAI responded in ${duration}ms`);
+    
+    if (data.usage) {
+      console.log("📊 Token usage:", data.usage);
+    }
+    
     console.log('✅ OpenAI API response received, parsing...');
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
@@ -121,6 +139,7 @@ serve(async (req) => {
 
     const generatedPlan = data.choices[0].message.content;
     console.log('📝 Raw response length:', generatedPlan?.length || 0);
+    console.log("🔹 First 500 characters of response:\n", generatedPlan?.slice(0, 500));
 
     // Parse the JSON response
     let routinePlan;
