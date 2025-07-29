@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
+import { useWorkoutAdaptations } from '@/hooks/useWorkoutAdaptations';
 
 interface Exercise {
   name: string;
@@ -67,6 +68,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const { toast } = useToast();
   const { playSound } = useSound();
   const { showCompletionModal } = useWorkoutCompletion();
+  const { getAdaptationForDay } = useWorkoutAdaptations('current_routine');
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -76,14 +78,30 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const [completedSteps, setCompletedSteps] = useState(0);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
+  const [activeWorkout, setActiveWorkout] = useState<typeof workout>(workout);
+
+  // Check for AI adaptations and load adapted workout if available
+  useEffect(() => {
+    if (!workout || !user) return;
+
+    const adaptation = getAdaptationForDay(week, day);
+    
+    if (adaptation && adaptation.adapted_workout_data) {
+      console.log('[ADAPTATION] Using AI-adapted workout for week', week, 'day', day);
+      setActiveWorkout(adaptation.adapted_workout_data);
+    } else {
+      console.log('[ADAPTATION] No AI adaptation found — loading original workout.');
+      setActiveWorkout(workout);
+    }
+  }, [workout, week, day, user, getAdaptationForDay]);
 
   // Generate workout steps from exercise data
   useEffect(() => {
-    if (!workout) return;
+    if (!activeWorkout) return;
     
     const steps: WorkoutStep[] = [];
     
-    workout.exercises.forEach((exercise, exerciseIndex) => {
+    activeWorkout.exercises.forEach((exercise, exerciseIndex) => {
       const restSeconds = parseInt(exercise.rest.replace(/[^0-9]/g, '')) || 60;
       
       for (let set = 1; set <= exercise.sets; set++) {
@@ -98,11 +116,11 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         });
         
         // Rest step (except after last set of last exercise)
-        if (!(exerciseIndex === workout.exercises.length - 1 && set === exercise.sets)) {
+        if (!(exerciseIndex === activeWorkout.exercises.length - 1 && set === exercise.sets)) {
           steps.push({
             type: 'rest',
             duration: restSeconds,
-            isLast: exerciseIndex === workout.exercises.length - 1 && set === exercise.sets
+            isLast: exerciseIndex === activeWorkout.exercises.length - 1 && set === exercise.sets
           });
         }
       }
@@ -112,7 +130,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     if (steps.length > 0) {
       setTimeRemaining(steps[0].duration);
     }
-  }, [workout]);
+  }, [activeWorkout]);
 
   // Timer logic
   useEffect(() => {
@@ -184,18 +202,18 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         routine_id: 'current_routine',
         week_number: week,
         day_number: day,
-        workout_title: workout?.title || 'AI Routine Workout',
+        workout_title: activeWorkout?.title || 'AI Routine Workout',
         total_duration_minutes: actualDurationMinutes,
-        planned_duration_minutes: workout?.duration || 45,
-        completed_exercises_count: workout?.exercises.length || 0,
-        total_exercises_count: workout?.exercises.length || 0,
+        planned_duration_minutes: activeWorkout?.duration || 45,
+        completed_exercises_count: activeWorkout?.exercises.length || 0,
+        total_exercises_count: activeWorkout?.exercises.length || 0,
         completed_sets_count: completedSteps,
         total_sets_count: workoutSteps.length,
         skipped_steps_count: Math.max(0, workoutSteps.length - completedSteps),
-        extra_rest_seconds: Math.max(0, (actualDurationMinutes - (workout?.duration || 45)) * 60),
+        extra_rest_seconds: Math.max(0, (actualDurationMinutes - (activeWorkout?.duration || 45)) * 60),
         difficulty_rating: null, // Will be set by user in completion modal
         energy_level: null,
-        muscle_groups_worked: [...new Set(workout?.exercises.map(ex => {
+        muscle_groups_worked: [...new Set(activeWorkout?.exercises.map(ex => {
           const name = ex.name.toLowerCase();
           if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
           if (name.includes('pull') || name.includes('row')) return 'Back';
@@ -251,11 +269,11 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     showCompletionModal({
       workoutType: 'ai_routine',
       durationMinutes: actualDurationMinutes,
-      exercisesCount: workout?.exercises.length || 0,
+      exercisesCount: activeWorkout?.exercises.length || 0,
       setsCount: workoutSteps.reduce((total, step) => 
         step.type === 'exercise' ? total + 1 : total, 0
       ),
-      musclesWorked: [...new Set(workout?.exercises.map(ex => {
+      musclesWorked: [...new Set(activeWorkout?.exercises.map(ex => {
         const name = ex.name.toLowerCase();
         if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
         if (name.includes('pull') || name.includes('row')) return 'Back';
@@ -266,7 +284,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         return 'Full Body';
       }) || [])],
       workoutData: {
-        title: workout?.title,
+        title: activeWorkout?.title,
         week,
         day,
         completedSteps,
@@ -340,7 +358,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Outstanding work! You've completed your {workout.title} workout.
+              Outstanding work! You've completed your {activeWorkout?.title || workout.title} workout.
             </p>
             <div className="flex gap-2 justify-center">
               <Button onClick={handleReset} variant="outline">
@@ -364,7 +382,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         {/* Header */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">{workout.title}</CardTitle>
+            <CardTitle className="text-center">{activeWorkout?.title || workout.title}</CardTitle>
             <div className="text-center">
               <Badge variant="secondary">
                 Week {week} • Day {day}
@@ -487,7 +505,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {workout.exercises.map((exercise, index) => (
+              {(activeWorkout?.exercises || workout?.exercises || []).map((exercise, index) => (
                 <div 
                   key={index} 
                   className="flex justify-between items-center text-sm p-2 rounded border"
