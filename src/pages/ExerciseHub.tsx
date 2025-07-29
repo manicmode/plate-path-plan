@@ -31,6 +31,7 @@ import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
 import { WorkoutProgressCalendar } from '@/components/analytics/WorkoutProgressCalendar';
 import { ExerciseGoalsInitializer } from '@/components/exercise/ExerciseGoalsInitializer';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
+import { AIFitnessCoach } from '@/components/workout/AIFitnessCoach';
 
 const ExerciseHub = () => {
   const { showCompletionModal } = useWorkoutCompletion();
@@ -38,7 +39,7 @@ const ExerciseHub = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('workout-log');
+  const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'ai-fitness-coach' | 'progress-reports' | 'pre-made-plans'>('workout-log');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isWorkoutPreferencesModalOpen, setIsWorkoutPreferencesModalOpen] = useState(false);
@@ -691,6 +692,12 @@ const ExerciseHub = () => {
       content: 'This is where your custom workout routines will live.'
     },
     {
+      id: 'ai-fitness-coach',
+      title: 'AI Fitness Coach',
+      emoji: '🤖',
+      content: 'AI-powered workout routine generation and coaching.'
+    },
+    {
       id: 'progress-reports',
       title: 'Progress & Reports',
       emoji: '📈',
@@ -856,7 +863,7 @@ const ExerciseHub = () => {
             <Button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans');
+                setActiveTab(tab.id as 'workout-log' | 'my-routines' | 'ai-fitness-coach' | 'progress-reports' | 'pre-made-plans');
                 // Scroll to completely hide the section above the tabs
                 if (tabsRef.current) {
                   const offsetTop = tabsRef.current.offsetTop - 80; // Smaller offset to scroll higher and hide buttons
@@ -1068,9 +1075,12 @@ const ExerciseHub = () => {
                            <p className="text-muted-foreground mb-6">Create your first custom workout routine or let AI design one for you!</p>
                          </CardContent>
                        </Card>
-                     )}
-                  </div>
-                ) : tab.id === 'progress-reports' ? (
+                      )}
+                   </div>
+                 ) : tab.id === 'ai-fitness-coach' ? (
+                   /* AI Fitness Coach Tab */
+                   <AIFitnessCoach />
+                 ) : tab.id === 'progress-reports' ? (
                   /* Progress & Reports Tab - Enhanced with Visual Experience */
                   <div>
                     {/* Header with motivational badge */}
@@ -1201,14 +1211,13 @@ const ExerciseHub = () => {
                       </Card>
                      )}
                    </div>
-                  ) : tab.id === 'body-scan-ai' ? (
-                    /* Body Scan AI Tab */
-                    <div className="space-y-6">
-                      {/* Header */}
-                      <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-foreground mb-2">📸 Body Scan AI — Analyze Your Physique</h2>
-                        <p className="text-muted-foreground">Upload a body photo to analyze muscle symmetry, posture alignment, and get personalized recommendations.</p>
-                      </div>
+                   ) : (
+                     /* Default fallback */
+                     <div className="space-y-6">
+                       <div className="text-center">
+                         <h2 className="text-2xl font-bold">Coming Soon</h2>
+                         <p className="text-muted-foreground">This feature is under development.</p>
+                       </div>
 
                       {/* Upload Section */}
                       {!bodyScanFile && !bodyScanResult && (
@@ -1287,9 +1296,47 @@ const ExerciseHub = () => {
                             </div>
                           </CardContent>
                         </Card>
-                      )}
-                    </div>
-                  ) : tab.id === 'recovery-center' ? (
+                     </div>
+                   )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Modals */}
+        <AddWorkoutModal
+          isOpen={isAddWorkoutModalOpen}
+          onClose={() => setIsAddWorkoutModalOpen(false)}
+          onSave={handleAddWorkout}
+        />
+
+        <CreateRoutineModal
+          isOpen={isCreateRoutineModalOpen}
+          onClose={() => {
+            setIsCreateRoutineModalOpen(false);
+            setEditingRoutine(null);
+          }}
+          onSave={handleSaveRoutine}
+          editingRoutine={editingRoutine}
+        />
+
+        <WorkoutPreferencesModal
+          isOpen={isWorkoutPreferencesModalOpen}
+          onClose={() => setIsWorkoutPreferencesModalOpen(false)}
+        />
+
+        <PlanPreviewModal
+          isOpen={isPlanPreviewOpen}
+          onClose={() => setIsPlanPreviewOpen(false)}
+          plan={selectedPlan}
+          onAddToRoutines={handleAddPlanToRoutines}
+        />
+      </div>
+    );
+  };
+
+  export default ExerciseHub;
                     /* Recovery Center Tab */
                     <div className="space-y-8">
                       {/* Welcome Section */}
