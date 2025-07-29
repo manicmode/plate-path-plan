@@ -41,6 +41,7 @@ import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBa
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
+import { SmartLogAI } from '@/components/SmartLogAI';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1009,7 +1010,11 @@ const Home = () => {
           </CardContent>
         </Card>
 
-
+        {/* SmartLog AI Predictions */}
+        <SmartLogAI onFoodSelect={(food) => {
+          console.log('AI predicted food selected:', food);
+          // TODO: Integrate with actual food logging system
+        }} />
 
         {/* Secondary Actions: Hydration & Supplements */}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
