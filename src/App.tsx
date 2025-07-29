@@ -3,7 +3,7 @@ import React, { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -83,6 +83,15 @@ const prefetchCriticalComponents = () => {
   }, 1000);
 };
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false, // Reduce unnecessary refetches
+    },
+  },
+});
 
 function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
@@ -329,28 +338,30 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <ThemeProvider>
-          <SoundProvider>
-            <TooltipProvider>
-              <IngredientAlertProvider>
-                <BadgeProvider>
-                  <ChatModalProvider>
-                    <RewardsProvider>
-                      <WorkoutCompletionProvider>
-                        <AppContent />
-                        <WorkoutCompletionModal />
-                      </WorkoutCompletionProvider>
-                    </RewardsProvider>
-                  </ChatModalProvider>
-                </BadgeProvider>
-              </IngredientAlertProvider>
-            </TooltipProvider>
-          </SoundProvider>
-        </ThemeProvider>
-      </ErrorBoundary>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <SoundProvider>
+              <TooltipProvider>
+                <IngredientAlertProvider>
+                  <BadgeProvider>
+                    <ChatModalProvider>
+                      <RewardsProvider>
+                        <WorkoutCompletionProvider>
+                          <AppContent />
+                          <WorkoutCompletionModal />
+                        </WorkoutCompletionProvider>
+                      </RewardsProvider>
+                    </ChatModalProvider>
+                  </BadgeProvider>
+                </IngredientAlertProvider>
+              </TooltipProvider>
+            </SoundProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

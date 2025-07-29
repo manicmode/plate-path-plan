@@ -16,6 +16,8 @@ import { GroupStatsDisplay } from '@/components/GroupStatsDisplay';
 import { WeeklyExerciseInsightsCard } from '@/components/analytics/WeeklyExerciseInsightsCard';
 import { AnimatePresence } from 'framer-motion';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
+import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
+import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
 import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
 import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
 import { AIThermotherapyNudgeChatEntries } from '@/components/thermotherapy/AIThermotherapyNudgeChatEntries';
@@ -449,6 +451,8 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           </CardContent>
         </Card>
 
+        {/* Breathing Nudge Banner */}
+        <BreathingNudgeBanner />
 
         {/* Fitness Nudges Section */}
         {nudgeContent.isLoading ? (
@@ -468,6 +472,14 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
               </Card>
             )}
 
+            {/* Breathing Nudges Section */}
+            {nudgeContent.hasBreathingContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Yoga Nudges Section */}
             {nudgeContent.hasYogaContent && (

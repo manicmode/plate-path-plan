@@ -366,8 +366,7 @@ const Coach = () => {
   ];
 
   return (
-    <div className="max-w-md mx-auto w-full px-4">
-      <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
+    <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
       {/* Error Recovery Component */}
       {loadingError && (
         <CoachErrorRecovery 
@@ -706,7 +705,6 @@ const Coach = () => {
           )}
         </CardContent>
       </Card>
-      </div>
     </div>
   );
 };

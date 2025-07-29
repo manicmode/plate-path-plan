@@ -38,7 +38,7 @@ export const WorkoutConsistencyChart = ({ completedWorkouts, plannedWorkouts }: 
           </div>
           
           <div className="w-full">
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={data}
@@ -63,20 +63,14 @@ export const WorkoutConsistencyChart = ({ completedWorkouts, plannedWorkouts }: 
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                 />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: '12px' }}
+                />
               </PieChart>
             </ResponsiveContainer>
-            
-            {/* Custom Legend with proper spacing */}
-            <div className="flex justify-center items-center gap-6 mt-4">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-[#10B981]"></div>
-                <span className="text-sm text-foreground">Completed</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-[#EF4444]"></div>
-                <span className="text-sm text-foreground">Missed</span>
-              </div>
-            </div>
           </div>
         </div>
       </CardContent>
