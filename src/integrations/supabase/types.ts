@@ -4010,6 +4010,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      triggermeditationnudge: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       update_private_challenge_status: {
         Args: Record<PropertyKey, never>
         Returns: undefined
