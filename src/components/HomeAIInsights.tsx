@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FoodConfirmationCard from './FoodConfirmationCard';
+import CoachInsightsBar from './CoachInsightsBar';
 
 const HomeAIInsights = () => {
   const { user } = useAuth();
@@ -183,7 +184,14 @@ const HomeAIInsights = () => {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
+      {/* Coach Insights Bar - Between AI Predictions and Recent Logs */}
+      <CoachInsightsBar />
+
+      <Card className={`modern-action-card border-0 rounded-3xl animate-slide-up float-animation hover:scale-[1.02] transition-all duration-500 shadow-xl hover:shadow-2xl ${isMobile ? 'mx-2' : 'mx-4'}`}>
+        <CardContent className={`${isMobile ? 'p-6' : 'p-8'}`}>
           {/* Recent & Saved Logs Section */}
           <div className="mb-8">
             <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-6`}>
@@ -235,17 +243,6 @@ const HomeAIInsights = () => {
             )}
           </div>
 
-          {/* Action Button */}
-          <Button
-            onClick={() => navigate('/coach')}
-            className={`w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white ${isMobile ? 'px-6 py-4 text-base' : 'px-8 py-5 text-lg'} rounded-3xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105`}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <span>Ask your AI coach</span>
-              <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-              <span>→</span>
-            </div>
-          </Button>
         </CardContent>
       </Card>
 
