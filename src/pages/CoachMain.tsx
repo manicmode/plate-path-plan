@@ -25,19 +25,31 @@ const CoachMain = () => {
           >
             <ToggleGroupItem 
               value="nutrition" 
-              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
+                activeTab === 'nutrition' 
+                  ? 'bg-gradient-to-r from-purple-600 via-blue-600 to-emerald-600 text-white shadow-lg' 
+                  : 'hover:bg-muted/60'
+              }`}
             >
               Nutrition
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="exercise" 
-              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
+                activeTab === 'exercise' 
+                  ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 text-white shadow-lg' 
+                  : 'hover:bg-muted/60'
+              }`}
             >
               Exercise
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="recovery" 
-              className="rounded-md text-sm px-6 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm"
+              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
+                activeTab === 'recovery' 
+                  ? 'bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 text-white shadow-lg' 
+                  : 'hover:bg-muted/60'
+              }`}
             >
               Recovery
             </ToggleGroupItem>
