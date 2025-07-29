@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, RotateCcw, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useXPSystem } from '@/hooks/useXPSystem';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ const RecoveryPlayer = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { awardRecoveryXP } = useXPSystem();
   
   // Get session data from navigation state
   const sessionData: SessionData = location.state?.session || {
@@ -226,6 +228,10 @@ const RecoveryPlayer = () => {
       setIsPlaying(false);
       setIsSessionComplete(true);
       updateMeditationStreak();
+      
+      // Award XP for session completion
+      const recoveryType = sessionData.category === 'general' ? 'meditation' : sessionData.category as 'meditation' | 'yoga' | 'breathing' | 'sleep' | 'stretching' | 'muscle-recovery';
+      awardRecoveryXP(recoveryType, sessionData.id, sessionData.duration);
     };
 
     const handleLoadStart = () => setIsLoading(true);

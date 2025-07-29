@@ -4,11 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Thermometer, Snowflake, Flame } from 'lucide-react';
 import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge';
+import { useXPSystem } from '@/hooks/useXPSystem';
 
 export function ThermotherapyTestButton() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { trackRecoveryActivity } = useRecoveryChallenge();
+  const { awardRecoveryXP } = useXPSystem();
 
   const handleLogSession = async () => {
     setLoading(true);
@@ -45,6 +47,9 @@ export function ThermotherapyTestButton() {
         duration: 15, // Default thermotherapy session duration
         notes: 'Thermotherapy session completed'
       });
+
+      // Award XP for thermotherapy session completion
+      await awardRecoveryXP('muscle-recovery', data.sessionId || 'thermotherapy-session', 15);
 
       toast({
         title: "Session Logged! 🔥❄️",

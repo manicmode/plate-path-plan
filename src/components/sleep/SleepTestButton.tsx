@@ -4,9 +4,11 @@ import { Moon, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge';
+import { useXPSystem } from '@/hooks/useXPSystem';
 
 export const SleepTestButton: React.FC = () => {
   const { trackRecoveryActivity } = useRecoveryChallenge();
+  const { awardRecoveryXP } = useXPSystem();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -36,6 +38,9 @@ export const SleepTestButton: React.FC = () => {
         duration: 30, // Default sleep prep duration
         notes: 'Sleep preparation completed'
       });
+
+      // Award XP for sleep session completion
+      await awardRecoveryXP('sleep', data.sessionId || 'sleep-session', 30);
 
       toast({
         title: "Sleep session logged! 🌙💤",

@@ -6,10 +6,12 @@ import { useAuth } from '@/contexts/auth'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge'
+import { useXPSystem } from '@/hooks/useXPSystem'
 
 export const YogaTestButton = () => {
   const { user } = useAuth()
   const { trackRecoveryActivity } = useRecoveryChallenge()
+  const { awardRecoveryXP } = useXPSystem()
   const [isLogging, setIsLogging] = useState(false)
   const [lastLoggedStreak, setLastLoggedStreak] = useState<any>(null)
 
@@ -39,6 +41,9 @@ export const YogaTestButton = () => {
         duration: 20, // Default yoga session duration
         notes: 'Yoga session completed'
       })
+
+      // Award XP for yoga session completion
+      await awardRecoveryXP('yoga', data.sessionId || 'yoga-session', 20);
       
       if (data.message.includes('already completed')) {
         toast.info('You already completed a yoga session today!')
