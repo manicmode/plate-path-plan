@@ -1227,7 +1227,10 @@ const ExerciseHub = () => {
                         </div>
 
                         <Button
-                          onClick={() => navigate('/ai-routine-viewer')}
+                          onClick={() => {
+                            console.log('View Full 8-Week Plan button clicked - navigating to /ai-routine-viewer');
+                            navigate('/ai-routine-viewer');
+                          }}
                           className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold"
                         >
                           <span className="text-lg mr-2">📅</span>

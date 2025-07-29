@@ -157,7 +157,10 @@ return (
             </div>
           </div>
           <Button 
-            onClick={() => navigate('/ai-routine-viewer')}
+            onClick={() => {
+              console.log('View Plan button clicked - navigating to /ai-routine-viewer');
+              navigate('/ai-routine-viewer');
+            }}
             className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
           >
             View Plan
