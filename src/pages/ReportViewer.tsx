@@ -10,6 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useReport, ReportType, ReportData } from "@/hooks/useReport";
 import { supabase } from "@/integrations/supabase/client";
+import { RecoveryAnalyticsSection } from "@/components/analytics/sections/RecoveryAnalyticsSection";
 
 
 const chartConfig = {
@@ -918,18 +919,20 @@ export default function ReportViewer() {
           </Card>
         )}
 
-        {/* Recovery & Wellness Activities - Mobile Optimized */}
+        {/* 🧘 Recovery Section */}
         <Card className="animate-scale-in hover:shadow-lg transition-all duration-300" style={{ animationDelay: '0.35s' }}>
           <CardHeader className={isMobile ? "p-4 pb-2" : ""}>
             <CardTitle className={`flex items-center gap-3 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-              <div className={`${isMobile ? 'p-1.5' : 'p-2'} bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg text-white`}>
-                🧘‍♀️
+              <div className={`${isMobile ? 'p-1.5' : 'p-2'} bg-gradient-to-r from-blue-500 to-teal-500 rounded-lg text-white`}>
+                🧘
               </div>
-              Recovery & Mindfulness Summary
+              Recovery Analytics
             </CardTitle>
           </CardHeader>
-          <CardContent className={`space-y-4 ${isMobile ? 'p-4 pt-0' : ''}`}>
-            <RecoveryActivitiesSection reportType={reportType} isMobile={isMobile} />
+          <CardContent className={`${isMobile ? 'p-4 pt-0' : ''}`}>
+            <div className="recovery-analytics-report-wrapper">
+              <RecoveryAnalyticsSection />
+            </div>
           </CardContent>
         </Card>
 
