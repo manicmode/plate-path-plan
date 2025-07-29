@@ -43,7 +43,7 @@ const ExerciseHub = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('workout-log');
+  const [activeTab, setActiveTab] = useState<'workout-log' | 'my-routines' | 'progress-reports' | 'pre-made-plans'>('my-routines');
   const [isAddWorkoutModalOpen, setIsAddWorkoutModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [isWorkoutPreferencesModalOpen, setIsWorkoutPreferencesModalOpen] = useState(false);
@@ -880,16 +880,16 @@ const ExerciseHub = () => {
 
   const tabs = [
     {
-      id: 'workout-log',
-      title: 'Workout Log',
-      emoji: '📘',
-      content: 'Here you will see your full workout log and stats.'
-    },
-    {
       id: 'my-routines',
       title: 'My Routines', 
       emoji: '🧠',
       content: 'This is where your custom workout routines will live.'
+    },
+    {
+      id: 'workout-log',
+      title: 'Workout Log',
+      emoji: '📘',
+      content: 'Here you will see your full workout log and stats.'
     },
     {
       id: 'progress-reports',
