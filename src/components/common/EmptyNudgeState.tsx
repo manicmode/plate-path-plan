@@ -3,7 +3,7 @@ import { Brain, MessageSquare, Sparkles } from 'lucide-react'
 
 interface EmptyNudgeStateProps {
   message?: string
-  type?: 'nutrition' | 'fitness' | 'general'
+  type?: 'nutrition' | 'fitness' | 'recovery' | 'general'
 }
 
 export const EmptyNudgeState: React.FC<EmptyNudgeStateProps> = ({ 
@@ -16,6 +16,8 @@ export const EmptyNudgeState: React.FC<EmptyNudgeStateProps> = ({
         return <Brain className="h-8 w-8 text-purple-400 opacity-50" />
       case 'fitness':
         return <Sparkles className="h-8 w-8 text-indigo-400 opacity-50" />
+      case 'recovery':
+        return <Brain className="h-8 w-8 text-blue-400 opacity-50" />
       default:
         return <MessageSquare className="h-8 w-8 text-muted-foreground opacity-50" />
     }
@@ -27,6 +29,8 @@ export const EmptyNudgeState: React.FC<EmptyNudgeStateProps> = ({
         return "Continue tracking your nutrition and I'll provide personalized suggestions to help you reach your goals!"
       case 'fitness':
         return "Keep logging your workouts and I'll offer smart recommendations to optimize your training!"
+      case 'recovery':
+        return "Practice mindfulness, breathing exercises, and recovery activities to receive personalized wellness guidance!"
       default:
         return message
     }

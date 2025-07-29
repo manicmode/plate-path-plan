@@ -15,6 +15,7 @@ import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrend
 import { ExerciseAnalyticsSection } from '@/components/analytics/sections/ExerciseAnalyticsSection';
 import { MotivationCard } from '@/components/analytics/MotivationCard';
 import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
+import { RecoveryAnalyticsSection } from '@/components/analytics/sections/RecoveryAnalyticsSection';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
@@ -39,12 +40,15 @@ export default function Analytics() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg mx-auto">
           <TabsTrigger value="nutrition" className="text-sm font-medium">
             🍎 Nutrition
           </TabsTrigger>
           <TabsTrigger value="exercise" className="text-sm font-medium">
             💪 Exercise
+          </TabsTrigger>
+          <TabsTrigger value="recovery" className="text-sm font-medium">
+            🧘 Recovery
           </TabsTrigger>
         </TabsList>
 
@@ -66,6 +70,10 @@ export default function Analytics() {
           <ExerciseAnalyticsSection />
           <WorkoutTrophyCard />
           <MotivationCard />
+        </TabsContent>
+
+        <TabsContent value="recovery" className="space-y-6 mt-6">
+          <RecoveryAnalyticsSection />
         </TabsContent>
 
       </Tabs>

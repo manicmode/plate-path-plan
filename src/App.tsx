@@ -3,7 +3,7 @@ import React, { Suspense, lazy } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
@@ -38,6 +38,7 @@ const Profile = lazy(() => import('@/pages/Profile'));
 // Less critical components - lazy load without prefetch
 const ExerciseHub = lazy(() => import('@/pages/ExerciseHub'));
 const AIRoutineViewer = lazy(() => import('@/pages/AIRoutineViewer'));
+const IntelligentWorkoutPage = lazy(() => import('@/pages/IntelligentWorkoutPage'));
 const RecoveryCenter = lazy(() => import('@/pages/RecoveryCenter'));
 const GuidedMeditation = lazy(() => import('@/pages/GuidedMeditation'));
 const RecoveryPlayer = lazy(() => import('@/pages/RecoveryPlayer'));
@@ -83,15 +84,6 @@ const prefetchCriticalComponents = () => {
   }, 1000);
 };
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-      refetchOnWindowFocus: false, // Reduce unnecessary refetches
-    },
-  },
-});
 
 function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
@@ -174,6 +166,11 @@ function AppContent() {
                     <Route path="/exercise-hub" element={
                       <ProtectedRoute>
                         <ExerciseHub />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/exercise/intelligent" element={
+                      <ProtectedRoute>
+                        <IntelligentWorkoutPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/ai-routine-viewer" element={
@@ -338,30 +335,28 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <ThemeProvider>
-            <SoundProvider>
-              <TooltipProvider>
-                <IngredientAlertProvider>
-                  <BadgeProvider>
-                    <ChatModalProvider>
-                      <RewardsProvider>
-                        <WorkoutCompletionProvider>
-                          <AppContent />
-                          <WorkoutCompletionModal />
-                        </WorkoutCompletionProvider>
-                      </RewardsProvider>
-                    </ChatModalProvider>
-                  </BadgeProvider>
-                </IngredientAlertProvider>
-              </TooltipProvider>
-            </SoundProvider>
-          </ThemeProvider>
-        </ErrorBoundary>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <SoundProvider>
+            <TooltipProvider>
+              <IngredientAlertProvider>
+                <BadgeProvider>
+                  <ChatModalProvider>
+                    <RewardsProvider>
+                      <WorkoutCompletionProvider>
+                        <AppContent />
+                        <WorkoutCompletionModal />
+                      </WorkoutCompletionProvider>
+                    </RewardsProvider>
+                  </ChatModalProvider>
+                </BadgeProvider>
+              </IngredientAlertProvider>
+            </TooltipProvider>
+          </SoundProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }
 
