@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import confetti from 'canvas-confetti';
 import { MotivationCard } from '@/components/analytics/MotivationCard';
+import { CoachInsight } from './CoachInsight';
 
 type DifficultyFeedback = 'too_easy' | 'just_right' | 'too_hard';
 
@@ -419,6 +420,13 @@ export const WorkoutCompletionModal = () => {
               {isSubmitting ? 'Saving...' : 'Complete 🎉'}
             </Button>
           </div>
+
+          {/* Coach Insight Component */}
+          <CoachInsight 
+            workoutData={workoutData}
+            difficultyFeedback={difficultyFeedback || undefined}
+            show={!!difficultyFeedback}
+          />
         </div>
       </DialogContent>
     </Dialog>
