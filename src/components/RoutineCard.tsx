@@ -9,18 +9,22 @@ import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButto
 
 interface RoutineCardProps {
   routine: {
-    id: number;
+    id: string | number;
     title: string;
     emoji: string;
     type: string;
     duration: string;
     gradient: string;
-    weeklyPlan: Record<string, string>;
+    weeklyPlan: Record<string, string> | any;
     notes?: string;
     createdAt: string;
     status?: 'not-started' | 'in-progress' | 'completed';
     currentDay?: number;
-    routineType?: 'strength' | 'cardio' | 'hiit' | 'yoga' | 'flexibility';
+    routineType?: string;
+    source?: 'custom' | 'ai-generated' | 'ai-legacy' | 'mock';
+    canDelete?: boolean;
+    isActive?: boolean;
+    daysPerWeek?: number;
   };
   onEdit: (routine: any) => void;
   onDuplicate: (routine: any) => void;
@@ -31,7 +35,10 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   
   const getActiveDays = () => {
-    return Object.entries(routine.weeklyPlan).filter(([_, exercises]) => exercises.trim().length > 0);
+    if (!routine.weeklyPlan || typeof routine.weeklyPlan !== 'object') return [];
+    return Object.entries(routine.weeklyPlan).filter(([_, exercises]) => 
+      exercises && typeof exercises === 'string' && exercises.trim().length > 0
+    );
   };
 
   const getWeeklyBreakdown = () => {
@@ -77,7 +84,9 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
     return {
       dayNumber: currentDay,
       dayName,
-      exercises: exercises.length > 50 ? `${exercises.slice(0, 50)}...` : exercises
+      exercises: typeof exercises === 'string' && exercises.length > 50 
+        ? `${exercises.slice(0, 50)}...` 
+        : String(exercises || '')
     };
   };
 
@@ -186,7 +195,9 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
                     <div key={day} className="flex justify-between items-start text-sm">
                       <span className="font-medium text-foreground min-w-[60px]">{day.slice(0, 3)}:</span>
                       <span className="text-muted-foreground text-right flex-1 line-clamp-1">
-                        {exercises.length > 40 ? `${exercises.slice(0, 40)}...` : exercises}
+                        {typeof exercises === 'string' && exercises.length > 40 
+                          ? `${exercises.slice(0, 40)}...` 
+                          : String(exercises || '')}
                       </span>
                     </div>
                   ))}

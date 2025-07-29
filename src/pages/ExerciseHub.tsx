@@ -25,7 +25,8 @@ import { WeeklyExerciseInsightsCard } from "@/components/analytics/WeeklyExercis
 import { WorkoutCalendarView } from '@/components/analytics/WorkoutCalendarView';
 import { WorkoutVolumeChart } from '@/components/analytics/WorkoutVolumeChart';
 import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTracker';
-import { useCustomRoutines, type CustomRoutine } from '@/hooks/useCustomRoutines';
+import { useAllRoutines, type UnifiedRoutine } from '@/hooks/useAllRoutines';
+import { RoutineBadge } from '@/components/RoutineBadge';
 import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
 import { WeeklyGoalCard } from '@/components/analytics/WeeklyGoalCard';
@@ -297,112 +298,12 @@ const ExerciseHub = () => {
     }
   };
 
-  // Use custom routines from Supabase
-  const { routines: customRoutines, loading: customRoutinesLoading, duplicateRoutine } = useCustomRoutines();
+  // Use unified routines from all sources
+  const { routines: allRoutines, loading: routinesLoading, deleteRoutine: deleteUnifiedRoutine, hasRealRoutines } = useAllRoutines();
   
-  // Enhanced mock routine data - make it dynamic
-  const [mockRoutines, setMockRoutines] = useState<any[]>([
-    {
-      id: 1,
-      title: "Push/Pull/Legs Split",
-      emoji: "🏋️",
-      type: "Strength",
-      routineType: "strength" as const,
-      duration: "60-75 minutes",
-      gradient: "from-red-400 to-orange-600",
-      status: "in-progress" as const,
-      currentDay: 4,
-      weeklyPlan: {
-        Monday: "Push: Bench press 3x8, Shoulder press 3x10, Tricep dips 3x12",
-        Tuesday: "Pull: Pull-ups 3x8, Rows 3x10, Bicep curls 3x12",
-        Wednesday: "Legs: Squats 3x10, Deadlifts 3x8, Calf raises 3x15",
-        Thursday: "Push: Incline press 3x8, Lateral raises 3x12, Push-ups 3x15",
-        Friday: "Pull: Lat pulldowns 3x10, Face pulls 3x15, Hammer curls 3x12",
-        Saturday: "Legs: Leg press 3x12, Romanian deadlifts 3x10, Lunges 3x12",
-        Sunday: "Rest day"
-      },
-      notes: "Progressive overload each week. Rest 2-3 minutes between sets.",
-      createdAt: "2024-01-20T10:00:00Z"
-    },
-    {
-      id: 2,
-      title: "Morning HIIT Routine",
-      emoji: "⚡",
-      type: "HIIT",
-      routineType: "hiit" as const,
-      duration: "25-30 minutes",
-      gradient: "from-yellow-400 to-orange-600",
-      status: "not-started" as const,
-      currentDay: 1,
-      weeklyPlan: {
-        Monday: "Burpees 30s, Rest 30s, Jump squats 30s, Rest 30s - Repeat 5 rounds",
-        Tuesday: "Rest day",
-        Wednesday: "Mountain climbers 30s, Rest 30s, High knees 30s, Rest 30s - Repeat 5 rounds",
-        Thursday: "Rest day",
-        Friday: "Jumping jacks 30s, Rest 30s, Plank 30s, Rest 30s - Repeat 5 rounds",
-        Saturday: "Full body HIIT circuit - 40 minutes",
-        Sunday: "Active recovery walk"
-      },
-      notes: "High intensity intervals for maximum fat burn. Stay hydrated!",
-      createdAt: "2024-01-18T08:00:00Z"
-    },
-    {
-      id: 3,
-      title: "Evening Yoga Flow",
-      emoji: "🧘",
-      type: "Flexibility",
-      routineType: "yoga" as const,
-      duration: "30-45 minutes",
-      gradient: "from-purple-400 to-pink-500",
-      status: "completed" as const,
-      currentDay: 14,
-      weeklyPlan: {
-        Monday: "Gentle morning flow: Sun salutations, warrior poses, triangle pose",
-        Tuesday: "Rest day",
-        Wednesday: "Restorative yoga: Child's pose, pigeon pose, savasana",
-        Thursday: "Rest day", 
-        Friday: "Power yoga: Vinyasa flow, arm balances, inversions",
-        Saturday: "Yin yoga: Long holds, hip openers, spinal twists",
-        Sunday: "Meditation & breathwork"
-      },
-      notes: "Focus on breath awareness and mindful movement. Modify poses as needed.",
-      createdAt: "2024-01-15T18:00:00Z"
-    }
-  ]);
+  // Remove mock routines - now handled by useAllRoutines hook
 
-  // Convert custom routines to display format
-  const convertCustomRoutineToDisplay = (routine: CustomRoutine) => {
-    const routineTypeMap: Record<string, { emoji: string; label: string; gradient: string }> = {
-      strength: { emoji: "🏋️", label: "Strength", gradient: "from-red-400 to-orange-600" },
-      cardio: { emoji: "🏃", label: "Cardio", gradient: "from-blue-400 to-cyan-600" },
-      hiit: { emoji: "⚡", label: "HIIT", gradient: "from-yellow-400 to-orange-600" },
-      fullbody: { emoji: "🔁", label: "Full Body", gradient: "from-purple-400 to-pink-600" },
-      flexibility: { emoji: "🧘", label: "Flexibility", gradient: "from-green-400 to-teal-600" },
-      custom: { emoji: "✏️", label: "Custom", gradient: "from-gray-400 to-slate-600" }
-    };
-    
-    const typeInfo = routineTypeMap[routine.routine_type] || routineTypeMap.custom;
-    
-    return {
-      id: routine.id,
-      title: routine.title,
-      emoji: typeInfo.emoji,
-      type: typeInfo.label,
-      routineType: routine.routine_type,
-      duration: routine.duration,
-      gradient: typeInfo.gradient,
-      status: "not-started" as const,
-      currentDay: 1,
-      weeklyPlan: routine.weekly_plan,
-      notes: routine.notes || '',
-      createdAt: routine.created_at
-    };
-  };
-
-  // Get displayed routines (custom + mock if no custom exist)
-  const displayedRoutines = customRoutines.length > 0 
-    ? customRoutines.map(convertCustomRoutineToDisplay)
-    : mockRoutines;
+  // Remove conversion functions - now handled by useAllRoutines hook
 
   // Function to handle adding/editing routines (kept for backward compatibility)
   const handleSaveRoutine = (newRoutine: any) => {
@@ -412,24 +313,15 @@ const ExerciseHub = () => {
   };
 
   // Function to handle duplicating routines
-  const handleDuplicateRoutine = async (routine: any) => {
-    if (routine.id && typeof routine.id === 'string' && !routine.id.startsWith('mock-')) {
-      // This is a real custom routine from Supabase
-      const customRoutine = customRoutines.find(r => r.id === routine.id);
-      if (customRoutine) {
-        await duplicateRoutine(customRoutine);
-      }
-    } else {
-      // This is a mock routine, handle it the old way
-      const duplicatedRoutine = {
-        ...routine,
-        id: Date.now(),
-        title: `${routine.title} (Copy)`,
-        createdAt: new Date().toISOString()
-      };
-      // For now, we'll just log it since we can't save mock routines to Supabase without converting them
-      console.log('Would duplicate mock routine:', duplicatedRoutine);
+  const handleDuplicateRoutine = async (routine: UnifiedRoutine) => {
+    // Only allow duplication of non-mock routines for now
+    if (routine.source === 'mock') {
+      console.log('Cannot duplicate mock routines');
+      return;
     }
+
+    // For now, just show a message - duplication logic can be enhanced later
+    console.log('Duplicate routine:', routine.title);
   };
 
   // State for editing routines
@@ -1307,33 +1199,37 @@ const ExerciseHub = () => {
 
                     {/* Routines Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {customRoutinesLoading ? (
+                      {routinesLoading ? (
                         <div className="col-span-full text-center py-8">
                           <div className="text-muted-foreground">Loading your routines...</div>
                         </div>
                       ) : (
-                        displayedRoutines.map((routine) => (
-                          <RoutineCard
-                            key={routine.id}
-                            routine={routine}
-                            onEdit={(editRoutine) => {
-                              // Only allow editing of real custom routines
-                              if (routine.id && typeof routine.id === 'string' && !routine.id.startsWith('mock-')) {
-                                const customRoutine = customRoutines.find(r => r.id === routine.id);
-                                if (customRoutine) {
-                                  setEditingRoutine(customRoutine);
-                                  setIsCreateRoutineModalOpen(true);
+                        allRoutines.map((routine) => (
+                          <div key={routine.id} className="relative">
+                            <RoutineCard
+                              routine={routine}
+                              onEdit={(editRoutine) => {
+                                // Only allow editing of custom routines
+                                if (routine.source === 'custom') {
+                                  // For now, just log - editing can be enhanced later
+                                  console.log('Edit routine:', routine.title);
                                 }
-                              }
-                            }}
-                            onDuplicate={handleDuplicateRoutine}
-                          />
+                              }}
+                              onDuplicate={handleDuplicateRoutine}
+                            />
+                            <div className="absolute top-2 right-2">
+                              <RoutineBadge 
+                                source={routine.source} 
+                                isActive={routine.isActive}
+                              />
+                            </div>
+                          </div>
                         ))
                       )}
                     </div>
 
                      {/* Empty State (if no routines) */}
-                     {!customRoutinesLoading && displayedRoutines.length === 0 && (
+                     {!routinesLoading && allRoutines.length === 0 && (
                         <Card className="col-span-full w-full shadow-lg border-border bg-card mb-0 !mb-0">
                          <CardContent className="p-8 text-center">
                            <div className="text-4xl mb-4">🧠</div>
