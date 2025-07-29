@@ -11,12 +11,14 @@ import { toast } from '@/hooks/use-toast';
 import confetti from 'canvas-confetti';
 import { MotivationCard } from '@/components/analytics/MotivationCard';
 import { CoachInsight } from './CoachInsight';
+import { useLevelUp } from '@/contexts/LevelUpContext';
 
 type DifficultyFeedback = 'too_easy' | 'just_right' | 'too_hard';
 
 export const WorkoutCompletionModal = () => {
   const { isModalOpen, workoutData, hideCompletionModal } = useWorkoutCompletion();
   const { user } = useAuth();
+  const { triggerLevelCheck } = useLevelUp();
   const [difficultyFeedback, setDifficultyFeedback] = useState<DifficultyFeedback | null>(null);
   const [journalEntry, setJournalEntry] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,6 +105,53 @@ export const WorkoutCompletionModal = () => {
         });
 
       if (error) throw error;
+
+      // Calculate performance score and award XP
+      let performanceScore = 0;
+      const wd = workoutData.workoutData as any; // Type assertion for JSON data
+      
+      if (workoutData.workoutType === 'ai_routine' && wd) {
+        // Use calculate_performance_score function
+        const completedSets = workoutData.setsCount;
+        const totalSets = typeof wd?.totalSteps === 'number' ? wd.totalSteps : workoutData.setsCount;
+        const completedExercises = workoutData.exercisesCount;
+        const totalExercises = workoutData.exercisesCount;
+        const skippedSteps = Math.max(0, totalSets - (typeof wd?.completedSteps === 'number' ? wd.completedSteps : workoutData.setsCount));
+        
+        const { data: scoreData } = await supabase.rpc('calculate_performance_score', {
+          completed_sets: completedSets,
+          total_sets: totalSets,
+          completed_exercises: completedExercises,
+          total_exercises: totalExercises,
+          skipped_steps: skippedSteps,
+          difficulty_rating: difficultyFeedback || 'just_right'
+        });
+        
+        performanceScore = scoreData || 50; // Fallback score
+      } else {
+        // Calculate basic performance score for other workout types
+        const completionRate = workoutData.setsCount > 0 ? 
+          (workoutData.setsCount / (workoutData.exercisesCount * 3)) : 0;
+        performanceScore = Math.round(completionRate * 70 + (energyLevel * 6));
+      }
+
+      // Award XP based on performance score
+      try {
+        await supabase.rpc('add_workout_xp', {
+          p_user_id: user.id,
+          p_routine_id: workoutData.workoutId || 'manual_workout',
+          p_score: performanceScore,
+          p_reason: 'Completed Workout'
+        });
+
+        // Trigger level check to see if user leveled up
+        await triggerLevelCheck();
+
+        console.log(`🎯 Awarded ${Math.floor(performanceScore)} XP for workout completion`);
+      } catch (xpError) {
+        console.error('Error awarding XP:', xpError);
+        // Don't block the workflow if XP fails
+      }
 
       // Store detailed performance log for AI adaptation analysis (AI routine workouts only)
       if (workoutData.workoutType === 'ai_routine' && workoutData.workoutData) {

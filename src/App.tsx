@@ -24,6 +24,7 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
+import { LevelUpProvider } from '@/contexts/LevelUpContext';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -350,10 +351,12 @@ function App() {
                 <BadgeProvider>
                   <ChatModalProvider>
                     <RewardsProvider>
-                      <WorkoutCompletionProvider>
-                        <AppContent />
-                        <WorkoutCompletionModal />
-                      </WorkoutCompletionProvider>
+                      <LevelUpProvider>
+                        <WorkoutCompletionProvider>
+                          <AppContent />
+                          <WorkoutCompletionModal />
+                        </WorkoutCompletionProvider>
+                      </LevelUpProvider>
                     </RewardsProvider>
                   </ChatModalProvider>
                 </BadgeProvider>
