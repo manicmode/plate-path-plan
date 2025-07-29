@@ -1955,6 +1955,36 @@ export type Database = {
         }
         Relationships: []
       }
+      report_view_logs: {
+        Row: {
+          device_type: string | null
+          id: string
+          interaction_type: string | null
+          report_date: string
+          report_type: string
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          device_type?: string | null
+          id?: string
+          interaction_type?: string | null
+          report_date: string
+          report_type: string
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          device_type?: string | null
+          id?: string
+          interaction_type?: string | null
+          report_date?: string
+          report_type?: string
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: []
+      }
       routine_generation_history: {
         Row: {
           created_at: string
