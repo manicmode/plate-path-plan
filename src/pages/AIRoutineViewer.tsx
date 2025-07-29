@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Trophy, Calendar, Clock } from 'lucide-react';
 import { WeekSelector } from '@/components/routine/WeekSelector';
 import { DayCard } from '@/components/routine/DayCard';
 import { WorkoutDetailModal } from '@/components/routine/WorkoutDetailModal';
+import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -50,6 +51,7 @@ export default function AIRoutineViewer() {
   const [weekData, setWeekData] = useState<WeekData[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutDay | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
 
   useEffect(() => {
     loadRoutineData();
@@ -298,6 +300,18 @@ export default function AIRoutineViewer() {
     }
   };
 
+  const handleGenerateNewRoutine = () => {
+    console.log('AIRoutineViewer: Generate New Routine button clicked');
+    setShowPreferencesModal(true);
+  };
+
+  const handleRoutineCreated = async (newRoutine: any) => {
+    console.log('AIRoutineViewer: New routine created:', newRoutine);
+    // Reload routine data to show the new routine
+    await loadRoutineData();
+    setShowPreferencesModal(false);
+  };
+
   if (!routineData) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -328,7 +342,7 @@ export default function AIRoutineViewer() {
                 
                 <div className="space-y-3">
                   <Button 
-                    onClick={() => navigate('/exercise-hub')}
+                    onClick={handleGenerateNewRoutine}
                     className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
                   >
                     Generate New Routine
@@ -498,6 +512,13 @@ export default function AIRoutineViewer() {
             onMarkComplete={(dayData) => handleMarkComplete(dayData, selectedWeek)}
           />
         )}
+
+        {/* Workout Preferences Modal */}
+        <WorkoutPreferencesModal
+          isOpen={showPreferencesModal}
+          onClose={() => setShowPreferencesModal(false)}
+          onRoutineCreated={handleRoutineCreated}
+        />
       </div>
     </div>
   );
