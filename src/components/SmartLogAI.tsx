@@ -178,17 +178,28 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
               className="bg-card dark:bg-gradient-to-br dark:from-slate-800/80 dark:to-slate-700/60 dark:shadow-lg dark:shadow-slate-900/20 rounded-2xl p-4 border border-border/30 shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in hover:border-border/50 flex flex-col min-h-[140px]"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              {/* Food Info */}
-              <div className="space-y-2 mb-3 flex-grow">
-                <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-card-foreground leading-tight`}>
-                  🥗 {food.name}
-                </h4>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
-                  🕒 {activeTab === 'recent' ? 'Logged at' : 'Usually'} {food.time}
-                </p>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-card-foreground/80 font-medium`}>
-                  🔢 {food.calories} cal
-                </p>
+              {/* Food Info - Fixed heights for consistent alignment */}
+              <div className="mb-3 flex-grow flex flex-col justify-between">
+                {/* Food Name Row - Fixed height for alignment */}
+                <div className={`${isMobile ? 'h-10' : 'h-12'} flex items-center mb-2`}>
+                  <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-card-foreground leading-tight`}>
+                    🥗 {food.name}
+                  </h4>
+                </div>
+                
+                {/* Time Row - Fixed height for alignment */}
+                <div className={`${isMobile ? 'h-5' : 'h-6'} flex items-center mb-2`}>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
+                    🕒 {activeTab === 'recent' ? 'Logged at' : 'Usually'} {food.time}
+                  </p>
+                </div>
+                
+                {/* Calories Row - Fixed height for alignment */}
+                <div className={`${isMobile ? 'h-5' : 'h-6'} flex items-center`}>
+                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-card-foreground/80 font-medium`}>
+                    🔢 {food.calories} cal
+                  </p>
+                </div>
               </div>
 
               {/* Tap to Log Button */}
