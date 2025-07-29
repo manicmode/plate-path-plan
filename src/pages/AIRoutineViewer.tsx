@@ -11,6 +11,7 @@ import { WorkoutDetailModal } from '@/components/routine/WorkoutDetailModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkoutAdaptations } from '@/hooks/useWorkoutAdaptations';
 
 interface WorkoutDay {
   day: number;
@@ -31,6 +32,11 @@ interface WorkoutDay {
   isRestDay: boolean;
   isCompleted: boolean;
   isLocked: boolean;
+  adaptation?: {
+    type: string;
+    badge: string;
+    tip: string;
+  };
 }
 
 interface WeekData {
@@ -50,6 +56,15 @@ export default function AIRoutineViewer() {
   const [weekData, setWeekData] = useState<WeekData[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutDay | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Initialize adaptations hook
+  const { 
+    getAdaptationForDay, 
+    getAdaptationBadge, 
+    getBadgeStyle, 
+    getAdaptationTip,
+    hasRecentAdaptations 
+  } = useWorkoutAdaptations('current_routine');
 
   useEffect(() => {
     loadRoutineData();
@@ -115,6 +130,19 @@ export default function AIRoutineViewer() {
           const isCompleted = routine.locked_days?.[workoutKey]?.completed || false;
           const isLocked = routine.locked_days?.[workoutKey]?.locked || false;
           
+          // Check for workout adaptations
+          const adaptation = getAdaptationForDay(week, day);
+          let adaptationData = undefined;
+          
+          if (adaptation) {
+            const badge = getAdaptationBadge(adaptation.adaptation_type);
+            adaptationData = {
+              type: adaptation.adaptation_type,
+              badge: badge.text,
+              tip: getAdaptationTip(adaptation)
+            };
+          }
+          
           if (isCompleted) completedWorkouts++;
           totalMinutes += workoutData.duration || 45;
 
@@ -124,7 +152,8 @@ export default function AIRoutineViewer() {
             workout: workoutData,
             isRestDay: false,
             isCompleted,
-            isLocked
+            isLocked,
+            adaptation: adaptationData
           });
         } else {
           days.push({

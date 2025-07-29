@@ -76,6 +76,15 @@ export const WorkoutCompletionModal = () => {
 
     setIsSubmitting(true);
     try {
+      // Calculate additional performance metrics
+      const completionRate = workoutData.setsCount > 0 ? 
+        (workoutData.setsCount / (workoutData.exercisesCount * 3)) : 0; // Assume avg 3 sets per exercise
+      
+      const energyLevel = difficultyFeedback === 'too_easy' ? 5 : 
+                         difficultyFeedback === 'just_right' ? 4 : 
+                         difficultyFeedback === 'too_hard' ? 2 : 3;
+
+      // Store workout completion details
       const { error } = await supabase
         .from('workout_completions')
         .insert({
@@ -93,6 +102,92 @@ export const WorkoutCompletionModal = () => {
         });
 
       if (error) throw error;
+
+      // Store detailed performance log for AI adaptation analysis (AI routine workouts only)
+      if (workoutData.workoutType === 'ai_routine' && workoutData.workoutData) {
+        const wd = workoutData.workoutData as any; // Type assertion for JSON data
+        
+        const performanceData = {
+          user_id: user.id,
+          routine_id: wd?.routineId || 'current_routine',
+          week_number: typeof wd?.week === 'number' ? wd.week : 1,
+          day_number: typeof wd?.day === 'number' ? wd.day : 1,
+          workout_title: typeof wd?.title === 'string' ? wd.title : 'AI Routine Workout',
+          total_duration_minutes: workoutData.durationMinutes,
+          planned_duration_minutes: 45, // Default planned duration
+          completed_exercises_count: workoutData.exercisesCount,
+          total_exercises_count: workoutData.exercisesCount,
+          completed_sets_count: workoutData.setsCount,
+          total_sets_count: typeof wd?.totalSteps === 'number' ? wd.totalSteps : workoutData.setsCount,
+          skipped_steps_count: Math.max(0, (typeof wd?.totalSteps === 'number' ? wd.totalSteps : workoutData.setsCount) - (typeof wd?.completedSteps === 'number' ? wd.completedSteps : workoutData.setsCount)),
+          extra_rest_seconds: Math.max(0, (workoutData.durationMinutes - 45) * 60), // Extra time beyond planned
+          difficulty_rating: difficultyFeedback,
+          energy_level: energyLevel,
+          muscle_groups_worked: workoutData.musclesWorked,
+          notes: journalEntry.trim() || null
+        };
+
+        const { error: performanceError } = await supabase
+          .from('workout_performance_logs')
+          .insert(performanceData);
+
+        if (performanceError) {
+          console.error('Error saving performance log:', performanceError);
+        } else {
+          // Trigger AI adaptation analysis for next workout
+          try {
+            console.log('🔄 Triggering workout adaptation analysis...');
+            
+            // Get current routine data for adaptation
+            const { data: routineData } = await supabase
+              .from('ai_routines')
+              .select('routine_data, locked_days')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .single();
+
+            if (routineData && routineData.routine_data) {
+              const currentWeek = typeof wd?.week === 'number' ? wd.week : 1;
+              const currentDay = typeof wd?.day === 'number' ? wd.day : 1;
+              const nextDayNumber = (currentDay % 7) + 1;
+              const nextWeekNumber = nextDayNumber === 1 ? currentWeek + 1 : currentWeek;
+              
+              // Get next workout data for adaptation analysis
+              const nextWorkoutData = {
+                week: nextWeekNumber,
+                day: nextDayNumber,
+                title: `Week ${nextWeekNumber} Day ${nextDayNumber}`,
+                exercises: (routineData.routine_data as any)?.week?.[nextDayNumber - 1]?.exercises || []
+              };
+
+              // Call the adaptation analyzer
+              const { data: adaptationResult } = await supabase.functions.invoke('workout-adaptation-analyzer', {
+                body: {
+                  performanceData,
+                  routineId: 'current_routine',
+                  weekNumber: currentWeek,
+                  dayNumber: currentDay,
+                  nextWorkoutData
+                }
+              });
+
+              if (adaptationResult?.success) {
+                console.log('✅ Workout adaptation analysis completed');
+                
+                // Show adaptation feedback
+                toast({
+                  title: "🧠 AI Coach Analysis Complete",
+                  description: "Your next workout has been personalized based on today's performance!",
+                  duration: 4000
+                });
+              }
+            }
+          } catch (adaptationError) {
+            console.error('Error in adaptation analysis:', adaptationError);
+            // Don't show error to user as this is a background process
+          }
+        }
+      }
 
       toast({
         title: "🎉 Workout Complete!",

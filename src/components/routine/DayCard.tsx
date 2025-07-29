@@ -23,6 +23,11 @@ interface WorkoutDay {
   isRestDay: boolean;
   isCompleted: boolean;
   isLocked: boolean;
+  adaptation?: {
+    type: string;
+    badge: string;
+    tip: string;
+  };
 }
 
 interface DayCardProps {
@@ -85,6 +90,15 @@ export const DayCard = ({ day, week, onClick, onMarkComplete }: DayCardProps) =>
             )}
           </div>
         </div>
+
+        {/* Adaptation Badge */}
+        {day.adaptation && (
+          <div className="mb-2">
+            <div className="px-2 py-1 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded text-xs font-medium text-center">
+              {day.adaptation.badge}
+            </div>
+          </div>
+        )}
 
         {/* Muscle Groups */}
         {day.workout && (
