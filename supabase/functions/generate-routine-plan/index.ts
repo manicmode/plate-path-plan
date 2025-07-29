@@ -8,6 +8,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to create timeout promise
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+    ),
+  ]);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -15,6 +25,18 @@ serve(async (req) => {
   }
 
   try {
+    // Check for API key first
+    if (!openAIApiKey || openAIApiKey.trim() === '') {
+      console.error('Missing OpenAI API key');
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Missing OpenAI API key. Please configure OPENAI_API_KEY in Supabase Edge Function secrets.'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const {
       user_id,
       routine_goal,
@@ -26,8 +48,8 @@ serve(async (req) => {
       preferred_routine_name
     } = await req.json();
 
-    console.log('Generating routine plan for:', {
-      user_id,
+    console.log('✅ Starting routine generation for user:', user_id);
+    console.log('📋 Preferences:', {
       routine_goal,
       split_type,
       days_per_week,
@@ -46,76 +68,129 @@ serve(async (req) => {
       preferred_routine_name
     });
 
-    console.log('Sending request to OpenAI API...');
+    console.log('🚀 Sending request to OpenAI API...');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert fitness trainer and routine designer. Create comprehensive, progressive workout routines that are safe, effective, and tailored to the user's specific needs. Always provide proper progression, rest periods, and exercise variations. Format your response as valid JSON only - no additional text.`
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
+    const response = await withTimeout(
+      fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert fitness trainer and routine designer. Create comprehensive, progressive workout routines that are safe, effective, and tailored to the user's specific needs. Always provide proper progression, rest periods, and exercise variations. Format your response as valid JSON only - no additional text.`
+            },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+        }),
       }),
-    });
+      25000 // 25 second timeout
+    );
 
     if (!response.ok) {
-      console.error('OpenAI API error:', response.status, response.statusText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('❌ OpenAI API error:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Response body:', errorText);
+      return new Response(JSON.stringify({
+        success: false,
+        message: `OpenAI API error: ${response.status} ${response.statusText}`
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const data = await response.json();
-    console.log('OpenAI API response received, parsing...');
+    console.log('✅ OpenAI API response received, parsing...');
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error('Invalid OpenAI response structure:', data);
-      throw new Error('Invalid response from OpenAI API');
+      console.error('❌ Invalid OpenAI response structure:', data);
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Invalid response structure from OpenAI API'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const generatedPlan = data.choices[0].message.content;
+    console.log('📝 Raw response length:', generatedPlan?.length || 0);
 
     // Parse the JSON response
     let routinePlan;
     try {
       if (!generatedPlan || generatedPlan.trim() === '') {
-        throw new Error('Empty response from OpenAI');
+        console.error('❌ Empty response from OpenAI');
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Empty response from OpenAI API'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
       
       routinePlan = JSON.parse(generatedPlan);
-      console.log('Successfully parsed routine plan:', routinePlan.routine_name);
+      console.log('✅ Successfully parsed routine plan:', routinePlan.routine_name);
       
       // Validate that the plan has required structure
       if (!routinePlan.routine_name || !routinePlan.weeks) {
-        throw new Error('Invalid routine plan structure');
+        console.error('❌ Invalid routine plan structure:', { 
+          hasName: !!routinePlan.routine_name,
+          hasWeeks: !!routinePlan.weeks
+        });
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Generated routine has invalid structure'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
       
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response as JSON:', parseError);
-      console.error('Raw response:', generatedPlan);
-      throw new Error('Invalid JSON response from AI');
+      console.error('❌ Failed to parse OpenAI response as JSON:', parseError);
+      console.error('Raw response snippet:', generatedPlan?.substring(0, 200));
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Invalid JSON response from AI'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log('Routine generation completed successfully');
+    console.log('🎉 Routine generation completed successfully');
     return new Response(JSON.stringify({
       success: true,
-      plan: routinePlan
+      routine: routinePlan
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in generate-routine-plan function:', error);
+    console.error('❌ Error in generate-routine-plan function:', error);
+    
+    let errorMessage = 'Failed to generate routine';
+    if (error instanceof Error) {
+      if (error.message === 'Request timeout') {
+        errorMessage = 'OpenAI timeout - please try again';
+      } else if (error.message.includes('fetch')) {
+        errorMessage = 'Network error - please check your connection';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      message: errorMessage
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -86,8 +86,8 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
       setLoading(true);
       console.log('Starting routine generation with preferences:', formData);
       
-      // Generate routine plan using AI
-      const { data: planData, error: planError } = await supabase.functions.invoke('generate-routine-plan', {
+      // Generate routine plan using AI with timeout handling
+      const routinePromise = supabase.functions.invoke('generate-routine-plan', {
         body: {
           user_id: user.id,
           routine_goal: formData.fitnessGoal,
@@ -100,14 +100,31 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
         }
       });
 
+      // Add timeout wrapper for the entire operation
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+      );
+
+      const { data: planData, error: planError } = await Promise.race([
+        routinePromise,
+        timeoutPromise
+      ]) as any;
+
       if (planError) {
         console.error('Edge function error:', planError);
-        throw planError;
+        throw new Error(`Edge function error: ${planError.message || 'Unknown error'}`);
       }
       
-      if (!planData?.success || !planData?.plan) {
+      // Handle success: false responses from the edge function
+      if (planData && !planData.success) {
+        console.error('Generation failed:', planData);
+        const errorMsg = planData.message || 'Routine generation failed';
+        throw new Error(errorMsg);
+      }
+      
+      if (!planData?.success || !planData?.routine) {
         console.error('Invalid plan data:', planData);
-        throw new Error('Routine generation failed. Please try again.');
+        throw new Error('Invalid response from routine generator');
       }
 
       console.log('Generated plan received, saving to database...');
@@ -117,14 +134,14 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
         .from('ai_routines')
         .insert({
           user_id: user.id,
-          routine_name: planData.plan.routine_name || 'AI 8-Week Routine',
+          routine_name: planData.routine.routine_name || 'AI 8-Week Routine',
           routine_goal: formData.fitnessGoal,
           split_type: formData.trainingSplit,
           days_per_week: parseInt(formData.weeklyFrequency),
           estimated_duration_minutes: parseInt(formData.workoutTime),
           fitness_level: 'intermediate',
           equipment_needed: [formData.equipment],
-          routine_data: planData.plan,
+          routine_data: planData.routine,
           is_active: true
         })
         .select()
@@ -155,7 +172,22 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
 
     } catch (error) {
       console.error('Error generating routine:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate routine. Please try again.';
+      
+      let errorMessage = 'Failed to generate routine. Please try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorMessage = 'Request timed out. Please try again.';
+        } else if (error.message.includes('Missing OpenAI API key')) {
+          errorMessage = 'AI service not configured. Please contact support.';
+        } else if (error.message.includes('OpenAI timeout')) {
+          errorMessage = 'AI service timed out. Please try again.';
+        } else if (error.message.includes('Network error')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else {
+          errorMessage = `Generation failed: ${error.message}`;
+        }
+      }
+      
       toast.error(errorMessage);
     } finally {
       setLoading(false);
