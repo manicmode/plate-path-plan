@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const { 
     processUserInput, 
     analyzeWorkoutPatterns, 
@@ -302,15 +304,15 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         {/* Hero Section */}
         <div className="text-center space-y-4 py-8">
           <div className="flex justify-center mb-4">
-            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-600 rounded-full flex items-center justify-center neon-glow animate-float shadow-2xl">
-              <span className="text-5xl animate-pulse">🤖</span>
+            <div className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-600 rounded-full flex items-center justify-center neon-glow animate-float shadow-2xl`}>
+              <Dumbbell className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} text-white animate-pulse`} />
             </div>
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent`}>
             AI Fitness Coach
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Get smarter, stronger, and more consistent — with a coach who never sleeps
+          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-indigo-600 dark:text-indigo-400 font-semibold max-w-2xl mx-auto`}>
+            Your personal fitness guide, powered by AI
           </p>
         </div>
 
