@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Edit, Copy, Calendar, Clock, Play, History } from 'lucide-react';
+import { Edit, Copy, Calendar, Clock, Play, History, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { RoutineHistoryModal } from '@/components/routine/RoutineHistoryModal';
+import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButton';
 
 interface RoutineCardProps {
   routine: {
@@ -203,7 +204,7 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Stats and Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-border/50">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
@@ -216,15 +217,25 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
               </div>
             </div>
             
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleStartRoutine}
-              className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Start Today's Session
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleStartRoutine}
+                className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
+              >
+                <Play className="h-3 w-3 mr-1" />
+                Start
+              </Button>
+              
+              <WorkoutCompleteButton
+                routine_id={routine.id.toString()}
+                intensity={routine.routineType === 'hiit' ? 'high' : routine.routineType === 'cardio' ? 'medium' : 'medium'}
+                duration_minutes={parseInt(routine.duration.match(/\d+/)?.[0] || '45')}
+                difficulty_multiplier={routine.routineType === 'strength' ? 1.2 : 1.0}
+                className="text-xs px-3 py-1 h-8"
+              />
+            </div>
           </div>
 
           {/* Notes Preview */}

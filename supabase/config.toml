@@ -1,1 +1,26 @@
 project_id = "uzoiiijqtahohfafqirm"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[functions.log-workout-xp]
+verify_jwt = true
+
+[functions.trigger-meditation-nudge]
+verify_jwt = false
+
+[functions.trigger-breathing-nudge]
+verify_jwt = false
+
+[functions.trigger-yoga-nudge]
+verify_jwt = false
+
+[functions.trigger-sleep-nudge]
+verify_jwt = false
+
+[functions.update-yearly-scores-preview]
+verify_jwt = false
