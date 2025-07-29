@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import Coach from '@/pages/Coach';
 import AIFitnessCoach from '@/pages/AIFitnessCoach';
@@ -6,6 +6,11 @@ import RecoveryCoachSection from '@/components/coach/sections/RecoveryCoachSecti
 
 const CoachMain = () => {
   const [activeTab, setActiveTab] = useState<'nutrition' | 'exercise' | 'recovery'>('nutrition');
+
+  // Scroll to top when tab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-background">
