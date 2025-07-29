@@ -142,7 +142,7 @@ export const ExerciseAnalyticsSection = () => {
   }
 
 return (
-  <div className="space-y-12">
+  <div className="space-y-6">
     {/* Quick Action Button */}
     <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
       <CardContent className="p-6 pb-4">
