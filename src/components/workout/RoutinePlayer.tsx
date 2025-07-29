@@ -18,6 +18,7 @@ import { useSound } from '@/contexts/SoundContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 
 interface Exercise {
   name: string;
@@ -65,6 +66,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { playSound } = useSound();
+  const { showCompletionModal } = useWorkoutCompletion();
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -73,6 +75,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const [workoutSteps, setWorkoutSteps] = useState<WorkoutStep[]>([]);
   const [completedSteps, setCompletedSteps] = useState(0);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
+  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
 
   // Generate workout steps from exercise data
   useEffect(() => {
@@ -169,6 +172,11 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     setIsPlaying(false);
     playSound('achievement');
     
+    const endTime = Date.now();
+    const actualDurationMinutes = workoutStartTime 
+      ? Math.round((endTime - workoutStartTime) / 60000) 
+      : workout?.duration || 0;
+    
     // Mark workout as completed in database
     try {
       const { data: routine, error: fetchError } = await supabase
@@ -200,16 +208,41 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
       console.error('Error marking workout complete:', error);
     }
 
-    toast({
-      title: "Workout Complete! 🎉",
-      description: "Amazing work! Your progress has been saved.",
-      duration: 4000
+    // Get muscle groups from exercises
+    const musclesWorked = workout?.exercises.map(ex => {
+      const name = ex.name.toLowerCase();
+      if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
+      if (name.includes('pull') || name.includes('row')) return 'Back';
+      if (name.includes('squat') || name.includes('leg')) return 'Legs';
+      if (name.includes('curl') || name.includes('bicep')) return 'Biceps';
+      if (name.includes('tricep') || name.includes('dip')) return 'Triceps';
+      if (name.includes('shoulder') || name.includes('lateral')) return 'Shoulders';
+      return 'Full Body';
+    }) || [];
+
+    // Show completion modal with workout stats
+    showCompletionModal({
+      workoutType: 'ai_routine',
+      durationMinutes: actualDurationMinutes,
+      exercisesCount: workout?.exercises.length || 0,
+      setsCount: workoutSteps.reduce((total, step) => 
+        step.type === 'exercise' ? total + 1 : total, 0
+      ),
+      musclesWorked: [...new Set(musclesWorked)],
+      workoutData: {
+        title: workout?.title,
+        week,
+        day,
+        completedSteps,
+        totalSteps: workoutSteps.length
+      }
     });
   };
 
   const handleStart = () => {
     setIsPlaying(true);
     setIsPaused(false);
+    setWorkoutStartTime(Date.now());
     playSound('notification');
   };
 
