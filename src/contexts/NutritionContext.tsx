@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { getLocalDateString } from '@/lib/dateUtils';
 import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
+import { useXPSystem } from '@/hooks/useXPSystem';
 
 interface FoodItem {
   id: string;
@@ -113,6 +114,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
   const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();
   const { user } = useAuth();
+  const { awardNutritionXP } = useXPSystem();
   
   // State for daily targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -257,6 +259,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     // Save to database
     saveFood(newFood);
 
+    // Award XP for food logging
+    awardNutritionXP('nutrition', newFood.databaseId);
+
     // Trigger daily score calculation
     if (user?.id) {
       triggerDailyScoreCalculation(user.id);
@@ -285,6 +290,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     // Save to database
     saveHydration(newHydration);
 
+    // Award XP for hydration logging
+    awardNutritionXP('hydration', newHydration.id);
+
     // Trigger daily score calculation
     if (user?.id) {
       triggerDailyScoreCalculation(user.id);
@@ -305,6 +313,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
 
     // Save to database
     saveSupplement(newSupplement);
+
+    // Award XP for supplement logging
+    awardNutritionXP('supplement', newSupplement.id);
 
     // Trigger daily score calculation
     if (user?.id) {

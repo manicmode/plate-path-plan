@@ -3987,6 +3987,17 @@ export type Database = {
         Args: { contact_user_id: string }
         Returns: boolean
       }
+      add_user_xp: {
+        Args: {
+          p_user_id: string
+          p_activity_type: string
+          p_base_xp: number
+          p_activity_id?: string
+          p_bonus_xp?: number
+          p_reason?: string
+        }
+        Returns: undefined
+      }
       add_workout_xp: {
         Args: {
           p_user_id: string
@@ -4003,6 +4014,23 @@ export type Database = {
       auto_assign_teams: {
         Args: { challenge_id_param: string; team_size_param?: number }
         Returns: number
+      }
+      award_nutrition_xp: {
+        Args: {
+          p_user_id: string
+          p_activity_type: string
+          p_activity_id?: string
+        }
+        Returns: undefined
+      }
+      award_recovery_xp: {
+        Args: {
+          p_user_id: string
+          p_recovery_type: string
+          p_session_id: string
+          p_duration_minutes?: number
+        }
+        Returns: undefined
       }
       batch_load_nutrition_data: {
         Args: { user_id_param: string; date_param: string }

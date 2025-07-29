@@ -23,6 +23,7 @@ import { useToxinDetections } from '@/hooks/useToxinDetections';
 import { useDeferredToxinData } from '@/hooks/useDeferredToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
+import { XPDemoCard } from '@/components/xp/XPDemoCard';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
@@ -1271,6 +1272,11 @@ const Home = () => {
       {/* Level & XP Progress Bar */}
       <div className="px-4 sm:px-6 -mt-4 mb-6">
         <LevelProgressBar />
+      </div>
+
+      {/* XP System Demo Card */}
+      <div className="px-4 sm:px-6 mb-6">
+        <XPDemoCard />
       </div>
 
       {/* Tomorrow's Mood Forecast */}

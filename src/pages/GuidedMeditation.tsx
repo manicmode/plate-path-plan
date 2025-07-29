@@ -14,11 +14,14 @@ import { SessionPickerModal } from "@/components/meditation/SessionPickerModal";
 import { MeditationReminderModal } from "@/components/meditation/MeditationReminderModal";
 import { AICoachNudge } from "@/components/meditation/AICoachNudge";
 
+import { useXPSystem } from '@/hooks/useXPSystem';
+
 const GuidedMeditation = () => {
   useScrollToTop();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { awardRecoveryXP } = useXPSystem();
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [isInPlayback, setIsInPlayback] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -553,6 +556,8 @@ const GuidedMeditation = () => {
             setIsSessionComplete(true);
             // Update meditation streak when session completes
             updateMeditationStreak();
+            // Award XP for meditation completion
+            awardRecoveryXP('meditation', 'meditation-session', parseInt(currentTheme?.duration || '0'));
             return 100;
           }
           return newProgress;

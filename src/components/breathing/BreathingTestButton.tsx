@@ -4,12 +4,14 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/hooks/use-toast'
+import { useXPSystem } from '@/hooks/useXPSystem'
 import { supabase } from '@/integrations/supabase/client'
 import { useRecoveryChallenge } from '@/hooks/useRecoveryChallenge'
 
 export const BreathingTestButton = () => {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { awardRecoveryXP } = useXPSystem()
   const { trackRecoveryActivity } = useRecoveryChallenge()
   const [isLogging, setIsLogging] = useState(false)
   const [streak, setStreak] = useState<any>(null)
@@ -42,6 +44,9 @@ export const BreathingTestButton = () => {
         duration: 5, // Default breathing session duration
         notes: 'Breathing exercise completed'
       })
+
+      // Award XP for breathing exercise completion
+      await awardRecoveryXP('breathing', data.sessionId || 'breathing-session', 5)
 
       toast({
         title: "Session logged! 🫁",
