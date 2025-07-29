@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useSound } from '@/hooks/useSound';
+import { ExerciseConfirmationCard } from './ExerciseConfirmationCard';
 
 interface ExerciseLogFormProps {
   isOpen: boolean;
@@ -46,8 +46,9 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
   const [exerciseType, setExerciseType] = useState('');
   const [duration, setDuration] = useState('');
   const [intensity, setIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseData | null>(null);
   const { toast } = useToast();
-  const { playProgressUpdate } = useSound();
 
   const calculateCalories = () => {
     const selectedExercise = EXERCISE_TYPES.find(ex => ex.value === exerciseType);
@@ -74,20 +75,23 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
       caloriesBurned: calculateCalories(),
     };
 
-    onSubmit(exerciseData);
-    
-    // Play success sound
-    playProgressUpdate();
-    
-    toast({
-      title: "Exercise logged! 🔥",
-      description: `${duration} minutes of ${EXERCISE_TYPES.find(ex => ex.value === exerciseType)?.label} - ${exerciseData.caloriesBurned} calories burned`,
-    });
+    setSelectedExercise(exerciseData);
+    setShowConfirmation(true);
+  };
 
-    // Reset form
+  const handleConfirmationClose = () => {
+    setShowConfirmation(false);
+    setSelectedExercise(null);
+  };
+
+  const handleConfirmationConfirm = () => {
+    // Reset form after successful confirmation
     setExerciseType('');
     setDuration('');
     setIntensity('moderate');
+    setShowConfirmation(false);
+    setSelectedExercise(null);
+    onSubmit?.(selectedExercise!);
     onClose();
   };
 
@@ -171,11 +175,21 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
               Cancel
             </Button>
             <Button onClick={handleSubmit} className="flex-1">
-              Log Exercise
+              Preview Exercise
             </Button>
           </div>
         </div>
       </DialogContent>
+
+      {/* Exercise Confirmation Card */}
+      {selectedExercise && (
+        <ExerciseConfirmationCard
+          exercise={selectedExercise}
+          isOpen={showConfirmation}
+          onClose={handleConfirmationClose}
+          onConfirm={handleConfirmationConfirm}
+        />
+      )}
     </Dialog>
   );
 };

@@ -16,6 +16,8 @@ import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
 import { DateFilterSelect } from '@/components/analytics/DateFilterSelect';
 import { PreMadePlanCard } from '@/components/PreMadePlanCard';
 import { PlanPreviewModal } from '@/components/PlanPreviewModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 import { YearlyExerciseReportCard } from '@/components/exercise/YearlyExerciseReportCard';
@@ -31,9 +33,12 @@ import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
 import { WorkoutProgressCalendar } from '@/components/analytics/WorkoutProgressCalendar';
 import { ExerciseGoalsInitializer } from '@/components/exercise/ExerciseGoalsInitializer';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
+import { useRealExerciseData } from '@/hooks/useRealExerciseData';
+import { useWorkoutTrophy } from '@/hooks/useWorkoutTrophy';
 
 const ExerciseHub = () => {
   const { showCompletionModal } = useWorkoutCompletion();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -68,49 +73,227 @@ const ExerciseHub = () => {
     }
   }, [location.state]);
 
-  // Enhanced mock workout data with complete workout history - make it dynamic
-  const [mockWorkouts, setMockWorkouts] = useState([
-    {
-      id: 1,
-      name: "Upper Body Strength",
-      emoji: "🏋️",
-      type: "Strength",
-      duration: "45 minutes",
-      calories: "320 kcal",
-      date: "2024-01-23",
-      time: "09:30 AM",
-      summary: "Bench press, shoulder press, rows, pull-ups",
-      gradient: "from-orange-300 to-red-500"
-    },
-    {
-      id: 2,
-      name: "Morning Cardio Run",
-      emoji: "🏃",
-      type: "Cardio", 
-      duration: "30 minutes",
-      calories: "280 kcal",
-      date: "2024-01-23",
-      time: "07:00 AM",
-      summary: "5K outdoor run around the park",
-      gradient: "from-blue-300 to-cyan-500"
-    },
-    {
-      id: 3,
-      name: "Evening Yoga Flow",
-      emoji: "🧘",
-      type: "Flexibility",
-      duration: "25 minutes", 
-      calories: "150 kcal",
-      date: "2024-01-22",
-      time: "06:30 PM",
-      summary: "Vinyasa flow, sun salutations, meditation",
-      gradient: "from-purple-300 to-pink-500"
-    }
-  ]);
+  // Real workout data from database
+  const [realWorkouts, setRealWorkouts] = useState<any[]>([]);
+  const [workoutsLoading, setWorkoutsLoading] = useState(true);
 
-  // Function to handle adding new workouts
-  const handleAddWorkout = (newWorkout: any) => {
-    setMockWorkouts(prev => [newWorkout, ...prev]); // Add to beginning of array
+  // Fetch real workout data
+  useEffect(() => {
+    const fetchWorkouts = async () => {
+      if (!user?.id) return;
+      
+      setWorkoutsLoading(true);
+      try {
+        // Fetch from exercise_logs
+        const { data: exerciseLogs, error: exerciseError } = await supabase
+          .from('exercise_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        // Fetch from workout_completions
+        const { data: workoutCompletions, error: workoutError } = await supabase
+          .from('workout_completions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('completed_at', { ascending: false })
+          .limit(10);
+
+        if (exerciseError) console.error('Error fetching exercise logs:', exerciseError);
+        if (workoutError) console.error('Error fetching workout completions:', workoutError);
+
+        // Combine and format data
+        const combinedWorkouts = [];
+        
+        // Add exercise logs
+        exerciseLogs?.forEach(log => {
+          combinedWorkouts.push({
+            id: `exercise_${log.id}`,
+            name: log.activity_type || 'Exercise',
+            emoji: getActivityEmoji(log.activity_type),
+            type: getActivityType(log.activity_type),
+            duration: `${log.duration_minutes} minutes`,
+            calories: `${log.calories_burned || 0} kcal`,
+            date: new Date(log.created_at).toISOString().split('T')[0],
+            time: new Date(log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            summary: `${log.intensity_level || 'moderate'} intensity ${log.activity_type}`,
+            gradient: getActivityGradient(log.activity_type),
+            source: 'exercise_log'
+          });
+        });
+
+        // Add workout completions
+        workoutCompletions?.forEach(completion => {
+          combinedWorkouts.push({
+            id: `completion_${completion.id}`,
+            name: completion.workout_type === 'ai_routine' ? 'AI Routine' : 
+                  completion.workout_type === 'manual' ? 'Manual Workout' : 'Pre-made Plan',
+            emoji: getWorkoutTypeEmoji(completion.workout_type),
+            type: completion.workout_type,
+            duration: `${completion.duration_minutes} minutes`,
+            calories: `${Math.round(completion.duration_minutes * 6)} kcal`, // Estimate
+            date: new Date(completion.completed_at).toISOString().split('T')[0],
+            time: new Date(completion.completed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            summary: `${completion.exercises_count} exercises, ${completion.sets_count} sets`,
+            gradient: getWorkoutTypeGradient(completion.workout_type),
+            source: 'workout_completion'
+          });
+        });
+
+        // Sort by date and time
+        combinedWorkouts.sort((a, b) => {
+          const dateA = new Date(`${a.date} ${a.time}`);
+          const dateB = new Date(`${b.date} ${b.time}`);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        setRealWorkouts(combinedWorkouts);
+      } catch (error) {
+        console.error('Error fetching workout data:', error);
+      } finally {
+        setWorkoutsLoading(false);
+      }
+    };
+
+    fetchWorkouts();
+  }, [user?.id]);
+
+  // Helper functions for formatting workout data
+  const getActivityEmoji = (activityType: string) => {
+    const emojiMap: Record<string, string> = {
+      'running': '🏃',
+      'cycling': '🚴',
+      'swimming': '🏊',
+      'walking': '🚶',
+      'weightlifting': '🏋️',
+      'yoga': '🧘',
+      'pilates': '🤸',
+      'hiit': '⚡',
+      'dancing': '💃',
+      'basketball': '🏀',
+      'tennis': '🎾'
+    };
+    return emojiMap[activityType?.toLowerCase()] || '💪';
+  };
+
+  const getActivityType = (activityType: string) => {
+    const typeMap: Record<string, string> = {
+      'running': 'Cardio',
+      'cycling': 'Cardio',
+      'swimming': 'Cardio',
+      'walking': 'Cardio',
+      'weightlifting': 'Strength',
+      'yoga': 'Flexibility',
+      'pilates': 'Flexibility',
+      'hiit': 'HIIT',
+      'dancing': 'Cardio',
+      'basketball': 'Sport',
+      'tennis': 'Sport'
+    };
+    return typeMap[activityType?.toLowerCase()] || 'Exercise';
+  };
+
+  const getActivityGradient = (activityType: string) => {
+    const gradientMap: Record<string, string> = {
+      'running': 'from-blue-300 to-cyan-500',
+      'cycling': 'from-green-300 to-emerald-500',
+      'swimming': 'from-cyan-300 to-blue-500',
+      'walking': 'from-green-300 to-teal-500',
+      'weightlifting': 'from-orange-300 to-red-500',
+      'yoga': 'from-purple-300 to-pink-500',
+      'pilates': 'from-pink-300 to-purple-500',
+      'hiit': 'from-red-300 to-orange-500',
+      'dancing': 'from-pink-300 to-rose-500',
+      'basketball': 'from-orange-300 to-amber-500',
+      'tennis': 'from-yellow-300 to-orange-500'
+    };
+    return gradientMap[activityType?.toLowerCase()] || 'from-gray-300 to-slate-500';
+  };
+
+  const getWorkoutTypeEmoji = (workoutType: string) => {
+    const emojiMap: Record<string, string> = {
+      'ai_routine': '🤖',
+      'manual': '📝',
+      'pre_made': '📋'
+    };
+    return emojiMap[workoutType] || '💪';
+  };
+
+  const getWorkoutTypeGradient = (workoutType: string) => {
+    const gradientMap: Record<string, string> = {
+      'ai_routine': 'from-purple-300 to-indigo-500',
+      'manual': 'from-blue-300 to-cyan-500',
+      'pre_made': 'from-green-300 to-emerald-500'
+    };
+    return gradientMap[workoutType] || 'from-gray-300 to-slate-500';
+  };
+
+  // Function to refresh workout data after new entries
+  const refreshWorkoutData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data: exerciseLogs } = await supabase
+        .from('exercise_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const { data: workoutCompletions } = await supabase
+        .from('workout_completions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('completed_at', { ascending: false })
+        .limit(10);
+
+      // Re-process and update the workouts
+      const combinedWorkouts = [];
+      
+      exerciseLogs?.forEach(log => {
+        combinedWorkouts.push({
+          id: `exercise_${log.id}`,
+          name: log.activity_type || 'Exercise',
+          emoji: getActivityEmoji(log.activity_type),
+          type: getActivityType(log.activity_type),
+          duration: `${log.duration_minutes} minutes`,
+          calories: `${log.calories_burned || 0} kcal`,
+          date: new Date(log.created_at).toISOString().split('T')[0],
+          time: new Date(log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          summary: `${log.intensity_level || 'moderate'} intensity ${log.activity_type}`,
+          gradient: getActivityGradient(log.activity_type),
+          source: 'exercise_log'
+        });
+      });
+
+      workoutCompletions?.forEach(completion => {
+        combinedWorkouts.push({
+          id: `completion_${completion.id}`,
+          name: completion.workout_type === 'ai_routine' ? 'AI Routine' : 
+                completion.workout_type === 'manual' ? 'Manual Workout' : 'Pre-made Plan',
+          emoji: getWorkoutTypeEmoji(completion.workout_type),
+          type: completion.workout_type,
+          duration: `${completion.duration_minutes} minutes`,
+          calories: `${Math.round(completion.duration_minutes * 6)} kcal`,
+          date: new Date(completion.completed_at).toISOString().split('T')[0],
+          time: new Date(completion.completed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          summary: `${completion.exercises_count} exercises, ${completion.sets_count} sets`,
+          gradient: getWorkoutTypeGradient(completion.workout_type),
+          source: 'workout_completion'
+        });
+      });
+
+      combinedWorkouts.sort((a, b) => {
+        const dateA = new Date(`${a.date} ${a.time}`);
+        const dateB = new Date(`${b.date} ${b.time}`);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setRealWorkouts(combinedWorkouts);
+    } catch (error) {
+      console.error('Error refreshing workout data:', error);
+    }
   };
 
   // Enhanced mock routine data - make it dynamic
@@ -208,66 +391,84 @@ const ExerciseHub = () => {
   // State for editing routines
   const [editingRoutine, setEditingRoutine] = useState<any>(null);
 
-  // Mock progress data for charts
-  const mockProgressData = [
-    { date: '2024-01-15', duration: 45 },
-    { date: '2024-01-16', duration: 30 },
-    { date: '2024-01-17', duration: 0 },
-    { date: '2024-01-18', duration: 60 },
-    { date: '2024-01-19', duration: 35 },
-    { date: '2024-01-20', duration: 50 },
-    { date: '2024-01-21', duration: 25 },
-    { date: '2024-01-22', duration: 45 },
-    { date: '2024-01-23', duration: 75 },
-    { date: '2024-01-24', duration: 40 },
-    { date: '2024-01-25', duration: 55 },
-    { date: '2024-01-26', duration: 30 },
-    { date: '2024-01-27', duration: 65 },
-    { date: '2024-01-28', duration: 50 }
-  ];
+  // Use real exercise data hooks
+  const { exerciseData, summary: exerciseSummary, isLoading: exerciseDataLoading } = useRealExerciseData('30d');
+  const { streak, isLoading: streakLoading } = useWorkoutTrophy();
 
-  const mockWorkoutTypesData = [
-    { type: 'Strength', count: 12, emoji: '🏋️', color: '#f59e0b' },
-    { type: 'Cardio', count: 8, emoji: '🏃', color: '#3b82f6' },
-    { type: 'Flexibility', count: 6, emoji: '🧘', color: '#8b5cf6' },
-    { type: 'HIIT', count: 4, emoji: '⚡', color: '#ef4444' }
-  ];
+  // Calculate real stats from data
+  const totalWorkouts = exerciseData.length;
+  const totalMinutes = exerciseSummary.totalDuration;
+  const avgWeeklyFrequency = Math.round((totalWorkouts / 4) * 10) / 10; // Estimate based on 30 days
+  const longestStreak = streak?.longestStreak || 0;
+  const currentStreak = streak?.currentStreak || 0;
 
-  const mockExerciseStats = [
+  // Real workout types data based on actual logs
+  const workoutTypesData = exerciseData.reduce((acc, workout) => {
+    const type = getActivityType(workout.activity_type);
+    const existing = acc.find(item => item.type === type);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      acc.push({
+        type,
+        count: 1,
+        emoji: getActivityEmoji(workout.activity_type),
+        color: getTypeColor(type)
+      });
+    }
+    return acc;
+  }, [] as Array<{ type: string; count: number; emoji: string; color: string }>);
+
+  // Helper function for type colors
+  const getTypeColor = (type: string) => {
+    const colorMap: Record<string, string> = {
+      'Strength': '#f59e0b',
+      'Cardio': '#3b82f6',
+      'Flexibility': '#8b5cf6',
+      'HIIT': '#ef4444',
+      'Sport': '#10b981'
+    };
+    return colorMap[type] || '#6b7280';
+  };
+
+  // Real exercise stats
+  const exerciseStats = [
     {
       icon: Activity,
       label: 'Total Workouts Logged',
-      value: '30',
+      value: totalWorkouts.toString(),
       color: 'from-blue-400 to-cyan-500'
     },
     {
       icon: Clock,
       label: 'Total Minutes Exercised',
-      value: '1,350',
+      value: totalMinutes.toLocaleString(),
       color: 'from-emerald-400 to-teal-500'
     },
     {
       icon: TrendingUp,
       label: 'Avg. Weekly Frequency',
-      value: '4.2 days',
+      value: `${avgWeeklyFrequency} days`,
       color: 'from-orange-400 to-red-500'
     },
     {
       icon: Flame,
-      label: 'Longest Streak',
-      value: '12 days',
+      label: 'Current Streak',
+      value: `${currentStreak} days`,
       color: 'from-purple-400 to-pink-500'
     },
     {
       icon: Target,
-      label: 'Favorite Routine',
-      value: 'Push/Pull/Legs',
+      label: 'Longest Streak',
+      value: `${longestStreak} days`,
       color: 'from-green-400 to-emerald-500'
     },
     {
       icon: Award,
       label: 'Most Logged Type',
-      value: '🏋️ Strength',
+      value: workoutTypesData.length > 0 ? 
+        `${workoutTypesData[0].emoji} ${workoutTypesData[0].type}` : 
+        '💪 Start logging!',
       color: 'from-yellow-400 to-orange-500'
     }
   ];
@@ -913,7 +1114,21 @@ const ExerciseHub = () => {
 
                     {/* Workout Entries */}
                     <div className="space-y-4">
-                      {mockWorkouts.map((workout) => (
+                      {workoutsLoading ? (
+                        <div className="space-y-4">
+                          {[1, 2, 3].map((i) => (
+                            <Card key={i} className="w-full">
+                              <CardContent className="p-6">
+                                <div className="animate-pulse">
+                                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        realWorkouts.map((workout) => (
                         <Card key={workout.id} className="w-full shadow-lg border-border bg-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02] mb-0 !mb-0">
                           <CardContent className="p-0">
                             <div className={`bg-gradient-to-r ${workout.gradient} p-1 rounded-t-lg`} />
@@ -963,11 +1178,12 @@ const ExerciseHub = () => {
                             </div>
                           </CardContent>
                         </Card>
-                      ))}
+                        ))
+                      )}
                     </div>
 
                     {/* Empty State (if no workouts) */}
-                    {mockWorkouts.length === 0 && (
+                    {!workoutsLoading && realWorkouts.length === 0 && (
                        <Card className="w-full shadow-lg border-border bg-card mb-0 !mb-0">
                         <CardContent className="p-8 text-center">
                           <div className="text-4xl mb-4">📘</div>
@@ -1479,7 +1695,10 @@ const ExerciseHub = () => {
       <AddWorkoutModal
         isOpen={isAddWorkoutModalOpen}
         onClose={() => setIsAddWorkoutModalOpen(false)}
-        onSave={handleAddWorkout}
+        onSave={(newWorkout) => {
+          // Refresh workout data after adding new workout
+          refreshWorkoutData();
+        }}
       />
 
       {/* Create Routine Modal */}
