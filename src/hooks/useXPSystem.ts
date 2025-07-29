@@ -1,11 +1,20 @@
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useLevelUp } from '@/contexts/LevelUpContext';
 
 export const useXPSystem = () => {
   const { user } = useAuth();
-  const { triggerLevelCheck } = useLevelUp();
+
+  // Try to get level check function, but don't require it
+  let triggerLevelCheck: (() => Promise<void>) | undefined;
+  try {
+    const { useLevelUp } = require('@/contexts/LevelUpContext');
+    const levelUpContext = useLevelUp();
+    triggerLevelCheck = levelUpContext.triggerLevelCheck;
+  } catch {
+    // LevelUpProvider not available, continue without level checking
+    triggerLevelCheck = undefined;
+  }
 
   const awardUserXP = async (
     activityType: 'nutrition' | 'hydration' | 'supplement' | 'recovery',
@@ -45,8 +54,10 @@ export const useXPSystem = () => {
         duration: 3000,
       });
 
-      // Trigger level check for potential level-up
-      await triggerLevelCheck();
+      // Trigger level check for potential level-up (if available)
+      if (triggerLevelCheck) {
+        await triggerLevelCheck();
+      }
 
       return true;
     } catch (error) {
@@ -73,8 +84,10 @@ export const useXPSystem = () => {
         return false;
       }
 
-      // Trigger level check
-      await triggerLevelCheck();
+      // Trigger level check (if available)
+      if (triggerLevelCheck) {
+        await triggerLevelCheck();
+      }
       return true;
     } catch (error) {
       console.error('Failed to award nutrition XP:', error);
@@ -104,8 +117,10 @@ export const useXPSystem = () => {
         return false;
       }
 
-      // Trigger level check
-      await triggerLevelCheck();
+      // Trigger level check (if available)
+      if (triggerLevelCheck) {
+        await triggerLevelCheck();
+      }
       return true;
     } catch (error) {
       console.error('Failed to award recovery XP:', error);
