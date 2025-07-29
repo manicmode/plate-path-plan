@@ -102,7 +102,7 @@ export const RecoveryAIChat = () => {
     <Card className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+          <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
           <span>Chat with Your Coach</span>
         </CardTitle>
       </CardHeader>
@@ -121,8 +121,8 @@ export const RecoveryAIChat = () => {
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                         message.isUser
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-blue-600 text-white'
+                          ? 'bg-pink-500 text-white'
+                          : 'bg-orange-500 text-white'
                       }`}
                     >
                       {message.isUser ? (
@@ -134,7 +134,7 @@ export const RecoveryAIChat = () => {
                     <div
                         className={`flex-1 p-3 rounded-2xl break-words ${
                           message.isUser
-                            ? 'bg-cyan-600 text-white max-w-[80%] ml-auto'
+                            ? 'bg-pink-500 text-white max-w-[80%] ml-auto'
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
                         }`}
                       style={{ 
@@ -152,12 +152,12 @@ export const RecoveryAIChat = () => {
               ))}
               {isLoading && (
                 <div className="flex items-start space-x-3 w-full">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center flex-shrink-0">
                     <Bot className="h-4 w-4" />
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl">
                     <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
                       <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
                         Thinking...
                       </p>
@@ -183,7 +183,7 @@ export const RecoveryAIChat = () => {
             onClick={() => sendMessage()}
             disabled={!input.trim() || isLoading}
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 rounded-2xl px-4"
+            className="bg-orange-500 hover:bg-orange-600 rounded-2xl px-4"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

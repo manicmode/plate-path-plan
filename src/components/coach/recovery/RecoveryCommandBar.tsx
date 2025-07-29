@@ -28,7 +28,7 @@ export const RecoveryCommandBar = ({ onCommand }: RecoveryCommandBarProps) => {
     <Card className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+          <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
           <span>⚡ Quick Start Questions</span>
         </CardTitle>
       </CardHeader>
@@ -40,7 +40,7 @@ export const RecoveryCommandBar = ({ onCommand }: RecoveryCommandBarProps) => {
               variant="outline"
               size="sm"
               onClick={() => handleCommand(command)}
-              className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-blue-200 dark:border-blue-700 hover:from-blue-100 hover:to-cyan-100 dark:hover:from-blue-800/30 dark:hover:to-cyan-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
+              className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 border-orange-200 dark:border-orange-700 hover:from-orange-100 hover:to-pink-100 dark:hover:from-orange-800/30 dark:hover:to-pink-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
               disabled={false}
             >
               {command}
