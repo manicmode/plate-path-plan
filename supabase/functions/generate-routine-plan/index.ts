@@ -24,6 +24,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log("Edge function timeout set to 60 seconds.");
+
   try {
     // Check for API key first
     if (!openAIApiKey || openAIApiKey.trim() === '') {
@@ -215,7 +217,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}, { timeout: 60_000 });
 
 function buildRoutinePrompt({
   routine_goal,
