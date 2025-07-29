@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, Repeat, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 interface SavedFood {
@@ -25,10 +26,12 @@ interface SavedFood {
 interface SavedFoodsTabProps {
   onFoodSelect: (food: any) => void;
   onRefetch?: (refetchFunction: () => Promise<void>) => void;
+  isAIQuickPredictions?: boolean;
 }
 
-export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) => {
+export const SavedFoodsTab = ({ onFoodSelect, onRefetch, isAIQuickPredictions = false }: SavedFoodsTabProps) => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [optimisticFoods, setOptimisticFoods] = useState<SavedFood[]>([]);
   const [debugMode] = useState(process.env.NODE_ENV === 'development');
 
@@ -342,7 +345,89 @@ export const SavedFoodsTab = ({ onFoodSelect, onRefetch }: SavedFoodsTabProps) =
     );
   }
 
-  // Render saved foods list
+  // Helper function to get time of day for food
+  const getTimeOfDay = (food: SavedFood) => {
+    const hour = new Date(food.created_at).getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
+  };
+
+  // AI Quick Predictions layout for mobile
+  if (isAIQuickPredictions) {
+    const limitedFoods = displayFoods.slice(0, 6); // Show max 6 items
+    
+    return (
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+            <span className="text-blue-500 text-lg">🧠</span>
+          </div>
+          <div>
+            <h2 className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'}`}>
+              AI Quick Predictions
+            </h2>
+            <p className={`text-gray-300 ${isMobile ? 'text-sm' : 'text-base'}`}>
+              Smart food suggestions based on your patterns
+            </p>
+          </div>
+        </div>
+
+        {/* Food Grid - Mobile optimized */}
+        <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-3 gap-4'}`}>
+          {limitedFoods.map((food) => (
+            <div
+              key={food.id}
+              className={`bg-gray-800/60 backdrop-blur-sm rounded-2xl p-4 cursor-pointer hover:bg-gray-700/60 transition-all duration-200 ${
+                isMobile ? 'h-32' : 'h-36'
+              }`}
+              onClick={() => handleRelogFood(food)}
+            >
+              <div className="flex flex-col h-full justify-between">
+                <div>
+                  <h3 className={`font-semibold text-white truncate ${isMobile ? 'text-sm' : 'text-base'}`}>
+                    {food.food_name}
+                  </h3>
+                  <p className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    usually {getTimeOfDay(food)}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className={`font-bold text-white ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                    {food.calories} cal
+                  </p>
+                  <button className="w-full bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition-colors">
+                    tap to log
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent & Saved Logs section */}
+        <div className="pt-4">
+          <button className="w-full flex items-center justify-between text-gray-300 hover:text-white transition-colors p-2">
+            <span className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
+              📈 Recent & Saved Logs
+            </span>
+            <svg 
+              className={`transform transition-transform ${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular layout for saved foods tab
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">

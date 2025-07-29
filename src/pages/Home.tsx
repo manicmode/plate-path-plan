@@ -1058,6 +1058,14 @@ const Home = () => {
           </Card>
         </div>
 
+        {/* AI Quick Predictions Section - Mobile Optimized */}
+        <div className="bg-gradient-to-br from-slate-900/90 via-blue-900/80 to-indigo-900/90 rounded-3xl p-6 backdrop-blur-sm border border-blue-200/20">
+          <SavedFoodsTab 
+            onFoodSelect={addFood}
+            isAIQuickPredictions={true}
+          />
+        </div>
+
         {/* Enhanced Net Calorie Card */}
         <Card 
           className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
