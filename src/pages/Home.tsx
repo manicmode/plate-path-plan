@@ -39,6 +39,7 @@ import { useTeamVictoryCelebrations } from '@/hooks/useTeamVictoryCelebrations';
 import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataLoading } from '@/hooks/useDeferredDataLoading';
 import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
+import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
@@ -1265,6 +1266,11 @@ const Home = () => {
       {/* NEW: Enhanced AI Insights Window - Positioned here between logging actions and nutrients */}
       <div className="-mt-12">
         <HomeAIInsights />
+      </div>
+
+      {/* Level & XP Progress Bar */}
+      <div className="px-4 sm:px-6 -mt-4 mb-6">
+        <LevelProgressBar />
       </div>
 
       {/* Tomorrow's Mood Forecast */}

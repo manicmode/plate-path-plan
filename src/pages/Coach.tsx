@@ -23,6 +23,7 @@ import { AIRecoveryChallengeChatEntries } from '@/components/recovery/AIRecovery
 import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
 import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
 import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
+import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 
 interface Message {
   id: string;
@@ -405,6 +406,11 @@ const Coach = () => {
         <p className={`text-purple-600 dark:text-purple-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>
           Your personal nutrition expert, powered by AI
         </p>
+      </div>
+
+      {/* Level & XP Progress Bar */}
+      <div className="mb-6">
+        <LevelProgressBar />
       </div>
 
       {/* Chat Interface with enhanced mobile optimization */}
