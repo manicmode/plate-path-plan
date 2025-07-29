@@ -944,30 +944,24 @@ export type Database = {
       }
       meditation_nudge_preferences: {
         Row: {
-          created_at: string
-          id: string
-          nudges_enabled: boolean
-          push_notifications_enabled: boolean
-          smart_nudges_enabled: boolean
-          updated_at: string
+          allow_ai_suggestions: boolean | null
+          allow_push: boolean | null
+          allow_recovery_triggers: boolean | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
-          id?: string
-          nudges_enabled?: boolean
-          push_notifications_enabled?: boolean
-          smart_nudges_enabled?: boolean
-          updated_at?: string
+          allow_ai_suggestions?: boolean | null
+          allow_push?: boolean | null
+          allow_recovery_triggers?: boolean | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
-          id?: string
-          nudges_enabled?: boolean
-          push_notifications_enabled?: boolean
-          smart_nudges_enabled?: boolean
-          updated_at?: string
+          allow_ai_suggestions?: boolean | null
+          allow_push?: boolean | null
+          allow_recovery_triggers?: boolean | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
