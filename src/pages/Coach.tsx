@@ -420,6 +420,10 @@ const Coach = () => {
             <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
             <span>Chat with Your Coach</span>
           </CardTitle>
+          {/* Level & XP Progress Bar - Chat Section */}
+          <div className="mt-3">
+            <LevelProgressBar />
+          </div>
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           {/* Messages Container with optimized height for mobile */}
@@ -609,6 +613,10 @@ const Coach = () => {
             <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
             <span>⚡ Quick Start Questions</span>
           </CardTitle>
+          {/* Level & XP Progress Bar - Quick Questions Section */}
+          <div className="mt-3">
+            <LevelProgressBar />
+          </div>
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           <div className="grid grid-cols-2 gap-3">
@@ -635,6 +643,10 @@ const Coach = () => {
             <ChefHat className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
             <span>🍽️ Personalized Recipes</span>
           </CardTitle>
+          {/* Level & XP Progress Bar - Recipes Section */}
+          <div className="mt-3">
+            <LevelProgressBar />
+          </div>
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           <div className="grid grid-cols-2 gap-3 mb-6">
