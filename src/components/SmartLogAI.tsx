@@ -117,51 +117,51 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
   const currentData = getCurrentData();
 
   return (
-    <div className={`bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200/50 shadow-lg shadow-slate-200/20 ${isMobile ? 'p-5' : 'p-6'}`}>
+    <div className={`bg-gradient-to-br from-background/95 to-background/90 dark:from-gray-900/95 dark:to-gray-800/90 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-gradient-to-r from-slate-500/80 to-slate-600/80 rounded-xl shadow-sm">
-          <Sparkles className="h-5 w-5 text-white" />
+        <div className="p-2 bg-gradient-to-r from-primary/80 to-primary/60 rounded-xl shadow-sm">
+          <Sparkles className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
-          <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-slate-800`}>
+          <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-foreground`}>
             SmartLog AI Predictions
           </h3>
-          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-slate-500`}>
-            Based on your patterns
+          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
+            Your most likely meals, based on real patterns
           </p>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <div className="flex bg-slate-100/80 rounded-full p-1">
+      <div className="flex items-center justify-center mb-6">
+        <div className="flex bg-muted/60 rounded-full p-1 w-full max-w-md mx-auto">
           <button 
             onClick={() => setActiveTab('smart')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+            className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
               activeTab === 'smart' 
-                ? 'bg-slate-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-200/60'
+                ? 'bg-primary text-primary-foreground shadow-md' 
+                : 'text-muted-foreground hover:bg-muted/80'
             }`}
           >
             ⚡ Smart
           </button>
           <button 
             onClick={() => setActiveTab('saved')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+            className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
               activeTab === 'saved' 
-                ? 'bg-slate-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-200/60'
+                ? 'bg-primary text-primary-foreground shadow-md' 
+                : 'text-muted-foreground hover:bg-muted/80'
             }`}
           >
             🔁 Saved
           </button>
           <button 
             onClick={() => setActiveTab('recent')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+            className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
               activeTab === 'recent' 
-                ? 'bg-slate-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-200/60'
+                ? 'bg-primary text-primary-foreground shadow-md' 
+                : 'text-muted-foreground hover:bg-muted/80'
             }`}
           >
             🌈 Recent
@@ -175,18 +175,18 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
           {currentData.map((food, index) => (
             <div
               key={index}
-              className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in hover:border-slate-300/60"
+              className="bg-card dark:bg-card/95 rounded-2xl p-4 border border-border/30 shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in hover:border-border/50 flex flex-col min-h-[140px]"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               {/* Food Info */}
-              <div className="space-y-2 mb-3">
-                <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-slate-800 leading-tight`}>
+              <div className="space-y-2 mb-3 flex-grow">
+                <h4 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-card-foreground leading-tight`}>
                   🥗 {food.name}
                 </h4>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-slate-500`}>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
                   🕒 {activeTab === 'recent' ? 'Logged at' : 'Usually'} {food.time}
                 </p>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-slate-600 font-medium`}>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-card-foreground/80 font-medium`}>
                   🔢 {food.calories} cal
                 </p>
               </div>
@@ -194,7 +194,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
               {/* Tap to Log Button */}
               <button
                 onClick={() => handleFoodLog(food)}
-                className={`w-full bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-medium rounded-full ${isMobile ? 'py-2 text-xs' : 'py-2.5 text-sm'} transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg`}
+                className={`w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground font-medium rounded-full ${isMobile ? 'py-2 text-xs' : 'py-2.5 text-sm'} transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg mt-auto`}
               >
                 ✅ Tap to log
               </button>
@@ -207,10 +207,10 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
           <div className="text-4xl mb-3">
             {activeTab === 'saved' ? '🔖' : '📱'}
           </div>
-          <p className="text-slate-700 font-medium mb-1">
+          <p className="text-card-foreground font-medium mb-1">
             {activeTab === 'saved' ? 'No saved foods yet!' : 'No recent foods yet!'}
           </p>
-          <p className="text-slate-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             {activeTab === 'saved' 
               ? 'Start logging meals to see your favorites here' 
               : 'Your recently logged foods will appear here'
