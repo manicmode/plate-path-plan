@@ -25,30 +25,30 @@ const CoachMain = () => {
           >
             <ToggleGroupItem 
               value="nutrition" 
-              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
+              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 text-white ${
                 activeTab === 'nutrition' 
-                  ? 'bg-gradient-to-r from-purple-600 via-blue-600 to-emerald-600 text-white shadow-lg' 
-                  : 'hover:bg-muted/60'
+                  ? 'bg-gradient-to-r from-purple-600 via-blue-600 to-emerald-600 shadow-lg' 
+                  : 'hover:bg-muted/60 dark:text-foreground'
               }`}
             >
               Nutrition
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="exercise" 
-              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
+              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 text-white ${
                 activeTab === 'exercise' 
-                  ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 text-white shadow-lg' 
-                  : 'hover:bg-muted/60'
+                  ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 shadow-lg' 
+                  : 'hover:bg-muted/60 dark:text-foreground'
               }`}
             >
               Exercise
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="recovery" 
-              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
+              className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 text-white ${
                 activeTab === 'recovery' 
-                  ? 'bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 text-white shadow-lg' 
-                  : 'hover:bg-muted/60'
+                  ? 'bg-gradient-to-r from-orange-500 via-pink-500 to-rose-500 shadow-lg' 
+                  : 'hover:bg-muted/60 dark:text-foreground'
               }`}
             >
               Recovery
