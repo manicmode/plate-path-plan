@@ -226,7 +226,7 @@ function buildRoutinePrompt({
   equipment_available,
   preferred_routine_name
 }) {
-  return `Create a comprehensive 8-week fitness routine with the following specifications:
+  return `Create a comprehensive 1-week fitness routine with the following specifications:
 
 REQUIREMENTS:
 - Goal: ${routine_goal}
@@ -244,7 +244,7 @@ Return ONLY valid JSON in this exact structure:
   "routine_name": "${preferred_routine_name || 'Generated Routine'}",
   "routine_goal": "${routine_goal}",
   "split_type": "${split_type}",
-  "total_weeks": 8,
+  "total_weeks": 1,
   "days_per_week": ${days_per_week},
   "estimated_duration_minutes": ${available_time_per_day},
   "fitness_level": "${fitness_level}",
@@ -309,7 +309,7 @@ Return ONLY valid JSON in this exact structure:
 }
 
 IMPORTANT GUIDELINES:
-1. Create progressive overload across 8 weeks (increase intensity, reps, or sets)
+1. Create a solid foundation week with proper form focus
 2. Include proper warm-up (5 minutes) and cool-down (5 minutes) for each workout day
 3. Add 60-90 second rest periods between exercises
 4. Choose exercises appropriate for ${fitness_level} level and ${equipment_available}
@@ -317,8 +317,8 @@ IMPORTANT GUIDELINES:
 6. Ensure total workout time stays around ${available_time_per_day} minutes
 7. Include rest days based on ${days_per_week} schedule
 8. Use exercise names that match common fitness terminology (push-ups, squats, etc.)
-9. Progress difficulty each week while maintaining proper form focus
-10. Include variety to prevent boredom while maintaining consistency
+9. Focus on proper form and technique for this foundation week
+10. Include variety within the week while maintaining consistency
 
-Create the full 8-week plan with all days populated according to the ${days_per_week} days per week schedule.`;
+Create a complete week 1 plan with all days populated according to the ${days_per_week} days per week schedule.`;
 }
