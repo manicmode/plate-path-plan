@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Unlock, RefreshCw, Loader2, Clock, Target, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { WorkoutExecutionModal } from './WorkoutExecutionModal';
+import { WorkoutPlayer } from './WorkoutPlayer';
 
 interface Exercise {
   id: string;
@@ -214,16 +214,15 @@ export function WeeklyRoutineDay({
         )}
       </CardContent>
 
-      {/* Workout Execution Modal */}
+      {/* Workout Player */}
       {showWorkoutModal && dayData?.exercises && routineId && (
-        <WorkoutExecutionModal
+        <WorkoutPlayer
           isOpen={showWorkoutModal}
           onClose={() => setShowWorkoutModal(false)}
           routineId={routineId}
           dayName={day}
           dayIndex={dayIndex}
           exercises={dayData.exercises}
-          estimatedDuration={dayData.estimated_duration || 45}
         />
       )}
     </Card>
