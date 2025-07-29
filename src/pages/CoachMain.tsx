@@ -27,7 +27,7 @@ const CoachMain = () => {
               value="nutrition" 
               className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
                 activeTab === 'nutrition' 
-                  ? 'bg-gradient-to-r from-purple-400 via-blue-400 to-emerald-400 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-purple-400 via-blue-400 to-emerald-400 dark:from-purple-600 dark:via-blue-600 dark:to-emerald-600 text-white shadow-lg' 
                   : 'hover:bg-muted/60'
               }`}
             >
@@ -37,7 +37,7 @@ const CoachMain = () => {
               value="exercise" 
               className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
                 activeTab === 'exercise' 
-                  ? 'bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-500 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-500 dark:from-indigo-500 dark:via-purple-600 dark:to-indigo-600 text-white shadow-lg' 
                   : 'hover:bg-muted/60'
               }`}
             >
@@ -47,7 +47,7 @@ const CoachMain = () => {
               value="recovery" 
               className={`rounded-md text-sm px-6 py-1.5 transition-all duration-300 ${
                 activeTab === 'recovery' 
-                  ? 'bg-gradient-to-r from-orange-400 via-pink-400 to-rose-400 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-orange-400 via-pink-400 to-rose-400 dark:from-orange-500 dark:via-pink-500 dark:to-rose-500 text-white shadow-lg' 
                   : 'hover:bg-muted/60'
               }`}
             >
