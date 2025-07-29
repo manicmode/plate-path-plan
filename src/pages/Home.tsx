@@ -1045,16 +1045,9 @@ const Home = () => {
               {/* Expanded Content */}
               <CollapsibleContent className="mt-4">
                 <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-600">
-                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Recent & Saved Logs
-                  </h5>
                   <div className="space-y-3">
-                    <RecentFoodsTab 
+                    <SavedFoodsTab 
                       onFoodSelect={handleFoodSelect}
-                      onBarcodeSelect={(barcode) => {
-                        console.log('Barcode selected:', barcode);
-                        // Handle barcode selection if needed
-                      }}
                     />
                   </div>
                 </div>
@@ -1062,7 +1055,6 @@ const Home = () => {
             </CardContent>
           </Card>
         </Collapsible>
-
 
         {/* Secondary Actions: Hydration & Supplements */}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
