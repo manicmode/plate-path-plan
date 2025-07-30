@@ -208,6 +208,18 @@ export default function BodyScanAI() {
     }
   }, [hasImageReady]);
 
+  // Clear canvas overlay when success screen shows
+  useEffect(() => {
+    if (showSuccessScreen && overlayCanvasRef.current) {
+      const canvas = overlayCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        console.log('🧹 Clearing canvas overlay for success screen');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  }, [showSuccessScreen]);
+
   useEffect(() => {
     // Lock screen orientation to portrait if supported
     const lockOrientation = async () => {
@@ -1283,11 +1295,17 @@ export default function BodyScanAI() {
       alignmentScore,
       feedback
     };
-  }, [currentStep]);
+  }, [currentStep, showSuccessScreen, hasImageReady]);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
     // STEP 4: DRAW DEBUG
     console.log("[DRAW] drawPoseOverlay called");
+    
+    // ✅ CRITICAL: Don't draw anything if success screen is showing
+    if (showSuccessScreen || hasImageReady) {
+      console.log('[DRAW] ❌ Skipping draw - success screen or image ready');
+      return;
+    }
     
     if (!overlayCanvasRef.current || !videoRef.current) {
       console.log('[DRAW] ❌ Missing canvas or video ref');
@@ -1404,7 +1422,7 @@ export default function BodyScanAI() {
     
     console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
     console.log('[DRAW] ✅ Pose overlay drawing complete');
-  }, []);
+  }, [showSuccessScreen, hasImageReady]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1598,11 +1616,11 @@ export default function BodyScanAI() {
       {!showSuccessScreen && (
         <canvas 
           ref={overlayCanvasRef}
-          style={{
-            border: '3px solid lime',
-            position: 'absolute',
-            zIndex: 99,
-            top: 0,
+           style={{
+             border: '3px solid lime',
+             position: 'absolute',
+             zIndex: 20, // Lower than success screen (z-30)
+             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
@@ -1709,7 +1727,7 @@ export default function BodyScanAI() {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
+        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-6 transition-opacity duration-200 animate-fade-in`}>
           <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
             {/* Success Icon with Step-specific Color */}
             <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
