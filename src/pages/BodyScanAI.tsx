@@ -1067,6 +1067,10 @@ export default function BodyScanAI() {
     // Apply pose smoothing for full human detection
     const smoothedPose = smoothPoseData(pose);
     
+    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
+    const misalignedLimbs: string[] = [];
+    let feedback = "";
+    
     // Find key landmarks
     const keypoints = pose.keypoints;
     const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
@@ -1076,108 +1080,6 @@ export default function BodyScanAI() {
     const leftHip = keypoints.find(kp => kp.name === 'left_hip');
     const rightHip = keypoints.find(kp => kp.name === 'right_hip');
     const nose = keypoints.find(kp => kp.name === 'nose');
-    
-    // SIDE POSE VALIDATION - Check if user is turned fully sideways
-    if (currentStep === 'side') {
-      console.log('🔄 SIDE POSE VALIDATION ACTIVE');
-      
-      const misalignedLimbs: string[] = [];
-      let feedback = "";
-      
-      // Calculate horizontal distances for sideways validation
-      let shoulderDistance = 0;
-      let hipDistance = 0;
-      let isShouldersSideways = false;
-      let isHipsSideways = false;
-      
-      // Check shoulder alignment for side pose
-      if (leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5) {
-        shoulderDistance = Math.abs(leftShoulder.x - rightShoulder.x);
-        isShouldersSideways = shoulderDistance < 50; // 50px threshold
-        
-        if (!isShouldersSideways) {
-          misalignedLimbs.push('shoulders_not_sideways');
-        }
-      } else {
-        misalignedLimbs.push('shoulders_not_detected');
-      }
-      
-      // Check hip alignment for side pose
-      if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
-        hipDistance = Math.abs(leftHip.x - rightHip.x);
-        isHipsSideways = hipDistance < 50; // 50px threshold
-        
-        if (!isHipsSideways) {
-          misalignedLimbs.push('hips_not_sideways');
-        }
-      } else {
-        misalignedLimbs.push('hips_not_detected');
-      }
-      
-      // Debug logging for side pose validation
-      console.log('📊 SIDE POSE DEBUG:', {
-        shoulderDistance: shoulderDistance.toFixed(1) + 'px',
-        hipDistance: hipDistance.toFixed(1) + 'px',
-        isShouldersSideways,
-        isHipsSideways,
-        misalignedLimbs,
-        leftShoulderScore: leftShoulder?.score,
-        rightShoulderScore: rightShoulder?.score,
-        leftHipScore: leftHip?.score,
-        rightHipScore: rightHip?.score
-      });
-      
-      // Check body centering for side pose
-      let isCentered = true;
-      if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
-        const hipCenter = (leftHip.x + rightHip.x) / 2;
-        const screenCenter = (videoRef.current?.videoWidth || 640) / 2;
-        const centerOffset = Math.abs(hipCenter - screenCenter) / screenCenter;
-        
-        if (centerOffset > 0.25) { // More lenient for side pose
-          misalignedLimbs.push('centering');
-          isCentered = false;
-        }
-      }
-      
-      // Determine if side pose is aligned
-      const isSidePoseAligned = isShouldersSideways && isHipsSideways && isCentered;
-      const totalSideChecks = 3; // shoulders, hips, centering
-      const alignmentScore = Math.max(0, (totalSideChecks - misalignedLimbs.length) / totalSideChecks);
-      
-      // Generate feedback for side pose
-      if (isSidePoseAligned) {
-        feedback = "Perfect side pose! Hold steady...";
-      } else if (alignmentScore >= 0.6) {
-        feedback = "Almost there! Turn more sideways";
-      } else {
-        if (misalignedLimbs.includes('shoulders_not_sideways') || misalignedLimbs.includes('hips_not_sideways')) {
-          feedback = "Turn fully sideways - shoulders and hips should overlap";
-        } else if (misalignedLimbs.includes('centering')) {
-          feedback = "Move to center of frame";
-        } else {
-          feedback = "Position yourself in view and turn sideways";
-        }
-      }
-      
-      console.log('🎯 SIDE POSE RESULT:', {
-        isAligned: isSidePoseAligned,
-        alignmentScore: alignmentScore.toFixed(3),
-        feedback
-      });
-      
-      return {
-        isAligned: isSidePoseAligned,
-        misalignedLimbs,
-        alignmentScore,
-        feedback
-      };
-    }
-    
-    // FRONT POSE VALIDATION (existing logic)
-    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
-    const misalignedLimbs: string[] = [];
-    let feedback = "";
     
     // Check if person is facing camera (nose should be visible)
     if (!nose || nose.score < 0.5) {
@@ -1258,7 +1160,7 @@ export default function BodyScanAI() {
       alignmentScore,
       feedback
     };
-  }, [currentStep]);
+  }, []);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
     // STEP 4: DRAW DEBUG
