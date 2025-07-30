@@ -85,7 +85,6 @@ export default function BodyScanAI() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -195,14 +194,6 @@ export default function BodyScanAI() {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
   }, [stream]);
-
-  // Trigger save when image is ready
-  useEffect(() => {
-    if (hasImageReady) {
-      console.log("🟢 Pose ready, saving scan");
-      saveBodyScanToSupabase(capturedImage!);
-    }
-  }, [hasImageReady]);
 
   useEffect(() => {
     // Lock screen orientation to portrait if supported
@@ -697,10 +688,8 @@ export default function BodyScanAI() {
   };
   // Function to upload image to Supabase Storage and save record
   const saveBodyScanToSupabase = async (imageDataUrl: string) => {
-    console.log("📸 Starting saveBodyScanToSupabase");
     try {
       setIsSaving(true);
-      setErrorSavingScan(null);
       
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -742,16 +731,12 @@ export default function BodyScanAI() {
       }));
       setCompletedSteps(prev => new Set([...prev, currentStep]));
 
-      console.log("✅ Scan saved, publicUrl:", publicUrl);
+      console.log(`✅ ${currentStep} scan saved:`, publicUrl);
       
       // Set success screen state to trigger the Continue button flow
       setSavedScanUrl(publicUrl);
       setShowSuccessScreen(true);
       
-      // Temporary hack for testing - add dummy URL if needed
-      // setSavedScanUrl("https://via.placeholder.com/400x600?text=Test+Scan");
-      
-      console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
         savedScanUrl: !!publicUrl, 
         showSuccessScreen: true, 
@@ -777,10 +762,7 @@ export default function BodyScanAI() {
       });
 
     } catch (error) {
-      console.error("❌ Error saving scan", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      setErrorSavingScan(errorMessage);
-      alert("Error saving scan: " + errorMessage);
+      console.error('Error saving body scan:', error);
       toast({
         title: "Save Error",
         description: "Failed to save body scan. Please try again.",
@@ -1208,8 +1190,6 @@ export default function BodyScanAI() {
   };
 
   const handleContinue = () => {
-    console.log('➡️ Continue clicked');
-    alert('Continue clicked');
     console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
     
     if (hasImageReady && savedScanUrl) {
@@ -1771,17 +1751,6 @@ export default function BodyScanAI() {
         isOpen={tipsModal.isOpen} 
         onClose={tipsModal.onClose} 
       />
-
-      {/* Debug UI Block */}
-      <div className="text-xs text-white bg-black p-2 rounded-lg mt-4 fixed bottom-4 left-4 right-4 z-50">
-        <p>Step: {currentStep}</p>
-        <p>showSuccessScreen: {showSuccessScreen.toString()}</p>
-        <p>savedScanUrl: {savedScanUrl}</p>
-        <p>hasImageReady: {hasImageReady.toString()}</p>
-        <p>isTransitioning: {isTransitioning.toString()}</p>
-        <p>errorSavingScan: {errorSavingScan}</p>
-        <p>isSaving: {isSaving.toString()}</p>
-      </div>
     </div>
   );
 }
