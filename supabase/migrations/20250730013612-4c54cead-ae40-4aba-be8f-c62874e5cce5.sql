@@ -1,0 +1,159 @@
+-- Fix security issues by setting proper search_path for new functions
+DROP FUNCTION IF EXISTS public.enforce_single_active_routine();
+CREATE OR REPLACE FUNCTION public.enforce_single_active_routine()
+RETURNS TRIGGER 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_catalog'
+AS $$
+BEGIN
+  -- If the routine is being set to active
+  IF NEW.is_active = true THEN
+    -- Deactivate all other routines for this user in ai_routines table
+    UPDATE public.ai_routines 
+    SET is_active = false, updated_at = now()
+    WHERE user_id = NEW.user_id 
+      AND id != NEW.id 
+      AND is_active = true;
+    
+    -- Deactivate all other routines for this user in ai_generated_routines table
+    UPDATE public.ai_generated_routines 
+    SET is_active = false, updated_at = now()
+    WHERE user_id = NEW.user_id 
+      AND id != NEW.id 
+      AND is_active = true;
+    
+    -- If this is ai_routines table, also deactivate ai_generated_routines
+    IF TG_TABLE_NAME = 'ai_routines' THEN
+      UPDATE public.ai_generated_routines 
+      SET is_active = false, updated_at = now()
+      WHERE user_id = NEW.user_id 
+        AND is_active = true;
+    END IF;
+    
+    -- If this is ai_generated_routines table, also deactivate ai_routines
+    IF TG_TABLE_NAME = 'ai_generated_routines' THEN
+      UPDATE public.ai_routines 
+      SET is_active = false, updated_at = now()
+      WHERE user_id = NEW.user_id 
+        AND is_active = true;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.get_user_active_routine(UUID);
+CREATE OR REPLACE FUNCTION public.get_user_active_routine(target_user_id UUID)
+RETURNS TABLE(
+  routine_id UUID,
+  routine_name TEXT,
+  routine_type TEXT,
+  table_source TEXT,
+  is_active BOOLEAN,
+  start_date DATE,
+  updated_at TIMESTAMP WITH TIME ZONE
+) 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_catalog'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    ar.id as routine_id,
+    ar.routine_name,
+    'ai_legacy' as routine_type,
+    'ai_routines' as table_source,
+    ar.is_active,
+    ar.start_date,
+    ar.updated_at
+  FROM public.ai_routines ar
+  WHERE ar.user_id = target_user_id AND ar.is_active = true
+  
+  UNION ALL
+  
+  SELECT 
+    agr.id as routine_id,
+    agr.routine_name,
+    'ai_generated' as routine_type,
+    'ai_generated_routines' as table_source,
+    agr.is_active,
+    NULL::DATE as start_date,
+    agr.updated_at
+  FROM public.ai_generated_routines agr
+  WHERE agr.user_id = target_user_id AND agr.is_active = true
+  
+  ORDER BY updated_at DESC
+  LIMIT 1;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.activate_routine_safely(UUID, TEXT, UUID);
+CREATE OR REPLACE FUNCTION public.activate_routine_safely(
+  target_routine_id UUID,
+  target_table_name TEXT,
+  target_user_id UUID
+)
+RETURNS JSONB 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_catalog'
+AS $$
+DECLARE
+  current_active_routine RECORD;
+  activation_result JSONB;
+BEGIN
+  -- Get currently active routine
+  SELECT * INTO current_active_routine
+  FROM public.get_user_active_routine(target_user_id)
+  LIMIT 1;
+  
+  -- Activate the target routine based on table
+  IF target_table_name = 'ai_routines' THEN
+    UPDATE public.ai_routines 
+    SET is_active = true, 
+        start_date = CURRENT_DATE,
+        current_week = 1,
+        current_day_in_week = 1,
+        updated_at = now()
+    WHERE id = target_routine_id AND user_id = target_user_id;
+    
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Routine not found');
+    END IF;
+    
+  ELSIF target_table_name = 'ai_generated_routines' THEN
+    UPDATE public.ai_generated_routines 
+    SET is_active = true, updated_at = now()
+    WHERE id = target_routine_id AND user_id = target_user_id;
+    
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Routine not found');
+    END IF;
+  ELSE
+    RETURN jsonb_build_object('success', false, 'error', 'Invalid table name');
+  END IF;
+  
+  -- Build result
+  activation_result := jsonb_build_object(
+    'success', true,
+    'activated_routine_id', target_routine_id,
+    'activated_table', target_table_name,
+    'previous_active_routine', 
+    CASE 
+      WHEN current_active_routine.routine_id IS NOT NULL THEN
+        jsonb_build_object(
+          'id', current_active_routine.routine_id,
+          'name', current_active_routine.routine_name,
+          'type', current_active_routine.routine_type,
+          'table_source', current_active_routine.table_source
+        )
+      ELSE NULL
+    END
+  );
+  
+  RETURN activation_result;
+END;
+$$;
