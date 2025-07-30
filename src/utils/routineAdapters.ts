@@ -33,7 +33,10 @@ export function convertUnifiedToAIRoutineCard(routine: UnifiedRoutine): AIRoutin
     current_day_in_week: routine.currentDay || 1,
     is_active: routine.status === 'in-progress',
     locked_days: {},
-    routine_data: routine.weeklyPlan || { weeks: [] },
+    // Only support new format: routine_data.weeks[].days
+    routine_data: routine.weeklyPlan && routine.weeklyPlan.weeks 
+      ? routine.weeklyPlan 
+      : { weeks: [{ days: {} }] },
     created_at: routine.createdAt
   };
 }

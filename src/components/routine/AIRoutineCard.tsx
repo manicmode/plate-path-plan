@@ -254,8 +254,11 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     return emojiMap[goal] || '🎯';
   };
 
+  // Simplified hasWorkouts check - only new format supported
   const hasWorkouts = routine.routine_data?.weeks?.some((week: any) => 
-    Object.values(week.days || {}).some((day: any) => day && Object.keys(day).length > 0)
+    Object.values(week.days || {}).some((day: any) => 
+      day && day.steps && Array.isArray(day.steps) && day.steps.length > 0
+    )
   );
 
   return (
