@@ -1248,27 +1248,54 @@ export default function BodyScanAI() {
         }}></div>
       </div>
 
-      {/* Header Instructions - Fixed at top with proper spacing */}
+      {/* Progress Indicator & Header Instructions */}
       <div className="absolute top-4 md:top-6 left-4 right-4 z-20">
+        {/* Progress Bar */}
+        <div className="bg-black/60 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/80 text-xs font-medium">Progress</span>
+            <span className="text-white text-sm font-bold">
+              Step {currentStep === 'front' ? '1' : currentStep === 'side' ? '2' : '3'} of 3
+            </span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-blue-400 to-cyan-400 h-2 rounded-full transition-all duration-500"
+              style={{ 
+                width: `${currentStep === 'front' ? '33.33%' : currentStep === 'side' ? '66.66%' : '100%'}` 
+              }}
+            ></div>
+          </div>
+        </div>
+        
+        {/* Dynamic Header */}
         <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
           <h2 className="text-white text-lg font-bold mb-2 text-center">
-            📸 Front Body Scan
+            📸 {currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} Body Scan
           </h2>
           <p className="text-white/90 text-sm text-center">
-            Stand upright with arms out. Match your body to the glowing outline.
+            {currentStep === 'front' && "Stand upright with arms slightly out. Match your body to the glowing outline."}
+            {currentStep === 'side' && "Turn sideways. Keep arms relaxed at your sides and align with the outline."}
+            {currentStep === 'back' && "Face away. Keep posture straight and feet together. Align with outline."}
           </p>
         </div>
       </div>
 
       
-      {/* Body Silhouette Overlay - Vertically centered with bigger size */}
+      {/* Body Silhouette Overlay - Dynamic based on currentStep */}
       <div className="absolute inset-0 flex items-center justify-center mt-[-4vh] z-15">
         <div className={`relative transition-all duration-500 ${
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
           <img 
-            src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
-            alt=""
+            src={
+              currentStep === 'front' 
+                ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+                : currentStep === 'side'
+                ? "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=600&fit=crop&crop=center"
+                : "https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=400&h=600&fit=crop&crop=center"
+            }
+            alt={`${currentStep} body silhouette`}
             className="w-[99vw] max-h-[88vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
             onLoad={handleImageLoad}
             onError={handleImageError}
@@ -1281,13 +1308,15 @@ export default function BodyScanAI() {
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30 p-6">
           <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 text-center max-w-sm">
             <div className="text-4xl mb-4">✅</div>
-            <h3 className="text-white text-xl font-bold mb-4">Front Scan Saved!</h3>
+            <h3 className="text-white text-xl font-bold mb-4">
+              {currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} Scan Saved!
+            </h3>
             
             {/* Thumbnail preview */}
             <div className="mb-6 rounded-2xl overflow-hidden border-2 border-green-400/50">
               <img 
                 src={savedScanUrl}
-                alt="Front body scan"
+                alt={`${currentStep} body scan`}
                 className="w-full h-32 object-cover"
               />
             </div>
@@ -1298,14 +1327,16 @@ export default function BodyScanAI() {
                 onClick={handleContinue}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3"
               >
-                Continue to Back Scan 🔜
+                {currentStep === 'front' ? 'Continue to Side Scan 🔜' : 
+                 currentStep === 'side' ? 'Continue to Back Scan 🔜' : 
+                 'Complete Scan 🎉'}
               </Button>
               <Button
                 onClick={handleRetake}
                 variant="outline"
                 className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20"
               >
-                Retake Front Scan 🔁
+                Retake {currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} Scan 🔁
               </Button>
             </div>
           </div>
@@ -1370,7 +1401,7 @@ export default function BodyScanAI() {
               {showSuccessScreen ? (
                 <>
                   <ArrowRight className="w-6 h-6 mr-3" />
-                  🚀 Continue to Side Scan
+                  🚀 Continue to {currentStep === 'front' ? 'Side' : currentStep === 'side' ? 'Back' : 'Complete'} Scan
                 </>
               ) : hasImageReady ? (
                 <>
@@ -1384,7 +1415,7 @@ export default function BodyScanAI() {
                   <div className={`w-6 h-6 mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
                   {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
                    isCapturing ? '🔍 SCANNING...' : 
-                   '📸 Capture Front View'}
+                   `📸 Capture ${currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} View`}
                   {/* Pose alignment indicator */}
                   {isPoseDetectionEnabled && alignmentFeedback && (
                     <span className="ml-2">
