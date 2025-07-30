@@ -702,19 +702,55 @@ export default function BodyScanAI() {
       setIsSaving(true);
       setErrorSavingScan(null);
       
+      // Validate image data URL
+      if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
+        console.error("❌ Invalid image data URL:", imageDataUrl?.substring(0, 50));
+        throw new Error('Invalid image data - no image captured');
+      }
+      
+      console.log("✅ Valid image data URL detected, size:", imageDataUrl.length);
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.error("❌ User not authenticated");
         throw new Error('User not authenticated');
       }
+      
+      console.log("✅ User authenticated:", user.id);
 
-      // Convert data URL to blob/JPEG
-      const response = await fetch(imageDataUrl);
-      const blob = await response.blob();
+      // Convert data URL to blob/JPEG with detailed error handling
+      let response: Response;
+      let blob: Blob;
+      
+      try {
+        console.log("🔄 Converting data URL to blob...");
+        response = await fetch(imageDataUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+        }
+        
+        blob = await response.blob();
+        console.log("✅ Blob created successfully:", {
+          size: blob.size,
+          type: blob.type
+        });
+        
+        if (blob.size === 0) {
+          throw new Error('Image blob is empty - capture may have failed');
+        }
+        
+      } catch (fetchError) {
+        console.error("❌ Failed to convert data URL to blob:", fetchError);
+        throw new Error(`Image processing failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+      }
       
       // Create filename with timestamp
       const timestamp = Date.now();
       const fileName = `${user.id}/${currentStep}-${timestamp}.jpg`;
+      
+      console.log("🔄 Uploading to Supabase Storage:", fileName);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -725,8 +761,11 @@ export default function BodyScanAI() {
         });
 
       if (uploadError) {
-        throw uploadError;
+        console.error("❌ Upload error:", uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
+      
+      console.log("✅ Upload successful:", uploadData);
 
       // Get public URL
       const { data: urlData } = supabase.storage
@@ -734,6 +773,7 @@ export default function BodyScanAI() {
         .getPublicUrl(fileName);
 
       const publicUrl = urlData.publicUrl;
+      console.log("✅ Public URL generated:", publicUrl);
       
       // Store the captured image URL
       setCapturedImages(prev => ({
@@ -779,11 +819,19 @@ export default function BodyScanAI() {
     } catch (error) {
       console.error("❌ Error saving scan", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("❌ Full error details:", {
+        error,
+        stack: error instanceof Error ? error.stack : undefined,
+        currentStep,
+        hasImageReady,
+        imageDataLength: imageDataUrl?.length || 0
+      });
+      
       setErrorSavingScan(errorMessage);
       alert("Error saving scan: " + errorMessage);
       toast({
         title: "Save Error",
-        description: "Failed to save body scan. Please try again.",
+        description: `Failed to save body scan: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
