@@ -485,10 +485,10 @@ export default function BodyScanAI() {
       // STEP 8: VIDEO STREAM DIMENSIONS
       console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
       
-      // Guard against running pose detection during success or fade out
+      // ✅ CRITICAL GUARD: Stop all detection during success transitions
       if (showSuccessScreen || isScanningFadingOut) {
-        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
-        return;
+        console.log("[POSE DETECTION] ❌ Skipping - success screen or fading out");
+        return; // Don't schedule another frame during transitions
       }
       
       if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady || hasImageReady) {
@@ -787,35 +787,42 @@ export default function BodyScanAI() {
       // Enhanced cinematic transition sequence
       console.log('🎬 Starting cinematic transition sequence...');
       
-      // Step 1: Start fade-out of scanning overlay
+      // 🎬 CINEMATIC TRANSITION TIMELINE:
+      // 0ms: Start fade-out + stop pose detection
       setIsScanningFadingOut(true);
+      setHasImageReady(true);
       
-      // Step 2: Show camera shutter flash after 200ms
+      // 100ms: Clear canvas immediately to prevent pose dots
+      setTimeout(() => {
+        if (overlayCanvasRef.current) {
+          const ctx = overlayCanvasRef.current.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+            console.log('🧹 Canvas cleared at 100ms');
+          }
+        }
+      }, 100);
+      
+      // 200ms: Show flash (150ms duration)
       setTimeout(() => {
         setShowShutterFlash(true);
-        
-        // Step 3: Hide flash after 150ms
         setTimeout(() => {
           setShowShutterFlash(false);
         }, 150);
       }, 200);
       
-      // Step 4: Clear canvas before showing success screen
-      setTimeout(() => {
-        if (overlayCanvasRef.current) {
-          const ctx = overlayCanvasRef.current.getContext('2d');
-          if (ctx) ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
-        }
-      }, 550);
-      
-      // Step 5: Show success screen after total 600ms delay
+      // 400ms: Show success popup with fade-in
       setTimeout(() => {
         setSavedScanUrl(publicUrl);
         setShowSuccessScreen(true);
-        setIsScanningFadingOut(false); // Reset for next scan
-        
-        console.log('✅ Showing Success Screen after cinematic transition');
-      }, 600);
+        console.log('✅ Success popup showing at 400ms');
+      }, 400);
+      
+      // 700ms: Reset scanning state for next scan
+      setTimeout(() => {
+        setIsScanningFadingOut(false);
+        console.log('🔄 Scanning state reset at 700ms');
+      }, 700);
       
       console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
@@ -1329,14 +1336,14 @@ export default function BodyScanAI() {
   }, [currentStep, showSuccessScreen, hasImageReady]);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
-    // STEP 4: DRAW DEBUG
-    console.log("[DRAW] drawPoseOverlay called");
-    
-    // ✅ CRITICAL: Don't draw anything if success screen is showing OR fading out
+    // ✅ CRITICAL GUARD: Stop drawing immediately during transitions
     if (showSuccessScreen || isScanningFadingOut) {
-      console.log('[DRAW] ❌ Skipping draw - success screen or scanning fading out');
+      console.log('[DRAW] ❌ Early return - success screen or scanning fading out');
       return;
     }
+    
+    // STEP 4: DRAW DEBUG
+    console.log("[DRAW] drawPoseOverlay called");
     
     if (!overlayCanvasRef.current || !videoRef.current) {
       console.log('[DRAW] ❌ Missing canvas or video ref');
@@ -1644,13 +1651,13 @@ export default function BodyScanAI() {
       <canvas ref={canvasRef} className="hidden" />
       
       {/* STEP 5: CANVAS WITH LIME BORDER - Hidden when scan is successful */}
-      {!showSuccessScreen && (
+      {!showSuccessScreen && !isScanningFadingOut && (
         <canvas 
           ref={overlayCanvasRef}
            style={{
              border: '3px solid lime',
              position: 'absolute',
-             zIndex: 20, // Lower than success screen (z-30)
+             zIndex: 10, // Lower than success screen (z-30)
              top: 0,
             left: 0,
             width: '100%',
@@ -1758,8 +1765,9 @@ export default function BodyScanAI() {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-50 p-8 animate-fade-in">
-          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500 animate-[bounceIn_0.6s_cubic-bezier(0.68,-0.55,0.265,1.55)]`}>
+        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-50 p-8 opacity-0 animate-[fadeIn_300ms_ease-out_forwards]">
+          <div className="opacity-0 animate-[bounceIn_400ms_ease-out_100ms_forwards]">
+            <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500`}>
             {/* Success Icon with Enhanced Animation */}
             <div className="text-7xl mb-8 animate-[bounce_1s_ease-in-out_3]">🎉</div>
             
@@ -1811,6 +1819,7 @@ export default function BodyScanAI() {
                 </p>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
@@ -1926,7 +1935,7 @@ export default function BodyScanAI() {
       </div>
 
       {/* Alignment feedback overlay */}
-      {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && (
+      {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && !showSuccessScreen && !isScanningFadingOut && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-500 ease-in-out ${
             alignmentFeedback.alignmentScore >= 0.7 
@@ -1952,7 +1961,7 @@ export default function BodyScanAI() {
       )}
 
       {/* Perfect pose indicator */}
-      {alignmentFeedback?.isAligned && !hasImageReady && (
+      {alignmentFeedback?.isAligned && !hasImageReady && !showSuccessScreen && !isScanningFadingOut && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
             <div className="text-center">
