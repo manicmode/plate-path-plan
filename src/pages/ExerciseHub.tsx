@@ -10,6 +10,8 @@ import { AddWorkoutModal } from '@/components/AddWorkoutModal';
 import { CreateRoutineModal } from '@/components/CreateRoutineModal';
 import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 import { RoutineCard } from '@/components/RoutineCard';
+import { AIRoutineCard } from '@/components/routine/AIRoutineCard';
+import { convertUnifiedToAIRoutineCard } from '@/utils/routineAdapters';
 import { ExerciseProgressChart } from '@/components/analytics/ExerciseProgressChart';
 import { WorkoutTypesChart } from '@/components/analytics/WorkoutTypesChart';
 import { ExerciseStatsCard } from '@/components/analytics/ExerciseStatsCard';
@@ -1206,18 +1208,33 @@ const ExerciseHub = () => {
                       ) : (
                         allRoutines.map((routine) => (
                           <div key={routine.id} className="relative">
-                            <RoutineCard
-                              routine={routine}
-                              onEdit={(editRoutine) => {
-                                // Only allow editing of custom routines
-                                if (routine.source === 'custom') {
-                                  // For now, just log - editing can be enhanced later
-                                  console.log('Edit routine:', routine.title);
-                                }
-                              }}
-                              onDuplicate={handleDuplicateRoutine}
-                            />
-                            <div className="absolute top-2 right-2">
+                            {/* Conditionally render AIRoutineCard for AI routines or RoutineCard for custom */}
+                            {routine.source === 'ai-generated' || routine.source === 'ai-legacy' ? (
+                              <AIRoutineCard
+                                routine={convertUnifiedToAIRoutineCard(routine)}
+                                onEdit={() => {
+                                  console.log('Edit AI routine:', routine.title);
+                                  // Routine will refresh automatically via hook
+                                }}
+                                onDelete={() => {
+                                  deleteUnifiedRoutine(routine.id, routine.source);
+                                }}
+                              />
+                            ) : (
+                              <RoutineCard
+                                routine={routine}
+                                onEdit={(editRoutine) => {
+                                  // Only allow editing of custom routines
+                                  if (routine.source === 'custom') {
+                                    console.log('Edit routine:', routine.title);
+                                  }
+                                }}
+                                onDuplicate={handleDuplicateRoutine}
+                              />
+                            )}
+                            
+                            {/* Badge positioning for different card types */}
+                            <div className="absolute top-2 right-2 z-10">
                               <RoutineBadge 
                                 source={routine.source} 
                                 isActive={routine.isActive}

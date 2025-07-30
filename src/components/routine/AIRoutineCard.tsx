@@ -238,30 +238,30 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             </div>
             
             {/* Always visible top-right icons */}
-            <div className="flex gap-2">
+            <div className="flex gap-1 opacity-100">
               <Button
                 size="icon"
-                variant="secondary"
+                variant="ghost"
                 onClick={handleViewHistory}
-                className="h-8 w-8 bg-white/20 border-white/30 text-foreground hover:bg-white/30"
+                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
                 title="View History"
               >
                 <History className="h-4 w-4" />
               </Button>
               <Button
                 size="icon"
-                variant="secondary"
+                variant="ghost"
                 onClick={handleEditRoutine}
-                className="h-8 w-8 bg-white/20 border-white/30 text-foreground hover:bg-white/30"
+                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
                 title="Edit Routine"
               >
                 <Edit className="h-4 w-4" />
               </Button>
               <Button
                 size="icon"
-                variant="secondary"
+                variant="ghost"
                 onClick={handleCopyRoutine}
-                className="h-8 w-8 bg-white/20 border-white/30 text-foreground hover:bg-white/30"
+                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
                 title="Copy Routine"
               >
                 <Copy className="h-4 w-4" />
@@ -312,51 +312,37 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
           </div>
 
           {/* Action buttons with proper alignment */}
-          <div className="flex items-center justify-between pt-4 border-t border-border/50">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>{routine.estimated_duration_minutes} min</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                <span>{routine.days_per_week}/7 days</span>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              {!routine.is_active ? (
+          <div className="flex items-center justify-center gap-3 pt-4 border-t border-border/50">
+            {!routine.is_active ? (
+              <Button
+                size="sm"
+                onClick={handleStartRoutine}
+                className="px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Routine
+              </Button>
+            ) : (
+              <div className="flex items-center gap-3">
                 <Button
                   size="sm"
-                  onClick={handleStartRoutine}
-                  className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
                   variant="outline"
+                  onClick={handleContinueWorkout}
+                  className="px-4 py-2 border-primary/20 text-primary hover:bg-primary/10"
                 >
-                  <Play className="h-3 w-3 mr-1" />
-                  Start
+                  <Play className="h-4 w-4 mr-2" />
+                  Continue
                 </Button>
-              ) : (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleContinueWorkout}
-                    className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Continue
-                  </Button>
-                  
-                  <WorkoutCompleteButton
-                    routine_id={routine.id}
-                    intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
-                    duration_minutes={routine.estimated_duration_minutes}
-                    difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
-                    className="text-xs px-3 py-1 h-8"
-                  />
-                </>
-              )}
-            </div>
+                
+                <WorkoutCompleteButton
+                  routine_id={routine.id}
+                  intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
+                  duration_minutes={routine.estimated_duration_minutes}
+                  difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
+                  className="px-4 py-2"
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
