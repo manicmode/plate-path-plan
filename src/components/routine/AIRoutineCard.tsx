@@ -37,6 +37,8 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [regeneratingDay, setRegeneratingDay] = useState<string | null>(null);
+  const [animatingDay, setAnimatingDay] = useState<string | null>(null);
   const [currentDay, setCurrentDay] = useState<any>(null);
 
   // Calculate current day based on start date and schedule
@@ -97,6 +99,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
     try {
       setRegenerating(true);
+      setRegeneratingDay(`${weekIndex}-${dayName}`);
 
       const weekData = routine.routine_data?.weeks?.[weekIndex];
       const dayData = weekData?.days?.[dayName];
@@ -134,7 +137,21 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
         if (updateError) throw updateError;
 
-        toast.success('Day regenerated with fresh exercises! 🔄');
+        // Extract exercises for toast
+        const exercises = data.day.steps
+          ?.filter((step: any) => step.step_type === 'exercise')
+          ?.map((step: any) => step.title)
+          ?.slice(0, 3) || [];
+        
+        const exerciseList = exercises.length > 0 
+          ? exercises.join(', ') + (data.day.steps?.filter((s: any) => s.step_type === 'exercise').length > 3 ? ', +more' : '')
+          : 'New workout generated';
+
+        toast.success(`✅ ${dayName.charAt(0).toUpperCase() + dayName.slice(1)} has been regenerated! New workout: ${exerciseList}.`);
+        
+        // Add animation effect
+        setAnimatingDay(`${weekIndex}-${dayName}`);
+        setTimeout(() => setAnimatingDay(null), 2000);
         
         // Refresh current day data if it matches
         if (currentDay && currentDay.week === weekIndex + 1 && currentDay.dayName === dayName) {
@@ -149,6 +166,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
       toast.error('Failed to regenerate day');
     } finally {
       setRegenerating(false);
+      setRegeneratingDay(null);
     }
   };
 
@@ -370,57 +388,80 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
       {/* Edit Routine Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>🛠️ Customize: {routine.routine_name}</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-6 px-2">
             <p className="text-muted-foreground">
               Regenerate specific days or entire weeks to fine-tune your plan.
             </p>
             
             {routine.routine_data?.weeks?.map((week: any, weekIndex: number) => (
-              <div key={weekIndex} className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-3">Week {weekIndex + 1}</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {Object.entries(week.days || {}).map(([dayName, dayData]: [string, any]) => (
-                    <div key={dayName} className="bg-muted/30 rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium capitalize">{dayName}</div>
-                          {dayData && Object.keys(dayData).length > 0 ? (
-                            <>
-                              <div className="text-sm text-muted-foreground">
-                                {dayData.workout_type || 'Workout'}
+              <div key={weekIndex} className="border rounded-lg p-5 bg-card/50">
+                <h4 className="font-semibold mb-4 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Week {weekIndex + 1}
+                </h4>
+                <div className="border-t border-border/30 pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(week.days || {}).map(([dayName, dayData]: [string, any]) => {
+                      const dayKey = `${weekIndex}-${dayName}`;
+                      const isRegeneratingThis = regeneratingDay === dayKey;
+                      const isAnimating = animatingDay === dayKey;
+                      
+                      return (
+                        <div 
+                          key={dayName} 
+                          className={`
+                            bg-muted/40 rounded-lg p-4 border border-border/50 transition-all duration-300
+                            ${isAnimating ? 'animate-pulse bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-700' : ''}
+                          `}
+                        >
+                          <div className="flex items-center justify-between h-full">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium capitalize text-foreground mb-1 flex items-center gap-2">
+                                {dayName}
+                                {isAnimating && <span className="text-green-600 dark:text-green-400 text-xs">✨ Updated</span>}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {dayData.target_muscles?.join(', ') || 'Full body'}
+                              {dayData && Object.keys(dayData).length > 0 ? (
+                                <>
+                                  <div className="text-sm text-muted-foreground font-medium">
+                                    {dayData.workout_type || 'Workout'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {dayData.target_muscles?.join(', ') || 'Full body'}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-sm text-muted-foreground italic">Rest day</div>
+                              )}
+                            </div>
+                            {dayData && Object.keys(dayData).length > 0 && (
+                              <div className="ml-3 flex-shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRegenerateDay(weekIndex, dayName)}
+                                  disabled={regenerating}
+                                  className="h-9 w-9 p-0 hover:bg-primary/10 border-primary/20"
+                                  title="Regenerate this day"
+                                >
+                                  <RefreshCw className={`h-4 w-4 ${isRegeneratingThis ? 'animate-spin text-primary' : ''}`} />
+                                </Button>
                               </div>
-                            </>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">Rest day</div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                        {dayData && Object.keys(dayData).length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRegenerateDay(weekIndex, dayName)}
-                            disabled={regenerating}
-                            className="h-8 w-8 p-0"
-                          >
-                            <RefreshCw className={`h-3 w-3 ${regenerating ? 'animate-spin' : ''}`} />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             ))}
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 border-t border-border/50">
               <Button
                 variant="outline"
                 onClick={() => setShowEditModal(false)}
