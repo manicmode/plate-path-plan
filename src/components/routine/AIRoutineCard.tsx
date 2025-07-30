@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, Target, Activity, RefreshCw, Lock, LockOpen, Sparkles, History, Edit, Share, Play } from 'lucide-react';
+import { Calendar, Clock, Target, Activity, RefreshCw, Lock, LockOpen, Sparkles, History, Edit, Share, Play, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
@@ -208,6 +208,35 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     setShowHistoryModal(true);
   };
 
+  const handleDeleteRoutine = async () => {
+    if (!window.confirm('Are you sure you want to delete this routine? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('ai_routines')
+        .delete()
+        .eq('id', routine.id);
+
+      if (error) throw error;
+
+      toast.success('Routine deleted successfully');
+      setShowEditModal(false);
+      
+      // Call onDelete callback if provided
+      if (onDelete) {
+        onDelete(routine);
+      }
+      
+      // Refresh the page to update the routine list
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting routine:', error);
+      toast.error('Failed to delete routine');
+    }
+  };
+
   const getStatusColor = () => {
     if (!routine.is_active) return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -232,9 +261,22 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
   return (
     <>
       <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-md hover:shadow-xl w-full max-w-lg">
-        <div className="h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-lg"></div>
+        <div className="h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-lg"></div>
+        
+        {/* Progress bar */}
+        <div className="h-1 bg-muted mx-4 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500"
+            style={{ 
+              width: routine.is_active 
+                ? `${Math.min(((routine.current_week - 1) * 7 + routine.current_day_in_week) / (8 * 7) * 100, 100)}%`
+                : '0%'
+            }}
+          />
+        </div>
+        
         <CardContent className="p-6 pb-8 relative">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="text-3xl">{getGoalEmoji(routine.routine_goal)}</div>
               <div>
@@ -246,37 +288,37 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                 </div>
               </div>
             </div>
-            
-            {/* Always visible top-right icons */}
-            <div className="flex items-center gap-2 ml-auto shrink-0">
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled
-                className="h-8 w-8 opacity-50 cursor-not-allowed text-muted-foreground"
-                title="👉 Coming soon: Track past workouts, progress, and milestones."
-              >
-                <History className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleEditRoutine}
-                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="Edit Routine"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleShareRoutine}
-                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="Share Routine"
-              >
-                <Share className="h-4 w-4" />
-              </Button>
-            </div>
+          </div>
+          
+          {/* Action icons moved lower with more spacing */}
+          <div className="absolute top-20 right-6 flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled
+              className="h-7 w-7 opacity-50 cursor-not-allowed text-muted-foreground"
+              title="👉 Coming soon: Track past workouts, progress, and milestones."
+            >
+              <History className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleEditRoutine}
+              className="h-7 w-7 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Edit Routine"
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleShareRoutine}
+              className="h-7 w-7 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Share Routine"
+            >
+              <Share className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
           <div className="space-y-3 mb-4">
@@ -321,36 +363,36 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             ) : null}
           </div>
 
-          {/* Action buttons with proper alignment */}
-          <div className="flex items-center justify-center gap-3 pt-4 border-t border-border/50">
+          {/* Action buttons with proper spacing to prevent overlap */}
+          <div className="flex items-center justify-center gap-2 pt-4 border-t border-border/50 px-2">
             {!routine.is_active ? (
               <Button
                 size="sm"
                 onClick={handleStartRoutine}
-                className="px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Play className="h-4 w-4 mr-2" />
                 Start Routine
               </Button>
             ) : (
-              <div className="flex items-center justify-center gap-3 w-full">
+              <div className="flex items-center justify-center gap-2 w-full">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleContinueWorkout}
-                  className="px-6 py-2 border-primary/20 text-primary hover:bg-primary/10 transition-colors"
+                  className="px-4 py-2 border-primary/20 text-primary hover:bg-primary/10 transition-colors flex-1 max-w-[120px]"
                 >
-                  <Play className="h-4 w-4 mr-2" />
+                  <Play className="h-4 w-4 mr-1" />
                   Continue
                 </Button>
                 
-                <div className={!hasWorkouts ? "relative" : ""}>
+                <div className={!hasWorkouts ? "relative flex-1 max-w-[120px]" : "flex-1 max-w-[120px]"}>
                   <WorkoutCompleteButton
                     routine_id={routine.id}
                     intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
                     duration_minutes={routine.estimated_duration_minutes}
                     difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
-                    className={`px-6 py-2 ${!hasWorkouts ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-4 py-2 w-full ${!hasWorkouts ? 'opacity-50 cursor-not-allowed' : ''}`}
                     disabled={!hasWorkouts}
                     compact={true}
                   />
@@ -364,8 +406,8 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             )}
           </div>
 
-          {/* Bottom-right AI source badge */}
-          <div className="absolute bottom-3 right-3">
+          {/* Bottom-right AI source badge - positioned higher to avoid overlap */}
+          <div className="absolute bottom-16 right-3">
             <Badge 
               variant="outline" 
               className="text-xs bg-background/80 backdrop-blur-sm border-primary/20"
@@ -454,6 +496,14 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             ))}
             
             <div className="flex gap-3 pt-4 border-t border-border/50">
+              <Button
+                variant="outline"
+                onClick={handleDeleteRoutine}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Routine
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowEditModal(false)}
