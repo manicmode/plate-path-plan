@@ -1247,13 +1247,13 @@ const ExerciseHub = () => {
 
                      {/* Empty State (if no routines) */}
                      {!routinesLoading && allRoutines.length === 0 && (
-                        <Card className="col-span-full w-full shadow-lg border-border bg-card mb-0 !mb-0">
-                         <CardContent className="p-8 text-center">
-                           <div className="text-4xl mb-4">🧠</div>
-                           <h3 className="text-xl font-bold text-foreground mb-2">No routines yet</h3>
-                           <p className="text-muted-foreground mb-6">Create your first custom workout routine or let AI design one for you!</p>
-                         </CardContent>
-                       </Card>
+                         <Card className="col-span-full w-full shadow-lg border-border bg-card mb-0 !mb-0">
+                          <CardContent className="p-8 text-center">
+                            <div className="text-4xl mb-4">💪</div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">No routines saved yet</h3>
+                            <p className="text-muted-foreground mb-6">You have no saved routines yet. Once you create or generate a routine, it will appear here!</p>
+                          </CardContent>
+                        </Card>
                      )}
                   </div>
                 ) : tab.id === 'progress-reports' ? (

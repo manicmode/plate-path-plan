@@ -341,14 +341,12 @@ export function useAllRoutines() {
       // Sort by creation date (newest first)
       realRoutines.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      // Show mock routines only if no real routines exist
-      const routinesToShow = realRoutines.length > 0 ? realRoutines : getMockRoutines();
-
-      setAllRoutines(routinesToShow);
+      // Only show real routines, no more mock routines
+      setAllRoutines(realRoutines);
     } catch (error) {
       console.error('Error fetching all routines:', error);
-      // Fallback to mock routines on error
-      setAllRoutines(getMockRoutines());
+      // No more fallback to mock routines - show empty state
+      setAllRoutines([]);
     } finally {
       setLoading(false);
     }

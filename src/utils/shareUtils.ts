@@ -24,8 +24,8 @@ export const generateShareableLink = (routine: ShareableRoutine): string => {
 export const shareRoutine = async (routine: ShareableRoutine): Promise<boolean> => {
   const shareUrl = generateShareableLink(routine);
   const shareData = {
-    title: `Check out my workout routine: ${routine.name}`,
-    text: `I found this amazing ${routine.goal} routine - ${routine.daysPerWeek} days/week! 💪`,
+    title: `Check out my workout routine on NutriCoach! 💪`,
+    text: `Check out my workout routine on NutriCoach! 💪 ${routine.name} — Download the app to start your own: ${shareUrl}`,
     url: shareUrl,
   };
 

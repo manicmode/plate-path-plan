@@ -152,7 +152,7 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
   const currentDayInfo = getCurrentDayInfo();
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card mb-0 !mb-0 w-full max-w-lg shadow-lg hover:shadow-2xl rounded-2xl overflow-hidden min-h-[420px]">
+    <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card mb-0 !mb-0 w-full max-w-lg shadow-lg hover:shadow-2xl rounded-2xl overflow-hidden min-h-[460px]">
       <CardContent className="p-0 relative h-full">
         {/* Gradient Header with more breathing room */}
         <div className={`bg-gradient-to-r ${routine.gradient} p-6 rounded-t-2xl`}>
@@ -179,7 +179,9 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
               <Button
                 size="icon"
                 variant="secondary"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   const activeDays = getActiveDays();
                   if (activeDays.length === 0) {
                     toast.error('👉 This routine has no generated content yet. Create some workouts first.');
@@ -187,15 +189,21 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
                   }
                   onEdit(routine);
                 }}
-                className="h-7 w-7 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                onTouchStart={(e) => e.stopPropagation()}
+                className="h-7 w-7 bg-white/20 border-white/30 text-white hover:bg-white/30 active:bg-white/40 transition-colors"
               >
                 <Edit className="h-3.5 w-3.5" />
               </Button>
               <Button
                 size="icon"
                 variant="secondary"
-                onClick={() => handleShareRoutine(routine)}
-                className="h-7 w-7 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleShareRoutine(routine);
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="h-7 w-7 bg-white/20 border-white/30 text-white hover:bg-white/30 active:bg-white/40 transition-colors"
                 title="Share Routine"
               >
                 <Share className="h-3.5 w-3.5" />
@@ -204,8 +212,13 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
                 <Button
                   size="icon"
                   variant="secondary"
-                  onClick={handleDeleteRoutine}
-                  className="h-7 w-7 bg-red-500/20 border-red-300/30 text-white hover:bg-red-500/30"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteRoutine();
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="h-7 w-7 bg-red-500/20 border-red-300/30 text-white hover:bg-red-500/30 active:bg-red-500/40 transition-colors"
                   title="Delete Routine"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -216,7 +229,7 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
         </div>
 
         {/* Content with improved spacing */}
-        <div className="p-6 space-y-5 flex-1">
+        <div className="p-7 space-y-6 flex-1">
           {/* Status and Current Day with more spacing */}
           <div className="flex items-center justify-between mb-1">
             <Badge className={`${getStatusColor(routine.status || 'not-started')} border-0`}>

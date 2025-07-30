@@ -254,16 +254,20 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     return emojiMap[goal] || '🎯';
   };
 
-  // Simplified hasWorkouts check - only new format supported
+  // Enhanced hasWorkouts check - supports both old and new formats after migration
   const hasWorkouts = routine.routine_data?.weeks?.some((week: any) => 
     Object.values(week.days || {}).some((day: any) => 
       day && day.steps && Array.isArray(day.steps) && day.steps.length > 0
     )
+  ) || 
+  // Fallback check for old format that might still exist
+  routine.routine_data?.week?.some((day: any) => 
+    day && day.steps && Array.isArray(day.steps) && day.steps.length > 0
   );
 
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-lg hover:shadow-2xl w-full max-w-lg rounded-2xl overflow-hidden min-h-[420px]">
+      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-lg hover:shadow-2xl w-full max-w-lg rounded-2xl overflow-hidden min-h-[460px]">
         <div className="h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-2xl"></div>
         
         {/* Progress bar */}
@@ -278,7 +282,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
           />
         </div>
         
-        <CardContent className="p-6 pb-8 relative">
+        <CardContent className="p-7 pb-8 relative">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="text-4xl">{getGoalEmoji(routine.routine_goal)}</div>
@@ -307,8 +311,13 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             <Button
               size="icon"
               variant="ghost"
-              onClick={handleEditRoutine}
-              className="h-7 w-7 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleEditRoutine();
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="h-7 w-7 hover:bg-muted text-muted-foreground hover:text-foreground active:bg-muted/80 transition-colors"
               title="Edit Routine"
             >
               <Edit className="h-3.5 w-3.5" />
@@ -316,15 +325,20 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             <Button
               size="icon"
               variant="ghost"
-              onClick={handleShareRoutine}
-              className="h-7 w-7 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleShareRoutine();
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="h-7 w-7 hover:bg-muted text-muted-foreground hover:text-foreground active:bg-muted/80 transition-colors"
               title="Share Routine"
             >
               <Share className="h-3.5 w-3.5" />
             </Button>
           </div>
 
-          <div className="space-y-5 mb-6">
+          <div className="space-y-6 mb-7">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Target className="h-4 w-4" />
@@ -466,16 +480,21 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                             </div>
                             {dayData && Object.keys(dayData).length > 0 && (
                               <div className="ml-3 flex-shrink-0">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleRegenerateDay(weekIndex, dayName)}
-                                  disabled={regenerating}
-                                  className="h-9 w-9 p-0 hover:bg-primary/10 border-primary/20"
-                                  title="Regenerate this day"
-                                >
-                                  <RefreshCw className={`h-4 w-4 ${isRegeneratingThis ? 'animate-spin text-primary' : ''}`} />
-                                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRegenerateDay(weekIndex, dayName);
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  disabled={regenerating}
+                  className="h-9 w-9 p-0 hover:bg-primary/10 border-primary/20 active:bg-primary/20 transition-colors"
+                  title="Regenerate this day"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRegeneratingThis ? 'animate-spin text-primary' : ''}`} />
+                </Button>
                               </div>
                             )}
                           </div>
@@ -490,16 +509,26 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             <div className="flex gap-3 pt-4 border-t border-border/50">
               <Button
                 variant="outline"
-                onClick={handleDeleteRoutine}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteRoutine();
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 active:bg-red-100 transition-colors"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Routine
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowEditModal(false)}
-                className="flex-1"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowEditModal(false);
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="flex-1 active:bg-muted/80 transition-colors"
               >
                 Close
               </Button>
