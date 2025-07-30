@@ -87,7 +87,7 @@ export function useRoutineActivation() {
       // Call the database function to get active routine
       const { data: activeRoutineData, error: activeError } = await supabase.rpc(
         'get_user_active_routine',
-        { target_user_id: user.id }
+        { user_id_param: user.id }
       );
 
       if (activeError) {

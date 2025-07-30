@@ -30,7 +30,7 @@ export function useActiveRoutine() {
       // Call the database function to get active routine
       const { data, error } = await supabase.rpc(
         'get_user_active_routine',
-        { target_user_id: user.id }
+        { user_id_param: user.id }
       );
 
       if (error) {
@@ -41,7 +41,14 @@ export function useActiveRoutine() {
 
       // The function returns an array, get the first result
       const routine = data?.[0] || null;
-      setActiveRoutine(routine);
+      if (routine) {
+        setActiveRoutine({
+          ...routine,
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        setActiveRoutine(null);
+      }
     } catch (error) {
       console.error('Error in fetchActiveRoutine:', error);
       setActiveRoutine(null);

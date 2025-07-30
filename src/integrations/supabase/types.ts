@@ -28,6 +28,7 @@ export type Database = {
           parent_routine_id: string | null
           primary_goals: string[]
           routine_name: string
+          routine_type: string
           session_duration_minutes: number
           split_type: string
           updated_at: string
@@ -48,6 +49,7 @@ export type Database = {
           parent_routine_id?: string | null
           primary_goals?: string[]
           routine_name: string
+          routine_type?: string
           session_duration_minutes: number
           split_type: string
           updated_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           parent_routine_id?: string | null
           primary_goals?: string[]
           routine_name?: string
+          routine_type?: string
           session_duration_minutes?: number
           split_type?: string
           updated_at?: string
@@ -149,6 +152,7 @@ export type Database = {
           routine_data: Json
           routine_goal: string
           routine_name: string
+          routine_type: string
           split_type: string
           start_date: string | null
           total_weeks: number | null
@@ -174,6 +178,7 @@ export type Database = {
           routine_data: Json
           routine_goal: string
           routine_name: string
+          routine_type?: string
           split_type: string
           start_date?: string | null
           total_weeks?: number | null
@@ -199,6 +204,7 @@ export type Database = {
           routine_data?: Json
           routine_goal?: string
           routine_name?: string
+          routine_type?: string
           split_type?: string
           start_date?: string | null
           total_weeks?: number | null
@@ -4020,11 +4026,18 @@ export type Database = {
         Returns: boolean
       }
       activate_routine_safely: {
-        Args: {
-          target_routine_id: string
-          target_table_name: string
-          target_user_id: string
-        }
+        Args:
+          | {
+              target_routine_id: string
+              target_table_name: string
+              target_user_id: string
+            }
+          | {
+              target_routine_id: string
+              target_table_name: string
+              target_user_id: string
+              target_routine_type?: string
+            }
         Returns: Json
       }
       add_friend_from_contact: {
@@ -4237,7 +4250,7 @@ export type Database = {
         }[]
       }
       get_user_active_routine: {
-        Args: { target_user_id: string }
+        Args: { user_id_param: string }
         Returns: {
           routine_id: string
           routine_name: string
@@ -4245,7 +4258,8 @@ export type Database = {
           table_source: string
           is_active: boolean
           start_date: string
-          updated_at: string
+          current_week: number
+          current_day_in_week: number
         }[]
       }
       get_user_private_challenge_access: {

@@ -28,6 +28,7 @@ import { WorkoutCalendarView } from '@/components/analytics/WorkoutCalendarView'
 import { WorkoutVolumeChart } from '@/components/analytics/WorkoutVolumeChart';
 import { EnhancedStreakTracker } from '@/components/analytics/EnhancedStreakTracker';
 import { useAllRoutines, type UnifiedRoutine } from '@/hooks/useAllRoutines';
+import { useRoutines } from '@/hooks/useRoutines';
 import { RoutineBadge } from '@/components/RoutineBadge';
 import { ProgressOverviewCard } from '@/components/analytics/ProgressOverviewCard';
 import { MuscleGroupRadarChart } from '@/components/analytics/MuscleGroupRadarChart';
@@ -300,8 +301,8 @@ const ExerciseHub = () => {
     }
   };
 
-  // Use unified routines from all sources - only show active routines
-  const { routines: allRoutines, activeRoutines, loading: routinesLoading, deleteRoutine: deleteUnifiedRoutine, hasRealRoutines } = useAllRoutines();
+  // Use new routines hook for primary and supplemental routines
+  const { primaryRoutine, supplementalRoutines, loading: routinesLoading, activateRoutine, deactivateRoutine } = useRoutines();
   
   // Remove mock routines - now handled by useAllRoutines hook
 
@@ -1169,62 +1170,113 @@ const ExerciseHub = () => {
                     </div>
 
 
-                    {/* Routines Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Primary Routine Section */}
+                    <div className="mb-8">
+                      <h3 className="text-lg font-semibold text-foreground mb-4">Primary Routine</h3>
                       {routinesLoading ? (
-                        <div className="col-span-full text-center py-8">
-                          <div className="text-muted-foreground">Loading your routines...</div>
+                        <div className="text-center py-8">
+                          <div className="text-muted-foreground">Loading your primary routine...</div>
+                        </div>
+                      ) : primaryRoutine ? (
+                        <div className="relative">
+                          <AIRoutineCard
+                            routine={{
+                              id: primaryRoutine.id,
+                              routine_name: primaryRoutine.routine_name,
+                              routine_goal: primaryRoutine.routine_goal || 'Build strength and fitness',
+                              fitness_level: primaryRoutine.fitness_level,
+                              split_type: primaryRoutine.split_type,
+                              days_per_week: primaryRoutine.days_per_week,
+                              estimated_duration_minutes: primaryRoutine.session_duration_minutes,
+                              equipment_needed: primaryRoutine.equipment_needed || primaryRoutine.equipment_available || [],
+                              start_date: primaryRoutine.start_date || null,
+                              current_week: primaryRoutine.current_week || 1,
+                              current_day_in_week: primaryRoutine.current_day_in_week || 1,
+                              is_active: primaryRoutine.is_active,
+                              locked_days: {},
+                              routine_data: primaryRoutine.weekly_routine_data,
+                              created_at: primaryRoutine.created_at
+                            }}
+                            onEdit={() => {
+                              console.log('Edit primary routine:', primaryRoutine.routine_name);
+                            }}
+                            onDelete={() => {
+                              deactivateRoutine(primaryRoutine.id, primaryRoutine.source);
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 z-10">
+                            <RoutineBadge 
+                              source={primaryRoutine.source} 
+                              isActive={primaryRoutine.is_active}
+                            />
+                          </div>
                         </div>
                       ) : (
-                        activeRoutines.map((routine) => (
-                          <div key={routine.id} className="relative">
-                            {/* Conditionally render AIRoutineCard for AI routines or RoutineCard for custom */}
-                            {routine.source === 'ai-generated' || routine.source === 'ai-legacy' ? (
-                              <AIRoutineCard
-                                routine={convertUnifiedToAIRoutineCard(routine)}
-                                onEdit={() => {
-                                  console.log('Edit AI routine:', routine.title);
-                                  // Routine will refresh automatically via hook
-                                }}
-                                onDelete={() => {
-                                  deleteUnifiedRoutine(routine.id, routine.source);
-                                }}
-                              />
-                            ) : (
-                              <RoutineCard
-                                routine={routine}
-                                onEdit={(editRoutine) => {
-                                  // Only allow editing of custom routines
-                                  if (routine.source === 'custom') {
-                                    console.log('Edit routine:', routine.title);
-                                  }
-                                }}
-                                onDuplicate={handleDuplicateRoutine}
-                              />
-                            )}
-                            
-                            {/* Badge positioning for different card types */}
-                            <div className="absolute top-2 right-2 z-10">
-                              <RoutineBadge 
-                                source={routine.source} 
-                                isActive={routine.isActive}
-                              />
-                            </div>
-                          </div>
-                        ))
+                        <Card className="w-full shadow-lg border-border bg-card">
+                          <CardContent className="p-8 text-center">
+                            <div className="text-4xl mb-4">🎯</div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">No Primary Routine Active</h3>
+                            <p className="text-muted-foreground mb-6">Activate a routine as your primary workout plan to get started!</p>
+                          </CardContent>
+                        </Card>
                       )}
                     </div>
 
-                     {/* Empty State (if no active routines) */}
-                     {!routinesLoading && activeRoutines.length === 0 && (
-                         <Card className="col-span-full w-full shadow-lg border-border bg-card mb-0 !mb-0">
+                    {/* Supplemental Routines Section */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground mb-4">Supplemental Routines</h3>
+                      {routinesLoading ? (
+                        <div className="text-center py-8">
+                          <div className="text-muted-foreground">Loading supplemental routines...</div>
+                        </div>
+                      ) : supplementalRoutines.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {supplementalRoutines.map((routine) => (
+                            <div key={routine.id} className="relative">
+                              <AIRoutineCard
+                                routine={{
+                                  id: routine.id,
+                                  routine_name: routine.routine_name,
+                                  routine_goal: routine.routine_goal || 'Supplemental training',
+                                  fitness_level: routine.fitness_level,
+                                  split_type: routine.split_type,
+                                  days_per_week: routine.days_per_week,
+                                  estimated_duration_minutes: routine.session_duration_minutes,
+                                  equipment_needed: routine.equipment_needed || routine.equipment_available || [],
+                                  start_date: routine.start_date || null,
+                                  current_week: routine.current_week || 1,
+                                  current_day_in_week: routine.current_day_in_week || 1,
+                                  is_active: routine.is_active,
+                                  locked_days: {},
+                                  routine_data: routine.weekly_routine_data,
+                                  created_at: routine.created_at
+                                }}
+                                onEdit={() => {
+                                  console.log('Edit supplemental routine:', routine.routine_name);
+                                }}
+                                onDelete={() => {
+                                  deactivateRoutine(routine.id, routine.source);
+                                }}
+                              />
+                              <div className="absolute top-2 right-2 z-10">
+                                <RoutineBadge 
+                                  source={routine.source} 
+                                  isActive={routine.is_active}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <Card className="w-full shadow-lg border-border bg-card">
                           <CardContent className="p-8 text-center">
                             <div className="text-4xl mb-4">💪</div>
-                            <h3 className="text-xl font-bold text-foreground mb-2">No routines saved yet</h3>
-                            <p className="text-muted-foreground mb-6">You have no saved routines yet. Once you create or generate a routine, it will appear here!</p>
+                            <h3 className="text-xl font-bold text-foreground mb-2">No Supplemental Routines</h3>
+                            <p className="text-muted-foreground mb-6">Add supplemental routines like yoga, cardio, or flexibility training to complement your primary routine!</p>
                           </CardContent>
                         </Card>
-                     )}
+                      )}
+                    </div>
                   </div>
                 ) : tab.id === 'progress-reports' ? (
                   /* Progress & Reports Tab - Enhanced with Visual Experience */
