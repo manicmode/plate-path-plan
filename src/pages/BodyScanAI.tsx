@@ -86,6 +86,10 @@ export default function BodyScanAI() {
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
+  
+  // Enhanced transition states for smooth UX
+  const [isScanningFadingOut, setIsScanningFadingOut] = useState(false);
+  const [showShutterFlash, setShowShutterFlash] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -745,9 +749,30 @@ export default function BodyScanAI() {
 
       console.log("✅ Scan saved, publicUrl:", publicUrl);
       
-      // Set success screen state to trigger the Continue button flow
-      setSavedScanUrl(publicUrl);
-      setShowSuccessScreen(true);
+      // Enhanced cinematic transition sequence
+      console.log('🎬 Starting cinematic transition sequence...');
+      
+      // Step 1: Start fade-out of scanning overlay
+      setIsScanningFadingOut(true);
+      
+      // Step 2: Show camera shutter flash after 200ms
+      setTimeout(() => {
+        setShowShutterFlash(true);
+        
+        // Step 3: Hide flash after 150ms
+        setTimeout(() => {
+          setShowShutterFlash(false);
+        }, 150);
+      }, 200);
+      
+      // Step 4: Show success screen after total 400ms delay
+      setTimeout(() => {
+        setSavedScanUrl(publicUrl);
+        setShowSuccessScreen(true);
+        setIsScanningFadingOut(false); // Reset for next scan
+        
+        console.log('✅ Showing Success Screen after cinematic transition');
+      }, 400);
       
       console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
@@ -1936,8 +1961,10 @@ export default function BodyScanAI() {
       )}
 
       {/* Scanning overlay during countdown */}
-      {isCountingDown && countdownSeconds > 0 && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-25 flex items-center justify-center animate-fade-in">
+      {(isCountingDown && countdownSeconds > 0) && (
+        <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-25 flex items-center justify-center transition-opacity duration-300 ${
+          isScanningFadingOut ? 'opacity-0' : 'opacity-100 animate-fade-in'
+        }`}>
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl animate-scale-in">
             <div className="flex items-center justify-center space-x-3">
               {/* Spinning loader */}
@@ -1949,6 +1976,13 @@ export default function BodyScanAI() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Camera shutter flash effect */}
+      {showShutterFlash && (
+        <div className="absolute inset-0 bg-white z-40 animate-pulse" 
+             style={{ animation: 'flash 150ms ease-out' }}>
         </div>
       )}
 
