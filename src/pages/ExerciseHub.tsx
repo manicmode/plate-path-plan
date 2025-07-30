@@ -1179,7 +1179,6 @@ const ExerciseHub = () => {
 
                     {/* Primary Routine Section */}
                     <div className="mb-8">
-                      <h3 className="text-lg font-semibold text-foreground mb-4">Primary Routine</h3>
                       {routinesLoading ? (
                         <div className="text-center py-8">
                           <div className="text-muted-foreground">Loading your primary routine...</div>
@@ -1231,7 +1230,6 @@ const ExerciseHub = () => {
 
                     {/* Supplemental Routines Section */}
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-4">Supplemental Routines</h3>
                       {routinesLoading ? (
                         <div className="text-center py-8">
                           <div className="text-muted-foreground">Loading supplemental routines...</div>
