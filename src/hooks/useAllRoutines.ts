@@ -77,12 +77,11 @@ export function useAllRoutines() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      // Fetch AI legacy routines (old system)
+      // Fetch AI legacy routines (old system) - get all routines, not just active
       const { data: aiLegacy, error: aiLegacyError } = await supabase
         .from('ai_routines')
         .select('*')
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (aiGenError) {
@@ -363,6 +362,7 @@ export function useAllRoutines() {
     loading: loading || customLoading,
     deleteRoutine,
     refreshRoutines: fetchAllRoutines,
-    hasRealRoutines: allRoutines.some(r => r.source !== 'mock')
+    hasRealRoutines: allRoutines.some(r => r.source !== 'mock'),
+    activeRoutines: allRoutines.filter(r => r.status === 'in-progress' || r.isActive)
   };
 }

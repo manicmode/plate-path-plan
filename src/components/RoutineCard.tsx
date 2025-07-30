@@ -8,6 +8,8 @@ import { RoutineHistoryModal } from '@/components/routine/RoutineHistoryModal';
 import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButton';
 import { shareRoutine, type ShareableRoutine } from '@/utils/shareUtils';
 import { toast } from 'sonner';
+import { RoutineActivationModal } from '@/components/modals/RoutineActivationModal';
+import { useRoutineActivation } from '@/hooks/useRoutineActivation';
 
 interface RoutineCardProps {
   routine: {
@@ -59,7 +61,10 @@ const handleShareRoutine = async (routine: any) => {
 
 export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineCardProps) {
   const navigate = useNavigate();
+  const { activateRoutine, getActiveRoutine, isActivating } = useRoutineActivation();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [currentActiveRoutine, setCurrentActiveRoutine] = useState<any>(null);
 
   const handleDeleteRoutine = () => {
     if (!window.confirm('Are you sure you want to delete this routine? This action cannot be undone.')) {
@@ -128,7 +133,9 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
     };
   };
 
-  const handleStartRoutine = () => {
+  const handleStartRoutine = async () => {
+    // Custom routines don't have database activation yet, navigate directly
+    // TODO: Implement custom routine activation with database persistence
     navigate(`/routine-execution?routineId=${routine.id}`);
   };
 
@@ -337,6 +344,9 @@ export function RoutineCard({ routine, onEdit, onDuplicate, onDelete }: RoutineC
         routineId={routine.id.toString()}
         routineName={routine.title}
       />
+
+      {/* Note: Custom routines don't have activation confirmation yet */}
+      {/* Future enhancement: Add activation system for custom routines */}
     </Card>
   );
 }

@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButton';
 import { shareRoutine, type ShareableRoutine } from '@/utils/shareUtils';
+import { RoutineActivationModal } from '@/components/modals/RoutineActivationModal';
+import { useRoutineActivation } from '@/hooks/useRoutineActivation';
 
 interface AIRoutineCardProps {
   routine: {
@@ -34,9 +36,12 @@ interface AIRoutineCardProps {
 
 export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, onDelete }) => {
   const { user } = useAuth();
+  const { activateRoutine, getActiveRoutine, isActivating } = useRoutineActivation();
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [currentActiveRoutine, setCurrentActiveRoutine] = useState<any>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [regeneratingDay, setRegeneratingDay] = useState<string | null>(null);
   const [animatingDay, setAnimatingDay] = useState<string | null>(null);
@@ -69,26 +74,46 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
   }, [routine]);
 
   const handleStartRoutine = async () => {
+    if (!user?.id) return;
+
     try {
-      const { error } = await supabase
-        .from('ai_routines')
-        .update({
-          start_date: new Date().toISOString().split('T')[0],
-          is_active: true,
-          current_week: 1,
-          current_day_in_week: 1
-        })
-        .eq('id', routine.id);
+      // Check if there's already an active routine
+      const activeRoutine = await getActiveRoutine();
+      
+      if (activeRoutine && activeRoutine.routine_id !== routine.id) {
+        // Show confirmation modal if there's already an active routine
+        setCurrentActiveRoutine(activeRoutine);
+        setShowActivationModal(true);
+        return;
+      }
 
-      if (error) throw error;
-
-      toast.success('Routine started! 🚀');
-      // Navigate to routine execution
-      window.location.href = `/routine-execution?routineId=${routine.id}&type=ai`;
+      // No active routine or same routine, activate directly
+      await confirmActivation();
     } catch (error) {
-      console.error('Error starting routine:', error);
+      console.error('Error checking active routine:', error);
       toast.error('Failed to start routine');
     }
+  };
+
+  const confirmActivation = async () => {
+    if (!user?.id) return;
+
+    const result = await activateRoutine(routine.id, 'ai_routines', routine.routine_name);
+    
+    if (result.success) {
+      if (result.previous_active_routine) {
+        toast.success(`Routine activated! Previous routine "${result.previous_active_routine.name}" has been paused.`);
+      } else {
+        toast.success('Routine activated successfully! 🚀');
+      }
+      
+      // Navigate to routine execution
+      window.location.href = `/routine-execution?routineId=${routine.id}&type=ai`;
+    } else {
+      toast.error(result.error || 'Failed to activate routine');
+    }
+    
+    setShowActivationModal(false);
   };
 
   const handleContinueWorkout = () => {
@@ -614,6 +639,16 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Routine Activation Confirmation Modal */}
+      <RoutineActivationModal
+        isOpen={showActivationModal}
+        onClose={() => setShowActivationModal(false)}
+        onConfirm={confirmActivation}
+        currentRoutineName={currentActiveRoutine?.routine_name}
+        newRoutineName={routine.routine_name}
+        isLoading={isActivating}
+      />
     </>
   );
 };

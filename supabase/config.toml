@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.update-yearly-scores-preview]
 verify_jwt = false
+
+[functions.activate-routine-safely]
+verify_jwt = true
