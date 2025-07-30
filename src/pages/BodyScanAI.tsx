@@ -86,6 +86,11 @@ export default function BodyScanAI() {
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
+  
+  // Enhanced transition states for smooth UX
+  const [isScanningFadingOut, setIsScanningFadingOut] = useState(false);
+  const [showShutterFlash, setShowShutterFlash] = useState(false);
+  const [showNudgeText, setShowNudgeText] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -203,6 +208,34 @@ export default function BodyScanAI() {
       saveBodyScanToSupabase(capturedImage!);
     }
   }, [hasImageReady]);
+
+  // Clear canvas overlay when success screen shows
+  useEffect(() => {
+    if (showSuccessScreen && overlayCanvasRef.current) {
+      const canvas = overlayCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        console.log('🧹 Clearing canvas overlay for success screen');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  }, [showSuccessScreen]);
+
+  // Show nudge text after 1.5 seconds if user pauses on success screen
+  useEffect(() => {
+    let nudgeTimer: NodeJS.Timeout;
+    if (showSuccessScreen) {
+      setShowNudgeText(false);
+      nudgeTimer = setTimeout(() => {
+        setShowNudgeText(true);
+      }, 1500);
+    } else {
+      setShowNudgeText(false);
+    }
+    return () => {
+      if (nudgeTimer) clearTimeout(nudgeTimer);
+    };
+  }, [showSuccessScreen]);
 
   useEffect(() => {
     // Lock screen orientation to portrait if supported
@@ -452,7 +485,7 @@ export default function BodyScanAI() {
       // STEP 8: VIDEO STREAM DIMENSIONS
       console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
       
-      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
+      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady || showSuccessScreen || hasImageReady) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
       }
@@ -695,21 +728,9 @@ export default function BodyScanAI() {
       setIsCapturing(false);
     }
   };
-  // Function to upload image to Supabase Storage and save record
-  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
-    console.log("📸 Starting saveBodyScanToSupabase");
+  // Helper function to upload blob to Supabase
+  const uploadBodyScan = async (blob: Blob) => {
     try {
-      setIsSaving(true);
-      setErrorSavingScan(null);
-      
-      // Validate image data URL
-      if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
-        console.error("❌ Invalid image data URL:", imageDataUrl?.substring(0, 50));
-        throw new Error('Invalid image data - no image captured');
-      }
-      
-      console.log("✅ Valid image data URL detected, size:", imageDataUrl.length);
-      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -719,33 +740,6 @@ export default function BodyScanAI() {
       
       console.log("✅ User authenticated:", user.id);
 
-      // Convert data URL to blob/JPEG with detailed error handling
-      let response: Response;
-      let blob: Blob;
-      
-      try {
-        console.log("🔄 Converting data URL to blob...");
-        response = await fetch(imageDataUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
-        }
-        
-        blob = await response.blob();
-        console.log("✅ Blob created successfully:", {
-          size: blob.size,
-          type: blob.type
-        });
-        
-        if (blob.size === 0) {
-          throw new Error('Image blob is empty - capture may have failed');
-        }
-        
-      } catch (fetchError) {
-        console.error("❌ Failed to convert data URL to blob:", fetchError);
-        throw new Error(`Image processing failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-      }
-      
       // Create filename with timestamp
       const timestamp = Date.now();
       const fileName = `${user.id}/${currentStep}-${timestamp}.jpg`;
@@ -784,12 +778,30 @@ export default function BodyScanAI() {
 
       console.log("✅ Scan saved, publicUrl:", publicUrl);
       
-      // Set success screen state to trigger the Continue button flow
-      setSavedScanUrl(publicUrl);
-      setShowSuccessScreen(true);
+      // Enhanced cinematic transition sequence
+      console.log('🎬 Starting cinematic transition sequence...');
       
-      // Temporary hack for testing - add dummy URL if needed
-      // setSavedScanUrl("https://via.placeholder.com/400x600?text=Test+Scan");
+      // Step 1: Start fade-out of scanning overlay
+      setIsScanningFadingOut(true);
+      
+      // Step 2: Show camera shutter flash after 200ms
+      setTimeout(() => {
+        setShowShutterFlash(true);
+        
+        // Step 3: Hide flash after 150ms
+        setTimeout(() => {
+          setShowShutterFlash(false);
+        }, 150);
+      }, 200);
+      
+      // Step 4: Show success screen after total 400ms delay
+      setTimeout(() => {
+        setSavedScanUrl(publicUrl);
+        setShowSuccessScreen(true);
+        setIsScanningFadingOut(false); // Reset for next scan
+        
+        console.log('✅ Showing Success Screen after cinematic transition');
+      }, 400);
       
       console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
@@ -817,24 +829,129 @@ export default function BodyScanAI() {
       });
 
     } catch (error) {
-      console.error("❌ Error saving scan", error);
+      console.error("📛 Error uploading body scan:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("❌ Upload error details:", {
+        error,
+        stack: error instanceof Error ? error.stack : undefined,
+        currentStep,
+        blobSize: blob.size,
+        blobType: blob.type
+      });
+      
+      setErrorSavingScan(errorMessage);
+      alert(`Upload failed: ${errorMessage}`);
+      toast({
+        title: "Upload Error",
+        description: `Failed to upload body scan: ${errorMessage}`,
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  // Function to capture and save body scan - bulletproof canvas.toBlob() with iOS reliability
+  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
+    console.log("📸 Starting saveBodyScanToSupabase");
+    
+    try {
+      setIsSaving(true);
+      setErrorSavingScan(null);
+      
+      // ✅ 1. Add image data URL validation before processing
+      if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image')) {
+        console.error('❌ Invalid or empty image dataUrl:', imageDataUrl);
+        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+        setErrorSavingScan("Invalid image data");
+        setIsSaving(false);
+        return;
+      }
+      console.log("📸 Image data URL starts with:", imageDataUrl?.substring(0, 100));
+      
+      // ✅ CANVAS STABILITY & RENDERING VALIDATION
+      const canvas = canvasRef.current;
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        console.error("Canvas not ready or has invalid dimensions", { 
+          canvas: !!canvas,
+          width: canvas?.width || 0,
+          height: canvas?.height || 0,
+          canvasContext: canvas?.getContext("2d") ? "available" : "null",
+          documentVisibility: document.visibilityState
+        });
+        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+        setErrorSavingScan("Canvas not ready");
+        setIsSaving(false);
+        return;
+      }
+
+      console.log("✅ Canvas validation passed:", { 
+        width: canvas.width, 
+        height: canvas.height,
+        context: !!canvas.getContext("2d"),
+        documentState: document.visibilityState
+      });
+
+      // Force a brief delay after rendering the canvas for mobile Safari/iOS
+      console.log("⏳ Adding iOS compatibility delay...");
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // ✅ toBlob() SAFETY AND TIMEOUT - wrap in timeout-safe promise
+      const blob: Blob = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Canvas toBlob timeout")), 3000);
+        
+        canvas.toBlob(blob => {
+          clearTimeout(timeout);
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Canvas toBlob returned null"));
+          }
+        }, "image/jpeg", 0.95);
+      });
+
+      // Validate the blob size after generation
+      if (blob.size < 1000) {
+        console.error("Generated blob too small. Likely capture failed.", { size: blob.size });
+        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+        setErrorSavingScan("Image capture failed");
+        setIsSaving(false);
+        return;
+      }
+
+      console.log("✅ Blob created successfully:", {
+        size: blob.size,
+        type: blob.type
+      });
+
+      // ✅ Continue with Supabase upload
+      await uploadBodyScan(blob);
+
+    } catch (error) {
+      // ✅ EXTRA DEBUGGING and improved error logging
+      console.error("📛 Error saving body scan:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("❌ Full error details:", {
         error,
         stack: error instanceof Error ? error.stack : undefined,
         currentStep,
         hasImageReady,
-        imageDataLength: imageDataUrl?.length || 0
+        imageDataLength: imageDataUrl?.length || 0,
+        canvasReady: !!canvasRef.current,
+        canvasDimensions: canvasRef.current ? {
+          width: canvasRef.current.width,
+          height: canvasRef.current.height
+        } : null,
+        canvasContext: canvasRef.current?.getContext("2d") ? "available" : "null",
+        documentVisibility: document.visibilityState
       });
       
       setErrorSavingScan(errorMessage);
-      alert("Error saving scan: " + errorMessage);
+      alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
       toast({
         title: "Save Error",
-        description: `Failed to save body scan: ${errorMessage}`,
+        description: `Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.`,
         variant: "destructive"
       });
-    } finally {
       setIsSaving(false);
     }
   };
@@ -1004,10 +1121,6 @@ export default function BodyScanAI() {
     // Apply pose smoothing for full human detection
     const smoothedPose = smoothPoseData(pose);
     
-    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
-    const misalignedLimbs: string[] = [];
-    let feedback = "";
-    
     // Find key landmarks
     const keypoints = pose.keypoints;
     const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
@@ -1017,6 +1130,108 @@ export default function BodyScanAI() {
     const leftHip = keypoints.find(kp => kp.name === 'left_hip');
     const rightHip = keypoints.find(kp => kp.name === 'right_hip');
     const nose = keypoints.find(kp => kp.name === 'nose');
+    
+    // SIDE POSE VALIDATION - Check if user is turned fully sideways
+    if (currentStep === 'side') {
+      console.log('🔄 SIDE POSE VALIDATION ACTIVE');
+      
+      const misalignedLimbs: string[] = [];
+      let feedback = "";
+      
+      // Calculate horizontal distances for sideways validation
+      let shoulderDistance = 0;
+      let hipDistance = 0;
+      let isShouldersSideways = false;
+      let isHipsSideways = false;
+      
+      // Check shoulder alignment for side pose
+      if (leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5) {
+        shoulderDistance = Math.abs(leftShoulder.x - rightShoulder.x);
+        isShouldersSideways = shoulderDistance < 50; // 50px threshold
+        
+        if (!isShouldersSideways) {
+          misalignedLimbs.push('shoulders_not_sideways');
+        }
+      } else {
+        misalignedLimbs.push('shoulders_not_detected');
+      }
+      
+      // Check hip alignment for side pose
+      if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
+        hipDistance = Math.abs(leftHip.x - rightHip.x);
+        isHipsSideways = hipDistance < 50; // 50px threshold
+        
+        if (!isHipsSideways) {
+          misalignedLimbs.push('hips_not_sideways');
+        }
+      } else {
+        misalignedLimbs.push('hips_not_detected');
+      }
+      
+      // Debug logging for side pose validation
+      console.log('📊 SIDE POSE DEBUG:', {
+        shoulderDistance: shoulderDistance.toFixed(1) + 'px',
+        hipDistance: hipDistance.toFixed(1) + 'px',
+        isShouldersSideways,
+        isHipsSideways,
+        misalignedLimbs,
+        leftShoulderScore: leftShoulder?.score,
+        rightShoulderScore: rightShoulder?.score,
+        leftHipScore: leftHip?.score,
+        rightHipScore: rightHip?.score
+      });
+      
+      // Check body centering for side pose
+      let isCentered = true;
+      if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
+        const hipCenter = (leftHip.x + rightHip.x) / 2;
+        const screenCenter = (videoRef.current?.videoWidth || 640) / 2;
+        const centerOffset = Math.abs(hipCenter - screenCenter) / screenCenter;
+        
+        if (centerOffset > 0.25) { // More lenient for side pose
+          misalignedLimbs.push('centering');
+          isCentered = false;
+        }
+      }
+      
+      // Determine if side pose is aligned
+      const isSidePoseAligned = isShouldersSideways && isHipsSideways && isCentered;
+      const totalSideChecks = 3; // shoulders, hips, centering
+      const alignmentScore = Math.max(0, (totalSideChecks - misalignedLimbs.length) / totalSideChecks);
+      
+      // Generate feedback for side pose
+      if (isSidePoseAligned) {
+        feedback = "Perfect side pose! Hold steady...";
+      } else if (alignmentScore >= 0.6) {
+        feedback = "Almost there! Turn more sideways";
+      } else {
+        if (misalignedLimbs.includes('shoulders_not_sideways') || misalignedLimbs.includes('hips_not_sideways')) {
+          feedback = "Turn fully sideways - shoulders and hips should overlap";
+        } else if (misalignedLimbs.includes('centering')) {
+          feedback = "Move to center of frame";
+        } else {
+          feedback = "Position yourself in view and turn sideways";
+        }
+      }
+      
+      console.log('🎯 SIDE POSE RESULT:', {
+        isAligned: isSidePoseAligned,
+        alignmentScore: alignmentScore.toFixed(3),
+        feedback
+      });
+      
+      return {
+        isAligned: isSidePoseAligned,
+        misalignedLimbs,
+        alignmentScore,
+        feedback
+      };
+    }
+    
+    // FRONT POSE VALIDATION (existing logic)
+    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
+    const misalignedLimbs: string[] = [];
+    let feedback = "";
     
     // Check if person is facing camera (nose should be visible)
     if (!nose || nose.score < 0.5) {
@@ -1097,11 +1312,17 @@ export default function BodyScanAI() {
       alignmentScore,
       feedback
     };
-  }, []);
+  }, [currentStep, showSuccessScreen, hasImageReady]);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
     // STEP 4: DRAW DEBUG
     console.log("[DRAW] drawPoseOverlay called");
+    
+    // ✅ CRITICAL: Don't draw anything if success screen is showing
+    if (showSuccessScreen || hasImageReady) {
+      console.log('[DRAW] ❌ Skipping draw - success screen or image ready');
+      return;
+    }
     
     if (!overlayCanvasRef.current || !videoRef.current) {
       console.log('[DRAW] ❌ Missing canvas or video ref');
@@ -1218,7 +1439,7 @@ export default function BodyScanAI() {
     
     console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
     console.log('[DRAW] ✅ Pose overlay drawing complete');
-  }, []);
+  }, [showSuccessScreen, hasImageReady]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1408,21 +1629,23 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* STEP 5: CANVAS WITH LIME BORDER */}
-      <canvas 
-        ref={overlayCanvasRef}
-        style={{
-          border: '3px solid lime',
-          position: 'absolute',
-          zIndex: 99,
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          display: 'block'
-        }}
-      />
+      {/* STEP 5: CANVAS WITH LIME BORDER - Hidden when scan is successful */}
+      {!showSuccessScreen && (
+        <canvas 
+          ref={overlayCanvasRef}
+           style={{
+             border: '3px solid lime',
+             position: 'absolute',
+             zIndex: 20, // Lower than success screen (z-30)
+             top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            display: 'block'
+          }}
+        />
+      )}
       
       {/* Grid Overlay - Fixed behind camera */}
       <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
@@ -1521,23 +1744,28 @@ export default function BodyScanAI() {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
-          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
-            {/* Success Icon with Step-specific Color */}
-            <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
+        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-50 p-8 animate-fade-in">
+          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500 animate-[bounceIn_0.6s_cubic-bezier(0.68,-0.55,0.265,1.55)]`}>
+            {/* Success Icon with Enhanced Animation */}
+            <div className="text-7xl mb-8 animate-[bounce_1s_ease-in-out_3]">🎉</div>
             
-            {/* Step Success Title */}
-            <h3 className="text-white text-2xl font-bold mb-2">
-              {currentStepConfig.title.split(' ')[1]} {currentStepConfig.title.split(' ')[2]} Complete!
+            {/* Enhanced Success Title */}
+            <h3 className="text-white text-3xl font-bold mb-3 tracking-wide">
+              Scan Complete!
             </h3>
-            <p className="text-white/80 text-sm mb-6">Scan saved successfully</p>
+            <p className="text-white/70 text-lg mb-8 leading-relaxed">
+              {currentStep === 'front' ? 'Front view captured perfectly' : 
+               currentStep === 'side' ? 'Side profile saved successfully' : 
+               'Back view scan completed'}
+            </p>
             
-            {/* Enhanced Thumbnail with Step Theming */}
-            <div className={`mb-6 rounded-2xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-lg`}>
+            {/* Enhanced Thumbnail with Premium Feel */}
+            <div className={`mb-8 rounded-3xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-2xl relative group`}>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10"></div>
               <img 
                 src={savedScanUrl}
                 alt={`${currentStep} body scan`}
-                className="w-full h-40 object-cover"
+                className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
             
@@ -1545,7 +1773,7 @@ export default function BodyScanAI() {
             <div className="space-y-4">
               <Button
                 onClick={handleContinue}
-                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-105 text-white font-bold py-4 text-lg shadow-lg transition-all duration-300`}
+                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
               >
                 {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
                  currentStep === 'side' ? '🔄 Continue to Back Scan' : 
@@ -1554,11 +1782,21 @@ export default function BodyScanAI() {
               <Button
                 onClick={handleRetake}
                 variant="outline"
-                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 transition-all duration-300"
+                className="w-full bg-white/5 border-2 border-white/30 text-white hover:bg-white/15 hover:border-white/50 transition-all duration-300 py-4 text-lg rounded-2xl"
               >
-                🔁 Retake {currentStepConfig.title.split(' ')[1]} Scan
+                🔁 Retake Scan
               </Button>
             </div>
+
+            {/* Nudge Text with Fade-in Animation */}
+            {showNudgeText && (
+              <div className="mt-6 pt-6 border-t border-white/20 animate-fade-in">
+                <p className="text-white/60 text-sm flex items-center justify-center gap-2">
+                  ✔️ Great job! Ready for the next scan?
+                  <ArrowRight className="w-4 h-4 animate-pulse" />
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1691,7 +1929,9 @@ export default function BodyScanAI() {
               Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
             </p>
             <p className="text-white text-sm font-medium">
-              {alignmentFeedback.feedback}
+              {currentStep === 'side' && !alignmentFeedback.isAligned 
+                ? "🟡 Turn fully sideways so your shoulders and hips align"
+                : alignmentFeedback.feedback}
             </p>
           </div>
         </div>
@@ -1702,9 +1942,13 @@ export default function BodyScanAI() {
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
             <div className="text-center">
-              <div className="text-2xl mb-2 animate-pulse">✅</div>
-              <p className="text-white font-bold text-lg">Great Pose!</p>
-              <p className="text-white text-sm">Hold steady for auto-capture...</p>
+              <div className="text-2xl mb-2 animate-pulse">{currentStep === 'side' ? '🟢' : '✅'}</div>
+              <p className="text-white font-bold text-lg">
+                {currentStep === 'side' ? 'Perfect side pose!' : 'Great Pose!'}
+              </p>
+              <p className="text-white text-sm">
+                {currentStep === 'side' ? 'Hold steady...' : 'Hold steady for auto-capture...'}
+              </p>
               {alignmentFrameCount > 0 && (
                 <div className="mt-2">
                   <div className="bg-white/20 rounded-full h-2">
@@ -1763,6 +2007,32 @@ export default function BodyScanAI() {
             {/* Pulsing outer ring */}
             <div className="absolute inset-0 rounded-full border-2 border-green-300/50 animate-ping"></div>
           </div>
+        </div>
+      )}
+
+      {/* Scanning overlay during countdown */}
+      {(isCountingDown && countdownSeconds > 0) && (
+        <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-25 flex items-center justify-center transition-opacity duration-300 ${
+          isScanningFadingOut ? 'opacity-0' : 'opacity-100 animate-fade-in'
+        }`}>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl animate-scale-in">
+            <div className="flex items-center justify-center space-x-3">
+              {/* Spinning loader */}
+              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              
+              {/* Scanning text */}
+              <div className="text-white text-lg font-semibold">
+                📸 Scanning… Hold steady!
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Camera shutter flash effect */}
+      {showShutterFlash && (
+        <div className="absolute inset-0 bg-white z-40 animate-pulse" 
+             style={{ animation: 'flash 150ms ease-out' }}>
         </div>
       )}
 
