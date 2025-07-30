@@ -35,6 +35,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
   const { user } = useAuth();
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [currentDay, setCurrentDay] = useState<any>(null);
 
@@ -190,8 +191,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
   };
 
   const handleViewHistory = () => {
-    // Navigate to routine history or show history modal
-    toast.info('History feature coming soon! 📅');
+    setShowHistoryModal(true);
   };
 
   const getStatusColor = () => {
@@ -217,8 +217,8 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card">
-        <div className={`h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-lg`}></div>
+      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-sm hover:shadow-md">
+        <div className="h-2 bg-gradient-to-r from-purple-500 to-blue-500" style={{ borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem' }}></div>
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -238,7 +238,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             </div>
             
             {/* Always visible top-right icons */}
-            <div className="flex gap-1 opacity-100">
+            <div className="flex items-center gap-1 ml-auto">
               <Button
                 size="icon"
                 variant="ghost"
@@ -334,13 +334,20 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                   Continue
                 </Button>
                 
-                <WorkoutCompleteButton
-                  routine_id={routine.id}
-                  intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
-                  duration_minutes={routine.estimated_duration_minutes}
-                  difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
-                  className="px-4 py-2"
-                />
+                <div className={!hasWorkouts ? "relative" : ""}>
+                  <WorkoutCompleteButton
+                    routine_id={routine.id}
+                    intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
+                    duration_minutes={routine.estimated_duration_minutes}
+                    difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
+                    className={`px-4 py-2 ${!hasWorkouts ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  />
+                  {!hasWorkouts && (
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      Start this routine first.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -351,12 +358,12 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Routine: {routine.routine_name}</DialogTitle>
+            <DialogTitle>🛠️ Customize: {routine.routine_name}</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6">
             <p className="text-muted-foreground">
-              Regenerate individual days or weeks to customize your workout plan.
+              Regenerate specific days or entire weeks to fine-tune your plan.
             </p>
             
             {routine.routine_data?.weeks?.map((week: any, weekIndex: number) => (
@@ -463,6 +470,29 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                 )}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Modal */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>📈 Workout History</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 text-center">
+            <div className="text-muted-foreground">
+              This feature is under construction! Soon you'll be able to review past workouts, progress, and milestones here.
+            </div>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowHistoryModal(false)}
+              className="w-full"
+            >
+              Got it
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
