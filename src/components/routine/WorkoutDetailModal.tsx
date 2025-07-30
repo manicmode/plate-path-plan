@@ -213,12 +213,12 @@ export const WorkoutDetailModal = ({
             <Button
               onClick={() => {
                 onClose();
-                navigate(`/routine-player/${week}/${workout.day}`);
+                navigate(`/guided-workout/${week}/${workout.day}`);
               }}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
+              className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:scale-105 transition-transform text-white font-semibold"
             >
               <Play className="h-4 w-4 mr-2" />
-              Start Workout
+              Start Guided Workout
             </Button>
             
             <Button

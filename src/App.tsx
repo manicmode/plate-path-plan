@@ -72,6 +72,7 @@ const BodyScanResults = lazy(() => import('@/pages/BodyScanResults'));
 const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
 const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
 const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
+const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
 const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
 
 // Prefetch critical components after initial load
@@ -190,6 +191,11 @@ function AppContent() {
                     <Route path="/routine-player/:week/:day" element={
                       <ProtectedRoute>
                         <RoutinePlayerPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/guided-workout/:week/:day" element={
+                      <ProtectedRoute>
+                        <GuidedWorkoutPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/recovery-center" element={
