@@ -1511,8 +1511,6 @@ export default function BodyScanAI() {
   };
 
   const handleContinue = () => {
-    console.log('➡️ Continue clicked');
-    alert('Continue clicked');
     console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
     
     if (hasImageReady && savedScanUrl) {
