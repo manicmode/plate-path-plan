@@ -796,7 +796,7 @@ export default function BodyScanAI() {
     }
   };
 
-  // Function to capture and save body scan - now using canvas.toBlob() for iOS safety
+  // Function to capture and save body scan - bulletproof canvas.toBlob() with iOS reliability
   const saveBodyScanToSupabase = async (imageDataUrl: string) => {
     console.log("📸 Starting saveBodyScanToSupabase");
     
@@ -807,59 +807,73 @@ export default function BodyScanAI() {
       // ✅ 1. Add image data URL validation before processing
       if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image')) {
         console.error('❌ Invalid or empty image dataUrl:', imageDataUrl);
-        alert("Image capture failed. Please try again.");
+        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
         setErrorSavingScan("Invalid image data");
         setIsSaving(false);
         return;
       }
       console.log("📸 Image data URL starts with:", imageDataUrl?.substring(0, 100));
       
-      // ✅ 2. Use canvas.toBlob() instead of fetch(dataUrl) for iOS safety
+      // ✅ CANVAS STABILITY & RENDERING VALIDATION
       const canvas = canvasRef.current;
-      if (!canvas) {
-        console.error("❌ Canvas not ready");
-        alert("Canvas not ready. Try again.");
-        setErrorSavingScan("Canvas not available");
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        console.error("Canvas not ready or has invalid dimensions", { 
+          canvas: !!canvas,
+          width: canvas?.width || 0,
+          height: canvas?.height || 0,
+          canvasContext: canvas?.getContext("2d") ? "available" : "null",
+          documentVisibility: document.visibilityState
+        });
+        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+        setErrorSavingScan("Canvas not ready");
         setIsSaving(false);
         return;
       }
 
-      console.log("✅ Canvas dimensions:", { 
+      console.log("✅ Canvas validation passed:", { 
         width: canvas.width, 
-        height: canvas.height 
+        height: canvas.height,
+        context: !!canvas.getContext("2d"),
+        documentState: document.visibilityState
       });
 
-      // Use canvas.toBlob() for more reliable image conversion
-      canvas.toBlob((blob) => {
-        // ✅ 4. Prevent Supabase upload if Blob is invalid
-        if (!blob || blob.size < 1000 || blob.type !== 'image/jpeg') {
-          console.error("❌ Blob capture failed or was too small:", blob);
-          console.error("❌ Blob details:", {
-            exists: !!blob,
-            size: blob?.size || 0,
-            type: blob?.type || 'unknown'
-          });
-          alert("Invalid image detected. Please try scanning again.");
-          setErrorSavingScan("Image too small or invalid");
-          setIsSaving(false);
-          return;
-        }
+      // Force a brief delay after rendering the canvas for mobile Safari/iOS
+      console.log("⏳ Adding iOS compatibility delay...");
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-        console.log("✅ Blob created successfully:", {
-          size: blob.size,
-          type: blob.type
-        });
+      // ✅ toBlob() SAFETY AND TIMEOUT - wrap in timeout-safe promise
+      const blob: Blob = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Canvas toBlob timeout")), 3000);
+        
+        canvas.toBlob(blob => {
+          clearTimeout(timeout);
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Canvas toBlob returned null"));
+          }
+        }, "image/jpeg", 0.95);
+      });
 
-        // ✅ Continue with Supabase upload
-        uploadBodyScan(blob).catch((uploadError) => {
-          console.error("📛 Upload failed:", uploadError);
-          setIsSaving(false);
-        });
+      // Validate the blob size after generation
+      if (blob.size < 1000) {
+        console.error("Generated blob too small. Likely capture failed.", { size: blob.size });
+        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+        setErrorSavingScan("Image capture failed");
+        setIsSaving(false);
+        return;
+      }
 
-      }, 'image/jpeg', 0.95);
+      console.log("✅ Blob created successfully:", {
+        size: blob.size,
+        type: blob.type
+      });
+
+      // ✅ Continue with Supabase upload
+      await uploadBodyScan(blob);
 
     } catch (error) {
-      // ✅ 3. Improve all error logs to include more context
+      // ✅ EXTRA DEBUGGING and improved error logging
       console.error("📛 Error saving body scan:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("❌ Full error details:", {
@@ -872,14 +886,16 @@ export default function BodyScanAI() {
         canvasDimensions: canvasRef.current ? {
           width: canvasRef.current.width,
           height: canvasRef.current.height
-        } : null
+        } : null,
+        canvasContext: canvasRef.current?.getContext("2d") ? "available" : "null",
+        documentVisibility: document.visibilityState
       });
       
       setErrorSavingScan(errorMessage);
-      alert("Error saving scan: " + errorMessage);
+      alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
       toast({
         title: "Save Error",
-        description: `Failed to save body scan: ${errorMessage}`,
+        description: `Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.`,
         variant: "destructive"
       });
       setIsSaving(false);
