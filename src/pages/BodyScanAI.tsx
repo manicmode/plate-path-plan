@@ -1935,6 +1935,23 @@ export default function BodyScanAI() {
         </div>
       )}
 
+      {/* Scanning overlay during countdown */}
+      {isCountingDown && countdownSeconds > 0 && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-25 flex items-center justify-center animate-fade-in">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl animate-scale-in">
+            <div className="flex items-center justify-center space-x-3">
+              {/* Spinning loader */}
+              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              
+              {/* Scanning text */}
+              <div className="text-white text-lg font-semibold">
+                📸 Scanning… Hold steady!
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pose detection status indicator */}
       {isPoseDetectionEnabled && (
         <div className="absolute top-24 right-6 z-25">
