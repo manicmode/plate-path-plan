@@ -1471,21 +1471,23 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* STEP 5: CANVAS WITH LIME BORDER */}
-      <canvas 
-        ref={overlayCanvasRef}
-        style={{
-          border: '3px solid lime',
-          position: 'absolute',
-          zIndex: 99,
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          display: 'block'
-        }}
-      />
+      {/* STEP 5: CANVAS WITH LIME BORDER - Hidden when scan is successful */}
+      {!showSuccessScreen && (
+        <canvas 
+          ref={overlayCanvasRef}
+          style={{
+            border: '3px solid lime',
+            position: 'absolute',
+            zIndex: 99,
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            display: 'block'
+          }}
+        />
+      )}
       
       {/* Grid Overlay - Fixed behind camera */}
       <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
