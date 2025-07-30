@@ -452,7 +452,7 @@ export default function BodyScanAI() {
       // STEP 8: VIDEO STREAM DIMENSIONS
       console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
       
-      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady || showSuccessScreen || hasImageReady) {
+      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
       }
