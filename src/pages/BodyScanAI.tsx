@@ -737,6 +737,12 @@ export default function BodyScanAI() {
       setSavedScanUrl(publicUrl);
       setShowSuccessScreen(true);
       
+      console.log('🎯 Success screen should now be visible:', { 
+        savedScanUrl: !!publicUrl, 
+        showSuccessScreen: true, 
+        currentStep 
+      });
+      
       // Show pose quality feedback
       if (alignmentFeedback) {
         showPoseQualityFeedback({
@@ -1184,36 +1190,63 @@ export default function BodyScanAI() {
   };
 
   const handleContinue = () => {
+    console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
+    
     if (hasImageReady && savedScanUrl) {
+      // Store current scan URL before clearing it
+      const currentScanUrl = savedScanUrl;
+      
+      console.log(`✅ Starting transition from ${currentStep} step`);
+      
       // Start cinematic transition
       setIsTransitioning(true);
+      
+      // Hide success screen immediately
       setShowSuccessScreen(false);
-      setSavedScanUrl(null);
       
       setTimeout(() => {
+        // Advance to next step
         if (currentStep === 'front') {
+          console.log('📱 Advancing to side scan');
           setCurrentStep('side');
+          toast({
+            title: "📸 Great! Now turn sideways",
+            description: "Position yourself sideways for the side view photo",
+            duration: 4000,
+          });
         } else if (currentStep === 'side') {
+          console.log('📱 Advancing to back scan');
           setCurrentStep('back');
+          toast({
+            title: "📸 Awesome! Now turn around",
+            description: "Turn around so we can capture your back view",
+            duration: 4000,
+          });
         } else {
+          console.log('🎉 All scans completed - showing weight modal');
           // Final step completed - show weight modal
           setShowWeightModal(true);
           setIsTransitioning(false);
           return;
         }
         
-        // Reset states for next step
+        // Reset states for next step AFTER step change
+        console.log('🔄 Resetting states for next step');
         setCapturedImage(null);
         setHasImageReady(false);
         setAlignmentConfirmed(false);
         setCountdownSeconds(0);
         setIsCountingDown(false);
+        setSavedScanUrl(null); // Clear AFTER step change
         
         // End transition after state reset
         setTimeout(() => {
           setIsTransitioning(false);
+          console.log(`✨ Transition to ${currentStep === 'front' ? 'side' : 'back'} complete`);
         }, 300);
-      }, 500);
+      }, 800); // Slightly longer for cinematic effect
+    } else {
+      console.warn('❌ handleContinue: Invalid state', { hasImageReady, savedScanUrl: !!savedScanUrl });
     }
   };
 
@@ -1387,8 +1420,8 @@ export default function BodyScanAI() {
       </div>
 
       
-      {/* Enhanced Dynamic Body Silhouette with Step-Specific Theming */}
-      <div key={currentStep} className={`absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15 transition-all duration-1000 ${isTransitioning ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+      {/* Enhanced Dynamic Body Silhouette with Fixed Spacing */}
+      <div key={currentStep} className={`absolute inset-0 flex items-center justify-center pt-24 pb-40 z-15 transition-all duration-1000 ${isTransitioning ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
         <div className={`relative transition-all duration-700 ${
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
@@ -1404,7 +1437,7 @@ export default function BodyScanAI() {
                 : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             }
             alt={`${currentStep} body silhouette`}
-            className={`w-[85vw] max-h-[75vh] h-auto object-contain animate-fade-in relative z-10 ${
+            className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
               currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
               currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
               'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
@@ -1416,7 +1449,10 @@ export default function BodyScanAI() {
       </div>
 
       {/* Enhanced Step Success Screen with Cinematic Effects */}
-      {showSuccessScreen && savedScanUrl && (
+      {showSuccessScreen && savedScanUrl && ((() => {
+        console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
+        return true;
+      })()) && (
         <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
           <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
             {/* Success Icon with Step-specific Color */}
