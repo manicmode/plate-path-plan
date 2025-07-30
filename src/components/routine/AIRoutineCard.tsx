@@ -361,6 +361,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                     difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
                     className={`px-6 py-2 ${!hasWorkouts ? 'opacity-50 cursor-not-allowed' : ''}`}
                     disabled={!hasWorkouts}
+                    compact={true}
                   />
                   {!hasWorkouts && (
                     <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">

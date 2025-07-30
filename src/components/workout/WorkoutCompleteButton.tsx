@@ -13,6 +13,7 @@ interface WorkoutCompleteButtonProps {
   onComplete?: () => void;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
 }
 
 export function WorkoutCompleteButton({
@@ -22,7 +23,8 @@ export function WorkoutCompleteButton({
   difficulty_multiplier = 1.0,
   onComplete,
   disabled = false,
-  className = ''
+  className = '',
+  compact = false
 }: WorkoutCompleteButtonProps) {
   const { logWorkoutXP, submitting } = useXP();
   const { toast } = useToast();
@@ -97,25 +99,33 @@ export function WorkoutCompleteButton({
     );
   }
 
+  const button = (
+    <Button
+      onClick={handleCompleteWorkout}
+      disabled={disabled || submitting}
+      className={`${className} ${getIntensityColor(intensity)} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105`}
+    >
+      {submitting ? (
+        <>
+          <Zap className="h-4 w-4 mr-2 animate-spin" />
+          Logging XP...
+        </>
+      ) : (
+        <>
+          <Star className="h-4 w-4 mr-2" />
+          Complete Workout
+        </>
+      )}
+    </Button>
+  );
+
+  if (compact) {
+    return button;
+  }
+
   return (
     <div className="space-y-2">
-      <Button
-        onClick={handleCompleteWorkout}
-        disabled={disabled || submitting}
-        className={`${className} ${getIntensityColor(intensity)} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105`}
-      >
-        {submitting ? (
-          <>
-            <Zap className="h-4 w-4 mr-2 animate-spin" />
-            Logging XP...
-          </>
-        ) : (
-          <>
-            <Star className="h-4 w-4 mr-2" />
-            Complete Workout
-          </>
-        )}
-      </Button>
+      {button}
       
       {/* XP Preview */}
       <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
