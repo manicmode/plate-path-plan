@@ -1854,7 +1854,9 @@ export default function BodyScanAI() {
               Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
             </p>
             <p className="text-white text-sm font-medium">
-              {alignmentFeedback.feedback}
+              {currentStep === 'side' && !alignmentFeedback.isAligned 
+                ? "🟡 Turn fully sideways so your shoulders and hips align"
+                : alignmentFeedback.feedback}
             </p>
           </div>
         </div>
@@ -1865,9 +1867,13 @@ export default function BodyScanAI() {
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
             <div className="text-center">
-              <div className="text-2xl mb-2 animate-pulse">✅</div>
-              <p className="text-white font-bold text-lg">Great Pose!</p>
-              <p className="text-white text-sm">Hold steady for auto-capture...</p>
+              <div className="text-2xl mb-2 animate-pulse">{currentStep === 'side' ? '🟢' : '✅'}</div>
+              <p className="text-white font-bold text-lg">
+                {currentStep === 'side' ? 'Perfect side pose!' : 'Great Pose!'}
+              </p>
+              <p className="text-white text-sm">
+                {currentStep === 'side' ? 'Hold steady...' : 'Hold steady for auto-capture...'}
+              </p>
               {alignmentFrameCount > 0 && (
                 <div className="mt-2">
                   <div className="bg-white/20 rounded-full h-2">
