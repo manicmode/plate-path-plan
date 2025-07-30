@@ -483,27 +483,71 @@ export default function BodyScanGuided() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Update the most recent scans with weight data
-      const scansToUpdate = capturedScans.map(scan => scan.type);
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
       
-      for (const scanType of scansToUpdate) {
-        const { error } = await supabase
+      // Get scan index for this year
+      const { data: scanIndexData } = await supabase
+        .rpc('calculate_scan_index', { 
+          p_user_id: user.id, 
+          p_year: currentYear 
+        });
+      
+      const scanIndex = scanIndexData || 1;
+      
+      // Update the body_scans records with complete scan data
+      const frontScan = capturedScans.find(s => s.type === 'front');
+      const sideScan = capturedScans.find(s => s.type === 'side');
+      const backScan = capturedScans.find(s => s.type === 'back');
+      
+      // Get the most recent body scan record (should be the back scan)
+      const { data: recentScan } = await supabase
+        .from('body_scans')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (recentScan) {
+        // Update the most recent scan with all 3 images and timeline data
+        const { error: updateError } = await supabase
           .from('body_scans')
           .update({
+            image_url: frontScan?.imageUrl, // Keep front as primary
+            side_image_url: sideScan?.imageUrl,
+            back_image_url: backScan?.imageUrl,
+            weight: parseFloat(weight),
+            scan_index: scanIndex,
+            year: currentYear,
+            month: currentMonth,
             pose_metadata: {
-              ...capturedScans.find(s => s.type === scanType)?.poseMetadata,
+              ...(typeof recentScan.pose_metadata === 'object' && recentScan.pose_metadata !== null 
+                ? recentScan.pose_metadata as Record<string, any> 
+                : {}),
               weight: parseFloat(weight),
-              weightUnit: weightUnit
+              weightUnit: weightUnit,
+              completedScanTypes: ['front', 'side', 'back'],
+              isGuidedScan: true
             }
           })
-          .eq('user_id', user.id)
-          .eq('type', scanType)
-          .order('created_at', { ascending: false })
-          .limit(1);
+          .eq('id', recentScan.id);
 
-        if (error) {
-          console.error(`Error updating ${scanType} scan:`, error);
+        if (updateError) {
+          throw updateError;
         }
+      }
+
+      // Update body scan reminders
+      const { error: reminderError } = await supabase
+        .rpc('update_body_scan_reminder', { 
+          p_user_id: user.id,
+          p_scan_date: new Date().toISOString()
+        });
+
+      if (reminderError) {
+        console.error('Error updating reminder:', reminderError);
+        // Don't fail the whole operation for reminder errors
       }
 
       setShowCompletionModal(false);

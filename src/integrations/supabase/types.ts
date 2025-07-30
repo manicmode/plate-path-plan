@@ -268,36 +268,87 @@ export type Database = {
         }
         Relationships: []
       }
-      body_scans: {
+      body_scan_reminders: {
         Row: {
           created_at: string
           id: string
-          image_url: string
-          pose_metadata: Json | null
-          pose_score: number | null
-          type: string
+          last_scan_at: string
+          next_due_scan_at: string
+          reminder_sent_at: string | null
+          scan_streak: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          image_url: string
-          pose_metadata?: Json | null
-          pose_score?: number | null
-          type: string
+          last_scan_at: string
+          next_due_scan_at: string
+          reminder_sent_at?: string | null
+          scan_streak?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          image_url?: string
+          last_scan_at?: string
+          next_due_scan_at?: string
+          reminder_sent_at?: string | null
+          scan_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      body_scans: {
+        Row: {
+          back_image_url: string | null
+          created_at: string
+          id: string
+          image_url: string
+          month: number | null
+          pose_metadata: Json | null
+          pose_score: number | null
+          scan_index: number | null
+          side_image_url: string | null
+          type: string
+          updated_at: string
+          user_id: string
+          weight: number | null
+          year: number | null
+        }
+        Insert: {
+          back_image_url?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          month?: number | null
           pose_metadata?: Json | null
           pose_score?: number | null
+          scan_index?: number | null
+          side_image_url?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+          weight?: number | null
+          year?: number | null
+        }
+        Update: {
+          back_image_url?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          month?: number | null
+          pose_metadata?: Json | null
+          pose_score?: number | null
+          scan_index?: number | null
+          side_image_url?: string | null
           type?: string
           updated_at?: string
           user_id?: string
+          weight?: number | null
+          year?: number | null
         }
         Relationships: []
       }
@@ -4128,6 +4179,10 @@ export type Database = {
         }
         Returns: number
       }
+      calculate_scan_index: {
+        Args: { p_user_id: string; p_year: number }
+        Returns: number
+      }
       calculate_yearly_score: {
         Args: { target_user_id: string; target_year: number }
         Returns: number
@@ -4322,6 +4377,10 @@ export type Database = {
       }
       triggermeditationnudge: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_body_scan_reminder: {
+        Args: { p_user_id: string; p_scan_date?: string }
         Returns: undefined
       }
       update_private_challenge_status: {
