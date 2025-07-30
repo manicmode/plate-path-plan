@@ -695,9 +695,21 @@ export default function BodyScanAI() {
       setIsCapturing(false);
     }
   };
-  // Helper function to upload blob to Supabase
-  const uploadBodyScan = async (blob: Blob) => {
+  // Function to upload image to Supabase Storage and save record
+  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
+    console.log("📸 Starting saveBodyScanToSupabase");
     try {
+      setIsSaving(true);
+      setErrorSavingScan(null);
+      
+      // Validate image data URL
+      if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
+        console.error("❌ Invalid image data URL:", imageDataUrl?.substring(0, 50));
+        throw new Error('Invalid image data - no image captured');
+      }
+      
+      console.log("✅ Valid image data URL detected, size:", imageDataUrl.length);
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -707,6 +719,33 @@ export default function BodyScanAI() {
       
       console.log("✅ User authenticated:", user.id);
 
+      // Convert data URL to blob/JPEG with detailed error handling
+      let response: Response;
+      let blob: Blob;
+      
+      try {
+        console.log("🔄 Converting data URL to blob...");
+        response = await fetch(imageDataUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+        }
+        
+        blob = await response.blob();
+        console.log("✅ Blob created successfully:", {
+          size: blob.size,
+          type: blob.type
+        });
+        
+        if (blob.size === 0) {
+          throw new Error('Image blob is empty - capture may have failed');
+        }
+        
+      } catch (fetchError) {
+        console.error("❌ Failed to convert data URL to blob:", fetchError);
+        throw new Error(`Image processing failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+      }
+      
       // Create filename with timestamp
       const timestamp = Date.now();
       const fileName = `${user.id}/${currentStep}-${timestamp}.jpg`;
@@ -749,6 +788,9 @@ export default function BodyScanAI() {
       setSavedScanUrl(publicUrl);
       setShowSuccessScreen(true);
       
+      // Temporary hack for testing - add dummy URL if needed
+      // setSavedScanUrl("https://via.placeholder.com/400x600?text=Test+Scan");
+      
       console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
         savedScanUrl: !!publicUrl, 
@@ -775,104 +817,14 @@ export default function BodyScanAI() {
       });
 
     } catch (error) {
-      console.error("📛 Error uploading body scan:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ Upload error details:", {
-        error,
-        stack: error instanceof Error ? error.stack : undefined,
-        currentStep,
-        blobSize: blob.size,
-        blobType: blob.type
-      });
-      
-      setErrorSavingScan(errorMessage);
-      alert(`Upload failed: ${errorMessage}`);
-      toast({
-        title: "Upload Error",
-        description: `Failed to upload body scan: ${errorMessage}`,
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
-
-  // Function to capture and save body scan - now using canvas.toBlob() for iOS safety
-  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
-    console.log("📸 Starting saveBodyScanToSupabase");
-    
-    try {
-      setIsSaving(true);
-      setErrorSavingScan(null);
-      
-      // ✅ 1. Add image data URL validation before processing
-      if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image')) {
-        console.error('❌ Invalid or empty image dataUrl:', imageDataUrl);
-        alert("Image capture failed. Please try again.");
-        setErrorSavingScan("Invalid image data");
-        setIsSaving(false);
-        return;
-      }
-      console.log("📸 Image data URL starts with:", imageDataUrl?.substring(0, 100));
-      
-      // ✅ 2. Use canvas.toBlob() instead of fetch(dataUrl) for iOS safety
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        console.error("❌ Canvas not ready");
-        alert("Canvas not ready. Try again.");
-        setErrorSavingScan("Canvas not available");
-        setIsSaving(false);
-        return;
-      }
-
-      console.log("✅ Canvas dimensions:", { 
-        width: canvas.width, 
-        height: canvas.height 
-      });
-
-      // Use canvas.toBlob() for more reliable image conversion
-      canvas.toBlob((blob) => {
-        // ✅ 4. Prevent Supabase upload if Blob is invalid
-        if (!blob || blob.size < 1000 || blob.type !== 'image/jpeg') {
-          console.error("❌ Blob capture failed or was too small:", blob);
-          console.error("❌ Blob details:", {
-            exists: !!blob,
-            size: blob?.size || 0,
-            type: blob?.type || 'unknown'
-          });
-          alert("Invalid image detected. Please try scanning again.");
-          setErrorSavingScan("Image too small or invalid");
-          setIsSaving(false);
-          return;
-        }
-
-        console.log("✅ Blob created successfully:", {
-          size: blob.size,
-          type: blob.type
-        });
-
-        // ✅ Continue with Supabase upload
-        uploadBodyScan(blob).catch((uploadError) => {
-          console.error("📛 Upload failed:", uploadError);
-          setIsSaving(false);
-        });
-
-      }, 'image/jpeg', 0.95);
-
-    } catch (error) {
-      // ✅ 3. Improve all error logs to include more context
-      console.error("📛 Error saving body scan:", error);
+      console.error("❌ Error saving scan", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("❌ Full error details:", {
         error,
         stack: error instanceof Error ? error.stack : undefined,
         currentStep,
         hasImageReady,
-        imageDataLength: imageDataUrl?.length || 0,
-        canvasReady: !!canvasRef.current,
-        canvasDimensions: canvasRef.current ? {
-          width: canvasRef.current.width,
-          height: canvasRef.current.height
-        } : null
+        imageDataLength: imageDataUrl?.length || 0
       });
       
       setErrorSavingScan(errorMessage);
@@ -882,6 +834,7 @@ export default function BodyScanAI() {
         description: `Failed to save body scan: ${errorMessage}`,
         variant: "destructive"
       });
+    } finally {
       setIsSaving(false);
     }
   };
