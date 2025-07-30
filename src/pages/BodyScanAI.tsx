@@ -485,9 +485,14 @@ export default function BodyScanAI() {
       // STEP 8: VIDEO STREAM DIMENSIONS
       console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
       
-      // ✅ CRITICAL GUARD: Stop all detection during success transitions
+      // ✅ 5. CRITICAL GUARD: Stop all detection during success transitions
       if (showSuccessScreen || isScanningFadingOut) {
-        console.log("[POSE DETECTION] ❌ Skipping - success screen or fading out");
+        console.log("🟡 Fade-out started - stopping pose detection");
+        // Cancel animation frame to stop the loop
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
         return; // Don't schedule another frame during transitions
       }
       
@@ -603,7 +608,7 @@ export default function BodyScanAI() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled, showSuccessScreen, isScanningFadingOut]);
 
   // Start countdown when alignment is confirmed
   useEffect(() => {
@@ -787,8 +792,9 @@ export default function BodyScanAI() {
       // Enhanced cinematic transition sequence
       console.log('🎬 Starting cinematic transition sequence...');
       
-      // 🎬 CINEMATIC TRANSITION TIMELINE:
+      // 🎬 OPTIMIZED CINEMATIC TIMELINE:
       // 0ms: Start fade-out + stop pose detection
+      console.log('🟡 Fade-out started');
       setIsScanningFadingOut(true);
       setHasImageReady(true);
       
@@ -798,25 +804,26 @@ export default function BodyScanAI() {
           const ctx = overlayCanvasRef.current.getContext('2d');
           if (ctx) {
             ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
-            console.log('🧹 Canvas cleared at 100ms');
+            console.log('⚪ Canvas cleared');
           }
         }
       }, 100);
       
-      // 200ms: Show flash (150ms duration)
+      // 200ms: Show flash (150ms duration with smooth fade)
       setTimeout(() => {
+        console.log('💡 Flash ON');
         setShowShutterFlash(true);
         setTimeout(() => {
           setShowShutterFlash(false);
         }, 150);
       }, 200);
       
-      // 400ms: Show success popup with fade-in
+      // 450ms: Show success popup (after flash disappears)
       setTimeout(() => {
         setSavedScanUrl(publicUrl);
         setShowSuccessScreen(true);
-        console.log('✅ Success popup showing at 400ms');
-      }, 400);
+        console.log('🎉 Popup shown');
+      }, 450);
       
       // 700ms: Reset scanning state for next scan
       setTimeout(() => {
@@ -1336,9 +1343,17 @@ export default function BodyScanAI() {
   }, [currentStep, showSuccessScreen, hasImageReady]);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
-    // ✅ CRITICAL GUARD: Stop drawing immediately during transitions
+    // ✅ 1. CRITICAL GUARD: Stop drawing immediately during transitions
     if (showSuccessScreen || isScanningFadingOut) {
-      console.log('[DRAW] ❌ Early return - success screen or scanning fading out');
+      console.log('⚪ Canvas cleared - blocking pose overlay during transition');
+      
+      // Clear canvas immediately when transition starts
+      if (overlayCanvasRef.current) {
+        const ctx = overlayCanvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+        }
+      }
       return;
     }
     
@@ -1657,7 +1672,7 @@ export default function BodyScanAI() {
            style={{
              border: '3px solid lime',
              position: 'absolute',
-             zIndex: 10, // Lower than success screen (z-30)
+             zIndex: 10, // Lower than flash (z-30) and success (z-40)
              top: 0,
             left: 0,
             width: '100%',
@@ -1760,13 +1775,15 @@ export default function BodyScanAI() {
         </div>
       </div>
 
-      {/* Enhanced Step Success Screen with Cinematic Effects */}
+      {/* ✅ 4. Enhanced Step Success Screen with Smooth Animation */}
       {showSuccessScreen && savedScanUrl && ((() => {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-50 p-8 opacity-0 animate-[fadeIn_300ms_ease-out_forwards]">
-          <div className="opacity-0 animate-[bounceIn_400ms_ease-out_100ms_forwards]">
+        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-40 p-8">
+          {/* ✅ 4. Stable container with proper fade and bounce timing */}
+          <div className="opacity-0 animate-[fadeIn_300ms_ease-out_forwards]">
+            <div className="opacity-0 animate-[bounceIn_400ms_ease-out_100ms_forwards]">
             <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500`}>
             {/* Success Icon with Enhanced Animation */}
             <div className="text-7xl mb-8 animate-[bounce_1s_ease-in-out_3]">🎉</div>
@@ -1819,6 +1836,7 @@ export default function BodyScanAI() {
                 </p>
               </div>
             )}
+            </div>
             </div>
           </div>
         </div>
@@ -1934,7 +1952,7 @@ export default function BodyScanAI() {
         </div>
       </div>
 
-      {/* Alignment feedback overlay */}
+      {/* ✅ 3. Alignment feedback overlay - Hidden during transitions */}
       {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && !showSuccessScreen && !isScanningFadingOut && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-500 ease-in-out ${
@@ -1960,7 +1978,7 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* Perfect pose indicator */}
+      {/* ✅ 3. Perfect pose indicator - Hidden during transitions */}
       {alignmentFeedback?.isAligned && !hasImageReady && !showSuccessScreen && !isScanningFadingOut && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
@@ -2052,10 +2070,11 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* Camera shutter flash effect */}
+      {/* ✅ 1. Camera shutter flash effect with smooth fade */}
       {showShutterFlash && (
-        <div className="absolute inset-0 bg-white z-40 animate-pulse" 
-             style={{ animation: 'flash 150ms ease-out' }}>
+        <div className={`absolute inset-0 bg-white z-30 transition-opacity duration-150 ${
+          showShutterFlash ? 'opacity-100' : 'opacity-0'
+        }`}>
         </div>
       )}
 
