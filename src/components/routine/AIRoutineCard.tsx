@@ -260,11 +260,11 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-md hover:shadow-xl w-full max-w-lg">
-        <div className="h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-lg"></div>
+      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-lg hover:shadow-2xl w-full max-w-lg rounded-2xl overflow-hidden min-h-[420px]">
+        <div className="h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-2xl"></div>
         
         {/* Progress bar */}
-        <div className="h-1 bg-muted mx-4 rounded-full overflow-hidden">
+        <div className="h-1 bg-muted mx-6 mt-2 rounded-full overflow-hidden">
           <div 
             className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500"
             style={{ 
@@ -278,10 +278,10 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
         <CardContent className="p-6 pb-8 relative">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="text-3xl">{getGoalEmoji(routine.routine_goal)}</div>
+              <div className="text-4xl">{getGoalEmoji(routine.routine_goal)}</div>
               <div>
-                <h3 className="text-lg font-bold text-foreground">{routine.routine_name}</h3>
-                <div className="flex items-center gap-2 mt-1">
+                <h3 className="text-lg font-bold text-foreground mb-2">{routine.routine_name}</h3>
+                <div className="flex items-center gap-2">
                   <Badge className={getStatusColor()}>
                     {routine.is_active ? 'Active' : 'Not Started'}
                   </Badge>
@@ -291,7 +291,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
           </div>
           
           {/* Action icons moved lower with more spacing */}
-          <div className="absolute top-20 right-6 flex items-center gap-1">
+          <div className="absolute top-24 right-6 flex items-center gap-1">
             <Button
               size="icon"
               variant="ghost"
@@ -321,7 +321,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             </Button>
           </div>
 
-          <div className="space-y-3 mb-4">
+          <div className="space-y-5 mb-6">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Target className="h-4 w-4" />
@@ -346,13 +346,13 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
             {/* Current day info or fallback message */}
             {!hasWorkouts ? (
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
+              <div className="bg-muted/30 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   No workouts planned yet. Tap edit to set or regenerate your week.
                 </p>
               </div>
             ) : routine.is_active && currentDay ? (
-              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 mt-3">
+              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4 mt-3">
                 <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
                   Week {currentDay.week} • {currentDay.data.workout_type}
                 </div>
