@@ -90,7 +90,6 @@ export default function BodyScanAI() {
   // Enhanced transition states for smooth UX
   const [isScanningFadingOut, setIsScanningFadingOut] = useState(false);
   const [showShutterFlash, setShowShutterFlash] = useState(false);
-  const [showNudgeText, setShowNudgeText] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -219,22 +218,6 @@ export default function BodyScanAI() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
-  }, [showSuccessScreen]);
-
-  // Show nudge text after 1.5 seconds if user pauses on success screen
-  useEffect(() => {
-    let nudgeTimer: NodeJS.Timeout;
-    if (showSuccessScreen) {
-      setShowNudgeText(false);
-      nudgeTimer = setTimeout(() => {
-        setShowNudgeText(true);
-      }, 1500);
-    } else {
-      setShowNudgeText(false);
-    }
-    return () => {
-      if (nudgeTimer) clearTimeout(nudgeTimer);
-    };
   }, [showSuccessScreen]);
 
   useEffect(() => {
@@ -1744,28 +1727,23 @@ export default function BodyScanAI() {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-50 p-8 animate-fade-in">
-          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500 animate-[bounceIn_0.6s_cubic-bezier(0.68,-0.55,0.265,1.55)]`}>
-            {/* Success Icon with Enhanced Animation */}
-            <div className="text-7xl mb-8 animate-[bounce_1s_ease-in-out_3]">🎉</div>
+        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-6 transition-opacity duration-200 animate-fade-in`}>
+          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
+            {/* Success Icon with Step-specific Color */}
+            <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
             
-            {/* Enhanced Success Title */}
-            <h3 className="text-white text-3xl font-bold mb-3 tracking-wide">
-              Scan Complete!
+            {/* Step Success Title */}
+            <h3 className="text-white text-2xl font-bold mb-2">
+              {currentStepConfig.title.split(' ')[1]} {currentStepConfig.title.split(' ')[2]} Complete!
             </h3>
-            <p className="text-white/70 text-lg mb-8 leading-relaxed">
-              {currentStep === 'front' ? 'Front view captured perfectly' : 
-               currentStep === 'side' ? 'Side profile saved successfully' : 
-               'Back view scan completed'}
-            </p>
+            <p className="text-white/80 text-sm mb-6">Scan saved successfully</p>
             
-            {/* Enhanced Thumbnail with Premium Feel */}
-            <div className={`mb-8 rounded-3xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-2xl relative group`}>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10"></div>
+            {/* Enhanced Thumbnail with Step Theming */}
+            <div className={`mb-6 rounded-2xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-lg`}>
               <img 
                 src={savedScanUrl}
                 alt={`${currentStep} body scan`}
-                className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+                className="w-full h-40 object-cover"
               />
             </div>
             
@@ -1773,7 +1751,7 @@ export default function BodyScanAI() {
             <div className="space-y-4">
               <Button
                 onClick={handleContinue}
-                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
+                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-105 text-white font-bold py-4 text-lg shadow-lg transition-all duration-300`}
               >
                 {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
                  currentStep === 'side' ? '🔄 Continue to Back Scan' : 
@@ -1782,21 +1760,11 @@ export default function BodyScanAI() {
               <Button
                 onClick={handleRetake}
                 variant="outline"
-                className="w-full bg-white/5 border-2 border-white/30 text-white hover:bg-white/15 hover:border-white/50 transition-all duration-300 py-4 text-lg rounded-2xl"
+                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 transition-all duration-300"
               >
-                🔁 Retake Scan
+                🔁 Retake {currentStepConfig.title.split(' ')[1]} Scan
               </Button>
             </div>
-
-            {/* Nudge Text with Fade-in Animation */}
-            {showNudgeText && (
-              <div className="mt-6 pt-6 border-t border-white/20 animate-fade-in">
-                <p className="text-white/60 text-sm flex items-center justify-center gap-2">
-                  ✔️ Great job! Ready for the next scan?
-                  <ArrowRight className="w-4 h-4 animate-pulse" />
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}
