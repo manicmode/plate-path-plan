@@ -4019,6 +4019,14 @@ export type Database = {
         Args: { request_id: string }
         Returns: boolean
       }
+      activate_routine_safely: {
+        Args: {
+          target_routine_id: string
+          target_table_name: string
+          target_user_id: string
+        }
+        Returns: Json
+      }
       add_friend_from_contact: {
         Args: { contact_user_id: string }
         Returns: boolean
@@ -4226,6 +4234,18 @@ export type Database = {
           total_active_days: number
           total_messages: number
           rank_position: number
+        }[]
+      }
+      get_user_active_routine: {
+        Args: { target_user_id: string }
+        Returns: {
+          routine_id: string
+          routine_name: string
+          routine_type: string
+          table_source: string
+          is_active: boolean
+          start_date: string
+          updated_at: string
         }[]
       }
       get_user_private_challenge_access: {
