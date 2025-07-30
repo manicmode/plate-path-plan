@@ -72,6 +72,7 @@ const BodyScanResults = lazy(() => import('@/pages/BodyScanResults'));
 const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
 const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
 const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
+const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -113,6 +114,7 @@ function AppContent() {
           <Suspense fallback={<LoadingScreen />}>
             <Routes>
               {/* Fullscreen pages without Layout */}
+              <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/recovery-player" element={
                 <ProtectedRoute>

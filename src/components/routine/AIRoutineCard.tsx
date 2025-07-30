@@ -3,11 +3,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, Target, Activity, RefreshCw, Lock, LockOpen, Sparkles, History, Edit, Copy, Play } from 'lucide-react';
+import { Calendar, Clock, Target, Activity, RefreshCw, Lock, LockOpen, Sparkles, History, Edit, Share, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButton';
+import { shareRoutine, type ShareableRoutine } from '@/utils/shareUtils';
 
 interface AIRoutineCardProps {
   routine: {
@@ -179,37 +180,27 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
     setShowEditModal(true);
   };
 
-  const handleCopyRoutine = async () => {
-    if (!user) return;
-
+  const handleShareRoutine = async () => {
     try {
-      const copyName = `${routine.routine_name} (Copy)`;
+      const shareableRoutine: ShareableRoutine = {
+        id: routine.id,
+        name: routine.routine_name,
+        goal: routine.routine_goal,
+        splitType: routine.split_type,
+        daysPerWeek: routine.days_per_week,
+        duration: routine.estimated_duration_minutes
+      };
+
+      const wasNativeShare = await shareRoutine(shareableRoutine);
       
-      const { error } = await supabase
-        .from('ai_routines')
-        .insert({
-          user_id: user.id,
-          routine_name: copyName,
-          routine_goal: routine.routine_goal,
-          split_type: routine.split_type,
-          days_per_week: routine.days_per_week,
-          estimated_duration_minutes: routine.estimated_duration_minutes,
-          fitness_level: routine.fitness_level,
-          equipment_needed: routine.equipment_needed,
-          routine_data: routine.routine_data,
-          is_active: false,
-          current_week: 1,
-          current_day_in_week: 1
-        });
-
-      if (error) throw error;
-
-      toast.success('Routine copied successfully! 📋');
-      // Trigger refresh if callback exists
-      if (onEdit) onEdit(routine);
+      if (wasNativeShare) {
+        toast.success('Routine shared successfully! 🚀');
+      } else {
+        toast.success('Share link copied to clipboard! 📋');
+      }
     } catch (error) {
-      console.error('Error copying routine:', error);
-      toast.error('Failed to copy routine');
+      console.error('Error sharing routine:', error);
+      toast.error('Failed to share routine');
     }
   };
 
@@ -279,11 +270,11 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={handleCopyRoutine}
+                onClick={handleShareRoutine}
                 className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="Copy Routine"
+                title="Share Routine"
               >
-                <Copy className="h-4 w-4" />
+                <Share className="h-4 w-4" />
               </Button>
             </div>
           </div>

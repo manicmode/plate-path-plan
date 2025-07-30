@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Edit, Copy, Calendar, Clock, Play, History, Star } from 'lucide-react';
+import { Edit, Share, Calendar, Clock, Play, History, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { RoutineHistoryModal } from '@/components/routine/RoutineHistoryModal';
 import { WorkoutCompleteButton } from '@/components/workout/WorkoutCompleteButton';
+import { shareRoutine, type ShareableRoutine } from '@/utils/shareUtils';
+import { toast } from 'sonner';
 
 interface RoutineCardProps {
   routine: {
@@ -29,6 +31,30 @@ interface RoutineCardProps {
   onEdit: (routine: any) => void;
   onDuplicate: (routine: any) => void;
 }
+
+const handleShareRoutine = async (routine: any) => {
+  try {
+    const shareableRoutine: ShareableRoutine = {
+      id: routine.id.toString(),
+      name: routine.title,
+      goal: routine.routineType || 'general_fitness',
+      splitType: routine.type,
+      daysPerWeek: routine.daysPerWeek || 3,
+      duration: parseInt(routine.duration.match(/\d+/)?.[0] || '45')
+    };
+
+    const wasNativeShare = await shareRoutine(shareableRoutine);
+    
+    if (wasNativeShare) {
+      toast.success('Routine shared successfully! 🚀');
+    } else {
+      toast.success('Share link copied to clipboard! 📋');
+    }
+  } catch (error) {
+    console.error('Error sharing routine:', error);
+    toast.error('Failed to share routine');
+  }
+};
 
 export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) {
   const navigate = useNavigate();
@@ -159,10 +185,11 @@ export function RoutineCard({ routine, onEdit, onDuplicate }: RoutineCardProps) 
               <Button
                 size="icon"
                 variant="secondary"
-                onClick={() => onDuplicate(routine)}
+                onClick={() => handleShareRoutine(routine)}
                 className="h-8 w-8 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                title="Share Routine"
               >
-                <Copy className="h-4 w-4" />
+                <Share className="h-4 w-4" />
               </Button>
             </div>
           </div>
