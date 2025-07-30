@@ -217,8 +217,8 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
 
   return (
     <>
-      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-sm hover:shadow-md">
-        <div className="h-2 bg-gradient-to-r from-purple-500 to-blue-500" style={{ borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem' }}></div>
+      <Card className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 border-border bg-card shadow-md hover:shadow-xl">
+        <div className="h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-t-lg"></div>
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -238,12 +238,12 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
             </div>
             
             {/* Always visible top-right icons */}
-            <div className="flex items-center gap-1 ml-auto">
+            <div className="flex items-center gap-2 ml-auto shrink-0">
               <Button
                 size="icon"
                 variant="ghost"
                 onClick={handleViewHistory}
-                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 title="View History"
               >
                 <History className="h-4 w-4" />
@@ -252,7 +252,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                 size="icon"
                 variant="ghost"
                 onClick={handleEditRoutine}
-                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 title="Edit Routine"
               >
                 <Edit className="h-4 w-4" />
@@ -261,7 +261,7 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                 size="icon"
                 variant="ghost"
                 onClick={handleCopyRoutine}
-                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 title="Copy Routine"
               >
                 <Copy className="h-4 w-4" />
@@ -317,18 +317,18 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
               <Button
                 size="sm"
                 onClick={handleStartRoutine}
-                className="px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                className="px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Play className="h-4 w-4 mr-2" />
                 Start Routine
               </Button>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center gap-3 w-full">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleContinueWorkout}
-                  className="px-4 py-2 border-primary/20 text-primary hover:bg-primary/10"
+                  className="px-6 py-2 border-primary/20 text-primary hover:bg-primary/10 transition-colors"
                 >
                   <Play className="h-4 w-4 mr-2" />
                   Continue
@@ -340,10 +340,11 @@ export const AIRoutineCard: React.FC<AIRoutineCardProps> = ({ routine, onEdit, o
                     intensity={routine.routine_goal === 'increase_strength' ? 'high' : 'medium'}
                     duration_minutes={routine.estimated_duration_minutes}
                     difficulty_multiplier={routine.fitness_level === 'advanced' ? 1.3 : routine.fitness_level === 'intermediate' ? 1.1 : 1.0}
-                    className={`px-4 py-2 ${!hasWorkouts ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-6 py-2 ${!hasWorkouts ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!hasWorkouts}
                   />
                   {!hasWorkouts && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
                       Start this routine first.
                     </div>
                   )}
