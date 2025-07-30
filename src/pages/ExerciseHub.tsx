@@ -848,21 +848,6 @@ const ExerciseHub = () => {
     navigate(originRoute);
   };
 
-  // Demo function to test workout completion modal
-  const handleDemoWorkoutComplete = () => {
-    showCompletionModal({
-      workoutId: 'demo-workout',
-      workoutType: 'manual',
-      durationMinutes: 45,
-      exercisesCount: 6,
-      setsCount: 18,
-      musclesWorked: ['Chest', 'Triceps', 'Shoulders'],
-      workoutData: {
-        title: 'Upper Body Push Day',
-        difficulty: 'intermediate'
-      }
-    });
-  };
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
@@ -1176,21 +1161,6 @@ const ExerciseHub = () => {
                       </CardContent>
                     </Card>
 
-                    {/* Demo Workout Completion Button */}
-                    <Card className="w-full shadow-lg border-border bg-card">
-                      <CardContent className="p-6 text-center">
-                        <h3 className="text-lg font-bold text-foreground mb-2 flex items-center justify-center gap-2">
-                          🧪 Test Workout Completion
-                        </h3>
-                        <p className="text-muted-foreground mb-4">Demo the new workout completion modal</p>
-                        <Button
-                          onClick={handleDemoWorkoutComplete}
-                          className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold"
-                        >
-                          🎉 Complete Demo Workout
-                        </Button>
-                      </CardContent>
-                    </Card>
 
                     {/* Your Saved Routines Header */}
                     <div className="text-center mb-4 mt-8">
