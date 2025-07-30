@@ -300,8 +300,8 @@ const ExerciseHub = () => {
     }
   };
 
-  // Use unified routines from all sources
-  const { routines: allRoutines, loading: routinesLoading, deleteRoutine: deleteUnifiedRoutine, hasRealRoutines } = useAllRoutines();
+  // Use unified routines from all sources - only show active routines
+  const { routines: allRoutines, activeRoutines, loading: routinesLoading, deleteRoutine: deleteUnifiedRoutine, hasRealRoutines } = useAllRoutines();
   
   // Remove mock routines - now handled by useAllRoutines hook
 
@@ -1206,7 +1206,7 @@ const ExerciseHub = () => {
                           <div className="text-muted-foreground">Loading your routines...</div>
                         </div>
                       ) : (
-                        allRoutines.map((routine) => (
+                        activeRoutines.map((routine) => (
                           <div key={routine.id} className="relative">
                             {/* Conditionally render AIRoutineCard for AI routines or RoutineCard for custom */}
                             {routine.source === 'ai-generated' || routine.source === 'ai-legacy' ? (
@@ -1245,8 +1245,8 @@ const ExerciseHub = () => {
                       )}
                     </div>
 
-                     {/* Empty State (if no routines) */}
-                     {!routinesLoading && allRoutines.length === 0 && (
+                     {/* Empty State (if no active routines) */}
+                     {!routinesLoading && activeRoutines.length === 0 && (
                          <Card className="col-span-full w-full shadow-lg border-border bg-card mb-0 !mb-0">
                           <CardContent className="p-8 text-center">
                             <div className="text-4xl mb-4">💪</div>
