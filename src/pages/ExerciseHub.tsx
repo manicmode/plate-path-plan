@@ -971,17 +971,17 @@ const ExerciseHub = () => {
         </div>
       </div>
 
-      {/* Add vertical spacing before tab section */}
-      <div className="mt-6">
-        {/* Centered section title */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-semibold text-foreground/80">Your Exercise Hub</h2>
+      {/* Add extra vertical spacing before Exercise Hub section */}
+      <div className="mt-8 py-4">
+        {/* Enhanced section title with emoji and better styling */}
+        <div className="text-center mb-6 px-4">
+          <h2 className="text-lg font-semibold text-foreground/80">🧠 Your Exercise Hub</h2>
         </div>
 
         {/* Tab Navigation */}
         <div className="mb-6" ref={tabsRef}>
           {/* Separator line to distinguish tabs section */}
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mb-4"></div>
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mb-6"></div>
           
           {/* 4 tabs in grid with consistent spacing */}
           <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
