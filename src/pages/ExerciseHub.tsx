@@ -971,13 +971,20 @@ const ExerciseHub = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6" ref={tabsRef}>
-        {/* Separator line to distinguish tabs section */}
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mb-4"></div>
-        
-        {/* 4 tabs in grid */}
-        <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-3'}`}>
+      {/* Add vertical spacing before tab section */}
+      <div className="mt-6">
+        {/* Centered section title */}
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-semibold text-foreground/80">Your Exercise Hub</h2>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-6" ref={tabsRef}>
+          {/* Separator line to distinguish tabs section */}
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent mb-4"></div>
+          
+          {/* 4 tabs in grid with consistent spacing */}
+          <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
           {tabs.slice(0, 4).map((tab) => (
             <Button
               key={tab.id}
@@ -1713,6 +1720,7 @@ const ExerciseHub = () => {
           // Optionally refresh the routines list or navigate
         }}
       />
+      </div> {/* Close the mt-6 wrapper div */}
     </div>
   );
 };
