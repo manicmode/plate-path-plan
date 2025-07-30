@@ -138,8 +138,6 @@ export default function BodyScanAI() {
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           
-          // ✅ 5. Visually confirm that the <video> tag is rendering
-          videoRef.current.style.border = "2px solid red";
           
           console.log("[CAMERA] srcObject set, playing video");
           
@@ -1530,6 +1528,9 @@ export default function BodyScanAI() {
       setShowSuccessScreen(false);
       
       setTimeout(() => {
+        // Mark current step as completed first
+        setCompletedSteps(prev => new Set([...prev, currentStep]));
+        
         // Advance to next step
         if (currentStep === 'front') {
           console.log('📱 Advancing to side scan');
@@ -1547,7 +1548,7 @@ export default function BodyScanAI() {
             description: "Turn around so we can capture your back view",
             duration: 4000,
           });
-        } else {
+        } else if (currentStep === 'back') {
           console.log('🎉 All scans completed - showing weight modal');
           // Final step completed - show weight modal
           setShowWeightModal(true);
@@ -1562,12 +1563,14 @@ export default function BodyScanAI() {
         setAlignmentConfirmed(false);
         setCountdownSeconds(0);
         setIsCountingDown(false);
-        setSavedScanUrl(null); // Clear AFTER step change
+        setSavedScanUrl(null);
+        setIsScanningFadingOut(false);
+        setShowShutterFlash(false);
         
         // End transition after state reset
         setTimeout(() => {
           setIsTransitioning(false);
-          console.log(`✨ Transition to ${currentStep === 'front' ? 'side' : 'back'} complete`);
+          console.log(`✨ Transition to ${currentStep} complete`);
         }, 300);
       }, 800); // Slightly longer for cinematic effect
     } else {
@@ -2132,16 +2135,6 @@ export default function BodyScanAI() {
         onClose={tipsModal.onClose} 
       />
 
-      {/* Debug UI Block */}
-      <div className="text-xs text-white bg-black p-2 rounded-lg mt-4 fixed bottom-4 left-4 right-4 z-50">
-        <p>Step: {currentStep}</p>
-        <p>showSuccessScreen: {showSuccessScreen.toString()}</p>
-        <p>savedScanUrl: {savedScanUrl}</p>
-        <p>hasImageReady: {hasImageReady.toString()}</p>
-        <p>isTransitioning: {isTransitioning.toString()}</p>
-        <p>errorSavingScan: {errorSavingScan}</p>
-        <p>isSaving: {isSaving.toString()}</p>
-      </div>
     </div>
   );
 }
