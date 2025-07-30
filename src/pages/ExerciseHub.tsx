@@ -973,9 +973,9 @@ const ExerciseHub = () => {
 
       {/* Add extra vertical spacing before Exercise Hub section */}
       <div className="mt-8 py-4">
-        {/* Enhanced section title with emoji and better styling */}
-        <div className="text-center mb-6 px-4">
-          <h2 className="text-lg font-semibold text-foreground/80">🧠 Your Exercise Hub</h2>
+        {/* Enhanced section title with fitness icon and better styling */}
+        <div className="text-center mb-4 px-4">
+          <h2 className="text-xl font-semibold text-foreground/80">💪 Your Exercise Hub</h2>
         </div>
 
         {/* Tab Navigation */}
