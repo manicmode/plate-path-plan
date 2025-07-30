@@ -485,7 +485,13 @@ export default function BodyScanAI() {
       // STEP 8: VIDEO STREAM DIMENSIONS
       console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
       
-      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady || showSuccessScreen || hasImageReady) {
+      // Guard against running pose detection during success or fade out
+      if (showSuccessScreen || isScanningFadingOut) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+      
+      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady || hasImageReady) {
         animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
         return;
       }
@@ -794,14 +800,22 @@ export default function BodyScanAI() {
         }, 150);
       }, 200);
       
-      // Step 4: Show success screen after total 400ms delay
+      // Step 4: Clear canvas before showing success screen
+      setTimeout(() => {
+        if (overlayCanvasRef.current) {
+          const ctx = overlayCanvasRef.current.getContext('2d');
+          if (ctx) ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+        }
+      }, 550);
+      
+      // Step 5: Show success screen after total 600ms delay
       setTimeout(() => {
         setSavedScanUrl(publicUrl);
         setShowSuccessScreen(true);
         setIsScanningFadingOut(false); // Reset for next scan
         
         console.log('✅ Showing Success Screen after cinematic transition');
-      }, 400);
+      }, 600);
       
       console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
@@ -1318,9 +1332,9 @@ export default function BodyScanAI() {
     // STEP 4: DRAW DEBUG
     console.log("[DRAW] drawPoseOverlay called");
     
-    // ✅ CRITICAL: Don't draw anything if success screen is showing
-    if (showSuccessScreen || hasImageReady) {
-      console.log('[DRAW] ❌ Skipping draw - success screen or image ready');
+    // ✅ CRITICAL: Don't draw anything if success screen is showing OR fading out
+    if (showSuccessScreen || isScanningFadingOut) {
+      console.log('[DRAW] ❌ Skipping draw - success screen or scanning fading out');
       return;
     }
     
@@ -1439,7 +1453,7 @@ export default function BodyScanAI() {
     
     console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
     console.log('[DRAW] ✅ Pose overlay drawing complete');
-  }, [showSuccessScreen, hasImageReady]);
+  }, [showSuccessScreen, hasImageReady, isScanningFadingOut]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
