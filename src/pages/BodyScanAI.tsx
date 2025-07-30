@@ -35,16 +35,19 @@ interface AlignmentFeedback {
 }
 
 export default function BodyScanAI() {
-  // 3-step guided scan state
+  // Enhanced 3-step guided scan state
   const [currentStep, setCurrentStep] = useState<'front' | 'side' | 'back'>('front');
   const [capturedImages, setCapturedImages] = useState<{
     front?: string;
     side?: string;
     back?: string;
   }>({});
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [weight, setWeight] = useState('');
   const [isCompletingScan, setIsCompletingScan] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showStepSuccess, setShowStepSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -385,10 +388,13 @@ export default function BodyScanAI() {
     };
   }, []);
 
-  // Handle step transitions and state resets
+  // Enhanced step transitions with cinematic effects
   useEffect(() => {
     if (currentStep) {
-      // Reset pose detection states when step changes
+      // Start transition animation
+      setIsTransitioning(true);
+      
+      // Reset all step-specific states
       setAlignmentConfirmed(false);
       setCountdownSeconds(0);
       setIsCountingDown(false);
@@ -399,18 +405,27 @@ export default function BodyScanAI() {
         alignmentScore: 0, 
         feedback: 'Getting ready...' 
       });
+      setCapturedImage(null);
+      setHasImageReady(false);
+      setShowSuccessScreen(false);
+      setShowStepSuccess(false);
       
-      // Show toast notification for step transition
-      const stepNames = { front: 'Front', side: 'Side', back: 'Back' };
-      toast({
-        title: `📸 ${stepNames[currentStep]} Body Scan`,
-        description: currentStep === 'front' 
-          ? 'Stand upright with arms slightly out' 
-          : currentStep === 'side'
-          ? 'Turn sideways with arms relaxed'
-          : 'Turn around with arms relaxed',
-        duration: 3000,
-      });
+      // Cinematic step introduction
+      setTimeout(() => {
+        setIsTransitioning(false);
+        const stepIntros = {
+          front: { emoji: '👤', title: 'Front View', desc: 'Face the camera directly' },
+          side: { emoji: '🚶', title: 'Side Profile', desc: 'Turn sideways to the right' },
+          back: { emoji: '🔄', title: 'Back View', desc: 'Turn around completely' }
+        };
+        
+        const intro = stepIntros[currentStep];
+        toast({
+          title: `${intro.emoji} ${intro.title} Body Scan`,
+          description: intro.desc,
+          duration: 4000,
+        });
+      }, 500);
     }
   }, [currentStep]);
 
@@ -1190,23 +1205,34 @@ export default function BodyScanAI() {
 
   const handleContinue = () => {
     if (hasImageReady && savedScanUrl) {
-      // Advance to next step based on current step
-      if (currentStep === 'front') {
-        setCurrentStep('side');
-      } else if (currentStep === 'side') {
-        setCurrentStep('back');
-      } else {
-        // Final step completed — show weight modal
-        setShowWeightModal(true);
-      }
+      // Store current step's captured image
+      setCapturedImages(prev => ({
+        ...prev,
+        [currentStep]: savedScanUrl
+      }));
       
-      // Reset state for next scan
-      setCapturedImage(null);
-      setHasImageReady(false);
-      setAlignmentConfirmed(false);
+      // Mark current step as completed
+      setCompletedSteps(prev => new Set([...prev, currentStep]));
+      
+      // Show step success animation
+      setShowStepSuccess(true);
+      
+      // Advance to next step with cinematic transition
+      setTimeout(() => {
+        if (currentStep === 'front') {
+          setCurrentStep('side');
+        } else if (currentStep === 'side') {
+          setCurrentStep('back');
+        } else {
+          // All steps completed - show completion
+          setShowWeightModal(true);
+        }
+        setShowStepSuccess(false);
+      }, 1500);
+      
+      // Reset current step state
+      setSavedScanUrl(null);
       setShowSuccessScreen(false);
-      setCountdownSeconds(0);
-      setIsCountingDown(false);
     }
   };
 
@@ -1230,24 +1256,44 @@ export default function BodyScanAI() {
     setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
   };
 
-  // Dynamic step instructions
+  // Enhanced step instructions with visual themes
   const stepInstructions = {
     front: {
-      title: '📸 Front Body Scan',
+      title: '👤 Front Body Scan',
       subtitle: 'Stand upright with arms slightly out. Match your body to the glowing outline.',
+      theme: 'from-blue-500 to-cyan-500',
+      borderColor: 'border-blue-400',
+      bgColor: 'bg-blue-500/90',
+      icon: '👤',
+      step: 1
     },
     side: {
-      title: '📸 Side Body Scan',
+      title: '🚶 Side Body Scan', 
       subtitle: 'Turn sideways with arms relaxed. Face right and align your body with the outline.',
+      theme: 'from-green-500 to-emerald-500',
+      borderColor: 'border-green-400',
+      bgColor: 'bg-green-500/90',
+      icon: '🚶',
+      step: 2
     },
     back: {
-      title: '📸 Back Body Scan',
+      title: '🔄 Back Body Scan',
       subtitle: 'Turn around with arms relaxed. Match your body to the glowing outline for the back scan.',
+      theme: 'from-purple-500 to-violet-500',
+      borderColor: 'border-purple-400',
+      bgColor: 'bg-purple-500/90',
+      icon: '🔄',
+      step: 3
     },
   };
 
+  // Get current step configuration
+  const currentStepConfig = stepInstructions[currentStep];
+
   return (
-    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden portrait:block landscape:hidden">
+    <div className={`fixed inset-0 w-full h-full bg-black overflow-hidden portrait:block landscape:hidden transition-all duration-700 ${
+      isTransitioning ? 'bg-gray-900' : 'bg-black'
+    }`}>
       {/* Landscape orientation warning */}
       {showOrientationWarning && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -1308,43 +1354,66 @@ export default function BodyScanAI() {
         }}></div>
       </div>
 
-      {/* Progress Indicator & Header Instructions */}
-      <div className="absolute top-4 md:top-6 left-4 right-4 z-20">
-        {/* Progress Bar */}
-        <div className="bg-black/60 backdrop-blur-sm rounded-xl p-3 border border-white/30 mb-3">
+      {/* Enhanced Progress Indicator & Cinematic Header */}
+      <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        {/* Enhanced Progress Bar with Step Completion */}
+        <div className={`bg-black/60 backdrop-blur-sm rounded-xl p-3 border mb-3 transition-all duration-500 ${currentStepConfig.borderColor}`}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-white/80 text-xs font-medium">Progress</span>
-            <span className="text-white text-sm font-bold">
-              Step {currentStep === 'front' ? '1' : currentStep === 'side' ? '2' : '3'} of 3
+            <span className="text-white text-sm font-bold flex items-center gap-2">
+              <span className="text-xl">{currentStepConfig.icon}</span>
+              Step {currentStepConfig.step} of 3
             </span>
           </div>
-          <div className="w-full bg-white/20 rounded-full h-2">
-            <div 
-              className="bg-gradient-to-r from-blue-400 to-cyan-400 h-2 rounded-full transition-all duration-500"
-              style={{ 
-                width: `${currentStep === 'front' ? '33.33%' : currentStep === 'side' ? '66.66%' : '100%'}` 
-              }}
-            ></div>
+          <div className="flex gap-1">
+            {['front', 'side', 'back'].map((step, index) => (
+              <div key={step} className="flex-1 bg-white/20 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-700 ${
+                    completedSteps.has(step) 
+                      ? 'bg-gradient-to-r from-green-400 to-green-500' 
+                      : step === currentStep 
+                      ? `bg-gradient-to-r ${currentStepConfig.theme}` 
+                      : 'bg-transparent'
+                  }`}
+                  style={{ width: completedSteps.has(step) || step === currentStep ? '100%' : '0%' }}
+                ></div>
+              </div>
+            ))}
           </div>
         </div>
         
-        {/* Dynamic Header */}
-        <div key={currentStep} className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
-          <h2 className="text-white text-lg font-bold mb-2 text-center">
-            {stepInstructions[currentStep].title}
-          </h2>
-          <p className="text-white/90 text-sm text-center">
-            {stepInstructions[currentStep].subtitle}
-          </p>
+        {/* Cinematic Dynamic Header */}
+        <div key={currentStep} className={`bg-black/60 backdrop-blur-sm rounded-2xl p-4 border transition-all duration-700 animate-fade-in ${currentStepConfig.borderColor}`}>
+          <div className="text-center relative">
+            {/* Step Icon with Animation */}
+            <div className="text-4xl mb-3 animate-scale-in">{currentStepConfig.icon}</div>
+            
+            {/* Step Title with Gradient */}
+            <h2 className={`text-white text-lg font-bold mb-2 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
+              {currentStepConfig.title}
+            </h2>
+            
+            {/* Step Subtitle */}
+            <p className="text-white/90 text-sm leading-relaxed">
+              {currentStepConfig.subtitle}
+            </p>
+            
+            {/* Dynamic Background Accent */}
+            <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-5 rounded-2xl -z-10`}></div>
+          </div>
         </div>
       </div>
 
       
-      {/* Body Silhouette Overlay - Dynamic based on currentStep */}
-      <div key={currentStep} className="absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15">
-        <div className={`relative transition-all duration-500 ${
+      {/* Enhanced Dynamic Body Silhouette with Step-Specific Theming */}
+      <div key={currentStep} className={`absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15 transition-all duration-1000 ${isTransitioning ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+        <div className={`relative transition-all duration-700 ${
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
+          {/* Step-specific glow effect */}
+          <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-20 blur-3xl rounded-full scale-110 animate-pulse`}></div>
+          
           <img 
             src={
               currentStep === 'front' 
@@ -1354,48 +1423,73 @@ export default function BodyScanAI() {
                 : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             }
             alt={`${currentStep} body silhouette`}
-            className="w-[85vw] max-h-[75vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
+            className={`w-[85vw] max-h-[75vh] h-auto object-contain animate-fade-in relative z-10 ${
+              currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
+              currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
+              'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
+            }`}
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
         </div>
       </div>
 
-      {/* Capture success overlay with image preview */}
+      {/* Enhanced Step Success Screen with Cinematic Effects */}
       {showSuccessScreen && savedScanUrl && (
-        <div key={currentStep} className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30 p-6">
-          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 text-center max-w-sm">
-            <div className="text-4xl mb-4">✅</div>
-            <h3 className="text-white text-xl font-bold mb-4">
-              {currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} Scan Saved!
-            </h3>
+        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
+          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
+            {/* Success Icon with Step-specific Color */}
+            <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
             
-            {/* Thumbnail preview */}
-            <div className="mb-6 rounded-2xl overflow-hidden border-2 border-green-400/50">
+            {/* Step Success Title */}
+            <h3 className="text-white text-2xl font-bold mb-2">
+              {currentStepConfig.title.split(' ')[1]} {currentStepConfig.title.split(' ')[2]} Complete!
+            </h3>
+            <p className="text-white/80 text-sm mb-6">Scan saved successfully</p>
+            
+            {/* Enhanced Thumbnail with Step Theming */}
+            <div className={`mb-6 rounded-2xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-lg`}>
               <img 
                 src={savedScanUrl}
                 alt={`${currentStep} body scan`}
-                className="w-full h-32 object-cover"
+                className="w-full h-40 object-cover"
               />
             </div>
             
-            {/* Action buttons */}
-            <div className="space-y-3">
+            {/* Enhanced Action Buttons */}
+            <div className="space-y-4">
               <Button
                 onClick={handleContinue}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3"
+                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-105 text-white font-bold py-4 text-lg shadow-lg transition-all duration-300`}
               >
-                {currentStep === 'front' ? 'Continue to Side Scan 🔜' : 
-                 currentStep === 'side' ? 'Continue to Back Scan 🔜' : 
-                 'Complete Scan 🎉'}
+                {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
+                 currentStep === 'side' ? '🔄 Continue to Back Scan' : 
+                 '🎉 Complete All Scans'}
               </Button>
               <Button
                 onClick={handleRetake}
                 variant="outline"
-                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20"
+                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 transition-all duration-300"
               >
-                Retake {currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} Scan 🔁
+                🔁 Retake {currentStepConfig.title.split(' ')[1]} Scan
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step Success Transition Screen */}
+      {showStepSuccess && (
+        <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-40 animate-fade-in">
+          <div className={`text-center animate-scale-in`}>
+            <div className={`text-8xl mb-6 animate-bounce`}>{currentStepConfig.icon}</div>
+            <h2 className={`text-4xl font-bold mb-4 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
+              Step {currentStepConfig.step} Complete!
+            </h2>
+            <div className="text-white/60 text-lg">
+              {currentStep === 'front' ? 'Preparing side view...' : 
+               currentStep === 'side' ? 'Preparing back view...' : 
+               'Preparing completion...'}
             </div>
           </div>
         </div>
@@ -1434,7 +1528,7 @@ export default function BodyScanAI() {
             📷 Upload Image
           </Button>
 
-          {/* Main Action Button */}
+          {/* Enhanced Main Action Button with Step Theming */}
           <Button
             onClick={hasImageReady ? handleContinue : captureImage}
             disabled={
@@ -1442,48 +1536,51 @@ export default function BodyScanAI() {
               isSaving ||
               (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
               isCountingDown ||
-              showSuccessScreen
+              showSuccessScreen ||
+              isTransitioning
             }
             className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-              // Button color logic based on alignmentFeedback
+              // Enhanced button theming based on step and alignment
               (!isPoseDetectionEnabled) 
-                ? 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400'
+                ? `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-lg`
                 : (alignmentFeedback === null)
                 ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
                 : (alignmentFeedback.isAligned === false)
                 ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                : 'from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-400 shadow-[0_0_20px_rgba(61,219,133,0.4)]'
+                : `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-[0_0_20px_rgba(59,130,246,0.4)]`
             }`}
           >
             <div className="flex items-center justify-center">
               {showSuccessScreen ? (
                 <>
                   <ArrowRight className="w-6 h-6 mr-3" />
-                  🚀 Continue to {currentStep === 'front' ? 'Side' : currentStep === 'side' ? 'Back' : 'Complete'} Scan
+                  {currentStepConfig.icon} Continue to {currentStep === 'front' ? 'Side' : currentStep === 'side' ? 'Back' : 'Complete'} Scan
                 </>
               ) : hasImageReady ? (
                 <>
                   <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
-                    {isSaving ? '💾' : '✅'}
+                    {isSaving ? '💾' : currentStepConfig.icon}
                   </div>
                   {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
                 </>
               ) : (
                 <>
-                  <div className={`w-6 h-6 mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>⚡</div>
+                  <div className={`text-xl mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>
+                    {isCapturing || isCountingDown ? '📸' : currentStepConfig.icon}
+                  </div>
                   {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
                    isCapturing ? '🔍 SCANNING...' : 
-                   `📸 Capture ${currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} View`}
-                  {/* Pose alignment indicator */}
+                   `📸 Capture ${currentStepConfig.title.split(' ')[1]} View`}
+                  {/* Enhanced pose alignment indicator */}
                   {isPoseDetectionEnabled && alignmentFeedback && (
-                    <span className="ml-2">
+                    <span className="ml-2 text-lg">
                       {alignmentFeedback.isAligned ? '✅' : '⚠️'}
                     </span>
                   )}
                 </>
               )}
             </div>
-            {!hasImageReady && !isCapturing && (
+            {!hasImageReady && !isCapturing && !isTransitioning && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
                            animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
             )}
