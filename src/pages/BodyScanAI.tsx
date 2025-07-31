@@ -976,90 +976,44 @@ export default function BodyScanAI() {
       return;
     }
 
-    console.log('🟡 Fade-out started');
+    console.log('📸 Starting image capture');
     setIsCapturing(true);
-    setIsScanningFadingOut(true);
-    
-    // ✅ 5. Stop pose detection loop instantly
+
+    // Stop pose detection loop
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
 
     try {
-      // ✅ 2. Clear canvas at 100ms (before flash)
-      setTimeout(() => {
-        if (overlayCanvasRef.current) {
-          const canvas = overlayCanvasRef.current;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            console.log('⚪ Canvas cleared');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-          }
-        }
-      }, 100);
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth || video.clientWidth;
+      canvas.height = video.videoHeight || video.clientHeight;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Canvas context not available');
+      }
 
-      // ✅ 3. Flash begins at 200ms
-      setTimeout(() => {
-        console.log('💡 Flash ON');
-        setShowShutterFlash(true);
-        playBodyScanCapture();
-      }, 200);
-
-      // ✅ 3. Flash ends at 350ms
-      setTimeout(() => {
-        setShowShutterFlash(false);
-      }, 350);
-
-      // ✅ 4. Show success popup at 450ms
-      setTimeout(() => {
-        const video = videoRef.current!;
-        const canvas = canvasRef.current!;
-        
-        // Set canvas dimensions to match video
-        canvas.width = video.videoWidth || video.clientWidth;
-        canvas.height = video.videoHeight || video.clientHeight;
-        
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Get the image data
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedImage(imageData);
-        
-        console.log('📸 Image captured successfully', {
-          width: canvas.width,
-          height: canvas.height,
-          dataLength: imageData.length
-        });
-        
-        // ✅ Validate pose before marking as ready
-        if (poseDetected && alignmentFeedback?.isAligned) {
-          console.log('✅ Pose validation passed, marking image as ready');
-          setHasImageReady(true);
-        } else {
-          console.log('❌ Pose validation failed');
-          toast({
-            title: "Pose Quality Issue",
-            description: "Please ensure you're properly aligned and try again.",
-            variant: "destructive"
-          });
-          
-          // Reset states
-          setIsCapturing(false);
-          setIsScanningFadingOut(false);
-          setIsCountingDown(false);
-          setCountdownSeconds(0);
-        }
-      }, 450);
-
-      // ✅ Reset scanning state at 700ms
-      setTimeout(() => {
-        setIsScanningFadingOut(false);
-        setIsCountingDown(false);
-        setCountdownSeconds(0);
-      }, 700);
-
+      // Capture the image
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/png');
+      setCapturedImage(dataUrl);
+      setHasImageReady(true); // For continue button
+      console.log('📸 Image captured and stored');
+      
+      // Trigger save
+      saveBodyScanToSupabase(dataUrl);
+      
+      // Flash effect (brief)
+      setShowShutterFlash(true);
+      setTimeout(() => setShowShutterFlash(false), 150);  // One short flash only
+      
+      console.log('✅ captureImage complete - image saved and success triggered');
+      
     } catch (error) {
       console.error('❌ Capture failed:', error);
       toast({
@@ -1069,11 +1023,9 @@ export default function BodyScanAI() {
       });
       
       setIsCapturing(false);
-      setIsScanningFadingOut(false);
-      setIsCountingDown(false);
-      setCountdownSeconds(0);
+      setHasImageReady(false);
     }
-  }, [isCapturing, poseDetected, alignmentFeedback, playBodyScanCapture]);
+  }, [isCapturing, playBodyScanCapture]);
 
   // ✅ Enhanced saveBodyScanToSupabase with proper error handling and success feedback
   const saveBodyScanToSupabase = async (imageData: string) => {
