@@ -1725,6 +1725,53 @@ export default function BodyScanAI() {
       {/* Fixed Bottom Controls - Matching Health Scanner */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
         <div className="flex flex-col space-y-4">
+          {/* Alignment feedback overlay - positioned above cancel button */}
+          {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && (
+            <div className="mx-2">
+              <div className={`backdrop-blur-sm rounded-2xl p-3 border transition-all duration-500 ease-in-out ${
+                alignmentFeedback.alignmentScore >= 0.7 
+                  ? 'bg-yellow-500/90 border-yellow-400' 
+                  : alignmentFeedback.alignmentScore >= 0.6
+                  ? 'bg-orange-500/90 border-orange-400' 
+                  : 'bg-red-500/90 border-red-400'
+              }`}>
+                <h3 className="text-white font-bold mb-1 flex items-center text-sm">
+                  {alignmentFeedback.alignmentScore >= 0.7 ? '🟡' : alignmentFeedback.alignmentScore >= 0.6 ? '⚠️' : '❌'} 
+                  {alignmentFeedback.alignmentScore >= 0.7 ? ' Almost There!' : ' Pose Alignment'}
+                </h3>
+                <p className="text-white text-xs mb-1">
+                  Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
+                </p>
+                <p className="text-white text-xs font-medium">
+                  {alignmentFeedback.feedback}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Perfect pose indicator - positioned above cancel button */}
+          {alignmentFeedback?.isAligned && !hasImageReady && (
+            <div className="mx-2">
+              <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-3 border border-green-400 transition-all duration-500 ease-in-out">
+                <div className="text-center">
+                  <div className="text-xl mb-1 animate-pulse">✅</div>
+                  <p className="text-white font-bold text-sm">Great Pose!</p>
+                  <p className="text-white text-xs">Hold steady for auto-capture...</p>
+                  {alignmentFrameCount > 0 && (
+                    <div className="mt-2">
+                      <div className="bg-white/20 rounded-full h-2">
+                        <div 
+                          className="bg-white rounded-full h-2 transition-all duration-300 ease-out"
+                          style={{ width: `${Math.min(100, (alignmentFrameCount / 5) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Cancel Button */}
           <Button
             onClick={handleCancel}
@@ -1803,53 +1850,6 @@ export default function BodyScanAI() {
           </Button>
         </div>
       </div>
-
-      {/* Alignment feedback overlay */}
-      {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && (
-        <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
-          <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-500 ease-in-out ${
-            alignmentFeedback.alignmentScore >= 0.7 
-              ? 'bg-yellow-500/90 border-yellow-400' 
-              : alignmentFeedback.alignmentScore >= 0.6
-              ? 'bg-orange-500/90 border-orange-400' 
-              : 'bg-red-500/90 border-red-400'
-          }`}>
-            <h3 className="text-white font-bold mb-2 flex items-center">
-              {alignmentFeedback.alignmentScore >= 0.7 ? '🟡' : alignmentFeedback.alignmentScore >= 0.6 ? '⚠️' : '❌'} 
-              {alignmentFeedback.alignmentScore >= 0.7 ? ' Almost There!' : ' Pose Alignment'}
-            </h3>
-            <p className="text-white text-sm mb-2">
-              Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
-            </p>
-            <p className="text-white text-sm font-medium">
-              {alignmentFeedback.feedback}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Perfect pose indicator */}
-      {alignmentFeedback?.isAligned && !hasImageReady && (
-        <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
-          <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
-            <div className="text-center">
-              <div className="text-2xl mb-2 animate-pulse">✅</div>
-              <p className="text-white font-bold text-lg">Great Pose!</p>
-              <p className="text-white text-sm">Hold steady for auto-capture...</p>
-              {alignmentFrameCount > 0 && (
-                <div className="mt-2">
-                  <div className="bg-white/20 rounded-full h-2">
-                    <div 
-                      className="bg-white rounded-full h-2 transition-all duration-300 ease-out"
-                      style={{ width: `${Math.min(100, (alignmentFrameCount / 5) * 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enhanced Auto-capture countdown with progress ring */}
       {isCountingDown && countdownSeconds > 0 && (
