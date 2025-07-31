@@ -6,7 +6,6 @@ import { RefreshCw } from 'lucide-react';
 import AuthForm from '@/components/auth/AuthForm';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import sideBodySilhouette from '@/assets/sidebodysilhouetteV2.png';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
