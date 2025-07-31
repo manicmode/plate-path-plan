@@ -1595,10 +1595,10 @@ export default function BodyScanAI() {
           <img 
             src={
               currentStep === 'front' 
-                ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+                ? sideBodySilhouette
                 : currentStep === 'side'
-                ? sideViewSilhouette
-                : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+                ? sideBodySilhouette
+                : sideBodySilhouette
             }
             alt={`${currentStep} body silhouette`}
             className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
