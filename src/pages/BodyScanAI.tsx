@@ -787,6 +787,16 @@ export default function BodyScanAI() {
 
       console.log("✅ Scan saved, publicUrl:", publicUrl);
       
+      // ✅ Block success if pose is misaligned
+      if (!alignmentFeedback?.isAligned) {
+        toast({
+          title: "Hold on!",
+          description: "Make sure your body is aligned and facing the correct direction before continuing.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Set success screen state to trigger the Continue button flow
       setSavedScanUrl(publicUrl);
       setShowSuccessScreen(true);
