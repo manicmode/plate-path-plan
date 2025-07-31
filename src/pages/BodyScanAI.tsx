@@ -1815,7 +1815,7 @@ export default function BodyScanAI() {
                   </div>
                   {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
                    isCapturing ? '🔍 SCANNING...' : 
-                   `📸 Capture ${currentStepConfig.title.split(' ')[1]} View`}
+                   `📸 Auto-Capture: ${currentStepConfig.title.split(' ')[1]} View`}
                   {/* Enhanced pose alignment indicator */}
                   {isPoseDetectionEnabled && alignmentFeedback && (
                     <span className="ml-2 text-lg">
