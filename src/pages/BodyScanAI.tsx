@@ -216,13 +216,6 @@ export default function BodyScanAI() {
     };
   }, [stream]);
 
-  // Trigger save when image is ready
-  useEffect(() => {
-    if (hasImageReady) {
-      console.log("🟢 Pose ready, saving scan");
-      saveBodyScanToSupabase(capturedImage!);
-    }
-  }, [hasImageReady]);
 
   // Clear canvas overlay when success screen shows
   useEffect(() => {
@@ -535,32 +528,25 @@ export default function BodyScanAI() {
             const newCount = prev + 1;
             console.log(`[ALIGNMENT] Frame count: ${newCount}/5`);
             
-            if (newCount >= 5 && !alignmentConfirmed) { // 5 frames of alignment
+            if (newCount >= 5 && !alignmentConfirmed) {
               console.log('🎯 ALIGNMENT CONFIRMED - Starting countdown');
               setAlignmentConfirmed(true);
               setIsCountingDown(true);
               setCountdownSeconds(3);
-              
-              // ✅ Countdown timer with audio feedback
-              const countdownInterval = setInterval(() => {
-                setCountdownSeconds(prev => {
-                  if (prev <= 1) {
-                    clearInterval(countdownInterval);
-                    console.log('📸 AUTO-CAPTURING!');
-                    captureImage();
-                    return 0;
-                  }
-                  return prev - 1;
-                });
-              }, 1000);
+              // ❌ REMOVE any setInterval logic here
             }
             
             return newCount;
           });
         } else if (!alignmentResult.isAligned) {
-          // Reset alignment if pose becomes misaligned
           setAlignmentFrameCount(0);
           setAlignmentConfirmed(false);
+
+          if (isCountingDown) {
+            setIsCountingDown(false);
+            setCountdownSeconds(0);
+            console.log('🛑 COUNTDOWN RESET - alignment lost');
+          }
         }
         
       } else {
@@ -1007,24 +993,17 @@ export default function BodyScanAI() {
       return;
     }
 
-    // Check if video is ready with dimensions
+    // Fix 3: Simplified camera readiness check
     const video = videoRef.current;
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.error('❌ Video dimensions are 0:', { width: video.videoWidth, height: video.videoHeight });
+    if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
+      console.error('❌ Video not ready:', { 
+        width: video.videoWidth, 
+        height: video.videoHeight, 
+        readyState: video.readyState 
+      });
       toast({
         title: "Camera Not Ready",
         description: "Please wait for camera to initialize",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check readiness flags
-    if (!videoReady || !canvasReady) {
-      console.error('❌ Camera/canvas not ready:', { videoReady, canvasReady });
-      toast({
-        title: "System Not Ready",
-        description: "Please wait for camera initialization to complete",
         variant: "destructive"
       });
       return;
@@ -1051,22 +1030,15 @@ export default function BodyScanAI() {
         throw new Error('Canvas context not available');
       }
 
-      // Capture the image
+      // Fix 2: Updated captureImage logic with direct save
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/png');
       setCapturedImage(dataUrl);
-      setHasImageReady(true); // For continue button
-      console.log('📸 Image captured and stored');
-      
-      // Flash effect (brief) - ensure no overlap with success screen
+
       setShowShutterFlash(true);
-      setTimeout(() => {
-        setShowShutterFlash(false);
-        console.log('💡 Flash cleared');
-      }, 150);
-      
-      // Trigger save (this will show success screen after completion)
-      saveBodyScanToSupabase(dataUrl);
+      setTimeout(() => setShowShutterFlash(false), 150);
+
+      await saveBodyScanToSupabase(dataUrl);
       
       console.log('✅ captureImage complete - image saved and success triggered');
       
@@ -1082,6 +1054,32 @@ export default function BodyScanAI() {
       setHasImageReady(false);
     }
   }, [isCapturing, videoReady, canvasReady, playBodyScanCapture]);
+
+  // Fix 1: Add countdown useEffect to replace setInterval logic (moved after captureImage declaration)
+  useEffect(() => {
+    let countdownInterval: NodeJS.Timeout;
+    
+    if (isCountingDown && countdownSeconds > 0) {
+      console.log('⏰ Countdown:', countdownSeconds);
+      
+      countdownInterval = setTimeout(() => {
+        setCountdownSeconds(prev => {
+          if (prev <= 1) {
+            console.log('📸 COUNTDOWN COMPLETE - triggering capture');
+            setIsCountingDown(false);
+            playBodyScanCapture();
+            captureImage();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (countdownInterval) clearTimeout(countdownInterval);
+    };
+  }, [isCountingDown, countdownSeconds, playBodyScanCapture, captureImage]);
 
   // ✅ Enhanced saveBodyScanToSupabase with proper error handling and success feedback
   const saveBodyScanToSupabase = async (imageData: string) => {
@@ -1157,22 +1155,15 @@ export default function BodyScanAI() {
 
       console.log('✅ Scan record saved:', scanData);
 
-      // Update state for success
+      // Fix 4: Simplified success screen logic
       setSavedScanUrl(publicUrl);
-      setCapturedImages(prev => ({
-        ...prev,
-        [currentStep]: publicUrl
-      }));
-      
-      // ✅ Show success screen after flash is done and successful save
-      setTimeout(() => {
-        // Ensure flash is completely cleared before showing success
-        setShowShutterFlash(false);
-        console.log('🎉 Success screen showing after flash cleared');
-        setShowSuccessScreen(true);
-        setIsCapturing(false);
-        showInstantFeedback(currentStep);
-      }, 400); // Longer delay to ensure flash is completely done
+      setCapturedImages(prev => ({ ...prev, [currentStep]: publicUrl }));
+
+      setHasImageReady(true); // Enables continue button
+      setShowSuccessScreen(true);
+      setIsCapturing(false);
+
+      showInstantFeedback(currentStep);
 
     } catch (error) {
       console.error('❌ Save failed:', error);
