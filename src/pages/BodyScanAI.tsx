@@ -531,23 +531,6 @@ export default function BodyScanAI() {
           
           console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
           
-          // Check if detected pose matches required view for current step
-          const detectedPoseView = detectPoseView(pose);
-
-          if (
-            (currentStep === 'front' && detectedPoseView !== 'front') ||
-            (currentStep === 'side' && detectedPoseView !== 'side') ||
-            (currentStep === 'back' && detectedPoseView !== 'front') // treating back same as front for now
-          ) {
-            setAlignmentFeedback({
-              isAligned: false,
-              misalignedLimbs: [],
-              alignmentScore: 0,
-              feedback: 'Pose does not match required view'
-            });
-            return;
-          }
-
           // Analyze alignment
           const isAligned = currentStep === 'front'
             ? isFrontAligned(pose)
@@ -634,36 +617,12 @@ export default function BodyScanAI() {
     }
   }, [alignmentConfirmed, isCountingDown, hasImageReady]);
 
-  // Countdown timer with continuous pose validation
+  // Countdown timer
   useEffect(() => {
     if (isCountingDown && countdownSeconds > 0) {
       console.log('⏰ Countdown:', countdownSeconds);
       
       const timer = setTimeout(() => {
-        // Check pose validity during countdown
-        if (poseDetected) {
-          const detectedPoseView = detectPoseView(poseDetected);
-          const isPoseValid = (
-            (currentStep === 'front' && detectedPoseView === 'front') ||
-            (currentStep === 'side' && detectedPoseView === 'side') ||
-            (currentStep === 'back' && detectedPoseView === 'front') // treating back same as front
-          ) && alignmentFeedback?.isAligned;
-
-          if (!isPoseValid) {
-            console.log('🛑 COUNTDOWN CANCELLED - pose invalid during countdown');
-            setIsCountingDown(false);
-            setCountdownSeconds(0);
-            setAlignmentConfirmed(false);
-            setAlignmentFeedback({
-              isAligned: false,
-              misalignedLimbs: [],
-              alignmentScore: 0,
-              feedback: "Hold your pose steady to complete scan."
-            });
-            return;
-          }
-        }
-
         setCountdownSeconds(prev => {
           if (prev <= 1) {
             console.log('📸 COUNTDOWN COMPLETE - triggering capture');
@@ -678,7 +637,7 @@ export default function BodyScanAI() {
 
       return () => clearTimeout(timer);
     }
-  }, [isCountingDown, countdownSeconds, poseDetected, alignmentFeedback, currentStep]);
+  }, [isCountingDown, countdownSeconds]);
 
   // Reset countdown if alignment is lost
   useEffect(() => {
@@ -1131,56 +1090,6 @@ export default function BodyScanAI() {
     // Placeholder - return true for now
     return true;
   };
-
-  function detectPoseView(pose: DetectedPose): 'front' | 'side' | 'back' | 'unknown' {
-    const keypoints = pose.keypoints.reduce((map, kp) => {
-      map[kp.name] = kp;
-      return map;
-    }, {} as Record<string, PoseKeypoint>);
-
-    // Check for minimum keypoint visibility (at least 6 keypoints with score > 0.5)
-    const visibleKeypoints = pose.keypoints.filter(kp => (kp.score ?? 0) > 0.5);
-    if (visibleKeypoints.length < 6) return 'unknown';
-
-    // Check for at least one lower body keypoint
-    const lowerBodyKeypoints = ['left_knee', 'right_knee', 'left_ankle', 'right_ankle'];
-    const hasLowerBodyVisible = lowerBodyKeypoints.some(name => {
-      const kp = keypoints[name];
-      return kp && (kp.score ?? 0) > 0.5;
-    });
-    if (!hasLowerBodyVisible) return 'unknown';
-
-    const ls = keypoints['left_shoulder'];
-    const rs = keypoints['right_shoulder'];
-    const lh = keypoints['left_hip'];
-    const rh = keypoints['right_hip'];
-    const le = keypoints['left_elbow'];
-    const re = keypoints['right_elbow'];
-    const lk = keypoints['left_knee'];
-    const rk = keypoints['right_knee'];
-
-    if (!ls || !rs || !lh || !rh) return 'unknown';
-
-    const shoulderWidth = Math.abs(ls.x - rs.x);
-    const hipWidth = Math.abs(lh.x - rh.x);
-
-    const leftVisibility = (ls.score ?? 0) + (lh.score ?? 0) + (le?.score ?? 0) + (lk?.score ?? 0);
-    const rightVisibility = (rs.score ?? 0) + (rh.score ?? 0) + (re?.score ?? 0) + (rk?.score ?? 0);
-
-    const visibilityDiff = Math.abs(leftVisibility - rightVisibility);
-
-    // SIDE: one side visible, narrow body width
-    if (shoulderWidth < 60 && hipWidth < 60 && visibilityDiff > 2) {
-      return 'side';
-    }
-
-    // FRONT/BACK: wide shoulders/hips, both sides visible
-    if (shoulderWidth >= 60 && hipWidth >= 60) {
-      return 'front'; // treat back as front for now
-    }
-
-    return 'unknown';
-  }
 
   // Enhanced pose analysis with comprehensive validation
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
