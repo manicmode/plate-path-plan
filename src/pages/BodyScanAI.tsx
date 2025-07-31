@@ -1114,22 +1114,35 @@ export default function BodyScanAI() {
       return map;
     }, {} as Record<string, PoseKeypoint>);
 
-    const leftShoulder = keypoints['left_shoulder'];
-    const rightShoulder = keypoints['right_shoulder'];
-    const leftHip = keypoints['left_hip'];
-    const rightHip = keypoints['right_hip'];
+    const ls = keypoints['left_shoulder'];
+    const rs = keypoints['right_shoulder'];
+    const lh = keypoints['left_hip'];
+    const rh = keypoints['right_hip'];
+    const le = keypoints['left_elbow'];
+    const re = keypoints['right_elbow'];
+    const lk = keypoints['left_knee'];
+    const rk = keypoints['right_knee'];
 
-    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) return 'unknown';
+    if (!ls || !rs || !lh || !rh) return 'unknown';
 
-    const horizontalShoulderDist = Math.abs(leftShoulder.x - rightShoulder.x);
-    const verticalShoulderDist = Math.abs(leftShoulder.y - rightShoulder.y);
-    const horizontalHipDist = Math.abs(leftHip.x - rightHip.x);
+    const shoulderWidth = Math.abs(ls.x - rs.x);
+    const hipWidth = Math.abs(lh.x - rh.x);
 
-    const isFrontBack = horizontalShoulderDist > verticalShoulderDist && horizontalHipDist > 30;
-    const isSide = horizontalShoulderDist < 40 && horizontalHipDist < 40;
+    const leftVisibility = (ls.score ?? 0) + (lh.score ?? 0) + (le?.score ?? 0) + (lk?.score ?? 0);
+    const rightVisibility = (rs.score ?? 0) + (rh.score ?? 0) + (re?.score ?? 0) + (rk?.score ?? 0);
 
-    if (isSide) return 'side';
-    if (isFrontBack) return 'front'; // we can't distinguish front vs back yet
+    const visibilityDiff = Math.abs(leftVisibility - rightVisibility);
+
+    // SIDE: one side visible, narrow body width
+    if (shoulderWidth < 60 && hipWidth < 60 && visibilityDiff > 2) {
+      return 'side';
+    }
+
+    // FRONT/BACK: wide shoulders/hips, both sides visible
+    if (shoulderWidth >= 60 && hipWidth >= 60) {
+      return 'front'; // treat back as front for now
+    }
+
     return 'unknown';
   }
 
