@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
-import sideViewSilhouette from '@/assets/side-view-silhouette.png';
 import sideBodySilhouette from '@/assets/sidebodysilhouetteV2.png';
 // Pose detection types
 interface PoseKeypoint {
