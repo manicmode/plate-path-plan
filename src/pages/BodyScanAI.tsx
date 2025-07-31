@@ -1951,16 +1951,6 @@ export default function BodyScanAI() {
         onClose={tipsModal.onClose} 
       />
 
-      {/* Debug UI Block */}
-      <div className="text-xs text-white bg-black p-2 rounded-lg mt-4 fixed bottom-4 left-4 right-4 z-50">
-        <p>Step: {currentStep}</p>
-        <p>showSuccessScreen: {showSuccessScreen.toString()}</p>
-        <p>savedScanUrl: {savedScanUrl}</p>
-        <p>hasImageReady: {hasImageReady.toString()}</p>
-        <p>isTransitioning: {isTransitioning.toString()}</p>
-        <p>errorSavingScan: {errorSavingScan}</p>
-        <p>isSaving: {isSaving.toString()}</p>
-      </div>
     </div>
   );
 }
