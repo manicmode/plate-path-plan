@@ -911,13 +911,19 @@ export default function BodyScanAI() {
   };
 
   const handleContinue = () => {
-    console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
+    console.log("🧠 handleContinue STARTED", {
+      hasImageReady,
+      savedScanUrl,
+      currentStep
+    });
     
     if (hasImageReady && savedScanUrl) {
+      // Store current step value before advancing
+      const previousStep = currentStep;
       // Store current scan URL before clearing it
       const currentScanUrl = savedScanUrl;
       
-      console.log(`✅ Starting transition from ${currentStep} step`);
+      console.log(`✅ Starting transition from ${previousStep} step`);
       
       // Start cinematic transition
       setIsTransitioning(true);
@@ -931,7 +937,7 @@ export default function BodyScanAI() {
       setCompletedSteps(prev => new Set([...prev, currentStep]));
       
       // Advance to next step immediately
-      if (currentStep === 'front') {
+      if (previousStep === 'front') {
         console.log('✅ Step transitioned cleanly to side');
         setCurrentStep('side');
         toast({
@@ -939,7 +945,7 @@ export default function BodyScanAI() {
           description: "Position yourself sideways for the side view photo",
           duration: 4000,
         });
-      } else if (currentStep === 'side') {
+      } else if (previousStep === 'side') {
         console.log('✅ Step transitioned cleanly to back');
         setCurrentStep('back');
         toast({
@@ -947,7 +953,7 @@ export default function BodyScanAI() {
           description: "Turn around so we can capture your back view",
           duration: 4000,
         });
-      } else if (currentStep === 'back') {
+      } else if (previousStep === 'back') {
         console.log('🎉 All scans completed - showing weight modal');
         // Final step completed - show weight modal
         setShowWeightModal(true);
@@ -955,21 +961,19 @@ export default function BodyScanAI() {
         return;
       }
       
-      // Reset states for next step AFTER step change
-      console.log('🔄 Resetting states for next step');
-      setCapturedImage(null);
-      setHasImageReady(false);
-      setAlignmentConfirmed(false);
-      setCountdownSeconds(0);
-      setIsCountingDown(false);
-      setSavedScanUrl(null);
-      setIsScanningFadingOut(false);
-      setShowShutterFlash(false);
-      
-      // End transition after brief animation delay
+      // End transition after brief animation delay - DELAY state resets until AFTER transition
       setTimeout(() => {
+        console.log('🔄 Resetting states for next step AFTER transition');
+        setCapturedImage(null);
+        setHasImageReady(false);
+        setAlignmentConfirmed(false);
+        setCountdownSeconds(0);
+        setIsCountingDown(false);
+        setSavedScanUrl(null);
+        setIsScanningFadingOut(false);
+        setShowShutterFlash(false);
         setIsTransitioning(false);
-        console.log(`✨ Transition to ${currentStep} complete`);
+        console.log(`✨ Transition to next step complete and states reset`);
       }, 300);
     } else {
       console.warn('❌ handleContinue: Invalid state', { hasImageReady, savedScanUrl: !!savedScanUrl });
@@ -1504,7 +1508,10 @@ export default function BodyScanAI() {
             {/* Enhanced Action Buttons */}
             <div className="space-y-4">
               <Button
-                onClick={handleContinue}
+                onClick={() => {
+                  console.log("👉 CONTINUE BUTTON CLICKED");
+                  handleContinue();
+                }}
                 className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
               >
                 {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
