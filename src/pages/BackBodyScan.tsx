@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
-import sideBodySilhouette from '@/assets/sidebodysilhouetteV2.png';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -763,7 +762,7 @@ export default function BackBodyScan() {
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
           <img 
-            src={sideBodySilhouette}
+            src="/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             alt=""
             className="w-[99vw] max-h-[88vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
             onLoad={handleImageLoad}
