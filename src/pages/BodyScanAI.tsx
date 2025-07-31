@@ -446,6 +446,9 @@ export default function BodyScanAI() {
       setCapturedImage(null);
       setHasImageReady(false);
       setShowSuccessScreen(false);
+      if (showStepSuccess) {
+        console.log('❌ Step success screen was prematurely hidden during step transition');
+      }
       setShowStepSuccess(false);
       
       // Cinematic step introduction
@@ -921,6 +924,8 @@ export default function BodyScanAI() {
       
       // Hide success screen immediately
       setShowSuccessScreen(false);
+      console.log('🔄 Step success screen hidden by user continue action');
+      setShowStepSuccess(false);
       
       // Mark current step as completed first
       setCompletedSteps(prev => new Set([...prev, currentStep]));
@@ -1185,7 +1190,7 @@ export default function BodyScanAI() {
           console.log('✅ Final success screen triggered');
           setShowSuccessScreen(true);
         } else {
-          console.log('✅ Step success screen triggered');
+          console.log('✅ Step success screen is now visible');
           setShowStepSuccess(true);
         }
         setIsCapturing(false);
@@ -1268,6 +1273,8 @@ export default function BodyScanAI() {
     setHasImageReady(false);
     setSavedScanUrl(null);
     setShowSuccessScreen(false);
+    console.log('🔄 Step success screen hidden by user retake action');
+    setShowStepSuccess(false);
     setAlignmentFrameCount(0);
     setAlignmentConfirmed(false);
     setIsCountingDown(false);
