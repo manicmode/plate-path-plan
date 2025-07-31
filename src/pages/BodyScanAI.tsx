@@ -1568,17 +1568,10 @@ export default function BodyScanAI() {
         }}></div>
       </div>
 
-      {/* Enhanced Progress Indicator & Cinematic Header */}
+      {/* Simplified Progress Indicator - Only Progress Bars */}
       <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-        {/* Enhanced Progress Bar with Step Completion */}
-        <div className={`bg-black/60 backdrop-blur-sm rounded-xl p-3 border mb-3 transition-all duration-500 ${currentStepConfig.borderColor}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white/80 text-xs font-medium">Progress</span>
-            <span className="text-white text-sm font-bold flex items-center gap-2">
-              <span className="text-xl">{currentStepConfig.icon}</span>
-              Step {currentStepConfig.step} of 3
-            </span>
-          </div>
+        {/* Progress Bars Only */}
+        <div className="bg-black/60 backdrop-blur-sm rounded-xl p-2 border border-white/20 mb-3 transition-all duration-500">
           <div className="flex gap-1">
             {['front', 'side', 'back'].map((step, index) => (
               <div key={step} className="flex-1 bg-white/20 rounded-full h-2">
