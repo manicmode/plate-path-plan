@@ -1054,6 +1054,22 @@ export default function BodyScanAI() {
     return currentPose;
   }, []);
 
+  // Pose alignment checking functions for each step
+  const isFrontAligned = (pose: DetectedPose): boolean => {
+    // Placeholder - return true for now
+    return true;
+  };
+
+  const isSideAligned = (pose: DetectedPose): boolean => {
+    // Placeholder - return true for now
+    return true;
+  };
+
+  const isBackAligned = (pose: DetectedPose): boolean => {
+    // Placeholder - return true for now
+    return true;
+  };
+
   // Enhanced pose analysis with comprehensive validation
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
     // STEP 1: Enhanced human presence validation with tiered levels
