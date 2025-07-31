@@ -729,8 +729,13 @@ export default function BodyScanAI() {
         ...prev,
         [currentStep]: publicUrl
       }));
+      setCompletedSteps(prev => new Set([...prev, currentStep]));
 
       console.log(`✅ ${currentStep} scan saved:`, publicUrl);
+      
+      // Set success screen state to trigger the Continue button flow
+      setSavedScanUrl(publicUrl);
+      setShowSuccessScreen(true);
       
       // Show pose quality feedback
       if (alignmentFeedback) {
@@ -745,35 +750,10 @@ export default function BodyScanAI() {
         }, currentStep);
       }
 
-      // Move to next step or complete scan
-      if (currentStep === 'front') {
-        setCurrentStep('side');
-        setCapturedImage(null);
-        setHasImageReady(false);
-        setAlignmentConfirmed(false);
-        setCountdownSeconds(0);
-        setIsCountingDown(false);
-        toast({
-          title: "📸 Great! Now turn sideways",
-          description: "Position yourself sideways for the side view photo",
-          duration: 4000,
-        });
-      } else if (currentStep === 'side') {
-        setCurrentStep('back');
-        setCapturedImage(null);
-        setHasImageReady(false);
-        setAlignmentConfirmed(false);
-        setCountdownSeconds(0);
-        setIsCountingDown(false);
-        toast({
-          title: "📸 Awesome! Now turn around",
-          description: "Turn around so we can capture your back view",
-          duration: 4000,
-        });
-      } else if (currentStep === 'back') {
-        // All images captured, show weight modal
-        setShowWeightModal(true);
-      }
+      toast({
+        title: `✅ ${currentStep.charAt(0).toUpperCase() + currentStep.slice(1)} scan saved!`,
+        description: "Great pose! Ready for next step.",
+      });
 
     } catch (error) {
       console.error('Error saving body scan:', error);
@@ -1205,34 +1185,35 @@ export default function BodyScanAI() {
 
   const handleContinue = () => {
     if (hasImageReady && savedScanUrl) {
-      // Store current step's captured image
-      setCapturedImages(prev => ({
-        ...prev,
-        [currentStep]: savedScanUrl
-      }));
+      // Start cinematic transition
+      setIsTransitioning(true);
+      setShowSuccessScreen(false);
+      setSavedScanUrl(null);
       
-      // Mark current step as completed
-      setCompletedSteps(prev => new Set([...prev, currentStep]));
-      
-      // Show step success animation
-      setShowStepSuccess(true);
-      
-      // Advance to next step with cinematic transition
       setTimeout(() => {
         if (currentStep === 'front') {
           setCurrentStep('side');
         } else if (currentStep === 'side') {
           setCurrentStep('back');
         } else {
-          // All steps completed - show completion
+          // Final step completed - show weight modal
           setShowWeightModal(true);
+          setIsTransitioning(false);
+          return;
         }
-        setShowStepSuccess(false);
-      }, 1500);
-      
-      // Reset current step state
-      setSavedScanUrl(null);
-      setShowSuccessScreen(false);
+        
+        // Reset states for next step
+        setCapturedImage(null);
+        setHasImageReady(false);
+        setAlignmentConfirmed(false);
+        setCountdownSeconds(0);
+        setIsCountingDown(false);
+        
+        // End transition after state reset
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 300);
+      }, 500);
     }
   };
 
