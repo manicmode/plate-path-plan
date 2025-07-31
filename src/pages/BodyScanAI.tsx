@@ -89,6 +89,10 @@ export default function BodyScanAI() {
   const [isScanningFadingOut, setIsScanningFadingOut] = useState(false);
   const [showShutterFlash, setShowShutterFlash] = useState(false);
   const [showNudgeText, setShowNudgeText] = useState(false);
+  
+  // New ref readiness states
+  const [videoReady, setVideoReady] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -174,13 +178,29 @@ export default function BodyScanAI() {
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      console.log(`Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
+      console.log(`✅ Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
       
-      // Set canvas dimensions once video metadata is available
-      if (overlayCanvasRef.current && video.videoWidth > 0 && video.videoHeight > 0) {
-        overlayCanvasRef.current.width = video.videoWidth;
-        overlayCanvasRef.current.height = video.videoHeight;
-        console.log(`Canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        console.log('✅ Video ready for capture');
+        setVideoReady(true);
+        
+        // Set canvas dimensions once video metadata is available
+        if (overlayCanvasRef.current) {
+          overlayCanvasRef.current.width = video.videoWidth;
+          overlayCanvasRef.current.height = video.videoHeight;
+          console.log(`✅ Overlay canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
+        }
+        
+        if (canvasRef.current) {
+          canvasRef.current.width = video.videoWidth;
+          canvasRef.current.height = video.videoHeight;
+          setCanvasReady(true);
+          console.log(`✅ Capture canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
+        }
+      } else {
+        console.log('❌ Video dimensions still 0');
+        setVideoReady(false);
+        setCanvasReady(false);
       }
     };
 
@@ -969,14 +989,48 @@ export default function BodyScanAI() {
     setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
   };
 
-  // ✅ Enhanced image capture with cinematic transition effects
+  // ✅ Enhanced image capture with bulletproof ref checking
   const captureImage = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isCapturing) {
-      console.log('❌ Capture blocked: missing refs or already capturing');
+    // Check if refs are initialized
+    if (!videoRef.current) {
+      console.error('❌ videoRef.current is null');
+      return;
+    }
+    
+    if (!canvasRef.current) {
+      console.error('❌ canvasRef.current is null');
+      return;
+    }
+    
+    if (isCapturing) {
+      console.log('❌ Already capturing');
       return;
     }
 
-    console.log('📸 Starting image capture');
+    // Check if video is ready with dimensions
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.error('❌ Video dimensions are 0:', { width: video.videoWidth, height: video.videoHeight });
+      toast({
+        title: "Camera Not Ready",
+        description: "Please wait for camera to initialize",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check readiness flags
+    if (!videoReady || !canvasReady) {
+      console.error('❌ Camera/canvas not ready:', { videoReady, canvasReady });
+      toast({
+        title: "System Not Ready",
+        description: "Please wait for camera initialization to complete",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('📸 Starting image capture with validated refs and dimensions');
     setIsCapturing(true);
 
     // Stop pose detection loop
@@ -986,13 +1040,12 @@ export default function BodyScanAI() {
     }
 
     try {
-      const video = videoRef.current;
       const canvas = canvasRef.current;
       
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth || video.clientWidth;
-      canvas.height = video.videoHeight || video.clientHeight;
+      console.log('📸 Video dimensions:', { width: video.videoWidth, height: video.videoHeight });
+      console.log('📸 Canvas refs exist:', { canvas: !!canvas, video: !!video });
       
+      // Canvas is already sized from the metadata handler
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         throw new Error('Canvas context not available');
@@ -1005,12 +1058,15 @@ export default function BodyScanAI() {
       setHasImageReady(true); // For continue button
       console.log('📸 Image captured and stored');
       
-      // Trigger save
-      saveBodyScanToSupabase(dataUrl);
-      
-      // Flash effect (brief)
+      // Flash effect (brief) - ensure no overlap with success screen
       setShowShutterFlash(true);
-      setTimeout(() => setShowShutterFlash(false), 150);  // One short flash only
+      setTimeout(() => {
+        setShowShutterFlash(false);
+        console.log('💡 Flash cleared');
+      }, 150);
+      
+      // Trigger save (this will show success screen after completion)
+      saveBodyScanToSupabase(dataUrl);
       
       console.log('✅ captureImage complete - image saved and success triggered');
       
@@ -1025,7 +1081,7 @@ export default function BodyScanAI() {
       setIsCapturing(false);
       setHasImageReady(false);
     }
-  }, [isCapturing, playBodyScanCapture]);
+  }, [isCapturing, videoReady, canvasReady, playBodyScanCapture]);
 
   // ✅ Enhanced saveBodyScanToSupabase with proper error handling and success feedback
   const saveBodyScanToSupabase = async (imageData: string) => {
@@ -1108,14 +1164,15 @@ export default function BodyScanAI() {
         [currentStep]: publicUrl
       }));
       
-      // ✅ 5. Show success screen after successful save
+      // ✅ Show success screen after flash is done and successful save
       setTimeout(() => {
-        console.log('🎉 Popup shown');
-        console.log('✅ Success screen is now visible');
+        // Ensure flash is completely cleared before showing success
+        setShowShutterFlash(false);
+        console.log('🎉 Success screen showing after flash cleared');
         setShowSuccessScreen(true);
         setIsCapturing(false);
         showInstantFeedback(currentStep);
-      }, 300);
+      }, 400); // Longer delay to ensure flash is completely done
 
     } catch (error) {
       console.error('❌ Save failed:', error);
@@ -1263,7 +1320,9 @@ export default function BodyScanAI() {
           playsInline
           muted
           onLoadedMetadata={() => {
+            console.log('📱 Video onLoadedMetadata triggered');
             if (videoRef.current) {
+              console.log(`📱 Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
               videoRef.current.play().catch(console.log);
             }
           }}
@@ -1387,78 +1446,8 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* ✅ 4. Enhanced Step Success Screen with Smooth Animation */}
-      {showSuccessScreen && savedScanUrl && ((() => {
-        console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
-        return true;
-      })()) && (
-        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-40 p-8">
-          {/* ✅ 4. Stable container with proper fade and bounce timing */}
-          <div className="opacity-0 animate-[fadeIn_300ms_ease-out_forwards]">
-            <div className="opacity-0 animate-[bounceIn_400ms_ease-out_100ms_forwards]">
-            <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500`}>
-            {/* Success Icon with Enhanced Animation */}
-            <div className="text-7xl mb-8 animate-[bounce_1s_ease-in-out_3]">🎉</div>
-            
-            {/* Enhanced Success Title */}
-            <h3 className="text-white text-3xl font-bold mb-3 tracking-wide">
-              Scan Complete!
-            </h3>
-            <p className="text-white/70 text-lg mb-8 leading-relaxed">
-              {currentStep === 'front' ? 'Front view captured perfectly' : 
-               currentStep === 'side' ? 'Side profile saved successfully' : 
-               'Back view scan completed'}
-            </p>
-            
-            {/* Enhanced Thumbnail with Premium Feel */}
-            <div className={`mb-8 rounded-3xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-2xl relative group`}>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10"></div>
-              <img 
-                src={savedScanUrl}
-                alt={`${currentStep} body scan`}
-                className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            
-            {/* Enhanced Action Buttons */}
-            <div className="space-y-4">
-              <Button
-                onClick={() => {
-                  console.log("👉 CONTINUE BUTTON CLICKED");
-                  handleContinue();
-                }}
-                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
-              >
-                {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
-                 currentStep === 'side' ? '🔄 Continue to Back Scan' : 
-                 '🎉 Complete All Scans'}
-              </Button>
-              <Button
-                onClick={handleRetake}
-                variant="outline"
-                className="w-full bg-white/5 border-2 border-white/30 text-white hover:bg-white/15 hover:border-white/50 transition-all duration-300 py-4 text-lg rounded-2xl"
-              >
-                🔁 Retake Scan
-              </Button>
-            </div>
-
-            {/* Nudge Text with Fade-in Animation */}
-            {showNudgeText && (
-              <div className="mt-6 pt-6 border-t border-white/20 animate-fade-in">
-                <p className="text-white/60 text-sm flex items-center justify-center gap-2">
-                  ✔️ Great job! Ready for the next scan?
-                  <ArrowRight className="w-4 h-4 animate-pulse" />
-                </p>
-              </div>
-            )}
-            </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unified Success Screen */}
-      {showSuccessScreen && (
+      {/* Unified Success Screen - Only show when flash is completely cleared */}
+      {showSuccessScreen && !showShutterFlash && savedScanUrl && (
         <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-40 animate-fade-in">
           <div className={`text-center animate-scale-in`}>
             <div className={`text-8xl mb-6 animate-bounce`}>{currentStepConfig.icon}</div>
@@ -1473,17 +1462,36 @@ export default function BodyScanAI() {
                '→ Continue to Weight'}
             </div>
             
+            {/* Enhanced Thumbnail with Premium Feel */}
+            <div className={`mb-8 rounded-3xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-2xl relative group max-w-xs mx-auto`}>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10"></div>
+              <img 
+                src={savedScanUrl}
+                alt={`${currentStep} body scan`}
+                className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            
             {/* Continue Button */}
             <Button
               onClick={() => {
                 console.log("👉 CONTINUE BUTTON CLICKED");
                 handleContinue();
               }}
-              className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
+              className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20 mb-4`}
             >
               {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
                currentStep === 'side' ? '🔄 Continue to Back Scan' : 
                '🎉 Complete All Scans'}
+            </Button>
+            
+            {/* Retake Button */}
+            <Button
+              onClick={handleRetake}
+              variant="outline"
+              className="w-full bg-white/5 border-2 border-white/30 text-white hover:bg-white/15 hover:border-white/50 transition-all duration-300 py-4 text-lg rounded-2xl"
+            >
+              🔁 Retake Scan
             </Button>
           </div>
         </div>
@@ -1499,6 +1507,25 @@ export default function BodyScanAI() {
           <div className="text-xl">🔄</div>
         </Button>
       </div>
+
+      {/* Camera Loading Overlay */}
+      {(!videoReady || !canvasReady) && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-30 flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl text-center">
+            <div className="w-12 h-12 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+            <h3 className="text-white text-xl font-bold mb-2">Initializing Camera</h3>
+            <p className="text-white/70 text-sm">
+              {!videoReady ? 'Loading video stream...' : 'Preparing capture system...'}
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2 text-white/50 text-xs">
+              <span className={`w-2 h-2 rounded-full ${videoReady ? 'bg-green-400' : 'bg-gray-400'}`}></span>
+              Video Ready
+              <span className={`w-2 h-2 rounded-full ${canvasReady ? 'bg-green-400' : 'bg-gray-400'}`}></span>
+              Canvas Ready
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fixed Bottom Controls - Matching Health Scanner */}
       {!showSuccessScreen && (
@@ -1529,6 +1556,8 @@ export default function BodyScanAI() {
               disabled={
                 isCapturing || 
                 isSaving ||
+                !videoReady ||
+                !canvasReady ||
                 (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
                 isCountingDown ||
                 showSuccessScreen ||
