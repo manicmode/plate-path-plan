@@ -34,6 +34,16 @@ interface AlignmentFeedback {
 }
 
 export default function BodyScanAI() {
+  // 3-step guided scan state
+  const [currentStep, setCurrentStep] = useState<'front' | 'side' | 'back'>('front');
+  const [capturedImages, setCapturedImages] = useState<{
+    front?: string;
+    side?: string;
+    back?: string;
+  }>({});
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [weight, setWeight] = useState('');
+  const [isCompletingScan, setIsCompletingScan] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -646,80 +656,79 @@ export default function BodyScanAI() {
       const response = await fetch(imageDataUrl);
       const blob = await response.blob();
       
-      // Create filename with timestamp as requested: ${user_id}/front-${Date.now()}.jpg
+      // Create filename with timestamp
       const timestamp = Date.now();
-      const fileName = `${user.id}/front-${timestamp}.jpg`;
+      const fileName = `${user.id}/${currentStep}-${timestamp}.jpg`;
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('body-scans')
         .upload(fileName, blob, {
           contentType: 'image/jpeg',
-          upsert: true // Allow overwriting as requested
+          upsert: true
         });
 
       if (uploadError) {
         throw uploadError;
       }
 
-      // Get public URL via Supabase client after upload
+      // Get public URL
       const { data: urlData } = supabase.storage
         .from('body-scans')
         .getPublicUrl(fileName);
 
       const publicUrl = urlData.publicUrl;
       
-      // Calculate pose metadata with specific structure
-      const poseMetadata = {
-        shouldersLevel: !alignmentFeedback?.misalignedLimbs.includes('shoulders'),
-        armsRaised: !(alignmentFeedback?.misalignedLimbs.includes('left_arm') || alignmentFeedback?.misalignedLimbs.includes('right_arm')),
-        alignmentScore: Math.round((alignmentFeedback?.alignmentScore || 0) * 100),
-        poseConfidence: poseDetected?.score || 0,
-        detectedKeypoints: poseDetected?.keypoints?.length || 0,
-        cameraMode,
-        captureTimestamp: new Date().toISOString()
-      };
+      // Store the captured image URL
+      setCapturedImages(prev => ({
+        ...prev,
+        [currentStep]: publicUrl
+      }));
 
-      // Save entry to body_scans table
-      const { data: scanData, error: dbError } = await supabase
-        .from('body_scans')
-        .insert({
-          user_id: user.id,
-          type: 'front',
-          image_url: publicUrl,
-          pose_score: alignmentFeedback?.alignmentScore || 0,
-          pose_metadata: poseMetadata
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        throw dbError;
-      }
-
-      // Update UI state
-      setSavedScanUrl(publicUrl);
-      setShowSuccessScreen(true);
-      
-      // Trigger notifications
-      await triggerScanCompletedNotification('front');
-      await showInstantFeedback('front');
+      console.log(`✅ ${currentStep} scan saved:`, publicUrl);
       
       // Show pose quality feedback
-      showPoseQualityFeedback({
-        poseScore: alignmentFeedback?.alignmentScore || 0,
-        poseMetadata: {
-          shouldersLevel: !alignmentFeedback?.misalignedLimbs.includes('shoulders'),
-          armsRaised: alignmentFeedback?.misalignedLimbs.includes('left_arm') || alignmentFeedback?.misalignedLimbs.includes('right_arm'),
-          alignmentScore: Math.round((alignmentFeedback?.alignmentScore || 0) * 100),
-          misalignedLimbs: alignmentFeedback?.misalignedLimbs || []
-        }
-      }, 'front');
-      
-      toast({
-        title: "Front Scan Saved ✅",
-        description: "Your body scan has been securely saved.",
-      });
+      if (alignmentFeedback) {
+        showPoseQualityFeedback({
+          poseScore: alignmentFeedback.alignmentScore,
+          poseMetadata: {
+            shouldersLevel: !alignmentFeedback.misalignedLimbs.includes('shoulders'),
+            armsRaised: !(alignmentFeedback.misalignedLimbs.includes('left_arm') || alignmentFeedback.misalignedLimbs.includes('right_arm')),
+            alignmentScore: Math.round(alignmentFeedback.alignmentScore * 100),
+            misalignedLimbs: alignmentFeedback.misalignedLimbs
+          }
+        }, currentStep);
+      }
+
+      // Move to next step or complete scan
+      if (currentStep === 'front') {
+        setCurrentStep('side');
+        setCapturedImage(null);
+        setHasImageReady(false);
+        setAlignmentConfirmed(false);
+        setCountdownSeconds(0);
+        setIsCountingDown(false);
+        toast({
+          title: "📸 Great! Now turn sideways",
+          description: "Position yourself sideways for the side view photo",
+          duration: 4000,
+        });
+      } else if (currentStep === 'side') {
+        setCurrentStep('back');
+        setCapturedImage(null);
+        setHasImageReady(false);
+        setAlignmentConfirmed(false);
+        setCountdownSeconds(0);
+        setIsCountingDown(false);
+        toast({
+          title: "📸 Awesome! Now turn around",
+          description: "Turn around so we can capture your back view",
+          duration: 4000,
+        });
+      } else if (currentStep === 'back') {
+        // All images captured, show weight modal
+        setShowWeightModal(true);
+      }
 
     } catch (error) {
       console.error('Error saving body scan:', error);
@@ -730,6 +739,83 @@ export default function BodyScanAI() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Complete the full body scan with weight
+  const completeFullBodyScan = async () => {
+    if (!weight.trim()) {
+      toast({
+        title: "Weight Required",
+        description: "Please enter your current weight",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsCompletingScan(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Calculate scan index for the year
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      
+      const { data: existingScans } = await supabase
+        .from('body_scans')
+        .select('scan_index')
+        .eq('user_id', user.id)
+        .eq('year', currentYear)
+        .order('scan_index', { ascending: false })
+        .limit(1);
+
+      const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
+
+      // Save complete body scan record
+      const { error: dbError } = await supabase
+        .from('body_scans')
+        .insert({
+          user_id: user.id,
+          image_url: capturedImages.front || '', // Required field
+          side_image_url: capturedImages.side,
+          back_image_url: capturedImages.back,
+          weight: parseFloat(weight),
+          scan_index: nextScanIndex,
+          year: currentYear,
+          month: currentMonth,
+          type: 'complete'
+        });
+
+      if (dbError) throw dbError;
+
+      // Update body scan reminder
+      await supabase.rpc('update_body_scan_reminder', {
+        p_user_id: user.id,
+        p_scan_date: new Date().toISOString()
+      });
+
+      // Show success and navigate
+      toast({
+        title: "🎉 Body Scan Complete!",
+        description: "Your full body scan has been saved. You'll be reminded to scan again in 30 days.",
+        duration: 5000,
+      });
+
+      setTimeout(() => {
+        navigate('/exercise-hub');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error completing body scan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete body scan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompletingScan(false);
     }
   };
 
@@ -1428,6 +1514,35 @@ export default function BodyScanAI() {
       />
       </div>
       
+      {/* Weight Input Modal */}
+      {showWeightModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-xl font-bold mb-2 text-center">🎉 Body Scan Complete!</h3>
+            <p className="text-gray-600 mb-4 text-center">
+              We've saved your front, side, and back body scans. Our AI will now analyze your posture and muscle symmetry to help you improve performance and reduce injury risk.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Current weight (lbs or kg)</label>
+              <input
+                type="number"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                placeholder="Enter your weight"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <Button
+              onClick={completeFullBodyScan}
+              disabled={isCompletingScan || !weight.trim()}
+              className="w-full"
+            >
+              {isCompletingScan ? 'Saving...' : 'Continue'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Scan Tips Modal */}
       <ScanTipsModal 
         isOpen={tipsModal.isOpen} 
