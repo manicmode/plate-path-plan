@@ -531,6 +531,23 @@ export default function BodyScanAI() {
           
           console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
           
+          // Check if detected pose matches required view for current step
+          const detectedPoseView = detectPoseView(pose);
+
+          if (
+            (currentStep === 'front' && detectedPoseView !== 'front') ||
+            (currentStep === 'side' && detectedPoseView !== 'side') ||
+            (currentStep === 'back' && detectedPoseView !== 'front') // treating back same as front for now
+          ) {
+            setAlignmentFeedback({
+              isAligned: false,
+              misalignedLimbs: [],
+              alignmentScore: 0,
+              feedback: 'Pose does not match required view'
+            });
+            return;
+          }
+
           // Analyze alignment
           const isAligned = currentStep === 'front'
             ? isFrontAligned(pose)
