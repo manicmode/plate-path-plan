@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
+import sideBodySilhouette from '@/assets/sidebodysilhouetteV2.png';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -1592,22 +1593,23 @@ export default function BodyScanAI() {
           {/* Step-specific glow effect */}
           <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-20 blur-3xl rounded-full scale-110 animate-pulse`}></div>
           
-          {currentStep !== 'side' && (
-            <img 
-              src={
-                currentStep === 'front' 
-                  ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
-                  : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
-              }
-              alt={`${currentStep} body silhouette`}
-              className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
-                currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
-                'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
-              }`}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-            />
-          )}
+          <img 
+            src={
+              currentStep === 'front' 
+                ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+                : currentStep === 'side'
+                ? sideBodySilhouette
+                : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+            }
+            alt={`${currentStep} body silhouette`}
+            className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
+              currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
+              currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
+              'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
+            }`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
         </div>
       </div>
 
