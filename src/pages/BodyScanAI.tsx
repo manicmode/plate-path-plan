@@ -1729,7 +1729,7 @@ export default function BodyScanAI() {
                 : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             }
             alt={`${currentStep} body silhouette`}
-            className={`w-[98vw] max-h-[92vh] h-auto object-contain animate-fade-in relative z-10 ${
+            className={`w-[99vw] max-h-[95vh] h-auto object-contain animate-fade-in relative z-10 ${
               currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
               currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
               'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
