@@ -791,7 +791,7 @@ export default function BodyScanAI() {
       if (!alignmentFeedback?.isAligned) {
         toast({
           title: "Hold on!",
-          description: "Make sure your body is aligned and facing the correct direction before continuing.",
+          description: "Make sure your full body is centered and clearly visible before continuing.",
           variant: "destructive",
         });
         return;
@@ -1075,29 +1075,121 @@ export default function BodyScanAI() {
     return currentPose;
   }, []);
 
-  // Pose alignment checking functions for each step
+  // Enhanced strict pose alignment checking functions for each step
   const isFrontAligned = (pose: DetectedPose): boolean => {
-    // Placeholder - return true for now
-    return true;
+    return validateStrictPoseAlignment(pose, 'front');
   };
 
   const isSideAligned = (pose: DetectedPose): boolean => {
-    const leftShoulder = pose.keypoints.find(p => p.name === 'leftShoulder');
-    const leftHip = pose.keypoints.find(p => p.name === 'leftHip');
-    const rightShoulder = pose.keypoints.find(p => p.name === 'rightShoulder');
-    const rightHip = pose.keypoints.find(p => p.name === 'rightHip');
-
-    if (!leftShoulder || !leftHip || !rightShoulder || !rightHip) return false;
-
-    const aligned = Math.abs(leftShoulder.x - leftHip.x) < 20;
-    const rightHidden = rightShoulder.score < 0.2 && rightHip.score < 0.2;
-    const narrowShoulders = Math.abs(leftShoulder.x - rightShoulder.x) < 40;
-
-    return aligned && (rightHidden || narrowShoulders);
+    return validateStrictPoseAlignment(pose, 'side');
   };
 
   const isBackAligned = (pose: DetectedPose): boolean => {
-    // Placeholder - return true for now
+    return validateStrictPoseAlignment(pose, 'back');
+  };
+
+  // Strict pose validation function with enhanced requirements
+  const validateStrictPoseAlignment = (pose: DetectedPose, scanType: 'front' | 'side' | 'back'): boolean => {
+    const video = videoRef.current;
+    if (!video || !pose.keypoints.length) return false;
+    
+    const frameWidth = video.videoWidth || 640;
+    const frameHeight = video.videoHeight || 480;
+    
+    // ✅ 1. Pose completeness: Require at least 10 visible keypoints with score > 0.6
+    const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.6);
+    if (visibleKeypoints.length < 10) {
+      console.log(`❌ Only ${visibleKeypoints.length}/10 keypoints visible with score > 0.6`);
+      return false;
+    }
+    
+    // Find key body landmarks
+    const nose = pose.keypoints.find(kp => kp.name === 'nose');
+    const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+    const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+    const leftHip = pose.keypoints.find(kp => kp.name === 'left_hip');
+    const rightHip = pose.keypoints.find(kp => kp.name === 'right_hip');
+    const leftAnkle = pose.keypoints.find(kp => kp.name === 'left_ankle');
+    const rightAnkle = pose.keypoints.find(kp => kp.name === 'right_ankle');
+    
+    // ✅ 2. Reject partial poses: Ensure we have head and feet
+    if (!nose || nose.score < 0.6) {
+      console.log('❌ Head not clearly visible');
+      return false;
+    }
+    
+    if ((!leftAnkle || leftAnkle.score < 0.5) && (!rightAnkle || rightAnkle.score < 0.5)) {
+      console.log('❌ Feet not visible - partial pose detected');
+      return false;
+    }
+    
+    // ✅ 3. Minimum pose size: Total height ≥ 50% of frame height
+    const headY = nose.y;
+    const feetY = Math.max(leftAnkle?.y || 0, rightAnkle?.y || 0);
+    const poseHeight = Math.abs(feetY - headY);
+    const minRequiredHeight = frameHeight * 0.5;
+    
+    if (poseHeight < minRequiredHeight) {
+      console.log(`❌ Pose too small: ${poseHeight}px < ${minRequiredHeight}px (50% of frame)`);
+      return false;
+    }
+    
+    // ✅ 4. Center alignment: Midpoint between shoulders and hips within 25% margin
+    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip ||
+        leftShoulder.score < 0.6 || rightShoulder.score < 0.6 ||
+        leftHip.score < 0.6 || rightHip.score < 0.6) {
+      console.log('❌ Shoulders or hips not clearly visible');
+      return false;
+    }
+    
+    const shoulderMidpoint = (leftShoulder.x + rightShoulder.x) / 2;
+    const hipMidpoint = (leftHip.x + rightHip.x) / 2;
+    const bodyMidpoint = (shoulderMidpoint + hipMidpoint) / 2;
+    const frameCenter = frameWidth / 2;
+    const centerMargin = frameWidth * 0.25; // 25% margin
+    
+    if (Math.abs(bodyMidpoint - frameCenter) > centerMargin) {
+      console.log(`❌ Body not centered: ${Math.abs(bodyMidpoint - frameCenter)}px > ${centerMargin}px margin`);
+      return false;
+    }
+    
+    // ✅ 5. Scan-specific pose validation
+    switch (scanType) {
+      case 'front':
+        // For front view: both shoulders and hips should be visible and roughly aligned
+        const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+        const hipWidth = Math.abs(leftHip.x - rightHip.x);
+        
+        if (shoulderWidth < 40 || hipWidth < 30) {
+          console.log('❌ Front view: shoulders/hips too narrow - not facing camera');
+          return false;
+        }
+        break;
+        
+      case 'side':
+        // For side view: one side should be hidden or much closer together
+        const sideShoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+        const sideHipWidth = Math.abs(leftHip.x - rightHip.x);
+        
+        if (sideShoulderWidth > 60 || sideHipWidth > 50) {
+          console.log('❌ Side view: too much width - not in profile');
+          return false;
+        }
+        break;
+        
+      case 'back':
+        // For back view: similar to front but may have slightly different visibility
+        const backShoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+        const backHipWidth = Math.abs(leftHip.x - rightHip.x);
+        
+        if (backShoulderWidth < 35 || backHipWidth < 25) {
+          console.log('❌ Back view: shoulders/hips too narrow - not facing away');
+          return false;
+        }
+        break;
+    }
+    
+    console.log(`✅ Strict pose validation passed for ${scanType} view`);
     return true;
   };
 
