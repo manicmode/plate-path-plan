@@ -385,6 +385,35 @@ export default function BodyScanAI() {
     };
   }, []);
 
+  // Handle step transitions and state resets
+  useEffect(() => {
+    if (currentStep) {
+      // Reset pose detection states when step changes
+      setAlignmentConfirmed(false);
+      setCountdownSeconds(0);
+      setIsCountingDown(false);
+      setPoseDetected(null);
+      setAlignmentFeedback({ 
+        isAligned: false, 
+        misalignedLimbs: [], 
+        alignmentScore: 0, 
+        feedback: 'Getting ready...' 
+      });
+      
+      // Show toast notification for step transition
+      const stepNames = { front: 'Front', side: 'Side', back: 'Back' };
+      toast({
+        title: `📸 ${stepNames[currentStep]} Body Scan`,
+        description: currentStep === 'front' 
+          ? 'Stand upright with arms slightly out' 
+          : currentStep === 'side'
+          ? 'Turn sideways with arms relaxed'
+          : 'Turn around with arms relaxed',
+        duration: 3000,
+      });
+    }
+  }, [currentStep]);
+
   // Clean pose detection loop with debug logging
   useEffect(() => {
     const detectPoseRealTime = async () => {
@@ -1161,9 +1190,23 @@ export default function BodyScanAI() {
 
   const handleContinue = () => {
     if (hasImageReady && savedScanUrl) {
-      // Store the saved scan URL instead of raw image data
-      sessionStorage.setItem('frontBodyScanUrl', savedScanUrl);
-      navigate('/body-scan-side');
+      // Advance to next step based on current step
+      if (currentStep === 'front') {
+        setCurrentStep('side');
+      } else if (currentStep === 'side') {
+        setCurrentStep('back');
+      } else {
+        // Final step completed — show weight modal
+        setShowWeightModal(true);
+      }
+      
+      // Reset state for next scan
+      setCapturedImage(null);
+      setHasImageReady(false);
+      setAlignmentConfirmed(false);
+      setShowSuccessScreen(false);
+      setCountdownSeconds(0);
+      setIsCountingDown(false);
     }
   };
 
@@ -1185,6 +1228,22 @@ export default function BodyScanAI() {
 
   const toggleCamera = () => {
     setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
+  };
+
+  // Dynamic step instructions
+  const stepInstructions = {
+    front: {
+      title: '📸 Front Body Scan',
+      subtitle: 'Stand upright with arms slightly out. Match your body to the glowing outline.',
+    },
+    side: {
+      title: '📸 Side Body Scan',
+      subtitle: 'Turn sideways with arms relaxed. Face right and align your body with the outline.',
+    },
+    back: {
+      title: '📸 Back Body Scan',
+      subtitle: 'Turn around with arms relaxed. Match your body to the glowing outline for the back scan.',
+    },
   };
 
   return (
@@ -1270,21 +1329,19 @@ export default function BodyScanAI() {
         </div>
         
         {/* Dynamic Header */}
-        <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+        <div key={currentStep} className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
           <h2 className="text-white text-lg font-bold mb-2 text-center">
-            📸 {currentStep === 'front' ? 'Front' : currentStep === 'side' ? 'Side' : 'Back'} Body Scan
+            {stepInstructions[currentStep].title}
           </h2>
           <p className="text-white/90 text-sm text-center">
-            {currentStep === 'front' && "Stand upright with arms slightly out. Match your body to the glowing outline."}
-            {currentStep === 'side' && "Turn sideways with arms relaxed. Face right and align your body with the outline."}
-            {currentStep === 'back' && "Turn around with arms relaxed. Match your body to the glowing outline for the back scan."}
+            {stepInstructions[currentStep].subtitle}
           </p>
         </div>
       </div>
 
       
       {/* Body Silhouette Overlay - Dynamic based on currentStep */}
-      <div className="absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15">
+      <div key={currentStep} className="absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15">
         <div className={`relative transition-all duration-500 ${
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
@@ -1306,7 +1363,7 @@ export default function BodyScanAI() {
 
       {/* Capture success overlay with image preview */}
       {showSuccessScreen && savedScanUrl && (
-        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30 p-6">
+        <div key={currentStep} className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30 p-6">
           <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 text-center max-w-sm">
             <div className="text-4xl mb-4">✅</div>
             <h3 className="text-white text-xl font-bold mb-4">
