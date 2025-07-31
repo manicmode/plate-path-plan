@@ -796,7 +796,7 @@ export default function BodyScanAI() {
     }
   };
 
-  // Function to capture and save body scan - bulletproof canvas.toBlob() with iOS reliability
+  // Function to capture and save body scan - now using canvas.toBlob() for iOS safety
   const saveBodyScanToSupabase = async (imageDataUrl: string) => {
     console.log("📸 Starting saveBodyScanToSupabase");
     
@@ -807,73 +807,59 @@ export default function BodyScanAI() {
       // ✅ 1. Add image data URL validation before processing
       if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image')) {
         console.error('❌ Invalid or empty image dataUrl:', imageDataUrl);
-        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+        alert("Image capture failed. Please try again.");
         setErrorSavingScan("Invalid image data");
         setIsSaving(false);
         return;
       }
       console.log("📸 Image data URL starts with:", imageDataUrl?.substring(0, 100));
       
-      // ✅ CANVAS STABILITY & RENDERING VALIDATION
+      // ✅ 2. Use canvas.toBlob() instead of fetch(dataUrl) for iOS safety
       const canvas = canvasRef.current;
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        console.error("Canvas not ready or has invalid dimensions", { 
-          canvas: !!canvas,
-          width: canvas?.width || 0,
-          height: canvas?.height || 0,
-          canvasContext: canvas?.getContext("2d") ? "available" : "null",
-          documentVisibility: document.visibilityState
-        });
-        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
-        setErrorSavingScan("Canvas not ready");
+      if (!canvas) {
+        console.error("❌ Canvas not ready");
+        alert("Canvas not ready. Try again.");
+        setErrorSavingScan("Canvas not available");
         setIsSaving(false);
         return;
       }
 
-      console.log("✅ Canvas validation passed:", { 
+      console.log("✅ Canvas dimensions:", { 
         width: canvas.width, 
-        height: canvas.height,
-        context: !!canvas.getContext("2d"),
-        documentState: document.visibilityState
+        height: canvas.height 
       });
 
-      // Force a brief delay after rendering the canvas for mobile Safari/iOS
-      console.log("⏳ Adding iOS compatibility delay...");
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Use canvas.toBlob() for more reliable image conversion
+      canvas.toBlob((blob) => {
+        // ✅ 4. Prevent Supabase upload if Blob is invalid
+        if (!blob || blob.size < 1000 || blob.type !== 'image/jpeg') {
+          console.error("❌ Blob capture failed or was too small:", blob);
+          console.error("❌ Blob details:", {
+            exists: !!blob,
+            size: blob?.size || 0,
+            type: blob?.type || 'unknown'
+          });
+          alert("Invalid image detected. Please try scanning again.");
+          setErrorSavingScan("Image too small or invalid");
+          setIsSaving(false);
+          return;
+        }
 
-      // ✅ toBlob() SAFETY AND TIMEOUT - wrap in timeout-safe promise
-      const blob: Blob = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Canvas toBlob timeout")), 3000);
-        
-        canvas.toBlob(blob => {
-          clearTimeout(timeout);
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("Canvas toBlob returned null"));
-          }
-        }, "image/jpeg", 0.95);
-      });
+        console.log("✅ Blob created successfully:", {
+          size: blob.size,
+          type: blob.type
+        });
 
-      // Validate the blob size after generation
-      if (blob.size < 1000) {
-        console.error("Generated blob too small. Likely capture failed.", { size: blob.size });
-        alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
-        setErrorSavingScan("Image capture failed");
-        setIsSaving(false);
-        return;
-      }
+        // ✅ Continue with Supabase upload
+        uploadBodyScan(blob).catch((uploadError) => {
+          console.error("📛 Upload failed:", uploadError);
+          setIsSaving(false);
+        });
 
-      console.log("✅ Blob created successfully:", {
-        size: blob.size,
-        type: blob.type
-      });
-
-      // ✅ Continue with Supabase upload
-      await uploadBodyScan(blob);
+      }, 'image/jpeg', 0.95);
 
     } catch (error) {
-      // ✅ EXTRA DEBUGGING and improved error logging
+      // ✅ 3. Improve all error logs to include more context
       console.error("📛 Error saving body scan:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("❌ Full error details:", {
@@ -886,16 +872,14 @@ export default function BodyScanAI() {
         canvasDimensions: canvasRef.current ? {
           width: canvasRef.current.width,
           height: canvasRef.current.height
-        } : null,
-        canvasContext: canvasRef.current?.getContext("2d") ? "available" : "null",
-        documentVisibility: document.visibilityState
+        } : null
       });
       
       setErrorSavingScan(errorMessage);
-      alert("Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.");
+      alert("Error saving scan: " + errorMessage);
       toast({
         title: "Save Error",
-        description: `Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.`,
+        description: `Failed to save body scan: ${errorMessage}`,
         variant: "destructive"
       });
       setIsSaving(false);
@@ -1471,23 +1455,21 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* STEP 5: CANVAS WITH LIME BORDER - Hidden when scan is successful */}
-      {!showSuccessScreen && (
-        <canvas 
-          ref={overlayCanvasRef}
-          style={{
-            border: '3px solid lime',
-            position: 'absolute',
-            zIndex: 99,
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            display: 'block'
-          }}
-        />
-      )}
+      {/* STEP 5: CANVAS WITH LIME BORDER */}
+      <canvas 
+        ref={overlayCanvasRef}
+        style={{
+          border: '3px solid lime',
+          position: 'absolute',
+          zIndex: 99,
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          display: 'block'
+        }}
+      />
       
       {/* Grid Overlay - Fixed behind camera */}
       <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
