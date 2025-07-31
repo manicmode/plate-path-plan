@@ -46,7 +46,6 @@ export default function BodyScanAI() {
   const [weight, setWeight] = useState('');
   const [isCompletingScan, setIsCompletingScan] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [showStepSuccess, setShowStepSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -446,10 +445,6 @@ export default function BodyScanAI() {
       setCapturedImage(null);
       setHasImageReady(false);
       setShowSuccessScreen(false);
-      if (showStepSuccess) {
-        console.log('❌ Step success screen was prematurely hidden during step transition');
-      }
-      setShowStepSuccess(false);
       
       // Cinematic step introduction
       setTimeout(() => {
@@ -930,8 +925,7 @@ export default function BodyScanAI() {
       
       // Hide success screen immediately
       setShowSuccessScreen(false);
-      console.log('🔄 Step success screen hidden by user continue action');
-      setShowStepSuccess(false);
+      console.log('🔄 Success screen hidden by user continue action');
       
       // Mark current step as completed first
       setCompletedSteps(prev => new Set([...prev, currentStep]));
@@ -1190,13 +1184,8 @@ export default function BodyScanAI() {
       // ✅ 5. Show success screen after successful save
       setTimeout(() => {
         console.log('🎉 Popup shown');
-        if (currentStep === 'back') {
-          console.log('✅ Final success screen triggered');
-          setShowSuccessScreen(true);
-        } else {
-          console.log('✅ Step success screen is now visible');
-          setShowStepSuccess(true);
-        }
+        console.log('✅ Success screen is now visible');
+        setShowSuccessScreen(true);
         setIsCapturing(false);
         showInstantFeedback(currentStep);
       }, 300);
@@ -1277,8 +1266,7 @@ export default function BodyScanAI() {
     setHasImageReady(false);
     setSavedScanUrl(null);
     setShowSuccessScreen(false);
-    console.log('🔄 Step success screen hidden by user retake action');
-    setShowStepSuccess(false);
+    console.log('🔄 Success screen hidden by user retake action');
     setAlignmentFrameCount(0);
     setAlignmentConfirmed(false);
     setIsCountingDown(false);
@@ -1542,19 +1530,34 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* Step Success Transition Screen */}
-      {showStepSuccess && (
+      {/* Unified Success Screen */}
+      {showSuccessScreen && (
         <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-40 animate-fade-in">
           <div className={`text-center animate-scale-in`}>
             <div className={`text-8xl mb-6 animate-bounce`}>{currentStepConfig.icon}</div>
             <h2 className={`text-4xl font-bold mb-4 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
-              Step {currentStepConfig.step} Complete!
+              {currentStep === 'front' ? 'Front Scan Complete' : 
+               currentStep === 'side' ? 'Side Scan Complete' : 
+               'Back Scan Complete'}
             </h2>
-            <div className="text-white/60 text-lg">
-              {currentStep === 'front' ? 'Preparing side view...' : 
-               currentStep === 'side' ? 'Preparing back view...' : 
-               'Preparing completion...'}
+            <div className="text-white/60 text-lg mb-8">
+              {currentStep === 'front' ? '→ Preparing Side' : 
+               currentStep === 'side' ? '→ Preparing Back' : 
+               '→ Continue to Weight'}
             </div>
+            
+            {/* Continue Button */}
+            <Button
+              onClick={() => {
+                console.log("👉 CONTINUE BUTTON CLICKED");
+                handleContinue();
+              }}
+              className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
+            >
+              {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
+               currentStep === 'side' ? '🔄 Continue to Back Scan' : 
+               '🎉 Complete All Scans'}
+            </Button>
           </div>
         </div>
       )}
