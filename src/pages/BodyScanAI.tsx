@@ -1302,9 +1302,8 @@ export default function BodyScanAI() {
     reader.readAsDataURL(file);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     console.log('➡️ Continue clicked');
-    alert('Continue clicked');
     console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
     
     if (hasImageReady && savedScanUrl) {
@@ -1313,13 +1312,31 @@ export default function BodyScanAI() {
       
       console.log(`✅ Starting transition from ${currentStep} step`);
       
-      // Start cinematic transition
+      // Reset capture states BEFORE step change to prevent conflicts
+      console.log('🔄 Resetting capture states before transition');
+      setCapturedImage(null);
+      setHasImageReady(false);
+      setAlignmentConfirmed(false);
+      setCountdownSeconds(0);
+      setIsCountingDown(false);
+      setShowSuccessScreen(false);
+      setSavedScanUrl(null);
+      setIsCapturing(false);
+      
+      // Refresh video stream BEFORE transition
+      if (videoRef.current && stream) {
+        console.log('🎥 Refreshing video stream before transition');
+        const video = videoRef.current;
+        video.srcObject = null;
+        await new Promise(resolve => setTimeout(resolve, 100));
+        video.srcObject = stream;
+        await video.play().catch(e => console.warn('Video play error:', e));
+      }
+      
+      // Start transition
       setIsTransitioning(true);
       
-      // Hide success screen immediately
-      setShowSuccessScreen(false);
-      
-      setTimeout(() => {
+      setTimeout(async () => {
         // Advance to next step
         if (currentStep === 'front') {
           console.log('📱 Advancing to side scan');
@@ -1345,21 +1362,22 @@ export default function BodyScanAI() {
           return;
         }
         
-        // Reset states for next step AFTER step change
-        console.log('🔄 Resetting states for next step');
-        setCapturedImage(null);
-        setHasImageReady(false);
-        setAlignmentConfirmed(false);
-        setCountdownSeconds(0);
-        setIsCountingDown(false);
-        setSavedScanUrl(null); // Clear AFTER step change
+        // Refresh video stream AFTER step change
+        if (videoRef.current && stream) {
+          console.log('🎥 Refreshing video stream after step change');
+          const video = videoRef.current;
+          video.srcObject = null;
+          await new Promise(resolve => setTimeout(resolve, 100));
+          video.srcObject = stream;
+          await video.play().catch(e => console.warn('Video play error:', e));
+        }
         
-        // End transition after state reset
+        // End transition
         setTimeout(() => {
           setIsTransitioning(false);
           console.log(`✨ Transition to ${currentStep === 'front' ? 'side' : 'back'} complete`);
         }, 300);
-      }, 800); // Slightly longer for cinematic effect
+      }, 500); // Reduced timeout for faster transitions
     } else {
       console.warn('❌ handleContinue: Invalid state', { hasImageReady, savedScanUrl: !!savedScanUrl });
     }
