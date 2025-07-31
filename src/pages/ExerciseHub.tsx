@@ -883,20 +883,37 @@ const ExerciseHub = () => {
 
       {/* Body Scan Section */}
       <div className="mb-6 mt-2 space-y-3">
-        {/* AI Body Scan Analysis */}
+        {/* Guided 3-Step Body Scan */}
+        <button
+          onClick={() => navigate('/body-scan-guided')}
+          className="w-full p-4 rounded-xl bg-gradient-to-r from-green-400 to-blue-500 dark:from-green-600 dark:to-blue-700 hover:from-green-300 hover:to-blue-400 dark:hover:from-green-500 dark:hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-green-500/40 border border-green-500/30 dark:border-green-600/30 shadow-xl shadow-green-500/25 group relative overflow-hidden"
+        >
+          <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
+            <div className="flex items-center gap-4">
+              <span className="text-5xl transition-transform duration-300 group-hover:scale-110">🎯</span>
+              <h2 className="text-xl font-bold text-white">3-Step Guided Body Scan</h2>
+            </div>
+            <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-white">→</span>
+          </div>
+          <p className="text-white/90 text-sm opacity-90 relative z-10">
+            Complete guided front, side, and back scan for comprehensive posture analysis
+          </p>
+        </button>
+
+        {/* Single Body Scan AI */}
         <button
           onClick={() => navigate('/body-scan-ai')}
           className="w-full p-4 rounded-xl bg-gradient-to-r from-purple-300 to-blue-400 dark:from-purple-600 dark:to-blue-700 hover:from-purple-200 hover:to-blue-300 dark:hover:from-purple-500 dark:hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-purple-500/40 border border-purple-500/30 dark:border-purple-600/30 shadow-xl shadow-purple-500/25 group relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] before:animate-[shimmer_3s_ease-in-out_infinite] before:skew-x-12"
         >
           <div className="flex items-center justify-center gap-3 mb-1 relative z-10">
             <div className="flex items-center gap-4">
-              <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-camera-flash">🎯</span>
-              <h2 className="text-xl font-bold text-black dark:text-white">AI Body Scan Analysis</h2>
+              <span className="text-5xl transition-transform duration-300 group-hover:scale-110 animate-camera-flash">📸</span>
+              <h2 className="text-xl font-bold text-black dark:text-white">Single Body Scan</h2>
             </div>
             <span className="text-sm opacity-70 transition-transform duration-300 group-hover:translate-x-1 text-black dark:text-white">→</span>
           </div>
           <p className="text-black/90 dark:text-white/90 text-sm opacity-90 relative z-10">
-            Complete guided 3-step scan (front, side, back) for comprehensive posture analysis
+            Take a single photo for quick AI analysis of body composition
           </p>
         </button>
       </div>

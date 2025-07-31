@@ -25,9 +25,3 @@ jobs:
     schedule: "0 8 * * 1"  # Every Monday at 8:00 AM UTC
     function: "weekly-exercise-insights-cron"
     payload: {}
-    
-  # Send body scan reminders daily at 9:00 AM UTC
-  - name: "body-scan-reminders"
-    schedule: "0 9 * * *"  # Every day at 9:00 AM UTC
-    function: "body-scan-reminder-cron"
-    payload: {}

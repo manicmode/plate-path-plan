@@ -67,7 +67,7 @@ const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const BodyScanAI = lazy(() => import('@/pages/BodyScanAI'));
 const SideBodyScan = lazy(() => import('@/pages/SideBodyScan'));
-
+const BodyScanGuidedPage = lazy(() => import('@/pages/BodyScanGuidedPage'));
 const BackBodyScan = lazy(() => import('@/pages/BackBodyScan'));
 const BodyScanResults = lazy(() => import('@/pages/BodyScanResults'));
 const SecurityLogsPage = lazy(() => import('@/pages/admin/SecurityLogsPage'));
@@ -136,6 +136,11 @@ function AppContent() {
               <Route path="/body-scan-back" element={
                 <ProtectedRoute>
                   <BackBodyScan />
+                </ProtectedRoute>
+              } />
+              <Route path="/body-scan-guided" element={
+                <ProtectedRoute>
+                  <BodyScanGuidedPage />
                 </ProtectedRoute>
               } />
               
