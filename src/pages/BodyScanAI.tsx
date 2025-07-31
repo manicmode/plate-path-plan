@@ -12,8 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
-import sideBodySilhouetteV2 from '@/assets/sidebodysiluhouetteV2.png';
-import frontViewSilhouette from '@/assets/frontViewSilhouette.png';
+import sideViewSilhouette from '@/assets/side-view-silhouette.png';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -1596,11 +1595,11 @@ export default function BodyScanAI() {
           
           <img 
             src={
-              currentStep === 'front'
-                ? frontViewSilhouette
+              currentStep === 'front' 
+                ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
                 : currentStep === 'side'
-                ? sideBodySilhouetteV2
-                : ''
+                ? sideViewSilhouette
+                : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             }
             alt={`${currentStep} body silhouette`}
             className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
