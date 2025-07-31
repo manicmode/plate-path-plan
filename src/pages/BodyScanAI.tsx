@@ -93,6 +93,7 @@ export default function BodyScanAI() {
   // New ref readiness states
   const [videoReady, setVideoReady] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
+  const [shouldCapture, setShouldCapture] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -975,32 +976,15 @@ export default function BodyScanAI() {
     setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
   };
 
-  // ✅ Enhanced image capture with bulletproof ref checking
   const captureImage = useCallback(async () => {
-    // Check if refs are initialized
-    if (!videoRef.current) {
-      console.error('❌ videoRef.current is null');
-      return;
-    }
-    
-    if (!canvasRef.current) {
-      console.error('❌ canvasRef.current is null');
-      return;
-    }
-    
-    if (isCapturing) {
-      console.log('❌ Already capturing');
+    if (!videoRef.current || !canvasRef.current || isCapturing) {
+      console.error('❌ Cannot capture - refs not ready or already capturing');
       return;
     }
 
-    // Fix 3: Simplified camera readiness check
     const video = videoRef.current;
     if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
-      console.error('❌ Video not ready:', { 
-        width: video.videoWidth, 
-        height: video.videoHeight, 
-        readyState: video.readyState 
-      });
+      console.error('❌ Video not ready for capture');
       toast({
         title: "Camera Not Ready",
         description: "Please wait for camera to initialize",
@@ -1009,10 +993,10 @@ export default function BodyScanAI() {
       return;
     }
 
-    console.log('📸 Starting image capture with validated refs and dimensions');
+    console.log('📸 Starting image capture');
     setIsCapturing(true);
 
-    // Stop pose detection loop
+    // Stop pose detection
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -1020,17 +1004,9 @@ export default function BodyScanAI() {
 
     try {
       const canvas = canvasRef.current;
-      
-      console.log('📸 Video dimensions:', { width: video.videoWidth, height: video.videoHeight });
-      console.log('📸 Canvas refs exist:', { canvas: !!canvas, video: !!video });
-      
-      // Canvas is already sized from the metadata handler
       const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Canvas context not available');
-      }
+      if (!ctx) throw new Error('Canvas context not available');
 
-      // Fix 2: Updated captureImage logic with direct save
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/png');
       setCapturedImage(dataUrl);
@@ -1039,9 +1015,6 @@ export default function BodyScanAI() {
       setTimeout(() => setShowShutterFlash(false), 150);
 
       await saveBodyScanToSupabase(dataUrl);
-      
-      console.log('✅ captureImage complete - image saved and success triggered');
-      
     } catch (error) {
       console.error('❌ Capture failed:', error);
       toast({
@@ -1049,26 +1022,24 @@ export default function BodyScanAI() {
         description: "Failed to capture image. Please try again.",
         variant: "destructive"
       });
-      
       setIsCapturing(false);
-      setHasImageReady(false);
     }
-  }, [isCapturing, videoReady, canvasReady, playBodyScanCapture]);
+  }, []);
 
-  // Fix 1: Add countdown useEffect to replace setInterval logic (moved after captureImage declaration)
+  // Fix 1: Replace countdown useEffect
   useEffect(() => {
     let countdownInterval: NodeJS.Timeout;
-    
+
     if (isCountingDown && countdownSeconds > 0) {
       console.log('⏰ Countdown:', countdownSeconds);
-      
+
       countdownInterval = setTimeout(() => {
         setCountdownSeconds(prev => {
           if (prev <= 1) {
             console.log('📸 COUNTDOWN COMPLETE - triggering capture');
             setIsCountingDown(false);
             playBodyScanCapture();
-            captureImage();
+            setShouldCapture(true);
             return 0;
           }
           return prev - 1;
@@ -1079,7 +1050,15 @@ export default function BodyScanAI() {
     return () => {
       if (countdownInterval) clearTimeout(countdownInterval);
     };
-  }, [isCountingDown, countdownSeconds, playBodyScanCapture, captureImage]);
+  }, [isCountingDown, countdownSeconds, playBodyScanCapture]);
+
+  // Fix 3: Add new useEffect to trigger capture when countdown finishes
+  useEffect(() => {
+    if (shouldCapture) {
+      setShouldCapture(false); // Reset the trigger
+      captureImage(); // Clean capture call
+    }
+  }, [shouldCapture, captureImage]);
 
   // ✅ Enhanced saveBodyScanToSupabase with proper error handling and success feedback
   const saveBodyScanToSupabase = async (imageData: string) => {
