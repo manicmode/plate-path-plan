@@ -634,12 +634,36 @@ export default function BodyScanAI() {
     }
   }, [alignmentConfirmed, isCountingDown, hasImageReady]);
 
-  // Countdown timer
+  // Countdown timer with continuous pose validation
   useEffect(() => {
     if (isCountingDown && countdownSeconds > 0) {
       console.log('⏰ Countdown:', countdownSeconds);
       
       const timer = setTimeout(() => {
+        // Check pose validity during countdown
+        if (poseDetected) {
+          const detectedPoseView = detectPoseView(poseDetected);
+          const isPoseValid = (
+            (currentStep === 'front' && detectedPoseView === 'front') ||
+            (currentStep === 'side' && detectedPoseView === 'side') ||
+            (currentStep === 'back' && detectedPoseView === 'front') // treating back same as front
+          ) && alignmentFeedback?.isAligned;
+
+          if (!isPoseValid) {
+            console.log('🛑 COUNTDOWN CANCELLED - pose invalid during countdown');
+            setIsCountingDown(false);
+            setCountdownSeconds(0);
+            setAlignmentConfirmed(false);
+            setAlignmentFeedback({
+              isAligned: false,
+              misalignedLimbs: [],
+              alignmentScore: 0,
+              feedback: "Hold your pose steady to complete scan."
+            });
+            return;
+          }
+        }
+
         setCountdownSeconds(prev => {
           if (prev <= 1) {
             console.log('📸 COUNTDOWN COMPLETE - triggering capture');
@@ -654,7 +678,7 @@ export default function BodyScanAI() {
 
       return () => clearTimeout(timer);
     }
-  }, [isCountingDown, countdownSeconds]);
+  }, [isCountingDown, countdownSeconds, poseDetected, alignmentFeedback, currentStep]);
 
   // Reset countdown if alignment is lost
   useEffect(() => {
@@ -1113,6 +1137,18 @@ export default function BodyScanAI() {
       map[kp.name] = kp;
       return map;
     }, {} as Record<string, PoseKeypoint>);
+
+    // Check for minimum keypoint visibility (at least 6 keypoints with score > 0.5)
+    const visibleKeypoints = pose.keypoints.filter(kp => (kp.score ?? 0) > 0.5);
+    if (visibleKeypoints.length < 6) return 'unknown';
+
+    // Check for at least one lower body keypoint
+    const lowerBodyKeypoints = ['left_knee', 'right_knee', 'left_ankle', 'right_ankle'];
+    const hasLowerBodyVisible = lowerBodyKeypoints.some(name => {
+      const kp = keypoints[name];
+      return kp && (kp.score ?? 0) > 0.5;
+    });
+    if (!hasLowerBodyVisible) return 'unknown';
 
     const ls = keypoints['left_shoulder'];
     const rs = keypoints['right_shoulder'];
