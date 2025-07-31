@@ -13,6 +13,7 @@ import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
 import sideViewSilhouette from '@/assets/side-view-silhouette.png';
+import sideBodySilhouette from '@/assets/sidebodysilhouetteV2.png';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -1598,7 +1599,7 @@ export default function BodyScanAI() {
               currentStep === 'front' 
                 ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
                 : currentStep === 'side'
-                ? sideViewSilhouette
+                ? sideBodySilhouette
                 : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             }
             alt={`${currentStep} body silhouette`}
