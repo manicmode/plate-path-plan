@@ -922,52 +922,50 @@ export default function BodyScanAI() {
       // Hide success screen immediately
       setShowSuccessScreen(false);
       
+      // Mark current step as completed first
+      setCompletedSteps(prev => new Set([...prev, currentStep]));
+      
+      // Advance to next step immediately
+      if (currentStep === 'front') {
+        console.log('✅ Step transitioned cleanly to side');
+        setCurrentStep('side');
+        toast({
+          title: "📸 Great! Now turn sideways",
+          description: "Position yourself sideways for the side view photo",
+          duration: 4000,
+        });
+      } else if (currentStep === 'side') {
+        console.log('✅ Step transitioned cleanly to back');
+        setCurrentStep('back');
+        toast({
+          title: "📸 Awesome! Now turn around",
+          description: "Turn around so we can capture your back view",
+          duration: 4000,
+        });
+      } else if (currentStep === 'back') {
+        console.log('🎉 All scans completed - showing weight modal');
+        // Final step completed - show weight modal
+        setShowWeightModal(true);
+        setIsTransitioning(false);
+        return;
+      }
+      
+      // Reset states for next step AFTER step change
+      console.log('🔄 Resetting states for next step');
+      setCapturedImage(null);
+      setHasImageReady(false);
+      setAlignmentConfirmed(false);
+      setCountdownSeconds(0);
+      setIsCountingDown(false);
+      setSavedScanUrl(null);
+      setIsScanningFadingOut(false);
+      setShowShutterFlash(false);
+      
+      // End transition after brief animation delay
       setTimeout(() => {
-        // Mark current step as completed first
-        setCompletedSteps(prev => new Set([...prev, currentStep]));
-        
-        // Advance to next step
-        if (currentStep === 'front') {
-          console.log('📱 Advancing to side scan');
-          setCurrentStep('side');
-          toast({
-            title: "📸 Great! Now turn sideways",
-            description: "Position yourself sideways for the side view photo",
-            duration: 4000,
-          });
-        } else if (currentStep === 'side') {
-          console.log('📱 Advancing to back scan');
-          setCurrentStep('back');
-          toast({
-            title: "📸 Awesome! Now turn around",
-            description: "Turn around so we can capture your back view",
-            duration: 4000,
-          });
-        } else if (currentStep === 'back') {
-          console.log('🎉 All scans completed - showing weight modal');
-          // Final step completed - show weight modal
-          setShowWeightModal(true);
-          setIsTransitioning(false);
-          return;
-        }
-        
-        // Reset states for next step AFTER step change
-        console.log('🔄 Resetting states for next step');
-        setCapturedImage(null);
-        setHasImageReady(false);
-        setAlignmentConfirmed(false);
-        setCountdownSeconds(0);
-        setIsCountingDown(false);
-        setSavedScanUrl(null);
-        setIsScanningFadingOut(false);
-        setShowShutterFlash(false);
-        
-        // End transition after state reset
-        setTimeout(() => {
-          setIsTransitioning(false);
-          console.log(`✨ Transition to ${currentStep} complete`);
-        }, 300);
-      }, 800); // Slightly longer for cinematic effect
+        setIsTransitioning(false);
+        console.log(`✨ Transition to ${currentStep} complete`);
+      }, 300);
     } else {
       console.warn('❌ handleContinue: Invalid state', { hasImageReady, savedScanUrl: !!savedScanUrl });
     }
