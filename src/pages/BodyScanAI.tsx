@@ -1072,8 +1072,18 @@ export default function BodyScanAI() {
   };
 
   const isSideAligned = (pose: DetectedPose): boolean => {
-    // Placeholder - return true for now
-    return true;
+    const leftShoulder = pose.keypoints.find(p => p.name === 'leftShoulder');
+    const leftHip = pose.keypoints.find(p => p.name === 'leftHip');
+    const rightShoulder = pose.keypoints.find(p => p.name === 'rightShoulder');
+    const rightHip = pose.keypoints.find(p => p.name === 'rightHip');
+
+    if (!leftShoulder || !leftHip || !rightShoulder || !rightHip) return false;
+
+    const aligned = Math.abs(leftShoulder.x - leftHip.x) < 20;
+    const rightHidden = rightShoulder.score < 0.2 && rightHip.score < 0.2;
+    const narrowShoulders = Math.abs(leftShoulder.x - rightShoulder.x) < 40;
+
+    return aligned && (rightHidden || narrowShoulders);
   };
 
   const isBackAligned = (pose: DetectedPose): boolean => {
