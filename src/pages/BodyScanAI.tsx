@@ -1600,13 +1600,10 @@ export default function BodyScanAI() {
         </div>
         
         {/* Cinematic Dynamic Header */}
-        <div key={currentStep} className={`bg-black/60 backdrop-blur-sm rounded-2xl p-4 border transition-all duration-700 animate-fade-in ${currentStepConfig.borderColor}`}>
+        <div key={currentStep} className={`bg-black/60 backdrop-blur-sm rounded-2xl p-3 border transition-all duration-700 animate-fade-in ${currentStepConfig.borderColor}`}>
           <div className="text-center relative">
-            {/* Step Icon with Animation */}
-            <div className="text-4xl mb-3 animate-scale-in">{currentStepConfig.icon}</div>
-            
             {/* Step Title with Gradient */}
-            <h2 className={`text-white text-lg font-bold mb-2 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
+            <h2 className={`text-white text-lg font-bold mb-1 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
               {currentStepConfig.title}
             </h2>
             
