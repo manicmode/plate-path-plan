@@ -438,6 +438,37 @@ export default function BodyScanAI() {
     }
   }, [currentStep]);
 
+  // Reset canvases and pose states on step change
+  useEffect(() => {
+    // Clear overlay canvas
+    if (overlayCanvasRef.current) {
+      const overlayCtx = overlayCanvasRef.current.getContext('2d');
+      if (overlayCtx) {
+        overlayCtx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+      }
+    }
+
+    // Clear main canvas
+    if (canvasRef.current) {
+      const mainCtx = canvasRef.current.getContext('2d');
+      if (mainCtx) {
+        mainCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    }
+
+    // Reset pose detection states
+    setPoseDetected(null);
+    setAlignmentFeedback(null);
+    setAlignmentFrameCount(0);
+    setAlignmentConfirmed(false);
+
+    // Reattach video stream to refresh metadata and sizing
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      console.log(`[STEP RESET] Video stream reattached for step: ${currentStep}`);
+    }
+  }, [currentStep, stream]);
+
   // Clean pose detection loop with debug logging
   useEffect(() => {
     const detectPoseRealTime = async () => {
