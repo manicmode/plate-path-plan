@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
+import sideViewSilhouette from '@/assets/side-view-silhouette.png';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -1275,15 +1276,15 @@ export default function BodyScanAI() {
           </h2>
           <p className="text-white/90 text-sm text-center">
             {currentStep === 'front' && "Stand upright with arms slightly out. Match your body to the glowing outline."}
-            {currentStep === 'side' && "Turn sideways. Keep arms relaxed at your sides and align with the outline."}
-            {currentStep === 'back' && "Face away. Keep posture straight and feet together. Align with outline."}
+            {currentStep === 'side' && "Turn sideways with arms relaxed. Face right and align your body with the outline."}
+            {currentStep === 'back' && "Turn around with arms relaxed. Match your body to the glowing outline for the back scan."}
           </p>
         </div>
       </div>
 
       
       {/* Body Silhouette Overlay - Dynamic based on currentStep */}
-      <div className="absolute inset-0 flex items-center justify-center mt-[-4vh] z-15">
+      <div className="absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15">
         <div className={`relative transition-all duration-500 ${
           isCapturing ? 'scale-105' : 'scale-100'
         } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
@@ -1292,11 +1293,11 @@ export default function BodyScanAI() {
               currentStep === 'front' 
                 ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
                 : currentStep === 'side'
-                ? "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=600&fit=crop&crop=center"
-                : "https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=400&h=600&fit=crop&crop=center"
+                ? sideViewSilhouette
+                : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
             }
             alt={`${currentStep} body silhouette`}
-            className="w-[99vw] max-h-[88vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
+            className="w-[85vw] max-h-[75vh] h-auto opacity-90 object-contain animate-slow-pulse drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] drop-shadow-[0_0_16px_rgba(0,255,255,0.6)] drop-shadow-[0_0_24px_rgba(0,255,255,0.4)]"
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
