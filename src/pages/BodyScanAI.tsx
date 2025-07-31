@@ -1479,8 +1479,9 @@ export default function BodyScanAI() {
         style={{
           border: '3px solid lime',
           position: 'absolute',
-          zIndex: 99,
+          zIndex: showSuccessScreen ? -1 : 99,
           top: 0,
+          opacity: showSuccessScreen ? 0 : 1,
           left: 0,
           width: '100%',
           height: '100%',
@@ -1586,7 +1587,7 @@ export default function BodyScanAI() {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
+        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-6 animate-fade-in`}>
           <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
             {/* Success Icon with Step-specific Color */}
             <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
