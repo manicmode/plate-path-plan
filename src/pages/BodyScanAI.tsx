@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
@@ -17,8 +18,8 @@ import sideViewSilhouette from '@/assets/side-view-silhouette.png';
 interface PoseKeypoint {
   x: number;
   y: number;
-  score?: number; // Make optional to match TensorFlow types
-  name?: string;  // Make optional to match TensorFlow types
+  score: number;
+  name: string;
 }
 
 interface DetectedPose {
@@ -46,6 +47,7 @@ export default function BodyScanAI() {
   const [weight, setWeight] = useState('');
   const [isCompletingScan, setIsCompletingScan] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showStepSuccess, setShowStepSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,17 +85,6 @@ export default function BodyScanAI() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
-  
-  // Enhanced transition states for smooth UX
-  const [isScanningFadingOut, setIsScanningFadingOut] = useState(false);
-  const [showShutterFlash, setShowShutterFlash] = useState(false);
-  const [showNudgeText, setShowNudgeText] = useState(false);
-  
-  // New ref readiness states
-  const [videoReady, setVideoReady] = useState(false);
-  const [canvasReady, setCanvasReady] = useState(false);
-  const [shouldCapture, setShouldCapture] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -141,6 +132,9 @@ export default function BodyScanAI() {
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           
+          // ✅ 5. Visually confirm that the <video> tag is rendering
+          videoRef.current.style.border = "2px solid red";
+          
           console.log("[CAMERA] srcObject set, playing video");
           
           // ✅ 5. VIDEO PLAY WITH LOGGING
@@ -179,29 +173,13 @@ export default function BodyScanAI() {
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      console.log(`✅ Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
+      console.log(`Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
       
-      if (video.videoWidth > 0 && video.videoHeight > 0) {
-        console.log('✅ Video ready for capture');
-        setVideoReady(true);
-        
-        // Set canvas dimensions once video metadata is available
-        if (overlayCanvasRef.current) {
-          overlayCanvasRef.current.width = video.videoWidth;
-          overlayCanvasRef.current.height = video.videoHeight;
-          console.log(`✅ Overlay canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
-        }
-        
-        if (canvasRef.current) {
-          canvasRef.current.width = video.videoWidth;
-          canvasRef.current.height = video.videoHeight;
-          setCanvasReady(true);
-          console.log(`✅ Capture canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
-        }
-      } else {
-        console.log('❌ Video dimensions still 0');
-        setVideoReady(false);
-        setCanvasReady(false);
+      // Set canvas dimensions once video metadata is available
+      if (overlayCanvasRef.current && video.videoWidth > 0 && video.videoHeight > 0) {
+        overlayCanvasRef.current.width = video.videoWidth;
+        overlayCanvasRef.current.height = video.videoHeight;
+        console.log(`Canvas initialized to ${video.videoWidth}x${video.videoHeight}`);
       }
     };
 
@@ -216,35 +194,6 @@ export default function BodyScanAI() {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
   }, [stream]);
-
-
-  // Clear canvas overlay when success screen shows
-  useEffect(() => {
-    if (showSuccessScreen && overlayCanvasRef.current) {
-      const canvas = overlayCanvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        console.log('🧹 Clearing canvas overlay for success screen');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-  }, [showSuccessScreen]);
-
-  // Show nudge text after 1.5 seconds if user pauses on success screen
-  useEffect(() => {
-    let nudgeTimer: NodeJS.Timeout;
-    if (showSuccessScreen) {
-      setShowNudgeText(false);
-      nudgeTimer = setTimeout(() => {
-        setShowNudgeText(true);
-      }, 1500);
-    } else {
-      setShowNudgeText(false);
-    }
-    return () => {
-      if (nudgeTimer) clearTimeout(nudgeTimer);
-    };
-  }, [showSuccessScreen]);
 
   useEffect(() => {
     // Lock screen orientation to portrait if supported
@@ -459,6 +408,7 @@ export default function BodyScanAI() {
       setCapturedImage(null);
       setHasImageReady(false);
       setShowSuccessScreen(false);
+      setShowStepSuccess(false);
       
       // Cinematic step introduction
       setTimeout(() => {
@@ -479,394 +429,735 @@ export default function BodyScanAI() {
     }
   }, [currentStep]);
 
-  // ✅ 1. Enhanced pose detection with detailed logging for front, side, and back views
-  const detectPoseRealTime = useCallback(async () => {
-    // ✅ 7. Strengthen Guards - Stop immediately if success shown or fading out
-    if (showSuccessScreen || isScanningFadingOut) {
-      console.log('⏹️ Pose detection stopped: success or fade-out state');
-      return;
+  // Clean pose detection loop with debug logging
+  useEffect(() => {
+    const detectPoseRealTime = async () => {
+      // STEP 1: VIDEO DEBUG CHECK
+      console.log("[VIDEO]", videoRef.current);
+      if (videoRef.current?.readyState !== 4) {
+        console.log("[VIDEO] Not ready", videoRef.current?.readyState);
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+      
+      // STEP 8: VIDEO STREAM DIMENSIONS
+      console.log("[VIDEO STREAM] Width:", videoRef.current.videoWidth, "Height:", videoRef.current.videoHeight);
+      
+      if (!videoRef.current || !poseDetectorRef.current || !isPoseDetectionEnabled || !poseDetectionReady) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+
+      const video = videoRef.current;
+      const overlayCanvas = overlayCanvasRef.current;
+
+      // STEP 2: ANIMATION LOOP DEBUG
+      console.log("[LOOP] Running frame", Date.now());
+
+      try {
+        console.log('[POSE FRAME] Attempting pose detection...');
+        
+        // STEP 9: CONFIRM MODEL INFERENCE
+        console.log("[ESTIMATE] About to run estimatePoses");
+        
+        // Detect pose using estimatePoses (MoveNet method)
+        const poses = await poseDetectorRef.current.estimatePoses(video);
+        
+        // STEP 6: LOG POSE RESULT
+        console.log("[POSE RESULT]", poses);
+        console.log('[POSE FRAME] Number of poses detected:', poses.length);
+        
+        // STEP 7: LOG KEYPOINTS DETAILS
+        if (poses.length > 0) {
+          const keypoints = poses[0].keypoints || [];
+          console.log("[KEYPOINTS] Count:", keypoints.length);
+          keypoints.forEach((kp, i) => {
+            console.log(`[KEYPOINT ${i}] ${kp.name || i}:`, kp);
+          });
+        } else {
+          console.log("[KEYPOINTS] No pose detected");
+          
+          // STEP 10: RED WARNING TOAST
+          toast({
+            title: "❌ Pose NOT detected",
+            description: "Check camera & lighting",
+            variant: "destructive"
+          });
+        }
+        
+        if (poses.length > 0) {
+          const pose = poses[0] as DetectedPose;
+          setPoseDetected(pose);
+          
+          console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
+          
+          // Analyze alignment
+          const alignment = analyzePoseAlignment(pose);
+          setAlignmentFeedback(alignment);
+          
+          console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
+          
+          // Simple 5-frame alignment confirmation
+          if (alignment.isAligned) {
+            setAlignmentFrameCount(prev => {
+              const newCount = prev + 1;
+              console.log('[POSE FRAME] ✅ Aligned frame count:', newCount);
+              
+              if (newCount >= 5 && !alignmentConfirmed) {
+                setAlignmentConfirmed(true);
+                console.log('[POSE FRAME] 🎯 ALIGNMENT CONFIRMED after 5 frames');
+              }
+              
+              return newCount;
+            });
+          } else {
+            setAlignmentFrameCount(0);
+            if (alignmentConfirmed) {
+              setAlignmentConfirmed(false);
+              console.log('[POSE FRAME] ❌ Alignment lost - resetting confirmation');
+            }
+          }
+          
+          console.log('[POSE FRAME] Calling drawPoseOverlay...');
+          drawPoseOverlay(pose, alignment);
+          
+        } else {
+          setPoseDetected(null);
+          setAlignmentFeedback(null);
+          setAlignmentFrameCount(0);
+          setAlignmentConfirmed(false);
+          
+          console.log('[POSE FRAME] 👻 No pose detected - clearing overlay');
+          
+          // Clear overlay canvas
+          if (overlayCanvas) {
+            const ctx = overlayCanvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[POSE FRAME] ❌ Pose detection error:', error);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+    };
+
+    if (stream && poseDetectionReady && isPoseDetectionEnabled) {
+      console.log('[POSE FRAME] 🚀 Starting pose detection loop');
+      animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     }
 
-    if (!videoRef.current || 
-        !poseDetectorRef.current || 
-        !isPoseDetectionEnabled ||
-        isCountingDown ||
-        hasImageReady) {
-      console.log('[POSE] Skipping detection - conditions not met');
-      return;
-    }
+    return () => {
+      if (animationFrameRef.current) {
+        console.log('[POSE FRAME] 🛑 Cleaning up animation frame');
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
 
-    const video = videoRef.current;
+  // Start countdown when alignment is confirmed
+  useEffect(() => {
+    if (alignmentConfirmed && !isCountingDown && !hasImageReady) {
+      console.log('🚀 STARTING COUNTDOWN - alignment confirmed');
+      setIsCountingDown(true);
+      setCountdownSeconds(3);
+    }
+  }, [alignmentConfirmed, isCountingDown, hasImageReady]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (isCountingDown && countdownSeconds > 0) {
+      console.log('⏰ Countdown:', countdownSeconds);
+      
+      const timer = setTimeout(() => {
+        setCountdownSeconds(prev => {
+          if (prev <= 1) {
+            console.log('📸 COUNTDOWN COMPLETE - triggering capture');
+            setIsCountingDown(false);
+            playBodyScanCapture();
+            captureImage();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isCountingDown, countdownSeconds]);
+
+  // Reset countdown if alignment is lost
+  useEffect(() => {
+    if (isCountingDown && !alignmentConfirmed) {
+      console.log('🛑 COUNTDOWN RESET - alignment lost');
+      setIsCountingDown(false);
+      setCountdownSeconds(0);
+    }
+  }, [isCountingDown, alignmentConfirmed]);
+
+  const startCamera = async () => {
+    try {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: { exact: cameraMode },
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
+        }
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.log('Video autoplay prevented, will play on user interaction');
+        }
+      }
+      setStream(mediaStream);
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera. Please check permissions and try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const captureImage = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
     
-    // Video readiness check
-    if (video.readyState < 2) {
-      console.log('[POSE] Video not ready for detection');
+    console.log('📸 Capture attempt - checking alignment...');
+    
+    // STRICT VALIDATION: Only capture if alignment is true
+    if (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) {
+      console.log('❌ CAPTURE BLOCKED - alignment not satisfied:', {
+        hasAlignmentFeedback: !!alignmentFeedback,
+        isAligned: alignmentFeedback?.isAligned,
+        feedback: alignmentFeedback?.feedback
+      });
+      
+      toast({
+        title: "Pose Alignment Required",
+        description: alignmentFeedback?.feedback || "Please align your pose before capturing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log('✅ CAPTURE APPROVED - alignment satisfied');
+    
+    try {
+      setIsCapturing(true);
+      
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      setCapturedImage(imageDataUrl);
+      setHasImageReady(true);
+      
+      console.log('📷 Image captured successfully');
+      
+      await saveBodyScanToSupabase(imageDataUrl);
+      
+    } catch (error) {
+      console.error('❌ Capture error:', error);
+      toast({
+        title: "Capture Failed",
+        description: "Failed to capture image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+  // Function to upload image to Supabase Storage and save record
+  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
+    try {
+      setIsSaving(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Convert data URL to blob/JPEG
+      const response = await fetch(imageDataUrl);
+      const blob = await response.blob();
+      
+      // Create filename with timestamp
+      const timestamp = Date.now();
+      const fileName = `${user.id}/${currentStep}-${timestamp}.jpg`;
+      
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('body-scans')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('body-scans')
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+      
+      // Store the captured image URL
+      setCapturedImages(prev => ({
+        ...prev,
+        [currentStep]: publicUrl
+      }));
+
+      console.log(`✅ ${currentStep} scan saved:`, publicUrl);
+      
+      // Show pose quality feedback
+      if (alignmentFeedback) {
+        showPoseQualityFeedback({
+          poseScore: alignmentFeedback.alignmentScore,
+          poseMetadata: {
+            shouldersLevel: !alignmentFeedback.misalignedLimbs.includes('shoulders'),
+            armsRaised: !(alignmentFeedback.misalignedLimbs.includes('left_arm') || alignmentFeedback.misalignedLimbs.includes('right_arm')),
+            alignmentScore: Math.round(alignmentFeedback.alignmentScore * 100),
+            misalignedLimbs: alignmentFeedback.misalignedLimbs
+          }
+        }, currentStep);
+      }
+
+      // Move to next step or complete scan
+      if (currentStep === 'front') {
+        setCurrentStep('side');
+        setCapturedImage(null);
+        setHasImageReady(false);
+        setAlignmentConfirmed(false);
+        setCountdownSeconds(0);
+        setIsCountingDown(false);
+        toast({
+          title: "📸 Great! Now turn sideways",
+          description: "Position yourself sideways for the side view photo",
+          duration: 4000,
+        });
+      } else if (currentStep === 'side') {
+        setCurrentStep('back');
+        setCapturedImage(null);
+        setHasImageReady(false);
+        setAlignmentConfirmed(false);
+        setCountdownSeconds(0);
+        setIsCountingDown(false);
+        toast({
+          title: "📸 Awesome! Now turn around",
+          description: "Turn around so we can capture your back view",
+          duration: 4000,
+        });
+      } else if (currentStep === 'back') {
+        // All images captured, show weight modal
+        setShowWeightModal(true);
+      }
+
+    } catch (error) {
+      console.error('Error saving body scan:', error);
+      toast({
+        title: "Save Error",
+        description: "Failed to save body scan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Complete the full body scan with weight
+  const completeFullBodyScan = async () => {
+    if (!weight.trim()) {
+      toast({
+        title: "Weight Required",
+        description: "Please enter your current weight",
+        variant: "destructive"
+      });
       return;
     }
 
     try {
-      // ✅ Estimate poses using the initialized detector
-      console.log('[POSE] Starting pose estimation...');
-      const poses = await poseDetectorRef.current.estimatePoses(video);
+      setIsCompletingScan(true);
       
-      if (poses && poses.length > 0) {
-        const pose = poses[0];
-        console.log(`[POSE] Detected pose with ${pose.keypoints.length} keypoints, score: ${pose.score.toFixed(3)}`);
-        
-        setPoseDetected(pose as DetectedPose);
-        
-        // ✅ Analyze pose alignment (front/side/back specific)
-        const alignmentResult = analyzeSidePoseAlignment(pose as DetectedPose);
-        console.log(`[ALIGNMENT] Score: ${alignmentResult.alignmentScore.toFixed(3)}, Aligned: ${alignmentResult.isAligned}`);
-        setAlignmentFeedback(alignmentResult);
-        
-        // ✅ Draw pose overlay if conditions are met
-        drawPoseOverlay(pose as DetectedPose);
-        
-        // ✅ Handle alignment confirmation and auto-capture
-        if (alignmentResult.isAligned && !isCountingDown && !hasImageReady) {
-          setAlignmentFrameCount(prev => {
-            const newCount = prev + 1;
-            console.log(`[ALIGNMENT] Frame count: ${newCount}/5`);
-            
-            if (newCount >= 5 && !alignmentConfirmed) {
-              console.log('🎯 ALIGNMENT CONFIRMED - Starting countdown');
-              setAlignmentConfirmed(true);
-              setIsCountingDown(true);
-              setCountdownSeconds(3);
-              // ❌ REMOVE any setInterval logic here
-            }
-            
-            return newCount;
-          });
-        } else if (!alignmentResult.isAligned) {
-          setAlignmentFrameCount(0);
-          setAlignmentConfirmed(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-          if (isCountingDown) {
-            setIsCountingDown(false);
-            setCountdownSeconds(0);
-            console.log('🛑 COUNTDOWN RESET - alignment lost');
-          }
-        }
-        
-      } else {
-        console.log('[POSE] No poses detected in frame');
-        setPoseDetected(null);
-        setAlignmentFeedback({
-          isAligned: false,
-          misalignedLimbs: ['no_pose'],
-          alignmentScore: 0,
-          feedback: 'Please position yourself in front of the camera'
+      // Calculate scan index for the year
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      
+      const { data: existingScans } = await supabase
+        .from('body_scans')
+        .select('scan_index')
+        .eq('user_id', user.id)
+        .eq('year', currentYear)
+        .order('scan_index', { ascending: false })
+        .limit(1);
+
+      const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
+
+      // Save complete body scan record
+      const { error: dbError } = await supabase
+        .from('body_scans')
+        .insert({
+          user_id: user.id,
+          image_url: capturedImages.front || '', // Required field
+          side_image_url: capturedImages.side,
+          back_image_url: capturedImages.back,
+          weight: parseFloat(weight),
+          scan_index: nextScanIndex,
+          year: currentYear,
+          month: currentMonth,
+          type: 'complete'
         });
-      }
-      
-    } catch (error) {
-      console.error('[POSE ERROR] Detection failed:', error);
-      setAlignmentFeedback({
-        isAligned: false,
-        misalignedLimbs: ['detection_error'],
-        alignmentScore: 0,
-        feedback: 'Pose detection temporarily unavailable'
+
+      if (dbError) throw dbError;
+
+      // Update body scan reminder
+      await supabase.rpc('update_body_scan_reminder', {
+        p_user_id: user.id,
+        p_scan_date: new Date().toISOString()
       });
-    }
-  }, [isPoseDetectionEnabled, isCountingDown, hasImageReady, showSuccessScreen, isScanningFadingOut]);
 
-  // ✅ Real-time pose detection loop with cleanup and guards
-  useEffect(() => {
-    if (!stream || !poseDetectionReady || !isPoseDetectionEnabled) {
-      console.log('[POSE LOOP] Conditions not met for pose detection');
-      return;
-    }
+      // Show success and navigate
+      toast({
+        title: "🎉 Body Scan Complete!",
+        description: "Your full body scan has been saved. You'll be reminded to scan again in 30 days.",
+        duration: 5000,
+      });
 
-    // ✅ 7. Enhanced guards - Stop loop during success/transition states
-    if (showSuccessScreen || isScanningFadingOut) {
-      console.log('⏹️ Pose detection loop stopped due to success/fade-out state');
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      return;
-    }
+      setTimeout(() => {
+        navigate('/exercise-hub');
+      }, 2000);
 
-    let isActive = true;
+    } catch (error) {
+      console.error('Error completing body scan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete body scan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompletingScan(false);
+    }
+  };
+
+  const handleRetake = () => {
+    console.log('🔄 Retaking scan - resetting all state');
+    setCapturedImage(null);
+    setHasImageReady(false);
+    setSavedScanUrl(null);
+    setShowSuccessScreen(false);
+    setAlignmentFrameCount(0);
+    setAlignmentConfirmed(false);
+    setIsCountingDown(false);
+    setCountdownSeconds(0);
+  };
+
+  // Enhanced human presence validation with pose smoothing
+  const validateHumanPresence = useCallback((pose: DetectedPose): { level: 'none' | 'partial' | 'full', validCount: number, avgConfidence: number } => {
+    const majorLandmarks = [
+      'nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip',
+      'left_knee', 'right_knee', 'left_elbow', 'right_elbow'
+    ];
     
-    const runDetection = async () => {
-      if (isActive && !showSuccessScreen && !isScanningFadingOut) {
-        await detectPoseRealTime();
-        
-        if (isActive && !showSuccessScreen && !isScanningFadingOut) {
-          animationFrameRef.current = requestAnimationFrame(runDetection);
-        }
+    let validCount = 0;
+    let totalConfidence = 0;
+    const confidenceThreshold = 0.4; // Relaxed from 0.6
+    
+    for (const landmarkName of majorLandmarks) {
+      const landmark = pose.keypoints.find(kp => kp.name === landmarkName);
+      if (landmark && landmark.score > confidenceThreshold) {
+        validCount++;
+        totalConfidence += landmark.score;
       }
-    };
+    }
+    
+    const avgConfidence = validCount > 0 ? totalConfidence / validCount : 0;
+    
+    // Tiered validation: relaxed requirements
+    let level: 'none' | 'partial' | 'full' = 'none';
+    if (validCount >= 6) { // Reduced from 8 to 6
+      level = 'full';
+    } else if (validCount >= 4) { // Allow partial detection
+      level = 'partial';
+    }
+    
+    // Enhanced debugging with frame-by-frame analysis
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 Human Presence Analysis:
+        Valid landmarks: ${validCount}/${majorLandmarks.length}
+        Avg confidence: ${(avgConfidence * 100).toFixed(1)}%
+        Presence level: ${level}
+        Detected landmarks: ${pose.keypoints.filter(kp => kp.score > confidenceThreshold).map(kp => kp.name).join(', ')}
+      `);
+    }
+    
+    return { level, validCount, avgConfidence };
+  }, []);
 
-    runDetection();
+  // Simplified pose data function (removed smoothing dependencies)
+  const smoothPoseData = useCallback((currentPose: DetectedPose) => {
+    // For now, return current pose without smoothing to avoid missing state dependencies
+    return currentPose;
+  }, []);
 
-    return () => {
-      isActive = false;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled, showSuccessScreen, isScanningFadingOut]);
-
-  // ✅ 2. Enhanced pose alignment analysis for side scan step
-  const analyzeSidePoseAlignment = (pose: DetectedPose): AlignmentFeedback => {
+  // Enhanced pose analysis with comprehensive validation
+  const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
+    // STEP 1: Enhanced human presence validation with tiered levels
+    const presenceCheck = validateHumanPresence(pose);
+    
+    // Immediate return for no human detected
+    if (presenceCheck.level === 'none') {
+      return {
+        isAligned: false,
+        misalignedLimbs: ['no_human'],
+        alignmentScore: 0,
+        feedback: "No person detected. Step into view to begin."
+      };
+    }
+    
+    // Partial human detection - give encouraging feedback
+    if (presenceCheck.level === 'partial') {
+      return {
+        isAligned: false,
+        misalignedLimbs: ['partial_detection'],
+        alignmentScore: Math.min(0.4, presenceCheck.avgConfidence), // Cap at 40% for partial detection
+        feedback: `Getting there! Move closer or adjust position. (${presenceCheck.validCount}/9 landmarks detected)`
+      };
+    }
+    
+    // Apply pose smoothing for full human detection
+    const smoothedPose = smoothPoseData(pose);
+    
+    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
+    const misalignedLimbs: string[] = [];
+    let feedback = "";
+    
+    // Find key landmarks
     const keypoints = pose.keypoints;
-    const requiredConfidence = 0.3;
-    
-    // Get important keypoints with safe access
     const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
     const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
+    const leftWrist = keypoints.find(kp => kp.name === 'left_wrist');
+    const rightWrist = keypoints.find(kp => kp.name === 'right_wrist');
     const leftHip = keypoints.find(kp => kp.name === 'left_hip');
     const rightHip = keypoints.find(kp => kp.name === 'right_hip');
     const nose = keypoints.find(kp => kp.name === 'nose');
-    const leftEye = keypoints.find(kp => kp.name === 'left_eye');
-    const rightEye = keypoints.find(kp => kp.name === 'right_eye');
-
-    let alignmentScore = 0;
-    let misalignedLimbs: string[] = [];
-    let feedback = '';
-
-    // Basic pose quality check
-    const validKeypoints = keypoints.filter(kp => kp.score && kp.score > requiredConfidence).length;
-    if (validKeypoints < 8) {
-      return {
-        isAligned: false,
-        misalignedLimbs: ['insufficient_visibility'],
-        alignmentScore: validKeypoints / 17,
-        feedback: 'Please ensure your full body is visible in the camera'
-      };
-    }
-
-    // SIDE POSE VALIDATION - Check if user is turned fully sideways
-    if (currentStep === 'side') {
-      console.log('🔄 SIDE POSE VALIDATION ACTIVE');
-      
-      // For side pose, we want shoulders and hips to be mostly aligned in a vertical line
-        if (leftShoulder && rightShoulder && leftHip && rightHip && 
-            leftShoulder.score && leftShoulder.score > requiredConfidence && 
-            rightShoulder.score && rightShoulder.score > requiredConfidence &&
-            leftHip.score && leftHip.score > requiredConfidence && 
-            rightHip.score && rightHip.score > requiredConfidence) {
-        
-        // Calculate if shoulders are aligned vertically (indicating side view)
-        const shoulderXDiff = Math.abs(leftShoulder.x - rightShoulder.x);
-        const hipXDiff = Math.abs(leftHip.x - rightHip.x);
-        
-        console.log(`[SIDE] Shoulder X diff: ${shoulderXDiff.toFixed(2)}, Hip X diff: ${hipXDiff.toFixed(2)}`);
-        
-        // For a good side pose, the X difference should be small (shoulders/hips aligned)
-        const maxDiff = 50; // pixels
-        const shouldersSideways = shoulderXDiff < maxDiff;
-        const hipsSideways = hipXDiff < maxDiff;
-        
-        if (shouldersSideways && hipsSideways) {
-          alignmentScore += 0.8;
-          console.log('✅ SIDE: Shoulders and hips properly aligned sideways');
-        } else {
-          misalignedLimbs.push('not_sideways');
-          console.log(`❌ SIDE: Not sideways enough - shoulders: ${shouldersSideways}, hips: ${hipsSideways}`);
-        }
-        
-        // Check head position for side profile
-        if (nose && leftEye && rightEye && 
-            nose.score && nose.score > requiredConfidence && 
-            leftEye.score && leftEye.score > requiredConfidence && 
-            rightEye.score && rightEye.score > requiredConfidence) {
-          
-          const eyeXDiff = Math.abs(leftEye.x - rightEye.x);
-          console.log(`[SIDE] Eye X diff: ${eyeXDiff.toFixed(2)}`);
-          
-          // For side profile, eyes should be close in X position
-          if (eyeXDiff < 30) {
-            alignmentScore += 0.2;
-            console.log('✅ SIDE: Head in proper side profile');
-          } else {
-            misalignedLimbs.push('head_not_profile');
-            console.log('❌ SIDE: Head not in side profile');
-          }
-        }
-        
-      } else {
-        misalignedLimbs.push('insufficient_keypoints');
-        alignmentScore = 0.1;
-      }
-      
-      // Set feedback based on score
-      if (alignmentScore >= 0.8) {
-        feedback = '🟢 Perfect side pose! Hold steady...';
-      } else if (alignmentScore >= 0.6) {
-        feedback = '🟡 Almost there! Turn more sideways';
-      } else {
-        feedback = '🔄 Please turn fully sideways (right shoulder facing camera)';
-      }
-      
-    } else {
-      // FRONT/BACK POSE VALIDATION - Standard frontal alignment
-      if (leftShoulder && rightShoulder && leftHip && rightHip && 
-          leftShoulder.score && leftShoulder.score > requiredConfidence && 
-          rightShoulder.score && rightShoulder.score > requiredConfidence &&
-          leftHip.score && leftHip.score > requiredConfidence && 
-          rightHip.score && rightHip.score > requiredConfidence) {
-        
-        // Check shoulder level alignment
-        const shoulderYDiff = Math.abs(leftShoulder.y - rightShoulder.y);
-        if (shoulderYDiff < 30) {
-          alignmentScore += 0.3;
-        } else {
-          misalignedLimbs.push('uneven_shoulders');
-        }
-        
-        // Check hip level alignment
-        const hipYDiff = Math.abs(leftHip.y - rightHip.y);
-        if (hipYDiff < 30) {
-          alignmentScore += 0.3;
-        } else {
-          misalignedLimbs.push('uneven_hips');
-        }
-        
-        // Check upright posture (shoulders above hips)
-        const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-        const avgHipY = (leftHip.y + rightHip.y) / 2;
-        if (avgShoulderY < avgHipY) {
-          alignmentScore += 0.2;
-        } else {
-          misalignedLimbs.push('posture');
-        }
-        
-        // Check central alignment (symmetric distance from center)
-        const shoulderCenterX = (leftShoulder.x + rightShoulder.x) / 2;
-        const hipCenterX = (leftHip.x + rightHip.x) / 2;
-        const centerAlignment = Math.abs(shoulderCenterX - hipCenterX);
-        if (centerAlignment < 20) {
-          alignmentScore += 0.2;
-        } else {
-          misalignedLimbs.push('not_centered');
-        }
-        
-      } else {
-        misalignedLimbs.push('insufficient_keypoints');
-        alignmentScore = 0.1;
-      }
-      
-      // Set feedback for front/back poses
-      if (alignmentScore >= 0.8) {
-        feedback = currentStep === 'front' ? '✅ Perfect front pose!' : '✅ Perfect back pose!';
-      } else if (alignmentScore >= 0.6) {
-        feedback = '🟡 Almost perfect! Small adjustments needed';
-      } else if (misalignedLimbs.includes('uneven_shoulders')) {
-        feedback = '⚖️ Level your shoulders';
-      } else if (misalignedLimbs.includes('posture')) {
-        feedback = '🧍 Stand up straight';
-      } else if (misalignedLimbs.includes('not_centered')) {
-        feedback = '⬅️➡️ Center yourself in frame';
-      } else {
-        feedback = '📍 Position yourself in the outline';
-      }
-    }
-
-    const isAligned = alignmentScore >= 0.8; // High threshold for quality
     
-    console.log(`[ALIGNMENT RESULT] Step: ${currentStep}, Score: ${alignmentScore.toFixed(3)}, Aligned: ${isAligned}, Feedback: ${feedback}`);
+    // Check if person is facing camera (nose should be visible)
+    if (!nose || nose.score < 0.5) {
+      misalignedLimbs.push('face');
+      feedback = "Please face the camera";
+    }
+    
+    // Analyze shoulder alignment (should be horizontal)
+    if (leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5) {
+      const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+      const shoulderHeight = Math.abs(leftShoulder.y - rightShoulder.y);
+      const shoulderAngle = shoulderHeight / shoulderWidth;
+      
+      if (shoulderAngle > alignmentThreshold) {
+        misalignedLimbs.push('shoulders');
+        feedback = "Keep shoulders level";
+      }
+    }
+    
+    // Analyze arm position (should be outstretched horizontally)
+    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
+      if (leftWrist.score > 0.3 && leftShoulder.score > 0.5) {
+        const leftArmHeight = Math.abs(leftWrist.y - leftShoulder.y);
+        const leftShoulderHeight = Math.abs(leftShoulder.y - (rightShoulder?.y || leftShoulder.y));
+        
+        if (leftArmHeight > leftShoulderHeight * 0.3) {
+          misalignedLimbs.push('left_arm');
+          feedback = "Raise left arm horizontally";
+        }
+      }
+      
+      if (rightWrist.score > 0.3 && rightShoulder.score > 0.5) {
+        const rightArmHeight = Math.abs(rightWrist.y - rightShoulder.y);
+        const rightShoulderHeight = Math.abs(rightShoulder.y - (leftShoulder?.y || rightShoulder.y));
+        
+        if (rightArmHeight > rightShoulderHeight * 0.3) {
+          misalignedLimbs.push('right_arm');
+          feedback = "Raise right arm horizontally";
+        }
+      }
+    }
+    
+    // Check body centering
+    if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
+      const hipCenter = (leftHip.x + rightHip.x) / 2;
+      const screenCenter = (videoRef.current?.videoWidth || 640) / 2;
+      const centerOffset = Math.abs(hipCenter - screenCenter) / screenCenter;
+      
+      if (centerOffset > 0.2) {
+        misalignedLimbs.push('centering');
+        feedback = "Move to center of frame";
+      }
+    }
+    
+    // Calculate overall alignment score
+    const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
+    const alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
+    
+    // More forgiving thresholds - green light at 0.8 instead of perfect alignment
+    const isWellAligned = alignmentScore >= 0.8; // 80% threshold instead of 100%
+    const allowMinorMisalignment = misalignedLimbs.length <= 1; // Allow 1 minor issue
+    
+    if (isWellAligned && allowMinorMisalignment) {
+      feedback = "Great pose! Hold steady...";
+    } else if (alignmentScore >= 0.6) {
+      feedback = "Almost there! " + (alignmentScore >= 0.7 ? "Hold still for a moment..." : "Adjust your position slightly");
+    } else {
+      feedback = misalignedLimbs.length > 0 ? 
+        (misalignedLimbs.includes('face') ? "Please face the camera" : 
+         misalignedLimbs.includes('shoulders') ? "Keep shoulders level" :
+         misalignedLimbs.includes('left_arm') || misalignedLimbs.includes('right_arm') ? "Raise arms horizontally" :
+         "Move to center of frame") : "Adjust your position";
+    }
     
     return {
-      isAligned,
+      isAligned: isWellAligned && allowMinorMisalignment,
       misalignedLimbs,
       alignmentScore,
       feedback
     };
-  };
+  }, []);
 
-  // ✅ 1. Enhanced drawPoseOverlay with early returns and improved guards
-  const drawPoseOverlay = useCallback((pose: DetectedPose) => {
-    // ✅ 1. Immediate early return if transitioning or success showing
-    if (showSuccessScreen || isScanningFadingOut) {
-      console.log('⏹️ DrawPoseOverlay: Early return due to success/fade-out state');
+  const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
+    // STEP 4: DRAW DEBUG
+    console.log("[DRAW] drawPoseOverlay called");
+    
+    if (!overlayCanvasRef.current || !videoRef.current) {
+      console.log('[DRAW] ❌ Missing canvas or video ref');
       return;
     }
-
-    if (!overlayCanvasRef.current || !pose) {
-      console.log('[DRAW] Canvas or pose not available');
-      return;
-    }
-
+    
     const canvas = overlayCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.log('[DRAW] Could not get canvas context');
+      console.log('[DRAW] ❌ No canvas context');
       return;
     }
-
-    // ✅ 1. Clear canvas at start if fade-out is active
-    if (isScanningFadingOut) {
-      console.log('🧹 Clearing canvas during fade-out');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      return;
+    
+    // STEP 4: DRAW RED TEST BOX
+    ctx.fillStyle = "red";
+    ctx.fillRect(10, 10, 20, 20);
+    console.log("[DRAW] Red test box drawn");
+    
+    const video = videoRef.current;
+    
+    // Set canvas buffer size to match video dimensions
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
     }
-
+    
     // Clear previous drawings
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    console.log('[DRAW] Starting pose overlay drawing');
+    // REDRAW TEST BOX AFTER CLEAR
+    ctx.fillStyle = "red";
+    ctx.fillRect(10, 10, 20, 20);
     
-    // Enhanced keypoint drawing with better visibility
-    ctx.fillStyle = '#00FF00';
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 3;
+    console.log(`[DRAW] Canvas setup: ${canvas.width}x${canvas.height}, video: ${video.videoWidth}x${video.videoHeight}`);
     
+    if (!pose?.keypoints?.length) {
+      console.log('[DRAW] ❌ No keypoints to draw, but red box should be visible');
+      return;
+    }
+    
+    console.log(`[DRAW] Drawing ${pose.keypoints.length} keypoints`);
+    
+    // Draw GREEN DOTS for pose keypoints - FORCE VISIBLE
     let drawnKeypoints = 0;
-    pose.keypoints.forEach((keypoint) => {
-      if (keypoint.score && keypoint.score > 0.3) { // Only draw confident keypoints
-        const { x, y } = keypoint;
+    pose.keypoints.forEach((keypoint, index) => {
+      if (keypoint.score > 0.2) {
+        const isAligned = !alignment.misalignedLimbs.some(limb => 
+          keypoint.name?.includes(limb.replace('_', ' '))
+        );
         
-        // Draw keypoint as circle with border
+        // LARGE OUTER GLOW for visibility
         ctx.beginPath();
-        ctx.arc(x, y, 6, 0, 2 * Math.PI);
-        ctx.fillStyle = '#00FF00';
+        ctx.arc(keypoint.x, keypoint.y, 15, 0, 2 * Math.PI);
+        ctx.fillStyle = isAligned ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 107, 0, 0.5)';
         ctx.fill();
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
+        
+        // LARGE GREEN DOT - FORCE VISIBLE
+        ctx.beginPath();
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = isAligned ? '#00ff00' : '#ff6b00';
+        ctx.fill();
+        
+        // WHITE BORDER for maximum contrast
+        ctx.beginPath();
+        ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
         ctx.stroke();
         
         drawnKeypoints++;
+        console.log(`[DRAW] ✅ Drew keypoint ${index}: ${keypoint.name} at (${keypoint.x.toFixed(1)}, ${keypoint.y.toFixed(1)})`);
       }
     });
     
-    console.log(`[DRAW] Drew ${drawnKeypoints} GREEN KEYPOINT CIRCLES`);
+    console.log(`[DRAW] Successfully drew ${drawnKeypoints} GREEN DOTS`);
     
-    // Enhanced skeleton drawing with thicker, more visible lines
+    // Draw WHITE SKELETON LINES - FORCE VISIBLE
     const connections = [
       ['left_shoulder', 'right_shoulder'],
       ['left_shoulder', 'left_elbow'],
       ['left_elbow', 'left_wrist'],
       ['right_shoulder', 'right_elbow'],
       ['right_elbow', 'right_wrist'],
+      ['left_hip', 'right_hip'],
       ['left_shoulder', 'left_hip'],
       ['right_shoulder', 'right_hip'],
-      ['left_hip', 'right_hip'],
-      ['left_hip', 'left_knee'],
-      ['left_knee', 'left_ankle'],
-      ['right_hip', 'right_knee'],
-      ['right_knee', 'right_ankle']
     ];
     
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 4;
-    
     let drawnConnections = 0;
-    connections.forEach(([startName, endName]) => {
-      const startPoint = pose.keypoints.find(kp => kp.name === startName);
-      const endPoint = pose.keypoints.find(kp => kp.name === endName);
+    connections.forEach(([pointA, pointB]) => {
+      const kpA = pose.keypoints.find(kp => kp.name === pointA);
+      const kpB = pose.keypoints.find(kp => kp.name === pointB);
       
-      if (startPoint && endPoint && 
-          startPoint.score && startPoint.score > 0.3 && 
-          endPoint.score && endPoint.score > 0.3) {
+      if (kpA && kpB && kpA.score > 0.2 && kpB.score > 0.2) {
+        // THICK WHITE SKELETON LINES
         ctx.beginPath();
-        ctx.moveTo(startPoint.x, startPoint.y);
-        ctx.lineTo(endPoint.x, endPoint.y);
+        ctx.moveTo(kpA.x, kpA.y);
+        ctx.lineTo(kpB.x, kpB.y);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        
+        // COLORED INNER LINE for alignment feedback
+        ctx.beginPath();
+        ctx.moveTo(kpA.x, kpA.y);
+        ctx.lineTo(kpB.x, kpB.y);
+        ctx.strokeStyle = alignment.isAligned ? '#00ffff' : '#ff6b00';
+        ctx.lineWidth = 3;
         ctx.stroke();
         
         drawnConnections++;
@@ -875,7 +1166,7 @@ export default function BodyScanAI() {
     
     console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
     console.log('[DRAW] ✅ Pose overlay drawing complete');
-  }, [showSuccessScreen, hasImageReady, isScanningFadingOut]);
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -913,46 +1204,35 @@ export default function BodyScanAI() {
   };
 
   const handleContinue = () => {
-    // Determine next step for logging
-    const nextStep = currentStep === 'front' ? 'side' : 
-                    currentStep === 'side' ? 'back' : 'weight modal';
-    
-    console.log('🧠 Continue pressed', { currentStep, advancingTo: nextStep });
-    
     if (hasImageReady && savedScanUrl) {
-      // Reset all relevant states immediately
-      setCapturedImage(null);
-      setHasImageReady(false);
-      setSavedScanUrl(null);
-      setAlignmentConfirmed(false);
-      setShowSuccessScreen(false);
-      setIsTransitioning(false);
-      setShowShutterFlash(false);
+      // Store current step's captured image
+      setCapturedImages(prev => ({
+        ...prev,
+        [currentStep]: savedScanUrl
+      }));
       
       // Mark current step as completed
       setCompletedSteps(prev => new Set([...prev, currentStep]));
       
-      // Clean step transition system
-      if (currentStep === 'front') {
-        setCurrentStep('side');
-        toast({
-          title: "📸 Great! Now turn sideways",
-          description: "Position yourself sideways for the side view photo",
-          duration: 4000,
-        });
-      } else if (currentStep === 'side') {
-        setCurrentStep('back');
-        toast({
-          title: "📸 Awesome! Now turn around",
-          description: "Turn around so we can capture your back view",
-          duration: 4000,
-        });
-      } else if (currentStep === 'back') {
-        console.log('🎉 All scans completed - showing weight modal');
-        setShowWeightModal(true);
-      }
-    } else {
-      console.warn('❌ handleContinue: Invalid state', { hasImageReady, savedScanUrl: !!savedScanUrl });
+      // Show step success animation
+      setShowStepSuccess(true);
+      
+      // Advance to next step with cinematic transition
+      setTimeout(() => {
+        if (currentStep === 'front') {
+          setCurrentStep('side');
+        } else if (currentStep === 'side') {
+          setCurrentStep('back');
+        } else {
+          // All steps completed - show completion
+          setShowWeightModal(true);
+        }
+        setShowStepSuccess(false);
+      }, 1500);
+      
+      // Reset current step state
+      setSavedScanUrl(null);
+      setShowSuccessScreen(false);
     }
   };
 
@@ -974,259 +1254,6 @@ export default function BodyScanAI() {
 
   const toggleCamera = () => {
     setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
-  };
-
-  const captureImage = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isCapturing) {
-      console.error('❌ Cannot capture - refs not ready or already capturing');
-      return;
-    }
-
-    const video = videoRef.current;
-    if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
-      console.error('❌ Video not ready for capture');
-      toast({
-        title: "Camera Not Ready",
-        description: "Please wait for camera to initialize",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('📸 Starting image capture');
-    setIsCapturing(true);
-
-    // Stop pose detection
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
-    try {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas context not available');
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/png');
-      setCapturedImage(dataUrl);
-
-      setShowShutterFlash(true);
-      setTimeout(() => setShowShutterFlash(false), 150);
-
-      await saveBodyScanToSupabase(dataUrl);
-    } catch (error) {
-      console.error('❌ Capture failed:', error);
-      toast({
-        title: "Capture Failed",
-        description: "Failed to capture image. Please try again.",
-        variant: "destructive"
-      });
-      setIsCapturing(false);
-    }
-  }, []);
-
-  // Fix 1: Replace countdown useEffect
-  useEffect(() => {
-    let countdownInterval: NodeJS.Timeout;
-
-    if (isCountingDown && countdownSeconds > 0) {
-      console.log('⏰ Countdown:', countdownSeconds);
-
-      countdownInterval = setTimeout(() => {
-        setCountdownSeconds(prev => {
-          if (prev <= 1) {
-            console.log('📸 COUNTDOWN COMPLETE - triggering capture');
-            setIsCountingDown(false);
-            playBodyScanCapture();
-            setShouldCapture(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (countdownInterval) clearTimeout(countdownInterval);
-    };
-  }, [isCountingDown, countdownSeconds, playBodyScanCapture]);
-
-  // Fix 3: Add new useEffect to trigger capture when countdown finishes
-  useEffect(() => {
-    if (shouldCapture) {
-      setShouldCapture(false); // Reset the trigger
-      captureImage(); // Clean capture call
-    }
-  }, [shouldCapture, captureImage]);
-
-  // ✅ Enhanced saveBodyScanToSupabase with proper error handling and success feedback
-  const saveBodyScanToSupabase = async (imageData: string) => {
-    if (!imageData) {
-      console.error('❌ No image data to save');
-      return;
-    }
-
-    setIsSaving(true);
-    setErrorSavingScan(null);
-
-    try {
-      console.log('💾 Starting save to Supabase...');
-      
-      // Get user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Convert data URL to blob
-      const response = await fetch(imageData);
-      const blob = await response.blob();
-      
-      // Generate unique filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `body-scan-${currentStep}-${timestamp}.jpg`;
-      const filepath = `${user.id}/${filename}`;
-
-      console.log('📤 Uploading to storage:', filepath);
-      
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('body-scans')
-        .upload(filepath, blob, {
-          contentType: 'image/jpeg',
-          upsert: false
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      console.log('✅ Upload successful:', uploadData);
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('body-scans')
-        .getPublicUrl(filepath);
-
-      console.log('🔗 Public URL:', publicUrl);
-
-      // Save scan record to database
-      const { data: scanData, error: scanError } = await supabase
-        .from('body_scans')
-        .insert({
-          user_id: user.id,
-          type: currentStep,
-          image_url: publicUrl,
-          pose_metadata: poseDetected ? JSON.parse(JSON.stringify({
-            keypoints: poseDetected.keypoints,
-            score: poseDetected.score
-          })) : null,
-          pose_score: alignmentFeedback?.alignmentScore || 0,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (scanError) {
-        throw scanError;
-      }
-
-      console.log('✅ Scan record saved:', scanData);
-
-      // Fix 4: Simplified success screen logic
-      setSavedScanUrl(publicUrl);
-      setCapturedImages(prev => ({ ...prev, [currentStep]: publicUrl }));
-
-      setHasImageReady(true); // Enables continue button
-      setShowSuccessScreen(true);
-      setIsCapturing(false);
-
-      showInstantFeedback(currentStep);
-
-    } catch (error) {
-      console.error('❌ Save failed:', error);
-      setErrorSavingScan(error.message || 'Unknown error');
-      
-      toast({
-        title: "Save Error",
-        description: `Body scan failed due to camera capture issue. Please ensure the outline is visible and try again.`,
-        variant: "destructive"
-      });
-      setIsSaving(false);
-    }
-  };
-
-  // Complete the full body scan with weight
-  const completeFullBodyScan = async () => {
-    if (!weight.trim()) {
-      toast({
-        title: "Weight Required",
-        description: "Please enter your current weight",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCompletingScan(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // Update user profile with weight and scan completion
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: user.id,
-          weight: parseFloat(weight),
-          updated_at: new Date().toISOString()
-        });
-
-      if (profileError) throw profileError;
-
-      // Mark all scan steps as completed
-      setCompletedSteps(new Set(['front', 'side', 'back']));
-      
-      // Trigger completion notification
-      triggerScanCompletedNotification('back');
-      
-      toast({
-        title: "🎉 Body Scan Complete!",
-        description: "Your full body scan has been saved. You can now track your progress over time.",
-        duration: 5000,
-      });
-
-      // Navigate to results or dashboard
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-
-    } catch (error) {
-      console.error('Error completing body scan:', error);
-      toast({
-        title: "Error",
-        description: "Failed to complete body scan. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCompletingScan(false);
-    }
-  };
-
-  const handleRetake = () => {
-    console.log('🔄 Retaking scan - resetting all state');
-    setCapturedImage(null);
-    setHasImageReady(false);
-    setSavedScanUrl(null);
-    setShowSuccessScreen(false);
-    console.log('🔄 Success screen hidden by user retake action');
-    setAlignmentFrameCount(0);
-    setAlignmentConfirmed(false);
-    setIsCountingDown(false);
-    setCountdownSeconds(0);
-    setIsSaving(false);
-    setErrorSavingScan(null);
   };
 
   // Enhanced step instructions with visual themes
@@ -1290,9 +1317,7 @@ export default function BodyScanAI() {
           playsInline
           muted
           onLoadedMetadata={() => {
-            console.log('📱 Video onLoadedMetadata triggered');
             if (videoRef.current) {
-              console.log(`📱 Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
               videoRef.current.play().catch(console.log);
             }
           }}
@@ -1301,168 +1326,171 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* STEP 5: CANVAS WITH LIME BORDER - Hidden when scan is successful */}
-      {!showSuccessScreen && !isScanningFadingOut && (
-        <canvas 
-          ref={overlayCanvasRef}
-           style={{
-             border: '3px solid lime',
-             position: 'absolute',
-             zIndex: 10, // Lower than flash (z-30) and success (z-40)
-             top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            display: 'block'
-          }}
-        />
-      )}
+      {/* STEP 5: CANVAS WITH LIME BORDER */}
+      <canvas 
+        ref={overlayCanvasRef}
+        style={{
+          border: '3px solid lime',
+          position: 'absolute',
+          zIndex: 99,
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          display: 'block'
+        }}
+      />
       
       {/* Grid Overlay - Fixed behind camera */}
-      {!showSuccessScreen && (
-        <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
-          <div className="w-full h-full" style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)
-            `,
-            backgroundSize: '30px 30px',
-            filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))'
-          }}></div>
-        </div>
-      )}
+      <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
+        <div className="w-full h-full" style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)
+          `,
+          backgroundSize: '30px 30px',
+          filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))'
+        }}></div>
+      </div>
 
       {/* Enhanced Progress Indicator & Cinematic Header */}
-      {!showSuccessScreen && (
-        <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          {/* Enhanced Progress Bar with Step Completion */}
-          <div className={`bg-black/60 backdrop-blur-sm rounded-xl p-3 border mb-3 transition-all duration-500 ${currentStepConfig.borderColor}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white/80 text-xs font-medium">Progress</span>
-              <span className="text-white text-sm font-bold flex items-center gap-2">
-                <span className="text-xl">{currentStepConfig.icon}</span>
-                Step {currentStepConfig.step} of 3
-              </span>
-            </div>
-            <div className="flex gap-1">
-              {['front', 'side', 'back'].map((step, index) => (
-                <div key={step} className="flex-1 bg-white/20 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-700 ${
-                      completedSteps.has(step) 
-                        ? 'bg-gradient-to-r from-green-400 to-green-500' 
-                        : step === currentStep 
-                        ? `bg-gradient-to-r ${currentStepConfig.theme}` 
-                        : 'bg-transparent'
-                    }`}
-                    style={{ width: completedSteps.has(step) || step === currentStep ? '100%' : '0%' }}
-                  ></div>
-                </div>
-              ))}
-            </div>
+      <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        {/* Enhanced Progress Bar with Step Completion */}
+        <div className={`bg-black/60 backdrop-blur-sm rounded-xl p-3 border mb-3 transition-all duration-500 ${currentStepConfig.borderColor}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/80 text-xs font-medium">Progress</span>
+            <span className="text-white text-sm font-bold flex items-center gap-2">
+              <span className="text-xl">{currentStepConfig.icon}</span>
+              Step {currentStepConfig.step} of 3
+            </span>
           </div>
-          
-          {/* Cinematic Dynamic Header */}
-          <div key={currentStep} className={`bg-black/60 backdrop-blur-sm rounded-2xl p-4 border transition-all duration-700 animate-fade-in ${currentStepConfig.borderColor}`}>
-            <div className="text-center relative">
-              {/* Step Icon with Animation */}
-              <div className="text-4xl mb-3 animate-scale-in">{currentStepConfig.icon}</div>
-              
-              {/* Step Title with Gradient */}
-              <h2 className={`text-white text-lg font-bold mb-2 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
-                {currentStepConfig.title}
-              </h2>
-              
-              {/* Step Subtitle */}
-              <p className="text-white/90 text-sm leading-relaxed">
-                {currentStepConfig.subtitle}
-              </p>
-              
-              {/* Dynamic Background Accent */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-5 rounded-2xl -z-10`}></div>
-            </div>
+          <div className="flex gap-1">
+            {['front', 'side', 'back'].map((step, index) => (
+              <div key={step} className="flex-1 bg-white/20 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-700 ${
+                    completedSteps.has(step) 
+                      ? 'bg-gradient-to-r from-green-400 to-green-500' 
+                      : step === currentStep 
+                      ? `bg-gradient-to-r ${currentStepConfig.theme}` 
+                      : 'bg-transparent'
+                  }`}
+                  style={{ width: completedSteps.has(step) || step === currentStep ? '100%' : '0%' }}
+                ></div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
-
-      {/* Enhanced Dynamic Body Silhouette with Fixed Spacing */}
-      {!showSuccessScreen && (
-        <div key={currentStep} className={`absolute inset-0 flex items-center justify-center pt-24 pb-40 z-15 transition-all duration-1000 ${isTransitioning ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
-          <div className={`relative transition-all duration-700 ${
-            isCapturing ? 'scale-105' : 'scale-100'
-          } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
-            {/* Step-specific glow effect */}
-            <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-20 blur-3xl rounded-full scale-110 animate-pulse`}></div>
+        
+        {/* Cinematic Dynamic Header */}
+        <div key={currentStep} className={`bg-black/60 backdrop-blur-sm rounded-2xl p-4 border transition-all duration-700 animate-fade-in ${currentStepConfig.borderColor}`}>
+          <div className="text-center relative">
+            {/* Step Icon with Animation */}
+            <div className="text-4xl mb-3 animate-scale-in">{currentStepConfig.icon}</div>
             
-            <img 
-              src={
-                currentStep === 'front' 
-                  ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
-                  : currentStep === 'side'
-                  ? sideViewSilhouette
-                  : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
-              }
-              alt={`${currentStep} body silhouette`}
-              className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
-                currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
-                currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
-                'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
-              }`}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-            />
+            {/* Step Title with Gradient */}
+            <h2 className={`text-white text-lg font-bold mb-2 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
+              {currentStepConfig.title}
+            </h2>
+            
+            {/* Step Subtitle */}
+            <p className="text-white/90 text-sm leading-relaxed">
+              {currentStepConfig.subtitle}
+            </p>
+            
+            {/* Dynamic Background Accent */}
+            <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-5 rounded-2xl -z-10`}></div>
+          </div>
+        </div>
+      </div>
+
+      
+      {/* Enhanced Dynamic Body Silhouette with Step-Specific Theming */}
+      <div key={currentStep} className={`absolute inset-0 flex items-center justify-center mt-[-2vh] pt-4 z-15 transition-all duration-1000 ${isTransitioning ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+        <div className={`relative transition-all duration-700 ${
+          isCapturing ? 'scale-105' : 'scale-100'
+        } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
+          {/* Step-specific glow effect */}
+          <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-20 blur-3xl rounded-full scale-110 animate-pulse`}></div>
+          
+          <img 
+            src={
+              currentStep === 'front' 
+                ? "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+                : currentStep === 'side'
+                ? sideViewSilhouette
+                : "/lovable-uploads/f79fe9f7-e1df-47ea-bdca-a4389f4528f5.png"
+            }
+            alt={`${currentStep} body silhouette`}
+            className={`w-[85vw] max-h-[75vh] h-auto object-contain animate-fade-in relative z-10 ${
+              currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
+              currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
+              'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
+            }`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        </div>
+      </div>
+
+      {/* Enhanced Step Success Screen with Cinematic Effects */}
+      {showSuccessScreen && savedScanUrl && (
+        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
+          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
+            {/* Success Icon with Step-specific Color */}
+            <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
+            
+            {/* Step Success Title */}
+            <h3 className="text-white text-2xl font-bold mb-2">
+              {currentStepConfig.title.split(' ')[1]} {currentStepConfig.title.split(' ')[2]} Complete!
+            </h3>
+            <p className="text-white/80 text-sm mb-6">Scan saved successfully</p>
+            
+            {/* Enhanced Thumbnail with Step Theming */}
+            <div className={`mb-6 rounded-2xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-lg`}>
+              <img 
+                src={savedScanUrl}
+                alt={`${currentStep} body scan`}
+                className="w-full h-40 object-cover"
+              />
+            </div>
+            
+            {/* Enhanced Action Buttons */}
+            <div className="space-y-4">
+              <Button
+                onClick={handleContinue}
+                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-105 text-white font-bold py-4 text-lg shadow-lg transition-all duration-300`}
+              >
+                {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
+                 currentStep === 'side' ? '🔄 Continue to Back Scan' : 
+                 '🎉 Complete All Scans'}
+              </Button>
+              <Button
+                onClick={handleRetake}
+                variant="outline"
+                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 transition-all duration-300"
+              >
+                🔁 Retake {currentStepConfig.title.split(' ')[1]} Scan
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Unified Success Screen - Only show when flash is completely cleared */}
-      {showSuccessScreen && !showShutterFlash && savedScanUrl && (
+      {/* Step Success Transition Screen */}
+      {showStepSuccess && (
         <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-40 animate-fade-in">
           <div className={`text-center animate-scale-in`}>
             <div className={`text-8xl mb-6 animate-bounce`}>{currentStepConfig.icon}</div>
             <h2 className={`text-4xl font-bold mb-4 bg-gradient-to-r ${currentStepConfig.theme} bg-clip-text text-transparent`}>
-              {currentStep === 'front' ? 'Front Scan Complete' : 
-               currentStep === 'side' ? 'Side Scan Complete' : 
-               'Back Scan Complete'}
+              Step {currentStepConfig.step} Complete!
             </h2>
-            <div className="text-white/60 text-lg mb-8">
-              {currentStep === 'front' ? '→ Preparing Side' : 
-               currentStep === 'side' ? '→ Preparing Back' : 
-               '→ Continue to Weight'}
+            <div className="text-white/60 text-lg">
+              {currentStep === 'front' ? 'Preparing side view...' : 
+               currentStep === 'side' ? 'Preparing back view...' : 
+               'Preparing completion...'}
             </div>
-            
-            {/* Enhanced Thumbnail with Premium Feel */}
-            <div className={`mb-8 rounded-3xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-2xl relative group max-w-xs mx-auto`}>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10"></div>
-              <img 
-                src={savedScanUrl}
-                alt={`${currentStep} body scan`}
-                className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            
-            {/* Continue Button */}
-            <Button
-              onClick={() => {
-                console.log("👉 CONTINUE BUTTON CLICKED");
-                handleContinue();
-              }}
-              className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20 mb-4`}
-            >
-              {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
-               currentStep === 'side' ? '🔄 Continue to Back Scan' : 
-               '🎉 Complete All Scans'}
-            </Button>
-            
-            {/* Retake Button */}
-            <Button
-              onClick={handleRetake}
-              variant="outline"
-              className="w-full bg-white/5 border-2 border-white/30 text-white hover:bg-white/15 hover:border-white/50 transition-all duration-300 py-4 text-lg rounded-2xl"
-            >
-              🔁 Retake Scan
-            </Button>
           </div>
         </div>
       )}
@@ -1478,113 +1506,90 @@ export default function BodyScanAI() {
         </Button>
       </div>
 
-      {/* Camera Loading Overlay */}
-      {(!videoReady || !canvasReady) && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-30 flex items-center justify-center">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl text-center">
-            <div className="w-12 h-12 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-            <h3 className="text-white text-xl font-bold mb-2">Initializing Camera</h3>
-            <p className="text-white/70 text-sm">
-              {!videoReady ? 'Loading video stream...' : 'Preparing capture system...'}
-            </p>
-            <div className="mt-4 flex items-center justify-center gap-2 text-white/50 text-xs">
-              <span className={`w-2 h-2 rounded-full ${videoReady ? 'bg-green-400' : 'bg-gray-400'}`}></span>
-              Video Ready
-              <span className={`w-2 h-2 rounded-full ${canvasReady ? 'bg-green-400' : 'bg-gray-400'}`}></span>
-              Canvas Ready
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Fixed Bottom Controls - Matching Health Scanner */}
-      {!showSuccessScreen && (
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
-          <div className="flex flex-col space-y-4">
-            {/* Cancel Button */}
-            <Button
-              onClick={handleCancel}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
-            >
-              <X className="w-5 h-5 mr-2" />
-              Cancel
-            </Button>
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
+        <div className="flex flex-col space-y-4">
+          {/* Cancel Button */}
+          <Button
+            onClick={handleCancel}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border-2 border-red-500 transition-all duration-300"
+          >
+            <X className="w-5 h-5 mr-2" />
+            Cancel
+          </Button>
 
-            {/* Upload Button */}
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-            >
-              <Upload className="w-5 h-5 mr-2" />
-              📷 Upload Image
-            </Button>
+          {/* Upload Button */}
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            📷 Upload Image
+          </Button>
 
-            {/* Enhanced Main Action Button with Step Theming */}
-            <Button
-              onClick={hasImageReady ? handleContinue : captureImage}
-              disabled={
-                isCapturing || 
-                isSaving ||
-                !videoReady ||
-                !canvasReady ||
-                (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
-                isCountingDown ||
-                showSuccessScreen ||
-                isTransitioning
-              }
-              className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-                // Enhanced button theming based on step and alignment
-                (!isPoseDetectionEnabled) 
-                  ? `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-lg`
-                  : (alignmentFeedback === null)
-                  ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                  : (alignmentFeedback.isAligned === false)
-                  ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                  : `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-[0_0_20px_rgba(59,130,246,0.4)]`
-              }`}
-            >
-              <div className="flex items-center justify-center">
-                {showSuccessScreen ? (
-                  <>
-                    <ArrowRight className="w-6 h-6 mr-3" />
-                    {currentStepConfig.icon} Continue to {currentStep === 'front' ? 'Side' : currentStep === 'side' ? 'Back' : 'Complete'} Scan
-                  </>
-                ) : hasImageReady ? (
-                  <>
-                    <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
-                      {isSaving ? '💾' : currentStepConfig.icon}
-                    </div>
-                    {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
-                  </>
-                ) : (
-                  <>
-                    <div className={`text-xl mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>
-                      {isCapturing || isCountingDown ? '📸' : currentStepConfig.icon}
-                    </div>
-                    {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
-                     isCapturing ? '🔍 SCANNING...' : 
-                     `📸 Capture ${currentStepConfig.title.split(' ')[1]} View`}
-                    {/* Enhanced pose alignment indicator */}
-                    {isPoseDetectionEnabled && alignmentFeedback && (
-                      <span className="ml-2 text-lg">
-                        {alignmentFeedback.isAligned ? '✅' : '⚠️'}
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-              {!hasImageReady && !isCapturing && !isTransitioning && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                             animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
+          {/* Enhanced Main Action Button with Step Theming */}
+          <Button
+            onClick={hasImageReady ? handleContinue : captureImage}
+            disabled={
+              isCapturing || 
+              isSaving ||
+              (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
+              isCountingDown ||
+              showSuccessScreen ||
+              isTransitioning
+            }
+            className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
+              // Enhanced button theming based on step and alignment
+              (!isPoseDetectionEnabled) 
+                ? `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-lg`
+                : (alignmentFeedback === null)
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : (alignmentFeedback.isAligned === false)
+                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
+                : `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-[0_0_20px_rgba(59,130,246,0.4)]`
+            }`}
+          >
+            <div className="flex items-center justify-center">
+              {showSuccessScreen ? (
+                <>
+                  <ArrowRight className="w-6 h-6 mr-3" />
+                  {currentStepConfig.icon} Continue to {currentStep === 'front' ? 'Side' : currentStep === 'side' ? 'Back' : 'Complete'} Scan
+                </>
+              ) : hasImageReady ? (
+                <>
+                  <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
+                    {isSaving ? '💾' : currentStepConfig.icon}
+                  </div>
+                  {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
+                </>
+              ) : (
+                <>
+                  <div className={`text-xl mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>
+                    {isCapturing || isCountingDown ? '📸' : currentStepConfig.icon}
+                  </div>
+                  {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
+                   isCapturing ? '🔍 SCANNING...' : 
+                   `📸 Capture ${currentStepConfig.title.split(' ')[1]} View`}
+                  {/* Enhanced pose alignment indicator */}
+                  {isPoseDetectionEnabled && alignmentFeedback && (
+                    <span className="ml-2 text-lg">
+                      {alignmentFeedback.isAligned ? '✅' : '⚠️'}
+                    </span>
+                  )}
+                </>
               )}
-            </Button>
-          </div>
+            </div>
+            {!hasImageReady && !isCapturing && !isTransitioning && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                           animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
+            )}
+          </Button>
         </div>
-      )}
+      </div>
 
-      {/* ✅ 3. Alignment feedback overlay - Hidden during transitions */}
-      {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && !showSuccessScreen && !isScanningFadingOut && (
+      {/* Alignment feedback overlay */}
+      {alignmentFeedback && !alignmentFeedback.isAligned && !hasImageReady && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className={`backdrop-blur-sm rounded-2xl p-4 border transition-all duration-500 ease-in-out ${
             alignmentFeedback.alignmentScore >= 0.7 
@@ -1601,26 +1606,20 @@ export default function BodyScanAI() {
               Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
             </p>
             <p className="text-white text-sm font-medium">
-              {currentStep === 'side' && !alignmentFeedback.isAligned 
-                ? "🟡 Turn fully sideways so your shoulders and hips align"
-                : alignmentFeedback.feedback}
+              {alignmentFeedback.feedback}
             </p>
           </div>
         </div>
       )}
 
-      {/* ✅ 3. Perfect pose indicator - Hidden during transitions */}
-      {alignmentFeedback?.isAligned && !hasImageReady && !showSuccessScreen && !isScanningFadingOut && (
+      {/* Perfect pose indicator */}
+      {alignmentFeedback?.isAligned && !hasImageReady && (
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
             <div className="text-center">
-              <div className="text-2xl mb-2 animate-pulse">{currentStep === 'side' ? '🟢' : '✅'}</div>
-              <p className="text-white font-bold text-lg">
-                {currentStep === 'side' ? 'Perfect side pose!' : 'Great Pose!'}
-              </p>
-              <p className="text-white text-sm">
-                {currentStep === 'side' ? 'Hold steady...' : 'Hold steady for auto-capture...'}
-              </p>
+              <div className="text-2xl mb-2 animate-pulse">✅</div>
+              <p className="text-white font-bold text-lg">Great Pose!</p>
+              <p className="text-white text-sm">Hold steady for auto-capture...</p>
               {alignmentFrameCount > 0 && (
                 <div className="mt-2">
                   <div className="bg-white/20 rounded-full h-2">
@@ -1679,33 +1678,6 @@ export default function BodyScanAI() {
             {/* Pulsing outer ring */}
             <div className="absolute inset-0 rounded-full border-2 border-green-300/50 animate-ping"></div>
           </div>
-        </div>
-      )}
-
-      {/* Scanning overlay during countdown */}
-      {(isCountingDown && countdownSeconds > 0) && (
-        <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-25 flex items-center justify-center transition-opacity duration-300 ${
-          isScanningFadingOut ? 'opacity-0' : 'opacity-100 animate-fade-in'
-        }`}>
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl animate-scale-in">
-            <div className="flex items-center justify-center space-x-3">
-              {/* Spinning loader */}
-              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              
-              {/* Scanning text */}
-              <div className="text-white text-lg font-semibold">
-                📸 Scanning… Hold steady!
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✅ 1. Camera shutter flash effect with smooth fade */}
-      {showShutterFlash && (
-        <div className={`absolute inset-0 bg-white z-30 transition-opacity duration-150 ${
-          showShutterFlash ? 'opacity-100' : 'opacity-0'
-        }`}>
         </div>
       )}
 

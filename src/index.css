@@ -5,39 +5,6 @@
   0% { transform: translateX(-200%) skewX(-12deg); }
   100% { transform: translateX(200%) skewX(-12deg); }
 }
-
-@keyframes flash {
-  0% { opacity: 0; }
-  50% { opacity: 0.9; }
-  100% { opacity: 0; }
-}
-
-@keyframes bounceIn {
-  0% { 
-    opacity: 0; 
-    transform: scale(0.8) translateY(20px);
-  }
-  60% { 
-    opacity: 1; 
-    transform: scale(1.02) translateY(-5px);
-  }
-  80% { 
-    transform: scale(0.98) translateY(2px);
-  }
-  100% { 
-    opacity: 1; 
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  0% { 
-    opacity: 0; 
-  }
-  100% { 
-    opacity: 1; 
-  }
-}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -597,15 +564,6 @@
   
   .dark .glass-button:hover {
     background: rgba(255, 255, 255, 0.25);
-  }
-
-  /* Smooth Animation Utilities */
-  .fadeIn-300 {
-    animation: fadeIn 300ms ease-out forwards;
-  }
-
-  .animate-smooth-bounce {
-    animation: bounceIn 400ms ease-out forwards;
   }
 
   /* Enhanced visible-card with stronger shadows in light mode */
