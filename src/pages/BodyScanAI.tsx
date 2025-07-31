@@ -1091,6 +1091,31 @@ export default function BodyScanAI() {
     return true;
   };
 
+  function detectPoseView(pose: DetectedPose): 'front' | 'side' | 'back' | 'unknown' {
+    const keypoints = pose.keypoints.reduce((map, kp) => {
+      map[kp.name] = kp;
+      return map;
+    }, {} as Record<string, PoseKeypoint>);
+
+    const leftShoulder = keypoints['left_shoulder'];
+    const rightShoulder = keypoints['right_shoulder'];
+    const leftHip = keypoints['left_hip'];
+    const rightHip = keypoints['right_hip'];
+
+    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) return 'unknown';
+
+    const horizontalShoulderDist = Math.abs(leftShoulder.x - rightShoulder.x);
+    const verticalShoulderDist = Math.abs(leftShoulder.y - rightShoulder.y);
+    const horizontalHipDist = Math.abs(leftHip.x - rightHip.x);
+
+    const isFrontBack = horizontalShoulderDist > verticalShoulderDist && horizontalHipDist > 30;
+    const isSide = horizontalShoulderDist < 40 && horizontalHipDist < 40;
+
+    if (isSide) return 'side';
+    if (isFrontBack) return 'front'; // we can't distinguish front vs back yet
+    return 'unknown';
+  }
+
   // Enhanced pose analysis with comprehensive validation
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
     // STEP 1: Enhanced human presence validation with tiered levels
