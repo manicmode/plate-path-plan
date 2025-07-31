@@ -1183,7 +1183,13 @@ export default function BodyScanAI() {
       // ✅ 5. Show success screen after successful save
       setTimeout(() => {
         console.log('🎉 Popup shown');
-        setShowSuccessScreen(true);
+        if (currentStep === 'back') {
+          console.log('✅ Final success screen triggered');
+          setShowSuccessScreen(true);
+        } else {
+          console.log('✅ Step success screen triggered');
+          setShowStepSuccess(true);
+        }
         setIsCapturing(false);
         showInstantFeedback(currentStep);
       }, 300);
