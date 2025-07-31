@@ -1589,9 +1589,7 @@ export default function BodyScanAI() {
       <div key={currentStep} className={`absolute inset-0 flex items-center justify-center pt-24 pb-40 z-15 transition-all duration-1000 ${isTransitioning ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
         <div className={`relative transition-all duration-700 ${
           isCapturing ? 'scale-105' : 'scale-100'
-        } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''} ${
-          currentStep === 'side' ? 'bg-transparent' : ''
-        }`}>
+        } ${hasImageReady ? 'filter brightness-110 hue-rotate-60' : ''}`}>
           {/* Step-specific glow effect */}
           <div className={`absolute inset-0 bg-gradient-to-r ${currentStepConfig.theme} opacity-20 blur-3xl rounded-full scale-110 animate-pulse`}></div>
           
@@ -1606,7 +1604,7 @@ export default function BodyScanAI() {
             alt={`${currentStep} body silhouette`}
             className={`w-[80vw] max-h-[55vh] h-auto object-contain animate-fade-in relative z-10 ${
               currentStep === 'front' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] drop-shadow-[0_0_16px_rgba(59,130,246,0.6)]' :
-              currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)] bg-transparent' :
+              currentStep === 'side' ? 'opacity-90 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] drop-shadow-[0_0_16px_rgba(34,197,94,0.6)]' :
               'opacity-90 drop-shadow-[0_0_8px_rgba(147,51,234,0.8)] drop-shadow-[0_0_16px_rgba(147,51,234,0.6)]'
             }`}
             onLoad={handleImageLoad}
