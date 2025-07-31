@@ -1763,73 +1763,7 @@ export default function BodyScanAI() {
             Cancel
           </Button>
 
-          {/* Upload Button */}
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            variant="outline"
-            className="bg-blue-600/20 border-blue-400 text-blue-300 hover:bg-blue-600/30 hover:text-white transition-all duration-300"
-          >
-            <Upload className="w-5 h-5 mr-2" />
-            📷 Upload Image
-          </Button>
-
-          {/* Enhanced Main Action Button with Step Theming */}
-          <Button
-            onClick={hasImageReady ? handleContinue : captureImage}
-            disabled={
-              isCapturing || 
-              isSaving ||
-              (isPoseDetectionEnabled && (!alignmentFeedback || !alignmentFeedback.isAligned)) ||
-              isCountingDown ||
-              showSuccessScreen ||
-              isTransitioning
-            }
-            className={`relative bg-gradient-to-r transition-all duration-300 disabled:opacity-50 text-white font-bold py-4 text-lg border-2 ${
-              // Enhanced button theming based on step and alignment
-              (!isPoseDetectionEnabled) 
-                ? `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-lg`
-                : (alignmentFeedback === null)
-                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                : (alignmentFeedback.isAligned === false)
-                ? 'from-gray-500 to-gray-600 border-gray-400 cursor-not-allowed'
-                : `${currentStepConfig.theme} hover:scale-105 ${currentStepConfig.borderColor} shadow-[0_0_20px_rgba(59,130,246,0.4)]`
-            }`}
-          >
-            <div className="flex items-center justify-center">
-              {showSuccessScreen ? (
-                <>
-                  <ArrowRight className="w-6 h-6 mr-3" />
-                  {currentStepConfig.icon} Continue to {currentStep === 'front' ? 'Side' : currentStep === 'side' ? 'Back' : 'Complete'} Scan
-                </>
-              ) : hasImageReady ? (
-                <>
-                  <div className={`w-6 h-6 mr-3 ${isSaving ? 'animate-spin' : ''}`}>
-                    {isSaving ? '💾' : currentStepConfig.icon}
-                  </div>
-                  {isSaving ? 'Saving Scan...' : 'Scan Saved!'}
-                </>
-              ) : (
-                <>
-                  <div className={`text-xl mr-3 ${isCapturing || isCountingDown ? 'animate-spin' : 'animate-pulse'}`}>
-                    {isCapturing || isCountingDown ? '📸' : currentStepConfig.icon}
-                  </div>
-                  {isCountingDown ? `🔍 AUTO-CAPTURING IN ${countdownSeconds}...` : 
-                   isCapturing ? '🔍 SCANNING...' : 
-                   `📸 Auto-Capture: ${currentStepConfig.title.split(' ')[1]} View`}
-                  {/* Enhanced pose alignment indicator */}
-                  {isPoseDetectionEnabled && alignmentFeedback && (
-                    <span className="ml-2 text-lg">
-                      {alignmentFeedback.isAligned ? '✅' : '⚠️'}
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-            {!hasImageReady && !isCapturing && !isTransitioning && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                           animate-[shimmer_2s_ease-in-out_infinite] rounded-lg"></div>
-            )}
-          </Button>
+          {/* Upload and Capture buttons removed - auto-capture only */}
         </div>
       </div>
 
