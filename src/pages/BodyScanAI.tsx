@@ -18,7 +18,7 @@ interface PoseKeypoint {
   x: number;
   y: number;
   score?: number; // Make optional to match TensorFlow types
-  name: string;
+  name?: string;  // Make optional to match TensorFlow types
 }
 
 interface DetectedPose {
@@ -501,15 +501,15 @@ export default function BodyScanAI() {
         const pose = poses[0];
         console.log(`[POSE] Detected pose with ${pose.keypoints.length} keypoints, score: ${pose.score.toFixed(3)}`);
         
-        setPoseDetected(pose);
+        setPoseDetected(pose as DetectedPose);
         
         // ✅ Analyze pose alignment (front/side/back specific)
-        const alignmentResult = analyzeSidePoseAlignment(pose);
+        const alignmentResult = analyzeSidePoseAlignment(pose as DetectedPose);
         console.log(`[ALIGNMENT] Score: ${alignmentResult.alignmentScore.toFixed(3)}, Aligned: ${alignmentResult.isAligned}`);
         setAlignmentFeedback(alignmentResult);
         
         // ✅ Draw pose overlay if conditions are met
-        drawPoseOverlay(pose);
+        drawPoseOverlay(pose as DetectedPose);
         
         // ✅ Handle alignment confirmation and auto-capture
         if (alignmentResult.isAligned && !isCountingDown && !hasImageReady) {
@@ -612,7 +612,7 @@ export default function BodyScanAI() {
     const keypoints = pose.keypoints;
     const requiredConfidence = 0.3;
     
-    // Get important keypoints
+    // Get important keypoints with safe access
     const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
     const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
     const leftHip = keypoints.find(kp => kp.name === 'left_hip');
@@ -626,7 +626,7 @@ export default function BodyScanAI() {
     let feedback = '';
 
     // Basic pose quality check
-    const validKeypoints = keypoints.filter(kp => kp.score > requiredConfidence).length;
+    const validKeypoints = keypoints.filter(kp => kp.score && kp.score > requiredConfidence).length;
     if (validKeypoints < 8) {
       return {
         isAligned: false,
@@ -641,9 +641,11 @@ export default function BodyScanAI() {
       console.log('🔄 SIDE POSE VALIDATION ACTIVE');
       
       // For side pose, we want shoulders and hips to be mostly aligned in a vertical line
-      if (leftShoulder && rightShoulder && leftHip && rightHip && 
-          leftShoulder.score > requiredConfidence && rightShoulder.score > requiredConfidence &&
-          leftHip.score > requiredConfidence && rightHip.score > requiredConfidence) {
+        if (leftShoulder && rightShoulder && leftHip && rightHip && 
+            leftShoulder.score && leftShoulder.score > requiredConfidence && 
+            rightShoulder.score && rightShoulder.score > requiredConfidence &&
+            leftHip.score && leftHip.score > requiredConfidence && 
+            rightHip.score && rightHip.score > requiredConfidence) {
         
         // Calculate if shoulders are aligned vertically (indicating side view)
         const shoulderXDiff = Math.abs(leftShoulder.x - rightShoulder.x);
@@ -666,7 +668,9 @@ export default function BodyScanAI() {
         
         // Check head position for side profile
         if (nose && leftEye && rightEye && 
-            nose.score > requiredConfidence && leftEye.score > requiredConfidence && rightEye.score > requiredConfidence) {
+            nose.score && nose.score > requiredConfidence && 
+            leftEye.score && leftEye.score > requiredConfidence && 
+            rightEye.score && rightEye.score > requiredConfidence) {
           
           const eyeXDiff = Math.abs(leftEye.x - rightEye.x);
           console.log(`[SIDE] Eye X diff: ${eyeXDiff.toFixed(2)}`);
@@ -698,8 +702,10 @@ export default function BodyScanAI() {
     } else {
       // FRONT/BACK POSE VALIDATION - Standard frontal alignment
       if (leftShoulder && rightShoulder && leftHip && rightHip && 
-          leftShoulder.score > requiredConfidence && rightShoulder.score > requiredConfidence &&
-          leftHip.score > requiredConfidence && rightHip.score > requiredConfidence) {
+          leftShoulder.score && leftShoulder.score > requiredConfidence && 
+          rightShoulder.score && rightShoulder.score > requiredConfidence &&
+          leftHip.score && leftHip.score > requiredConfidence && 
+          rightHip.score && rightHip.score > requiredConfidence) {
         
         // Check shoulder level alignment
         const shoulderYDiff = Math.abs(leftShoulder.y - rightShoulder.y);
@@ -808,7 +814,7 @@ export default function BodyScanAI() {
     
     let drawnKeypoints = 0;
     pose.keypoints.forEach((keypoint) => {
-      if (keypoint.score > 0.3) { // Only draw confident keypoints
+      if (keypoint.score && keypoint.score > 0.3) { // Only draw confident keypoints
         const { x, y } = keypoint;
         
         // Draw keypoint as circle with border
@@ -850,7 +856,9 @@ export default function BodyScanAI() {
       const startPoint = pose.keypoints.find(kp => kp.name === startName);
       const endPoint = pose.keypoints.find(kp => kp.name === endName);
       
-      if (startPoint && endPoint && startPoint.score > 0.3 && endPoint.score > 0.3) {
+      if (startPoint && endPoint && 
+          startPoint.score && startPoint.score > 0.3 && 
+          endPoint.score && endPoint.score > 0.3) {
         ctx.beginPath();
         ctx.moveTo(startPoint.x, startPoint.y);
         ctx.lineTo(endPoint.x, endPoint.y);
@@ -1149,10 +1157,10 @@ export default function BodyScanAI() {
           user_id: user.id,
           type: currentStep,
           image_url: publicUrl,
-          pose_metadata: poseDetected ? {
+          pose_metadata: poseDetected ? JSON.parse(JSON.stringify({
             keypoints: poseDetected.keypoints,
             score: poseDetected.score
-          } : null,
+          })) : null,
           pose_score: alignmentFeedback?.alignmentScore || 0,
           created_at: new Date().toISOString()
         })
@@ -1177,7 +1185,7 @@ export default function BodyScanAI() {
         console.log('🎉 Popup shown');
         setShowSuccessScreen(true);
         setIsCapturing(false);
-        showInstantFeedback('success', `${currentStep} scan saved successfully!`);
+        showInstantFeedback(currentStep);
       }, 300);
 
     } catch (error) {
@@ -1214,7 +1222,7 @@ export default function BodyScanAI() {
       const { error: profileError } = await supabase
         .from('user_profiles')
         .upsert({
-          id: user.id,
+          user_id: user.id,
           weight: parseFloat(weight),
           updated_at: new Date().toISOString()
         });
@@ -1225,7 +1233,7 @@ export default function BodyScanAI() {
       setCompletedSteps(new Set(['front', 'side', 'back']));
       
       // Trigger completion notification
-      triggerScanCompletedNotification();
+      triggerScanCompletedNotification('back');
       
       toast({
         title: "🎉 Body Scan Complete!",
