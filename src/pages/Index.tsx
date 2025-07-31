@@ -6,6 +6,7 @@ import { RefreshCw } from 'lucide-react';
 import AuthForm from '@/components/auth/AuthForm';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+// Trigger publish ash
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
