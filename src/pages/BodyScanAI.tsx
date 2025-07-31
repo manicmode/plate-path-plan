@@ -86,11 +86,6 @@ export default function BodyScanAI() {
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
-  
-  // Enhanced transition states for smooth UX
-  const [isScanningFadingOut, setIsScanningFadingOut] = useState(false);
-  const [showShutterFlash, setShowShutterFlash] = useState(false);
-  const [showNudgeText, setShowNudgeText] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -208,34 +203,6 @@ export default function BodyScanAI() {
       saveBodyScanToSupabase(capturedImage!);
     }
   }, [hasImageReady]);
-
-  // Clear canvas overlay when success screen shows
-  useEffect(() => {
-    if (showSuccessScreen && overlayCanvasRef.current) {
-      const canvas = overlayCanvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        console.log('🧹 Clearing canvas overlay for success screen');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-  }, [showSuccessScreen]);
-
-  // Show nudge text after 1.5 seconds if user pauses on success screen
-  useEffect(() => {
-    let nudgeTimer: NodeJS.Timeout;
-    if (showSuccessScreen) {
-      setShowNudgeText(false);
-      nudgeTimer = setTimeout(() => {
-        setShowNudgeText(true);
-      }, 1500);
-    } else {
-      setShowNudgeText(false);
-    }
-    return () => {
-      if (nudgeTimer) clearTimeout(nudgeTimer);
-    };
-  }, [showSuccessScreen]);
 
   useEffect(() => {
     // Lock screen orientation to portrait if supported
@@ -778,30 +745,9 @@ export default function BodyScanAI() {
 
       console.log("✅ Scan saved, publicUrl:", publicUrl);
       
-      // Enhanced cinematic transition sequence
-      console.log('🎬 Starting cinematic transition sequence...');
-      
-      // Step 1: Start fade-out of scanning overlay
-      setIsScanningFadingOut(true);
-      
-      // Step 2: Show camera shutter flash after 200ms
-      setTimeout(() => {
-        setShowShutterFlash(true);
-        
-        // Step 3: Hide flash after 150ms
-        setTimeout(() => {
-          setShowShutterFlash(false);
-        }, 150);
-      }, 200);
-      
-      // Step 4: Show success screen after total 400ms delay
-      setTimeout(() => {
-        setSavedScanUrl(publicUrl);
-        setShowSuccessScreen(true);
-        setIsScanningFadingOut(false); // Reset for next scan
-        
-        console.log('✅ Showing Success Screen after cinematic transition');
-      }, 400);
+      // Set success screen state to trigger the Continue button flow
+      setSavedScanUrl(publicUrl);
+      setShowSuccessScreen(true);
       
       console.log('✅ Showing Success Screen');
       console.log('🎯 Success screen should now be visible:', { 
@@ -1312,17 +1258,11 @@ export default function BodyScanAI() {
       alignmentScore,
       feedback
     };
-  }, [currentStep, showSuccessScreen, hasImageReady]);
+  }, [currentStep]);
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
     // STEP 4: DRAW DEBUG
     console.log("[DRAW] drawPoseOverlay called");
-    
-    // ✅ CRITICAL: Don't draw anything if success screen is showing
-    if (showSuccessScreen || hasImageReady) {
-      console.log('[DRAW] ❌ Skipping draw - success screen or image ready');
-      return;
-    }
     
     if (!overlayCanvasRef.current || !videoRef.current) {
       console.log('[DRAW] ❌ Missing canvas or video ref');
@@ -1439,7 +1379,7 @@ export default function BodyScanAI() {
     
     console.log(`[DRAW] Successfully drew ${drawnConnections} WHITE SKELETON LINES`);
     console.log('[DRAW] ✅ Pose overlay drawing complete');
-  }, [showSuccessScreen, hasImageReady]);
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1633,11 +1573,11 @@ export default function BodyScanAI() {
       {!showSuccessScreen && (
         <canvas 
           ref={overlayCanvasRef}
-           style={{
-             border: '3px solid lime',
-             position: 'absolute',
-             zIndex: 20, // Lower than success screen (z-30)
-             top: 0,
+          style={{
+            border: '3px solid lime',
+            position: 'absolute',
+            zIndex: 99,
+            top: 0,
             left: 0,
             width: '100%',
             height: '100%',
@@ -1744,28 +1684,23 @@ export default function BodyScanAI() {
         console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
         return true;
       })()) && (
-        <div key={currentStep} className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/90 to-black/95 flex flex-col items-center justify-center z-50 p-8 animate-fade-in">
-          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-10 backdrop-blur-xl rounded-[2rem] p-10 text-center max-w-md border-2 ${currentStepConfig.borderColor} shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.7)] transition-all duration-500 animate-[bounceIn_0.6s_cubic-bezier(0.68,-0.55,0.265,1.55)]`}>
-            {/* Success Icon with Enhanced Animation */}
-            <div className="text-7xl mb-8 animate-[bounce_1s_ease-in-out_3]">🎉</div>
+        <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 p-6 animate-fade-in`}>
+          <div className={`bg-gradient-to-br ${currentStepConfig.theme} bg-opacity-20 backdrop-blur-md rounded-3xl p-8 text-center max-w-sm border-2 ${currentStepConfig.borderColor} shadow-2xl animate-scale-in`}>
+            {/* Success Icon with Step-specific Color */}
+            <div className="text-6xl mb-6 animate-bounce">{currentStepConfig.icon}</div>
             
-            {/* Enhanced Success Title */}
-            <h3 className="text-white text-3xl font-bold mb-3 tracking-wide">
-              Scan Complete!
+            {/* Step Success Title */}
+            <h3 className="text-white text-2xl font-bold mb-2">
+              {currentStepConfig.title.split(' ')[1]} {currentStepConfig.title.split(' ')[2]} Complete!
             </h3>
-            <p className="text-white/70 text-lg mb-8 leading-relaxed">
-              {currentStep === 'front' ? 'Front view captured perfectly' : 
-               currentStep === 'side' ? 'Side profile saved successfully' : 
-               'Back view scan completed'}
-            </p>
+            <p className="text-white/80 text-sm mb-6">Scan saved successfully</p>
             
-            {/* Enhanced Thumbnail with Premium Feel */}
-            <div className={`mb-8 rounded-3xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-2xl relative group`}>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10"></div>
+            {/* Enhanced Thumbnail with Step Theming */}
+            <div className={`mb-6 rounded-2xl overflow-hidden border-3 ${currentStepConfig.borderColor} shadow-lg`}>
               <img 
                 src={savedScanUrl}
                 alt={`${currentStep} body scan`}
-                className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+                className="w-full h-40 object-cover"
               />
             </div>
             
@@ -1773,7 +1708,7 @@ export default function BodyScanAI() {
             <div className="space-y-4">
               <Button
                 onClick={handleContinue}
-                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-[1.02] text-white font-bold py-5 text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-white/20`}
+                className={`w-full bg-gradient-to-r ${currentStepConfig.theme} hover:scale-105 text-white font-bold py-4 text-lg shadow-lg transition-all duration-300`}
               >
                 {currentStep === 'front' ? '🚶 Continue to Side Scan' : 
                  currentStep === 'side' ? '🔄 Continue to Back Scan' : 
@@ -1782,21 +1717,11 @@ export default function BodyScanAI() {
               <Button
                 onClick={handleRetake}
                 variant="outline"
-                className="w-full bg-white/5 border-2 border-white/30 text-white hover:bg-white/15 hover:border-white/50 transition-all duration-300 py-4 text-lg rounded-2xl"
+                className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 transition-all duration-300"
               >
-                🔁 Retake Scan
+                🔁 Retake {currentStepConfig.title.split(' ')[1]} Scan
               </Button>
             </div>
-
-            {/* Nudge Text with Fade-in Animation */}
-            {showNudgeText && (
-              <div className="mt-6 pt-6 border-t border-white/20 animate-fade-in">
-                <p className="text-white/60 text-sm flex items-center justify-center gap-2">
-                  ✔️ Great job! Ready for the next scan?
-                  <ArrowRight className="w-4 h-4 animate-pulse" />
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1929,9 +1854,7 @@ export default function BodyScanAI() {
               Score: {Math.round(alignmentFeedback.alignmentScore * 100)}%
             </p>
             <p className="text-white text-sm font-medium">
-              {currentStep === 'side' && !alignmentFeedback.isAligned 
-                ? "🟡 Turn fully sideways so your shoulders and hips align"
-                : alignmentFeedback.feedback}
+              {alignmentFeedback.feedback}
             </p>
           </div>
         </div>
@@ -1942,13 +1865,9 @@ export default function BodyScanAI() {
         <div className="absolute top-1/2 left-4 right-4 z-25 transform -translate-y-1/2">
           <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl p-4 border border-green-400 transition-all duration-500 ease-in-out transform scale-105">
             <div className="text-center">
-              <div className="text-2xl mb-2 animate-pulse">{currentStep === 'side' ? '🟢' : '✅'}</div>
-              <p className="text-white font-bold text-lg">
-                {currentStep === 'side' ? 'Perfect side pose!' : 'Great Pose!'}
-              </p>
-              <p className="text-white text-sm">
-                {currentStep === 'side' ? 'Hold steady...' : 'Hold steady for auto-capture...'}
-              </p>
+              <div className="text-2xl mb-2 animate-pulse">✅</div>
+              <p className="text-white font-bold text-lg">Great Pose!</p>
+              <p className="text-white text-sm">Hold steady for auto-capture...</p>
               {alignmentFrameCount > 0 && (
                 <div className="mt-2">
                   <div className="bg-white/20 rounded-full h-2">
@@ -2007,32 +1926,6 @@ export default function BodyScanAI() {
             {/* Pulsing outer ring */}
             <div className="absolute inset-0 rounded-full border-2 border-green-300/50 animate-ping"></div>
           </div>
-        </div>
-      )}
-
-      {/* Scanning overlay during countdown */}
-      {(isCountingDown && countdownSeconds > 0) && (
-        <div className={`absolute inset-0 bg-black/40 backdrop-blur-sm z-25 flex items-center justify-center transition-opacity duration-300 ${
-          isScanningFadingOut ? 'opacity-0' : 'opacity-100 animate-fade-in'
-        }`}>
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl animate-scale-in">
-            <div className="flex items-center justify-center space-x-3">
-              {/* Spinning loader */}
-              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              
-              {/* Scanning text */}
-              <div className="text-white text-lg font-semibold">
-                📸 Scanning… Hold steady!
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Camera shutter flash effect */}
-      {showShutterFlash && (
-        <div className="absolute inset-0 bg-white z-40 animate-pulse" 
-             style={{ animation: 'flash 150ms ease-out' }}>
         </div>
       )}
 
