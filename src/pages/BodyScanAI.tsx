@@ -532,7 +532,18 @@ export default function BodyScanAI() {
           console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
           
           // Analyze alignment
-          const alignment = analyzePoseAlignment(pose);
+          const isAligned = currentStep === 'front'
+            ? isFrontAligned(pose)
+            : currentStep === 'side'
+              ? isSideAligned(pose)
+              : isBackAligned(pose);
+          
+          const alignment: AlignmentFeedback = {
+            isAligned,
+            misalignedLimbs: [],
+            alignmentScore: isAligned ? 1.0 : 0.0,
+            feedback: isAligned ? "Good alignment" : "Adjust position"
+          };
           setAlignmentFeedback(alignment);
           
           console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
