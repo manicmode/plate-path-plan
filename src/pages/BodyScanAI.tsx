@@ -67,7 +67,7 @@ export default function BodyScanAI() {
   const [hasImageReady, setHasImageReady] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [cameraMode, setCameraMode] = useState<'environment' | 'user'>('environment');
+  // Camera always uses rear-facing mode - camera toggle removed
   const [showOrientationWarning, setShowOrientationWarning] = useState(false);
   
   // Pose detection state
@@ -120,7 +120,7 @@ export default function BodyScanAI() {
 
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: { 
-            facingMode: { exact: cameraMode },
+            facingMode: 'environment', // Always use rear camera
             width: { ideal: 1280, min: 640 },
             height: { ideal: 720, min: 480 }
           }
@@ -166,7 +166,7 @@ export default function BodyScanAI() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [cameraMode]);
+  }, []);
 
   // Handle video metadata loading for proper canvas sizing
   useEffect(() => {
@@ -656,7 +656,7 @@ export default function BodyScanAI() {
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: { exact: cameraMode },
+          facingMode: 'environment', // Always use rear camera
           width: { ideal: 1280, min: 640 },
           height: { ideal: 720, min: 480 }
         }
@@ -1467,9 +1467,7 @@ export default function BodyScanAI() {
     setImageLoaded(false);
   };
 
-  const toggleCamera = () => {
-    setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
-  };
+  // Camera toggle function removed - always uses rear camera
 
   // Enhanced step instructions with visual themes
   const stepInstructions = {
@@ -1711,16 +1709,7 @@ export default function BodyScanAI() {
         </div>
       )}
 
-      {/* Camera Toggle Button - Above Cancel Button */}
-      <div className="fixed bottom-52 right-6 z-30">
-        <Button
-          onClick={toggleCamera}
-          className="w-16 h-16 rounded-full bg-black/80 backdrop-blur-md border-2 border-cyan-400/60 text-white hover:bg-black/90 hover:border-cyan-300/80 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]"
-          size="sm"
-        >
-          <div className="text-xl">🔄</div>
-        </Button>
-      </div>
+      {/* Camera toggle button removed - always uses rear camera */}
 
       {/* Fixed Bottom Controls - Matching Health Scanner */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20">
