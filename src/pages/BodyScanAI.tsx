@@ -1,6 +1,17 @@
 
 let globalScanLocked = false;
 
+// Global exit flag to prevent modal loops - extend Window interface
+declare global {
+  interface Window {
+    __nutriScanExitNow: boolean;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__nutriScanExitNow = false;
+}
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
@@ -101,6 +112,7 @@ export default function BodyScanAI() {
   useEffect(() => {
     console.log("🔄 Resetting navigation state on mount");
     scanCompleteRef.current = false;
+    window.__nutriScanExitNow = false;
     if (navigationTimeoutRef.current) {
       clearTimeout(navigationTimeoutRef.current);
       navigationTimeoutRef.current = null;
@@ -198,6 +210,7 @@ export default function BodyScanAI() {
   useEffect(() => {
     return () => {
       console.log('🧹 Component unmounting - performing final cleanup');
+      window.__nutriScanExitNow = false;
       cleanupScanSession();
     };
   }, []);
@@ -1543,13 +1556,17 @@ export default function BodyScanAI() {
       scanCompleted ||
       isCompletionInProgress ||
       globalScanLocked ||
-      hasNavigated
+      hasNavigated ||
+      window.__nutriScanExitNow
     ) {
       console.log("🛑 Scan already completed, locked, or navigation started - skipping.");
       return;
     }
 
-    console.log("✅ Locking scan now");
+    console.log("✅ Setting global exit flag and navigation state immediately");
+    window.__nutriScanExitNow = true;
+    setHasNavigated(true);
+    console.log("🔒 Global exit flag set - all modals will be suppressed");
     globalScanLocked = true;
     scanCompleteRef.current = true;
     setIsCompletionInProgress(true);
@@ -1634,19 +1651,13 @@ export default function BodyScanAI() {
       }
 
       // ✅ IMMEDIATE NAVIGATION - Navigate immediately to prevent loop
-      console.log('🧠 [NAVIGATION] Setting hasNavigated flag and starting immediate navigation');
-      setHasNavigated(true);
-      
-      // Navigate immediately on next tick
-      setTimeout(() => {
-        console.log('🧠 [NAVIGATION] Navigating to body-scan-result immediately');
-        navigate('/body-scan-result', {
-          state: {
-            date: new Date(),
-            weight: parseFloat(weight)
-          }
-        });
-      }, 0);
+      console.log('🧠 [NAVIGATION] Navigating to body-scan-result immediately');
+      navigate('/body-scan-result', {
+        state: {
+          date: new Date(),
+          weight: parseFloat(weight)
+        }
+      });
 
       // Cleanup after showing loading for visual feedback
       navigationTimeoutRef.current = setTimeout(() => {
@@ -2081,7 +2092,7 @@ export default function BodyScanAI() {
       </div>
 
       {/* Simplified Progress Indicator - Only Progress Bars - Hide when scan is completed or navigating */}
-      {!scanCompleted && !showFinalLoading && !scanCompleteRef.current && !hasNavigated && (
+      {!scanCompleted && !showFinalLoading && !scanCompleteRef.current && !hasNavigated && !window.__nutriScanExitNow && (
       <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         {/* Progress Bars Only */}
         <div className="bg-black/60 backdrop-blur-sm rounded-xl p-2 border border-white/20 mb-3 transition-all duration-500">
@@ -2347,7 +2358,10 @@ export default function BodyScanAI() {
       </div>
       
       {/* Weight Input Modal - Only show if scan not completed and navigation hasn't started */}
-      {showWeightModal && !scanCompleted && !scanCompleteRef.current && !showFinalLoading && !hasNavigated && (
+      {showWeightModal && !scanCompleted && !scanCompleteRef.current && !showFinalLoading && !hasNavigated && !window.__nutriScanExitNow && (() => {
+        console.log('🪵 Weight Modal render check:', { showWeightModal, scanCompleted, scanCompleteRef: scanCompleteRef.current, showFinalLoading, hasNavigated, exitFlag: window.__nutriScanExitNow });
+        return true;
+      })() && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-background dark:bg-card rounded-lg p-6 max-w-sm w-full border border-border">
             <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
@@ -2385,7 +2399,10 @@ export default function BodyScanAI() {
       />
 
       {/* Final Loading Screen - Only show if we haven't navigated yet */}
-      {showFinalLoading && scanCompleteRef.current && !hasNavigated && <BodyScanLoadingScreen />}
+      {showFinalLoading && scanCompleteRef.current && !hasNavigated && !window.__nutriScanExitNow && (() => {
+        console.log('🪵 Loading Screen render check:', { showFinalLoading, scanCompleteRef: scanCompleteRef.current, hasNavigated, exitFlag: window.__nutriScanExitNow });
+        return true;
+      })() && <BodyScanLoadingScreen />}
 
     </div>
   );
