@@ -303,6 +303,8 @@ export type Database = {
       }
       body_scans: {
         Row: {
+          ai_generated_at: string | null
+          ai_insights: string | null
           back_image_url: string | null
           created_at: string
           id: string
@@ -319,6 +321,8 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          ai_generated_at?: string | null
+          ai_insights?: string | null
           back_image_url?: string | null
           created_at?: string
           id?: string
@@ -335,6 +339,8 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          ai_generated_at?: string | null
+          ai_insights?: string | null
           back_image_url?: string | null
           created_at?: string
           id?: string
