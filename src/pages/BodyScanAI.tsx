@@ -1728,93 +1728,57 @@ export default function BodyScanAI() {
 
   const handleContinue = async () => {
     console.log('➡️ Continue clicked');
-    
-    // Add checks at the top for completion guards
+
     if (scanCompleted || isCompletionInProgress) {
-      console.log('⚠️ [CONTINUE] Scan already completed or in progress, blocking continuation');
+      console.log('⚠️ [CONTINUE] Scan already completed or in progress');
       return;
     }
-    
-    console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
-    
-    if (hasImageReady && savedScanUrl) {
-      // Store current scan URL before clearing it
-      const currentScanUrl = savedScanUrl;
-      
-      console.log(`✅ Starting transition from ${currentStep} step`);
-      
-      // Reset capture states BEFORE step change to prevent conflicts
-      console.log('🔄 Resetting capture states before transition');
-      setCapturedImage(null);
-      setHasImageReady(false);
-      setAlignmentConfirmed(false);
-      setCountdownSeconds(0);
-      setIsCountingDown(false);
-      setShowSuccessScreen(false);
-      setSavedScanUrl(null);
-      setIsCapturing(false);
-      
-      // Refresh video stream BEFORE transition
-      if (videoRef.current && stream) {
-        console.log('🎥 Refreshing video stream before transition');
-        const video = videoRef.current;
-        video.srcObject = null;
-        await new Promise(resolve => setTimeout(resolve, 100));
-        video.srcObject = stream;
-        await video.play().catch(e => console.warn('Video play error:', e));
-      }
-      
-      // Start transition
-      setIsTransitioning(true);
-      
-      setTimeout(async () => {
-        // Advance to next step
-        if (currentStep === 'front') {
-          console.log('📱 Advancing to side scan');
-          setCurrentStep('side');
-          toast({
-            title: "📸 Great! Now turn sideways",
-            description: "Position yourself sideways for the side view photo",
-            duration: 4000,
-          });
-        } else if (currentStep === 'side') {
-          console.log('📱 Advancing to back scan');
-          setCurrentStep('back');
-          toast({
-            title: "📸 Awesome! Now turn around",
-            description: "Turn around so we can capture your back view",
-            duration: 4000,
-          });
-        } else {
-          console.log('🎉 All scans completed - showing weight modal');
-          // Final step completed - show weight modal (only if not already completed)
-          if (!scanCompleted && !isCompletionInProgress) {
-            setShowWeightModal(true);
-          }
-          setIsTransitioning(false);
-          console.log('✨ Transition complete');
-          return;
-        }
-        
-        // Refresh video stream AFTER step change
-        if (videoRef.current && stream) {
-          console.log('🎥 Refreshing video stream after step change');
-          const video = videoRef.current;
-          video.srcObject = null;
-          await new Promise(resolve => setTimeout(resolve, 100));
-          video.srcObject = stream;
-          await video.play().catch(e => console.warn('Video play error:', e));
-        }
-        
-        // End transition
-        setTimeout(() => {
-          setIsTransitioning(false);
-          console.log('✨ Transition complete');
-        }, 300);
-      }, 500); // Reduced timeout for faster transitions
-    } else {
-      console.warn('❌ handleContinue: Invalid state', { hasImageReady, savedScanUrl: !!savedScanUrl });
+
+    if (!hasImageReady || !savedScanUrl) {
+      console.warn('❌ handleContinue: Invalid state');
+      return;
     }
+
+    setIsTransitioning(true);
+
+    // Reset all capture-related states
+    setCapturedImage(null);
+    setHasImageReady(false);
+    setAlignmentConfirmed(false);
+    setCountdownSeconds(0);
+    setIsCountingDown(false);
+    setShowSuccessScreen(false);
+    setSavedScanUrl(null);
+    setIsCapturing(false);
+    setAlignmentFrameCount(0);
+    setPoseDetected(null);
+    setAlignmentFeedback(null);
+
+    setTimeout(() => {
+      if (currentStep === 'front') {
+        setCurrentStep('side');
+        toast({
+          title: "📸 Great! Now turn sideways",
+          description: "Position yourself sideways for the side view photo",
+          duration: 4000,
+        });
+      } else if (currentStep === 'side') {
+        setCurrentStep('back');
+        toast({
+          title: "📸 Awesome! Now turn around",
+          description: "Turn around so we can capture your back view",
+          duration: 4000,
+        });
+      } else if (currentStep === 'back') {
+        if (!scanCompleted && !isCompletionInProgress && !showWeightModal) {
+          setShowWeightModal(true);
+        }
+      }
+
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 300);
+    }, 200);
   };
 
   const handleCancel = () => {
