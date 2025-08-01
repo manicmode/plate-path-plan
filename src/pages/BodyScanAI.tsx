@@ -469,6 +469,41 @@ export default function BodyScanAI() {
     }
   }, [currentStep, stream]);
 
+  // Pose orientation detection helper function
+  const detectPoseOrientation = useCallback((pose: DetectedPose): 'front' | 'side' | 'back' | 'unknown' => {
+    const keypoints = pose.keypoints || [];
+
+    const nose = keypoints.find(kp => kp.name === 'nose');
+    const leftEye = keypoints.find(kp => kp.name === 'left_eye');
+    const rightEye = keypoints.find(kp => kp.name === 'right_eye');
+    const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
+    const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
+
+    const noseVisible = nose && nose.score > 0.5;
+    const leftShoulderVisible = leftShoulder && leftShoulder.score > 0.5;
+    const rightShoulderVisible = rightShoulder && rightShoulder.score > 0.5;
+
+    console.log('[ORIENTATION] Keypoint visibility:', {
+      nose: noseVisible,
+      leftShoulder: leftShoulderVisible,
+      rightShoulder: rightShoulderVisible
+    });
+
+    if (noseVisible && leftShoulderVisible && rightShoulderVisible) {
+      return 'front';
+    }
+
+    if (!noseVisible && leftShoulderVisible && rightShoulderVisible) {
+      return 'back';
+    }
+
+    if ((leftShoulderVisible && !rightShoulderVisible) || (!leftShoulderVisible && rightShoulderVisible)) {
+      return 'side';
+    }
+
+    return 'unknown';
+  }, []);
+
   // Enhanced pose analysis with comprehensive validation and debug logging
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
     console.log('🔍 [POSE ANALYSIS] Starting pose alignment analysis...');
@@ -506,6 +541,22 @@ export default function BodyScanAI() {
     }
     
     console.log('✅ [POSE ANALYSIS] Full human detected, proceeding with alignment analysis');
+    
+    // STEP 2: Orientation validation - check if pose matches expected step
+    const orientation = detectPoseOrientation(pose);
+    console.log('[ORIENTATION] Detected:', orientation, '| Expected:', currentStep);
+    
+    if (orientation !== currentStep) {
+      console.log(`❌ [ORIENTATION MISMATCH] Pose orientation (${orientation}) does not match expected (${currentStep})`);
+      return {
+        isAligned: false,
+        misalignedLimbs: ['orientation_mismatch'],
+        alignmentScore: 0,
+        feedback: `Turn your body to face ${currentStep === 'front' ? 'forward' : currentStep === 'side' ? 'sideways' : 'away from the camera'}`
+      };
+    }
+    
+    console.log('✅ [ORIENTATION] Correct orientation detected');
     
     // Apply pose smoothing for full human detection
     const smoothedPose = smoothPoseData(pose);
