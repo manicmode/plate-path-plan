@@ -538,8 +538,8 @@ export default function BodyScanAI() {
     } else if (step === 'side') {
       console.log('🎯 [SIDE] Checking side orientation rules...');
       
-      // 🔹 Side: Only one shoulder and one hip should be clearly visible
-      // Updated: Relaxed non-visible side threshold to 0.5 for improved usability
+      // 🔹 Side: Enhanced tolerance for real-world side poses
+      // Updated thresholds for improved usability
       const leftShoulderVisible = leftShoulder && leftShoulder.score > 0.5;
       const rightShoulderVisible = rightShoulder && rightShoulder.score > 0.5;
       const leftHipVisible = leftHip && leftHip.score > 0.5;
@@ -549,22 +549,42 @@ export default function BodyScanAI() {
       const hipVisibilityCount = (leftHipVisible ? 1 : 0) + (rightHipVisible ? 1 : 0);
       
       console.log(`🎯 [SIDE] Shoulder visibility count: ${shoulderVisibilityCount}, hip count: ${hipVisibilityCount}`);
+      console.log(`🎯 [SIDE] Shoulder scores - L: ${leftShoulder?.score.toFixed(3) || 'N/A'}, R: ${rightShoulder?.score.toFixed(3) || 'N/A'}`);
+      console.log(`🎯 [SIDE] Hip scores - L: ${leftHip?.score.toFixed(3) || 'N/A'}, R: ${rightHip?.score.toFixed(3) || 'N/A'}`);
       
-      // Enhanced side view validation with relaxed non-visible side threshold (0.5 instead of 0.3)
-      // This allows for better real-world usability while preventing false positives
-      const leftShoulderNonVisible = !leftShoulder || leftShoulder.score < 0.5;
-      const rightShoulderNonVisible = !rightShoulder || rightShoulder.score < 0.5;
-      const leftHipNonVisible = !leftHip || leftHip.score < 0.5;
-      const rightHipNonVisible = !rightHip || rightHip.score < 0.5;
+      // Calculate asymmetry for better tolerance (reduced from 70% to 55% difference)
+      let shoulderAsymmetry = 0;
+      let hipAsymmetry = 0;
       
-      // For side view, we expect asymmetric visibility - one side clearly visible, other side less visible
-      const validSideOrientation = (
-        (leftShoulderVisible && rightShoulderNonVisible && leftHipVisible && rightHipNonVisible) ||
-        (rightShoulderVisible && leftShoulderNonVisible && rightHipVisible && leftHipNonVisible)
-      );
+      if (leftShoulder && rightShoulder) {
+        shoulderAsymmetry = Math.abs(leftShoulder.score - rightShoulder.score);
+      }
+      if (leftHip && rightHip) {
+        hipAsymmetry = Math.abs(leftHip.score - rightHip.score);
+      }
+      
+      console.log(`🎯 [SIDE] Asymmetry - shoulders: ${shoulderAsymmetry.toFixed(3)}, hips: ${hipAsymmetry.toFixed(3)}`);
+      
+      // Enhanced side view validation with relaxed width threshold (85px instead of 100px)
+      // and improved asymmetry tolerance (55% instead of 70%)
+      const hasValidAsymmetry = shoulderAsymmetry >= 0.55 || hipAsymmetry >= 0.55;
+      
+      // Check for clear side orientation patterns
+      const leftSideVisible = leftShoulderVisible && leftHipVisible;
+      const rightSideVisible = rightShoulderVisible && rightHipVisible;
+      const onePreferredSide = leftSideVisible !== rightSideVisible; // XOR for asymmetric visibility
+      
+      console.log(`🎯 [SIDE] Side visibility - left: ${leftSideVisible}, right: ${rightSideVisible}, asymmetric: ${onePreferredSide}`);
+      console.log(`🎯 [SIDE] Valid asymmetry: ${hasValidAsymmetry}`);
+      
+      // Relaxed validation: accept if we have good asymmetry OR clear one-sided visibility
+      const validSideOrientation = hasValidAsymmetry || onePreferredSide;
       
       if (!validSideOrientation) {
-        if (shoulderVisibilityCount === 2 && hipVisibilityCount === 2) {
+        console.log(`❌ [SIDE] Failed side validation - asymmetry: ${hasValidAsymmetry}, one-sided: ${onePreferredSide}`);
+        
+        if (shoulderVisibilityCount === 2 && hipVisibilityCount === 2 && shoulderAsymmetry < 0.3 && hipAsymmetry < 0.3) {
+          console.log(`❌ [SIDE] Reason: Too symmetrical (front-facing)`);
           return {
             isCorrectOrientation: false,
             feedback: "Turn sideways - you're still facing forward"
@@ -572,25 +592,32 @@ export default function BodyScanAI() {
         }
         
         if (shoulderVisibilityCount === 0 || hipVisibilityCount === 0) {
+          console.log(`❌ [SIDE] Reason: No visible landmarks`);
           return {
             isCorrectOrientation: false,
             feedback: "Turn more toward the camera for side view"
           };
         }
         
+        console.log(`❌ [SIDE] Reason: Not clearly sideways`);
         return {
           isCorrectOrientation: false,
           feedback: "Position yourself sideways to the camera"
         };
       }
       
-      // 🔹 Side: Nose, eyes should not both be confidently detected (to avoid front-face misclassification)
-      const noseConfident = nose && nose.score > 0.6;
-      const bothEyesConfident = leftEye && rightEye && leftEye.score > 0.5 && rightEye.score > 0.5;
+      // 🔹 Side: Allow minor face keypoint visibility if confidence < 0.6 (relaxed from previous logic)
+      const noseHighConfidence = nose && nose.score > 0.6;
+      const leftEyeHighConfidence = leftEye && leftEye.score > 0.6;
+      const rightEyeHighConfidence = rightEye && rightEye.score > 0.6;
+      const bothEyesHighConfidence = leftEyeHighConfidence && rightEyeHighConfidence;
       
-      console.log(`🎯 [SIDE] Nose confident: ${noseConfident}, both eyes confident: ${bothEyesConfident}`);
+      console.log(`🎯 [SIDE] Face visibility - nose: ${nose?.score.toFixed(3) || 'N/A'} (high: ${noseHighConfidence})`);
+      console.log(`🎯 [SIDE] Eye visibility - L: ${leftEye?.score.toFixed(3) || 'N/A'} (high: ${leftEyeHighConfidence}), R: ${rightEye?.score.toFixed(3) || 'N/A'} (high: ${rightEyeHighConfidence})`);
       
-      if (noseConfident && bothEyesConfident) {
+      // Only fail if BOTH nose and eyes are highly confident (indicating front-facing)
+      if (noseHighConfidence && bothEyesHighConfidence) {
+        console.log(`❌ [SIDE] Reason: Too much face visibility (front-facing)`);
         return {
           isCorrectOrientation: false,
           feedback: "Turn more sideways - you're still facing the camera"
