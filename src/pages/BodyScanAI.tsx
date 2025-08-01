@@ -57,6 +57,7 @@ export default function BodyScanAI() {
   const poseDetectorRef = useRef<poseDetection.PoseDetector | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -1059,6 +1060,16 @@ export default function BodyScanAI() {
     };
   }, [stream, poseDetectionReady, isPoseDetectionEnabled, showWeightModal, analyzePoseAlignment]);
 
+  // Cleanup navigation timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+        navigationTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   // Start countdown when alignment is confirmed
   useEffect(() => {
     if (alignmentConfirmed && !isCountingDown && !hasImageReady) {
@@ -1477,14 +1488,14 @@ export default function BodyScanAI() {
       }
       
       // Navigate to /body-scan-result after 2.5s for a rewarding experience
-      setTimeout(() => {
-        console.log('🧠 [AI LOADING] Navigating to result page');
+      navigationTimeoutRef.current = setTimeout(() => {
         navigate('/body-scan-result', {
           state: {
             date: new Date(),
             weight: parseFloat(weight)
           }
         });
+        navigationTimeoutRef.current = null;
       }, 2500);
 
     } catch (error) {
