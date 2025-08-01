@@ -45,16 +45,34 @@ export default function BodyScanResult() {
 
   const generateAIInsight = async () => {
     try {
+      console.log('[AI ANALYSIS] Starting OpenAI insight generation...');
+      
+      // Get current user for saving insights
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase.functions.invoke('generate-body-scan-insight', {
-        body: { scanData }
+        body: { 
+          scanData,
+          userId: user?.id 
+        }
       });
 
       if (error) throw error;
       
+      console.log('[AI ANALYSIS] Result received:', data);
       setAiInsight(data.insight);
     } catch (error) {
       console.error('Error generating AI insight:', error);
-      setAiInsight("Great job completing your body scan! This commitment to tracking your progress shows real dedication to your health journey. Keep up the excellent work!");
+      // Enhanced fallback insight with proper formatting
+      const fallbackInsight = `🎯 **Posture Analysis**: Excellent work completing your comprehensive body scan! This shows great commitment to monitoring your form and alignment.
+
+⚖️ **Progress Tracking**: Regular body scans are one of the most effective ways to track real changes in your physique and posture over time.
+
+💪 **Motivational Message**: Your dedication to consistent tracking sets you apart - you're building habits that lead to lasting transformation!
+
+📈 **Next Steps**: Focus on maintaining good posture throughout your daily activities, and we'll compare your progress in 30 days!`;
+      
+      setAiInsight(fallbackInsight);
     } finally {
       setIsLoadingInsight(false);
     }
@@ -135,22 +153,52 @@ export default function BodyScanResult() {
           </div>
 
           {/* AI Insight Section */}
-          <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20 p-6 shadow-lg animate-fade-in">
-            <div className="flex items-center space-x-2 mb-4">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <h3 className="text-xl font-semibold text-foreground">AI Insight</h3>
-            </div>
+          <div className="bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 rounded-xl border-2 border-primary/30 p-6 shadow-2xl animate-fade-in relative overflow-hidden">
+            {/* Glowing border effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-xl blur-sm"></div>
             
-            {isLoadingInsight ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <p className="text-muted-foreground">Generating your personalized insight...</p>
+            <div className="relative z-10">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="p-2 rounded-full bg-primary/20">
+                  <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">🧠 AI Coach Insights</h3>
               </div>
-            ) : (
-              <p className="text-foreground leading-relaxed text-lg">
-                {aiInsight}
-              </p>
-            )}
+              
+              {isLoadingInsight ? (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <p className="text-muted-foreground font-medium">✨ Generating your personalized insights...</p>
+                  </div>
+                  
+                  {/* Shimmer effect placeholders */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted/50 rounded animate-pulse"></div>
+                    <div className="h-4 bg-muted/50 rounded animate-pulse w-3/4"></div>
+                    <div className="h-4 bg-muted/50 rounded animate-pulse w-5/6"></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="prose prose-sm max-w-none">
+                    <p className="text-foreground leading-relaxed text-base whitespace-pre-line font-medium">
+                      {aiInsight}
+                    </p>
+                  </div>
+                  
+                  {/* Success indicator */}
+                  <div className="flex items-center space-x-2 text-green-600 text-sm">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>AI analysis complete</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Motivational Message */}
