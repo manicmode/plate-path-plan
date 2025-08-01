@@ -46,6 +46,7 @@ export default function BodyScanAI() {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [weight, setWeight] = useState('');
   const [isCompletingScan, setIsCompletingScan] = useState(false);
+  const [scanCompleted, setScanCompleted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStepSuccess, setShowStepSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -164,6 +165,10 @@ export default function BodyScanAI() {
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
+      }
+      // Clean up animation frame on unmount
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, []);
@@ -1420,16 +1425,47 @@ export default function BodyScanAI() {
         p_scan_date: new Date().toISOString()
       });
 
-      // Show success and navigate
+      console.log('🎉 Body scan completed successfully');
+
+      // Close the weight modal immediately
+      setShowWeightModal(false);
+      setScanCompleted(true);
+      
+      // Stop pose detection and clean up
+      setIsPoseDetectionEnabled(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      
+      // Clear overlay canvas
+      if (overlayCanvasRef.current) {
+        const ctx = overlayCanvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+        }
+      }
+      
+      // Reset all scan states
+      setCapturedImages({});
+      setCompletedSteps(new Set());
+      setCurrentStep('front');
+      setCapturedImage(null);
+      setHasImageReady(false);
+      setShowSuccessScreen(false);
+      setWeight('');
+      
+      // Show success toast
       toast({
         title: "🎉 Body Scan Complete!",
         description: "Your full body scan has been saved. You'll be reminded to scan again in 30 days.",
         duration: 5000,
       });
 
+      // Navigate to exercise hub after a short delay
       setTimeout(() => {
         navigate('/exercise-hub');
-      }, 2000);
+      }, 1500);
 
     } catch (error) {
       console.error('Error completing body scan:', error);
@@ -1718,8 +1754,10 @@ export default function BodyScanAI() {
           });
         } else {
           console.log('🎉 All scans completed - showing weight modal');
-          // Final step completed - show weight modal
-          setShowWeightModal(true);
+          // Final step completed - show weight modal (only if not already completed)
+          if (!scanCompleted) {
+            setShowWeightModal(true);
+          }
           setIsTransitioning(false);
           return;
         }
@@ -2126,8 +2164,8 @@ export default function BodyScanAI() {
       />
       </div>
       
-      {/* Weight Input Modal */}
-      {showWeightModal && (
+      {/* Weight Input Modal - Only show if scan not completed */}
+      {showWeightModal && !scanCompleted && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-background dark:bg-card rounded-lg p-6 max-w-sm w-full border border-border">
             <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
