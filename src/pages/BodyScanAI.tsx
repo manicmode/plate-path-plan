@@ -93,6 +93,16 @@ export default function BodyScanAI() {
   const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
   const [showFinalLoading, setShowFinalLoading] = useState(false);
 
+  // Reset navigation state on mount
+  useEffect(() => {
+    console.log("🔄 Resetting navigation state on mount");
+    scanCompleteRef.current = false;
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     const startCamera = async () => {
       try {
