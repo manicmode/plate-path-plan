@@ -469,7 +469,191 @@ export default function BodyScanAI() {
     }
   }, [currentStep, stream]);
 
-  // Clean pose detection loop with debug logging
+  // Enhanced pose analysis with comprehensive validation and debug logging
+  const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
+    console.log('🔍 [POSE ANALYSIS] Starting pose alignment analysis...');
+    console.log(`📊 [POSE ANALYSIS] Detected pose keypoints count: ${pose.keypoints.length}`);
+    console.log(`📊 [POSE ANALYSIS] Pose overall score: ${pose.score?.toFixed(3) || 'N/A'}`);
+    
+    // Log keypoint scores for debugging
+    const keypointScores = pose.keypoints.map(kp => `${kp.name}: ${kp.score.toFixed(3)}`);
+    console.log(`📊 [POSE ANALYSIS] Keypoint scores: ${keypointScores.join(', ')}`);
+    
+    // STEP 1: Enhanced human presence validation with tiered levels
+    const presenceCheck = validateHumanPresence(pose);
+    console.log(`🔍 [POSE ANALYSIS] Human presence check: level=${presenceCheck.level}, validCount=${presenceCheck.validCount}, avgConfidence=${presenceCheck.avgConfidence.toFixed(3)}`);
+    
+    // Immediate return for no human detected
+    if (presenceCheck.level === 'none') {
+      console.log('❌ [POSE ANALYSIS] No human detected');
+      return {
+        isAligned: false,
+        misalignedLimbs: ['no_human'],
+        alignmentScore: 0,
+        feedback: "No person detected. Step into view to begin."
+      };
+    }
+    
+    // Partial human detection - give encouraging feedback
+    if (presenceCheck.level === 'partial') {
+      console.log('⚠️ [POSE ANALYSIS] Partial human detection');
+      return {
+        isAligned: false,
+        misalignedLimbs: ['partial_detection'],
+        alignmentScore: Math.min(0.4, presenceCheck.avgConfidence), // Cap at 40% for partial detection
+        feedback: `Getting there! Move closer or adjust position. (${presenceCheck.validCount}/9 landmarks detected)`
+      };
+    }
+    
+    console.log('✅ [POSE ANALYSIS] Full human detected, proceeding with alignment analysis');
+    
+    // Apply pose smoothing for full human detection
+    const smoothedPose = smoothPoseData(pose);
+    
+    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
+    const misalignedLimbs: string[] = [];
+    let feedback = "";
+    
+    // Find key landmarks
+    const keypoints = pose.keypoints;
+    const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
+    const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
+    const leftWrist = keypoints.find(kp => kp.name === 'left_wrist');
+    const rightWrist = keypoints.find(kp => kp.name === 'right_wrist');
+    const leftHip = keypoints.find(kp => kp.name === 'left_hip');
+    const rightHip = keypoints.find(kp => kp.name === 'right_hip');
+    const nose = keypoints.find(kp => kp.name === 'nose');
+    
+    console.log(`🔍 [POSE ANALYSIS] Key landmarks - nose: ${nose?.score.toFixed(3) || 'N/A'}, shoulders: L=${leftShoulder?.score.toFixed(3) || 'N/A'} R=${rightShoulder?.score.toFixed(3) || 'N/A'}, hips: L=${leftHip?.score.toFixed(3) || 'N/A'} R=${rightHip?.score.toFixed(3) || 'N/A'}`);
+    
+    // Check if person is facing camera (nose should be visible)
+    if (!nose || nose.score < 0.5) {
+      misalignedLimbs.push('face');
+      feedback = "Please face the camera";
+      console.log('❌ [POSE ANALYSIS] Face not visible or score too low');
+    }
+    
+    // Analyze shoulder alignment (should be horizontal)
+    if (leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5) {
+      const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+      const shoulderHeight = Math.abs(leftShoulder.y - rightShoulder.y);
+      const shoulderAngle = shoulderHeight / shoulderWidth;
+      
+      console.log(`🔍 [POSE ANALYSIS] Shoulder alignment - width: ${shoulderWidth.toFixed(1)}px, height: ${shoulderHeight.toFixed(1)}px, angle: ${shoulderAngle.toFixed(3)}`);
+      
+      if (shoulderAngle > alignmentThreshold) {
+        misalignedLimbs.push('shoulders');
+        feedback = "Keep shoulders level";
+        console.log('❌ [POSE ANALYSIS] Shoulders not level');
+      }
+    }
+    
+    // Analyze arm position (should be outstretched horizontally)
+    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
+      if (leftWrist.score > 0.3 && leftShoulder.score > 0.5) {
+        const leftArmHeight = Math.abs(leftWrist.y - leftShoulder.y);
+        const leftShoulderHeight = Math.abs(leftShoulder.y - (rightShoulder?.y || leftShoulder.y));
+        
+        console.log(`🔍 [POSE ANALYSIS] Left arm - height diff: ${leftArmHeight.toFixed(1)}px, threshold: ${(leftShoulderHeight * 0.3).toFixed(1)}px`);
+        
+        if (leftArmHeight > leftShoulderHeight * 0.3) {
+          misalignedLimbs.push('left_arm');
+          feedback = "Raise left arm horizontally";
+          console.log('❌ [POSE ANALYSIS] Left arm not horizontal');
+        }
+      }
+      
+      if (rightWrist.score > 0.3 && rightShoulder.score > 0.5) {
+        const rightArmHeight = Math.abs(rightWrist.y - rightShoulder.y);
+        const rightShoulderHeight = Math.abs(rightShoulder.y - (leftShoulder?.y || rightShoulder.y));
+        
+        console.log(`🔍 [POSE ANALYSIS] Right arm - height diff: ${rightArmHeight.toFixed(1)}px, threshold: ${(rightShoulderHeight * 0.3).toFixed(1)}px`);
+        
+        if (rightArmHeight > rightShoulderHeight * 0.3) {
+          misalignedLimbs.push('right_arm');
+          feedback = "Raise right arm horizontally";
+          console.log('❌ [POSE ANALYSIS] Right arm not horizontal');
+        }
+      }
+    }
+    
+    // Check body centering
+    if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
+      const hipCenter = (leftHip.x + rightHip.x) / 2;
+      const screenCenter = (videoRef.current?.videoWidth || 640) / 2;
+      const centerOffset = Math.abs(hipCenter - screenCenter) / screenCenter;
+      
+      console.log(`🔍 [POSE ANALYSIS] Body centering - hip center: ${hipCenter.toFixed(1)}px, screen center: ${screenCenter.toFixed(1)}px, offset: ${(centerOffset * 100).toFixed(1)}%`);
+      
+      if (centerOffset > 0.2) {
+        misalignedLimbs.push('centering');
+        feedback = "Move to center of frame";
+        console.log('❌ [POSE ANALYSIS] Body not centered');
+      }
+    }
+    
+    // Calculate overall alignment score
+    const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
+    let alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
+    
+    console.log(`📊 [POSE ANALYSIS] Initial alignment score: ${(alignmentScore * 100).toFixed(1)}% (${totalCheckpoints - misalignedLimbs.length}/${totalCheckpoints} checkpoints passed)`);
+    console.log(`📊 [POSE ANALYSIS] Misaligned limbs: [${misalignedLimbs.join(', ')}]`);
+    
+    // ✅ Fallback logic: If alignmentScore = 0% but keypoints are valid and body is visible
+    if (alignmentScore === 0 && pose.keypoints.length >= 10) {
+      const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.4);
+      const video = videoRef.current;
+      
+      console.log(`🔧 [FALLBACK] Checking fallback logic - visible keypoints: ${visibleKeypoints.length}, total keypoints: ${pose.keypoints.length}`);
+      
+      if (visibleKeypoints.length >= 8 && video) {
+        // Check if body is clearly visible (basic presence check)
+        const nose = pose.keypoints.find(kp => kp.name === 'nose');
+        const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+        const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+        
+        if (nose && leftShoulder && rightShoulder && 
+            nose.score > 0.4 && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
+          alignmentScore = 0.65; // "Good enough" fallback score
+          console.log('✅ [FALLBACK] Fallback logic applied: Valid human pose detected, score boosted to 65%');
+          console.log(`✅ [FALLBACK] Basic pose check passed - nose: ${nose.score.toFixed(3)}, left shoulder: ${leftShoulder.score.toFixed(3)}, right shoulder: ${rightShoulder.score.toFixed(3)}`);
+        } else {
+          console.log('❌ [FALLBACK] Basic pose check failed - insufficient core landmark visibility');
+        }
+      } else {
+        console.log('❌ [FALLBACK] Insufficient visible keypoints for fallback');
+      }
+    }
+    
+    // More forgiving thresholds - green light at 0.8 instead of perfect alignment
+    const isWellAligned = alignmentScore >= 0.8; // 80% threshold instead of 100%
+    const allowMinorMisalignment = misalignedLimbs.length <= 1; // Allow 1 minor issue
+    
+    if (isWellAligned && allowMinorMisalignment) {
+      feedback = "Great pose! Hold steady...";
+    } else if (alignmentScore >= 0.6) {
+      feedback = "Almost there! " + (alignmentScore >= 0.7 ? "Hold still for a moment..." : "Adjust your position slightly");
+    } else {
+      feedback = misalignedLimbs.length > 0 ? 
+        (misalignedLimbs.includes('face') ? "Please face the camera" : 
+         misalignedLimbs.includes('shoulders') ? "Keep shoulders level" :
+         misalignedLimbs.includes('left_arm') || misalignedLimbs.includes('right_arm') ? "Raise arms horizontally" :
+         "Move to center of frame") : "Adjust your position";
+    }
+    
+    const finalResult = {
+      isAligned: isWellAligned && allowMinorMisalignment,
+      misalignedLimbs,
+      alignmentScore,
+      feedback
+    };
+    
+    console.log(`📊 [POSE ANALYSIS] Final result - isAligned: ${finalResult.isAligned}, alignmentScore: ${(finalResult.alignmentScore * 100).toFixed(1)}%, feedback: "${finalResult.feedback}"`);
+    
+    return finalResult;
+  }, []);
+
+  // Enhanced pose detection loop with improved alignment analysis
   useEffect(() => {
     const detectPoseRealTime = async () => {
       // STEP 1: VIDEO DEBUG CHECK
@@ -511,18 +695,23 @@ export default function BodyScanAI() {
         if (poses.length > 0) {
           const keypoints = poses[0].keypoints || [];
           console.log("[KEYPOINTS] Count:", keypoints.length);
+          console.log("[KEYPOINTS] Visible keypoints (score > 0.5):", keypoints.filter(kp => kp.score > 0.5).length);
           keypoints.forEach((kp, i) => {
-            console.log(`[KEYPOINT ${i}] ${kp.name || i}:`, kp);
+            if (kp.score > 0.5) {
+              console.log(`[KEYPOINT ${i}] ${kp.name || i}: score=${kp.score.toFixed(3)}, x=${kp.x.toFixed(1)}, y=${kp.y.toFixed(1)}`);
+            }
           });
         } else {
           console.log("[KEYPOINTS] No pose detected");
           
-          // STEP 10: RED WARNING TOAST
-          toast({
-            title: "❌ Pose NOT detected",
-            description: "Check camera & lighting",
-            variant: "destructive"
-          });
+          // Show toast only occasionally to avoid spam
+          if (Math.random() < 0.1) { // 10% chance to show toast
+            toast({
+              title: "Make sure your full body is centered and clearly visible before continuing.",
+              description: "Check camera & lighting",
+              variant: "destructive"
+            });
+          }
         }
         
         if (poses.length > 0) {
@@ -531,24 +720,14 @@ export default function BodyScanAI() {
           
           console.log('[POSE FRAME] Using pose with', pose.keypoints.length, 'keypoints, score:', pose.score?.toFixed(3));
           
-          // Analyze alignment
-          const isAligned = currentStep === 'front'
-            ? isFrontAligned(pose)
-            : currentStep === 'side'
-              ? isSideAligned(pose)
-              : isBackAligned(pose);
-          
-          const alignment: AlignmentFeedback = {
-            isAligned,
-            misalignedLimbs: [],
-            alignmentScore: isAligned ? 1.0 : 0.0,
-            feedback: isAligned ? "Good alignment" : "Adjust position"
-          };
+          // ✅ Use improved analyzePoseAlignment function instead of outdated binary validators
+          const alignment = analyzePoseAlignment(pose);
           setAlignmentFeedback(alignment);
           
-          console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3));
+          console.log('[POSE FRAME] Alignment result:', alignment.isAligned, 'score:', alignment.alignmentScore?.toFixed(3), 'feedback:', alignment.feedback);
+          console.log('[POSE FRAME] Misaligned limbs:', alignment.misalignedLimbs);
           
-          // Simple 5-frame alignment confirmation
+          // Only count frames where alignment is actually achieved
           if (alignment.isAligned) {
             setAlignmentFrameCount(prev => {
               const newCount = prev + 1;
@@ -606,7 +785,7 @@ export default function BodyScanAI() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled]);
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled, analyzePoseAlignment]);
 
   // Start countdown when alignment is confirmed
   useEffect(() => {
@@ -1075,265 +1254,10 @@ export default function BodyScanAI() {
     return currentPose;
   }, []);
 
-  // Enhanced strict pose alignment checking functions for each step
-  const isFrontAligned = (pose: DetectedPose): boolean => {
-    return validateStrictPoseAlignment(pose, 'front');
-  };
+  // ✅ REMOVED: Outdated binary alignment functions (isFrontAligned, isSideAligned, isBackAligned, validateStrictPoseAlignment)
+  // These have been replaced with the improved analyzePoseAlignment function below
 
-  const isSideAligned = (pose: DetectedPose): boolean => {
-    return validateStrictPoseAlignment(pose, 'side');
-  };
-
-  const isBackAligned = (pose: DetectedPose): boolean => {
-    return validateStrictPoseAlignment(pose, 'back');
-  };
-
-  // Strict pose validation function with enhanced requirements
-  const validateStrictPoseAlignment = (pose: DetectedPose, scanType: 'front' | 'side' | 'back'): boolean => {
-    const video = videoRef.current;
-    if (!video || !pose.keypoints.length) return false;
-    
-    const frameWidth = video.videoWidth || 640;
-    const frameHeight = video.videoHeight || 480;
-    
-    // ✅ 1. Pose completeness: Require at least 10 visible keypoints with score > 0.5
-    const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.5);
-    if (visibleKeypoints.length < 10) {
-      console.log(`❌ Only ${visibleKeypoints.length}/10 keypoints visible with score > 0.5`);
-      return false;
-    }
-    
-    // Find key body landmarks
-    const nose = pose.keypoints.find(kp => kp.name === 'nose');
-    const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
-    const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
-    const leftHip = pose.keypoints.find(kp => kp.name === 'left_hip');
-    const rightHip = pose.keypoints.find(kp => kp.name === 'right_hip');
-    const leftAnkle = pose.keypoints.find(kp => kp.name === 'left_ankle');
-    const rightAnkle = pose.keypoints.find(kp => kp.name === 'right_ankle');
-    
-    // ✅ 2. Reject partial poses: Ensure we have head and feet
-    if (!nose || nose.score < 0.5) {
-      console.log('❌ Head not clearly visible');
-      return false;
-    }
-    
-    if ((!leftAnkle || leftAnkle.score < 0.5) && (!rightAnkle || rightAnkle.score < 0.5)) {
-      console.log('❌ Feet not visible - partial pose detected');
-      return false;
-    }
-    
-    // ✅ 3. Minimum pose size: Total height ≥ 40% of frame height
-    const headY = nose.y;
-    const feetY = Math.max(leftAnkle?.y || 0, rightAnkle?.y || 0);
-    const poseHeight = Math.abs(feetY - headY);
-    const minRequiredHeight = frameHeight * 0.4;
-    
-    if (poseHeight < minRequiredHeight) {
-      console.log(`❌ Pose too small: ${poseHeight}px < ${minRequiredHeight}px (40% of frame)`);
-      return false;
-    }
-    
-    // ✅ 4. Center alignment: Midpoint between shoulders and hips within 35% margin
-    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip ||
-        leftShoulder.score < 0.5 || rightShoulder.score < 0.5 ||
-        leftHip.score < 0.5 || rightHip.score < 0.5) {
-      console.log('❌ Shoulders or hips not clearly visible');
-      return false;
-    }
-    
-    const shoulderMidpoint = (leftShoulder.x + rightShoulder.x) / 2;
-    const hipMidpoint = (leftHip.x + rightHip.x) / 2;
-    const bodyMidpoint = (shoulderMidpoint + hipMidpoint) / 2;
-    const frameCenter = frameWidth / 2;
-    const centerMargin = frameWidth * 0.35; // 35% margin
-    
-    if (Math.abs(bodyMidpoint - frameCenter) > centerMargin) {
-      console.log(`❌ Body not centered: ${Math.abs(bodyMidpoint - frameCenter)}px > ${centerMargin}px margin`);
-      return false;
-    }
-    
-    // ✅ 5. Scan-specific pose validation
-    switch (scanType) {
-      case 'front':
-        // For front view: both shoulders and hips should be visible and roughly aligned
-        const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
-        const hipWidth = Math.abs(leftHip.x - rightHip.x);
-        
-        if (shoulderWidth < 40 || hipWidth < 30) {
-          console.log('❌ Front view: shoulders/hips too narrow - not facing camera');
-          return false;
-        }
-        break;
-        
-      case 'side':
-        // For side view: one side should be hidden or much closer together
-        const sideShoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
-        const sideHipWidth = Math.abs(leftHip.x - rightHip.x);
-        
-        if (sideShoulderWidth > 60 || sideHipWidth > 50) {
-          console.log('❌ Side view: too much width - not in profile');
-          return false;
-        }
-        break;
-        
-      case 'back':
-        // For back view: similar to front but may have slightly different visibility
-        const backShoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
-        const backHipWidth = Math.abs(leftHip.x - rightHip.x);
-        
-        if (backShoulderWidth < 35 || backHipWidth < 25) {
-          console.log('❌ Back view: shoulders/hips too narrow - not facing away');
-          return false;
-        }
-        break;
-    }
-    
-    console.log(`✅ Strict pose validation passed for ${scanType} view`);
-    return true;
-  };
-
-  // Enhanced pose analysis with comprehensive validation
-  const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
-    // STEP 1: Enhanced human presence validation with tiered levels
-    const presenceCheck = validateHumanPresence(pose);
-    
-    // Immediate return for no human detected
-    if (presenceCheck.level === 'none') {
-      return {
-        isAligned: false,
-        misalignedLimbs: ['no_human'],
-        alignmentScore: 0,
-        feedback: "No person detected. Step into view to begin."
-      };
-    }
-    
-    // Partial human detection - give encouraging feedback
-    if (presenceCheck.level === 'partial') {
-      return {
-        isAligned: false,
-        misalignedLimbs: ['partial_detection'],
-        alignmentScore: Math.min(0.4, presenceCheck.avgConfidence), // Cap at 40% for partial detection
-        feedback: `Getting there! Move closer or adjust position. (${presenceCheck.validCount}/9 landmarks detected)`
-      };
-    }
-    
-    // Apply pose smoothing for full human detection
-    const smoothedPose = smoothPoseData(pose);
-    
-    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
-    const misalignedLimbs: string[] = [];
-    let feedback = "";
-    
-    // Find key landmarks
-    const keypoints = pose.keypoints;
-    const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
-    const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
-    const leftWrist = keypoints.find(kp => kp.name === 'left_wrist');
-    const rightWrist = keypoints.find(kp => kp.name === 'right_wrist');
-    const leftHip = keypoints.find(kp => kp.name === 'left_hip');
-    const rightHip = keypoints.find(kp => kp.name === 'right_hip');
-    const nose = keypoints.find(kp => kp.name === 'nose');
-    
-    // Check if person is facing camera (nose should be visible)
-    if (!nose || nose.score < 0.5) {
-      misalignedLimbs.push('face');
-      feedback = "Please face the camera";
-    }
-    
-    // Analyze shoulder alignment (should be horizontal)
-    if (leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5) {
-      const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
-      const shoulderHeight = Math.abs(leftShoulder.y - rightShoulder.y);
-      const shoulderAngle = shoulderHeight / shoulderWidth;
-      
-      if (shoulderAngle > alignmentThreshold) {
-        misalignedLimbs.push('shoulders');
-        feedback = "Keep shoulders level";
-      }
-    }
-    
-    // Analyze arm position (should be outstretched horizontally)
-    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
-      if (leftWrist.score > 0.3 && leftShoulder.score > 0.5) {
-        const leftArmHeight = Math.abs(leftWrist.y - leftShoulder.y);
-        const leftShoulderHeight = Math.abs(leftShoulder.y - (rightShoulder?.y || leftShoulder.y));
-        
-        if (leftArmHeight > leftShoulderHeight * 0.3) {
-          misalignedLimbs.push('left_arm');
-          feedback = "Raise left arm horizontally";
-        }
-      }
-      
-      if (rightWrist.score > 0.3 && rightShoulder.score > 0.5) {
-        const rightArmHeight = Math.abs(rightWrist.y - rightShoulder.y);
-        const rightShoulderHeight = Math.abs(rightShoulder.y - (leftShoulder?.y || rightShoulder.y));
-        
-        if (rightArmHeight > rightShoulderHeight * 0.3) {
-          misalignedLimbs.push('right_arm');
-          feedback = "Raise right arm horizontally";
-        }
-      }
-    }
-    
-    // Check body centering
-    if (leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5) {
-      const hipCenter = (leftHip.x + rightHip.x) / 2;
-      const screenCenter = (videoRef.current?.videoWidth || 640) / 2;
-      const centerOffset = Math.abs(hipCenter - screenCenter) / screenCenter;
-      
-      if (centerOffset > 0.2) {
-        misalignedLimbs.push('centering');
-        feedback = "Move to center of frame";
-      }
-    }
-    
-    // Calculate overall alignment score
-    const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
-    let alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
-    
-    // ✅ Fallback logic: If alignmentScore = 0% but keypoints are valid and body is visible
-    if (alignmentScore === 0 && pose.keypoints.length >= 10) {
-      const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.4);
-      const video = videoRef.current;
-      
-      if (visibleKeypoints.length >= 8 && video) {
-        // Check if body is clearly visible (basic presence check)
-        const nose = pose.keypoints.find(kp => kp.name === 'nose');
-        const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
-        const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
-        
-        if (nose && leftShoulder && rightShoulder && 
-            nose.score > 0.4 && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
-          alignmentScore = 0.65; // "Good enough" fallback score
-          console.log('✅ Fallback logic applied: Valid human pose detected, score boosted to 65%');
-        }
-      }
-    }
-    
-    // More forgiving thresholds - green light at 0.8 instead of perfect alignment
-    const isWellAligned = alignmentScore >= 0.8; // 80% threshold instead of 100%
-    const allowMinorMisalignment = misalignedLimbs.length <= 1; // Allow 1 minor issue
-    
-    if (isWellAligned && allowMinorMisalignment) {
-      feedback = "Great pose! Hold steady...";
-    } else if (alignmentScore >= 0.6) {
-      feedback = "Almost there! " + (alignmentScore >= 0.7 ? "Hold still for a moment..." : "Adjust your position slightly");
-    } else {
-      feedback = misalignedLimbs.length > 0 ? 
-        (misalignedLimbs.includes('face') ? "Please face the camera" : 
-         misalignedLimbs.includes('shoulders') ? "Keep shoulders level" :
-         misalignedLimbs.includes('left_arm') || misalignedLimbs.includes('right_arm') ? "Raise arms horizontally" :
-         "Move to center of frame") : "Adjust your position";
-    }
-    
-    return {
-      isAligned: isWellAligned && allowMinorMisalignment,
-      misalignedLimbs,
-      alignmentScore,
-      feedback
-    };
-  }, []);
+  // ✅ REMOVED: Duplicate analyzePoseAlignment function (moved above useEffect)
 
   const drawPoseOverlay = useCallback((pose: DetectedPose, alignment: AlignmentFeedback) => {
     // STEP 4: DRAW DEBUG
