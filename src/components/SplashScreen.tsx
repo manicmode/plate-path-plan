@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
+import { useDeferredHomeDataLoading } from '@/hooks/useDeferredDataLoading';
 
 interface SplashScreenProps {
   isVisible: boolean;
@@ -24,6 +25,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   const [currentQuote] = useState(() => 
     motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]
   );
+  
+  // Start preloading home data immediately when splash becomes visible
+  const { isReady: homeDataReady } = useDeferredHomeDataLoading();
 
   // Animate loading dots
   useEffect(() => {
@@ -39,16 +43,38 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  // Auto-complete after 4 seconds (logo visible longer)
+  // Enhanced completion logic - wait for both timer and home data
   useEffect(() => {
     if (!isVisible) return;
     
     const timer = setTimeout(() => {
-      onComplete();
-    }, 4000); // Increased from 3.5s to 4s for longer logo visibility
+      // Only complete splash when home data is ready too
+      if (homeDataReady) {
+        onComplete();
+      } else {
+        // If home data isn't ready yet, check every 100ms
+        const readyCheck = setInterval(() => {
+          if (homeDataReady) {
+            clearInterval(readyCheck);
+            onComplete();
+          }
+        }, 100);
+        
+        // Force complete after max 6 seconds to avoid infinite loading
+        const forceTimer = setTimeout(() => {
+          clearInterval(readyCheck);
+          onComplete();
+        }, 2000); // Additional 2s max wait
+        
+        return () => {
+          clearInterval(readyCheck);
+          clearTimeout(forceTimer);
+        };
+      }
+    }, 4500); // Extended to 4.5s for longer logo visibility
 
     return () => clearTimeout(timer);
-  }, [isVisible, onComplete]);
+  }, [isVisible, onComplete, homeDataReady]);
 
   return (
     <AnimatePresence>
@@ -84,7 +110,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 opacity: 1, 
                 y: 0, 
                 scale: 1,
-                transition: { duration: 0.8, delay: 0.3, ease: "easeOut" } // Start sooner (0.3s delay) and faster animation
+                transition: { duration: 1.2, delay: 0.2, ease: "easeOut" } // Extended duration (1.2s) for longer visibility
               }}
               className="mb-6"
             >
