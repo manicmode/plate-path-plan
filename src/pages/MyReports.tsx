@@ -225,6 +225,15 @@ export default function MyReportsPage() {
           >
             🧘 Recovery Analytics
           </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/body-scan-result')}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-2 border-blue-200 dark:border-blue-800 hover:bg-gradient-to-r hover:from-blue-100 hover:to-cyan-100 dark:hover:from-blue-900/30 dark:hover:to-cyan-900/30 text-blue-700 dark:text-blue-300 transition-all duration-200 shadow-sm hover:shadow-md"
+          >
+            🧍‍♂️ Body Scan Analytics
+          </Button>
         </div>
 
         {/* Custom Header */}

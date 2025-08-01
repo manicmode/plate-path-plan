@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar, TrendingUp, Target, Award, Activity, Upload, Loader2, Camera } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Flame, Timer, Calendar, TrendingUp, Target, Award, Activity, Upload, Loader2, Camera, ArrowRight } from 'lucide-react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AddWorkoutModal } from '@/components/AddWorkoutModal';
@@ -1378,6 +1378,32 @@ const ExerciseHub = () => {
                     {/* Yearly Exercise Report Card */}
                     <div className="mb-8">
                       <YearlyExerciseReportCard />
+                    </div>
+
+                    {/* Body Scan Results Access */}
+                    <div className="mb-8">
+                      <Card className="group hover:shadow-xl hover:scale-[1.02] transition-all duration-300 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-cyan-500/10 border-2 border-blue-500/30">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-3 text-xl">
+                            <div className="p-2 rounded-full bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
+                              <Camera className="h-6 w-6 text-blue-600 animate-pulse" />
+                            </div>
+                            📊 Latest Scan Result
+                          </CardTitle>
+                          <p className="text-muted-foreground">View your latest body scan analysis and posture insights</p>
+                        </CardHeader>
+                        <CardContent>
+                          <Button 
+                            onClick={() => navigate('/body-scan-result')}
+                            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all duration-300"
+                            size="lg"
+                          >
+                            <span className="mr-2">📊</span>
+                            View Body Scan Results
+                            <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                          </Button>
+                        </CardContent>
+                      </Card>
                     </div>
                   </div>
                 ) : tab.id === 'pre-made-plans' ? (
