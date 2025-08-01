@@ -50,6 +50,21 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return Math.floor(userIndex / 20) + 1;
   };
 
+  const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
+    // Try first_name + last_name combination
+    const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
+    if (fullName) return fullName;
+    
+    // Fallback to email prefix if available
+    if (userProfile.email) {
+      const emailPrefix = userProfile.email.split('@')[0];
+      if (emailPrefix) return emailPrefix;
+    }
+    
+    // Final fallback
+    return `User ${fallbackEmoji}`;
+  };
+
   const fetchNutritionLeaderboard = async (): Promise<LeaderboardUser[]> => {
     // Get all users with their profiles and nutrition data
     const { data: users, error } = await supabase
@@ -72,6 +87,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     const leaderboardUsers: LeaderboardUser[] = [];
 
     for (const userProfile of users) {
+
       const { data: nutritionLogs } = await supabase
         .from('nutrition_logs')
         .select('created_at, quality_score')
@@ -91,7 +107,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User 🌟',
+        nickname: getDisplayName(userProfile, '🌟'),
         avatar: '🌟',
         score: Math.round(averageScore),
         streak: userProfile.current_nutrition_streak || 0,
@@ -174,7 +190,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User 💪',
+        nickname: getDisplayName(userProfile, '💪'),
         avatar: '💪',
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -256,7 +272,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User 🧘',
+        nickname: getDisplayName(userProfile, '🧘'),
         avatar: '🧘',
         score: Math.round(averageScore),
         streak: currentStreak,
