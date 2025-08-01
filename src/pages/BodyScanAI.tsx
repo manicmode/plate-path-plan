@@ -13,6 +13,7 @@ import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-backend-webgl';
 import sideBodySilhouette from '@/assets/sidebodysilhouetteV2.png';
+import { BodyScanLoadingScreen } from '@/components/BodyScanLoadingScreen';
 
 // Pose detection types
 interface PoseKeypoint {
@@ -87,6 +88,7 @@ export default function BodyScanAI() {
   const [savedScanUrl, setSavedScanUrl] = useState<string | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [errorSavingScan, setErrorSavingScan] = useState<string | null>(null);
+  const [showFinalLoading, setShowFinalLoading] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -1439,6 +1441,10 @@ export default function BodyScanAI() {
     try {
       setIsCompletingScan(true);
       
+      // Close the weight modal and show loading screen immediately
+      setShowWeightModal(false);
+      setShowFinalLoading(true);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -1481,8 +1487,6 @@ export default function BodyScanAI() {
 
       console.log('🎉 Body scan completed successfully');
 
-      // Close the weight modal immediately
-      setShowWeightModal(false);
       setScanCompleted(true);
       
       // Stop pose detection and clean up
@@ -1500,29 +1504,20 @@ export default function BodyScanAI() {
         }
       }
       
-      // Reset all scan states
-      setCapturedImages({});
-      setCompletedSteps(new Set());
-      setCurrentStep('front');
-      setCapturedImage(null);
-      setHasImageReady(false);
-      setShowSuccessScreen(false);
-      setWeight('');
-      
-      // Show success toast
-      toast({
-        title: "🎉 Body Scan Complete!",
-        description: "Your full body scan has been saved. You'll be reminded to scan again in 30 days.",
-        duration: 5000,
-      });
-
-      // Navigate to exercise hub after a short delay
+      // Wait 1.5s then navigate to results page with scan data
       setTimeout(() => {
-        navigate('/exercise-hub');
+        navigate('/body-scan-result', {
+          state: {
+            date: new Date(),
+            weight: parseFloat(weight)
+          }
+        });
       }, 1500);
 
     } catch (error) {
       console.error('Error completing body scan:', error);
+      setShowFinalLoading(false);
+      setShowWeightModal(true); // Show modal again on error
       toast({
         title: "Error",
         description: "Failed to complete body scan. Please try again.",
@@ -2255,6 +2250,9 @@ export default function BodyScanAI() {
         isOpen={tipsModal.isOpen} 
         onClose={tipsModal.onClose} 
       />
+
+      {/* Final Loading Screen */}
+      {showFinalLoading && <BodyScanLoadingScreen />}
 
     </div>
   );
