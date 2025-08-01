@@ -1096,10 +1096,10 @@ export default function BodyScanAI() {
     const frameWidth = video.videoWidth || 640;
     const frameHeight = video.videoHeight || 480;
     
-    // ✅ 1. Pose completeness: Require at least 10 visible keypoints with score > 0.6
-    const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.6);
+    // ✅ 1. Pose completeness: Require at least 10 visible keypoints with score > 0.5
+    const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.5);
     if (visibleKeypoints.length < 10) {
-      console.log(`❌ Only ${visibleKeypoints.length}/10 keypoints visible with score > 0.6`);
+      console.log(`❌ Only ${visibleKeypoints.length}/10 keypoints visible with score > 0.5`);
       return false;
     }
     
@@ -1113,7 +1113,7 @@ export default function BodyScanAI() {
     const rightAnkle = pose.keypoints.find(kp => kp.name === 'right_ankle');
     
     // ✅ 2. Reject partial poses: Ensure we have head and feet
-    if (!nose || nose.score < 0.6) {
+    if (!nose || nose.score < 0.5) {
       console.log('❌ Head not clearly visible');
       return false;
     }
@@ -1123,21 +1123,21 @@ export default function BodyScanAI() {
       return false;
     }
     
-    // ✅ 3. Minimum pose size: Total height ≥ 50% of frame height
+    // ✅ 3. Minimum pose size: Total height ≥ 40% of frame height
     const headY = nose.y;
     const feetY = Math.max(leftAnkle?.y || 0, rightAnkle?.y || 0);
     const poseHeight = Math.abs(feetY - headY);
-    const minRequiredHeight = frameHeight * 0.5;
+    const minRequiredHeight = frameHeight * 0.4;
     
     if (poseHeight < minRequiredHeight) {
-      console.log(`❌ Pose too small: ${poseHeight}px < ${minRequiredHeight}px (50% of frame)`);
+      console.log(`❌ Pose too small: ${poseHeight}px < ${minRequiredHeight}px (40% of frame)`);
       return false;
     }
     
-    // ✅ 4. Center alignment: Midpoint between shoulders and hips within 25% margin
+    // ✅ 4. Center alignment: Midpoint between shoulders and hips within 35% margin
     if (!leftShoulder || !rightShoulder || !leftHip || !rightHip ||
-        leftShoulder.score < 0.6 || rightShoulder.score < 0.6 ||
-        leftHip.score < 0.6 || rightHip.score < 0.6) {
+        leftShoulder.score < 0.5 || rightShoulder.score < 0.5 ||
+        leftHip.score < 0.5 || rightHip.score < 0.5) {
       console.log('❌ Shoulders or hips not clearly visible');
       return false;
     }
@@ -1146,7 +1146,7 @@ export default function BodyScanAI() {
     const hipMidpoint = (leftHip.x + rightHip.x) / 2;
     const bodyMidpoint = (shoulderMidpoint + hipMidpoint) / 2;
     const frameCenter = frameWidth / 2;
-    const centerMargin = frameWidth * 0.25; // 25% margin
+    const centerMargin = frameWidth * 0.35; // 35% margin
     
     if (Math.abs(bodyMidpoint - frameCenter) > centerMargin) {
       console.log(`❌ Body not centered: ${Math.abs(bodyMidpoint - frameCenter)}px > ${centerMargin}px margin`);
@@ -1290,7 +1290,26 @@ export default function BodyScanAI() {
     
     // Calculate overall alignment score
     const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
-    const alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
+    let alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
+    
+    // ✅ Fallback logic: If alignmentScore = 0% but keypoints are valid and body is visible
+    if (alignmentScore === 0 && pose.keypoints.length >= 10) {
+      const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.4);
+      const video = videoRef.current;
+      
+      if (visibleKeypoints.length >= 8 && video) {
+        // Check if body is clearly visible (basic presence check)
+        const nose = pose.keypoints.find(kp => kp.name === 'nose');
+        const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+        const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+        
+        if (nose && leftShoulder && rightShoulder && 
+            nose.score > 0.4 && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
+          alignmentScore = 0.65; // "Good enough" fallback score
+          console.log('✅ Fallback logic applied: Valid human pose detected, score boosted to 65%');
+        }
+      }
+    }
     
     // More forgiving thresholds - green light at 0.8 instead of perfect alignment
     const isWellAligned = alignmentScore >= 0.8; // 80% threshold instead of 100%
