@@ -821,25 +821,26 @@ export default function BodyScanAI() {
     // ✅ Fallback logic: If alignmentScore = 0% but keypoints are valid and body is visible
     if (alignmentScore === 0 && pose.keypoints.length >= 10) {
       const visibleKeypoints = pose.keypoints.filter(kp => kp.score > 0.4);
-      const video = videoRef.current;
-      
-      console.log(`🔧 [FALLBACK] Checking fallback logic - visible keypoints: ${visibleKeypoints.length}, total keypoints: ${pose.keypoints.length}`);
-      
-      if (visibleKeypoints.length >= 8 && video) {
-        // Check if body is clearly visible (basic presence check)
-        const nose = pose.keypoints.find(kp => kp.name === 'nose');
-        const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
-        const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
-        
-        if (leftShoulder && rightShoulder && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
-          alignmentScore = 0.65; // "Good enough" fallback score
-          console.log('✅ [FALLBACK] Fallback logic applied: Valid human pose detected, score boosted to 65%');
-          console.log(`✅ [FALLBACK] Basic pose check passed - left shoulder: ${leftShoulder.score.toFixed(3)}, right shoulder: ${rightShoulder.score.toFixed(3)}`);
+
+      if (visibleKeypoints.length >= 6) {
+        if (currentStep === 'side') {
+          const hasBodyParts = visibleKeypoints.some(kp =>
+            kp.name.includes('shoulder') || kp.name.includes('hip')
+          );
+
+          if (hasBodyParts) {
+            alignmentScore = 0.75;
+            console.log('✅ [FALLBACK] Side view fallback applied');
+          }
         } else {
-          console.log('❌ [FALLBACK] Basic pose check failed - insufficient core landmark visibility');
+          const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+          const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+
+          if (leftShoulder && rightShoulder && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
+            alignmentScore = 0.65;
+            console.log('✅ [FALLBACK] Front/back fallback applied');
+          }
         }
-      } else {
-        console.log('❌ [FALLBACK] Insufficient visible keypoints for fallback');
       }
     }
     
