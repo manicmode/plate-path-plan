@@ -469,9 +469,183 @@ export default function BodyScanAI() {
     }
   }, [currentStep, stream]);
 
+  // ✅ ORIENTATION VALIDATION FUNCTION
+  const validateOrientationForStep = useCallback((pose: DetectedPose, step: 'front' | 'side' | 'back'): { isCorrectOrientation: boolean; feedback: string } => {
+    const keypoints = pose.keypoints;
+    
+    // Find key landmarks
+    const nose = keypoints.find(kp => kp.name === 'nose');
+    const leftEye = keypoints.find(kp => kp.name === 'left_eye');
+    const rightEye = keypoints.find(kp => kp.name === 'right_eye');
+    const leftEar = keypoints.find(kp => kp.name === 'left_ear');
+    const rightEar = keypoints.find(kp => kp.name === 'right_ear');
+    const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
+    const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
+    const leftHip = keypoints.find(kp => kp.name === 'left_hip');
+    const rightHip = keypoints.find(kp => kp.name === 'right_hip');
+    
+    console.log(`🎯 [ORIENTATION] Validating ${step} orientation...`);
+    
+    if (step === 'front') {
+      console.log('🎯 [FRONT] Checking front orientation rules...');
+      
+      // 🔹 Front: Face keypoints (nose, eyes, ears) must be visible
+      const faceVisible = nose && nose.score > 0.5;
+      const eyesVisible = (leftEye && leftEye.score > 0.4) || (rightEye && rightEye.score > 0.4);
+      console.log(`🎯 [FRONT] Face visible: ${faceVisible}, eyes visible: ${eyesVisible}`);
+      
+      if (!faceVisible || !eyesVisible) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Turn to face the camera directly for front view"
+        };
+      }
+      
+      // 🔹 Front: Both shoulders must be visible and roughly horizontally aligned
+      const bothShouldersVisible = leftShoulder && rightShoulder && 
+                                   leftShoulder.score > 0.5 && rightShoulder.score > 0.5;
+      console.log(`🎯 [FRONT] Both shoulders visible: ${bothShouldersVisible}`);
+      
+      if (!bothShouldersVisible) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Both shoulders must be visible for front view"
+        };
+      }
+      
+      // 🔹 Front: Hips should also be visible
+      const hipsVisible = leftHip && rightHip && leftHip.score > 0.4 && rightHip.score > 0.4;
+      console.log(`🎯 [FRONT] Hips visible: ${hipsVisible}`);
+      
+      if (!hipsVisible) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Step back so your full body is visible for front view"
+        };
+      }
+      
+      console.log('✅ [FRONT] Front orientation validation passed');
+      return {
+        isCorrectOrientation: true,
+        feedback: "Good front orientation"
+      };
+      
+    } else if (step === 'side') {
+      console.log('🎯 [SIDE] Checking side orientation rules...');
+      
+      // 🔹 Side: Only one shoulder and one hip should be clearly visible
+      const leftShoulderVisible = leftShoulder && leftShoulder.score > 0.5;
+      const rightShoulderVisible = rightShoulder && rightShoulder.score > 0.5;
+      const leftHipVisible = leftHip && leftHip.score > 0.5;
+      const rightHipVisible = rightHip && rightHip.score > 0.5;
+      
+      const shoulderVisibilityCount = (leftShoulderVisible ? 1 : 0) + (rightShoulderVisible ? 1 : 0);
+      const hipVisibilityCount = (leftHipVisible ? 1 : 0) + (rightHipVisible ? 1 : 0);
+      
+      console.log(`🎯 [SIDE] Shoulder visibility count: ${shoulderVisibilityCount}, hip count: ${hipVisibilityCount}`);
+      
+      // For side view, we expect asymmetric visibility
+      if (shoulderVisibilityCount === 2 && hipVisibilityCount === 2) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Turn sideways - you're still facing forward"
+        };
+      }
+      
+      if (shoulderVisibilityCount === 0 || hipVisibilityCount === 0) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Turn more toward the camera for side view"
+        };
+      }
+      
+      // 🔹 Side: Nose, eyes should not both be confidently detected (to avoid front-face misclassification)
+      const noseConfident = nose && nose.score > 0.6;
+      const bothEyesConfident = leftEye && rightEye && leftEye.score > 0.5 && rightEye.score > 0.5;
+      
+      console.log(`🎯 [SIDE] Nose confident: ${noseConfident}, both eyes confident: ${bothEyesConfident}`);
+      
+      if (noseConfident && bothEyesConfident) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Turn more sideways - you're still facing the camera"
+        };
+      }
+      
+      console.log('✅ [SIDE] Side orientation validation passed');
+      return {
+        isCorrectOrientation: true,
+        feedback: "Good side orientation"
+      };
+      
+    } else if (step === 'back') {
+      console.log('🎯 [BACK] Checking back orientation rules...');
+      
+      // 🔹 Back: Face keypoints (nose, eyes) should have low or no confidence
+      const noseVisible = nose && nose.score > 0.4;
+      const eyesVisible = (leftEye && leftEye.score > 0.4) || (rightEye && rightEye.score > 0.4);
+      
+      console.log(`🎯 [BACK] Face should NOT be visible - nose: ${noseVisible}, eyes: ${eyesVisible}`);
+      
+      if (noseVisible || eyesVisible) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Turn around completely to show your back"
+        };
+      }
+      
+      // 🔹 Back: Both shoulders and hips visible from behind
+      const bothShouldersVisible = leftShoulder && rightShoulder && 
+                                   leftShoulder.score > 0.4 && rightShoulder.score > 0.4;
+      const bothHipsVisible = leftHip && rightHip && 
+                             leftHip.score > 0.4 && rightHip.score > 0.4;
+      
+      console.log(`🎯 [BACK] Shoulders from behind: ${bothShouldersVisible}, hips from behind: ${bothHipsVisible}`);
+      
+      if (!bothShouldersVisible) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Both shoulders should be visible from behind"
+        };
+      }
+      
+      if (!bothHipsVisible) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Step back so your full body is visible from behind"
+        };
+      }
+      
+      // 🔹 Back: Shoulders should be roughly symmetrical
+      if (leftShoulder && rightShoulder) {
+        const shoulderSymmetry = Math.abs(leftShoulder.score - rightShoulder.score);
+        console.log(`🎯 [BACK] Shoulder symmetry difference: ${shoulderSymmetry.toFixed(3)}`);
+        
+        if (shoulderSymmetry > 0.3) {
+          return {
+            isCorrectOrientation: false,
+            feedback: "Stand straight with shoulders evenly positioned"
+          };
+        }
+      }
+      
+      console.log('✅ [BACK] Back orientation validation passed');
+      return {
+        isCorrectOrientation: true,
+        feedback: "Good back orientation"
+      };
+    }
+    
+    return {
+      isCorrectOrientation: false,
+      feedback: "Unknown scan step"
+    };
+  }, []);
+
   // Enhanced pose analysis with comprehensive validation and debug logging
   const analyzePoseAlignment = useCallback((pose: DetectedPose): AlignmentFeedback => {
     console.log('🔍 [POSE ANALYSIS] Starting pose alignment analysis...');
+    console.log(`📊 [POSE ANALYSIS] Current step: ${currentStep}`);
     console.log(`📊 [POSE ANALYSIS] Detected pose keypoints count: ${pose.keypoints.length}`);
     console.log(`📊 [POSE ANALYSIS] Pose overall score: ${pose.score?.toFixed(3) || 'N/A'}`);
     
@@ -505,14 +679,10 @@ export default function BodyScanAI() {
       };
     }
     
-    console.log('✅ [POSE ANALYSIS] Full human detected, proceeding with alignment analysis');
+    console.log('✅ [POSE ANALYSIS] Full human detected, proceeding with orientation validation');
     
     // Apply pose smoothing for full human detection
     const smoothedPose = smoothPoseData(pose);
-    
-    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
-    const misalignedLimbs: string[] = [];
-    let feedback = "";
     
     // Find key landmarks
     const keypoints = pose.keypoints;
@@ -523,11 +693,38 @@ export default function BodyScanAI() {
     const leftHip = keypoints.find(kp => kp.name === 'left_hip');
     const rightHip = keypoints.find(kp => kp.name === 'right_hip');
     const nose = keypoints.find(kp => kp.name === 'nose');
+    const leftEye = keypoints.find(kp => kp.name === 'left_eye');
+    const rightEye = keypoints.find(kp => kp.name === 'right_eye');
+    const leftEar = keypoints.find(kp => kp.name === 'left_ear');
+    const rightEar = keypoints.find(kp => kp.name === 'right_ear');
     
-    console.log(`🔍 [POSE ANALYSIS] Key landmarks - nose: ${nose?.score.toFixed(3) || 'N/A'}, shoulders: L=${leftShoulder?.score.toFixed(3) || 'N/A'} R=${rightShoulder?.score.toFixed(3) || 'N/A'}, hips: L=${leftHip?.score.toFixed(3) || 'N/A'} R=${rightHip?.score.toFixed(3) || 'N/A'}`);
+    console.log(`🔍 [POSE ANALYSIS] Key landmarks - nose: ${nose?.score.toFixed(3) || 'N/A'}, eyes: L=${leftEye?.score.toFixed(3) || 'N/A'} R=${rightEye?.score.toFixed(3) || 'N/A'}, shoulders: L=${leftShoulder?.score.toFixed(3) || 'N/A'} R=${rightShoulder?.score.toFixed(3) || 'N/A'}, hips: L=${leftHip?.score.toFixed(3) || 'N/A'} R=${rightHip?.score.toFixed(3) || 'N/A'}`);
     
-    // Check if person is facing camera (nose should be visible)
-    if (!nose || nose.score < 0.5) {
+    // ✅ STEP 2: ORIENTATION VALIDATION - Step-specific rules that override generic alignment
+    const orientationValidation = validateOrientationForStep(pose, currentStep);
+    console.log(`🎯 [ORIENTATION] Validation result for ${currentStep}: ${orientationValidation.isCorrectOrientation ? 'PASS' : 'FAIL'}`);
+    console.log(`🎯 [ORIENTATION] Feedback: ${orientationValidation.feedback}`);
+    
+    // If orientation is wrong, return immediately - don't proceed to generic alignment
+    if (!orientationValidation.isCorrectOrientation) {
+      return {
+        isAligned: false,
+        misalignedLimbs: ['wrong_orientation'],
+        alignmentScore: 0,
+        feedback: orientationValidation.feedback
+      };
+    }
+    
+    console.log('✅ [ORIENTATION] Correct orientation detected, proceeding with generic alignment analysis');
+    
+    const alignmentThreshold = 0.2; // 20% tolerance (increased from 15%)
+    const misalignedLimbs: string[] = [];
+    let feedback = "";
+    
+    // STEP 3: GENERIC ALIGNMENT CHECKS (only after orientation is validated)
+    
+    // Check if person is facing camera (nose should be visible) - only for front view
+    if (currentStep === 'front' && (!nose || nose.score < 0.5)) {
       misalignedLimbs.push('face');
       feedback = "Please face the camera";
       console.log('❌ [POSE ANALYSIS] Face not visible or score too low');
@@ -548,8 +745,8 @@ export default function BodyScanAI() {
       }
     }
     
-    // Analyze arm position (should be outstretched horizontally)
-    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
+    // Analyze arm position (should be outstretched horizontally) - mainly for front view
+    if (currentStep === 'front' && leftWrist && rightWrist && leftShoulder && rightShoulder) {
       if (leftWrist.score > 0.3 && leftShoulder.score > 0.5) {
         const leftArmHeight = Math.abs(leftWrist.y - leftShoulder.y);
         const leftShoulderHeight = Math.abs(leftShoulder.y - (rightShoulder?.y || leftShoulder.y));
@@ -593,7 +790,7 @@ export default function BodyScanAI() {
     }
     
     // Calculate overall alignment score
-    const totalCheckpoints = 5; // face, shoulders, left_arm, right_arm, centering
+    const totalCheckpoints = currentStep === 'front' ? 5 : 3; // Different checkpoint counts per step
     let alignmentScore = Math.max(0, (totalCheckpoints - misalignedLimbs.length) / totalCheckpoints);
     
     console.log(`📊 [POSE ANALYSIS] Initial alignment score: ${(alignmentScore * 100).toFixed(1)}% (${totalCheckpoints - misalignedLimbs.length}/${totalCheckpoints} checkpoints passed)`);
@@ -612,11 +809,10 @@ export default function BodyScanAI() {
         const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
         const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
         
-        if (nose && leftShoulder && rightShoulder && 
-            nose.score > 0.4 && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
+        if (leftShoulder && rightShoulder && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
           alignmentScore = 0.65; // "Good enough" fallback score
           console.log('✅ [FALLBACK] Fallback logic applied: Valid human pose detected, score boosted to 65%');
-          console.log(`✅ [FALLBACK] Basic pose check passed - nose: ${nose.score.toFixed(3)}, left shoulder: ${leftShoulder.score.toFixed(3)}, right shoulder: ${rightShoulder.score.toFixed(3)}`);
+          console.log(`✅ [FALLBACK] Basic pose check passed - left shoulder: ${leftShoulder.score.toFixed(3)}, right shoulder: ${rightShoulder.score.toFixed(3)}`);
         } else {
           console.log('❌ [FALLBACK] Basic pose check failed - insufficient core landmark visibility');
         }
@@ -651,7 +847,7 @@ export default function BodyScanAI() {
     console.log(`📊 [POSE ANALYSIS] Final result - isAligned: ${finalResult.isAligned}, alignmentScore: ${(finalResult.alignmentScore * 100).toFixed(1)}%, feedback: "${finalResult.feedback}"`);
     
     return finalResult;
-  }, []);
+  }, [currentStep]);
 
   // Enhanced pose detection loop with improved alignment analysis
   useEffect(() => {
