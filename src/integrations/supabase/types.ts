@@ -2919,9 +2919,11 @@ export type Database = {
           activity_level: string | null
           age: number | null
           allergy_severity: string | null
+          avatar_url: string | null
           body_composition_goals: string[] | null
           calculated_bmr: number | null
           calculated_tdee: number | null
+          caricature_generation_count: number | null
           communication_style: string | null
           completed_sections: string[] | null
           created_at: string
@@ -2998,9 +3000,11 @@ export type Database = {
           activity_level?: string | null
           age?: number | null
           allergy_severity?: string | null
+          avatar_url?: string | null
           body_composition_goals?: string[] | null
           calculated_bmr?: number | null
           calculated_tdee?: number | null
+          caricature_generation_count?: number | null
           communication_style?: string | null
           completed_sections?: string[] | null
           created_at?: string
@@ -3077,9 +3081,11 @@ export type Database = {
           activity_level?: string | null
           age?: number | null
           allergy_severity?: string | null
+          avatar_url?: string | null
           body_composition_goals?: string[] | null
           calculated_bmr?: number | null
           calculated_tdee?: number | null
+          caricature_generation_count?: number | null
           communication_style?: string | null
           completed_sections?: string[] | null
           created_at?: string
