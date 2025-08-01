@@ -1403,8 +1403,10 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
-    // Early return guard to prevent any duplicate execution
-    if (scanCompleteRef.current) return;
+    if (scanCompleteRef.current) {
+      console.log("🛑 Scan already completed, skipping.");
+      return;
+    }
     scanCompleteRef.current = true;
 
     // Guard against duplicate runs
