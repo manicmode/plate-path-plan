@@ -1462,24 +1462,14 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
-    // Strict guard using scanCompleteRef as primary protection
-    if (scanCompleteRef.current) {
-      console.log("🛑 Scan already completed via scanCompleteRef, blocking duplicate execution");
+    if (scanCompleteRef.current || scanCompleted || isCompletionInProgress) {
+      console.log("🛑 Scan already completed, skipping.");
       return;
     }
 
-    // Set the flag immediately to prevent any race conditions
     scanCompleteRef.current = true;
-    console.log("🔒 Setting scanCompleteRef.current = true to prevent duplicates");
-
-    // Additional guards against duplicate runs
-    if (scanCompleted || isCompletionInProgress) {
-      console.log('🚫 Completion already in progress or completed via state flags');
-      return;
-    }
 
     if (!weight.trim()) {
-      // Reset the ref if validation fails
       scanCompleteRef.current = false;
       toast({
         title: "Weight Required",
@@ -1490,38 +1480,27 @@ export default function BodyScanAI() {
     }
 
     try {
-      console.log("🚀 Starting full body scan completion process");
-      
-      // Hide modal immediately for smooth UX
-      setShowWeightModal(false);
-      console.log("👋 Weight modal hidden immediately");
-      
-      // Set all completion guards immediately
       setScanCompleted(true);
       setIsCompletionInProgress(true);
       setIsCompletingScan(true);
-      
-      // Stop pose detection instantly
+      setShowWeightModal(false);
       setIsPoseDetectionEnabled(false);
+
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
-      
-      // Show loading screen for smooth transition
+
+      await new Promise(resolve => setTimeout(resolve, 100));
       setShowFinalLoading(true);
-      console.log("⏳ Final loading screen activated");
-      
-      // Add console logs for the loading experience
       console.log('🧠 [AI LOADING] Starting post-scan analysis...');
-      
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Calculate scan index for the year
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
-      
+
       const { data: existingScans } = await supabase
         .from('body_scans')
         .select('scan_index')
@@ -1532,12 +1511,11 @@ export default function BodyScanAI() {
 
       const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
 
-      // Insert scan into Supabase
       const { error: dbError } = await supabase
         .from('body_scans')
         .insert({
           user_id: user.id,
-          image_url: capturedImages.front || '', // Required field
+          image_url: capturedImages.front || '',
           side_image_url: capturedImages.side,
           back_image_url: capturedImages.back,
           weight: parseFloat(weight),
@@ -1549,28 +1527,22 @@ export default function BodyScanAI() {
 
       if (dbError) throw dbError;
 
-      // Trigger RPC update
       await supabase.rpc('update_body_scan_reminder', {
         p_user_id: user.id,
         p_scan_date: new Date().toISOString()
       });
 
       console.log('🎉 Body scan completed successfully');
-      
-      // Clear canvas
+
       if (overlayCanvasRef.current) {
         const ctx = overlayCanvasRef.current.getContext('2d');
         if (ctx) {
           ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
         }
       }
-      
-      console.log("✅ Scan completed. Navigating to result page...");
-      console.log("🧠 Navigating to result page after 2.5s...");
-      
-      // Navigate to /body-scan-result after 2.5s for a rewarding experience
+
       navigationTimeoutRef.current = setTimeout(() => {
-        console.log("🚀 Navigation timeout triggered, moving to results");
+        console.log('🧠 [AI LOADING] Navigating to result page');
         navigate('/body-scan-result', {
           state: {
             date: new Date(),
@@ -1582,23 +1554,17 @@ export default function BodyScanAI() {
 
     } catch (error) {
       console.error('Error completing body scan:', error);
-      
-      // Reset ALL guards on error to allow retry
       scanCompleteRef.current = false;
       setScanCompleted(false);
       setIsCompletionInProgress(false);
-      
+      setIsCompletingScan(false);
       setShowFinalLoading(false);
-      setShowWeightModal(true); // Show modal again on error
-      console.log("🔄 Reset all completion guards due to error");
-      
+      setShowWeightModal(true);
       toast({
         title: "Error",
         description: "Failed to complete body scan. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setIsCompletingScan(false);
     }
   };
 
