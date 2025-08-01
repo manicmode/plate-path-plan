@@ -266,17 +266,113 @@ export default function BodyScanAI() {
     };
   }, [stream]);
 
+  // Function to capture and save body scan - useCallback wrapped
+  const saveBodyScanToSupabase = useCallback(async (imageDataUrl: string) => {
+    console.log("📸 Starting saveBodyScanToSupabase");
+
+    if (scanCompleted || isCompletionInProgress || scanCompleteRef.current) {
+      console.log("⚠️ Skipping save - scan already completed");
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      setErrorSavingScan(null);
+      
+      // ✅ 1. Add image data URL validation before processing
+      if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image')) {
+        console.error('❌ Invalid or empty image dataUrl:', imageDataUrl);
+        alert("Image capture failed. Please try again.");
+        setErrorSavingScan("Invalid image data");
+        setIsSaving(false);
+        return;
+      }
+      console.log("📸 Image data URL starts with:", imageDataUrl?.substring(0, 100));
+      
+      // ✅ 2. Use canvas.toBlob() instead of fetch(dataUrl) for iOS safety
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        console.error("❌ Canvas not ready");
+        alert("Canvas not ready. Try again.");
+        setErrorSavingScan("Canvas not available");
+        setIsSaving(false);
+        return;
+      }
+
+      console.log("✅ Canvas dimensions:", { 
+        width: canvas.width, 
+        height: canvas.height 
+      });
+
+      // Use canvas.toBlob() for more reliable image conversion
+      canvas.toBlob((blob) => {
+        // ✅ 4. Prevent Supabase upload if Blob is invalid
+        if (!blob || blob.size < 1000 || blob.type !== 'image/jpeg') {
+          console.error("❌ Blob capture failed or was too small:", blob);
+          console.error("❌ Blob details:", {
+            exists: !!blob,
+            size: blob?.size || 0,
+            type: blob?.type || 'unknown'
+          });
+          alert("Invalid image detected. Please try scanning again.");
+          setErrorSavingScan("Image too small or invalid");
+          setIsSaving(false);
+          return;
+        }
+
+        console.log("✅ Blob created successfully:", {
+          size: blob.size,
+          type: blob.type
+        });
+
+        // ✅ Continue with Supabase upload
+        uploadBodyScan(blob).catch((uploadError) => {
+          console.error("📛 Upload failed:", uploadError);
+          setIsSaving(false);
+        });
+
+      }, 'image/jpeg', 0.95);
+
+    } catch (error) {
+      // ✅ 3. Improve all error logs to include more context
+      console.error("📛 Error saving body scan:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("❌ Full error details:", {
+        error,
+        stack: error instanceof Error ? error.stack : undefined,
+        currentStep,
+        hasImageReady,
+        imageDataLength: imageDataUrl?.length || 0,
+        canvasReady: !!canvasRef.current,
+        canvasDimensions: canvasRef.current ? {
+          width: canvasRef.current.width,
+          height: canvasRef.current.height
+        } : null
+      });
+      
+      setErrorSavingScan(errorMessage);
+      alert("Error saving scan: " + errorMessage);
+      toast({
+        title: "Save Error",
+        description: `Failed to save body scan: ${errorMessage}`,
+        variant: "destructive"
+      });
+      setIsSaving(false);
+    }
+  }, [scanCompleted, isCompletionInProgress, currentStep, alignmentFeedback, toast, showPoseQualityFeedback]);
+
   useEffect(() => {
     console.log("🧠 Saved steps so far:", Array.from(savedSteps));
+
     if (
       hasImageReady &&
       capturedImage &&
       !savedSteps.has(currentStep) &&
       !scanCompleted &&
-      !isCompletionInProgress
+      !isCompletionInProgress &&
+      !scanCompleteRef.current
     ) {
       console.log("💾 Saving scan for step:", currentStep);
-      console.log("🟢 Pose ready, saving scan for step:", currentStep);
       setSavedSteps((prev) => new Set([...prev, currentStep]));
       saveBodyScanToSupabase(capturedImage);
     }
@@ -286,7 +382,8 @@ export default function BodyScanAI() {
     currentStep,
     savedSteps,
     scanCompleted,
-    isCompletionInProgress
+    isCompletionInProgress,
+    saveBodyScanToSupabase
   ]);
 
   useEffect(() => {
@@ -1390,100 +1487,6 @@ export default function BodyScanAI() {
     }
   };
 
-  // Function to capture and save body scan - useCallback wrapped
-  const saveBodyScanToSupabase = useCallback(async (imageDataUrl: string) => {
-    console.log("📸 Starting saveBodyScanToSupabase");
-
-    if (scanCompleted || isCompletionInProgress || scanCompleteRef.current) {
-      console.log("⚠️ Skipping save - scan already completed");
-      return;
-    }
-    
-    try {
-      setIsSaving(true);
-      setErrorSavingScan(null);
-      
-      // ✅ 1. Add image data URL validation before processing
-      if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image')) {
-        console.error('❌ Invalid or empty image dataUrl:', imageDataUrl);
-        alert("Image capture failed. Please try again.");
-        setErrorSavingScan("Invalid image data");
-        setIsSaving(false);
-        return;
-      }
-      console.log("📸 Image data URL starts with:", imageDataUrl?.substring(0, 100));
-      
-      // ✅ 2. Use canvas.toBlob() instead of fetch(dataUrl) for iOS safety
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        console.error("❌ Canvas not ready");
-        alert("Canvas not ready. Try again.");
-        setErrorSavingScan("Canvas not available");
-        setIsSaving(false);
-        return;
-      }
-
-      console.log("✅ Canvas dimensions:", { 
-        width: canvas.width, 
-        height: canvas.height 
-      });
-
-      // Use canvas.toBlob() for more reliable image conversion
-      canvas.toBlob((blob) => {
-        // ✅ 4. Prevent Supabase upload if Blob is invalid
-        if (!blob || blob.size < 1000 || blob.type !== 'image/jpeg') {
-          console.error("❌ Blob capture failed or was too small:", blob);
-          console.error("❌ Blob details:", {
-            exists: !!blob,
-            size: blob?.size || 0,
-            type: blob?.type || 'unknown'
-          });
-          alert("Invalid image detected. Please try scanning again.");
-          setErrorSavingScan("Image too small or invalid");
-          setIsSaving(false);
-          return;
-        }
-
-        console.log("✅ Blob created successfully:", {
-          size: blob.size,
-          type: blob.type
-        });
-
-        // ✅ Continue with Supabase upload
-        uploadBodyScan(blob).catch((uploadError) => {
-          console.error("📛 Upload failed:", uploadError);
-          setIsSaving(false);
-        });
-
-      }, 'image/jpeg', 0.95);
-
-    } catch (error) {
-      // ✅ 3. Improve all error logs to include more context
-      console.error("📛 Error saving body scan:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ Full error details:", {
-        error,
-        stack: error instanceof Error ? error.stack : undefined,
-        currentStep,
-        hasImageReady,
-        imageDataLength: imageDataUrl?.length || 0,
-        canvasReady: !!canvasRef.current,
-        canvasDimensions: canvasRef.current ? {
-          width: canvasRef.current.width,
-          height: canvasRef.current.height
-        } : null
-      });
-      
-      setErrorSavingScan(errorMessage);
-      alert("Error saving scan: " + errorMessage);
-      toast({
-        title: "Save Error",
-        description: `Failed to save body scan: ${errorMessage}`,
-        variant: "destructive"
-      });
-      setIsSaving(false);
-    }
-  }, [scanCompleted, isCompletionInProgress, currentStep, alignmentFeedback, toast, showPoseQualityFeedback]);
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
