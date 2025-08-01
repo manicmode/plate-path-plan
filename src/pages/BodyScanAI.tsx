@@ -1581,6 +1581,7 @@ export default function BodyScanAI() {
       await new Promise(resolve => setTimeout(resolve, 100));
       setShowFinalLoading(true);
       console.log('🧠 [AI LOADING] Starting post-scan analysis...');
+      console.log('🧠 [STATE CHECK] scanCompleted:', scanCompleted, 'scanCompleteRef.current:', scanCompleteRef.current, 'showFinalLoading:', true);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -1630,19 +1631,21 @@ export default function BodyScanAI() {
       }
 
       // Complete cleanup and navigation
-      navigationTimeoutRef.current = setTimeout(() => {
+      navigationTimeoutRef.current = setTimeout(async () => {
         console.log('🧠 [AI LOADING] Completing scan and navigating...');
         
-        // Final cleanup before navigation
-        cleanupScanSession();
-        
-        // Navigate to results
-        navigate('/body-scan-result', {
+        // Navigate first to prevent any re-rendering issues
+        console.log('🧠 [NAVIGATION] Starting navigation to body-scan-result');
+        await navigate('/body-scan-result', {
           state: {
             date: new Date(),
             weight: parseFloat(weight)
           }
         });
+        
+        console.log('🧠 [NAVIGATION] Navigation completed, cleaning up session');
+        // Final cleanup after navigation
+        cleanupScanSession();
         navigationTimeoutRef.current = null;
       }, 2500);
 
