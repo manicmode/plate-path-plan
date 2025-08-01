@@ -8,7 +8,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PersonalInformationProps {
   formData: {
-    name: string;
+    first_name: string;
+    last_name: string;
     email: string;
   };
   isEditing: boolean;
@@ -38,11 +39,21 @@ export const PersonalInformation = ({ formData, isEditing, onFormDataChange, onE
       <CardContent className={`space-y-3 sm:space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
           <div className="space-y-2">
-            <Label htmlFor="name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Profile Name</Label>
+            <Label htmlFor="first_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>First Name</Label>
             <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => onFormDataChange({ name: e.target.value })}
+              id="first_name"
+              value={formData.first_name}
+              onChange={(e) => onFormDataChange({ first_name: e.target.value })}
+              disabled={!isEditing}
+              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="last_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Last Name</Label>
+            <Input
+              id="last_name"
+              value={formData.last_name}
+              onChange={(e) => onFormDataChange({ last_name: e.target.value })}
               disabled={!isEditing}
               className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
             />

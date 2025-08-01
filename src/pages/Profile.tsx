@@ -72,7 +72,8 @@ const ProfileContent = () => {
   );
   
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
     email: user?.email || '',
     targetCalories: user?.targetCalories || 2000,
     targetProtein: user?.targetProtein || 150,
@@ -130,8 +131,41 @@ const ProfileContent = () => {
   const handleSave = async () => {
     console.log('Saving profile with trackers:', formData.selectedTrackers);
     
+    // Update profile in Supabase
+    if (user?.id) {
+      try {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+        
+        if (error) {
+          console.error('Error updating profile:', error);
+          toast({
+            title: "Error",
+            description: "Failed to save profile changes.",
+            variant: "destructive"
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error", 
+          description: "Failed to save profile changes.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     updateProfile({
-      name: formData.name,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
       targetCalories: Number(formData.targetCalories),
       targetProtein: Number(formData.targetProtein),
       targetCarbs: Number(formData.targetCarbs),
@@ -157,7 +191,8 @@ const ProfileContent = () => {
     const originalTrackers = user?.selectedTrackers || ['calories', 'protein', 'supplements'];
     setUserSelectedTrackers(originalTrackers);
     setFormData({
-      name: user?.name || '',
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
       email: user?.email || '',
       targetCalories: user?.targetCalories || 2000,
       targetProtein: user?.targetProtein || 150,

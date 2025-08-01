@@ -3,6 +3,8 @@ import { User, Session } from '@supabase/supabase-js';
 // Extended user type with profile data
 export interface ExtendedUser extends User {
   name?: string;
+  first_name?: string;
+  last_name?: string;
   targetCalories?: number;
   targetProtein?: number;
   targetCarbs?: number;
