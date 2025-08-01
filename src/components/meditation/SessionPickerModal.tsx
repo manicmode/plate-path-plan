@@ -156,26 +156,16 @@ export const SessionPickerModal: React.FC<SessionPickerModalProps> = ({
           {/* Header */}
           <div className="relative overflow-hidden">
             <div className={`bg-gradient-to-br ${theme.gradient} p-6 border-b border-border/20`}>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl">{theme.emoji}</div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-foreground mb-1">
-                      {theme.title}
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {theme.description}
-                    </p>
-                  </div>
+              <div className="flex items-center gap-4">
+                <div className="text-5xl">{theme.emoji}</div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground mb-1">
+                    {theme.title}
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {theme.description}
+                  </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="hover:bg-background/20"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
               </div>
             </div>
           </div>
