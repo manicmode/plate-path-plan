@@ -1495,6 +1495,7 @@ export default function BodyScanAI() {
       }
       
       console.log("✅ Scan completed. Navigating to result page...");
+      console.log("🧠 Navigating to result page after 2.5s...");
       
       // Navigate to /body-scan-result after 2.5s for a rewarding experience
       navigationTimeoutRef.current = setTimeout(() => {
