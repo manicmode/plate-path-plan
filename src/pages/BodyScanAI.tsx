@@ -540,105 +540,65 @@ export default function BodyScanAI() {
       
     } else if (step === 'side') {
       console.log('🎯 [SIDE] Checking side orientation rules...');
-      
-      // 🔹 Side: Enhanced tolerance for real-world side poses
-      // Updated thresholds for improved usability
-      const leftShoulderVisible = leftShoulder && leftShoulder.score > 0.5;
-      const rightShoulderVisible = rightShoulder && rightShoulder.score > 0.5;
-      const leftHipVisible = leftHip && leftHip.score > 0.5;
-      const rightHipVisible = rightHip && rightHip.score > 0.5;
-      
-      const shoulderVisibilityCount = (leftShoulderVisible ? 1 : 0) + (rightShoulderVisible ? 1 : 0);
-      const hipVisibilityCount = (leftHipVisible ? 1 : 0) + (rightHipVisible ? 1 : 0);
-      
-      console.log(`🎯 [SIDE] Shoulder visibility count: ${shoulderVisibilityCount}, hip count: ${hipVisibilityCount}`);
-      console.log(`🎯 [SIDE] Shoulder scores - L: ${leftShoulder?.score.toFixed(3) || 'N/A'}, R: ${rightShoulder?.score.toFixed(3) || 'N/A'}`);
-      console.log(`🎯 [SIDE] Hip scores - L: ${leftHip?.score.toFixed(3) || 'N/A'}, R: ${rightHip?.score.toFixed(3) || 'N/A'}`);
-      
-       // Calculate asymmetry for better tolerance (reduced from 55% to 45% difference)
-       let shoulderAsymmetry = 0;
-       let hipAsymmetry = 0;
-       
-       if (leftShoulder && rightShoulder) {
-         shoulderAsymmetry = Math.abs(leftShoulder.score - rightShoulder.score);
-       }
-       if (leftHip && rightHip) {
-         hipAsymmetry = Math.abs(leftHip.score - rightHip.score);
-       }
-       
-       console.log(`🎯 [SIDE] Asymmetry - shoulders: ${shoulderAsymmetry.toFixed(3)}, hips: ${hipAsymmetry.toFixed(3)}`);
-       
-       // Enhanced side view validation with further relaxed asymmetry tolerance (45% instead of 55%)
-       const hasValidAsymmetry = shoulderAsymmetry >= 0.45 || hipAsymmetry >= 0.45;
-       
-       // Check for clear side orientation patterns
-       const leftSideVisible = leftShoulderVisible && leftHipVisible;
-       const rightSideVisible = rightShoulderVisible && rightHipVisible;
-       const onePreferredSide = leftSideVisible !== rightSideVisible; // XOR for asymmetric visibility
-       
-       console.log(`🎯 [SIDE] Side visibility - left: ${leftSideVisible}, right: ${rightSideVisible}, asymmetric: ${onePreferredSide}`);
-       console.log(`🎯 [SIDE] Valid asymmetry: ${hasValidAsymmetry}`);
-       
-       // 🔹 Side: Enhanced face keypoint evaluation with more tolerance
-       // Ignore face keypoints completely if confidence < 0.3, allow if < 0.7
-       const noseScore = nose?.score || 0;
-       const leftEyeScore = leftEye?.score || 0;
-       const rightEyeScore = rightEye?.score || 0;
-       
-       const noseRelevant = noseScore >= 0.3;
-       const leftEyeRelevant = leftEyeScore >= 0.3;
-       const rightEyeRelevant = rightEyeScore >= 0.3;
-       
-       const noseHighConfidence = noseRelevant && noseScore > 0.7;
-       const leftEyeHighConfidence = leftEyeRelevant && leftEyeScore > 0.7;
-       const rightEyeHighConfidence = rightEyeRelevant && rightEyeScore > 0.7;
-       const bothEyesHighConfidence = leftEyeHighConfidence && rightEyeHighConfidence;
-       
-       console.log(`🎯 [SIDE] Face analysis - nose: ${noseScore.toFixed(3)} (relevant: ${noseRelevant}, high: ${noseHighConfidence})`);
-       console.log(`🎯 [SIDE] Eye analysis - L: ${leftEyeScore.toFixed(3)} (relevant: ${leftEyeRelevant}, high: ${leftEyeHighConfidence}), R: ${rightEyeScore.toFixed(3)} (relevant: ${rightEyeRelevant}, high: ${rightEyeHighConfidence})`);
-       
-       // Face invisibility check - passes if face keypoints are sufficiently hidden
-       const faceInvisible = !noseHighConfidence || !bothEyesHighConfidence;
-       console.log(`🎯 [SIDE] Face invisible: ${faceInvisible}`);
-       
-       // NEW LOGIC: Accept if EITHER body asymmetry OR face invisibility passes (OR instead of AND)
-       const bodyAsymmetryValid = hasValidAsymmetry || onePreferredSide;
-       const validSideOrientation = bodyAsymmetryValid || faceInvisible;
-       
-       console.log(`🎯 [SIDE] Validation components - body asymmetry: ${bodyAsymmetryValid}, face invisible: ${faceInvisible}, final result: ${validSideOrientation}`);
-       
-       if (!validSideOrientation) {
-         console.log(`❌ [SIDE] Failed side validation - body asymmetry: ${bodyAsymmetryValid}, face invisible: ${faceInvisible}`);
-         
-         // More relaxed symmetry check (reduced from 0.3 to 0.2)
-         if (shoulderVisibilityCount === 2 && hipVisibilityCount === 2 && shoulderAsymmetry < 0.2 && hipAsymmetry < 0.2) {
-           console.log(`❌ [SIDE] Reason: Too symmetrical (front-facing)`);
-           return {
-             isCorrectOrientation: false,
-             feedback: "Turn sideways - you're still facing forward"
-           };
-         }
-         
-         if (shoulderVisibilityCount === 0 || hipVisibilityCount === 0) {
-           console.log(`❌ [SIDE] Reason: No visible landmarks`);
-           return {
-             isCorrectOrientation: false,
-             feedback: "Turn more toward the camera for side view"
-           };
-         }
-         
-         console.log(`❌ [SIDE] Reason: Not clearly sideways`);
-         return {
-           isCorrectOrientation: false,
-           feedback: "Position yourself sideways to the camera"
-         };
-       }
-       
-       console.log('✅ [SIDE] Side orientation validation passed');
-       return {
-         isCorrectOrientation: true,
-         feedback: "Good side orientation"
-       };
+
+      const leftShoulderVisible = leftShoulder && leftShoulder.score > 0.4;
+      const rightShoulderVisible = rightShoulder && rightShoulder.score > 0.4;
+      const leftHipVisible = leftHip && leftHip.score > 0.4;
+      const rightHipVisible = rightHip && rightHip.score > 0.4;
+
+      const visibleBodyParts = [
+        leftShoulderVisible,
+        rightShoulderVisible,
+        leftHipVisible,
+        rightHipVisible
+      ].filter(Boolean).length;
+
+      if (visibleBodyParts < 2) {
+        return {
+          isCorrectOrientation: false,
+          feedback: "Step into full view for side scan"
+        };
+      }
+
+      let shoulderAsymmetry = 0;
+      let hipAsymmetry = 0;
+
+      if (leftShoulder && rightShoulder) {
+        shoulderAsymmetry = Math.abs(leftShoulder.score - rightShoulder.score);
+      }
+      if (leftHip && rightHip) {
+        hipAsymmetry = Math.abs(leftHip.score - rightHip.score);
+      }
+
+      const noseScore = nose?.score || 0;
+      const faceNotFullyVisible = noseScore < 0.7;
+
+      const hasAsymmetry = shoulderAsymmetry > 0.3 || hipAsymmetry > 0.3;
+      const hasPartialOcclusion = (leftShoulderVisible && !rightShoulderVisible) || 
+                                  (!leftShoulderVisible && rightShoulderVisible) ||
+                                  (leftHipVisible && !rightHipVisible) ||
+                                  (!leftHipVisible && rightHipVisible);
+
+      const validSideOrientation = hasAsymmetry || hasPartialOcclusion || faceNotFullyVisible;
+
+      if (!validSideOrientation) {
+        if (shoulderAsymmetry < 0.2 && hipAsymmetry < 0.2 && noseScore > 0.7) {
+          return {
+            isCorrectOrientation: false,
+            feedback: "Turn sideways - you're still facing forward"
+          };
+        }
+
+        return {
+          isCorrectOrientation: false,
+          feedback: "Position yourself sideways to the camera"
+        };
+      }
+
+      return {
+        isCorrectOrientation: true,
+        feedback: "Good side orientation"
+      };
       
     } else if (step === 'back') {
       console.log('🎯 [BACK] Checking back orientation rules...');
