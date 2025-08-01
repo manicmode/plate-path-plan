@@ -1826,9 +1826,9 @@ export default function BodyScanAI() {
   const handleContinue = async () => {
     console.log('➡️ Continue clicked');
 
-    // Multiple guards to prevent showing modal after scan completion
+    // Check both state and ref
     if (scanCompleted || isCompletionInProgress || scanCompleteRef.current) {
-      console.log('⚠️ [CONTINUE] Scan already completed or in progress, blocking action');
+      console.log('⚠️ [CONTINUE] Scan already completed or in progress');
       return;
     }
 
@@ -1868,15 +1868,12 @@ export default function BodyScanAI() {
           duration: 4000,
         });
       } else if (currentStep === 'back') {
-        // Enhanced guards against showing modal after completion
-        if (!scanCompleted && 
-            !isCompletionInProgress && 
-            !showWeightModal && 
-            !scanCompleteRef.current) {
+        // CRITICAL FIX: Check all guards before showing modal
+        if (!scanCompleted && !isCompletionInProgress && !showWeightModal && !scanCompleteRef.current) {
           console.log("✅ Showing scan complete modal");
           setShowWeightModal(true);
         } else {
-          console.log("⚠️ [CONTINUE] Blocked showing weight modal - scan already completed");
+          console.log("⚠️ Skipping weight modal - scan already completed");
         }
       }
 
