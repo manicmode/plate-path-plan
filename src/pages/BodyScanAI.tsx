@@ -1170,7 +1170,12 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
+    console.log('🚀 [CONTINUE BUTTON] completeFullBodyScan called');
+    console.log('📊 [CONTINUE BUTTON] Weight value:', weight);
+    console.log('📊 [CONTINUE BUTTON] Is completing scan:', isCompletingScan);
+    
     if (!weight.trim()) {
+      console.log('❌ [CONTINUE BUTTON] Weight validation failed - empty weight');
       toast({
         title: "Weight Required",
         description: "Please enter your current weight",
@@ -1180,14 +1185,23 @@ export default function BodyScanAI() {
     }
 
     try {
+      console.log('⏳ [CONTINUE BUTTON] Starting completion process...');
       setIsCompletingScan(true);
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.log('❌ [CONTINUE BUTTON] User authentication failed');
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('👤 [CONTINUE BUTTON] User authenticated:', user.id);
+      console.log('🖼️ [CONTINUE BUTTON] Captured images:', capturedImages);
 
       // Calculate scan index for the year
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
+      
+      console.log('📅 [CONTINUE BUTTON] Date info:', { currentYear, currentMonth });
       
       const { data: existingScans } = await supabase
         .from('body_scans')
@@ -1198,8 +1212,10 @@ export default function BodyScanAI() {
         .limit(1);
 
       const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
+      console.log('🔢 [CONTINUE BUTTON] Next scan index:', nextScanIndex);
 
       // Save complete body scan record
+      console.log('💾 [CONTINUE BUTTON] Inserting body scan record...');
       const { error: dbError } = await supabase
         .from('body_scans')
         .insert({
@@ -1214,33 +1230,48 @@ export default function BodyScanAI() {
           type: 'complete'
         });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.log('❌ [CONTINUE BUTTON] Database error:', dbError);
+        throw dbError;
+      }
+      
+      console.log('✅ [CONTINUE BUTTON] Body scan record inserted successfully');
 
       // Update body scan reminder
+      console.log('⏰ [CONTINUE BUTTON] Updating body scan reminder...');
       await supabase.rpc('update_body_scan_reminder', {
         p_user_id: user.id,
         p_scan_date: new Date().toISOString()
       });
+      
+      console.log('✅ [CONTINUE BUTTON] Reminder updated successfully');
 
       // Show success and navigate
+      console.log('🎉 [CONTINUE BUTTON] Showing success toast');
       toast({
         title: "🎉 Body Scan Complete!",
         description: "Your full body scan has been saved. You'll be reminded to scan again in 30 days.",
         duration: 5000,
       });
+      
+      // Hide the weight modal
+      setShowWeightModal(false);
 
+      console.log('🧭 [CONTINUE BUTTON] Navigating to exercise hub in 2 seconds...');
       setTimeout(() => {
+        console.log('🧭 [CONTINUE BUTTON] Executing navigation...');
         navigate('/exercise-hub');
       }, 2000);
 
     } catch (error) {
-      console.error('Error completing body scan:', error);
+      console.error('❌ [CONTINUE BUTTON] Error completing body scan:', error);
       toast({
         title: "Error",
         description: "Failed to complete body scan. Please try again.",
         variant: "destructive"
       });
     } finally {
+      console.log('🏁 [CONTINUE BUTTON] Setting isCompletingScan to false');
       setIsCompletingScan(false);
     }
   };
@@ -1635,22 +1666,24 @@ export default function BodyScanAI() {
       </div>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* STEP 5: CANVAS WITH LIME BORDER */}
-      <canvas 
-        ref={overlayCanvasRef}
-        style={{
-          border: '3px solid lime',
-          position: 'absolute',
-          zIndex: showSuccessScreen ? -1 : 99,
-          top: 0,
-          opacity: showSuccessScreen ? 0 : 1,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          display: 'block'
-        }}
-      />
+      {/* STEP 5: CANVAS WITH LIME BORDER - Hide when weight modal is shown */}
+      {!showWeightModal && (
+        <canvas 
+          ref={overlayCanvasRef}
+          style={{
+            border: '3px solid lime',
+            position: 'absolute',
+            zIndex: showSuccessScreen ? -1 : 99,
+            top: 0,
+            opacity: showSuccessScreen ? 0 : 1,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            display: 'block'
+          }}
+        />
+      )}
       
       {/* Grid Overlay - Fixed behind camera */}
       <div className="absolute inset-0 opacity-20 pointer-events-none z-10">
@@ -1931,19 +1964,19 @@ export default function BodyScanAI() {
       {/* Weight Input Modal */}
       {showWeightModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-            <h3 className="text-xl font-bold mb-2 text-center">🎉 Body Scan Complete!</h3>
-            <p className="text-gray-600 mb-4 text-center">
+          <div className="bg-background rounded-lg p-6 max-w-sm w-full border border-border">
+            <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
+            <p className="text-muted-foreground mb-4 text-center">
               We've saved your front, side, and back body scans. Our AI will now analyze your posture and muscle symmetry to help you improve performance and reduce injury risk.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Current weight (lbs or kg)</label>
+              <label className="block text-sm font-medium mb-2 text-foreground">Current weight (lbs or kg)</label>
               <input
                 type="number"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 placeholder="Enter your weight"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <Button
