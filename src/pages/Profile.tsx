@@ -317,20 +317,10 @@ const ProfileContent = () => {
         {/* Contact Sync & Friends */}
         <ContactSync />
 
-        {/* Profile Header */}
-      <Card className="animate-slide-up glass-card border-0 rounded-3xl mb-0 !mb-0">
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} !p-4`}>
-          <ProfileHeader 
-            user={user} 
-            isEditing={isEditing} 
-            onEditToggle={() => setIsEditing(!isEditing)} 
-          />
-        </CardContent>
-      </Card>
-
       {/* Personal Information */}
       <PersonalInformation 
         formData={formData}
+        user={user}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
         onEditToggle={() => setIsEditing(!isEditing)}
