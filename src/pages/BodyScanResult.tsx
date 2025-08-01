@@ -358,6 +358,95 @@ export default function BodyScanResult() {
             </div>
           </div>
 
+          {/* Personalized Suggestions */}
+          <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-400/5 to-emerald-600/10 rounded-xl border-2 border-emerald-500/30 p-6 shadow-2xl animate-fade-in relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-xl blur-sm"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="p-2 rounded-full bg-emerald-500/20">
+                  <Sparkles className="h-6 w-6 text-emerald-600 animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">💪 Personalized Suggestions</h3>
+              </div>
+              
+              {isLoadingInsight ? (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <p className="text-muted-foreground font-medium">✨ Generating personalized suggestions...</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="p-4 bg-card rounded-lg border border-border">
+                        <div className="h-4 bg-muted/50 rounded animate-pulse mb-2"></div>
+                        <div className="h-3 bg-muted/50 rounded animate-pulse w-3/4"></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-card rounded-lg border border-border hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-2xl">🧍</span>
+                      <h4 className="font-semibold text-foreground">Posture Correction</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Slight forward shoulder lean detected - improve alignment
+                    </p>
+                    <Button variant="outline" size="sm" className="w-full" disabled>
+                      Try Workout
+                    </Button>
+                  </div>
+
+                  <div className="p-4 bg-card rounded-lg border border-border hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-2xl">🏋️</span>
+                      <h4 className="font-semibold text-foreground">Upper Body Balance</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Enhance left-right symmetry with targeted exercises
+                    </p>
+                    <Button variant="outline" size="sm" className="w-full" disabled>
+                      Try Workout
+                    </Button>
+                  </div>
+
+                  <div className="p-4 bg-card rounded-lg border border-border hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-2xl">🧘</span>
+                      <h4 className="font-semibold text-foreground">Spinal Mobility</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Maintain excellent spinal alignment with stretches
+                    </p>
+                    <Button variant="outline" size="sm" className="w-full" disabled>
+                      Try Workout
+                    </Button>
+                  </div>
+
+                  <div className="p-4 bg-card rounded-lg border border-border hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-2xl">🚶</span>
+                      <h4 className="font-semibold text-foreground">Core Stability</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Build on your balanced stance with core strengthening
+                    </p>
+                    <Button variant="outline" size="sm" className="w-full" disabled>
+                      Try Workout
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Motivational Message */}
           <div className="bg-accent/10 rounded-xl border border-accent/20 p-6 shadow-lg animate-scale-in">
             <p className="text-xl font-medium text-foreground text-center">
