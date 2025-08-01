@@ -1390,9 +1390,14 @@ export default function BodyScanAI() {
     }
   };
 
-  // Function to capture and save body scan - now using canvas.toBlob() for iOS safety
-  const saveBodyScanToSupabase = async (imageDataUrl: string) => {
+  // Function to capture and save body scan - useCallback wrapped
+  const saveBodyScanToSupabase = useCallback(async (imageDataUrl: string) => {
     console.log("📸 Starting saveBodyScanToSupabase");
+
+    if (scanCompleted || isCompletionInProgress || scanCompleteRef.current) {
+      console.log("⚠️ Skipping save - scan already completed");
+      return;
+    }
     
     try {
       setIsSaving(true);
@@ -1478,7 +1483,7 @@ export default function BodyScanAI() {
       });
       setIsSaving(false);
     }
-  };
+  }, [scanCompleted, isCompletionInProgress, currentStep, alignmentFeedback, toast, showPoseQualityFeedback]);
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
