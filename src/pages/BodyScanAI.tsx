@@ -266,13 +266,26 @@ export default function BodyScanAI() {
     };
   }, [stream]);
 
-  // Trigger save when image is ready
   useEffect(() => {
-    if (hasImageReady && capturedImage && !scanCompleted && !isCompletionInProgress) {
-      console.log("🟢 Pose ready, saving scan");
+    if (
+      hasImageReady &&
+      capturedImage &&
+      !savedSteps.has(currentStep) &&
+      !scanCompleted &&
+      !isCompletionInProgress
+    ) {
+      console.log("🟢 Pose ready, saving scan for step:", currentStep);
+      setSavedSteps((prev) => new Set([...prev, currentStep]));
       saveBodyScanToSupabase(capturedImage);
     }
-  }, [hasImageReady, capturedImage, currentStep, scanCompleted, isCompletionInProgress]);
+  }, [
+    hasImageReady,
+    capturedImage,
+    currentStep,
+    savedSteps,
+    scanCompleted,
+    isCompletionInProgress
+  ]);
 
   useEffect(() => {
     // Lock screen orientation to portrait if supported
