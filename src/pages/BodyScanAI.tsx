@@ -103,6 +103,55 @@ export default function BodyScanAI() {
     }
   }, []);
 
+  // Reset complete scan state on mount
+  useEffect(() => {
+    console.log("🔄 Resetting scan state on mount");
+    
+    // Reset ref states
+    scanCompleteRef.current = false;
+    
+    // Clear any existing timers
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    // Reset core scan states
+    setCurrentStep('front');
+    setCapturedImages({});
+    setCompletedSteps(new Set());
+    setCapturedImage(null);
+    setHasImageReady(false);
+    setPoseDetected(null);
+    setAlignmentConfirmed(false);
+    setIsCountingDown(false);
+    setCountdownSeconds(0);
+    setAlignmentFrameCount(0);
+    
+    // Reset completion states
+    setIsCompletingScan(false);
+    setScanCompleted(false);
+    setIsCompletionInProgress(false);
+    setIsTransitioning(false);
+    setShowStepSuccess(false);
+    setShowSuccessScreen(false);
+    setShowFinalLoading(false);
+    
+    // Reset scan saving states
+    setIsSaving(false);
+    setSavedScanUrl(null);
+    setErrorSavingScan(null);
+    
+    // Reset image states
+    setImageLoaded(false);
+    setImageError(false);
+  }, []);
+
   useEffect(() => {
     const startCamera = async () => {
       try {
