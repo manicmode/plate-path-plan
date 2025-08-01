@@ -309,6 +309,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string
+          is_primary_monthly: boolean
           month: number | null
           pose_metadata: Json | null
           pose_score: number | null
@@ -327,6 +328,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url: string
+          is_primary_monthly?: boolean
           month?: number | null
           pose_metadata?: Json | null
           pose_score?: number | null
@@ -345,6 +347,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string
+          is_primary_monthly?: boolean
           month?: number | null
           pose_metadata?: Json | null
           pose_score?: number | null
