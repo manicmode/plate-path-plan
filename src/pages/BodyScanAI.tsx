@@ -1792,7 +1792,8 @@ export default function BodyScanAI() {
           duration: 4000,
         });
       } else if (currentStep === 'back') {
-        if (!scanCompleted && !isCompletionInProgress && !showWeightModal) {
+        if (!scanCompleted && !isCompletionInProgress && !showWeightModal && !scanCompleteRef.current) {
+          console.log("✅ Showing scan complete modal");
           setShowWeightModal(true);
         }
       }
