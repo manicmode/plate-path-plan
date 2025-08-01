@@ -2268,7 +2268,7 @@ export default function BodyScanAI() {
       </div>
       
       {/* Weight Input Modal - Only show if scan not completed */}
-      {showWeightModal && !scanCompleted && (
+      {showWeightModal && !scanCompleted && !scanCompleteRef.current && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-background dark:bg-card rounded-lg p-6 max-w-sm w-full border border-border">
             <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
