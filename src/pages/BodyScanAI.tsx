@@ -216,6 +216,19 @@ export default function BodyScanAI() {
     };
   }, []);
 
+  // Centralized function to check if all modals should be blocked
+  const shouldBlockAllModals = useCallback(() => {
+    return (
+      scanCompleted ||
+      scanCompleteRef.current ||
+      isCompletionInProgress ||
+      showFinalLoading ||
+      hasNavigated ||
+      window.__nutriScanExitNow ||
+      globalScanLocked
+    );
+  }, [scanCompleted, isCompletionInProgress, showFinalLoading, hasNavigated]);
+
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -2093,7 +2106,7 @@ export default function BodyScanAI() {
       </div>
 
       {/* Simplified Progress Indicator - Only Progress Bars - Hide when scan is completed or navigating */}
-      {!scanCompleted && !showFinalLoading && !scanCompleteRef.current && !hasNavigated && !window.__nutriScanExitNow && (
+      {!shouldBlockAllModals() && (
       <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         {/* Progress Bars Only */}
         <div className="bg-black/60 backdrop-blur-sm rounded-xl p-2 border border-white/20 mb-3 transition-all duration-500">
@@ -2359,8 +2372,8 @@ export default function BodyScanAI() {
       </div>
       
       {/* Weight Input Modal - Only show if scan not completed and navigation hasn't started */}
-      {showWeightModal && !scanCompleted && !scanCompleteRef.current && !showFinalLoading && !hasNavigated && !window.__nutriScanExitNow && (() => {
-        console.log('🪵 Weight Modal render check:', { showWeightModal, scanCompleted, scanCompleteRef: scanCompleteRef.current, showFinalLoading, hasNavigated, exitFlag: window.__nutriScanExitNow });
+      {showWeightModal && !shouldBlockAllModals() && (() => {
+        console.log('🪵 Weight Modal render check:', { showWeightModal, shouldBlock: shouldBlockAllModals() });
         return true;
       })() && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
@@ -2400,8 +2413,8 @@ export default function BodyScanAI() {
       />
 
       {/* Final Loading Screen - Only show if we haven't navigated yet */}
-      {showFinalLoading && scanCompleteRef.current && !hasNavigated && !window.__nutriScanExitNow && (() => {
-        console.log('🪵 Loading Screen render check:', { showFinalLoading, scanCompleteRef: scanCompleteRef.current, hasNavigated, exitFlag: window.__nutriScanExitNow });
+      {showFinalLoading && !shouldBlockAllModals() && (() => {
+        console.log('🪵 Loading Screen render check:', { showFinalLoading, shouldBlock: shouldBlockAllModals() });
         return true;
       })() && <BodyScanLoadingScreen />}
 
