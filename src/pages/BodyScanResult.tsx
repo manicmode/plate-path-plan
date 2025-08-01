@@ -399,7 +399,7 @@ export default function BodyScanResult() {
               className="w-full text-lg py-6"
               size="lg"
             >
-              🔄 Compare to Previous Scans
+              🔁 Compare to Previous Scan
             </Button>
             
             <Button

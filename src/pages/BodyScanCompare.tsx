@@ -20,6 +20,7 @@ interface BodyScan {
   ai_generated_at?: string;
   scan_index?: number;
   year?: number;
+  is_primary_monthly?: boolean;
 }
 
 export default function BodyScanCompare() {
@@ -44,11 +45,18 @@ export default function BodyScanCompare() {
     }
   }, [userReady, user]);
 
-  // Auto-select scans if compare param is provided
+  // Auto-select scans: most recent vs previous (or specified comparison)
   useEffect(() => {
-    if (compareToMostRecent && scans.length >= 2) {
+    if (scans.length >= 2) {
       const mostRecent = scans[0];
-      const targetScan = scans.find(scan => scan.id === compareToMostRecent);
+      let targetScan;
+      
+      if (compareToMostRecent) {
+        targetScan = scans.find(scan => scan.id === compareToMostRecent);
+      } else {
+        // Default: compare most recent to previous scan
+        targetScan = scans[1];
+      }
       
       if (targetScan) {
         setSelectedScan1(mostRecent.id);
@@ -258,9 +266,9 @@ export default function BodyScanCompare() {
           </div>
           
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-foreground">Need More Scans</h1>
+            <h1 className="text-2xl font-bold text-foreground">Only one scan on record</h1>
             <p className="text-muted-foreground">
-              You need at least 2 scans to compare! Take your first scan to start tracking your progress.
+              Compare coming soon! Take another scan to track your progress over time.
             </p>
           </div>
 
@@ -269,9 +277,9 @@ export default function BodyScanCompare() {
               onClick={() => navigate('/body-scan-ai')}
               className="w-full"
             >
-              Take Your First Scan
+              Take Another Scan
             </Button>
-            <Button 
+            <Button
               onClick={() => navigate('/home')}
               variant="outline"
               className="w-full"
