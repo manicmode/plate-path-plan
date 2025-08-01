@@ -19,6 +19,7 @@ interface BodyScan {
   pose_score?: number;
   scan_index?: number;
   year: number;
+  is_primary_monthly?: boolean;
 }
 
 export default function BodyScanHistory() {
@@ -121,26 +122,29 @@ export default function BodyScanHistory() {
   const totalScans = Object.keys(groupedScans).length;
   const currentYear = new Date().getFullYear();
 
-  // Calculate trend data for charts
+  // Calculate trend data for charts (using only primary monthly scans)
   const trendData = useMemo(() => {
     if (scans.length === 0) return { symmetry: [], balance: [], frequency: [] };
 
-    // Get last 6 scans for symmetry and balance trends
-    const recentScans = scans.slice(0, 6).reverse();
+    // Filter to get only primary monthly scans for trend analysis
+    const primaryScans = scans.filter(scan => scan.is_primary_monthly !== false);
     
-    const symmetryData = recentScans.map((scan, index) => ({
+    // Get last 6 primary scans for symmetry and balance trends
+    const recentPrimaryScans = primaryScans.slice(0, 6).reverse();
+    
+    const symmetryData = recentPrimaryScans.map((scan, index) => ({
       date: format(new Date(scan.created_at), 'MMM d'),
       value: scan.pose_score ? Math.round(scan.pose_score * 0.85 + Math.random() * 10 + 70) : Math.round(Math.random() * 15 + 75),
       scan: index + 1
     }));
 
-    const balanceData = recentScans.map((scan, index) => ({
+    const balanceData = recentPrimaryScans.map((scan, index) => ({
       date: format(new Date(scan.created_at), 'MMM d'),
       value: scan.pose_score ? Math.round(scan.pose_score * 0.9 + Math.random() * 8 + 68) : Math.round(Math.random() * 12 + 78),
       scan: index + 1
     }));
 
-    // Calculate frequency by month (last 6 months)
+    // Calculate frequency by month using only primary scans (last 6 months)
     const monthlyData = new Map();
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -151,7 +155,7 @@ export default function BodyScanHistory() {
       monthlyData.set(monthKey, 0);
     }
 
-    scans.forEach(scan => {
+    primaryScans.forEach(scan => {
       const scanMonth = format(new Date(scan.created_at), 'MMM');
       if (monthlyData.has(scanMonth)) {
         monthlyData.set(scanMonth, monthlyData.get(scanMonth) + 1);
@@ -498,17 +502,21 @@ export default function BodyScanHistory() {
                           {summaryText}
                         </p>
                         
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center space-x-2">
-                            {dateScans.map((scan, index) => (
-                              <span
-                                key={scan.id}
-                                className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full capitalize"
-                              >
-                                {scan.type}
-                              </span>
-                            ))}
-                          </div>
+                         <div className="flex items-center justify-between mt-3">
+                           <div className="flex items-center space-x-2">
+                             {dateScans.map((scan, index) => (
+                               <div key={scan.id} className="flex items-center space-x-1">
+                                 <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full capitalize">
+                                   {scan.type}
+                                 </span>
+                                 {scan.is_primary_monthly && (
+                                   <span className="px-1.5 py-0.5 bg-accent/20 text-accent text-xs rounded-full font-medium">
+                                     Primary
+                                   </span>
+                                 )}
+                               </div>
+                             ))}
+                           </div>
                           
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(dateScans[0].created_at), 'h:mm a')}
