@@ -356,6 +356,15 @@ export default function BodyScanResult() {
             </Button>
             
             <Button
+              onClick={() => navigate('/body-scan-history')}
+              variant="outline"
+              className="w-full text-lg py-6"
+              size="lg"
+            >
+              📖 View All Scans
+            </Button>
+            
+            <Button
               onClick={handleBackToHub}
               variant="outline"
               className="w-full text-lg py-6"
