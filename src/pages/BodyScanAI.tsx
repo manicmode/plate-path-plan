@@ -155,6 +155,51 @@ export default function BodyScanAI() {
     setImageError(false);
   }, []);
 
+  // Cleanup scan session completely
+  const cleanupScanSession = () => {
+    console.log('🧹 Cleaning up scan session completely');
+    
+    // Reset global lock
+    globalScanLocked = false;
+    
+    // Clear all timers
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    // Stop camera and pose detection
+    setIsPoseDetectionEnabled(false);
+    
+    // Clear video stream
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    
+    // Clear overlay canvas
+    if (overlayCanvasRef.current) {
+      const ctx = overlayCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+      }
+    }
+  };
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Component unmounting - performing final cleanup');
+      cleanupScanSession();
+    };
+  }, []);
+
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -1506,14 +1551,119 @@ export default function BodyScanAI() {
     scanCompleteRef.current = true;
     setIsCompletionInProgress(true);
     setScanCompleted(true);
-
     setSavedSteps(new Set(['front', 'side', 'back'])); // lock all steps
-    setShowWeightModal(false);
-    setShowFinalLoading(true);
 
-    setTimeout(() => {
+    if (!weight.trim()) {
+      // Reset if weight validation fails
+      globalScanLocked = false;
+      scanCompleteRef.current = false;
+      setScanCompleted(false);
+      setIsCompletionInProgress(false);
+      toast({
+        title: "Weight Required",
+        description: "Please enter your current weight",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsCompletingScan(true);
+      setShowWeightModal(false);
+      setIsPoseDetectionEnabled(false);
+
+      // Clear any animation frames
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setShowFinalLoading(true);
+      console.log('🧠 [AI LOADING] Starting post-scan analysis...');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+
+      const { data: existingScans } = await supabase
+        .from('body_scans')
+        .select('scan_index')
+        .eq('user_id', user.id)
+        .eq('year', currentYear)
+        .order('scan_index', { ascending: false })
+        .limit(1);
+
+      const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
+
+      const { error: dbError } = await supabase
+        .from('body_scans')
+        .insert({
+          user_id: user.id,
+          image_url: capturedImages.front || '',
+          side_image_url: capturedImages.side,
+          back_image_url: capturedImages.back,
+          weight: parseFloat(weight),
+          scan_index: nextScanIndex,
+          year: currentYear,
+          month: currentMonth,
+          type: 'complete'
+        });
+
+      if (dbError) throw dbError;
+
+      await supabase.rpc('update_body_scan_reminder', {
+        p_user_id: user.id,
+        p_scan_date: new Date().toISOString()
+      });
+
+      console.log('🎉 Body scan completed successfully');
+
+      // Clear overlay canvas
+      if (overlayCanvasRef.current) {
+        const ctx = overlayCanvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+        }
+      }
+
+      // Complete cleanup and navigation
+      navigationTimeoutRef.current = setTimeout(() => {
+        console.log('🧠 [AI LOADING] Completing scan and navigating...');
+        
+        // Final cleanup before navigation
+        cleanupScanSession();
+        
+        // Navigate to results
+        navigate('/body-scan-result', {
+          state: {
+            date: new Date(),
+            weight: parseFloat(weight)
+          }
+        });
+        navigationTimeoutRef.current = null;
+      }, 2500);
+
+    } catch (error) {
+      console.error('Error completing body scan:', error);
+      
+      // Reset on error
+      globalScanLocked = false;
+      scanCompleteRef.current = false;
+      setScanCompleted(false);
+      setIsCompletionInProgress(false);
+      setIsCompletingScan(false);
       setShowFinalLoading(false);
-    }, 2500);
+      setShowWeightModal(true);
+      
+      toast({
+        title: "Error",
+        description: "Failed to complete body scan. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleRetake = () => {
@@ -1803,6 +1953,8 @@ export default function BodyScanAI() {
   };
 
   const handleCancel = () => {
+    console.log('🚫 Canceling scan - cleaning up session');
+    cleanupScanSession();
     navigate('/exercise-hub');
   };
 
@@ -1919,7 +2071,8 @@ export default function BodyScanAI() {
         }}></div>
       </div>
 
-      {/* Simplified Progress Indicator - Only Progress Bars */}
+      {/* Simplified Progress Indicator - Only Progress Bars - Hide when scan is completed */}
+      {!scanCompleted && !showFinalLoading && !scanCompleteRef.current && (
       <div className={`absolute top-4 md:top-6 left-4 right-4 z-20 transition-all duration-700 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         {/* Progress Bars Only */}
         <div className="bg-black/60 backdrop-blur-sm rounded-xl p-2 border border-white/20 mb-3 transition-all duration-500">
@@ -1959,6 +2112,7 @@ export default function BodyScanAI() {
           </div>
         </div>
       </div>
+      )}
 
       
       {/* Enhanced Dynamic Body Silhouette with Fixed Spacing */}
@@ -2184,7 +2338,7 @@ export default function BodyScanAI() {
       </div>
       
       {/* Weight Input Modal - Only show if scan not completed */}
-      {showWeightModal && !scanCompleted && !scanCompleteRef.current && (
+      {showWeightModal && !scanCompleted && !scanCompleteRef.current && !showFinalLoading && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-background dark:bg-card rounded-lg p-6 max-w-sm w-full border border-border">
             <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
