@@ -1495,9 +1495,14 @@ export default function BodyScanAI() {
     }
 
     scanCompleteRef.current = true;
+    setScanCompleted(true);
+    setIsCompletionInProgress(true);
+    setSavedSteps(new Set(['front', 'side', 'back']));
 
     if (!weight.trim()) {
       scanCompleteRef.current = false;
+      setScanCompleted(false);
+      setIsCompletionInProgress(false);
       toast({
         title: "Weight Required",
         description: "Please enter your current weight",
@@ -1507,8 +1512,6 @@ export default function BodyScanAI() {
     }
 
     try {
-      setScanCompleted(true);
-      setIsCompletionInProgress(true);
       setIsCompletingScan(true);
       setShowWeightModal(false);
       setIsPoseDetectionEnabled(false);
