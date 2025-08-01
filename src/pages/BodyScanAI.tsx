@@ -206,11 +206,11 @@ export default function BodyScanAI() {
 
   // Trigger save when image is ready
   useEffect(() => {
-    if (hasImageReady) {
+    if (hasImageReady && capturedImage) {
       console.log("🟢 Pose ready, saving scan");
-      saveBodyScanToSupabase(capturedImage!);
+      saveBodyScanToSupabase(capturedImage);
     }
-  }, [hasImageReady]);
+  }, [hasImageReady, capturedImage, currentStep]);
 
   useEffect(() => {
     // Lock screen orientation to portrait if supported
