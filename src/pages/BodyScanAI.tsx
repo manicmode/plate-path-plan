@@ -2306,7 +2306,7 @@ export default function BodyScanAI() {
       />
 
       {/* Final Loading Screen */}
-      {showFinalLoading && <BodyScanLoadingScreen />}
+      {showFinalLoading && scanCompleteRef.current && <BodyScanLoadingScreen />}
 
     </div>
   );
