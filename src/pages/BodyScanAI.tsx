@@ -852,6 +852,12 @@ export default function BodyScanAI() {
   // Enhanced pose detection loop with improved alignment analysis
   useEffect(() => {
     const detectPoseRealTime = async () => {
+      // ✅ STOP POSE DETECTION WHEN WEIGHT MODAL IS OPEN
+      if (showWeightModal) {
+        animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
+        return;
+      }
+      
       // STEP 1: VIDEO DEBUG CHECK
       console.log("[VIDEO]", videoRef.current);
       if (videoRef.current?.readyState !== 4) {
@@ -1017,7 +1023,7 @@ export default function BodyScanAI() {
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     };
 
-    if (stream && poseDetectionReady && isPoseDetectionEnabled) {
+    if (stream && poseDetectionReady && isPoseDetectionEnabled && !showWeightModal) {
       console.log('[POSE FRAME] 🚀 Starting pose detection loop');
       animationFrameRef.current = requestAnimationFrame(detectPoseRealTime);
     }
@@ -1028,7 +1034,7 @@ export default function BodyScanAI() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [stream, poseDetectionReady, isPoseDetectionEnabled, analyzePoseAlignment]);
+  }, [stream, poseDetectionReady, isPoseDetectionEnabled, showWeightModal, analyzePoseAlignment]);
 
   // Start countdown when alignment is confirmed
   useEffect(() => {
@@ -1833,14 +1839,14 @@ export default function BodyScanAI() {
         style={{
           border: '3px solid lime',
           position: 'absolute',
-          zIndex: showSuccessScreen ? -1 : 99,
+          zIndex: showSuccessScreen || showWeightModal ? -1 : 99,
           top: 0,
-          opacity: showSuccessScreen ? 0 : 1,
+          opacity: showSuccessScreen || showWeightModal ? 0 : 1,
           left: 0,
           width: '100%',
           height: '100%',
           pointerEvents: 'none',
-          display: 'block'
+          display: showWeightModal ? 'none' : 'block'
         }}
       />
       
@@ -2123,19 +2129,22 @@ export default function BodyScanAI() {
       {/* Weight Input Modal */}
       {showWeightModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-            <h3 className="text-xl font-bold mb-2 text-center">🎉 Body Scan Complete!</h3>
-            <p className="text-gray-600 mb-4 text-center">
+          <div className="bg-background dark:bg-card rounded-lg p-6 max-w-sm w-full border border-border">
+            <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
+            <p className="text-muted-foreground mb-4 text-center text-sm">
               We've saved your front, side, and back body scans. Our AI will now analyze your posture and muscle symmetry to help you improve performance and reduce injury risk.
             </p>
+            <p className="text-muted-foreground mb-4 text-center text-sm">
+              📅 We'll remind you in 30 days to take your next scan and track your progress over time.
+            </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Current weight (lbs or kg)</label>
+              <label className="block text-sm font-medium mb-2 text-foreground">Current weight (lbs or kg)</label>
               <input
                 type="number"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 placeholder="Enter your weight"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <Button
