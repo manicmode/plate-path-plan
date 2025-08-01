@@ -13,6 +13,7 @@ if (typeof window !== 'undefined') {
 }
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { unstable_batchedUpdates } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { X, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
