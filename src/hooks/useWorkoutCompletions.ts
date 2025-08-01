@@ -68,7 +68,8 @@ export const useWorkoutCompletions = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      // Save to workout_completions table
+      const { error: completionError } = await supabase
         .from('workout_completions')
         .insert({
           user_id: user.id,
@@ -84,7 +85,27 @@ export const useWorkoutCompletions = () => {
           workout_data: data.workoutData || {}
         });
 
-      if (error) throw error;
+      if (completionError) throw completionError;
+
+      // Also sync to exercise_logs for analytics compatibility
+      const { error: logError } = await supabase
+        .from('exercise_logs')
+        .insert({
+          user_id: user.id,
+          activity_type: data.workoutType === 'ai_routine' ? 'strength_training' : 'general_workout',
+          duration_minutes: data.durationMinutes,
+          calories_burned: Math.round(data.durationMinutes * 5), // Rough estimate: 5 cal/min
+          intensity_level: data.difficultyFeedback === 'too_hard' ? 'high' : 
+                          data.difficultyFeedback === 'too_easy' ? 'low' : 'moderate',
+          steps: 0, // Workouts don't typically count steps
+          workout_type: data.workoutType,
+          notes: data.journalEntry
+        });
+
+      // Don't fail the whole operation if exercise_logs fails
+      if (logError) {
+        console.warn('Failed to sync to exercise_logs:', logError);
+      }
 
       toast({
         title: "🎉 Workout Saved!",
