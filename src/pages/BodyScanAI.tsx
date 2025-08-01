@@ -44,6 +44,7 @@ export default function BodyScanAI() {
     back?: string;
   }>({});
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [savedSteps, setSavedSteps] = useState<Set<string>>(new Set());
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [weight, setWeight] = useState('');
   const [isCompletingScan, setIsCompletingScan] = useState(false);
