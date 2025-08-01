@@ -48,6 +48,7 @@ export default function BodyScanAI() {
   const [weight, setWeight] = useState('');
   const [isCompletingScan, setIsCompletingScan] = useState(false);
   const [scanCompleted, setScanCompleted] = useState(false);
+  const [isCompletionInProgress, setIsCompletionInProgress] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStepSuccess, setShowStepSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1429,6 +1430,12 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
+    // Guard against duplicate runs
+    if (scanCompleted || isCompletionInProgress) {
+      console.log('🚫 Completion already in progress or completed');
+      return;
+    }
+
     if (!weight.trim()) {
       toast({
         title: "Weight Required",
@@ -1439,9 +1446,19 @@ export default function BodyScanAI() {
     }
 
     try {
+      // Immediately set guards to prevent duplicate runs
+      setScanCompleted(true);
+      setIsCompletionInProgress(true);
       setIsCompletingScan(true);
       
-      // Close the weight modal and show loading screen immediately
+      // Stop pose detection instantly
+      setIsPoseDetectionEnabled(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      
+      // Close modal and show loading screen
       setShowWeightModal(false);
       setShowFinalLoading(true);
       
@@ -1462,7 +1479,7 @@ export default function BodyScanAI() {
 
       const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
 
-      // Save complete body scan record
+      // Insert scan into Supabase
       const { error: dbError } = await supabase
         .from('body_scans')
         .insert({
@@ -1479,24 +1496,15 @@ export default function BodyScanAI() {
 
       if (dbError) throw dbError;
 
-      // Update body scan reminder
+      // Trigger RPC update
       await supabase.rpc('update_body_scan_reminder', {
         p_user_id: user.id,
         p_scan_date: new Date().toISOString()
       });
 
       console.log('🎉 Body scan completed successfully');
-
-      setScanCompleted(true);
       
-      // Stop pose detection and clean up
-      setIsPoseDetectionEnabled(false);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      
-      // Clear overlay canvas
+      // Clear canvas
       if (overlayCanvasRef.current) {
         const ctx = overlayCanvasRef.current.getContext('2d');
         if (ctx) {
@@ -1504,7 +1512,7 @@ export default function BodyScanAI() {
         }
       }
       
-      // Wait 1.5s then navigate to results page with scan data
+      // Navigate to /body-scan-result after 1.5s
       setTimeout(() => {
         navigate('/body-scan-result', {
           state: {
@@ -1516,6 +1524,11 @@ export default function BodyScanAI() {
 
     } catch (error) {
       console.error('Error completing body scan:', error);
+      
+      // Reset guards on error to allow retry
+      setScanCompleted(false);
+      setIsCompletionInProgress(false);
+      
       setShowFinalLoading(false);
       setShowWeightModal(true); // Show modal again on error
       toast({
