@@ -71,7 +71,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
           clearTimeout(forceTimer);
         };
       }
-    }, 3500); // Extended to 3.5s for 2s message readability
+    }, 4000); // Perfect 4s timing for optimal message readability
 
     return () => clearTimeout(timer);
   }, [isVisible, onComplete, homeDataReady]);
