@@ -1462,19 +1462,25 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
+    // Strict guard using scanCompleteRef as primary protection
     if (scanCompleteRef.current) {
-      console.log("🛑 Scan already completed, skipping.");
+      console.log("🛑 Scan already completed via scanCompleteRef, blocking duplicate execution");
       return;
     }
-    scanCompleteRef.current = true;
 
-    // Guard against duplicate runs
+    // Set the flag immediately to prevent any race conditions
+    scanCompleteRef.current = true;
+    console.log("🔒 Setting scanCompleteRef.current = true to prevent duplicates");
+
+    // Additional guards against duplicate runs
     if (scanCompleted || isCompletionInProgress) {
-      console.log('🚫 Completion already in progress or completed');
+      console.log('🚫 Completion already in progress or completed via state flags');
       return;
     }
 
     if (!weight.trim()) {
+      // Reset the ref if validation fails
+      scanCompleteRef.current = false;
       toast({
         title: "Weight Required",
         description: "Please enter your current weight",
@@ -1484,7 +1490,13 @@ export default function BodyScanAI() {
     }
 
     try {
-      // Immediately set guards to prevent duplicate runs
+      console.log("🚀 Starting full body scan completion process");
+      
+      // Hide modal immediately for smooth UX
+      setShowWeightModal(false);
+      console.log("👋 Weight modal hidden immediately");
+      
+      // Set all completion guards immediately
       setScanCompleted(true);
       setIsCompletionInProgress(true);
       setIsCompletingScan(true);
@@ -1496,9 +1508,9 @@ export default function BodyScanAI() {
         animationFrameRef.current = null;
       }
       
-      // Close modal and show loading screen
-      setShowWeightModal(false);
+      // Show loading screen for smooth transition
       setShowFinalLoading(true);
+      console.log("⏳ Final loading screen activated");
       
       // Add console logs for the loading experience
       console.log('🧠 [AI LOADING] Starting post-scan analysis...');
@@ -1558,6 +1570,7 @@ export default function BodyScanAI() {
       
       // Navigate to /body-scan-result after 2.5s for a rewarding experience
       navigationTimeoutRef.current = setTimeout(() => {
+        console.log("🚀 Navigation timeout triggered, moving to results");
         navigate('/body-scan-result', {
           state: {
             date: new Date(),
@@ -1570,12 +1583,15 @@ export default function BodyScanAI() {
     } catch (error) {
       console.error('Error completing body scan:', error);
       
-      // Reset guards on error to allow retry
+      // Reset ALL guards on error to allow retry
+      scanCompleteRef.current = false;
       setScanCompleted(false);
       setIsCompletionInProgress(false);
       
       setShowFinalLoading(false);
       setShowWeightModal(true); // Show modal again on error
+      console.log("🔄 Reset all completion guards due to error");
+      
       toast({
         title: "Error",
         description: "Failed to complete body scan. Please try again.",
