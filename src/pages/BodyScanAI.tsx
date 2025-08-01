@@ -2178,8 +2178,8 @@ export default function BodyScanAI() {
       </div>
 
       {/* Enhanced Step Success Screen with Cinematic Effects */}
-      {showSuccessScreen && savedScanUrl && ((() => {
-        console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep });
+      {showSuccessScreen && savedScanUrl && !shouldBlockAllModals() && ((() => {
+        console.log('🎯 Rendering success screen:', { showSuccessScreen, savedScanUrl: !!savedScanUrl, currentStep, shouldBlock: shouldBlockAllModals() });
         return true;
       })()) && (
         <div key={currentStep} className={`absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-6 animate-fade-in`}>
@@ -2413,10 +2413,9 @@ export default function BodyScanAI() {
       />
 
       {/* Final Loading Screen - Only show if we haven't navigated yet */}
-      {showFinalLoading && !shouldBlockAllModals() && (() => {
-        console.log('🪵 Loading Screen render check:', { showFinalLoading, shouldBlock: shouldBlockAllModals() });
-        return true;
-      })() && <BodyScanLoadingScreen />}
+      {showFinalLoading && scanCompleteRef.current && !shouldBlockAllModals() && (
+        <BodyScanLoadingScreen />
+      )}
 
     </div>
   );
