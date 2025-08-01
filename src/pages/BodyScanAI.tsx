@@ -1968,6 +1968,8 @@ export default function BodyScanAI() {
             <h3 className="text-xl font-bold mb-2 text-center text-foreground">🎉 Body Scan Complete!</h3>
             <p className="text-muted-foreground mb-4 text-center">
               We've saved your front, side, and back body scans. Our AI will now analyze your posture and muscle symmetry to help you improve performance and reduce injury risk.
+              <br /><br />
+              📅 We'll remind you in 30 days to take your next scan and track your progress over time.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2 text-foreground">Current weight (lbs or kg)</label>
