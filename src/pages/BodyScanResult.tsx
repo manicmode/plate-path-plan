@@ -30,6 +30,9 @@ export default function BodyScanResult() {
 
   // Handle navigation to body scan result page
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+    
     // If no scan data is passed, try to load the most recent scan
     if (!location.state || (!location.state.isHistoryView && !location.state.image_url)) {
       loadMostRecentScan();
