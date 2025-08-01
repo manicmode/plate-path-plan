@@ -23,6 +23,10 @@ const config: CapacitorConfig = {
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false
+    },
+    AudioConfig: {
+      // Custom audio configuration for ambient playback
+      enableAmbientAudio: true
     }
   }
 };

@@ -1,7 +1,11 @@
 /**
  * SoundManager - Central audio playback utility for app sound effects
- * Handles loading, caching, and playing sound files with fallbacks
+ * Handles loading, caching, and playing sound files with ambient/non-interrupting playback
  */
+
+import { Capacitor } from '@capacitor/core';
+import { NativeAudio } from '@capacitor-community/native-audio';
+import AudioConfig from '@/plugins/AudioConfig';
 
 interface AudioCache {
   [key: string]: HTMLAudioElement;
@@ -22,6 +26,7 @@ interface MobileAudioDiagnostics {
   isIOS: boolean;
   isAndroid: boolean;
   isIOSSafari: boolean;
+  isNative: boolean;
 }
 
 // Mobile environment detection utilities
@@ -32,6 +37,7 @@ const getMobileEnvironment = (): MobileAudioDiagnostics => {
   const isIOS = /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/.test(userAgent);
   const isMobile = isIOS || isAndroid || /Mobile|Tablet/.test(userAgent);
+  const isNative = Capacitor.isNativePlatform();
   
   let browser = 'Unknown';
   if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
@@ -57,7 +63,8 @@ const getMobileEnvironment = (): MobileAudioDiagnostics => {
     isPWA,
     isIOS,
     isAndroid,
-    isIOSSafari
+    isIOSSafari,
+    isNative
   };
 };
 
@@ -125,7 +132,24 @@ class SoundManager {
     
     this.loadUserPreferences();
     this.setupUserInteractionListener();
+    this.initializeNativeAudio();
     // Don't preload immediately - wait for user interaction
+  }
+
+  /**
+   * Initialize native audio settings for ambient playback
+   */
+  private async initializeNativeAudio(): Promise<void> {
+    if (this.mobileEnv.isNative) {
+      try {
+        // Configure native audio for ambient/non-interrupting playback
+        console.log('🔊 Configuring native audio for ambient playback');
+        await AudioConfig.configureAmbientAudio();
+        console.log('✅ Native audio configured for ambient playback');
+      } catch (error) {
+        console.warn('❌ Native audio configuration failed:', error);
+      }
+    }
   }
 
   /**
@@ -245,20 +269,53 @@ class SoundManager {
   private async preloadSounds(): Promise<void> {
     if (!this.isEnabled) return;
 
-    const preloadPromises = Object.entries(this.sounds)
-      .filter(([_, config]) => config.preload)
-      .map(([key, config]) => this.loadSound(key, config));
+    if (this.mobileEnv.isNative) {
+      // Preload sounds using NativeAudio for ambient playback
+      const preloadPromises = Object.entries(this.sounds)
+        .filter(([_, config]) => config.preload)
+        .map(([key, config]) => this.preloadNativeSound(key, config));
 
-    try {
-      await Promise.allSettled(preloadPromises);
-      console.log('Sound preloading completed');
-    } catch (error) {
-      console.warn('Some sounds failed to preload:', error);
+      try {
+        await Promise.allSettled(preloadPromises);
+        console.log('Native sound preloading completed');
+      } catch (error) {
+        console.warn('Some native sounds failed to preload:', error);
+      }
+    } else {
+      // Web-based preloading with ambient audio settings
+      const preloadPromises = Object.entries(this.sounds)
+        .filter(([_, config]) => config.preload)
+        .map(([key, config]) => this.loadSound(key, config));
+
+      try {
+        await Promise.allSettled(preloadPromises);
+        console.log('Web sound preloading completed');
+      } catch (error) {
+        console.warn('Some web sounds failed to preload:', error);
+      }
     }
   }
 
   /**
-   * Load a single sound file into cache
+   * Preload native sounds for ambient playback
+   */
+  private async preloadNativeSound(key: string, config: SoundConfig): Promise<void> {
+    try {
+      await NativeAudio.preload({
+        assetId: key,
+        assetPath: config.url,
+        audioChannelNum: 1,
+        isUrl: false,
+        volume: config.volume || 0.7
+      });
+      console.log(`✅ Preloaded native sound: ${key}`);
+    } catch (error) {
+      console.warn(`Failed to preload native sound: ${key}`, error);
+    }
+  }
+
+  /**
+   * Load a single sound file into cache with ambient audio settings
    */
   private async loadSound(key: string, config: SoundConfig): Promise<HTMLAudioElement> {
     if (this.audioCache[key]) {
@@ -269,6 +326,17 @@ class SoundManager {
       const audio = new Audio();
       audio.volume = config.volume || 0.7;
       audio.preload = 'auto';
+      
+      // Configure for ambient/non-interrupting playback
+      // This prevents the audio from requesting audio focus on mobile web
+      (audio as any).mozAudioChannelType = 'content'; // Firefox
+      (audio as any).webkitAudioContext = false; // Safari
+      
+      // Set audio attributes for ambient playback
+      if ('setAttribute' in audio) {
+        audio.setAttribute('playsinline', 'true');
+        audio.setAttribute('webkit-playsinline', 'true');
+      }
       
       audio.addEventListener('canplaythrough', () => {
         console.log(`✅ Loaded sound: ${key}`);
@@ -286,10 +354,10 @@ class SoundManager {
   }
 
   /**
-   * Play a sound by key
+   * Play a sound by key with ambient/non-interrupting audio settings
    */
   async play(soundKey: string): Promise<void> {
-    console.log(`🔊 SoundManager.play("${soundKey}") - enabled: ${this.isEnabled}, hasUserInteracted: ${this.hasUserInteracted}`);
+    console.log(`🔊 SoundManager.play("${soundKey}") - enabled: ${this.isEnabled}, hasUserInteracted: ${this.hasUserInteracted}, isNative: ${this.mobileEnv.isNative}`);
     
     if (!this.isEnabled) {
       console.log('🔊 SoundManager: Sound disabled');
@@ -309,46 +377,19 @@ class SoundManager {
       return;
     }
 
-    // Ensure audio system is initialized
-    if (!this.initializationPromise) {
-      await this.initializeAudioSystem();
-    } else {
-      await this.initializationPromise;
+    const config = this.sounds[soundKey];
+    if (!config) {
+      console.warn(`Sound not found: ${soundKey}`);
+      return;
     }
 
     try {
-      const config = this.sounds[soundKey];
-      if (!config) {
-        console.warn(`Sound not found: ${soundKey}`);
-        return;
-      }
-
-      let audio = this.audioCache[soundKey];
-      
-      // Load sound if not cached
-      if (!audio) {
-        audio = await this.loadSound(soundKey, config);
-      }
-
-      // Reset audio to beginning
-      audio.currentTime = 0;
-      
-      // Always attempt to resume AudioContext right before playing (critical for iOS)
-      if (this.audioContext) {
-        try {
-          await this.audioContext.resume();
-        } catch (resumeError: any) {
-          console.warn('❌ AudioContext resume failed before playing:', resumeError);
-          // Continue with play attempt even if resume fails
-        }
-      }
-      
-      // Use a promise to handle potential autoplay restrictions
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        await playPromise;
-        console.log(`🔊 Successfully played: ${soundKey}`);
+      if (this.mobileEnv.isNative) {
+        // Use NativeAudio for ambient/non-interrupting playback on native platforms
+        await this.playNativeSound(soundKey, config);
+      } else {
+        // Use web audio with ambient settings
+        await this.playWebSound(soundKey, config);
       }
     } catch (error: any) {
       // Handle autoplay restrictions and other errors gracefully
@@ -357,6 +398,77 @@ class SoundManager {
       } else {
         console.warn(`🔊 Sound play failed: ${soundKey}`, error);
       }
+    }
+  }
+
+  /**
+   * Play sound using NativeAudio for ambient playback (doesn't interrupt background audio)
+   */
+  private async playNativeSound(soundKey: string, config: SoundConfig): Promise<void> {
+    try {
+      // NativeAudio automatically handles ambient playback on native platforms
+      await NativeAudio.play({
+        assetId: soundKey,
+        // Note: NativeAudio plugin handles audio session configuration for ambient playback
+        // This ensures it doesn't interrupt music from other apps
+      });
+      console.log(`🔊 Successfully played native sound: ${soundKey}`);
+    } catch (error) {
+      console.warn(`❌ Native sound play failed: ${soundKey}`, error);
+      // Fallback to web audio if native fails
+      await this.playWebSound(soundKey, config);
+    }
+  }
+
+  /**
+   * Play sound using web audio with ambient settings (doesn't interrupt background audio)
+   */
+  private async playWebSound(soundKey: string, config: SoundConfig): Promise<void> {
+    // Ensure audio system is initialized
+    if (!this.initializationPromise) {
+      await this.initializeAudioSystem();
+    } else {
+      await this.initializationPromise;
+    }
+
+    let audio = this.audioCache[soundKey];
+    
+    // Load sound if not cached
+    if (!audio) {
+      audio = await this.loadSound(soundKey, config);
+    }
+
+    // Reset audio to beginning
+    audio.currentTime = 0;
+    
+    // Configure audio for ambient playback (critical for not interrupting background audio)
+    if (this.mobileEnv.isMobile) {
+      // For mobile web, configure audio element for ambient playback
+      audio.setAttribute('playsinline', 'true');
+      audio.setAttribute('webkit-playsinline', 'true');
+      
+      // Set audio category to ambient to prevent interrupting background audio
+      if ('webkitAudioContext' in window) {
+        (audio as any).webkitAudioContext = 'ambient';
+      }
+    }
+    
+    // Resume AudioContext if needed (but don't force it to prevent audio interruption)
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+      } catch (resumeError: any) {
+        console.warn('❌ AudioContext resume failed before playing:', resumeError);
+        // Continue with play attempt even if resume fails
+      }
+    }
+    
+    // Use a promise to handle potential autoplay restrictions
+    const playPromise = audio.play();
+    
+    if (playPromise !== undefined) {
+      await playPromise;
+      console.log(`🔊 Successfully played web sound: ${soundKey}`);
     }
   }
 
