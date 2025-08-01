@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { User, Settings, Camera, RefreshCw } from 'lucide-react';
+import { User, Settings, Camera, RefreshCw, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react';
+import { CaricatureModal } from './CaricatureModal';
 
 interface PersonalInformationProps {
   formData: {
@@ -17,11 +17,14 @@ interface PersonalInformationProps {
     email: string;
   };
   user: {
+    id?: string;
     name?: string;
     first_name?: string;
     last_name?: string;
     email?: string;
     dietaryGoals?: string[];
+    avatar_url?: string;
+    caricature_generation_count?: number;
   } | null;
   isEditing: boolean;
   onFormDataChange: (updates: Partial<any>) => void;
@@ -38,19 +41,20 @@ const dietaryGoalOptions = [
 
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [caricatureModalOpen, setCaricatureModalOpen] = useState(false);
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState(user?.avatar_url);
+  const [generationCount, setGenerationCount] = useState(user?.caricature_generation_count || 0);
 
   const displayName = formData.first_name && formData.last_name 
     ? `${formData.first_name} ${formData.last_name}`
     : user?.name || user?.email || 'User';
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Handle avatar upload logic here
-      console.log('Avatar upload:', file);
-      setAvatarModalOpen(false);
-    }
+  const handleAvatarUpdate = (url: string) => {
+    setCurrentAvatarUrl(url);
+  };
+
+  const handleGenerationCountUpdate = (count: number) => {
+    setGenerationCount(count);
   };
 
   return (
@@ -58,46 +62,35 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <div className="flex flex-col items-center space-y-4">
           {/* Avatar Section */}
-          <Dialog open={avatarModalOpen} onOpenChange={setAvatarModalOpen}>
-            <DialogTrigger asChild>
-              <div className="relative cursor-pointer group">
-                <Avatar className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} ring-2 ring-primary/20 hover:ring-primary/40 transition-all`}>
-                  <AvatarFallback className={`${isMobile ? 'text-2xl' : 'text-3xl'} gradient-primary text-white`}>
-                    {displayName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera className="h-6 w-6 text-white" />
-                </div>
+          <div 
+            className="relative cursor-pointer group"
+            onClick={() => setCaricatureModalOpen(true)}
+          >
+            <Avatar className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-300`}>
+              {currentAvatarUrl ? (
+                <AvatarImage 
+                  src={currentAvatarUrl} 
+                  className="object-cover"
+                />
+              ) : (
+                <AvatarFallback className={`${isMobile ? 'text-2xl' : 'text-3xl'} gradient-primary text-white`}>
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+              {currentAvatarUrl ? (
+                <RefreshCw className="h-6 w-6 text-white" />
+              ) : (
+                <Camera className="h-6 w-6 text-white" />
+              )}
+            </div>
+            {currentAvatarUrl && (
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                <Sparkles className="h-3 w-3 text-white" />
               </div>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Profile Picture</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex flex-col items-center space-y-4">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                    id="avatar-upload"
-                  />
-                  <Button asChild variant="outline" className="w-full">
-                    <label htmlFor="avatar-upload" className="cursor-pointer">
-                      <Camera className="h-4 w-4 mr-2" />
-                      Choose Photo
-                    </label>
-                  </Button>
-                  <Button variant="secondary" className="w-full">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate AI Avatar
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+            )}
+          </div>
 
           {/* Name and Info Section */}
           <div className="text-center space-y-2">
@@ -172,6 +165,17 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
           </div>
         </CardContent>
       )}
+
+      {/* Caricature Modal */}
+      <CaricatureModal
+        isOpen={caricatureModalOpen}
+        onClose={() => setCaricatureModalOpen(false)}
+        userId={user?.id || ''}
+        currentAvatarUrl={currentAvatarUrl}
+        onAvatarUpdate={handleAvatarUpdate}
+        generationCount={generationCount}
+        onGenerationCountUpdate={handleGenerationCountUpdate}
+      />
     </Card>
   );
 };

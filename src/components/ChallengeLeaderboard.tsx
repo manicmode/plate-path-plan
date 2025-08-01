@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { LeaderboardEntry } from '@/hooks/useExerciseChallenges';
 
@@ -52,8 +53,13 @@ export const ChallengeLeaderboard: React.FC<ChallengeLeaderboardProps> = ({ lead
                   {getRankIcon(entry.rank)}
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{entry.avatar}</span>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-8 h-8 ring-2 ring-primary/20">
+                    <AvatarImage src={(entry as any).avatar_url} />
+                    <AvatarFallback className="text-xs gradient-primary text-white">
+                      {entry.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
                     <div className="font-medium text-foreground">{entry.name}</div>
                     <div className="text-xs text-muted-foreground">

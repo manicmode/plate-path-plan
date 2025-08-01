@@ -5,6 +5,8 @@ export interface ExtendedUser extends User {
   name?: string;
   first_name?: string;
   last_name?: string;
+  avatar_url?: string;
+  caricature_generation_count?: number;
   targetCalories?: number;
   targetProtein?: number;
   targetCarbs?: number;

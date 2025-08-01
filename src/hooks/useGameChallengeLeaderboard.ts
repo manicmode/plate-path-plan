@@ -73,6 +73,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         user_id,
         first_name,
         last_name,
+        avatar_url,
         current_nutrition_streak,
         created_at
       `)
@@ -146,6 +147,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         user_id,
         first_name,
         last_name,
+        avatar_url,
         created_at
       `)
       .not('user_id', 'is', null);
@@ -222,6 +224,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         user_id,
         first_name,
         last_name,
+        avatar_url,
         created_at
       `)
       .not('user_id', 'is', null);
