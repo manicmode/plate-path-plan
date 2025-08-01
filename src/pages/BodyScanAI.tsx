@@ -539,6 +539,7 @@ export default function BodyScanAI() {
       console.log('🎯 [SIDE] Checking side orientation rules...');
       
       // 🔹 Side: Only one shoulder and one hip should be clearly visible
+      // Updated: Relaxed non-visible side threshold to 0.5 for improved usability
       const leftShoulderVisible = leftShoulder && leftShoulder.score > 0.5;
       const rightShoulderVisible = rightShoulder && rightShoulder.score > 0.5;
       const leftHipVisible = leftHip && leftHip.score > 0.5;
@@ -549,18 +550,37 @@ export default function BodyScanAI() {
       
       console.log(`🎯 [SIDE] Shoulder visibility count: ${shoulderVisibilityCount}, hip count: ${hipVisibilityCount}`);
       
-      // For side view, we expect asymmetric visibility
-      if (shoulderVisibilityCount === 2 && hipVisibilityCount === 2) {
-        return {
-          isCorrectOrientation: false,
-          feedback: "Turn sideways - you're still facing forward"
-        };
-      }
+      // Enhanced side view validation with relaxed non-visible side threshold (0.5 instead of 0.3)
+      // This allows for better real-world usability while preventing false positives
+      const leftShoulderNonVisible = !leftShoulder || leftShoulder.score < 0.5;
+      const rightShoulderNonVisible = !rightShoulder || rightShoulder.score < 0.5;
+      const leftHipNonVisible = !leftHip || leftHip.score < 0.5;
+      const rightHipNonVisible = !rightHip || rightHip.score < 0.5;
       
-      if (shoulderVisibilityCount === 0 || hipVisibilityCount === 0) {
+      // For side view, we expect asymmetric visibility - one side clearly visible, other side less visible
+      const validSideOrientation = (
+        (leftShoulderVisible && rightShoulderNonVisible && leftHipVisible && rightHipNonVisible) ||
+        (rightShoulderVisible && leftShoulderNonVisible && rightHipVisible && leftHipNonVisible)
+      );
+      
+      if (!validSideOrientation) {
+        if (shoulderVisibilityCount === 2 && hipVisibilityCount === 2) {
+          return {
+            isCorrectOrientation: false,
+            feedback: "Turn sideways - you're still facing forward"
+          };
+        }
+        
+        if (shoulderVisibilityCount === 0 || hipVisibilityCount === 0) {
+          return {
+            isCorrectOrientation: false,
+            feedback: "Turn more toward the camera for side view"
+          };
+        }
+        
         return {
           isCorrectOrientation: false,
-          feedback: "Turn more toward the camera for side view"
+          feedback: "Position yourself sideways to the camera"
         };
       }
       
