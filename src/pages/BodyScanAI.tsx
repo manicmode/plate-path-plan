@@ -229,6 +229,28 @@ export default function BodyScanAI() {
     );
   }, [scanCompleted, isCompletionInProgress, showFinalLoading, hasNavigated]);
 
+  // Navigation failsafe - ensure navigation happens even if initial attempt fails
+  useEffect(() => {
+    if (hasNavigated && scanCompleteRef.current && window.__nutriScanExitNow) {
+      console.log("🔄 Navigation effect triggered - ensuring navigation happens");
+
+      const navigationCheck = setTimeout(() => {
+        if (window.location.pathname === '/body-scan-ai') {
+          console.log("⚠️ Navigation didn't occur, forcing navigation now");
+          navigate('/body-scan-result', {
+            state: {
+              date: new Date(),
+              weight: parseFloat(weight) || 0
+            },
+            replace: true
+          });
+        }
+      }, 1000);
+
+      return () => clearTimeout(navigationCheck);
+    }
+  }, [hasNavigated, navigate, weight]);
+
   useEffect(() => {
     const startCamera = async () => {
       try {
