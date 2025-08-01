@@ -61,6 +61,7 @@ import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
+import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
 
 // Types
 interface ChatMessage {
@@ -639,6 +640,11 @@ function GameAndChallengeContent() {
   // Recovery leaderboard hook
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
+  // Real challenge leaderboards
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading } = useGameChallengeLeaderboard('nutrition');
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading } = useGameChallengeLeaderboard('exercise');
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading } = useGameChallengeLeaderboard('recovery');
+  
   // Use the scroll-to-top hook
   useScrollToTop();
 
@@ -647,25 +653,34 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Optimize data for mobile and handle recovery mode with sorting
+  // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
+  let isLoading = false;
+  let isEmpty = false;
   
-  if (challengeMode === 'recovery') {
-    // Apply sorting for recovery leaderboard
-    currentLeaderboard = [...recoveryLeaderboard].sort((a, b) => {
-      switch (sortBy) {
-        case 'sessions':
-          return b.totalSessions - a.totalSessions;
-        case 'streak':
-          return b.currentStreak - a.currentStreak;
-        case 'improvement':
-          return b.improvement - a.improvement;
-        default: // 'score'
-          return b.score - a.score;
-      }
-    }).map((user, index) => ({ ...user, rank: index + 1 }));
-  } else {
-    currentLeaderboard = mockLeaderboard;
+  switch (challengeMode) {
+    case 'nutrition':
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
+      isLoading = nutritionLoading;
+      isEmpty = nutritionLeaderboard.isEmpty;
+      break;
+    case 'exercise':
+      currentLeaderboard = exerciseLeaderboard.currentUserGroup;
+      isLoading = exerciseLoading;
+      isEmpty = exerciseLeaderboard.isEmpty;
+      break;
+    case 'recovery':
+      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup;
+      isLoading = recoveryRealLoading;
+      isEmpty = recoveryRealLeaderboard.isEmpty;
+      break;
+    case 'combined':
+    default:
+      // Use nutrition leaderboard as default for combined view
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
+      isLoading = nutritionLoading;
+      isEmpty = nutritionLeaderboard.isEmpty;
+      break;
   }
   
   const optimizedLeaderboard = optimizeForMobile(currentLeaderboard);
@@ -972,35 +987,52 @@ function GameAndChallengeContent() {
                 </div>
               </CardHeader>
                <CardContent className={cn(isMobile ? "p-3" : "p-6")}>
-                 {challengeMode === 'recovery' && recoveryLoading ? (
-                   <div className="space-y-4">
-                     {[1, 2, 3].map((i) => (
-                       <div key={i} className="animate-pulse flex items-center gap-4 p-4 rounded-xl border-2 border-purple-100 dark:border-purple-900/20">
-                         <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
-                         <div className="flex-1 space-y-2">
-                           <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
-                           <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
-                         </div>
-                         <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
-                       </div>
-                     ))}
-                   </div>
-                 ) : challengeMode === 'recovery' && optimizedLeaderboard.length === 0 ? (
-                   <div className="text-center py-12">
-                     <div className="text-6xl mb-4">🧘‍♂️</div>
-                     <h3 className="text-xl font-semibold mb-2 text-teal-700 dark:text-teal-300">No Recovery Warriors Yet</h3>
-                     <p className="text-muted-foreground mb-6">
-                       Start your meditation, breathing, yoga, sleep, or thermotherapy journey to appear on the leaderboard!
-                     </p>
-                     <Button 
-                       onClick={() => window.location.href = '/exercise-hub?tab=recovery'}
-                       className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white"
-                     >
-                       <span className="mr-2">🧘</span>
-                       Start Recovery Journey
-                     </Button>
-                   </div>
-                  ) : (
+                  {isLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse flex items-center gap-4 p-4 rounded-xl border-2 border-purple-100 dark:border-purple-900/20">
+                          <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
+                            <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
+                          </div>
+                          <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : isEmpty ? (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">
+                        {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘‍♂️'}
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2 text-teal-700 dark:text-teal-300">
+                        {challengeMode === 'nutrition' && "No challengers yet! Time to be the first to rise 💪"}
+                        {challengeMode === 'exercise' && "No workout warriors yet! Time to be the first to rise 💪"}
+                        {challengeMode === 'recovery' && "No recovery warriors yet! Time to be the first to rise 💪"}
+                        {challengeMode === 'combined' && "No challengers yet! Time to be the first to rise 💪"}
+                      </h3>
+                      <p className="text-muted-foreground mb-6">
+                        {challengeMode === 'nutrition' && "Start logging your meals to appear on the nutrition leaderboard!"}
+                        {challengeMode === 'exercise' && "Start completing workouts to appear on the exercise leaderboard!"}
+                        {challengeMode === 'recovery' && "Start your meditation, breathing, yoga, sleep, or recovery journey to appear on the leaderboard!"}
+                        {challengeMode === 'combined' && "Start your fitness journey to appear on the leaderboard!"}
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          if (challengeMode === 'nutrition') window.location.href = '/nutrition';
+                          else if (challengeMode === 'exercise') window.location.href = '/exercise-hub';
+                          else if (challengeMode === 'recovery') window.location.href = '/exercise-hub?tab=recovery';
+                          else window.location.href = '/home';
+                        }}
+                        className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white"
+                      >
+                        <span className="mr-2">
+                          {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘'}
+                        </span>
+                        Start Your Journey
+                      </Button>
+                    </div>
+                   ) : (
                     <div className={cn(isMobile ? "space-y-2" : "space-y-4")}>
                       {/* Coach CTA for Recovery Leaderboard */}
                       {challengeMode === 'recovery' && !isMobile && (
@@ -1010,7 +1042,7 @@ function GameAndChallengeContent() {
                           </p>
                         </div>
                       )}
-                      {optimizedLeaderboard.map((user) => (
+                      {currentLeaderboard.map((user) => (
                      <div
                        key={user.id}
                        className={cn(
@@ -1199,38 +1231,45 @@ function GameAndChallengeContent() {
                     </div>
                   </CardHeader>
                    <CardContent className="p-3">
-                     {challengeMode === 'recovery' && recoveryLoading ? (
-                       <div className="space-y-3">
-                         {[1, 2, 3].map((i) => (
-                           <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
-                             <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
-                             <div className="flex-1 space-y-2">
-                               <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
-                               <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
-                             </div>
-                             <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
-                           </div>
-                         ))}
-                       </div>
-                     ) : challengeMode === 'recovery' && optimizedLeaderboard.length === 0 ? (
-                       <div className="text-center py-12">
-                         <div className="text-4xl mb-4">🧘‍♂️</div>
-                         <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">No Recovery Warriors Yet</h3>
-                         <p className="text-muted-foreground text-sm mb-4">
-                           Start your recovery journey today! 🧘🌿
-                         </p>
-                         <Button 
-                           onClick={() => window.location.href = '/exercise-hub?tab=recovery'}
-                           className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white text-xs"
-                           size="sm"
-                         >
-                           <span className="mr-1">🧘</span>
-                           Start Recovery
-                         </Button>
-                       </div>
-                     ) : (
+                      {isLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
+                              <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
+                              <div className="flex-1 space-y-2">
+                                <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-3/4"></div>
+                                <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-1/2"></div>
+                              </div>
+                              <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : isEmpty ? (
+                        <div className="text-center py-8">
+                          <div className="text-4xl mb-4">
+                            {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘‍♂️'}
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">
+                            {challengeMode === 'recovery' ? "You're the first challenger! Time to inspire others 🔥" : "No challengers yet! Time to be the first to rise 💪"}
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-4">
+                            Start your {challengeMode} journey today!
+                          </p>
+                          <Button 
+                            onClick={() => {
+                              if (challengeMode === 'nutrition') window.location.href = '/nutrition';
+                              else if (challengeMode === 'exercise') window.location.href = '/exercise-hub';
+                              else window.location.href = '/exercise-hub?tab=recovery';
+                            }}
+                            className="bg-gradient-to-r from-teal-500 to-purple-500 hover:from-teal-600 hover:to-purple-600 text-white text-xs"
+                            size="sm"
+                          >
+                            Start Journey
+                          </Button>
+                        </div>
+                      ) : (
                        <div className="space-y-2">
-                         {optimizedLeaderboard.map((user, index) => (
+                         {currentLeaderboard.map((user, index) => (
                          <div
                            key={user.id}
                             className={cn(
