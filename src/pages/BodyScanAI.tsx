@@ -1764,6 +1764,13 @@ export default function BodyScanAI() {
 
   const handleContinue = async () => {
     console.log('➡️ Continue clicked');
+    
+    // Add checks at the top for completion guards
+    if (scanCompleted || isCompletionInProgress) {
+      console.log('⚠️ [CONTINUE] Scan already completed or in progress, blocking continuation');
+      return;
+    }
+    
     console.log('🚀 handleContinue called:', { hasImageReady, savedScanUrl: !!savedScanUrl, currentStep });
     
     if (hasImageReady && savedScanUrl) {
@@ -1817,10 +1824,11 @@ export default function BodyScanAI() {
         } else {
           console.log('🎉 All scans completed - showing weight modal');
           // Final step completed - show weight modal (only if not already completed)
-          if (!scanCompleted) {
+          if (!scanCompleted && !isCompletionInProgress) {
             setShowWeightModal(true);
           }
           setIsTransitioning(false);
+          console.log('✨ Transition complete');
           return;
         }
         
@@ -1837,7 +1845,7 @@ export default function BodyScanAI() {
         // End transition
         setTimeout(() => {
           setIsTransitioning(false);
-          console.log(`✨ Transition to ${currentStep === 'front' ? 'side' : 'back'} complete`);
+          console.log('✨ Transition complete');
         }, 300);
       }, 500); // Reduced timeout for faster transitions
     } else {
