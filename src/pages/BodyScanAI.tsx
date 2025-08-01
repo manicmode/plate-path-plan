@@ -1848,6 +1848,11 @@ export default function BodyScanAI() {
     setPoseDetected(null);
     setAlignmentFeedback(null);
 
+    // Reset image-related state before moving to next step
+    setCapturedImage(null);
+    setHasImageReady(false);
+    setSavedScanUrl(null);
+
     setTimeout(() => {
       if (currentStep === 'front') {
         setCurrentStep('side');
