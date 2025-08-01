@@ -267,6 +267,7 @@ export default function BodyScanAI() {
   }, [stream]);
 
   useEffect(() => {
+    console.log("🧠 Saved steps so far:", Array.from(savedSteps));
     if (
       hasImageReady &&
       capturedImage &&
@@ -274,6 +275,7 @@ export default function BodyScanAI() {
       !scanCompleted &&
       !isCompletionInProgress
     ) {
+      console.log("💾 Saving scan for step:", currentStep);
       console.log("🟢 Pose ready, saving scan for step:", currentStep);
       setSavedSteps((prev) => new Set([...prev, currentStep]));
       saveBodyScanToSupabase(capturedImage);
