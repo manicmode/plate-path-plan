@@ -28,20 +28,64 @@ export default function BodyScanResult() {
     "Progress, not perfection. 🌱"
   ];
 
-  // Redirect if no scan data (user bypassed scan)
+  // Handle navigation to body scan result page
   useEffect(() => {
-    if (!location.state) {
-      navigate('/exercise-hub');
-      return;
+    // If no scan data is passed, try to load the most recent scan
+    if (!location.state || (!location.state.isHistoryView && !location.state.image_url)) {
+      loadMostRecentScan();
+    } else {
+      // Set random motivational message
+      const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+      setMotivationalMessage(randomMessage);
+      
+      // Generate AI insight
+      generateAIInsight();
     }
-    
-    // Set random motivational message
-    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-    setMotivationalMessage(randomMessage);
-    
-    // Generate AI insight
-    generateAIInsight();
   }, [location.state, navigate]);
+
+  const loadMostRecentScan = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/exercise-hub');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('body_scans')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Update scan data with the most recent scan
+        const recentScan = data[0];
+        scanData.date = recentScan.created_at;
+        scanData.weight = recentScan.weight;
+        scanData.image_url = recentScan.image_url;
+        scanData.side_image_url = recentScan.side_image_url;
+        scanData.back_image_url = recentScan.back_image_url;
+        scanData.ai_insights = recentScan.ai_insights;
+        scanData.pose_score = recentScan.pose_score;
+        
+        // Set random motivational message
+        const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+        setMotivationalMessage(randomMessage);
+        
+        // Generate AI insight
+        generateAIInsight();
+      } else {
+        // No scans found, redirect to body scan page
+        navigate('/body-scan-ai');
+      }
+    } catch (error) {
+      console.error('Error loading recent scan:', error);
+      navigate('/body-scan-ai');
+    }
+  };
 
   const generateAIInsight = async () => {
     try {
