@@ -1491,113 +1491,29 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
-    if (scanCompleteRef.current || scanCompleted || isCompletionInProgress) {
-      console.log("🛑 Scan already completed, skipping.");
+    if (
+      scanCompleteRef.current ||
+      scanCompleted ||
+      isCompletionInProgress ||
+      globalScanLocked
+    ) {
+      console.log("🛑 Scan already completed or locked, skipping.");
       return;
     }
 
+    console.log("✅ Locking scan now");
+    globalScanLocked = true;
     scanCompleteRef.current = true;
-    setScanCompleted(true);
     setIsCompletionInProgress(true);
-    setSavedSteps(new Set(['front', 'side', 'back']));
+    setScanCompleted(true);
 
-    if (!weight.trim()) {
-      scanCompleteRef.current = false;
-      setScanCompleted(false);
-      setIsCompletionInProgress(false);
-      toast({
-        title: "Weight Required",
-        description: "Please enter your current weight",
-        variant: "destructive"
-      });
-      return;
-    }
+    setSavedSteps(new Set(['front', 'side', 'back'])); // lock all steps
+    setShowWeightModal(false);
+    setShowFinalLoading(true);
 
-    try {
-      setIsCompletingScan(true);
-      setShowWeightModal(false);
-      setIsPoseDetectionEnabled(false);
-
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setShowFinalLoading(true);
-      console.log('🧠 [AI LOADING] Starting post-scan analysis...');
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-
-      const { data: existingScans } = await supabase
-        .from('body_scans')
-        .select('scan_index')
-        .eq('user_id', user.id)
-        .eq('year', currentYear)
-        .order('scan_index', { ascending: false })
-        .limit(1);
-
-      const nextScanIndex = existingScans && existingScans.length > 0 ? existingScans[0].scan_index + 1 : 1;
-
-      const { error: dbError } = await supabase
-        .from('body_scans')
-        .insert({
-          user_id: user.id,
-          image_url: capturedImages.front || '',
-          side_image_url: capturedImages.side,
-          back_image_url: capturedImages.back,
-          weight: parseFloat(weight),
-          scan_index: nextScanIndex,
-          year: currentYear,
-          month: currentMonth,
-          type: 'complete'
-        });
-
-      if (dbError) throw dbError;
-
-      await supabase.rpc('update_body_scan_reminder', {
-        p_user_id: user.id,
-        p_scan_date: new Date().toISOString()
-      });
-
-      console.log('🎉 Body scan completed successfully');
-
-      if (overlayCanvasRef.current) {
-        const ctx = overlayCanvasRef.current.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
-        }
-      }
-
-      navigationTimeoutRef.current = setTimeout(() => {
-        console.log('🧠 [AI LOADING] Navigating to result page');
-        navigate('/body-scan-result', {
-          state: {
-            date: new Date(),
-            weight: parseFloat(weight)
-          }
-        });
-        navigationTimeoutRef.current = null;
-      }, 2500);
-
-    } catch (error) {
-      console.error('Error completing body scan:', error);
-      scanCompleteRef.current = false;
-      setScanCompleted(false);
-      setIsCompletionInProgress(false);
-      setIsCompletingScan(false);
+    setTimeout(() => {
       setShowFinalLoading(false);
-      setShowWeightModal(true);
-      toast({
-        title: "Error",
-        description: "Failed to complete body scan. Please try again.",
-        variant: "destructive"
-      });
-    }
+    }, 2500);
   };
 
   const handleRetake = () => {
