@@ -180,7 +180,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
               animate={{ 
                 opacity: 1, 
                 y: 0,
-                transition: { duration: 0.5, delay: 1.5, ease: "easeOut" } // Message appears after logo (1s) + 0.5s delay
+                transition: { duration: 0.5, delay: 0.5, ease: "easeOut" } // Message appears 0.5s after logo starts
               }}
               className="text-sm italic max-w-xs leading-relaxed text-gray-400"
             >
