@@ -71,7 +71,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
           clearTimeout(forceTimer);
         };
       }
-    }, 4500); // Extended to 4.5s for longer logo visibility
+    }, 3000); // Perfect 3s timing for welcome sequence
 
     return () => clearTimeout(timer);
   }, [isVisible, onComplete, homeDataReady]);
@@ -110,7 +110,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 opacity: 1, 
                 y: 0, 
                 scale: 1,
-                transition: { duration: 1.2, delay: 0.2, ease: "easeOut" } // Extended duration (1.2s) for longer visibility
+                transition: { duration: 1, delay: 0, ease: "easeOut" } // Logo fades in over 1s
               }}
               className="mb-6"
             >
@@ -180,7 +180,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
               animate={{ 
                 opacity: 1, 
                 y: 0,
-                transition: { duration: 1, delay: 1.5, ease: "easeOut" }
+                transition: { duration: 0.5, delay: 1.5, ease: "easeOut" } // Message appears after logo (1s) + 0.5s delay
               }}
               className="text-sm italic max-w-xs leading-relaxed text-gray-400"
             >
