@@ -1810,8 +1810,9 @@ export default function BodyScanAI() {
   const handleContinue = async () => {
     console.log('➡️ Continue clicked');
 
-    if (scanCompleted || isCompletionInProgress) {
-      console.log('⚠️ [CONTINUE] Scan already completed or in progress');
+    // Multiple guards to prevent showing modal after scan completion
+    if (scanCompleted || isCompletionInProgress || scanCompleteRef.current) {
+      console.log('⚠️ [CONTINUE] Scan already completed or in progress, blocking action');
       return;
     }
 
@@ -1851,9 +1852,15 @@ export default function BodyScanAI() {
           duration: 4000,
         });
       } else if (currentStep === 'back') {
-        if (!scanCompleted && !isCompletionInProgress && !showWeightModal && !scanCompleteRef.current) {
+        // Enhanced guards against showing modal after completion
+        if (!scanCompleted && 
+            !isCompletionInProgress && 
+            !showWeightModal && 
+            !scanCompleteRef.current) {
           console.log("✅ Showing scan complete modal");
           setShowWeightModal(true);
+        } else {
+          console.log("⚠️ [CONTINUE] Blocked showing weight modal - scan already completed");
         }
       }
 
