@@ -237,6 +237,15 @@ export default function BodyScanResult() {
             </Button>
             
             <Button
+              onClick={() => navigate('/body-scan-compare')}
+              variant="outline"
+              className="w-full text-lg py-6"
+              size="lg"
+            >
+              🔄 Compare to Previous Scans
+            </Button>
+            
+            <Button
               onClick={handleBackToHub}
               variant="outline"
               className="w-full text-lg py-6"

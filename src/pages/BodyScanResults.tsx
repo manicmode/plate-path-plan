@@ -273,15 +273,26 @@ export default function BodyScanResults() {
                       </div>
                     </div>
 
-                    {/* View Full Report Button */}
-                    <Button
-                      onClick={() => handleViewFullReport(scan)}
-                      className="w-full group"
-                      variant="outline"
-                    >
-                      View Full Report
-                      <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => handleViewFullReport(scan)}
+                        className="group"
+                        variant="outline"
+                        size="sm"
+                      >
+                        View Report
+                        <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                      <Button
+                        onClick={() => navigate(`/body-scan-compare?compare=${scan.id}`)}
+                        variant="secondary"
+                        size="sm"
+                        disabled={index === 0} // Can't compare most recent to itself
+                      >
+                        🔄 Compare
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               );
