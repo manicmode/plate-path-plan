@@ -678,6 +678,9 @@ export default function BodyScanAI() {
       // STEP 2: ANIMATION LOOP DEBUG
       console.log("[LOOP] Running frame", Date.now());
 
+      // ✅ ORIENTATION DEBUG: Log current scan step
+      console.log(`[ORIENTATION] Current scan step: ${currentStep}, completed steps: [${Array.from(completedSteps).join(', ')}]`);
+
       try {
         console.log('[POSE FRAME] Attempting pose detection...');
         
@@ -696,6 +699,49 @@ export default function BodyScanAI() {
           const keypoints = poses[0].keypoints || [];
           console.log("[KEYPOINTS] Count:", keypoints.length);
           console.log("[KEYPOINTS] Visible keypoints (score > 0.5):", keypoints.filter(kp => kp.score > 0.5).length);
+          
+          // ✅ LOG ALL VISIBLE KEYPOINTS BY NAME AND CONFIDENCE
+          console.log("=== ALL VISIBLE KEYPOINTS ===");
+          keypoints.forEach((kp, i) => {
+            if (kp.score > 0.3) { // Lower threshold to see more keypoints
+              console.log(`[KEYPOINT] ${kp.name}: confidence=${kp.score.toFixed(3)}, position=(${kp.x.toFixed(1)}, ${kp.y.toFixed(1)})`);
+            }
+          });
+          
+          // ✅ LOG FACIAL KEYPOINTS SPECIFICALLY
+          const facialKeypoints = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
+          console.log("=== FACIAL KEYPOINTS ===");
+          facialKeypoints.forEach(name => {
+            const kp = keypoints.find(k => k.name === name);
+            if (kp) {
+              console.log(`[FACIAL] ${name}: detected=${kp.score > 0.3 ? 'YES' : 'NO'}, confidence=${kp.score.toFixed(3)}`);
+            } else {
+              console.log(`[FACIAL] ${name}: NOT FOUND`);
+            }
+          });
+          
+          // ✅ LOG SHOULDER AND HIP VISIBILITY
+          const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
+          const rightShoulder = keypoints.find(kp => kp.name === 'right_shoulder');
+          const leftHip = keypoints.find(kp => kp.name === 'left_hip');
+          const rightHip = keypoints.find(kp => kp.name === 'right_hip');
+          
+          console.log("=== BODY STRUCTURE VISIBILITY ===");
+          console.log(`[SHOULDERS] Left: ${leftShoulder ? `visible (${leftShoulder.score.toFixed(3)})` : 'NOT DETECTED'}, Right: ${rightShoulder ? `visible (${rightShoulder.score.toFixed(3)})` : 'NOT DETECTED'}`);
+          console.log(`[HIPS] Left: ${leftHip ? `visible (${leftHip.score.toFixed(3)})` : 'NOT DETECTED'}, Right: ${rightHip ? `visible (${rightHip.score.toFixed(3)})` : 'NOT DETECTED'}`);
+          console.log(`[BODY CORE] Both shoulders visible: ${leftShoulder && rightShoulder && leftShoulder.score > 0.5 && rightShoulder.score > 0.5 ? 'YES' : 'NO'}`);
+          console.log(`[BODY CORE] Both hips visible: ${leftHip && rightHip && leftHip.score > 0.5 && rightHip.score > 0.5 ? 'YES' : 'NO'}`);
+          
+          // ✅ LOG ORIENTATION DETECTION FOR CURRENT STEP
+          console.log(`[ORIENTATION DETECTION] Current step: ${currentStep}`);
+          if (currentStep === 'front') {
+            console.log(`[FRONT DETECTION] Looking for: face-forward pose, both shoulders visible, arms extended`);
+          } else if (currentStep === 'side') {
+            console.log(`[SIDE DETECTION] Looking for: profile pose, one shoulder more prominent than other`);
+          } else if (currentStep === 'back') {
+            console.log(`[BACK DETECTION] Looking for: back-facing pose, shoulders visible from behind`);
+          }
+          
           keypoints.forEach((kp, i) => {
             if (kp.score > 0.5) {
               console.log(`[KEYPOINT ${i}] ${kp.name || i}: score=${kp.score.toFixed(3)}, x=${kp.x.toFixed(1)}, y=${kp.y.toFixed(1)}`);
@@ -703,6 +749,7 @@ export default function BodyScanAI() {
           });
         } else {
           console.log("[KEYPOINTS] No pose detected");
+          console.log(`[ORIENTATION] No pose detected for step: ${currentStep}`);
           
           // Show toast only occasionally to avoid spam
           if (Math.random() < 0.1) { // 10% chance to show toast
