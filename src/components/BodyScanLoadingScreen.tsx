@@ -20,7 +20,7 @@ export const BodyScanLoadingScreen = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-center space-x-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <span className="text-lg font-semibold text-foreground">Analyzing your scan data...</span>
+              <span className="text-lg font-semibold text-foreground">🧠 Analyzing your scan...</span>
             </div>
             
             {/* Progress Bar */}
@@ -36,7 +36,7 @@ export const BodyScanLoadingScreen = () => {
             </p>
             <div className="p-4 bg-card rounded-lg border border-border">
               <p className="text-sm text-muted-foreground">
-                🗓️ We'll remind you to come back in 30 days for your next scan!
+                🔔 You'll get a reminder in 30 days to check your progress!
               </p>
             </div>
           </div>

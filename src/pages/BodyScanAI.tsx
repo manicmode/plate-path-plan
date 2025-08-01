@@ -1462,6 +1462,9 @@ export default function BodyScanAI() {
       setShowWeightModal(false);
       setShowFinalLoading(true);
       
+      // Add console logs for the loading experience
+      console.log('🧠 [AI LOADING] Starting post-scan analysis...');
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -1512,15 +1515,16 @@ export default function BodyScanAI() {
         }
       }
       
-      // Navigate to /body-scan-result after 1.5s
+      // Navigate to /body-scan-result after 2.5s for a rewarding experience
       setTimeout(() => {
+        console.log('🧠 [AI LOADING] Navigating to result page');
         navigate('/body-scan-result', {
           state: {
             date: new Date(),
             weight: parseFloat(weight)
           }
         });
-      }, 1500);
+      }, 2500);
 
     } catch (error) {
       console.error('Error completing body scan:', error);
