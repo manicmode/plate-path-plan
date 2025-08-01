@@ -57,6 +57,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       .select(`
         user_id,
         first_name,
+        last_name,
         current_nutrition_streak,
         created_at
       `)
@@ -90,7 +91,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: `${userProfile.first_name || 'User'} 🌟`,
+        nickname: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User 🌟',
         avatar: '🌟',
         score: Math.round(averageScore),
         streak: userProfile.current_nutrition_streak || 0,
@@ -128,6 +129,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       .select(`
         user_id,
         first_name,
+        last_name,
         created_at
       `)
       .not('user_id', 'is', null);
@@ -172,7 +174,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: `${userProfile.first_name || 'User'} 💪`,
+        nickname: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User 💪',
         avatar: '💪',
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -203,6 +205,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       .select(`
         user_id,
         first_name,
+        last_name,
         created_at
       `)
       .not('user_id', 'is', null);
@@ -253,7 +256,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: `${userProfile.first_name || 'User'} 🧘`,
+        nickname: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User 🧘',
         avatar: '🧘',
         score: Math.round(averageScore),
         streak: currentStreak,
