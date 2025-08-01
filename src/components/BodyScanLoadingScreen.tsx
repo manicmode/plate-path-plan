@@ -1,6 +1,24 @@
 import { Loader2, Camera, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "./ui/button";
 
 export const BodyScanLoadingScreen = () => {
+  const [showFallback, setShowFallback] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowFallback(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleManualNavigate = () => {
+    console.log("🛠️ Manual fallback navigation triggered");
+    navigate('/body-scan-result');
+  };
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-primary/10 to-secondary/10 backdrop-blur-sm">
       <div className="absolute inset-0 bg-background/80" />
@@ -47,6 +65,15 @@ export const BodyScanLoadingScreen = () => {
             <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
             <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
+
+          {/* Fallback Button */}
+          {showFallback && (
+            <div className="pt-4">
+              <Button onClick={handleManualNavigate}>
+                🚀 Continue to Results Manually
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
