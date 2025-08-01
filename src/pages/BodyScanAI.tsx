@@ -58,6 +58,7 @@ export default function BodyScanAI() {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scanCompleteRef = useRef<boolean>(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -1402,6 +1403,10 @@ export default function BodyScanAI() {
 
   // Complete the full body scan with weight
   const completeFullBodyScan = async () => {
+    // Early return guard to prevent any duplicate execution
+    if (scanCompleteRef.current) return;
+    scanCompleteRef.current = true;
+
     // Guard against duplicate runs
     if (scanCompleted || isCompletionInProgress) {
       console.log('🚫 Completion already in progress or completed');
@@ -1486,6 +1491,8 @@ export default function BodyScanAI() {
           ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
         }
       }
+      
+      console.log("✅ Scan completed. Navigating to result page...");
       
       // Navigate to /body-scan-result after 2.5s for a rewarding experience
       navigationTimeoutRef.current = setTimeout(() => {
