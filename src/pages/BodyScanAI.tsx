@@ -1334,13 +1334,17 @@ export default function BodyScanAI() {
       }
       
       // Set success screen state to trigger the Continue button flow
-      setSavedScanUrl(publicUrl);
-      setShowSuccessScreen(true);
+      if (!scanCompleted && !isCompletionInProgress && !scanCompleteRef.current) {
+        console.log("✅ Showing success screen");
+        setSavedScanUrl(publicUrl);
+        setShowSuccessScreen(true);
+      } else {
+        console.log("⚠️ Skipping success screen — scan already completed");
+      }
       
-      console.log('✅ Showing Success Screen');
-      console.log('🎯 Success screen should now be visible:', { 
+      console.log('🎯 Success screen check completed:', { 
         savedScanUrl: !!publicUrl, 
-        showSuccessScreen: true, 
+        showSuccessScreen: !scanCompleted && !isCompletionInProgress && !scanCompleteRef.current, 
         currentStep 
       });
       
