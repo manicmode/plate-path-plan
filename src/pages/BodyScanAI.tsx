@@ -1433,32 +1433,31 @@ export default function BodyScanAI() {
       }
       
       // Set success screen state to trigger the Continue button flow
-      if (!scanCompleted && !isCompletionInProgress && !scanCompleteRef.current) {
+      if (!scanCompleted && !isCompletionInProgress && !scanCompleteRef.current && !showWeightModal) {
         console.log("✅ Showing success screen");
         setSavedScanUrl(publicUrl);
         setShowSuccessScreen(true);
+
+        if (alignmentFeedback) {
+          showPoseQualityFeedback({
+            poseScore: alignmentFeedback.alignmentScore,
+            poseMetadata: {
+              shouldersLevel: !alignmentFeedback.misalignedLimbs.includes('shoulders'),
+              armsRaised: !(alignmentFeedback.misalignedLimbs.includes('left_arm') || alignmentFeedback.misalignedLimbs.includes('right_arm')),
+              alignmentScore: Math.round(alignmentFeedback.alignmentScore * 100),
+              misalignedLimbs: alignmentFeedback.misalignedLimbs
+            }
+          }, currentStep);
+        }
       } else {
-        console.log("⚠️ Skipping success screen — scan already completed");
+        console.log("⚠️ Skipping success screen — scan already completed or modal showing");
       }
       
       console.log('🎯 Success screen check completed:', { 
         savedScanUrl: !!publicUrl, 
-        showSuccessScreen: !scanCompleted && !isCompletionInProgress && !scanCompleteRef.current, 
+        showSuccessScreen: !scanCompleted && !isCompletionInProgress && !scanCompleteRef.current && !showWeightModal, 
         currentStep 
       });
-      
-      // Show pose quality feedback
-      if (alignmentFeedback) {
-        showPoseQualityFeedback({
-          poseScore: alignmentFeedback.alignmentScore,
-          poseMetadata: {
-            shouldersLevel: !alignmentFeedback.misalignedLimbs.includes('shoulders'),
-            armsRaised: !(alignmentFeedback.misalignedLimbs.includes('left_arm') || alignmentFeedback.misalignedLimbs.includes('right_arm')),
-            alignmentScore: Math.round(alignmentFeedback.alignmentScore * 100),
-            misalignedLimbs: alignmentFeedback.misalignedLimbs
-          }
-        }, currentStep);
-      }
 
       toast({
         title: `✅ ${currentStep.charAt(0).toUpperCase() + currentStep.slice(1)} scan saved!`,
