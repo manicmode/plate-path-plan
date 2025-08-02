@@ -130,7 +130,53 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                <span className="text-3xl font-bold text-white">🥗</span>
+                {/* Elegant Lotus Flower Icon */}
+                <svg 
+                  width="36" 
+                  height="36" 
+                  viewBox="0 0 100 100" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="drop-shadow-lg"
+                >
+                  {/* Lotus petals with gradient */}
+                  <defs>
+                    <linearGradient id="lotusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+                      <stop offset="50%" stopColor="rgba(240,248,255,0.9)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.85)" />
+                    </linearGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                      <feMerge> 
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  
+                  {/* Outer petals */}
+                  <path d="M50 20 C35 25, 25 35, 30 50 C25 35, 35 25, 50 20" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
+                  <path d="M80 50 C75 35, 65 25, 50 30 C65 25, 75 35, 80 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
+                  <path d="M50 80 C65 75, 75 65, 70 50 C75 65, 65 75, 50 80" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
+                  <path d="M20 50 C25 65, 35 75, 50 70 C35 75, 25 65, 20 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
+                  
+                  {/* Middle petals */}
+                  <path d="M50 30 C40 32, 32 40, 35 50 C32 40, 40 32, 50 30" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
+                  <path d="M70 50 C68 40, 60 32, 50 35 C60 32, 68 40, 70 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
+                  <path d="M50 70 C60 68, 68 60, 65 50 C68 60, 60 68, 50 70" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
+                  <path d="M30 50 C32 60, 40 68, 50 65 C40 68, 32 60, 30 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
+                  
+                  {/* Inner petals */}
+                  <path d="M50 35 C45 37, 37 45, 40 50 C37 45, 45 37, 50 35" fill="url(#lotusGradient)" filter="url(#glow)"/>
+                  <path d="M65 50 C63 45, 55 37, 50 40 C55 37, 63 45, 65 50" fill="url(#lotusGradient)" filter="url(#glow)"/>
+                  <path d="M50 65 C55 63, 63 55, 60 50 C63 55, 55 63, 50 65" fill="url(#lotusGradient)" filter="url(#glow)"/>
+                  <path d="M35 50 C37 55, 45 63, 50 60 C45 63, 37 55, 35 50" fill="url(#lotusGradient)" filter="url(#glow)"/>
+                  
+                  {/* Center */}
+                  <circle cx="50" cy="50" r="8" fill="url(#lotusGradient)" filter="url(#glow)" opacity="1"/>
+                  <circle cx="50" cy="50" r="4" fill="rgba(255,255,255,1)" opacity="0.8"/>
+                </svg>
               </motion.div>
             </motion.div>
 
