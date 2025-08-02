@@ -74,7 +74,7 @@ export const useDeferredDataLoading = (options: DeferredDataLoadingOptions = {})
  */
 export const useDeferredHomeDataLoading = () => {
   return useDeferredDataLoading({
-    delay: 150,
+    delay: 50,
     deferUntilMounted: true,
     priority: 'medium'
   });

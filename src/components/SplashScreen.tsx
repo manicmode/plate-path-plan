@@ -43,35 +43,41 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  // Enhanced completion logic - wait for both timer and home data
+  // Enhanced completion logic - extended duration for better UX
   useEffect(() => {
     if (!isVisible) return;
     
     const timer = setTimeout(() => {
       // Only complete splash when home data is ready too
       if (homeDataReady) {
-        onComplete();
+        // Add extra buffer to ensure smooth transition
+        setTimeout(() => {
+          onComplete();
+        }, 1000);
       } else {
         // If home data isn't ready yet, check every 100ms
         const readyCheck = setInterval(() => {
           if (homeDataReady) {
             clearInterval(readyCheck);
-            onComplete();
+            // Add buffer for smooth transition
+            setTimeout(() => {
+              onComplete();
+            }, 1000);
           }
         }, 100);
         
-        // Force complete after max 6 seconds to avoid infinite loading
+        // Force complete after max 10 seconds to avoid infinite loading
         const forceTimer = setTimeout(() => {
           clearInterval(readyCheck);
           onComplete();
-        }, 2000); // Additional 2s max wait
+        }, 3500); // Additional 3.5s max wait
         
         return () => {
           clearInterval(readyCheck);
           clearTimeout(forceTimer);
         };
       }
-    }, 4000); // Perfect 4s timing for optimal message readability
+    }, 6500); // Extended to 6.5s for better quote readability
 
     return () => clearTimeout(timer);
   }, [isVisible, onComplete, homeDataReady]);
