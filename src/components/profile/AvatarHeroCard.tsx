@@ -78,9 +78,9 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
   return (
     <>
       {/* Full-Width Hero Avatar Card */}
-      <div className="w-full flex justify-center px-4 md:px-6 mb-4 md:mb-6">
+      <div className="w-full mb-4 md:mb-6">
         <div className={cn(
-          "relative w-full max-w-4xl overflow-hidden rounded-3xl",
+          "relative w-full overflow-hidden rounded-3xl",
           "bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10",
           "dark:from-purple-600/20 dark:via-pink-600/20 dark:to-orange-600/20",
           "border border-gradient-to-r from-purple-200/50 to-pink-200/50 dark:from-purple-700/50 dark:to-pink-700/50",
