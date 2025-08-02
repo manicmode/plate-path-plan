@@ -25,7 +25,6 @@ import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
-import { SupabaseRedirectHandler } from '@/components/auth/SupabaseRedirectHandler';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -116,7 +115,6 @@ function AppContent() {
       {/* Main App Content - only render after splash completes */}
       {!isColdStart && (
         <>
-          <SupabaseRedirectHandler />
           <BodyScanReminderChecker />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
