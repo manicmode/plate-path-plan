@@ -150,36 +150,26 @@ export const CaricatureModal = ({
       return;
     }
 
-    // Prevent multiple clicks during generation - enhanced responsiveness
+    // Enhanced debounce: Prevent multiple clicks during generation
     if (isGenerating) {
       console.log('🚫 Generation already in progress, ignoring duplicate click');
       return;
     }
 
-    // Check if user has reached 3 generations this month
-    if (caricatureHistory.length >= 3) {
-      const oldestGeneration = caricatureHistory[0];
-      if (oldestGeneration) {
-        const oldestDate = new Date(oldestGeneration.generated_at);
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-        
-        if (oldestDate > thirtyDaysAgo) {
-          toast({
-            title: "Monthly limit reached",
-            description: "You've reached your monthly 3-generation limit. Please come back next month to generate more.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-    }
+    // Check monthly limit properly - count generations in the current calendar month
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const generationsThisMonth = caricatureHistory.filter(batch => {
+      const batchDate = new Date(batch.generated_at);
+      return batchDate.getMonth() === currentMonth && batchDate.getFullYear() === currentYear;
+    }).length;
 
-    // Check cooldown before proceeding
-    if (cooldown) {
+    if (generationsThisMonth >= 3) {
       toast({
         title: "Monthly limit reached",
-        description: `🎭 You've already created 3 avatars this month! Come back on ${cooldown.nextAvailable} to get your next set.`,
+        description: "You've reached your 3 avatar generations this month. Come back next month to generate more!",
         variant: "destructive",
       });
       return;
@@ -387,17 +377,18 @@ export const CaricatureModal = ({
     setGenerationDisabled(false);
   };
 
-  // Check if user has reached monthly limit
+  // Check if user has reached monthly limit - fixed to use calendar month
   const hasReachedMonthlyLimit = () => {
-    if (caricatureHistory.length < 3) return false;
-    
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
     
-    return caricatureHistory.filter(batch => {
+    const generationsThisMonth = caricatureHistory.filter(batch => {
       const batchDate = new Date(batch.generated_at);
-      return batchDate > thirtyDaysAgo;
-    }).length >= 3;
+      return batchDate.getMonth() === currentMonth && batchDate.getFullYear() === currentYear;
+    }).length;
+    
+    return generationsThisMonth >= 3;
   };
 
   const handleUploadClick = () => {
@@ -550,50 +541,50 @@ export const CaricatureModal = ({
                   </Button>
                 )}
                 
-                {uploadedImage && !cooldown && !hasReachedMonthlyLimit() && (
-                  <Button 
-                    onClick={generateCaricatureVariants}
-                    className={cn(
-                      "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
-                      "active:scale-95 transition-all duration-200",
-                      "shadow-lg hover:shadow-xl",
-                      !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse",
-                      isGenerating && "cursor-not-allowed opacity-90"
-                    )}
-                    size="lg"
-                    disabled={isGenerating || generationDisabled || !uploadedImage}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                        Summoning your cartoon twin…
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="w-5 h-5 mr-3" />
-                        <span className="relative">
-                          Generate 3 Caricatures
-                          <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-yellow-300 animate-pulse" />
-                        </span>
-                      </>
-                    )}
-                  </Button>
+                {uploadedImage && (
+                  hasReachedMonthlyLimit() ? (
+                    <div className="w-full p-4 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-xl border border-orange-200 dark:border-orange-800">
+                      <div className="text-center">
+                        <Clock className="h-8 w-8 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
+                        <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-1">
+                          Monthly Limit Reached
+                        </h4>
+                        <p className="text-sm text-orange-600 dark:text-orange-400">
+                          You've reached your 3 avatar generations this month. Come back next month to generate more!
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={generateCaricatureVariants}
+                      className={cn(
+                        "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
+                        "active:scale-95 transition-all duration-200",
+                        "shadow-lg hover:shadow-xl",
+                        !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse",
+                        isGenerating && "cursor-not-allowed opacity-90"
+                      )}
+                      size="lg"
+                      disabled={isGenerating || generationDisabled || !uploadedImage}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                          Summoning your cartoon twin…
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-5 h-5 mr-3" />
+                          <span className="relative">
+                            Generate 3 Caricatures
+                            <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-yellow-300 animate-pulse" />
+                          </span>
+                        </>
+                      )}
+                    </Button>
+                  )
                 )}
 
-                {/* Monthly Limit Message */}
-                {hasReachedMonthlyLimit() && (
-                  <div className="w-full p-4 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-xl border border-orange-200 dark:border-orange-800">
-                    <div className="text-center">
-                      <Clock className="h-8 w-8 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
-                      <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-1">
-                        Monthly Limit Reached
-                      </h4>
-                      <p className="text-sm text-orange-600 dark:text-orange-400">
-                        You've reached your monthly 3-generation limit. Please come back next month to generate more.
-                      </p>
-                    </div>
-                  </div>
-                )}
 
                 {hasExistingVariants && (
                   <Button 
