@@ -114,13 +114,13 @@ serve(async (req) => {
 
     console.log('🎨 Generating caricatures with OpenAI DALL-E...');
 
-    // Generate 3 caricature variations using MidJourney-style prompts for funny, recognizable caricatures
+    // Generate 3 caricature variations with enhanced resemblance prompts
     const caricaturePrompts = [
-      `Professional caricature illustration with exaggerated facial features but strong resemblance to original person, similar to celebrity caricatures of Will Smith or Gordon Ramsay. Oversized distinctive features (eyes, nose, smile), vibrant colors, playful cartoon style with fitness/wellness elements. High-quality digital art with smooth gradients and comic book aesthetic. Energetic and humorous but clearly recognizable.`,
+      `Create a caricature illustration that perfectly captures the person's unique facial features and identity. Focus on their distinctive characteristics like eye shape, nose structure, face shape, and facial expression while exaggerating them in a fun, cartoon style. Maintain their gender, ethnicity, and key identifying features. Use vibrant colors and smooth digital art style with fitness/wellness theme elements. The result should be clearly recognizable as the same person but in an amusing, exaggerated cartoon form.`,
       
-      `Pixar-style 3D rendered caricature with amplified facial characteristics, maintaining clear facial identity. Exaggerated proportions in a fun, animated movie character style. Bright saturated colors, smooth 3D rendering, expressive cartoon features. Include subtle fitness/health motifs. Professional animation studio quality with detailed lighting and textures.`,
+      `Generate a Pixar-style 3D animated character that strongly resembles the original person. Preserve their exact facial structure, gender, and ethnic features while giving them the characteristic Pixar animation look with slightly exaggerated proportions. Keep their distinctive features like eye color, hair style, face shape, and facial expressions intact. Use professional 3D rendering with soft lighting and include subtle health/fitness themed elements. The character should be unmistakably the same person in Pixar animation style.`,
       
-      `Comic book caricature art with bold, exaggerated features and strong facial resemblance. Dynamic cartoon style with vivid colors and dramatic shading. Amplified distinctive facial characteristics while preserving identity. Clean line art with professional comic illustration quality. Fun and energetic expression with subtle wellness/fitness theme elements.`
+      `Design a comic book style caricature that maintains perfect facial resemblance to the original person. Emphasize their unique features like jawline, cheekbones, eye shape, and smile while keeping their gender and ethnicity clearly recognizable. Use bold comic art styling with dynamic colors and clean line work. Include fitness/wellness themed background elements. The illustration should capture their personality and be immediately recognizable as the same individual in superhero comic book art style.`
     ];
 
     const generatedImages = [];

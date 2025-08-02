@@ -44,7 +44,7 @@ export const CaricatureModal = ({
   caricatureHistory = [],
   lastCaricatureGeneration
 }: CaricatureModalProps) => {
-  const [step, setStep] = useState<'upload' | 'variants'>('upload');
+  const [step, setStep] = useState<'upload' | 'variants' | 'avatars'>('upload');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [variants, setVariants] = useState<string[]>([]);
@@ -150,10 +150,29 @@ export const CaricatureModal = ({
       return;
     }
 
-    // Prevent multiple clicks during generation
+    // Prevent multiple clicks during generation - enhanced responsiveness
     if (isGenerating) {
       console.log('🚫 Generation already in progress, ignoring duplicate click');
       return;
+    }
+
+    // Check if user has reached 3 generations this month
+    if (caricatureHistory.length >= 3) {
+      const oldestGeneration = caricatureHistory[0];
+      if (oldestGeneration) {
+        const oldestDate = new Date(oldestGeneration.generated_at);
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+        
+        if (oldestDate > thirtyDaysAgo) {
+          toast({
+            title: "Monthly limit reached",
+            description: "You've reached your monthly 3-generation limit. Please come back next month to generate more.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
     }
 
     // Check cooldown before proceeding
@@ -368,6 +387,19 @@ export const CaricatureModal = ({
     setGenerationDisabled(false);
   };
 
+  // Check if user has reached monthly limit
+  const hasReachedMonthlyLimit = () => {
+    if (caricatureHistory.length < 3) return false;
+    
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
+    return caricatureHistory.filter(batch => {
+      const batchDate = new Date(batch.generated_at);
+      return batchDate > thirtyDaysAgo;
+    }).length >= 3;
+  };
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -407,6 +439,30 @@ export const CaricatureModal = ({
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             🎭 My Avatar Studio
           </DialogTitle>
+          
+          {/* Tab Navigation */}
+          <div className="flex justify-center mt-4 mb-2">
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={step === 'upload' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setStep('upload')}
+                className="rounded-md"
+              >
+                Generate
+              </Button>
+              {allHistoricalAvatars.length > 0 && (
+                <Button
+                  variant={step === 'avatars' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStep('avatars')}
+                  className="rounded-md"
+                >
+                  My Avatars
+                </Button>
+              )}
+            </div>
+          </div>
         </DialogHeader>
         
         {step === 'upload' && (
@@ -494,7 +550,7 @@ export const CaricatureModal = ({
                   </Button>
                 )}
                 
-                {uploadedImage && !cooldown && (
+                {uploadedImage && !cooldown && !hasReachedMonthlyLimit() && (
                   <Button 
                     onClick={generateCaricatureVariants}
                     className={cn(
@@ -524,6 +580,21 @@ export const CaricatureModal = ({
                   </Button>
                 )}
 
+                {/* Monthly Limit Message */}
+                {hasReachedMonthlyLimit() && (
+                  <div className="w-full p-4 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-xl border border-orange-200 dark:border-orange-800">
+                    <div className="text-center">
+                      <Clock className="h-8 w-8 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
+                      <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-1">
+                        Monthly Limit Reached
+                      </h4>
+                      <p className="text-sm text-orange-600 dark:text-orange-400">
+                        You've reached your monthly 3-generation limit. Please come back next month to generate more.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {hasExistingVariants && (
                   <Button 
                     onClick={() => {
@@ -541,52 +612,27 @@ export const CaricatureModal = ({
               </div>
             </div>
 
-            {/* Avatar History */}
+            {/* Quick Actions */}
             {allHistoricalAvatars.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-center">🎨 Avatar History</h3>
-                <div className="max-h-40 overflow-y-auto">
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 p-2">
-                    {allHistoricalAvatars.map((avatar, index) => (
-                      <div
-                        key={index}
-                        className="relative cursor-pointer group"
-                         onClick={() => handleSelectVariant(avatar, 1)}
-                      >
-                        <img
-                          src={avatar}
-                          alt={`Historical avatar ${index + 1}`}
-                          className="w-full aspect-square object-cover rounded-lg ring-2 ring-transparent hover:ring-primary/50 transition-all duration-300 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                          <Check className="h-4 w-4 text-white" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                 {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleSurpriseMe}
-                    variant="outline"
-                    className="flex-1 h-12 font-medium active:scale-95 transition-transform"
-                    disabled={allHistoricalAvatars.length === 0}
-                  >
-                    <Shuffle className="w-4 h-4 mr-2" />
-                    🎲 Surprise Me
-                  </Button>
-                  <Button
-                    onClick={handleExportAvatar}
-                    variant="outline"
-                    className="flex-1 h-12 font-medium active:scale-95 transition-transform"
-                    disabled={!currentAvatarUrl}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    📥 Export
-                  </Button>
-                </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSurpriseMe}
+                  variant="outline"
+                  className="flex-1 h-12 font-medium active:scale-95 transition-transform"
+                  disabled={allHistoricalAvatars.length === 0}
+                >
+                  <Shuffle className="w-4 h-4 mr-2" />
+                  🎲 Surprise Me
+                </Button>
+                <Button
+                  onClick={handleExportAvatar}
+                  variant="outline"
+                  className="flex-1 h-12 font-medium active:scale-95 transition-transform"
+                  disabled={!currentAvatarUrl}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  📥 Export
+                </Button>
               </div>
             )}
           </div>
@@ -667,6 +713,82 @@ export const CaricatureModal = ({
                 Back to Upload
               </Button>
             </div>
+          </div>
+        )}
+
+        {step === 'avatars' && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h3 className="text-xl font-bold mb-4">🎨 My Avatar Collection</h3>
+              <p className="text-muted-foreground">Tap any avatar to instantly switch</p>
+            </div>
+
+            {allHistoricalAvatars.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                {allHistoricalAvatars.map((avatar, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "relative cursor-pointer group rounded-xl overflow-hidden",
+                      "transform transition-all duration-300 hover:scale-105",
+                      "ring-2 ring-transparent hover:ring-primary/50",
+                      currentAvatarUrl === avatar && "ring-primary ring-4"
+                    )}
+                    onClick={() => handleSelectVariant(avatar, 1)}
+                  >
+                    <img
+                      src={avatar}
+                      alt={`Avatar ${index + 1}`}
+                      className="w-full aspect-square object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute bottom-2 left-2 right-2 text-center">
+                        <Check className="h-4 w-4 text-white mx-auto" />
+                      </div>
+                    </div>
+                    {currentAvatarUrl === avatar && (
+                      <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h4 className="text-lg font-semibold mb-2">No Avatars Yet</h4>
+                <p className="text-muted-foreground mb-6">
+                  Generate your first set of magical avatars to get started!
+                </p>
+                <Button onClick={() => setStep('upload')} variant="outline">
+                  Go to Generator
+                </Button>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            {allHistoricalAvatars.length > 0 && (
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleSurpriseMe}
+                  variant="outline"
+                  className="flex-1 h-12 font-medium active:scale-95 transition-transform"
+                >
+                  <Shuffle className="w-4 h-4 mr-2" />
+                  🎲 Surprise Me
+                </Button>
+                <Button
+                  onClick={handleExportAvatar}
+                  variant="outline"
+                  className="flex-1 h-12 font-medium active:scale-95 transition-transform"
+                  disabled={!currentAvatarUrl}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  📥 Export
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
