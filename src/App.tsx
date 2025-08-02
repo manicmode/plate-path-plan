@@ -119,6 +119,9 @@ function AppContent() {
           <BodyScanReminderChecker />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
+              {/* Top-level Supabase redirect handler - catches URLs with confirmation parameters */}
+              <Route path="/" element={<SupabaseRedirectPage />} />
+              
               {/* Fullscreen pages without Layout */}
               <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -143,16 +146,17 @@ function AppContent() {
                 </ProtectedRoute>
               } />
               
-              {/* Regular pages with Layout */}
+              {/* Regular pages with Layout - only match specific paths, not root */}
+              <Route path="/home" element={
+                <Layout>
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                </Layout>
+              } />
               <Route path="*" element={
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<SupabaseRedirectPage />} />
-                    <Route path="/home" element={
-                      <ProtectedRoute>
-                        <Home />
-                      </ProtectedRoute>
-                    } />
                     <Route path="/camera" element={
                       <ProtectedRoute>
                         <Camera />
