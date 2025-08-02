@@ -65,7 +65,7 @@ export const CaricatureModal = ({
       });
 
       // Upload image to Supabase Storage
-      const fileName = `raw/${userId}.png`;
+      const fileName = `${userId}/avatar.png`;
       console.log('📂 Uploading to path:', fileName);
       
       const { data: uploadData, error: uploadError } = await supabase.storage
