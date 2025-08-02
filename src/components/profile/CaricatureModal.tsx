@@ -57,30 +57,47 @@ export const CaricatureModal = ({
       setIsGenerating(true);
       setStep('variants');
 
+      console.log('🚀 Starting avatar upload for user:', userId);
+      console.log('📁 File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+
       // Upload image to Supabase Storage
       const fileName = `raw/${userId}.png`;
+      console.log('📂 Uploading to path:', fileName);
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
           contentType: file.type,
-          upsert: true
+          upsert: true,
+          cacheControl: '3600'
         });
 
       if (uploadError) {
-        throw new Error('Failed to upload image');
+        console.error('🛑 Avatar upload failed:', uploadError);
+        console.error('Error details:', {
+          message: uploadError.message
+        });
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
+
+      console.log('✅ Upload successful:', uploadData);
 
       // Get public URL for the uploaded image
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
+      console.log('🔗 Public URL generated:', urlData.publicUrl);
       setUploadedImage(urlData.publicUrl);
       
       // Auto-generate caricatures after upload
       await generateCaricatureVariants(urlData.publicUrl);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('💥 Error in handleImageUpload:', error);
       toast.error(error.message || 'Failed to upload image');
       setIsGenerating(false);
       setStep('upload');
