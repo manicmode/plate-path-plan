@@ -78,16 +78,17 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
   return (
     <>
       {/* Full-Width Hero Avatar Card */}
-      <div className={cn(
-        "relative w-full max-w-4xl mx-auto overflow-hidden rounded-3xl",
-        "bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10",
-        "dark:from-purple-600/20 dark:via-pink-600/20 dark:to-orange-600/20",
-        "border border-gradient-to-r from-purple-200/50 to-pink-200/50 dark:from-purple-700/50 dark:to-pink-700/50",
-        "shadow-2xl hover:shadow-purple-500/25 dark:hover:shadow-purple-400/25",
-        "transition-all duration-500",
-        "animate-fade-in",
-        isMobile ? "mx-4 p-6 mb-4" : "mx-6 p-8 mb-6"
-      )}>
+      <div className="w-full flex justify-center px-4 md:px-6 mb-4 md:mb-6">
+        <div className={cn(
+          "relative w-full max-w-4xl overflow-hidden rounded-3xl",
+          "bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10",
+          "dark:from-purple-600/20 dark:via-pink-600/20 dark:to-orange-600/20",
+          "border border-gradient-to-r from-purple-200/50 to-pink-200/50 dark:from-purple-700/50 dark:to-pink-700/50",
+          "shadow-2xl hover:shadow-purple-500/25 dark:hover:shadow-purple-400/25",
+          "transition-all duration-500",
+          "animate-fade-in",
+          isMobile ? "p-6" : "p-8"
+        )}>
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 animate-pulse" />
@@ -220,6 +221,7 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
             </Button>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Caricature Modal */}
