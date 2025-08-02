@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useDeferredHomeDataLoading } from '@/hooks/useDeferredDataLoading';
+import { useSound } from '@/contexts/SoundContext';
 
 interface SplashScreenProps {
   isVisible: boolean;
@@ -25,9 +26,24 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   const [currentQuote] = useState(() => 
     motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]
   );
+  const { playStartupChime, isEnabled } = useSound();
   
   // Start preloading home data immediately when splash becomes visible
   const { isReady: homeDataReady } = useDeferredHomeDataLoading();
+
+  // Play startup chime when splash becomes visible (only on cold start)
+  useEffect(() => {
+    if (!isVisible || !isEnabled) return;
+    
+    // Play startup sound with slight delay to sync with logo appearance
+    const soundTimer = setTimeout(() => {
+      playStartupChime().catch(error => {
+        console.log('🔊 Startup chime could not play (autoplay restriction):', error);
+      });
+    }, 100); // Small delay to sync with logo animation start
+
+    return () => clearTimeout(soundTimer);
+  }, [isVisible, playStartupChime, isEnabled]);
 
   // Animate loading dots
   useEffect(() => {

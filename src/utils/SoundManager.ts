@@ -99,6 +99,11 @@ class SoundManager {
       volume: 0.7,
       preload: true
     },
+    startup_chime: {
+      url: '/sounds/startup_chime.wav',
+      volume: 0.5,
+      preload: true
+    },
     friend_added: {
       url: '/sounds/friend_added.wav',
       volume: 0.8,
@@ -553,3 +558,4 @@ export const playGoalHit = () => soundManager.play('goal_hit');
 export const playHealthScanCapture = () => soundManager.play('health_scan_capture');
 export const playProgressUpdate = () => soundManager.play('progress_update');
 export const playReminderChime = () => soundManager.play('reminder_chime');
+export const playStartupChime = () => soundManager.play('startup_chime');

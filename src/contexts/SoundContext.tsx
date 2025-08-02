@@ -19,6 +19,7 @@ interface SoundContextType {
   playHealthScanCapture: () => Promise<void>;
   playProgressUpdate: () => Promise<void>;
   playReminderChime: () => Promise<void>;
+  playStartupChime: () => Promise<void>;
   isSoundEnabled: () => boolean;
   setVolume: (volume: number) => void;
 }
@@ -96,6 +97,7 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   const playHealthScanCapture = () => playSound('health_scan_capture');
   const playProgressUpdate = () => playSound('progress_update');
   const playReminderChime = () => playSound('reminder_chime');
+  const playStartupChime = () => playSound('startup_chime');
 
   const isSoundEnabledCheck = () => soundManager.isSoundEnabled();
   const setVolume = (volume: number) => soundManager.setVolume(volume);
@@ -115,6 +117,7 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
     playHealthScanCapture,
     playProgressUpdate,
     playReminderChime,
+    playStartupChime,
     isSoundEnabled: isSoundEnabledCheck,
     setVolume
   };
