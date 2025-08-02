@@ -41,12 +41,13 @@ export const ExerciseChallenges: React.FC = () => {
     }
   };
 
+  // 🎭 Coach Personality Nudge - Fitness Coach: Intense, fun, gritty, motivational
   const quickNudgeMessages = [
-    "You got this! 💪",
-    "Let's finish this week strong together! 🔥", 
-    "Missing your workout buddy energy! 🤗",
-    "Ready to crush today's goals? ⚡",
-    "Your squad is cheering you on! 🎉"
+    "CRUSH TIME! Let's GO! 💪🔥",
+    "NO EXCUSES! Time to DOMINATE this week! 🏆", 
+    "Your workout squad NEEDS that BEAST energy! 💯",
+    "Ready to OBLITERATE today's goals?! ⚡💪",
+    "Your CREW is PUMPED and waiting for you! 🚀🔥"
   ];
 
   const confirmNudge = (message: string) => {

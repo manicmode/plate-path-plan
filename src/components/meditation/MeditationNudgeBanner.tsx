@@ -103,7 +103,8 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
               size="sm"
               className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
-              🧘 Let&apos;s Meditate
+              {/* 🎭 Coach Personality Nudge - Nutrition Coach: Mindful, precise, supportive */}
+              ✨ Nourish Your Mind
             </Button>
             <Button
               onClick={handleDismiss}
@@ -111,7 +112,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
               size="sm"
               className="px-4"
             >
-              Later
+              Mindfully defer
             </Button>
           </div>
         </div>

@@ -48,7 +48,8 @@ export const AISleepNudgeChatEntries: React.FC<AISleepNudgeChatEntriesProps> = (
               <div className="flex-1 min-w-0 space-y-3">
                 <div className="flex items-center space-x-2">
                   <Star className="h-3 w-3 text-yellow-300" />
-                  <p className="text-sm font-medium text-blue-100">Sleep Wellness Nudge</p>
+                  {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
+                  <p className="text-sm font-medium text-blue-100">Peaceful Dreams Guidance</p>
                 </div>
                 
                 <p className="text-sm text-blue-200/90 leading-relaxed">
@@ -62,7 +63,7 @@ export const AISleepNudgeChatEntries: React.FC<AISleepNudgeChatEntriesProps> = (
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full text-xs px-3"
                   >
                     <Moon className="h-3 w-3 mr-1" />
-                    Start Wind-Down
+                    Begin Sacred Rest
                     <ChevronRight className="h-3 w-3 ml-1" />
                   </Button>
                   
@@ -72,7 +73,7 @@ export const AISleepNudgeChatEntries: React.FC<AISleepNudgeChatEntriesProps> = (
                     variant="ghost"
                     className="text-blue-300/70 hover:text-blue-200 hover:bg-blue-800/20 rounded-full text-xs px-3"
                   >
-                    Maybe later
+                    Perhaps later, dear soul
                   </Button>
                 </div>
               </div>

@@ -47,9 +47,9 @@ export const AINudgeChatEntries: React.FC<AINudgeChatEntriesProps> = ({
     }
   }
 
+  // 🎭 Coach Personality Nudge - Nutrition Coach: Mindful, precise, supportive
   const formatNudgeMessage = (message: string, nudgeType: string) => {
-    // Add some personality based on nudge type
-    const prefix = nudgeType === 'ai_coach' ? '🤖 ' : '✨ '
+    const prefix = nudgeType === 'ai_coach' ? '✨ ' : '🌱 '
     return `${prefix}${message}`
   }
 
@@ -58,7 +58,7 @@ export const AINudgeChatEntries: React.FC<AINudgeChatEntriesProps> = ({
       <div className="flex items-center space-x-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-500" />
         <span className="text-sm font-medium text-muted-foreground">
-          Recent Mindfulness Suggestions
+          Gentle Nutrition Wisdom
         </span>
       </div>
 

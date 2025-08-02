@@ -47,9 +47,9 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
     }
   }
 
+  // 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic
   const formatNudgeMessage = (message: string, nudgeType: string) => {
-    // Add some personality based on nudge type
-    const prefix = nudgeType === 'ai_coach' ? '🫁 ' : '🌊 '
+    const prefix = nudgeType === 'ai_coach' ? '🌬️ ' : '💫 '
     return `${prefix}${message}`
   }
 
@@ -58,7 +58,7 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
       <div className="flex items-center space-x-2 mb-3">
         <Wind className="h-4 w-4 text-cyan-500" />
         <span className="text-sm font-medium text-muted-foreground">
-          Recent Breathing Suggestions
+          Sacred Breath Moments
         </span>
       </div>
 

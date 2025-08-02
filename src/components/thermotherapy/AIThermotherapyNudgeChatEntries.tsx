@@ -58,7 +58,8 @@ export function AIThermotherapyNudgeChatEntries({
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-orange-300">
-                  {nudge.nudge_type === 'ai_coach' ? '🔥❄️ Thermal Coach' : '⚡ Smart Therapy'}
+                  {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
+                  {nudge.nudge_type === 'ai_coach' ? '🔥❄️ Thermal Harmony Guide' : '⚡ Sacred Temperature Therapy'}
                 </span>
                 <span className="text-xs text-white/50">
                   {new Date(nudge.delivered_at).toLocaleTimeString([], { 
@@ -69,7 +70,8 @@ export function AIThermotherapyNudgeChatEntries({
               </div>
               
               <p className="text-white/90 text-sm leading-relaxed">
-                {nudge.nudge_type === 'ai_coach' ? '🧘‍♀️ ' : '💡 '}
+                {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
+                {nudge.nudge_type === 'ai_coach' ? '🌙 ' : '💫 '}
                 {nudge.nudge_message}
               </p>
               
@@ -80,7 +82,7 @@ export function AIThermotherapyNudgeChatEntries({
                     size="sm"
                     className="bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700 text-white"
                   >
-                    Start Session
+                    Begin Thermal Journey
                     <ArrowRight className="ml-1 h-3 w-3" />
                   </Button>
                   <Button
@@ -89,7 +91,7 @@ export function AIThermotherapyNudgeChatEntries({
                     variant="outline"
                     className="border-white/20 text-white/70 hover:bg-white/10"
                   >
-                    Dismiss
+                    Hold this moment
                   </Button>
                 </div>
               ) : (
