@@ -147,25 +147,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                   className="w-14 h-14 flex items-center justify-center"
                 >
                   <img 
-                    src="/lovable-uploads/be24043a-f1b2-4825-b661-7ff216c86c90.png"
-                    alt="VOYAGE V Logo" 
+                    src="/lovable-uploads/e7e94390-252a-42fb-881d-2785fbe605e5.png"
+                    alt="VOYAGE Winged V Logo" 
                     className="w-full h-full object-contain"
-                    style={{ filter: 'brightness(0) invert(1)' }}
-                    onLoad={() => console.log('✅ V logo loaded successfully on splash')}
+                    onLoad={() => console.log('✅ Winged V logo loaded successfully on splash')}
                     onError={(e) => {
-                      console.error('❌ Failed to load V logo on splash, using fallback');
-                      // Fallback to bold "V" text if image fails
+                      console.error('❌ Failed to load winged V logo on splash');
+                      // Hide the failed image element completely
                       e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.setAttribute('style', 'display: block');
                     }}
                   />
-                  {/* Fallback Bold "V" Text */}
-                  <div 
-                    className="text-5xl font-black text-white absolute inset-0 flex items-center justify-center"
-                    style={{ display: 'none', fontFamily: 'Inter, sans-serif', textShadow: '0 0 20px rgba(255,255,255,0.5)' }}
-                  >
-                    V
-                  </div>
                 </motion.div>
               </motion.div>
             </motion.div>
