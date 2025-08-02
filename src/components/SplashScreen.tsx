@@ -154,9 +154,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                       scale: [1, 1.05, 1],
                       opacity: [0.95, 1, 0.95],
                       filter: [
-                        'brightness(0) invert(1) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))',
-                        'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255, 255, 255, 1))',
-                        'brightness(0) invert(1) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))'
+                        'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))',
+                        'brightness(0) invert(1) drop-shadow(0 0 35px rgba(255, 255, 255, 1))',
+                        'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))'
                       ]
                     }}
                     transition={{
@@ -164,12 +164,28 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                       duration: 3,
                       ease: "easeInOut"
                     }}
-                    className="w-11 h-11 object-contain z-10"
+                    className="w-12 h-12 object-contain z-10"
                     style={{
-                      filter: 'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))',
-                      textShadow: '0 0 30px rgba(255, 255, 255, 0.8)'
+                      filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.95))',
+                      textShadow: '0 0 40px rgba(255, 255, 255, 0.9)'
                     }}
                   />
+                  
+                  {/* Ambient Glow Behind V */}
+                  <motion.div
+                    animate={{
+                      opacity: [0.3, 0.5, 0.3],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 4,
+                      ease: "easeInOut"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center z-0"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-white/20 blur-md" />
+                  </motion.div>
                   
                   {/* Rotating Energy Rings */}
                   <motion.div
