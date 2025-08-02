@@ -27,10 +27,8 @@ export const useColdStart = () => {
           localStorage.setItem('last_active', now.toString());
         }
 
-        // Simulate app loading time (minimum 1 second to see splash)
-        setTimeout(() => {
-          setIsReady(true);
-        }, Math.max(1000, isCold ? 1500 : 0));
+        // Let splash screen component control its own timing
+        setIsReady(true);
 
       } catch (error) {
         console.warn('Cold start detection failed:', error);
