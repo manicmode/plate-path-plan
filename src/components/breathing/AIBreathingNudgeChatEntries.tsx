@@ -66,7 +66,7 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
     <div className="space-y-4">
       <div className="flex items-center space-x-2 mb-3">
         <Wind className="h-4 w-4 text-cyan-500" />
-        <span className="text-sm font-medium text-muted-foreground">
+        <span className="text-sm font-medium text-slate-600 dark:text-muted-foreground">
           Sacred Breath Moments
         </span>
       </div>
@@ -76,7 +76,7 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
           key={nudge.id}
           className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
             nudge.user_action === 'pending'
-              ? 'bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 border-cyan-200 dark:border-cyan-800'
+              ? 'bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 border-cyan-300 dark:border-cyan-800'
               : 'bg-muted/50 border-border/50 opacity-75'
           }`}
         >
@@ -95,7 +95,7 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
                 </span>
               </div>
               
-              <p className="text-sm text-foreground mb-3 leading-relaxed">
+              <p className="text-sm text-slate-800 dark:text-foreground mb-3 leading-relaxed">
                 {formatNudgeMessage(nudge.nudge_message, nudge.nudge_type)}
               </p>
               

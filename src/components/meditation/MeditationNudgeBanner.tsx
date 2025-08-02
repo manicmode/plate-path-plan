@@ -54,13 +54,13 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
   const getBannerStyle = () => {
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800'
+        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800'
       case 'smart_nudge':
-        return 'from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800'
+        return 'from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-300 dark:border-purple-800'
       case 'daily_reminder':
-        return 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800'
+        return 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-800'
       default:
-        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800'
+        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800'
     }
   }
 
@@ -84,7 +84,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-2">
               {getNudgeIcon()}
-              <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+              <span className="font-semibold text-slate-800 dark:text-gray-200 text-sm">
                 {getTitle()}
               </span>
             </div>
@@ -98,7 +98,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
             </Button>
           </div>
           
-          <p className="text-gray-700 dark:text-gray-300 text-sm mb-4 leading-relaxed">
+          <p className="text-slate-700 dark:text-gray-300 text-sm mb-4 leading-relaxed">
             {activeNudge.nudge_message}
           </p>
           
