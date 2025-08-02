@@ -175,17 +175,54 @@ export const CaricatureModal = ({
       });
 
       console.log('📡 Supabase function response:', { data, error });
+      console.log('🔍 Response analysis:', {
+        hasError: !!error,
+        hasData: !!data,
+        dataSuccess: data?.success,
+        dataError: data?.error,
+        dataErrorType: data?.errorType
+      });
 
       // Handle Supabase function errors
       if (error) {
         console.error('❌ Supabase function error:', error);
-        const errorMsg = error.message || error.toString();
         
-        // Check if it's a monthly limit error with date extraction
-        if (errorMsg.includes('Monthly generation limit') || errorMsg.includes('Your next avatar set will be available')) {
-          // Try to extract date from error message
-          const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-          const nextDate = dateMatch ? dateMatch[1] : '9/1/2025';
+        // Extract error details from FunctionsHttpError or regular error
+        let errorDetails = null;
+        let errorMsg = error.message || error.toString();
+        
+        // Try to parse error context if it exists (FunctionsHttpError)
+        if (error.context) {
+          try {
+            const context = typeof error.context === 'string' ? JSON.parse(error.context) : error.context;
+            if (context.error) {
+              errorMsg = context.error;
+              errorDetails = context;
+            }
+          } catch (parseError) {
+            console.warn('Could not parse error context:', parseError);
+          }
+        }
+        
+        console.log('🔍 Extracted error details:', { errorMsg, errorDetails, originalError: error });
+        
+        // Check if it's a monthly limit error
+        if (errorMsg.includes('Monthly generation limit') || 
+            errorMsg.includes('Your next avatar set will be available') ||
+            errorDetails?.errorType === 'monthly_limit_reached') {
+          
+          // Use structured date if available, otherwise try to extract from message
+          let nextDate = '9/1/2025'; // fallback
+          
+          if (errorDetails?.nextAvailableDateFormatted) {
+            nextDate = errorDetails.nextAvailableDateFormatted;
+          } else {
+            // Try to extract date from error message
+            const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+            if (dateMatch) {
+              nextDate = dateMatch[1];
+            }
+          }
           
           toast({
             title: "Monthly limit reached",
@@ -225,10 +262,21 @@ export const CaricatureModal = ({
         console.error('❌ Error from edge function:', data.error);
         const errorMsg = data.error;
         
-        if (errorMsg.includes('Monthly generation limit') || errorMsg.includes('Your next avatar set will be available')) {
-          // Try to extract date from error message
-          const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-          const nextDate = dateMatch ? dateMatch[1] : '9/1/2025';
+        if (errorMsg.includes('Monthly generation limit') || 
+            errorMsg.includes('Your next avatar set will be available') ||
+            data?.errorType === 'monthly_limit_reached') {
+          // Use structured date if available, otherwise try to extract from message
+          let nextDate = '9/1/2025'; // fallback
+          
+          if (data?.nextAvailableDateFormatted) {
+            nextDate = data.nextAvailableDateFormatted;
+          } else {
+            // Try to extract date from error message
+            const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+            if (dateMatch) {
+              nextDate = dateMatch[1];
+            }
+          }
           
           toast({
             title: "Monthly limit reached",

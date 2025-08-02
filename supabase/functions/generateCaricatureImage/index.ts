@@ -52,7 +52,17 @@ serve(async (req) => {
     // Check if OpenAI API key is available
     if (!openAiApiKey) {
       console.error('❌ OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured. Please add OPENAI_API_KEY to Supabase secrets.');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'OpenAI API key not configured. Please contact support.',
+          errorType: 'api_key_missing'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // Check monthly generation limit (30 days)
@@ -64,7 +74,17 @@ serve(async (req) => {
 
     if (profileError) {
       console.error('❌ Profile fetch error:', profileError);
-      throw new Error('Failed to fetch user profile');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to fetch user profile',
+          errorType: 'profile_fetch_error'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const lastGeneration = profile?.last_caricature_generation;
@@ -74,7 +94,20 @@ serve(async (req) => {
     if (lastGeneration && new Date(lastGeneration) > thirtyDaysAgo) {
       const nextAvailableDate = new Date(new Date(lastGeneration).getTime() + (30 * 24 * 60 * 60 * 1000));
       console.error('❌ Monthly generation limit reached');
-      throw new Error(`🎨 Your next avatar set will be available on ${nextAvailableDate.toLocaleDateString()}!`);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `🎨 Your next avatar set will be available on ${nextAvailableDate.toLocaleDateString()}!`,
+          errorType: 'monthly_limit_reached',
+          nextAvailableDate: nextAvailableDate.toISOString(),
+          nextAvailableDateFormatted: nextAvailableDate.toLocaleDateString()
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log('✅ Monthly generation check passed');
@@ -131,7 +164,17 @@ serve(async (req) => {
     
     if (generatedImages.length === 0) {
       console.error('❌ No images were generated successfully');
-      throw new Error('Failed to generate any caricature images');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to generate any caricature images. Please try again.',
+          errorType: 'generation_failed'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log(`🎉 Successfully generated ${generatedImages.length} images`);
@@ -186,7 +229,17 @@ serve(async (req) => {
 
     if (storedUrls.length === 0) {
       console.error('❌ Failed to store any images in Supabase Storage');
-      throw new Error('Failed to store any generated images');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to store generated images. Please try again.',
+          errorType: 'storage_failed'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log(`💾 Successfully stored ${storedUrls.length} images`);
@@ -217,7 +270,17 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('❌ Profile update error:', updateError);
-      throw new Error('Failed to update user profile');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to update user profile. Please contact support.',
+          errorType: 'profile_update_failed'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log('🎊 Caricature generation completed successfully!');
