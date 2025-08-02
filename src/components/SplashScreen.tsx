@@ -130,7 +130,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                {/* Bold VOYAGE "V" Logo */}
+                {/* Symbolic Energy Orb */}
                 <motion.div
                   animate={{
                     filter: [
@@ -144,19 +144,69 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                     duration: 4,
                     ease: "easeInOut"
                   }}
-                  className="w-14 h-14 flex items-center justify-center"
+                  className="w-14 h-14 flex items-center justify-center relative"
                 >
-                  <img 
-                    src="/lovable-uploads/e7e94390-252a-42fb-881d-2785fbe605e5.png"
-                    alt="VOYAGE Winged V Logo" 
-                    className="w-full h-full object-contain"
-                    onLoad={() => console.log('✅ Winged V logo loaded successfully on splash')}
-                    onError={(e) => {
-                      console.error('❌ Failed to load winged V logo on splash');
-                      // Hide the failed image element completely
-                      e.currentTarget.style.display = 'none';
+                  {/* Central Energy Orb */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      opacity: [0.8, 1, 0.8]
                     }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 3,
+                      ease: "easeInOut"
+                    }}
+                    className="w-6 h-6 rounded-full bg-gradient-to-r from-teal-300 via-blue-400 to-purple-300 shadow-2xl"
                   />
+                  
+                  {/* Rotating Energy Rings */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 8,
+                      ease: "linear"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-10 h-10 rounded-full border border-teal-400/30 border-dashed" />
+                  </motion.div>
+                  
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 12,
+                      ease: "linear"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-12 h-12 rounded-full border border-purple-400/20 border-dotted" />
+                  </motion.div>
+                  
+                  {/* Floating Energy Particles */}
+                  {[...Array(6)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{
+                        opacity: [0, 1, 0],
+                        scale: [0.5, 1, 0.5],
+                        rotate: [0, 360]
+                      }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2 + Math.random() * 2,
+                        delay: Math.random() * 2,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute w-1 h-1 rounded-full bg-gradient-to-r from-teal-400 to-blue-400"
+                      style={{
+                        left: `${25 + Math.cos(i * 60 * Math.PI / 180) * 20}px`,
+                        top: `${25 + Math.sin(i * 60 * Math.PI / 180) * 20}px`,
+                      }}
+                    />
+                  ))}
                 </motion.div>
               </motion.div>
             </motion.div>
