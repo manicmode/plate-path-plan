@@ -377,6 +377,7 @@ function App() {
     <BrowserRouter>
       {/* Gate component to handle Supabase redirects before any routing */}
       <SupabaseRedirectGate />
+      {(() => { console.log('🧭 Header layout check complete'); return null; })()}
       
       <ErrorBoundary>
         <ThemeProvider>

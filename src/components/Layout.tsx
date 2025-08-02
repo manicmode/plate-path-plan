@@ -79,8 +79,10 @@ const Layout = ({ children }: LayoutProps) => {
   // Special handling for explore page to prevent scrolling
   const isExplorePage = location.pathname === '/explore';
 
+  console.log('🧭 Layout rendering with sticky header');
+  
   return (
-    <div className="min-h-screen gradient-main transition-all duration-300">
+    <div className="min-h-screen gradient-main transition-all duration-300 relative">
       {/* Enhanced Header with better spacing */}
       <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
