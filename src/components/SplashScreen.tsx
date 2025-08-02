@@ -114,13 +114,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
               }}
               className="mb-6"
             >
-              {/* VOYAGE Logo */}
+              {/* VOYAGE Winged V Logo */}
               <motion.div
                 animate={{
                   boxShadow: [
-                    '0 0 20px rgba(20, 184, 166, 0.3)',
-                    '0 0 40px rgba(59, 130, 246, 0.4)',
-                    '0 0 20px rgba(20, 184, 166, 0.3)'
+                    '0 0 30px rgba(20, 184, 166, 0.4)',
+                    '0 0 60px rgba(59, 130, 246, 0.5)',
+                    '0 0 30px rgba(20, 184, 166, 0.4)'
                   ]
                 }}
                 transition={{ 
@@ -128,15 +128,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                   duration: 3,
                   ease: "easeInOut"
                 }}
-                className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
+                className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl relative overflow-hidden"
               >
-                {/* Amazing Neon Rocket Logo */}
+                {/* Cinematic Winged V Logo */}
                 <motion.div
                   animate={{
                     filter: [
-                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))',
-                      'drop-shadow(0 0 30px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
-                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))'
+                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 30px rgba(20, 184, 166, 0.4))',
+                      'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 45px rgba(59, 130, 246, 0.5))',
+                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 30px rgba(20, 184, 166, 0.4))'
                     ]
                   }}
                   transition={{ 
@@ -144,146 +144,88 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                     duration: 4,
                     ease: "easeInOut"
                   }}
+                  className="relative z-10"
                 >
-                  <svg 
-                    width="60" 
-                    height="60" 
-                    viewBox="0 0 100 120" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="drop-shadow-xl"
-                  >
-                    <defs>
-                      {/* VOYAGE Brand Rocket Gradient */}
-                      <linearGradient id="voyageRocketGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#14b8a6" /> {/* Teal */}
-                        <stop offset="50%" stopColor="#3b82f6" /> {/* Sky Blue */}
-                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
-                      </linearGradient>
-                      
-                      {/* Flame Gradient */}
-                      <linearGradient id="flameGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#f59e0b" /> {/* Amber */}
-                        <stop offset="50%" stopColor="#ef4444" /> {/* Red */}
-                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
-                      </linearGradient>
-                      
-                      {/* Rocket Glow Filter */}
-                      <filter id="rocketGlow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                        <feMerge>
-                          <feMergeNode in="coloredBlur"/>
-                          <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                      </filter>
-                      
-                      {/* Swirl Gradient */}
-                      <linearGradient id="swirlGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.6" />
-                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.3" />
-                      </linearGradient>
-                    </defs>
-                    
-                    {/* Transformation Swirls */}
-                    <path 
-                      d="M20 80 Q30 70, 40 80 T60 80" 
-                      stroke="url(#swirlGradient)" 
-                      strokeWidth="2" 
-                      fill="none" 
-                      opacity="0.7"
-                      filter="url(#rocketGlow)"
-                    />
-                    <path 
-                      d="M10 90 Q20 85, 30 90 T50 90" 
-                      stroke="url(#swirlGradient)" 
-                      strokeWidth="1.5" 
-                      fill="none" 
-                      opacity="0.5"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Body - Main */}
-                    <ellipse 
-                      cx="50" 
-                      cy="35" 
-                      rx="8" 
-                      ry="25" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Nose Cone */}
-                    <path 
-                      d="M42 10 L50 5 L58 10 L58 20 Q58 25, 50 25 Q42 25, 42 20 Z" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Fins */}
-                    <path 
-                      d="M35 50 L42 55 L42 65 L35 60 Z" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    <path 
-                      d="M65 50 L58 55 L58 65 L65 60 Z" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Window */}
-                    <circle 
-                      cx="50" 
-                      cy="25" 
-                      r="4" 
-                      fill="rgba(255,255,255,0.9)"
-                      filter="url(#rocketGlow)"
-                    />
-                    <circle 
-                      cx="50" 
-                      cy="25" 
-                      r="2" 
-                      fill="#3b82f6"
-                      opacity="0.8"
-                    />
-                    
-                    {/* Exhaust Flames */}
-                    <path 
-                      d="M45 60 Q50 70, 55 60 Q50 75, 45 60" 
-                      fill="url(#flameGradient)"
-                      filter="url(#rocketGlow)"
-                      opacity="0.9"
-                    />
-                    <path 
-                      d="M47 60 Q50 68, 53 60 Q50 72, 47 60" 
-                      fill="#fbbf24"
-                      filter="url(#rocketGlow)"
-                      opacity="0.8"
-                    />
-                    
-                    {/* Additional Transform Swirls */}
-                    <path 
-                      d="M70 75 Q75 70, 80 75 T90 75" 
-                      stroke="url(#swirlGradient)" 
-                      strokeWidth="1.5" 
-                      fill="none" 
-                      opacity="0.6"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Detail Lines */}
-                    <line 
-                      x1="45" y1="40" x2="55" y2="40" 
-                      stroke="rgba(255,255,255,0.6)" 
-                      strokeWidth="1"
-                    />
-                    <line 
-                      x1="45" y1="45" x2="55" y2="45" 
-                      stroke="rgba(255,255,255,0.4)" 
-                      strokeWidth="1"
-                    />
-                  </svg>
+                  <img 
+                    src="/lovable-uploads/8b733bb4-dd63-4976-af54-e31fe8815724.png" 
+                    alt="VOYAGE Winged V - Symbol of Transformation" 
+                    className="w-14 h-14 object-contain"
+                    style={{ 
+                      filter: 'brightness(0) invert(1)',
+                      textShadow: '0 0 20px rgba(255, 255, 255, 0.8)'
+                    }}
+                  />
                 </motion.div>
+
+                {/* 3D Embossed Shadow Effect */}
+                <motion.div
+                  animate={{
+                    opacity: [0.3, 0.6, 0.3]
+                  }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 3,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20 rounded-2xl"
+                />
+
+                {/* Crystalline Inner Glow */}
+                <motion.div
+                  animate={{
+                    scale: [1, 1.05, 1],
+                    opacity: [0.2, 0.4, 0.2]
+                  }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 2.5,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute inset-2 bg-gradient-radial from-white/20 via-transparent to-transparent rounded-xl"
+                />
+
+                {/* Rising Particle Mist */}
+                {[...Array(8)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ 
+                      opacity: 0,
+                      y: 10,
+                      x: (i - 4) * 2
+                    }}
+                    animate={{
+                      opacity: [0, 0.6, 0],
+                      y: [-10, -40],
+                      x: [(i - 4) * 2, (i - 4) * 3]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 3 + i * 0.5,
+                      ease: "easeOut",
+                      delay: i * 0.3
+                    }}
+                    className="absolute w-0.5 h-0.5 bg-white/60 rounded-full blur-[0.5px]"
+                    style={{
+                      left: `${45 + (i - 4) * 1}%`,
+                      bottom: '10%'
+                    }}
+                  />
+                ))}
+
+                {/* Lens Flare Effect */}
+                <motion.div
+                  animate={{
+                    opacity: [0, 0.8, 0],
+                    scale: [0.8, 1.2, 0.8],
+                    rotate: [0, 180, 360]
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 6,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute inset-0 bg-gradient-conic from-transparent via-white/10 to-transparent rounded-2xl"
+                />
               </motion.div>
             </motion.div>
 
