@@ -45,7 +45,9 @@ const Coach = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: `Hi ${user?.name || 'there'}! 👋 I'm your AI nutrition coach. I'm here to help you reach your health goals, answer questions about nutrition, and provide personalized guidance based on your progress. What would you like to talk about today?`,
+      content: `Hello ${user?.name || 'there'} ✨ I'm your mindful nutrition guide. With gentle wisdom and scientific precision, I'm here to nurture your relationship with food and help you discover the path to optimal nourishment 🥦 
+
+Take a breath... let's explore your nutrition journey together with care and intention. What aspect of your wellness would you like to focus on today?`,
       isUser: false,
       timestamp: new Date(),
     },

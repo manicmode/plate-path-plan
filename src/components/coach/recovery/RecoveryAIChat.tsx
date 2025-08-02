@@ -22,7 +22,9 @@ export const RecoveryAIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: `Hi ${user?.name || 'there'}! 🧘‍♀️ I'm your AI recovery coach. I'm here to help you with mindfulness, breathing exercises, sleep optimization, stress management, and overall wellness recovery. What would you like to work on today?`,
+      content: `Hello dear soul... 🌙 I'm your gentle recovery guide. In this space of calm and healing, I'm here to nurture your mind, body, and spirit with compassion 💫
+
+Take a slow, deep breath with me... Let's journey together toward deeper rest, peaceful restoration, and serene wellness. What area of your beautiful recovery would you like to explore today? 🧘‍♀️✨`,
       isUser: false,
       timestamp: new Date(),
     },

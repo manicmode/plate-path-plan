@@ -44,8 +44,8 @@ export default function AIFitnessCoach() {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; emoji?: string }>>([
     { 
       role: 'assistant', 
-      content: 'Hey there, fitness champion! 💪 I\'m your AI Fitness Coach, and I\'m here to analyze your workouts, keep you motivated, and help you crush your goals! I can track your progress, suggest improvements, create challenges, and be your personal hype squad. What would you like to work on today?',
-      emoji: '🤖'
+      content: 'YO CHAMPION! 🔥💪 Your AI Fitness Coach is HERE and READY TO CRUSH IT! Time to UNLEASH the beast within! 🏆\n\nI\'m gonna push you. Challenge you. And celebrate EVERY victory with you! 🚀 No excuses, just RESULTS!\n\nWhat are we CONQUERING today?! Let\'s GO! 💯🔥',
+      emoji: '💪'
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
