@@ -130,13 +130,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                {/* Symbolic Energy Orb */}
+                {/* Cinematic Winged V Logo */}
                 <motion.div
                   animate={{
                     filter: [
-                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))',
-                      'drop-shadow(0 0 30px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
-                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))'
+                      'drop-shadow(0 0 30px rgba(20, 184, 166, 0.8)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
+                      'drop-shadow(0 0 50px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 80px rgba(147, 51, 234, 0.5))',
+                      'drop-shadow(0 0 30px rgba(20, 184, 166, 0.8)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))'
                     ]
                   }}
                   transition={{ 
@@ -146,18 +146,29 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                   }}
                   className="w-14 h-14 flex items-center justify-center relative"
                 >
-                  {/* Central Energy Orb */}
-                  <motion.div
+                  {/* Main Winged V Logo */}
+                  <motion.img
+                    src="/lovable-uploads/862d48fb-84de-473c-88a2-b654e5b83609.png"
+                    alt=""
                     animate={{
-                      scale: [1, 1.1, 1],
-                      opacity: [0.8, 1, 0.8]
+                      scale: [1, 1.05, 1],
+                      opacity: [0.95, 1, 0.95],
+                      filter: [
+                        'brightness(0) invert(1) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))',
+                        'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255, 255, 255, 1))',
+                        'brightness(0) invert(1) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))'
+                      ]
                     }}
                     transition={{
                       repeat: Infinity,
                       duration: 3,
                       ease: "easeInOut"
                     }}
-                    className="w-6 h-6 rounded-full bg-gradient-to-r from-teal-300 via-blue-400 to-purple-300 shadow-2xl"
+                    className="w-11 h-11 object-contain z-10"
+                    style={{
+                      filter: 'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))',
+                      textShadow: '0 0 30px rgba(255, 255, 255, 0.8)'
+                    }}
                   />
                   
                   {/* Rotating Energy Rings */}
@@ -185,28 +196,47 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                     <div className="w-12 h-12 rounded-full border border-purple-400/20 border-dotted" />
                   </motion.div>
                   
-                  {/* Floating Energy Particles */}
-                  {[...Array(6)].map((_, i) => (
+                  {/* Rising Particle Mist */}
+                  {[...Array(8)].map((_, i) => (
                     <motion.div
                       key={i}
                       animate={{
-                        opacity: [0, 1, 0],
-                        scale: [0.5, 1, 0.5],
-                        rotate: [0, 360]
+                        opacity: [0, 0.8, 0],
+                        scale: [0.3, 1, 0.3],
+                        y: [15, -15, 15],
+                        x: [0, Math.sin(i) * 5, 0]
                       }}
                       transition={{
                         repeat: Infinity,
-                        duration: 2 + Math.random() * 2,
-                        delay: Math.random() * 2,
+                        duration: 3 + Math.random() * 2,
+                        delay: Math.random() * 3,
                         ease: "easeInOut"
                       }}
-                      className="absolute w-1 h-1 rounded-full bg-gradient-to-r from-teal-400 to-blue-400"
+                      className="absolute w-1 h-1 rounded-full bg-gradient-to-r from-white/60 to-teal-300/80"
                       style={{
-                        left: `${25 + Math.cos(i * 60 * Math.PI / 180) * 20}px`,
-                        top: `${25 + Math.sin(i * 60 * Math.PI / 180) * 20}px`,
+                        left: `${20 + Math.cos(i * 45 * Math.PI / 180) * 25}px`,
+                        top: `${20 + Math.sin(i * 45 * Math.PI / 180) * 25}px`,
+                        filter: 'blur(0.5px)'
                       }}
                     />
                   ))}
+                  
+                  {/* Lens Flare Effect */}
+                  <motion.div
+                    animate={{
+                      opacity: [0, 0.4, 0],
+                      scale: [0.8, 1.2, 0.8],
+                      rotate: [0, 180, 360]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 6,
+                      ease: "easeInOut"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-gradient-radial from-white/10 via-teal-400/5 to-transparent" />
+                  </motion.div>
                 </motion.div>
               </motion.div>
             </motion.div>
