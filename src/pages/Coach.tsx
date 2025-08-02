@@ -594,58 +594,6 @@ Take a breath... let's explore your nutrition journey together with care and int
         gradientColors="from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20"
       />
 
-      {/* Wellness Nudges Section */}
-      {nudgeContent.isLoading ? (
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-            <LoadingNudgeState />
-          </CardContent>
-        </Card>
-      ) : nudgeContent.hasAnyContent ? (
-        <>
-          {/* Meditation Nudges Section */}
-          {nudgeContent.hasMeditationContent && (
-            <Card className="glass-card border-0 rounded-3xl">
-              <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* No recent nutrition nudges message when none are available */}
-          {!nudgeContent.hasMeditationContent && !nudgeContent.hasRecoveryContent && (
-            <Card className="glass-card border-0 rounded-3xl">
-              <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <div className="text-center py-8">
-                  <ChefHat className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground text-sm">
-                    No new nudges for this section yet. Keep going strong!
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recovery Challenge Coach Section */}
-          {nudgeContent.hasRecoveryContent && (
-            <Card className="glass-card border-0 rounded-3xl">
-              <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
-              </CardContent>
-            </Card>
-          )}
-        </>
-      ) : (
-        <Card className="glass-card border-0 rounded-3xl">
-          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-            <EmptyNudgeState 
-              message="No recent wellness suggestions available"
-              type="nutrition"
-            />
-          </CardContent>
-        </Card>
-      )}
-
       {/* Quick Questions - Separate Card */}
       <Card className="glass-card border-0 rounded-3xl">
         <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
@@ -756,6 +704,56 @@ Take a breath... let's explore your nutrition journey together with care and int
           )}
         </CardContent>
       </Card>
+
+      {/* 📣 Nudge Zone - At the Bottom (Nutrition Coach Personality) */}
+      {nudgeContent.isLoading ? (
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+            <LoadingNudgeState />
+          </CardContent>
+        </Card>
+      ) : nudgeContent.hasAnyContent ? (
+        <>
+          {/* Meditation Nudges Section - Mindful Nutrition Voice */}
+          {nudgeContent.hasMeditationContent && (
+            <Card className="glass-card border-0 rounded-3xl bg-gradient-to-r from-purple-50/50 to-emerald-50/50 dark:from-purple-900/10 dark:to-emerald-900/10">
+              <CardHeader className={`${isMobile ? 'pb-2' : 'pb-3'}`}>
+                <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'} text-purple-700 dark:text-purple-400`}>
+                  <span>✨ Gentle Nutrition Wisdom</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+                <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recovery Challenge Coach Section - Mindful Recovery */}
+          {nudgeContent.hasRecoveryContent && (
+            <Card className="glass-card border-0 rounded-3xl bg-gradient-to-r from-purple-50/50 to-emerald-50/50 dark:from-purple-900/10 dark:to-emerald-900/10">
+              <CardHeader className={`${isMobile ? 'pb-2' : 'pb-3'}`}>
+                <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'} text-emerald-700 dark:text-emerald-400`}>
+                  <span>🌱 Nourishing Recovery Insights</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+                <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
+              </CardContent>
+            </Card>
+          )}
+        </>
+      ) : (
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+            <div className="text-center py-8">
+              <ChefHat className="h-12 w-12 text-purple-400 mx-auto mb-3" />
+              <p className="text-purple-600 dark:text-purple-400 text-sm font-medium">
+                Take a mindful moment... your personalized nutrition insights will appear here when ready ✨
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       </div>
     </div>
   );
