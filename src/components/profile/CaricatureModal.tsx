@@ -150,8 +150,8 @@ export const CaricatureModal = ({
       return;
     }
 
-    // Prevent multiple clicks
-    if (isGenerating || generationDisabled) {
+    // Prevent multiple clicks during generation
+    if (isGenerating) {
       console.log('Generation already in progress, ignoring click');
       return;
     }
@@ -168,7 +168,6 @@ export const CaricatureModal = ({
 
     console.log('Starting caricature generation with image:', uploadedImage);
     setIsGenerating(true);
-    setGenerationDisabled(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('generateCaricatureImage', {
@@ -177,11 +176,29 @@ export const CaricatureModal = ({
 
       console.log('Supabase function response:', { data, error });
 
+      // Handle Supabase function errors
       if (error) {
         console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Function call failed');
+        const errorMsg = error.message || error.toString();
+        
+        // Check if it's a monthly limit error
+        if (errorMsg.includes('Monthly generation limit') || errorMsg.includes('Your next avatar set will be available')) {
+          toast({
+            title: "Monthly limit reached",
+            description: "🎨 Your next avatar set will be available on 9/1/2025!",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Generation failed",
+            description: `Error: ${errorMsg}`,
+            variant: "destructive",
+          });
+        }
+        return;
       }
 
+      // Handle successful response
       if (data?.caricatureUrls && Array.isArray(data.caricatureUrls) && data.caricatureUrls.length === 3) {
         console.log('Successfully generated 3 variants:', data.caricatureUrls);
         setVariants(data.caricatureUrls);
@@ -199,22 +216,43 @@ export const CaricatureModal = ({
           title: "🎉 Caricatures generated!",
           description: "Choose your favorite style",
         });
+      } else if (data?.error) {
+        // Handle errors returned in data
+        console.error('Error from edge function:', data.error);
+        const errorMsg = data.error;
+        
+        if (errorMsg.includes('Monthly generation limit') || errorMsg.includes('Your next avatar set will be available')) {
+          toast({
+            title: "Monthly limit reached",
+            description: "🎨 Your next avatar set will be available on 9/1/2025!",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Generation failed",
+            description: `Error: ${errorMsg}`,
+            variant: "destructive",
+          });
+        }
       } else {
         console.error('Invalid response data:', data);
-        throw new Error(`Expected 3 variants, got ${data?.caricatureUrls?.length || 0}`);
+        toast({
+          title: "Generation failed",
+          description: "Something went wrong while generating avatars. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Generation failed with error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Generation failed with network error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error occurred';
       
       toast({
         title: "Generation failed",
-        description: errorMessage.includes('Your next avatar set') ? errorMessage : `Error: ${errorMessage}`,
+        description: `Something went wrong while generating avatars. Error: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
-      setGenerationDisabled(false);
     }
   };
 
