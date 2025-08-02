@@ -13,9 +13,8 @@ export const SupabaseRedirectGate = () => {
     // Check if this is a Supabase auth redirect
     if (type === 'signup' || type === 'recovery' || type === 'magiclink') {
       const redirectUrl = `/auth/callback${location.search}`;
-      console.log('🛜 Redirecting to Supabase Auth Callback:', redirectUrl);
+      console.log('🛜 Redirecting to auth callback:', redirectUrl);
       console.log('🔍 Detected auth type:', type);
-      console.log('📋 Full query string:', location.search);
       
       // Immediately redirect to auth callback with full query string
       navigate(redirectUrl, { replace: true });

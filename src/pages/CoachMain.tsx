@@ -12,8 +12,6 @@ const CoachMain = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
-  console.log('🧭 CoachMain header test - checking sticky positioning');
-  
   return (
     <div className="min-h-screen bg-background">
       {/* Toggle Section */}

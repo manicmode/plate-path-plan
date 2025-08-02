@@ -27,6 +27,9 @@ import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionMo
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
 import { SupabaseRedirectGate } from '@/components/auth/SupabaseRedirectGate';
 
+// Lazy load auth callback
+const AuthCallback = lazy(() => import('@/components/auth/AuthCallback').then(module => ({ default: module.AuthCallback })));
+
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -123,6 +126,7 @@ function AppContent() {
               <Route path="/" element={<Index />} />
               
               {/* Fullscreen pages without Layout */}
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/recovery-player" element={
@@ -377,7 +381,6 @@ function App() {
     <BrowserRouter>
       {/* Gate component to handle Supabase redirects before any routing */}
       <SupabaseRedirectGate />
-      {(() => { console.log('🧭 Header layout check complete'); return null; })()}
       
       <ErrorBoundary>
         <ThemeProvider>
