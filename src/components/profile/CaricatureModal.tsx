@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, Wand2, Check, Shuffle, Download, Sparkles, Clock, RefreshCw } from "lucide-react";
+import { Upload, Wand2, Check, Shuffle, Download, Sparkles, Clock, RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { validateImageFile } from "@/utils/imageValidation";
@@ -152,21 +152,21 @@ export const CaricatureModal = ({
 
     // Prevent multiple clicks during generation
     if (isGenerating) {
-      console.log('Generation already in progress, ignoring click');
+      console.log('🚫 Generation already in progress, ignoring duplicate click');
       return;
     }
 
-    // Check cooldown
+    // Check cooldown before proceeding
     if (cooldown) {
       toast({
-        title: "Generation on cooldown",
-        description: `🎨 Your next avatar set will be available on ${cooldown.nextAvailable}!`,
+        title: "Monthly limit reached",
+        description: `🎭 You've already created 3 avatars this month! Come back on ${cooldown.nextAvailable} to get your next set.`,
         variant: "destructive",
       });
       return;
     }
 
-    console.log('Starting caricature generation with image:', uploadedImage);
+    console.log('🎨 Starting caricature generation with image:', uploadedImage);
     setIsGenerating(true);
     
     try {
@@ -174,24 +174,28 @@ export const CaricatureModal = ({
         body: { imageUrl: uploadedImage }
       });
 
-      console.log('Supabase function response:', { data, error });
+      console.log('📡 Supabase function response:', { data, error });
 
       // Handle Supabase function errors
       if (error) {
-        console.error('Supabase function error:', error);
+        console.error('❌ Supabase function error:', error);
         const errorMsg = error.message || error.toString();
         
-        // Check if it's a monthly limit error
+        // Check if it's a monthly limit error with date extraction
         if (errorMsg.includes('Monthly generation limit') || errorMsg.includes('Your next avatar set will be available')) {
+          // Try to extract date from error message
+          const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+          const nextDate = dateMatch ? dateMatch[1] : '9/1/2025';
+          
           toast({
             title: "Monthly limit reached",
-            description: "🎨 Your next avatar set will be available on 9/1/2025!",
+            description: `🎭 You've already created 3 avatars this month! Come back on ${nextDate} to get your next set.`,
             variant: "destructive",
           });
         } else {
           toast({
             title: "Generation failed",
-            description: `Error: ${errorMsg}`,
+            description: `Something went wrong while generating avatars. Error: ${errorMsg}`,
             variant: "destructive",
           });
         }
@@ -200,7 +204,7 @@ export const CaricatureModal = ({
 
       // Handle successful response
       if (data?.caricatureUrls && Array.isArray(data.caricatureUrls) && data.caricatureUrls.length === 3) {
-        console.log('Successfully generated 3 variants:', data.caricatureUrls);
+        console.log('✅ Successfully generated 3 variants:', data.caricatureUrls);
         setVariants(data.caricatureUrls);
         setStep('variants');
         onGenerationCountUpdate(generationCount + 1);
@@ -218,24 +222,28 @@ export const CaricatureModal = ({
         });
       } else if (data?.error) {
         // Handle errors returned in data
-        console.error('Error from edge function:', data.error);
+        console.error('❌ Error from edge function:', data.error);
         const errorMsg = data.error;
         
         if (errorMsg.includes('Monthly generation limit') || errorMsg.includes('Your next avatar set will be available')) {
+          // Try to extract date from error message
+          const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+          const nextDate = dateMatch ? dateMatch[1] : '9/1/2025';
+          
           toast({
             title: "Monthly limit reached",
-            description: "🎨 Your next avatar set will be available on 9/1/2025!",
+            description: `🎭 You've already created 3 avatars this month! Come back on ${nextDate} to get your next set.`,
             variant: "destructive",
           });
         } else {
           toast({
             title: "Generation failed",
-            description: `Error: ${errorMsg}`,
+            description: `Something went wrong while generating avatars. Error: ${errorMsg}`,
             variant: "destructive",
           });
         }
       } else {
-        console.error('Invalid response data:', data);
+        console.error('❌ Invalid response data:', data);
         toast({
           title: "Generation failed",
           description: "Something went wrong while generating avatars. Please try again.",
@@ -243,7 +251,7 @@ export const CaricatureModal = ({
         });
       }
     } catch (error) {
-      console.error('Generation failed with network error:', error);
+      console.error('💥 Generation failed with network error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Network error occurred';
       
       toast({
@@ -252,6 +260,7 @@ export const CaricatureModal = ({
         variant: "destructive",
       });
     } finally {
+      console.log('🔄 Resetting generation state');
       setIsGenerating(false);
     }
   };
@@ -350,7 +359,8 @@ export const CaricatureModal = ({
   const handleTouchEnd = (callback: () => void) => (e: React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    callback();
+    // Prevent double-tap issues by debouncing
+    setTimeout(callback, 50);
   };
 
   const savedVariants = avatarVariants ? [
@@ -478,14 +488,15 @@ export const CaricatureModal = ({
                       "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
                       "active:scale-95 transition-all duration-200",
                       "shadow-lg hover:shadow-xl",
-                      !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse"
+                      !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse",
+                      isGenerating && "cursor-not-allowed opacity-90"
                     )}
                     size="lg"
                     disabled={isGenerating || generationDisabled || !uploadedImage}
                   >
                     {isGenerating ? (
                       <>
-                        <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"></div>
+                        <Loader2 className="w-5 h-5 mr-3 animate-spin" />
                         Summoning your cartoon twin…
                       </>
                     ) : (
