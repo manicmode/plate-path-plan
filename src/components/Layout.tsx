@@ -86,27 +86,8 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
-              <svg 
-                width={isMobile ? '20' : '28'} 
-                height={isMobile ? '20' : '28'} 
-                viewBox="0 0 100 100" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {/* Stylized V with diagonal line - exact match to V logo.png */}
-                <path 
-                  d="M15 15 L40 70 L50 50 L60 70 L85 15 L75 15 L55 55 L45 35 L35 55 L25 15 Z" 
-                  fill="white"
-                />
-                {/* Diagonal line through the V */}
-                <rect 
-                  x="20" 
-                  y="45" 
-                  width="60" 
-                  height="4" 
-                  fill="white"
-                  transform="rotate(25 50 47)"
-                />
+              <svg className={`${isMobile ? 'w-7 h-7' : 'w-10 h-10'} text-white`} viewBox="0 0 100 100" fill="currentColor">
+                <path d="M50 85 L25 25 L35 25 L50 55 L65 25 L75 25 Z M30 20 L20 15 L25 25 L35 30 Z M70 20 L80 15 L75 25 L65 30 Z M45 50 L40 45 L30 30 L25 35 Z M55 50 L60 45 L70 30 L75 35 Z M35 40 L30 35 L20 25 L15 30 Z M65 40 L70 35 L80 25 L85 30 Z"/>
               </svg>
             </div>
             <div>
