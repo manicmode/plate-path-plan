@@ -91,6 +91,51 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
+// Utility function to get email redirect URL
+const getEmailRedirectURL = (): string => {
+  try {
+    // Check for environment variables first
+    if (typeof window !== 'undefined') {
+      const siteUrl = (window as any).__SITE_URL__ || process.env.SITE_URL;
+      const authRedirectUrl = (window as any).__AUTH_REDIRECT_URL__ || process.env.AUTH_REDIRECT_URL;
+      
+      if (authRedirectUrl) {
+        console.log('📧 Using AUTH_REDIRECT_URL:', authRedirectUrl);
+        return authRedirectUrl;
+      }
+      
+      if (siteUrl) {
+        const redirectUrl = `${siteUrl}/confirm`;
+        console.log('📧 Using SITE_URL for redirect:', redirectUrl);
+        return redirectUrl;
+      }
+    }
+    
+    // Production domain check
+    if (window.location.hostname === 'plate-path-plan.lovable.app') {
+      const redirectUrl = 'https://plate-path-plan.lovable.app/confirm';
+      console.log('📧 Using production URL:', redirectUrl);
+      return redirectUrl;
+    }
+    
+    // Preview domain check
+    if (window.location.hostname.includes('plate-path-plan') && window.location.hostname.includes('lovable.app')) {
+      const redirectUrl = `https://${window.location.hostname}/confirm`;
+      console.log('📧 Using Lovable preview URL:', redirectUrl);
+      return redirectUrl;
+    }
+    
+    // Development/other environments
+    const redirectUrl = `${window.location.origin}/confirm`;
+    console.log('📧 Using current origin:', redirectUrl);
+    return redirectUrl;
+    
+  } catch (error) {
+    console.warn('⚠️ Error generating email redirect URL, falling back to origin:', error);
+    return `${window.location.origin}/confirm`;
+  }
+};
+
 export const registerUser = async (email: string, password: string, name?: string): Promise<RegistrationResult> => {
   try {
     console.log('🚀 Starting registration process for:', email);
@@ -115,15 +160,15 @@ export const registerUser = async (email: string, password: string, name?: strin
     // Add another small delay
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    console.log('📧 Calling Supabase signUp...');
+    const emailRedirectTo = getEmailRedirectURL();
+    console.log('📧 Calling Supabase signUp with redirect URL:', emailRedirectTo);
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: name ? { name } : undefined,
-        emailRedirectTo: window.location.hostname.includes('lovable') 
-          ? `https://preview--plate-path-plan.lovable.app/confirm`
-          : `${window.location.origin}/confirm`,
+        emailRedirectTo,
       },
     });
     
@@ -135,12 +180,26 @@ export const registerUser = async (email: string, password: string, name?: strin
       userEmail: data?.user?.email,
       userEmailConfirmed: data?.user?.email_confirmed_at,
       userCreatedAt: data?.user?.created_at,
+      emailRedirectTo: emailRedirectTo,
       error: error
     });
+    
+    // Log email configuration for debugging
+    if (data?.user && !data?.user?.email_confirmed_at) {
+      console.log('📧 Email confirmation required - email will be sent to:', data.user.email);
+      console.log('📧 Email confirmation link will redirect to:', emailRedirectTo);
+    }
     
     // Check if there's a Supabase error
     if (error) {
       console.error('❌ Supabase returned error:', error);
+      console.error('📧 Registration failed details:', {
+        email,
+        redirectUrl: emailRedirectTo,
+        errorMessage: error.message,
+        errorStatus: error.status,
+        errorCode: error.code
+      });
       
       // Handle specific registration errors
       if (error.message?.includes('User already registered')) {
@@ -148,6 +207,7 @@ export const registerUser = async (email: string, password: string, name?: strin
       }
       
       if (error.message?.includes('over_email_send_rate_limit')) {
+        console.warn('⚠️ Email rate limit hit - email confirmation may be delayed');
         throw new Error('EMAIL_RATE_LIMITED');
       }
       
@@ -230,18 +290,26 @@ export const resendEmailConfirmation = async (email: string) => {
   try {
     console.log('📧 Resending email confirmation for:', email);
     
+    const emailRedirectTo = getEmailRedirectURL();
+    console.log('📧 Resending with redirect URL:', emailRedirectTo);
+    
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: window.location.hostname.includes('lovable') 
-          ? `https://preview--plate-path-plan.lovable.app/confirm`
-          : `${window.location.origin}/confirm`,
+        emailRedirectTo,
       }
     });
     
     if (error) {
       console.error('❌ Resend confirmation error:', error);
+      console.error('📧 Email confirmation failed details:', {
+        email,
+        redirectUrl: emailRedirectTo,
+        errorMessage: error.message,
+        errorStatus: error.status,
+        errorCode: error.code
+      });
       
       if (error.message?.includes('over_email_send_rate_limit')) {
         throw new Error('EMAIL_RATE_LIMITED');
@@ -254,7 +322,8 @@ export const resendEmailConfirmation = async (email: string) => {
       throw new Error('RESEND_FAILED');
     }
     
-    console.log('✅ Email confirmation resent successfully');
+    console.log('✅ Email confirmation resent successfully to:', email);
+    console.log('📧 Confirmation email sent with redirect URL:', emailRedirectTo);
     return { success: true };
     
   } catch (error: any) {

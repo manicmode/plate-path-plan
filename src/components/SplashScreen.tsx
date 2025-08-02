@@ -130,7 +130,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                {/* Serene Lotus Flower Icon */}
+                {/* Amazing Neon Rocket Logo */}
                 <motion.div
                   animate={{
                     filter: [
@@ -146,45 +146,141 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                   }}
                 >
                   <svg 
-                    width="40" 
-                    height="40" 
-                    viewBox="0 0 512 512" 
+                    width="60" 
+                    height="60" 
+                    viewBox="0 0 100 120" 
                     fill="none" 
                     xmlns="http://www.w3.org/2000/svg"
                     className="drop-shadow-xl"
                   >
                     <defs>
-                      {/* VOYAGE Brand Gradient */}
-                      <linearGradient id="voyageLotusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      {/* VOYAGE Brand Rocket Gradient */}
+                      <linearGradient id="voyageRocketGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stopColor="#14b8a6" /> {/* Teal */}
                         <stop offset="50%" stopColor="#3b82f6" /> {/* Sky Blue */}
                         <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
                       </linearGradient>
                       
-                      {/* Soft Glow Filter */}
-                      <filter id="sereneGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      {/* Flame Gradient */}
+                      <linearGradient id="flameGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#f59e0b" /> {/* Amber */}
+                        <stop offset="50%" stopColor="#ef4444" /> {/* Red */}
+                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
+                      </linearGradient>
+                      
+                      {/* Rocket Glow Filter */}
+                      <filter id="rocketGlow" x="-50%" y="-50%" width="200%" height="200%">
                         <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                         <feMerge>
                           <feMergeNode in="coloredBlur"/>
                           <feMergeNode in="SourceGraphic"/>
                         </feMerge>
                       </filter>
+                      
+                      {/* Swirl Gradient */}
+                      <linearGradient id="swirlGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.6" />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.3" />
+                      </linearGradient>
                     </defs>
                     
-                    {/* Lotus Flower Shape Based on Uploaded Silhouette */}
+                    {/* Transformation Swirls */}
                     <path 
-                      d="M256 50c-50 0-90 40-120 80-20 30-30 60-30 90 0 60 40 110 100 130 20 10 40 10 50 10s30 0 50-10c60-20 100-70 100-130 0-30-10-60-30-90-30-40-70-80-120-80z M200 180c-10-20-20-40-20-60 0-20 10-40 30-50 20-10 40-10 46-10v120z M312 180v-120c6 0 26 0 46 10 20 10 30 30 30 50 0 20-10 40-20 60z M256 460c-80 0-150-60-180-140-10-30-10-60 0-80 10-20 30-30 50-30h260c20 0 40 10 50 30 10 20 10 50 0 80-30 80-100 140-180 140z M150 250c-10 0-20 10-20 20 0 60 50 110 110 110h32c60 0 110-50 110-110 0-10-10-20-20-20z"
-                      fill="url(#voyageLotusGradient)"
-                      filter="url(#sereneGlow)"
+                      d="M20 80 Q30 70, 40 80 T60 80" 
+                      stroke="url(#swirlGradient)" 
+                      strokeWidth="2" 
+                      fill="none" 
+                      opacity="0.7"
+                      filter="url(#rocketGlow)"
+                    />
+                    <path 
+                      d="M10 90 Q20 85, 30 90 T50 90" 
+                      stroke="url(#swirlGradient)" 
+                      strokeWidth="1.5" 
+                      fill="none" 
+                      opacity="0.5"
+                      filter="url(#rocketGlow)"
                     />
                     
-                    {/* Center Detail */}
+                    {/* Rocket Body - Main */}
+                    <ellipse 
+                      cx="50" 
+                      cy="35" 
+                      rx="8" 
+                      ry="25" 
+                      fill="url(#voyageRocketGradient)"
+                      filter="url(#rocketGlow)"
+                    />
+                    
+                    {/* Rocket Nose Cone */}
+                    <path 
+                      d="M42 10 L50 5 L58 10 L58 20 Q58 25, 50 25 Q42 25, 42 20 Z" 
+                      fill="url(#voyageRocketGradient)"
+                      filter="url(#rocketGlow)"
+                    />
+                    
+                    {/* Rocket Fins */}
+                    <path 
+                      d="M35 50 L42 55 L42 65 L35 60 Z" 
+                      fill="url(#voyageRocketGradient)"
+                      filter="url(#rocketGlow)"
+                    />
+                    <path 
+                      d="M65 50 L58 55 L58 65 L65 60 Z" 
+                      fill="url(#voyageRocketGradient)"
+                      filter="url(#rocketGlow)"
+                    />
+                    
+                    {/* Window */}
                     <circle 
-                      cx="256" 
-                      cy="280" 
-                      r="15" 
+                      cx="50" 
+                      cy="25" 
+                      r="4" 
                       fill="rgba(255,255,255,0.9)"
-                      filter="url(#sereneGlow)"
+                      filter="url(#rocketGlow)"
+                    />
+                    <circle 
+                      cx="50" 
+                      cy="25" 
+                      r="2" 
+                      fill="#3b82f6"
+                      opacity="0.8"
+                    />
+                    
+                    {/* Exhaust Flames */}
+                    <path 
+                      d="M45 60 Q50 70, 55 60 Q50 75, 45 60" 
+                      fill="url(#flameGradient)"
+                      filter="url(#rocketGlow)"
+                      opacity="0.9"
+                    />
+                    <path 
+                      d="M47 60 Q50 68, 53 60 Q50 72, 47 60" 
+                      fill="#fbbf24"
+                      filter="url(#rocketGlow)"
+                      opacity="0.8"
+                    />
+                    
+                    {/* Additional Transform Swirls */}
+                    <path 
+                      d="M70 75 Q75 70, 80 75 T90 75" 
+                      stroke="url(#swirlGradient)" 
+                      strokeWidth="1.5" 
+                      fill="none" 
+                      opacity="0.6"
+                      filter="url(#rocketGlow)"
+                    />
+                    
+                    {/* Rocket Detail Lines */}
+                    <line 
+                      x1="45" y1="40" x2="55" y2="40" 
+                      stroke="rgba(255,255,255,0.6)" 
+                      strokeWidth="1"
+                    />
+                    <line 
+                      x1="45" y1="45" x2="55" y2="45" 
+                      stroke="rgba(255,255,255,0.4)" 
+                      strokeWidth="1"
                     />
                   </svg>
                 </motion.div>
