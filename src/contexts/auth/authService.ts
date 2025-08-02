@@ -6,6 +6,37 @@ import { validateUuidInput, cleanupInvalidUuids } from '@/lib/uuidValidationMidd
 import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
 import type { RegistrationResult } from './types';
 
+// Display Supabase setup instructions in console
+console.log(`
+🔐 SUPABASE DASHBOARD MANUAL SETUP REQUIRED
+
+⚠️  CRITICAL: Complete these steps in your Supabase Dashboard:
+    https://supabase.com/dashboard/project/uzoiiijqtahohfafqirm
+
+📧 STEP 1: Fix Email Template
+Navigation: Auth → Email Templates → Confirm Signup
+Template Body:
+────────────────────────────────────────
+<h2>Confirm your signup</h2>
+<p>Follow this link to confirm your user:</p>
+<p><a href="{{ .ConfirmationURL }}">Confirm your email address</a></p>
+<p>If you didn't sign up for this account, you can safely ignore this email.</p>
+────────────────────────────────────────
+
+🌐 STEP 2: Configure URL Settings  
+Navigation: Auth → URL Configuration
+
+Site URL: https://7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com
+
+Redirect URLs (add ALL):
+- https://7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com
+- https://7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com/confirm
+- https://plate-path-plan.lovable.app  
+- https://plate-path-plan.lovable.app/confirm
+
+✅ After setup: Test signup → Check email → Verify clickable link exists
+`);
+
 export const loginUser = async (email: string, password: string) => {
   try {
     // Enhanced security: Clean up any invalid UUIDs before login
@@ -91,10 +122,17 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
-// Utility function to get email redirect URL
+// Enhanced utility function to get email redirect URL
 const getEmailRedirectURL = (): string => {
   try {
-    // Check for environment variables first
+    // Priority 1: Check for explicit environment variable
+    const envRedirectUrl = import.meta.env.VITE_PUBLIC_REDIRECT_URL;
+    if (envRedirectUrl) {
+      console.log('📧 Using VITE_PUBLIC_REDIRECT_URL:', envRedirectUrl);
+      return envRedirectUrl;
+    }
+
+    // Priority 2: Check for legacy environment variables
     if (typeof window !== 'undefined') {
       const siteUrl = (window as any).__SITE_URL__ || process.env.SITE_URL;
       const authRedirectUrl = (window as any).__AUTH_REDIRECT_URL__ || process.env.AUTH_REDIRECT_URL;
@@ -111,28 +149,30 @@ const getEmailRedirectURL = (): string => {
       }
     }
     
-    // Production domain check
+    // Priority 3: Production domain check
     if (window.location.hostname === '7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com') {
       const redirectUrl = 'https://7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com/confirm';
       console.log('📧 Using production URL:', redirectUrl);
       return redirectUrl;
     }
     
-    // Preview domain check for Lovable
+    // Priority 4: Preview domain check for Lovable
     if (window.location.hostname.includes('lovableproject.com') || window.location.hostname.includes('lovable.app')) {
       const redirectUrl = `https://${window.location.hostname}/confirm`;
       console.log('📧 Using Lovable preview URL:', redirectUrl);
       return redirectUrl;
     }
     
-    // Development/other environments
+    // Priority 5: Development/other environments fallback
     const redirectUrl = `${window.location.origin}/confirm`;
-    console.log('📧 Using current origin:', redirectUrl);
+    console.log('📧 Using current origin fallback:', redirectUrl);
     return redirectUrl;
     
   } catch (error) {
-    console.warn('⚠️ Error generating email redirect URL, falling back to origin:', error);
-    return `${window.location.origin}/confirm`;
+    console.error('❌ Error generating email redirect URL:', error);
+    const fallbackUrl = `${window.location.origin}/confirm`;
+    console.log('📧 Using error fallback URL:', fallbackUrl);
+    return fallbackUrl;
   }
 };
 
@@ -163,6 +203,17 @@ export const registerUser = async (email: string, password: string, name?: strin
     const emailRedirectTo = getEmailRedirectURL();
     console.log('📧 Calling Supabase signUp with redirect URL:', emailRedirectTo);
     
+    // Enhanced validation and warning
+    if (!emailRedirectTo || emailRedirectTo === 'undefined' || emailRedirectTo.includes('undefined')) {
+      console.error('⚠️ WARNING: emailRedirectTo is invalid:', emailRedirectTo);
+      console.error('🔍 Current environment check:', {
+        hostname: window.location.hostname,
+        origin: window.location.origin,
+        envRedirect: import.meta.env.VITE_PUBLIC_REDIRECT_URL,
+        fallback: `${window.location.origin}/confirm`
+      });
+    }
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -171,6 +222,25 @@ export const registerUser = async (email: string, password: string, name?: strin
         emailRedirectTo,
       },
     });
+    
+    // Call debug function to log email configuration
+    try {
+      await supabase.functions.invoke('debug-email-config', {
+        body: {
+          action: 'signup',
+          email,
+          emailRedirectTo,
+          metadata: {
+            hostname: window.location.hostname,
+            origin: window.location.origin,
+            hasName: !!name,
+            timestamp: new Date().toISOString()
+          }
+        }
+      });
+    } catch (debugError) {
+      console.warn('Debug function call failed (non-critical):', debugError);
+    }
     
     console.log('📊 Supabase signUp response:', {
       hasData: !!data,
@@ -292,6 +362,17 @@ export const resendEmailConfirmation = async (email: string) => {
     
     const emailRedirectTo = getEmailRedirectURL();
     console.log('📧 Resending with redirect URL:', emailRedirectTo);
+    
+    // Enhanced validation and warning for resend
+    if (!emailRedirectTo || emailRedirectTo === 'undefined' || emailRedirectTo.includes('undefined')) {
+      console.error('⚠️ WARNING: emailRedirectTo is invalid for resend:', emailRedirectTo);
+      console.error('🔍 Resend environment check:', {
+        hostname: window.location.hostname,
+        origin: window.location.origin,
+        envRedirect: import.meta.env.VITE_PUBLIC_REDIRECT_URL,
+        fallback: `${window.location.origin}/confirm`
+      });
+    }
     
     const { error } = await supabase.auth.resend({
       type: 'signup',
