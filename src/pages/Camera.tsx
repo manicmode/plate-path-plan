@@ -1545,16 +1545,12 @@ const CameraPage = () => {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Log Your Food</h1>
       </div>
 
-      {/* Processing Status - Only show when actively processing */}
-      {(isAnalyzing || isVoiceProcessing || !!processingStep) && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <ProcessingStatus 
-            isProcessing={true}
-            processingStep={processingStep || (isAnalyzing ? 'Analyzing...' : 'Processing...')}
-            showTimeout={isAnalyzing}
-          />
-        </div>
-      )}
+      {/* Processing Status */}
+      <ProcessingStatus 
+        isProcessing={isAnalyzing || isVoiceProcessing || !!processingStep}
+        processingStep={processingStep}
+        showTimeout={isAnalyzing}
+      />
 
       {/* Validation Warning */}
       {validationWarning && (
@@ -1774,11 +1770,13 @@ const CameraPage = () => {
                 disabled={isProcessingVoice || !!processingStep}
                 className="flex-1 gradient-primary min-w-[120px]"
               >
-                {(isProcessingVoice || processingStep) ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    {processingStep || 'Processing...'}
-                  </div>
+                {isProcessingVoice || processingStep ? (
+                  <>
+                    <ProcessingStatus 
+                      isProcessing={true}
+                      processingStep={processingStep || 'Processing...'}
+                    />
+                  </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
@@ -1875,11 +1873,13 @@ const CameraPage = () => {
                 disabled={isProcessingVoice || !!processingStep}
                 className="flex-1 gradient-primary min-w-[120px]"
               >
-                {(isProcessingVoice || processingStep) ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    {processingStep || 'Processing...'}
-                  </div>
+                {isProcessingVoice || processingStep ? (
+                  <>
+                    <ProcessingStatus 
+                      isProcessing={true}
+                      processingStep={processingStep || 'Processing...'}
+                    />
+                  </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
@@ -2020,24 +2020,22 @@ const CameraPage = () => {
         />
       )}
 
-      {/* Enhanced Status Card - Only show when not processing */}
-      {!isAnalyzing && !isVoiceProcessing && !processingStep && (
-        <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 mb-0 !mb-0">
-          <CardContent className="p-4">
-            <div className="flex items-start space-x-3">
-              <Check className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-green-800 dark:text-green-200">
-                  Enhanced AI Food Logging
-                </h4>
-                <p className="text-xs text-green-700 dark:text-green-300">
-                  Improved with image validation, better error handling, and enhanced user feedback.
-                </p>
-              </div>
+      {/* Enhanced Status Card */}
+      <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 mb-0 !mb-0">
+        <CardContent className="p-4">
+          <div className="flex items-start space-x-3">
+            <Check className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-green-800 dark:text-green-200">
+                Enhanced AI Food Logging
+              </h4>
+              <p className="text-xs text-green-700 dark:text-green-300">
+                Improved with image validation, better error handling, and enhanced user feedback.
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Barcode Scanner Modal */}
       <BarcodeScanner

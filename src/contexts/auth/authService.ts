@@ -112,14 +112,14 @@ const getEmailRedirectURL = (): string => {
     }
     
     // Production domain check
-    if (window.location.hostname === '7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com') {
-      const redirectUrl = 'https://7654ebf0-86bc-4d1d-8243-fa3eb5863908.lovableproject.com/confirm';
+    if (window.location.hostname === 'plate-path-plan.lovable.app') {
+      const redirectUrl = 'https://plate-path-plan.lovable.app/confirm';
       console.log('📧 Using production URL:', redirectUrl);
       return redirectUrl;
     }
     
-    // Preview domain check for Lovable
-    if (window.location.hostname.includes('lovableproject.com') || window.location.hostname.includes('lovable.app')) {
+    // Preview domain check
+    if (window.location.hostname.includes('plate-path-plan') && window.location.hostname.includes('lovable.app')) {
       const redirectUrl = `https://${window.location.hostname}/confirm`;
       console.log('📧 Using Lovable preview URL:', redirectUrl);
       return redirectUrl;
