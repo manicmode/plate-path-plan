@@ -140,7 +140,21 @@ export const CaricatureModal = ({
   };
 
   const generateCaricatureVariants = async () => {
-    if (!uploadedImage || isGenerating || generationDisabled) return;
+    // Validate photo is uploaded first
+    if (!uploadedImage) {
+      toast({
+        title: "Please upload a photo first",
+        description: "You need to upload a photo before generating caricatures",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent multiple clicks
+    if (isGenerating || generationDisabled) {
+      console.log('Generation already in progress, ignoring click');
+      return;
+    }
 
     // Check cooldown
     if (cooldown) {
@@ -152,17 +166,24 @@ export const CaricatureModal = ({
       return;
     }
 
+    console.log('Starting caricature generation with image:', uploadedImage);
     setIsGenerating(true);
-    setGenerationDisabled(true); // Prevent duplicate clicks
+    setGenerationDisabled(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('generateCaricatureImage', {
         body: { imageUrl: uploadedImage }
       });
 
-      if (error) throw error;
+      console.log('Supabase function response:', { data, error });
 
-      if (data?.caricatureUrls && data.caricatureUrls.length === 3) {
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Function call failed');
+      }
+
+      if (data?.caricatureUrls && Array.isArray(data.caricatureUrls) && data.caricatureUrls.length === 3) {
+        console.log('Successfully generated 3 variants:', data.caricatureUrls);
         setVariants(data.caricatureUrls);
         setStep('variants');
         onGenerationCountUpdate(generationCount + 1);
@@ -179,13 +200,16 @@ export const CaricatureModal = ({
           description: "Choose your favorite style",
         });
       } else {
-        throw new Error("Failed to generate all 3 variants");
+        console.error('Invalid response data:', data);
+        throw new Error(`Expected 3 variants, got ${data?.caricatureUrls?.length || 0}`);
       }
     } catch (error) {
-      console.error('Generation failed:', error);
+      console.error('Generation failed with error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       toast({
         title: "Generation failed",
-        description: error instanceof Error ? error.message : "Please try again",
+        description: errorMessage.includes('Your next avatar set') ? errorMessage : `Error: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -287,6 +311,7 @@ export const CaricatureModal = ({
 
   const handleTouchEnd = (callback: () => void) => (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     callback();
   };
 
@@ -414,8 +439,8 @@ export const CaricatureModal = ({
                     className={cn(
                       "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
                       "active:scale-95 transition-all duration-200",
-                      !isGenerating && !generationDisabled && "animate-pulse hover:animate-none",
-                      "shadow-lg hover:shadow-xl"
+                      "shadow-lg hover:shadow-xl",
+                      !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse"
                     )}
                     size="lg"
                     disabled={isGenerating || generationDisabled || !uploadedImage}
