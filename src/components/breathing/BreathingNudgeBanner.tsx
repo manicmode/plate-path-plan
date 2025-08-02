@@ -80,10 +80,11 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
             {activeNudge.nudge_message}
           </p>
           
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
               onClick={handleAccept}
-              className="bg-white text-gray-900 hover:bg-white/90 font-medium"
+              size="sm"
+              className="bg-white text-gray-900 hover:bg-white/90 font-medium flex-1 sm:flex-none"
             >
               {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               <Heart className="h-4 w-4 mr-2" />
@@ -91,8 +92,9 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
             </Button>
             <Button
               onClick={handleDismiss}
+              size="sm"
               variant="ghost"
-              className="text-white hover:bg-white/20 border border-white/30"
+              className="text-white hover:bg-white/20 border border-white/30 flex-1 sm:flex-none text-xs sm:text-sm px-3"
             >
               In gentle time
             </Button>
