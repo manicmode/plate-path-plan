@@ -66,6 +66,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
         body: {
           message: messageToSend,
           userContext: {
+            voiceProfile: "calm_serene", // 🎙️ Voice metadata for Recovery Coach
             user: {
               name: user?.name,
             },

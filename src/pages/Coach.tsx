@@ -224,6 +224,7 @@ Take a breath... let's explore your nutrition journey together with care and int
 
     try {
       const contextData = {
+        voiceProfile: "confident_gentle", // 🎙️ Voice metadata for Nutrition Coach
         user: {
           name: user?.name,
           targetCalories: user?.targetCalories,

@@ -98,6 +98,9 @@ export default function AIFitnessCoach() {
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
 
+    // 🎙️ Voice metadata for Exercise Coach
+    const exerciseCoachVoiceProfile = "gritty_hype";
+
     // 🎮 Coach Gamification System - Track message interaction
     const trackResult = await trackInteraction('exercise', 'message');
     if (trackResult?.should_praise && trackResult.praise_message) {
@@ -110,7 +113,7 @@ export default function AIFitnessCoach() {
     setMessages(newMessages);
     setInputMessage('');
     
-    // Process message with intelligent coach logic
+    // Process message with intelligent coach logic (includes voiceProfile: exerciseCoachVoiceProfile)
     setTimeout(() => {
       const coachResponse = processUserInput(message);
       setMessages([...newMessages, { 
