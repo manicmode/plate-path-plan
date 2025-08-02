@@ -373,7 +373,7 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
       await refreshUser();
       console.log('[DEBUG] OnboardingFlow: User profile refreshed, calling onComplete...');
       
-      toast.success('Welcome to NutriCoach! Your personalized profile is ready with custom nutrition targets.');
+      toast.success('Welcome to VOYAGE! Your personalized profile is ready with custom nutrition targets.');
       
       // Only call onComplete after successful database update and user refresh
       onComplete();

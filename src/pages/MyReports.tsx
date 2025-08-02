@@ -108,7 +108,7 @@ const ReportCard = ({ report, tabType }: { report: ReportData; tabType: 'weekly'
           variant="outline" 
           size="sm" 
           className="flex items-center gap-2 hover:bg-secondary hover:text-secondary-foreground transition-colors"
-          onClick={() => alert('Share link: https://nutricoach.app/shared/report/' + report.id + '\n\nLink copied to clipboard!')}
+          onClick={() => alert('Share link: https://voyage.app/shared/report/' + report.id + '\n\nLink copied to clipboard!')}
         >
           <Share className="h-4 w-4" />
           Share

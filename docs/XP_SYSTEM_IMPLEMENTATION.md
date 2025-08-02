@@ -1,7 +1,7 @@
 # XP System Implementation Guide
 
 ## Overview
-Successfully implemented a comprehensive XP (Experience Points) system across NutriCoach that awards users for completing various health and wellness activities.
+Successfully implemented a comprehensive XP (Experience Points) system across VOYAGE that awards users for completing various health and wellness activities.
 
 ## Features Implemented
 

@@ -114,7 +114,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
               }}
               className="mb-6"
             >
-              {/* NutriCoach Logo */}
+              {/* VOYAGE Logo */}
               <motion.div
                 animate={{
                   boxShadow: [
@@ -145,7 +145,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
               className="text-4xl font-bold mb-2 bg-gradient-to-r from-teal-400 via-blue-400 to-purple-400 bg-clip-text text-transparent"
               style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
-              NutriCoach
+              VOYAGE
             </motion.h1>
 
             {/* Subtitle */}

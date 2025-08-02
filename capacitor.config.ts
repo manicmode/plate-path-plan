@@ -7,7 +7,7 @@ const isLovablePreview = typeof window !== 'undefined' && window.location.hostna
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.7654ebf086bc4d1d8243fa3eb5863908',
-  appName: 'NutriCoach',
+  appName: 'VOYAGE',
   webDir: 'dist',
   // Only use server URL for Lovable preview, not for native builds
   ...(isDevelopment && isLovablePreview && {

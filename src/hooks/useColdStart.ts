@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const COLD_START_KEY = 'nutricoach_session_active';
+const COLD_START_KEY = 'voyage_session_active';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export const useColdStart = () => {

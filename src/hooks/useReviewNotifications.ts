@@ -95,7 +95,7 @@ export const useReviewNotifications = () => {
           const weeklyTimeout = setTimeout(() => {
             if (!wasNotificationSentRecently('weekly')) {
               new Notification('Weekly Health Review Ready! 📊', {
-                body: 'Your health review is ready! Open NutriCoach to see what\'s working for you 💪',
+                body: 'Your health review is ready! Open VOYAGE to see what\'s working for you 💪',
                 icon: '/favicon.ico',
                 tag: 'weekly-review'
               });
@@ -135,7 +135,7 @@ export const useReviewNotifications = () => {
           const monthlyTimeout = setTimeout(() => {
             if (!wasNotificationSentRecently('monthly')) {
               new Notification('Monthly Health Review Ready! 🧠', {
-                body: 'Your health review is ready! Open NutriCoach to see what\'s working for you 💪',
+                body: 'Your health review is ready! Open VOYAGE to see what\'s working for you 💪',
                 icon: '/favicon.ico',
                 tag: 'monthly-review'
               });

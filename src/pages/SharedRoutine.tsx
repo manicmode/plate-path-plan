@@ -143,7 +143,7 @@ export function SharedRoutine() {
 
           <div className="pt-4 border-t text-center">
             <p className="text-xs text-muted-foreground">
-              Shared via NutriCoach AI 🤖✨
+              Shared via VOYAGE AI 🤖✨
             </p>
           </div>
         </CardContent>

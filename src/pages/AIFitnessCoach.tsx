@@ -169,7 +169,7 @@ export default function AIFitnessCoach() {
     const nextDay = dayIndex < weeklyPlan.length - 1 ? weeklyPlan[dayIndex + 1] : null;
 
     // Build regeneration prompt with muscle group balancing logic
-    const regenerationPrompt = `💡 "You are NutriCoach's AI Fitness Coach. The user has tapped the 'Regenerate' button for ${day.day}. Create a new workout for this day with intelligent muscle group balancing.
+    const regenerationPrompt = `💡 "You are VOYAGE's AI Fitness Coach. The user has tapped the 'Regenerate' button for ${day.day}. Create a new workout for this day with intelligent muscle group balancing.
 
 Current Context:
 - Day to regenerate: ${day.day}

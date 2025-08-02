@@ -192,7 +192,7 @@ export const useContactSync = () => {
 
       toast({
         title: "Contacts synced",
-        description: `Found ${foundFriends.length} friends on NutriCoach!`
+        description: `Found ${foundFriends.length} friends on VOYAGE!`
       });
 
     } catch (error) {
@@ -209,14 +209,14 @@ export const useContactSync = () => {
 
   // Invite contact via SMS/Email
   const inviteContact = useCallback((contact: Contact) => {
-    const message = "Hey! I'm using NutriCoach to track my nutrition and stay healthy. You should check it out!";
+    const message = "Hey! I'm using VOYAGE to track my nutrition and stay healthy. You should check it out!";
     
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       const phone = contact.phoneNumbers[0].replace(/\D/g, '');
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`);
     } else if (contact.emails && contact.emails.length > 0) {
       const email = contact.emails[0];
-      window.open(`mailto:${email}?subject=Join me on NutriCoach&body=${encodeURIComponent(message)}`);
+      window.open(`mailto:${email}?subject=Join me on VOYAGE&body=${encodeURIComponent(message)}`);
     }
   }, []);
 

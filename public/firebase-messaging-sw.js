@@ -31,7 +31,7 @@ try {
       }
 
       try {
-        const notificationTitle = payload.notification.title || 'NutriCoach';
+        const notificationTitle = payload.notification.title || 'VOYAGE';
         const notificationOptions = {
           body: payload.notification.body || '',
           icon: '/favicon.ico',

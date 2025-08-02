@@ -20,7 +20,7 @@ export const OnboardingIntro = ({ onStart, onSkip }: OnboardingIntroProps) => {
       </div>
       
       <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-4`}>
-        Let's personalize NutriCoach just for you 💚
+        Let's personalize VOYAGE just for you 💚
       </h1>
       
       <p className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-base' : 'text-lg'} mb-8 max-w-md mx-auto`}>

@@ -17,7 +17,7 @@ export const LogoutSection = ({ onLogout }: LogoutSectionProps) => {
         <div className={`flex items-center ${isMobile ? 'flex-col space-y-3' : 'justify-between'}`}>
           <div className={`${isMobile ? 'text-center' : ''}`}>
             <h3 className={`font-semibold text-red-600 ${isMobile ? 'text-base' : 'text-lg'}`}>Sign Out</h3>
-            <p className={`${isMobile ? 'text-sm' : 'text-sm'} text-gray-600 dark:text-gray-300`}>Sign out of your NutriCoach account</p>
+            <p className={`${isMobile ? 'text-sm' : 'text-sm'} text-gray-600 dark:text-gray-300`}>Sign out of your VOYAGE account</p>
           </div>
           <Button 
             variant="outline" 

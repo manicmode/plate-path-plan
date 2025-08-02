@@ -40,7 +40,7 @@ export const ContactSync = () => {
           Find Friends
         </CardTitle>
         <CardDescription>
-          Discover which of your contacts are already using NutriCoach
+          Discover which of your contacts are already using VOYAGE
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -77,7 +77,7 @@ export const ContactSync = () => {
             {friends.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-base">Friends on NutriCoach</h3>
+                  <h3 className="font-semibold text-base">Friends on VOYAGE</h3>
                   <Badge variant="secondary">{friends.length}</Badge>
                 </div>
                 
@@ -119,7 +119,7 @@ export const ContactSync = () => {
             {nonFriends.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-base">Invite to NutriCoach</h3>
+                  <h3 className="font-semibold text-base">Invite to VOYAGE</h3>
                   <Badge variant="outline">{nonFriends.length}</Badge>
                 </div>
                 
@@ -160,7 +160,7 @@ export const ContactSync = () => {
             {friends.length === 0 && nonFriends.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No contacts found or none of your contacts use NutriCoach yet.</p>
+                <p>No contacts found or none of your contacts use VOYAGE yet.</p>
               </div>
             )}
 

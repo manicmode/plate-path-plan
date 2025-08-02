@@ -1,7 +1,7 @@
 
 {
-  "name": "NutriCoach - Your Personal Nutrition Companion",
-  "short_name": "NutriCoach",
+  "name": "VOYAGE - Your Personal Nutrition Companion",
+  "short_name": "VOYAGE",
   "description": "AI-powered nutrition coaching app with photo-based food logging, analytics, and personalized guidance",
   "start_url": "/",
   "display": "standalone",
@@ -22,7 +22,7 @@
   "prefer_related_applications": false,
   "protocol_handlers": [
     {
-      "protocol": "web+nutricoach",
+      "protocol": "web+voyage",
       "url": "/?confirm=%s"
     }
   ],

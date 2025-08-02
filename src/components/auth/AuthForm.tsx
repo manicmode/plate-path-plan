@@ -396,7 +396,7 @@ const AuthForm = () => {
           </div>
           <div>
             <CardTitle className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent`}>
-              Welcome to NutriCoach
+              Welcome to VOYAGE
             </CardTitle>
             <p className="text-gray-600 dark:text-gray-300 font-medium">Your AI-powered nutrition companion</p>
           </div>
