@@ -30,7 +30,7 @@ export const useColdStart = () => {
         // Minimum display time to ensure splash is visible
         setTimeout(() => {
           setIsReady(true);
-        }, 2500); // 2.5 seconds minimum, splash screen will control the full duration
+        }, 3000); // 3 seconds minimum, splash screen will control the full duration
 
       } catch (error) {
         console.warn('Cold start detection failed:', error);
