@@ -86,7 +86,7 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
-              <svg className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} text-white`} viewBox="0 0 100 100" fill="currentColor">
+              <svg className={`${isMobile ? 'w-7 h-7' : 'w-10 h-10'} text-white`} viewBox="0 0 100 100" fill="currentColor">
                 <path d="M50 85 L25 25 L35 25 L50 55 L65 25 L75 25 Z M30 20 L20 15 L25 25 L35 30 Z M70 20 L80 15 L75 25 L65 30 Z M45 50 L40 45 L30 30 L25 35 Z M55 50 L60 45 L70 30 L75 35 Z M35 40 L30 35 L20 25 L15 30 Z M65 40 L70 35 L80 25 L85 30 Z"/>
               </svg>
             </div>
