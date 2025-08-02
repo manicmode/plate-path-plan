@@ -61,11 +61,15 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '100ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <div className="flex flex-col items-center space-y-4">
-          {/* Avatar Section */}
-          <div 
-            className="relative cursor-pointer group"
-            onClick={() => setCaricatureModalOpen(true)}
-          >
+          {/* 🎭 My Avatar Section */}
+          <div className="text-center space-y-3">
+            <h3 className="text-lg font-semibold text-foreground flex items-center justify-center gap-2">
+              🎭 My Avatar
+            </h3>
+            <div 
+              className="relative cursor-pointer group"
+              onClick={() => setCaricatureModalOpen(true)}
+            >
             <Avatar className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-300`}>
               {currentAvatarUrl ? (
                 <AvatarImage 
@@ -90,6 +94,12 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
                 <Sparkles className="h-3 w-3 text-white" />
               </div>
             )}
+            </div>
+            
+            {/* Generation count display */}
+            <p className="text-xs text-muted-foreground">
+              Generations: {generationCount}/{3}
+            </p>
           </div>
 
           {/* Name and Info Section */}
