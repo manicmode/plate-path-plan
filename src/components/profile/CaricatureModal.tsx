@@ -183,59 +183,42 @@ export const CaricatureModal = ({
         dataErrorType: data?.errorType
       });
 
-      // Handle Supabase function errors
+      // Handle Supabase function errors with improved parsing
       if (error) {
         console.error('❌ Supabase function error:', error);
         
-        // Extract error details from FunctionsHttpError or regular error
-        let errorDetails = null;
-        let errorMsg = error.message || error.toString();
-        
-        // Try to parse error context if it exists (FunctionsHttpError)
-        if (error.context) {
+        // Handle FunctionsHttpError specifically
+        if (error.constructor.name === 'FunctionsHttpError') {
           try {
-            const context = typeof error.context === 'string' ? JSON.parse(error.context) : error.context;
-            if (context.error) {
-              errorMsg = context.error;
-              errorDetails = context;
+            const details = await error.response?.json?.();
+            console.log("🎨 Avatar error details:", details);
+            
+            if (details?.errorType === "limit_reached") {
+              toast({
+                title: "Monthly limit reached",
+                description: `🎭 You've already created 3 avatars this month! Come back on ${details.nextAvailableDateFormatted} to get your next set.`,
+                variant: "destructive",
+              });
+              return;
+            } else {
+              toast({
+                title: "Generation failed",
+                description: `Something went wrong while generating avatars. Error: ${details?.error || error.message}`,
+                variant: "destructive",
+              });
+              return;
             }
           } catch (parseError) {
-            console.warn('Could not parse error context:', parseError);
+            console.warn('Could not parse error response:', parseError);
           }
         }
         
-        console.log('🔍 Extracted error details:', { errorMsg, errorDetails, originalError: error });
-        
-        // Check if it's a monthly limit error
-        if (errorMsg.includes('Monthly generation limit') || 
-            errorMsg.includes('Your next avatar set will be available') ||
-            errorDetails?.errorType === 'monthly_limit_reached') {
-          
-          // Use structured date if available, otherwise try to extract from message
-          let nextDate = '9/1/2025'; // fallback
-          
-          if (errorDetails?.nextAvailableDateFormatted) {
-            nextDate = errorDetails.nextAvailableDateFormatted;
-          } else {
-            // Try to extract date from error message
-            const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-            if (dateMatch) {
-              nextDate = dateMatch[1];
-            }
-          }
-          
-          toast({
-            title: "Monthly limit reached",
-            description: `🎭 You've already created 3 avatars this month! Come back on ${nextDate} to get your next set.`,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Generation failed",
-            description: `Something went wrong while generating avatars. Error: ${errorMsg}`,
-            variant: "destructive",
-          });
-        }
+        // Fallback error handling
+        toast({
+          title: "Generation failed",
+          description: `Something went wrong while generating avatars. Error: ${error.message}`,
+          variant: "destructive",
+        });
         return;
       }
 
@@ -262,31 +245,16 @@ export const CaricatureModal = ({
         console.error('❌ Error from edge function:', data.error);
         const errorMsg = data.error;
         
-        if (errorMsg.includes('Monthly generation limit') || 
-            errorMsg.includes('Your next avatar set will be available') ||
-            data?.errorType === 'monthly_limit_reached') {
-          // Use structured date if available, otherwise try to extract from message
-          let nextDate = '9/1/2025'; // fallback
-          
-          if (data?.nextAvailableDateFormatted) {
-            nextDate = data.nextAvailableDateFormatted;
-          } else {
-            // Try to extract date from error message
-            const dateMatch = errorMsg.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-            if (dateMatch) {
-              nextDate = dateMatch[1];
-            }
-          }
-          
+        if (data?.errorType === 'limit_reached') {
           toast({
             title: "Monthly limit reached",
-            description: `🎭 You've already created 3 avatars this month! Come back on ${nextDate} to get your next set.`,
+            description: `🎭 You've already created 3 avatars this month! Come back on ${data.nextAvailableDateFormatted} to get your next set.`,
             variant: "destructive",
           });
         } else {
           toast({
             title: "Generation failed",
-            description: `Something went wrong while generating avatars. Error: ${errorMsg}`,
+            description: `Something went wrong while generating avatars. Error: ${data.error}`,
             variant: "destructive",
           });
         }

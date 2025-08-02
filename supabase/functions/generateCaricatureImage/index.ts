@@ -99,12 +99,12 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: `🎨 Your next avatar set will be available on ${nextAvailableDate.toLocaleDateString()}!`,
-          errorType: 'monthly_limit_reached',
+          errorType: 'limit_reached',
           nextAvailableDate: nextAvailableDate.toISOString(),
           nextAvailableDateFormatted: nextAvailableDate.toLocaleDateString()
         }),
         {
-          status: 429,
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
