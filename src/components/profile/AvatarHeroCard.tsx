@@ -86,7 +86,7 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
         "shadow-2xl hover:shadow-purple-500/25 dark:hover:shadow-purple-400/25",
         "transition-all duration-500",
         "animate-fade-in",
-        isMobile ? "mx-4 p-6" : "mx-6 p-8"
+        isMobile ? "mx-4 p-6 mb-4" : "mx-6 p-8 mb-6"
       )}>
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-30">
