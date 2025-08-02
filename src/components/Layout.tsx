@@ -85,14 +85,12 @@ const Layout = ({ children }: LayoutProps) => {
       <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
-              <img 
-                src="/lovable-uploads/5e3b23ef-0bc9-4e07-a43b-e4bdcff103b0.png" 
-                alt="VOYAGE Logo" 
-                className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} object-contain`}
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-            </div>
+            <img 
+              src="/lovable-uploads/5e3b23ef-0bc9-4e07-a43b-e4bdcff103b0.png" 
+              alt="VOYAGE Logo" 
+              className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} object-contain`}
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
             <div>
               <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
               <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-600 dark:text-gray-300 font-medium`}>AI Wellness Assistant</p>
