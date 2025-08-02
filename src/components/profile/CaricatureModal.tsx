@@ -53,38 +53,16 @@ export const CaricatureModal = ({
       return;
     }
 
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(file);
-    setUploadedImage(previewUrl);
-    setStep('variants');
-    
-    // Auto-generate caricatures after upload
-    generateCaricatureVariants();
-  };
-
-  const generateCaricatureVariants = async () => {
-    if (!canGenerate) {
-      toast.error(`Maximum ${maxGenerations} generations reached`);
-      return;
-    }
-
-    if (!uploadedImage) {
-      toast.error('Please upload an image first');
-      return;
-    }
-
-    setIsGenerating(true);
-    
     try {
-      // First upload the image to Supabase Storage
-      const response = await fetch(uploadedImage);
-      const imageBlob = await response.blob();
-      
-      const fileName = `temp/${userId}-${Date.now()}.jpg`;
+      setIsGenerating(true);
+      setStep('variants');
+
+      // Upload image to Supabase Storage
+      const fileName = `raw/${userId}.png`;
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('caricatures')
-        .upload(fileName, imageBlob, {
-          contentType: 'image/jpeg',
+        .from('avatars')
+        .upload(fileName, file, {
+          contentType: file.type,
           upsert: true
         });
 
@@ -94,15 +72,42 @@ export const CaricatureModal = ({
 
       // Get public URL for the uploaded image
       const { data: urlData } = supabase.storage
-        .from('caricatures')
+        .from('avatars')
         .getPublicUrl(fileName);
 
+      setUploadedImage(urlData.publicUrl);
+      
+      // Auto-generate caricatures after upload
+      await generateCaricatureVariants(urlData.publicUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error(error.message || 'Failed to upload image');
+      setIsGenerating(false);
+      setStep('upload');
+    }
+  };
+
+  const generateCaricatureVariants = async (imageUrl?: string) => {
+    if (!canGenerate) {
+      toast.error(`Maximum ${maxGenerations} generations reached`);
+      return;
+    }
+
+    const urlToUse = imageUrl || uploadedImage;
+    if (!urlToUse) {
+      toast.error('Please upload an image first');
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
       // Call the edge function to generate caricatures
       const { data: caricatureData, error: caricatureError } = await supabase.functions.invoke(
         'generateCaricatureImage',
         {
           body: {
-            imageUrl: urlData.publicUrl,
+            imageUrl: urlToUse,
             userId: userId
           }
         }
@@ -120,9 +125,6 @@ export const CaricatureModal = ({
       onGenerationCountUpdate(caricatureData.generationCount);
       
       toast.success(`Generated ${caricatureData.caricatureUrls.length} caricature variants!`);
-
-      // Clean up temporary uploaded image
-      await supabase.storage.from('caricatures').remove([fileName]);
 
     } catch (error) {
       console.error('Error generating caricatures:', error);
@@ -162,6 +164,10 @@ export const CaricatureModal = ({
 
   const handleRegenerateVariants = () => {
     setVariants([]);
+    generateCaricatureVariants();
+  };
+
+  const handleGenerateClick = () => {
     generateCaricatureVariants();
   };
 
@@ -213,8 +219,16 @@ export const CaricatureModal = ({
                 className="hidden"
                 id="caricature-upload"
               />
-              <Button asChild variant="outline" className="w-full max-w-xs">
-                <label htmlFor="caricature-upload" className="cursor-pointer">
+              <Button 
+                asChild 
+                variant="outline" 
+                className="w-full max-w-xs" 
+                disabled={!canGenerate}
+              >
+                <label 
+                  htmlFor="caricature-upload" 
+                  className={`cursor-pointer ${!canGenerate ? 'pointer-events-none opacity-50' : ''}`}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Choose Photo
                 </label>
@@ -224,7 +238,7 @@ export const CaricatureModal = ({
                 <p>Generations used: {generationCount}/{maxGenerations}</p>
                 {!canGenerate && (
                   <p className="text-amber-600 dark:text-amber-400">
-                    ⚠️ Maximum generations reached
+                    You've used all 3 caricature generations 💫
                   </p>
                 )}
               </div>
@@ -246,7 +260,7 @@ export const CaricatureModal = ({
             {isGenerating ? (
               <div className="text-center py-8">
                 <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Generating AI caricatures...</p>
+                <p className="text-muted-foreground">Generating your caricatures… hang tight!</p>
               </div>
             ) : variants.length > 0 ? (
               <div className="space-y-4">
@@ -304,7 +318,7 @@ export const CaricatureModal = ({
             ) : (
               <div className="text-center py-8">
                 <Button 
-                  onClick={generateCaricatureVariants}
+                  onClick={handleGenerateClick}
                   disabled={!canGenerate || isGenerating}
                   className="bg-gradient-to-r from-primary to-primary/80"
                 >
