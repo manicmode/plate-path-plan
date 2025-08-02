@@ -58,36 +58,78 @@ export const CaricatureModal = ({
     setUploadedImage(previewUrl);
     setStep('variants');
     
-    // Generate mock variants for now
-    generateMockVariants();
+    // Auto-generate caricatures after upload
+    generateCaricatureVariants();
   };
 
-  const generateMockVariants = async () => {
+  const generateCaricatureVariants = async () => {
     if (!canGenerate) {
       toast.error(`Maximum ${maxGenerations} generations reached`);
       return;
     }
 
+    if (!uploadedImage) {
+      toast.error('Please upload an image first');
+      return;
+    }
+
     setIsGenerating(true);
     
-    // Mock API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock variant URLs - in production, these would come from AI generation
-    const mockVariants = [
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1494790108755-2616b2d8c87b?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
-    ];
-    
-    setVariants(mockVariants);
-    setIsGenerating(false);
-    
-    // Update generation count
-    const newCount = generationCount + 1;
-    onGenerationCountUpdate(newCount);
-    
-    toast.success(`Generated ${mockVariants.length} caricature variants!`);
+    try {
+      // First upload the image to Supabase Storage
+      const response = await fetch(uploadedImage);
+      const imageBlob = await response.blob();
+      
+      const fileName = `temp/${userId}-${Date.now()}.jpg`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('caricatures')
+        .upload(fileName, imageBlob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw new Error('Failed to upload image');
+      }
+
+      // Get public URL for the uploaded image
+      const { data: urlData } = supabase.storage
+        .from('caricatures')
+        .getPublicUrl(fileName);
+
+      // Call the edge function to generate caricatures
+      const { data: caricatureData, error: caricatureError } = await supabase.functions.invoke(
+        'generateCaricatureImage',
+        {
+          body: {
+            imageUrl: urlData.publicUrl,
+            userId: userId
+          }
+        }
+      );
+
+      if (caricatureError) {
+        throw new Error(caricatureError.message || 'Failed to generate caricatures');
+      }
+
+      if (!caricatureData.success) {
+        throw new Error(caricatureData.error || 'Failed to generate caricatures');
+      }
+
+      setVariants(caricatureData.caricatureUrls);
+      onGenerationCountUpdate(caricatureData.generationCount);
+      
+      toast.success(`Generated ${caricatureData.caricatureUrls.length} caricature variants!`);
+
+      // Clean up temporary uploaded image
+      await supabase.storage.from('caricatures').remove([fileName]);
+
+    } catch (error) {
+      console.error('Error generating caricatures:', error);
+      toast.error(error.message || 'Failed to generate caricatures');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSelectVariant = async (variantUrl: string) => {
@@ -120,7 +162,7 @@ export const CaricatureModal = ({
 
   const handleRegenerateVariants = () => {
     setVariants([]);
-    generateMockVariants();
+    generateCaricatureVariants();
   };
 
   const resetModal = () => {
@@ -262,7 +304,7 @@ export const CaricatureModal = ({
             ) : (
               <div className="text-center py-8">
                 <Button 
-                  onClick={generateMockVariants}
+                  onClick={generateCaricatureVariants}
                   disabled={!canGenerate || isGenerating}
                   className="bg-gradient-to-r from-primary to-primary/80"
                 >

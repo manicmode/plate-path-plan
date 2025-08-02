@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.activate-routine-safely]
 verify_jwt = true
+
+[functions.generateCaricatureImage]
+verify_jwt = true

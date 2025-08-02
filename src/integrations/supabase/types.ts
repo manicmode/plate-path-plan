@@ -2924,6 +2924,7 @@ export type Database = {
           calculated_bmr: number | null
           calculated_tdee: number | null
           caricature_generation_count: number | null
+          caricature_urls: string[] | null
           communication_style: string | null
           completed_sections: string[] | null
           created_at: string
@@ -3005,6 +3006,7 @@ export type Database = {
           calculated_bmr?: number | null
           calculated_tdee?: number | null
           caricature_generation_count?: number | null
+          caricature_urls?: string[] | null
           communication_style?: string | null
           completed_sections?: string[] | null
           created_at?: string
@@ -3086,6 +3088,7 @@ export type Database = {
           calculated_bmr?: number | null
           calculated_tdee?: number | null
           caricature_generation_count?: number | null
+          caricature_urls?: string[] | null
           communication_style?: string | null
           completed_sections?: string[] | null
           created_at?: string
