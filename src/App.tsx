@@ -1,8 +1,9 @@
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { supabase } from '@/integrations/supabase/client';
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -98,6 +99,55 @@ function AppContent() {
   const { isColdStart, completeSplash } = useColdStart();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
+
+  // Handle Supabase auth parameters from magic links/signup confirmations
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlHash = new URLSearchParams(window.location.hash.substring(1));
+      
+      // Check for Supabase auth parameters in URL
+      const hasAuthParams = 
+        urlParams.has('type') || 
+        urlParams.has('access_token') ||
+        urlHash.has('access_token') ||
+        urlParams.has('token_hash') ||
+        urlHash.has('token_hash');
+      
+      if (hasAuthParams) {
+        console.log('🔗 Detected Supabase auth callback parameters');
+        
+        try {
+          // Let Supabase handle the auth callback automatically
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('Auth callback error:', error);
+          } else if (data.session) {
+            console.log('✅ Auth callback successful, user authenticated');
+          } else {
+            console.log('🔄 Auth callback processed, waiting for session');
+          }
+          
+          // Clean up URL and redirect to home
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          
+          // Navigate to home page
+          setTimeout(() => {
+            window.location.href = '/home';
+          }, 100);
+          
+        } catch (error) {
+          console.error('Error handling auth callback:', error);
+          // Still redirect to avoid 404
+          window.location.href = '/home';
+        }
+      }
+    };
+
+    handleAuthCallback();
+  }, []);
 
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
