@@ -55,10 +55,10 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured. Please add OPENAI_API_KEY to Supabase secrets.');
     }
 
-    // Check current generation count
+    // Check monthly generation limit (30 days)
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('caricature_generation_count')
+      .select('caricature_generation_count, last_caricature_generation, caricature_history')
       .eq('user_id', user.id)
       .single();
 
@@ -67,13 +67,17 @@ serve(async (req) => {
       throw new Error('Failed to fetch user profile');
     }
 
-    const currentCount = profile?.caricature_generation_count || 0;
-    console.log(`📊 Current generation count: ${currentCount}/3`);
+    const lastGeneration = profile?.last_caricature_generation;
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
     
-    if (currentCount >= 3) {
-      console.error('❌ Maximum generations reached');
-      throw new Error('Maximum caricature generations reached (3)');
+    if (lastGeneration && new Date(lastGeneration) > thirtyDaysAgo) {
+      const nextAvailableDate = new Date(new Date(lastGeneration).getTime() + (30 * 24 * 60 * 60 * 1000));
+      console.error('❌ Monthly generation limit reached');
+      throw new Error(`🎨 Your next avatar set will be available on ${nextAvailableDate.toLocaleDateString()}!`);
     }
+
+    console.log('✅ Monthly generation check passed');
 
     console.log('🎨 Generating caricatures with OpenAI DALL-E...');
 
@@ -149,8 +153,9 @@ serve(async (req) => {
         const imageBlob = await imageResponse.blob();
         const imageBuffer = await imageBlob.arrayBuffer();
         
-        // Upload to Supabase Storage
-        const fileName = `${user.id}/caricature_${Date.now()}_${i + 1}.png`;
+        // Upload to organized folder structure
+        const timestamp = Date.now();
+        const fileName = `${user.id}/caricatures/${timestamp}/image${i + 1}.png`;
         console.log(`📤 Uploading to: ${fileName}`);
         
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -184,8 +189,15 @@ serve(async (req) => {
 
     console.log(`💾 Successfully stored ${storedUrls.length} images`);
 
-    // Update user profile with all 3 generated image URLs
-    console.log('📝 Updating user profile with all variants...');
+    // Update user profile with all variants and add to history
+    console.log('📝 Updating user profile with all variants and history...');
+    
+    const existingHistory = profile?.caricature_history || [];
+    const newBatch = {
+      timestamp: new Date().toISOString(),
+      variants: storedUrls,
+      generated_at: new Date().toISOString()
+    };
     
     const { error: updateError } = await supabase
       .from('user_profiles')
@@ -195,7 +207,8 @@ serve(async (req) => {
         avatar_variant_2: storedUrls[1] || null,
         avatar_variant_3: storedUrls[2] || null,
         selected_avatar_variant: 1, // Default to first variant
-        caricature_generation_count: currentCount + 1,
+        last_caricature_generation: new Date().toISOString(),
+        caricature_history: [...existingHistory, newBatch],
         updated_at: new Date().toISOString()
       })
       .eq('user_id', user.id);
@@ -208,7 +221,7 @@ serve(async (req) => {
     console.log('🎊 Caricature generation completed successfully!');
     console.log('📊 Final results:', {
       generatedCount: storedUrls.length,
-      newGenerationCount: currentCount + 1,
+      nextGenerationAvailable: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)).toISOString(),
       urls: storedUrls
     });
 
@@ -216,7 +229,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         caricatureUrls: storedUrls,
-        generationCount: currentCount + 1
+        nextGenerationDate: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)).toISOString()
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

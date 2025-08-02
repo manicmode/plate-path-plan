@@ -2960,6 +2960,7 @@ export type Database = {
           calculated_bmr: number | null
           calculated_tdee: number | null
           caricature_generation_count: number | null
+          caricature_history: Json | null
           caricature_urls: string[] | null
           communication_style: string | null
           completed_sections: string[] | null
@@ -2991,6 +2992,7 @@ export type Database = {
           height_inches: number | null
           height_unit: string | null
           id: string
+          last_caricature_generation: string | null
           last_hydration_log_date: string | null
           last_name: string | null
           last_nutrition_log_date: string | null
@@ -3046,6 +3048,7 @@ export type Database = {
           calculated_bmr?: number | null
           calculated_tdee?: number | null
           caricature_generation_count?: number | null
+          caricature_history?: Json | null
           caricature_urls?: string[] | null
           communication_style?: string | null
           completed_sections?: string[] | null
@@ -3077,6 +3080,7 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_caricature_generation?: string | null
           last_hydration_log_date?: string | null
           last_name?: string | null
           last_nutrition_log_date?: string | null
@@ -3132,6 +3136,7 @@ export type Database = {
           calculated_bmr?: number | null
           calculated_tdee?: number | null
           caricature_generation_count?: number | null
+          caricature_history?: Json | null
           caricature_urls?: string[] | null
           communication_style?: string | null
           completed_sections?: string[] | null
@@ -3163,6 +3168,7 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_caricature_generation?: string | null
           last_hydration_log_date?: string | null
           last_name?: string | null
           last_nutrition_log_date?: string | null
