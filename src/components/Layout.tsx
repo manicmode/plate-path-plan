@@ -86,9 +86,12 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
-              <div className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} flex items-center justify-center text-white font-bold ${isMobile ? 'text-xl' : 'text-2xl'}`} style={{ fontFamily: 'serif' }}>
-                V
-              </div>
+              <img 
+                src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
+                alt="VOYAGE Winged V Logo" 
+                className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} object-contain`}
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
             </div>
             <div>
               <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
