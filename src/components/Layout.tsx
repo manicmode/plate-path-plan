@@ -85,26 +85,21 @@ const Layout = ({ children }: LayoutProps) => {
       <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse relative`}>
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
               <img 
-                src="/lovable-uploads/8b733bb4-dd63-4976-af54-e31fe8815724.png"
-                alt="VOYAGE Winged V Logo" 
-                className={`${isMobile ? 'w-7 h-7' : 'w-8 h-8'} object-contain z-10`}
-                style={{ filter: 'brightness(0) invert(1)' }}
-                onLoad={() => console.log('✅ Winged V logo loaded successfully in header')}
-                onError={(e) => {
-                  console.error('❌ Failed to load winged V logo, showing fallback');
-                  e.currentTarget.style.display = 'none';
-                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'block';
+                src="/lovable-uploads/862d48fb-84de-473c-88a2-b654e5b83609.png"
+                alt=""
+                className="winged-v-icon"
+                style={{ 
+                  height: '70%',
+                  objectFit: 'contain',
+                  filter: 'brightness(0) invert(1)',
+                  display: 'block',
+                  margin: 'auto'
                 }}
+                onLoad={() => console.log('✅ Winged V logo loaded successfully')}
+                onError={() => console.error('❌ Failed to load winged V logo')}
               />
-              <div 
-                className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white absolute inset-0 flex items-center justify-center`}
-                style={{ display: 'none' }}
-              >
-                V
-              </div>
             </div>
             <div>
               <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
