@@ -327,10 +327,14 @@ class SoundManager {
       return this.audioCache[key];
     }
 
+    console.log(`🔊 Attempting to load sound "${key}" from:`, config.url);
+
     return new Promise((resolve, reject) => {
       const audio = new Audio();
       audio.volume = config.volume || 0.7;
       audio.preload = 'auto';
+      
+      console.log(`🎚️ Volume set to:`, audio.volume);
       
       // Configure for ambient/non-interrupting playback
       // This prevents the audio from requesting audio focus on mobile web
@@ -344,17 +348,24 @@ class SoundManager {
       }
       
       audio.addEventListener('canplaythrough', () => {
-        console.log(`✅ Loaded sound: ${key}`);
+        console.log(`✅ Successfully loaded sound: ${key} from ${config.url}`);
         this.audioCache[key] = audio;
         resolve(audio);
       });
 
       audio.addEventListener('error', (e) => {
-        console.warn(`Failed to load sound: ${key}`, e);
+        console.error(`❌ Failed to load sound "${key}" from URL: ${config.url}`, e);
+        console.error('❌ Audio element error details:', {
+          error: e,
+          audioSrc: audio.src,
+          audioReadyState: audio.readyState,
+          audioNetworkState: audio.networkState
+        });
         reject(e);
       });
 
       audio.src = config.url;
+      console.log(`🔄 Audio src set for "${key}":`, audio.src);
     });
   }
 
@@ -429,6 +440,8 @@ class SoundManager {
    * Play sound using web audio with ambient settings (doesn't interrupt background audio)
    */
   private async playWebSound(soundKey: string, config: SoundConfig): Promise<void> {
+    console.log(`🔊 playWebSound called for "${soundKey}" with config:`, config);
+    
     // Ensure audio system is initialized
     if (!this.initializationPromise) {
       await this.initializeAudioSystem();
@@ -440,11 +453,17 @@ class SoundManager {
     
     // Load sound if not cached
     if (!audio) {
+      console.log(`🔄 Sound "${soundKey}" not in cache, loading now...`);
       audio = await this.loadSound(soundKey, config);
+    } else {
+      console.log(`✅ Sound "${soundKey}" found in cache`);
     }
 
     // Reset audio to beginning
     audio.currentTime = 0;
+    
+    console.log(`🎚️ Final volume check for "${soundKey}":`, audio.volume);
+    console.log(`🔊 Attempting to play startup sound from:`, audio.src);
     
     // Configure audio for ambient playback (critical for not interrupting background audio)
     if (this.mobileEnv.isMobile) {
@@ -469,11 +488,28 @@ class SoundManager {
     }
     
     // Use a promise to handle potential autoplay restrictions
+    console.log(`🎵 Starting audio.play() for "${soundKey}"...`);
     const playPromise = audio.play();
     
     if (playPromise !== undefined) {
-      await playPromise;
-      console.log(`🔊 Successfully played web sound: ${soundKey}`);
+      try {
+        await playPromise;
+        console.log(`✅ Startup sound played successfully for "${soundKey}"`);
+      } catch (playError: any) {
+        console.error(`❌ Failed to play startup sound "${soundKey}":`, playError);
+        console.error(`❌ Audio element state:`, {
+          src: audio.src,
+          volume: audio.volume,
+          readyState: audio.readyState,
+          networkState: audio.networkState,
+          paused: audio.paused,
+          currentTime: audio.currentTime,
+          duration: audio.duration
+        });
+        throw playError;
+      }
+    } else {
+      console.warn(`⚠️ play() returned undefined for "${soundKey}"`);
     }
   }
 
