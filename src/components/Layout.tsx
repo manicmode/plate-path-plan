@@ -87,11 +87,25 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
               <img 
-                src="/lovable-uploads/4cafb43c-f3b9-4eae-97a9-d7b6740a7c5b.png" 
+                src={`/lovable-uploads/4cafb43c-f3b9-4eae-97a9-d7b6740a7c5b.png?t=${Date.now()}`}
                 alt="VOYAGE Winged Logo" 
                 className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} object-contain`}
                 style={{ filter: 'brightness(0) invert(1)' }}
+                onLoad={() => console.log('✅ Winged logo loaded successfully')}
+                onError={(e) => {
+                  console.error('❌ Failed to load winged logo, falling back to SVG');
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.setAttribute('style', 'display: block');
+                }}
               />
+              <svg 
+                className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} text-white`} 
+                viewBox="0 0 100 100" 
+                fill="currentColor"
+                style={{ display: 'none' }}
+              >
+                <path d="M50 85 L25 25 L35 25 L50 55 L65 25 L75 25 Z M30 20 L20 15 L25 25 L35 30 Z M70 20 L80 15 L75 25 L65 30 Z M45 50 L40 45 L30 30 L25 35 Z M55 50 L60 45 L70 30 L75 35 Z M35 40 L30 35 L20 25 L15 30 Z M65 40 L70 35 L80 25 L85 30 Z"/>
+              </svg>
             </div>
             <div>
               <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
