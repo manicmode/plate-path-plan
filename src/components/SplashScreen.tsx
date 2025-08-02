@@ -130,53 +130,64 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                {/* Elegant Lotus Flower Icon */}
-                <svg 
-                  width="36" 
-                  height="36" 
-                  viewBox="0 0 100 100" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="drop-shadow-lg"
+                {/* Serene Lotus Flower Icon */}
+                <motion.div
+                  animate={{
+                    filter: [
+                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))',
+                      'drop-shadow(0 0 30px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
+                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))'
+                    ]
+                  }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 4,
+                    ease: "easeInOut"
+                  }}
                 >
-                  {/* Lotus petals with gradient */}
-                  <defs>
-                    <linearGradient id="lotusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
-                      <stop offset="50%" stopColor="rgba(240,248,255,0.9)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.85)" />
-                    </linearGradient>
-                    <filter id="glow">
-                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                      <feMerge> 
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                      </feMerge>
-                    </filter>
-                  </defs>
-                  
-                  {/* Outer petals */}
-                  <path d="M50 20 C35 25, 25 35, 30 50 C25 35, 35 25, 50 20" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
-                  <path d="M80 50 C75 35, 65 25, 50 30 C65 25, 75 35, 80 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
-                  <path d="M50 80 C65 75, 75 65, 70 50 C75 65, 65 75, 50 80" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
-                  <path d="M20 50 C25 65, 35 75, 50 70 C35 75, 25 65, 20 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.8"/>
-                  
-                  {/* Middle petals */}
-                  <path d="M50 30 C40 32, 32 40, 35 50 C32 40, 40 32, 50 30" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
-                  <path d="M70 50 C68 40, 60 32, 50 35 C60 32, 68 40, 70 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
-                  <path d="M50 70 C60 68, 68 60, 65 50 C68 60, 60 68, 50 70" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
-                  <path d="M30 50 C32 60, 40 68, 50 65 C40 68, 32 60, 30 50" fill="url(#lotusGradient)" filter="url(#glow)" opacity="0.9"/>
-                  
-                  {/* Inner petals */}
-                  <path d="M50 35 C45 37, 37 45, 40 50 C37 45, 45 37, 50 35" fill="url(#lotusGradient)" filter="url(#glow)"/>
-                  <path d="M65 50 C63 45, 55 37, 50 40 C55 37, 63 45, 65 50" fill="url(#lotusGradient)" filter="url(#glow)"/>
-                  <path d="M50 65 C55 63, 63 55, 60 50 C63 55, 55 63, 50 65" fill="url(#lotusGradient)" filter="url(#glow)"/>
-                  <path d="M35 50 C37 55, 45 63, 50 60 C45 63, 37 55, 35 50" fill="url(#lotusGradient)" filter="url(#glow)"/>
-                  
-                  {/* Center */}
-                  <circle cx="50" cy="50" r="8" fill="url(#lotusGradient)" filter="url(#glow)" opacity="1"/>
-                  <circle cx="50" cy="50" r="4" fill="rgba(255,255,255,1)" opacity="0.8"/>
-                </svg>
+                  <svg 
+                    width="40" 
+                    height="40" 
+                    viewBox="0 0 512 512" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="drop-shadow-xl"
+                  >
+                    <defs>
+                      {/* VOYAGE Brand Gradient */}
+                      <linearGradient id="voyageLotusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#14b8a6" /> {/* Teal */}
+                        <stop offset="50%" stopColor="#3b82f6" /> {/* Sky Blue */}
+                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
+                      </linearGradient>
+                      
+                      {/* Soft Glow Filter */}
+                      <filter id="sereneGlow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    
+                    {/* Lotus Flower Shape Based on Uploaded Silhouette */}
+                    <path 
+                      d="M256 50c-50 0-90 40-120 80-20 30-30 60-30 90 0 60 40 110 100 130 20 10 40 10 50 10s30 0 50-10c60-20 100-70 100-130 0-30-10-60-30-90-30-40-70-80-120-80z M200 180c-10-20-20-40-20-60 0-20 10-40 30-50 20-10 40-10 46-10v120z M312 180v-120c6 0 26 0 46 10 20 10 30 30 30 50 0 20-10 40-20 60z M256 460c-80 0-150-60-180-140-10-30-10-60 0-80 10-20 30-30 50-30h260c20 0 40 10 50 30 10 20 10 50 0 80-30 80-100 140-180 140z M150 250c-10 0-20 10-20 20 0 60 50 110 110 110h32c60 0 110-50 110-110 0-10-10-20-20-20z"
+                      fill="url(#voyageLotusGradient)"
+                      filter="url(#sereneGlow)"
+                    />
+                    
+                    {/* Center Detail */}
+                    <circle 
+                      cx="256" 
+                      cy="280" 
+                      r="15" 
+                      fill="rgba(255,255,255,0.9)"
+                      filter="url(#sereneGlow)"
+                    />
+                  </svg>
+                </motion.div>
               </motion.div>
             </motion.div>
 
