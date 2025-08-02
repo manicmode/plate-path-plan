@@ -25,7 +25,7 @@ import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
-import { SupabaseRedirectPage } from '@/components/auth/SupabaseRedirectPage';
+import { ConditionalRootRouter } from '@/components/auth/ConditionalRootRouter';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -119,8 +119,8 @@ function AppContent() {
           <BodyScanReminderChecker />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
-              {/* Top-level Supabase redirect handler - catches URLs with confirmation parameters */}
-              <Route path="/" element={<SupabaseRedirectPage />} />
+              {/* Conditional root handler - synchronously checks for Supabase redirect params */}
+              <Route path="/" element={<ConditionalRootRouter />} />
               
               {/* Fullscreen pages without Layout */}
               <Route path="/shared-routine" element={<SharedRoutine />} />
