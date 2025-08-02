@@ -15,18 +15,25 @@ serve(async (req) => {
   }
 
   try {
-    const { currentStep, stepType, progress } = await req.json();
+    const { currentStep, stepType, progress, coachType = "exercise" } = await req.json();
 
-    // Generate contextual motivational messages based on workout progress
+    // Coach personality configurations
+    const personalityPrompts = {
+      exercise: "You are a LOUD, energetic, and motivational fitness coach. Use ALL CAPS for emphasis, lots of emojis (💪🔥💥🚀), and gritty, hyped-up language. Generate SHORT, powerful motivational messages.",
+      nutrition: "You are a calm, wise, and gentle nutrition coach. Use gentle language and nature emojis (🌿🌱💚✨). Generate mindful, supportive motivational messages.",
+      recovery: "You are a gentle, poetic recovery coach. Use soft, flowing language with calming emojis (🌙💫🌊). Generate soothing, emotionally supportive messages."
+    };
+
+    // Generate contextual motivational messages based on workout progress and coach personality
     const motivationPrompts = {
-      warmup: "Generate a short, energetic motivational message for someone starting their workout warmup. Use emojis and keep it under 15 words.",
-      exercise: "Generate a short, powerful motivational message for someone in the middle of an intense exercise. Use emojis and keep it under 15 words.",
-      rest: "Generate a short, encouraging message for someone taking a rest between sets. Use emojis and keep it under 15 words.",
-      cooldown: "Generate a short, proud message for someone finishing their workout cooldown. Use emojis and keep it under 15 words."
+      warmup: `Generate a short, ${coachType === 'exercise' ? 'energetic' : coachType === 'nutrition' ? 'mindful' : 'gentle'} motivational message for someone starting their workout warmup. Use appropriate emojis and keep it under 15 words.`,
+      exercise: `Generate a short, ${coachType === 'exercise' ? 'powerful' : coachType === 'nutrition' ? 'encouraging' : 'supportive'} motivational message for someone in the middle of an intense exercise. Use emojis and keep it under 15 words.`,
+      rest: `Generate a short, ${coachType === 'exercise' ? 'encouraging' : coachType === 'nutrition' ? 'nurturing' : 'peaceful'} message for someone taking a rest between sets. Use emojis and keep it under 15 words.`,
+      cooldown: `Generate a short, ${coachType === 'exercise' ? 'proud' : coachType === 'nutrition' ? 'appreciative' : 'calming'} message for someone finishing their workout cooldown. Use emojis and keep it under 15 words.`
     };
 
     const prompt = motivationPrompts[stepType as keyof typeof motivationPrompts] || 
-      "Generate a short, motivational fitness message. Use emojis and keep it under 15 words.";
+      `Generate a short, motivational ${coachType} message. Use appropriate emojis and keep it under 15 words.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -39,7 +46,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are an enthusiastic fitness coach providing quick motivational messages during workouts. Be energetic but concise.' 
+            content: personalityPrompts[coachType as keyof typeof personalityPrompts] || personalityPrompts.exercise
           },
           { role: 'user', content: `${prompt} Current step: ${currentStep}. Progress: ${progress}%` }
         ],

@@ -117,20 +117,35 @@ IMPORTANT: The user just logged food with these concerning ingredients. Your res
 Example tone: "Hey! I noticed your meal contains *Aspartame* (a harmful additive). It's been linked to headaches and neurological effects. If possible, try alternatives like stevia or monk fruit! Great job staying aware — you're doing amazing."`;
     }
 
-    const systemPrompt = `You are an expert AI nutrition and wellness coach. Your responses should be:
-- Encouraging and motivational
+    // Extract voice profile for personality-aligned responses
+    const voiceProfile = userContext?.voiceProfile || "confident_gentle";
+    
+    // Personality-aligned system prompts
+    const personalityPrompts = {
+      "confident_gentle": "You are a calm, wise, and gentle nutrition coach. Use gentle language, nature emojis (🌿🌱💚✨), and speak with quiet confidence. Be like a mindful mentor who guides with wisdom rather than pressure. Focus on intention, balance, and self-awareness.",
+      "gritty_hype": "You are a LOUD, energetic, and motivational fitness coach. Use ALL CAPS for emphasis, lots of emojis (💪🔥💥🚀), and gritty, hyped-up language. Be like a personal trainer who gets PUMPED about everything fitness-related.",
+      "calm_serene": "You are a gentle, poetic, and emotionally supportive recovery coach. Use soft, flowing language with calming emojis (🌙💫🌊🕯️🧘). Speak like a wise, compassionate guide who understands the soul's need for rest and healing."
+    };
+
+    const basePersonality = personalityPrompts[voiceProfile as keyof typeof personalityPrompts] || personalityPrompts["confident_gentle"];
+
+    const systemPrompt = `${basePersonality}
+    
+Your responses should be:
+- Encouraging and motivational (in your personality style)
 - Evidence-based and practical
 - Personalized to the user's data
-- Formatted with emojis and clear sections when helpful
+- Formatted with appropriate emojis and clear sections
 - Concise but comprehensive
 
 User Context:
-- Target Calories: ${userContext?.targetCalories || 'Not set'}
-- Target Protein: ${userContext?.targetProtein || 'Not set'}g
-- Today's Progress: ${userContext?.progress?.calories || 0} calories, ${userContext?.progress?.protein || 0}g protein
-- Carbs: ${userContext?.progress?.carbs || 0}g, Fat: ${userContext?.progress?.fat || 0}g${flaggedIngredientsContext}
+- Voice Profile: ${voiceProfile}
+- Target Calories: ${userContext?.user?.targetCalories || 'Not set'}
+- Target Protein: ${userContext?.user?.targetProtein || 'Not set'}g
+- Today's Progress: ${userContext?.todaysProgress?.calories || 0} calories, ${userContext?.todaysProgress?.protein || 0}g protein
+- Carbs: ${userContext?.todaysProgress?.carbs || 0}g, Fat: ${userContext?.todaysProgress?.fat || 0}g${flaggedIngredientsContext}
 
-Always provide actionable advice and maintain a supportive, professional tone.`;
+Always provide actionable advice while maintaining your unique coaching personality.`;
 
     console.log('System prompt created, length:', systemPrompt.length);
     console.log('User message length:', message.length);

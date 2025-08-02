@@ -85,15 +85,16 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
               onClick={handleAccept}
               className="bg-white text-gray-900 hover:bg-white/90 font-medium"
             >
+              {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               <Heart className="h-4 w-4 mr-2" />
-              Let's Breathe
+              Sacred Breath
             </Button>
             <Button
               onClick={handleDismiss}
               variant="ghost"
               className="text-white hover:bg-white/20 border border-white/30"
             >
-              Later
+              In gentle time
             </Button>
           </div>
         </div>

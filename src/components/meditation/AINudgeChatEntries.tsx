@@ -47,11 +47,20 @@ export const AINudgeChatEntries: React.FC<AINudgeChatEntriesProps> = ({
     }
   }
 
-  // 🎭 Coach Personality Nudge - Nutrition Coach: Mindful, precise, supportive
+  // 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic
   const formatNudgeMessage = (message: string, nudgeType: string) => {
-    const prefix = nudgeType === 'ai_coach' ? '✨ ' : '🌱 '
-    return `${prefix}${message}`
-  }
+    // Recovery Coach uses gentle, poetic, emotionally supportive tone
+    const recoveryPrefixes = [
+      "Gentle invitation... ",
+      "Your soul whispers... ", 
+      "In stillness, wisdom flows... ",
+      "Like a soft breeze... ",
+      "With loving awareness... "
+    ];
+    
+    const randomPrefix = recoveryPrefixes[Math.floor(Math.random() * recoveryPrefixes.length)];
+    return `${randomPrefix}${message} 🌙💫`;
+  };
 
   return (
     <div className="space-y-4">

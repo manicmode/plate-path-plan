@@ -49,9 +49,18 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
 
   // 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic
   const formatNudgeMessage = (message: string, nudgeType: string) => {
-    const prefix = nudgeType === 'ai_coach' ? '🌬️ ' : '💫 '
-    return `${prefix}${message}`
-  }
+    // Recovery Coach uses gentle, poetic, emotionally supportive tone
+    const recoveryPrefixes = [
+      "Breathe deeply... ",
+      "Your breath calls you... ", 
+      "In each inhale, peace... ",
+      "Like gentle waves... ",
+      "With each breath... "
+    ];
+    
+    const randomPrefix = recoveryPrefixes[Math.floor(Math.random() * recoveryPrefixes.length)];
+    return `${randomPrefix}${message} 🌬️💫`;
+  };
 
   return (
     <div className="space-y-4">
