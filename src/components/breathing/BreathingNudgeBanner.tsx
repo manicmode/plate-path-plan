@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Heart, Brain, Calendar, Wind } from "lucide-react"
 import { useBreathingNudgeDisplay } from "@/hooks/useBreathingNudgeDisplay"
 import { useNavigate } from "react-router-dom"
+import { useNudgeTracking } from "@/hooks/useNudgeTracking"
 
 interface BreathingNudgeBannerProps {
   onAccept?: () => void
@@ -12,11 +13,15 @@ interface BreathingNudgeBannerProps {
 export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBannerProps) => {
   const { activeNudge, acceptNudge, dismissNudge } = useBreathingNudgeDisplay()
   const navigate = useNavigate()
+  // 🎮 Coach Gamification System
+  const { trackNudgeAction } = useNudgeTracking()
 
   if (!activeNudge) return null
 
   const handleAccept = async () => {
     await acceptNudge(activeNudge.id)
+    // 🎮 Coach Gamification System - Track nudge acceptance
+    await trackNudgeAction(activeNudge.nudge_type, 'accept')
     onAccept?.()
     // Navigate to breathing tab
     navigate('/recovery/breathing')

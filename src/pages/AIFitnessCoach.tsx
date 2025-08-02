@@ -27,6 +27,8 @@ import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
 import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { SkillPanel } from '@/components/coach/SkillPanel';
+import { useCoachInteractions } from '@/hooks/useCoachInteractions';
+import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -50,6 +52,10 @@ export default function AIFitnessCoach() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 🎮 Coach Gamification System
+  const [showPraiseMessage, setShowPraiseMessage] = useState<string | null>(null);
+  const { trackInteraction } = useCoachInteractions();
   
   // Workout routine generation state
   const [showWorkoutPreferencesModal, setShowWorkoutPreferencesModal] = useState(false);
@@ -99,6 +105,13 @@ export default function AIFitnessCoach() {
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
+
+    // 🎮 Coach Gamification System - Track message interaction
+    const trackResult = await trackInteraction('exercise', 'message');
+    if (trackResult?.should_praise && trackResult.praise_message) {
+      setShowPraiseMessage(trackResult.praise_message);
+      setTimeout(() => setShowPraiseMessage(null), 8000);
+    }
     
     setIsLoading(true);
     const newMessages = [...messages, { role: 'user' as const, content: message }];
@@ -117,7 +130,14 @@ export default function AIFitnessCoach() {
     }, 1500); // Slightly longer to simulate analysis
   };
 
-  const handlePromptClick = (promptMessage: string) => {
+  const handlePromptClick = async (promptMessage: string) => {
+    // 🎮 Coach Gamification System - Track skill panel interaction
+    const trackResult = await trackInteraction('exercise', 'skill_panel');
+    if (trackResult?.should_praise && trackResult.praise_message) {
+      setShowPraiseMessage(trackResult.praise_message);
+      setTimeout(() => setShowPraiseMessage(null), 8000);
+    }
+    
     handleSendMessage(promptMessage);
   };
 
@@ -471,6 +491,17 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </div>
           </CardContent>
         </Card>
+
+        {/* 🎮 Coach Gamification System - Praise Messages */}
+        <AnimatePresence>
+          {showPraiseMessage && (
+            <CoachPraiseMessage 
+              message={showPraiseMessage}
+              coachType="exercise"
+              onDismiss={() => setShowPraiseMessage(null)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Exercise Skill Panel */}
         <SkillPanel

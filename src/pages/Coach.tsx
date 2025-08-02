@@ -22,6 +22,9 @@ import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { SkillPanel } from '@/components/coach/SkillPanel';
 import { Target, TrendingUp, ShoppingCart, AlertTriangle, BarChart3 } from 'lucide-react';
+import { useCoachInteractions } from '@/hooks/useCoachInteractions';
+import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
+import { AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
@@ -56,6 +59,9 @@ Take a breath... let's explore your nutrition journey together with care and int
   const [isLoading, setIsLoading] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  // 🎮 Coach Gamification System
+  const [showPraiseMessage, setShowPraiseMessage] = useState<string | null>(null);
+  const { trackInteraction } = useCoachInteractions();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const chatCardRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +212,13 @@ Take a breath... let's explore your nutrition journey together with care and int
     setInput('');
     setIsLoading(true);
 
+    // 🎮 Coach Gamification System - Track message interaction
+    const trackResult = await trackInteraction('nutrition', 'message');
+    if (trackResult?.should_praise && trackResult.praise_message) {
+      setShowPraiseMessage(trackResult.praise_message);
+      setTimeout(() => setShowPraiseMessage(null), 8000); // Auto-dismiss after 8 seconds
+    }
+
     // Record coach interaction for notifications
     recordCoachInteraction();
 
@@ -274,7 +287,14 @@ Take a breath... let's explore your nutrition journey together with care and int
     }
   };
 
-  const handleQuickQuestion = (question: string) => {
+  const handleQuickQuestion = async (question: string) => {
+    // 🎮 Coach Gamification System - Track skill panel interaction
+    const trackResult = await trackInteraction('nutrition', 'skill_panel');
+    if (trackResult?.should_praise && trackResult.praise_message) {
+      setShowPraiseMessage(trackResult.praise_message);
+      setTimeout(() => setShowPraiseMessage(null), 8000);
+    }
+    
     scrollToTop();
     sendMessage(question);
   };
@@ -583,6 +603,17 @@ Take a breath... let's explore your nutrition journey together with care and int
           </div>
         </CardContent>
       </Card>
+
+      {/* 🎮 Coach Gamification System - Praise Messages */}
+      <AnimatePresence>
+        {showPraiseMessage && (
+          <CoachPraiseMessage 
+            message={showPraiseMessage}
+            coachType="nutrition"
+            onDismiss={() => setShowPraiseMessage(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Nutrition Skill Panel */}
       <SkillPanel

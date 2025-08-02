@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/auth';
+import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -32,6 +33,9 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  // 🎮 Coach Gamification System
+  const { trackInteraction } = useCoachInteractions();
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -53,6 +57,9 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+
+    // 🎮 Coach Gamification System - Track message interaction
+    await trackInteraction('recovery', 'message');
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-recovery-coach-chat', {

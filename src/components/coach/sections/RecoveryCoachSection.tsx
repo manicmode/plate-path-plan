@@ -1,4 +1,5 @@
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useState } from 'react';
 import { RecoveryAIChat } from '@/components/coach/recovery/RecoveryAIChat';
 import { RecoveryCommandBar } from '@/components/coach/recovery/RecoveryCommandBar';
 import { RecoveryNudgeSection } from '@/components/coach/recovery/RecoveryNudgeSection';
@@ -8,11 +9,25 @@ import { SkillPanel } from '@/components/coach/SkillPanel';
 import { Heart, Moon, Wind, Brain, Activity } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
+import { useCoachInteractions } from '@/hooks/useCoachInteractions';
+import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
+import { AnimatePresence } from 'framer-motion';
 
 const RecoveryCoachSection = () => {
   const isMobile = useIsMobile();
 
-  const handleCommand = (command: string) => {
+  // 🎮 Coach Gamification System
+  const [showPraiseMessage, setShowPraiseMessage] = useState<string | null>(null);
+  const { trackInteraction } = useCoachInteractions();
+
+  const handleCommand = async (command: string) => {
+    // 🎮 Coach Gamification System - Track skill panel interaction
+    const trackResult = await trackInteraction('recovery', 'skill_panel');
+    if (trackResult?.should_praise && trackResult.praise_message) {
+      setShowPraiseMessage(trackResult.praise_message);
+      setTimeout(() => setShowPraiseMessage(null), 8000);
+    }
+    
     // This will be handled by the RecoveryAIChat component
     console.log('Recovery skill command:', command);
   };
@@ -101,6 +116,17 @@ const RecoveryCoachSection = () => {
 
         {/* AI Chat Box */}
         <RecoveryAIChat />
+
+        {/* 🎮 Coach Gamification System - Praise Messages */}
+        <AnimatePresence>
+          {showPraiseMessage && (
+            <CoachPraiseMessage 
+              message={showPraiseMessage}
+              coachType="recovery"
+              onDismiss={() => setShowPraiseMessage(null)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Recovery Skill Panel */}
         <SkillPanel

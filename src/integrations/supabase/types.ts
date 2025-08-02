@@ -640,6 +640,39 @@ export type Database = {
           },
         ]
       }
+      coach_interactions: {
+        Row: {
+          coach_type: string
+          created_at: string
+          id: string
+          interaction_count: number
+          last_praised_at: string | null
+          praise_level: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_type: string
+          created_at?: string
+          id?: string
+          interaction_count?: number
+          last_praised_at?: string | null
+          praise_level?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_type?: string
+          created_at?: string
+          id?: string
+          interaction_count?: number
+          last_praised_at?: string | null
+          praise_level?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_routines: {
         Row: {
           created_at: string
@@ -4388,6 +4421,14 @@ export type Database = {
       send_friend_request: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      track_coach_interaction: {
+        Args: {
+          p_user_id: string
+          p_coach_type: string
+          p_interaction_type?: string
+        }
+        Returns: Json
       }
       trigger_yearly_scores_preview_update: {
         Args: Record<PropertyKey, never>
