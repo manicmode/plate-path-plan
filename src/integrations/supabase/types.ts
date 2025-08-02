@@ -2953,6 +2953,9 @@ export type Database = {
           age: number | null
           allergy_severity: string | null
           avatar_url: string | null
+          avatar_variant_1: string | null
+          avatar_variant_2: string | null
+          avatar_variant_3: string | null
           body_composition_goals: string[] | null
           calculated_bmr: number | null
           calculated_tdee: number | null
@@ -3007,6 +3010,7 @@ export type Database = {
           progress_tracking_priorities: string[] | null
           recovery_sleep_quality: string | null
           reminder_frequency: string | null
+          selected_avatar_variant: number | null
           selected_badge_title: string | null
           selected_trackers: string[] | null
           show_onboarding_reminder: boolean | null
@@ -3035,6 +3039,9 @@ export type Database = {
           age?: number | null
           allergy_severity?: string | null
           avatar_url?: string | null
+          avatar_variant_1?: string | null
+          avatar_variant_2?: string | null
+          avatar_variant_3?: string | null
           body_composition_goals?: string[] | null
           calculated_bmr?: number | null
           calculated_tdee?: number | null
@@ -3089,6 +3096,7 @@ export type Database = {
           progress_tracking_priorities?: string[] | null
           recovery_sleep_quality?: string | null
           reminder_frequency?: string | null
+          selected_avatar_variant?: number | null
           selected_badge_title?: string | null
           selected_trackers?: string[] | null
           show_onboarding_reminder?: boolean | null
@@ -3117,6 +3125,9 @@ export type Database = {
           age?: number | null
           allergy_severity?: string | null
           avatar_url?: string | null
+          avatar_variant_1?: string | null
+          avatar_variant_2?: string | null
+          avatar_variant_3?: string | null
           body_composition_goals?: string[] | null
           calculated_bmr?: number | null
           calculated_tdee?: number | null
@@ -3171,6 +3182,7 @@ export type Database = {
           progress_tracking_priorities?: string[] | null
           recovery_sleep_quality?: string | null
           reminder_frequency?: string | null
+          selected_avatar_variant?: number | null
           selected_badge_title?: string | null
           selected_trackers?: string[] | null
           show_onboarding_reminder?: boolean | null

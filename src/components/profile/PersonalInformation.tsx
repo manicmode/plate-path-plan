@@ -18,6 +18,7 @@ interface PersonalInformationProps {
   };
   user: {
     id?: string;
+    user_id?: string;
     name?: string;
     first_name?: string;
     last_name?: string;
@@ -25,6 +26,10 @@ interface PersonalInformationProps {
     dietaryGoals?: string[];
     avatar_url?: string;
     caricature_generation_count?: number;
+    avatar_variant_1?: string;
+    avatar_variant_2?: string;
+    avatar_variant_3?: string;
+    selected_avatar_variant?: number;
   } | null;
   isEditing: boolean;
   onFormDataChange: (updates: Partial<any>) => void;
@@ -44,6 +49,13 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   const [caricatureModalOpen, setCaricatureModalOpen] = useState(false);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(user?.avatar_url);
   const [generationCount, setGenerationCount] = useState(user?.caricature_generation_count || 0);
+  
+  const avatarVariants = {
+    variant_1: user?.avatar_variant_1,
+    variant_2: user?.avatar_variant_2,
+    variant_3: user?.avatar_variant_3,
+    selected_avatar_variant: user?.selected_avatar_variant
+  };
 
   const displayName = formData.first_name && formData.last_name 
     ? `${formData.first_name} ${formData.last_name}`
@@ -180,11 +192,12 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       <CaricatureModal
         isOpen={caricatureModalOpen}
         onClose={() => setCaricatureModalOpen(false)}
-        userId={user?.id || ''}
+        userId={user?.user_id || user?.id || ''}
         currentAvatarUrl={currentAvatarUrl}
         onAvatarUpdate={handleAvatarUpdate}
         generationCount={generationCount}
         onGenerationCountUpdate={handleGenerationCountUpdate}
+        avatarVariants={avatarVariants}
       />
     </Card>
   );

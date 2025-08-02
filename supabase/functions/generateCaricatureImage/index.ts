@@ -77,11 +77,11 @@ serve(async (req) => {
 
     console.log('🎨 Generating caricatures with OpenAI DALL-E...');
 
-    // Generate 3 caricature variations using OpenAI
+    // Generate 3 caricature variations using OpenAI with fitness themes
     const caricaturePrompts = [
-      "Create a vibrant caricature portrait with exaggerated features, fun athletic style, bright colors, and energetic fitness elements like dumbbells and yoga mats in the background",
-      "Create a playful cartoon caricature with oversized head proportions, emphasizing healthy lifestyle elements like running shoes, water bottles, and gym equipment, colorful and cheerful style",
-      "Create a stylized caricature with artistic flair, highlighting wellness and fitness themes with elements like protein shakes, workout gear, and motivational energy, dynamic composition"
+      "Create a vibrant Pixar-style 3D cartoon caricature with fitness/wellness theme. Show the person with bright athletic wear, surrounded by dumbbells, yoga mats, and healthy foods. Maintain clear facial resemblance with positive emotion. Colorful and energetic!",
+      "Create a digital painting caricature with exaggerated features, showing them in workout gear or yoga pose. Style should be like animated movie art with fitness elements like protein shakes and gym equipment. Preserve facial likeness with happy expression.",
+      "Create a fun cartoon illustration caricature with fitness elements like meditation poses, running shoes, or healthy lifestyle items. Bright colors, playful style similar to health app mascots. Keep clear facial resemblance and joyful mood."
     ];
 
     const generatedImages = [];
@@ -184,13 +184,17 @@ serve(async (req) => {
 
     console.log(`💾 Successfully stored ${storedUrls.length} images`);
 
-    // Update user profile with caricature URLs and increment generation count
-    console.log('📝 Updating user profile...');
+    // Update user profile with all 3 generated image URLs
+    console.log('📝 Updating user profile with all variants...');
     
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
-        caricature_urls: storedUrls,
+        avatar_url: storedUrls[0], // Use first variant as default
+        avatar_variant_1: storedUrls[0] || null,
+        avatar_variant_2: storedUrls[1] || null,
+        avatar_variant_3: storedUrls[2] || null,
+        selected_avatar_variant: 1, // Default to first variant
         caricature_generation_count: currentCount + 1,
         updated_at: new Date().toISOString()
       })

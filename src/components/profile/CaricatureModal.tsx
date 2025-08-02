@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
-import { Camera, RefreshCw, Upload, Sparkles, Download } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useState, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Upload, Wand2, Check, RotateCcw, Zap } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { validateImageFile } from "@/utils/imageValidation";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 interface CaricatureModalProps {
   isOpen: boolean;
@@ -16,176 +17,172 @@ interface CaricatureModalProps {
   onAvatarUpdate: (url: string) => void;
   generationCount: number;
   onGenerationCountUpdate: (count: number) => void;
+  avatarVariants?: {
+    variant_1?: string;
+    variant_2?: string;
+    variant_3?: string;
+    selected_avatar_variant?: number;
+  };
 }
 
 export const CaricatureModal = ({ 
   isOpen, 
   onClose, 
   userId, 
-  currentAvatarUrl,
-  onAvatarUpdate,
-  generationCount,
-  onGenerationCountUpdate
+  currentAvatarUrl, 
+  onAvatarUpdate, 
+  generationCount, 
+  onGenerationCountUpdate,
+  avatarVariants 
 }: CaricatureModalProps) => {
-  const isMobile = useIsMobile();
   const [step, setStep] = useState<'upload' | 'variants'>('upload');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [variants, setVariants] = useState<string[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  const [hoveredVariant, setHoveredVariant] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
 
-  const maxGenerations = 3;
-  const canGenerate = generationCount < maxGenerations;
-
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB');
+  const handleImageUpload = async (file: File) => {
+    const validation = validateImageFile(file);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid File",
+        description: validation.error,
+        variant: "destructive",
+      });
       return;
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
+    if (validation.warning) {
+      toast({
+        title: "Large File Warning",
+        description: validation.warning,
+        variant: "default",
+      });
     }
 
     try {
-      setIsGenerating(true);
-      setStep('variants');
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/avatar.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
 
-      console.log('🚀 Starting avatar upload for user:', userId);
-      console.log('📁 File details:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      setUploadedImage(data.publicUrl);
+      
+      toast({
+        title: "Image uploaded successfully!",
+        description: "Ready to generate caricatures",
       });
-
-      // Upload image to Supabase Storage
-      const fileName = `${userId}/avatar.png`;
-      console.log('📂 Uploading to path:', fileName);
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, {
-          contentType: file.type,
-          upsert: true,
-          cacheControl: '3600'
-        });
-
-      if (uploadError) {
-        console.error('🛑 Avatar upload failed:', uploadError);
-        console.error('Error details:', {
-          message: uploadError.message
-        });
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
-      console.log('✅ Upload successful:', uploadData);
-
-      // Get public URL for the uploaded image
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      console.log('🔗 Public URL generated:', urlData.publicUrl);
-      setUploadedImage(urlData.publicUrl);
-      
-      // Auto-generate caricatures after upload
-      await generateCaricatureVariants(urlData.publicUrl);
     } catch (error) {
-      console.error('💥 Error in handleImageUpload:', error);
-      toast.error(error.message || 'Failed to upload image');
-      setIsGenerating(false);
-      setStep('upload');
+      console.error('Upload failed:', error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
     }
   };
 
-  const generateCaricatureVariants = async (imageUrl?: string) => {
-    if (!canGenerate) {
-      toast.error(`Maximum ${maxGenerations} generations reached`);
-      return;
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
     }
+  };
 
-    const urlToUse = imageUrl || uploadedImage;
-    if (!urlToUse) {
-      toast.error('Please upload an image first');
-      return;
-    }
+  const generateCaricatureVariants = async () => {
+    if (!uploadedImage) return;
 
     setIsGenerating(true);
-    
     try {
-      // Call the edge function to generate caricatures
-      const { data: caricatureData, error: caricatureError } = await supabase.functions.invoke(
-        'generateCaricatureImage',
-        {
-          body: {
-            imageUrl: urlToUse,
-            userId: userId
-          }
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('generateCaricatureImage', {
+        body: { imageUrl: uploadedImage }
+      });
 
-      if (caricatureError) {
-        throw new Error(caricatureError.message || 'Failed to generate caricatures');
+      if (error) throw error;
+
+      if (data?.caricatureUrls) {
+        setVariants(data.caricatureUrls);
+        setStep('variants');
+        onGenerationCountUpdate(data.generationCount);
+        toast({
+          title: "Caricatures generated!",
+          description: "Choose your favorite style",
+        });
       }
-
-      if (!caricatureData.success) {
-        throw new Error(caricatureData.error || 'Failed to generate caricatures');
-      }
-
-      setVariants(caricatureData.caricatureUrls);
-      onGenerationCountUpdate(caricatureData.generationCount);
-      
-      toast.success(`Generated ${caricatureData.caricatureUrls.length} caricature variants!`);
-
     } catch (error) {
-      console.error('Error generating caricatures:', error);
-      toast.error(error.message || 'Failed to generate caricatures');
+      console.error('Generation failed:', error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSelectVariant = async (variantUrl: string) => {
+  const handleSelectVariant = async (variant: string, variantNumber: number) => {
     try {
-      // Update user profile with selected avatar
+      setSelectedVariant(variant);
+      
       const { error } = await supabase
         .from('user_profiles')
         .update({ 
-          avatar_url: variantUrl,
-          updated_at: new Date().toISOString()
+          avatar_url: variant,
+          selected_avatar_variant: variantNumber
         })
         .eq('user_id', userId);
 
       if (error) throw error;
 
-      onAvatarUpdate(variantUrl);
-      toast.success('Avatar updated successfully! ✨');
-      onClose();
+      onAvatarUpdate(variant);
+      toast({
+        title: "Avatar updated!",
+        description: "Your new caricature avatar has been set",
+      });
       
-      // Reset modal state
-      setStep('upload');
-      setUploadedImage(null);
-      setVariants([]);
-      setSelectedVariant(null);
+      onClose();
     } catch (error) {
-      console.error('Error updating avatar:', error);
-      toast.error('Failed to update avatar');
+      console.error('Failed to update avatar:', error);
+      toast({
+        title: "Update failed",
+        description: "Failed to set your avatar. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleRegenerateVariants = () => {
-    setVariants([]);
-    generateCaricatureVariants();
+  const handleRegenerateVariants = async () => {
+    if (generationCount >= 3) {
+      toast({
+        title: "Generation limit reached",
+        description: "You've used all 3 generations for this month",
+        variant: "destructive",
+      });
+      return;
+    }
+    await generateCaricatureVariants();
   };
 
-  const handleGenerateClick = () => {
-    generateCaricatureVariants();
+  const handleGenerateClick = async () => {
+    if (generationCount >= 3) {
+      toast({
+        title: "Generation limit reached",
+        description: "You've used all 3 generations for this month",
+        variant: "destructive",
+      });
+      return;
+    }
+    await generateCaricatureVariants();
   };
 
   const resetModal = () => {
@@ -193,160 +190,395 @@ export const CaricatureModal = ({
     setUploadedImage(null);
     setVariants([]);
     setSelectedVariant(null);
+    setIsGenerating(false);
+    setHoveredVariant(null);
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        onClose();
-        resetModal();
-      }
-    }}>
-      <DialogContent className={`${isMobile ? 'w-[95vw]' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto`}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <span>AI Caricature Avatar</span>
-          </DialogTitle>
-        </DialogHeader>
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
-        {step === 'upload' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <p className="text-muted-foreground mb-4">
-                Upload your photo to generate AI caricature variants
-              </p>
-              
-              {currentAvatarUrl && (
+  const savedVariants = avatarVariants ? [
+    avatarVariants.variant_1,
+    avatarVariants.variant_2,
+    avatarVariants.variant_3
+  ].filter(Boolean) as string[] : [];
+
+  const hasExistingVariants = savedVariants.length > 0;
+
+  if (!isOpen) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      {isMobile ? (
+        <DialogContent className="sm:max-w-2xl h-[90vh] overflow-y-auto" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              My Avatar
+            </DialogTitle>
+          </DialogHeader>
+          
+          {step === 'upload' && (
+            <div className="space-y-6">
+              <div className="text-center">
                 <div className="mb-4">
-                  <p className="text-sm text-muted-foreground mb-2">Current Avatar:</p>
-                  <Avatar className="w-20 h-20 mx-auto">
+                  <Avatar className="w-24 h-24 mx-auto">
                     <AvatarImage src={currentAvatarUrl} />
-                    <AvatarFallback>You</AvatarFallback>
+                    <AvatarFallback className="text-2xl">
+                      {userId.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                 </div>
-              )}
-            </div>
-
-            <div className="flex flex-col items-center space-y-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="caricature-upload"
-              />
-              <Button 
-                asChild 
-                variant="outline" 
-                className="w-full max-w-xs" 
-                disabled={!canGenerate}
-              >
-                <label 
-                  htmlFor="caricature-upload" 
-                  className={`cursor-pointer ${!canGenerate ? 'pointer-events-none opacity-50' : ''}`}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Photo
-                </label>
-              </Button>
-              
-              <div className="text-center text-sm text-muted-foreground">
-                <p>Generations used: {generationCount}/{maxGenerations}</p>
-                {!canGenerate && (
-                  <p className="text-amber-600 dark:text-amber-400">
-                    You've used all 3 caricature generations 💫
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 'variants' && (
-          <div className="space-y-6">
-            {uploadedImage && (
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-3">Your uploaded photo:</p>
-                <Avatar className="w-16 h-16 mx-auto mb-4">
-                  <AvatarImage src={uploadedImage} />
-                </Avatar>
-              </div>
-            )}
-
-            {isGenerating ? (
-              <div className="text-center py-8">
-                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Generating your caricatures… hang tight!</p>
-              </div>
-            ) : variants.length > 0 ? (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-center">Choose Your Caricature</h3>
                 
-                <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4`}>
-                  {variants.map((variant, index) => (
-                    <Card 
-                      key={index}
-                      className={`p-4 cursor-pointer transition-all hover:scale-105 hover:shadow-lg border-2 ${
-                        selectedVariant === variant 
-                          ? 'border-primary ring-2 ring-primary/20' 
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                      onClick={() => setSelectedVariant(variant)}
-                    >
-                      <div className="text-center space-y-3">
-                        <Avatar className="w-20 h-20 mx-auto ring-2 ring-primary/20">
-                          <AvatarImage src={variant} />
-                          <AvatarFallback>AI</AvatarFallback>
-                        </Avatar>
-                        <p className="text-sm font-medium">Variant {index + 1}</p>
-                        {selectedVariant === variant && (
-                          <div className="flex justify-center">
-                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button
-                    onClick={() => selectedVariant && handleSelectVariant(selectedVariant)}
-                    disabled={!selectedVariant}
-                    className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload a photo to generate AI caricature avatars
+                </p>
+                
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                  />
+                  <Button 
+                    onClick={handleUploadClick}
+                    className="w-full" 
+                    size="lg"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Use Selected Avatar
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Photo
                   </Button>
                   
-                  {canGenerate && (
-                    <Button
-                      variant="outline"
-                      onClick={handleRegenerateVariants}
-                      disabled={isGenerating}
+                  {uploadedImage && (
+                    <Button 
+                      onClick={handleGenerateClick}
+                      variant="secondary"
+                      className="w-full"
+                      size="lg"
                     >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-                      Regenerate ({maxGenerations - generationCount} left)
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      Generate Caricatures
+                    </Button>
+                  )}
+
+                  {hasExistingVariants && (
+                    <Button 
+                      onClick={() => {
+                        setVariants(savedVariants);
+                        setStep('variants');
+                      }}
+                      variant="outline"
+                      className="w-full"
+                      size="lg"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Switch Avatar Style
                     </Button>
                   )}
                 </div>
+                
+                <div className="mt-4 text-xs text-muted-foreground">
+                  Generations used: {generationCount}/3
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
+            </div>
+          )}
+
+          {step === 'variants' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <img 
+                  src={uploadedImage || currentAvatarUrl} 
+                  alt="Original" 
+                  className="w-16 h-16 rounded-full object-cover border-2"
+                />
+                <div className="text-sm">
+                  <p className="font-medium">Original Photo</p>
+                  <p className="text-muted-foreground">Choose your favorite style</p>
+                </div>
+              </div>
+
+              {isGenerating ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-sm text-muted-foreground">
+                    Generating your caricatures...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-6">
+                    {variants.map((variant, index) => (
+                      <div 
+                        key={index}
+                        className={cn(
+                          "relative group cursor-pointer transform transition-all duration-300 rounded-xl overflow-hidden",
+                          "hover:scale-[1.02] hover:shadow-2xl",
+                          hoveredVariant === variant && "scale-[1.02] shadow-2xl",
+                          "border-4 border-transparent hover:border-primary/20",
+                          "bg-gradient-to-br from-primary/5 to-secondary/5"
+                        )}
+                        onClick={() => handleSelectVariant(variant, index + 1)}
+                        onTouchStart={() => setHoveredVariant(variant)}
+                        onTouchEnd={() => setHoveredVariant(null)}
+                      >
+                        <div className="relative overflow-hidden">
+                          <img 
+                            src={variant} 
+                            alt={`Caricature ${index + 1}`}
+                            className="w-full h-64 sm:h-72 object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          
+                          {/* Glow effect */}
+                          <div className={cn(
+                            "absolute inset-0 rounded-lg transition-all duration-300",
+                            hoveredVariant === variant 
+                              ? "shadow-[inset_0_0_50px_rgba(var(--primary),0.3)] ring-2 ring-primary/30" 
+                              : ""
+                          )} />
+                        </div>
+                        
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                          <div className="flex items-center justify-between text-white">
+                            <span className="text-sm font-medium">
+                              {index === 0 ? "Pixar Style" : index === 1 ? "Digital Art" : "Cartoon Fun"}
+                            </span>
+                            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                              {index + 1}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="text-center text-xs text-muted-foreground mt-4 p-3 bg-muted/50 rounded-lg">
+                    💡 Tap a variant to preview it in full. You can change your avatar anytime.
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                {!isGenerating && variants.length > 0 && (
+                  <Button 
+                    onClick={handleRegenerateVariants}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={generationCount >= 3}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </Button>
+                )}
                 <Button 
-                  onClick={handleGenerateClick}
-                  disabled={!canGenerate || isGenerating}
-                  className="bg-gradient-to-r from-primary to-primary/80"
+                  onClick={() => setStep('upload')}
+                  variant="ghost"
+                  className="flex-1"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Caricatures
+                  Back
                 </Button>
               </div>
-            )}
+            </div>
+          )}
+
+          <div className="flex justify-center pt-4">
+            <Button 
+              onClick={onClose}
+              variant="outline"
+              className="w-full"
+            >
+              Close
+            </Button>
           </div>
-        )}
-      </DialogContent>
+        </DialogContent>
+      ) : (
+        <DialogContent className="sm:max-w-2xl" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              My Avatar
+            </DialogTitle>
+          </DialogHeader>
+          
+          {step === 'upload' && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="mb-4">
+                  <Avatar className="w-24 h-24 mx-auto">
+                    <AvatarImage src={currentAvatarUrl} />
+                    <AvatarFallback className="text-2xl">
+                      {userId.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload a photo to generate AI caricature avatars
+                </p>
+                
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                  />
+                  <Button 
+                    onClick={handleUploadClick}
+                    className="w-full" 
+                    size="lg"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Photo
+                  </Button>
+                  
+                  {uploadedImage && (
+                    <Button 
+                      onClick={handleGenerateClick}
+                      variant="secondary"
+                      className="w-full"
+                      size="lg"
+                    >
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      Generate Caricatures
+                    </Button>
+                  )}
+
+                  {hasExistingVariants && (
+                    <Button 
+                      onClick={() => {
+                        setVariants(savedVariants);
+                        setStep('variants');
+                      }}
+                      variant="outline"
+                      className="w-full"
+                      size="lg"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Switch Avatar Style
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="mt-4 text-xs text-muted-foreground">
+                  Generations used: {generationCount}/3
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 'variants' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <img 
+                  src={uploadedImage || currentAvatarUrl} 
+                  alt="Original" 
+                  className="w-16 h-16 rounded-full object-cover border-2"
+                />
+                <div className="text-sm">
+                  <p className="font-medium">Original Photo</p>
+                  <p className="text-muted-foreground">Choose your favorite style</p>
+                </div>
+              </div>
+
+              {isGenerating ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-sm text-muted-foreground">
+                    Generating your caricatures...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-6">
+                    {variants.map((variant, index) => (
+                      <div 
+                        key={index}
+                        className={cn(
+                          "relative group cursor-pointer transform transition-all duration-300 rounded-xl overflow-hidden",
+                          "hover:scale-[1.02] hover:shadow-2xl",
+                          hoveredVariant === variant && "scale-[1.02] shadow-2xl",
+                          "border-4 border-transparent hover:border-primary/20",
+                          "bg-gradient-to-br from-primary/5 to-secondary/5"
+                        )}
+                        onClick={() => handleSelectVariant(variant, index + 1)}
+                        onMouseEnter={() => setHoveredVariant(variant)}
+                        onMouseLeave={() => setHoveredVariant(null)}
+                      >
+                        <div className="relative overflow-hidden">
+                          <img 
+                            src={variant} 
+                            alt={`Caricature ${index + 1}`}
+                            className="w-full h-64 sm:h-72 object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          
+                          {/* Glow effect */}
+                          <div className={cn(
+                            "absolute inset-0 rounded-lg transition-all duration-300",
+                            hoveredVariant === variant 
+                              ? "shadow-[inset_0_0_50px_rgba(var(--primary),0.3)] ring-2 ring-primary/30" 
+                              : ""
+                          )} />
+                        </div>
+                        
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                          <div className="flex items-center justify-between text-white">
+                            <span className="text-sm font-medium">
+                              {index === 0 ? "Pixar Style" : index === 1 ? "Digital Art" : "Cartoon Fun"}
+                            </span>
+                            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                              {index + 1}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="text-center text-xs text-muted-foreground mt-4 p-3 bg-muted/50 rounded-lg">
+                    💡 Tap a variant to preview it in full. You can change your avatar anytime.
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                {!isGenerating && variants.length > 0 && (
+                  <Button 
+                    onClick={handleRegenerateVariants}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={generationCount >= 3}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => setStep('upload')}
+                  variant="ghost"
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-center pt-4">
+            <Button 
+              onClick={onClose}
+              variant="outline"
+              className="w-full"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      )}
     </Dialog>
   );
 };
