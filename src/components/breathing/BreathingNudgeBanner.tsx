@@ -4,6 +4,7 @@ import { Heart, Brain, Calendar, Wind } from "lucide-react"
 import { useBreathingNudgeDisplay } from "@/hooks/useBreathingNudgeDisplay"
 import { useNavigate } from "react-router-dom"
 import { useNudgeTracking } from "@/hooks/useNudgeTracking"
+import { useTheme } from "next-themes"
 
 interface BreathingNudgeBannerProps {
   onAccept?: () => void
@@ -13,8 +14,11 @@ interface BreathingNudgeBannerProps {
 export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBannerProps) => {
   const { activeNudge, acceptNudge, dismissNudge } = useBreathingNudgeDisplay()
   const navigate = useNavigate()
+  const { theme } = useTheme()
   // 🎮 Coach Gamification System
   const { trackNudgeAction } = useNudgeTracking()
+
+  const isLightMode = theme === 'light'
 
   if (!activeNudge) return null
 
@@ -29,21 +33,38 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
 
   const handleDismiss = async () => {
     await dismissNudge(activeNudge.id)
+    // 🎮 Coach Gamification System - Track nudge dismissal  
+    await trackNudgeAction(activeNudge.nudge_type, 'dismiss')
     onDismiss?.()
+    // Navigate to breathing tab for gentle sessions
+    navigate('/recovery/breathing')
   }
 
   const getNudgeIcon = () => {
+    const iconColor = isLightMode ? "text-slate-700" : "text-white"
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return <Brain className="h-6 w-6 text-white" />
+        return <Brain className={`h-6 w-6 ${iconColor}`} />
       case 'daily_reminder':
-        return <Calendar className="h-6 w-6 text-white" />
+        return <Calendar className={`h-6 w-6 ${iconColor}`} />
       default:
-        return <Wind className="h-6 w-6 text-white" />
+        return <Wind className={`h-6 w-6 ${iconColor}`} />
     }
   }
 
   const getBannerStyle = () => {
+    if (isLightMode) {
+      switch (activeNudge.nudge_type) {
+        case 'ai_coach':
+          return "bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200"
+        case 'daily_reminder':
+          return "bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200"
+        default:
+          return "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200"
+      }
+    }
+    
+    // Dark mode styles
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
         return "bg-gradient-to-r from-violet-500 to-purple-600"
@@ -66,17 +87,17 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   }
 
   return (
-    <Card className={`${getBannerStyle()} p-6 text-white border-0 shadow-lg mb-6`}>
+    <Card className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} shadow-lg mb-6`}>
       <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 p-2 bg-white/20 rounded-full">
+        <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-200/80' : 'bg-white/20'} rounded-full`}>
           {getNudgeIcon()}
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg mb-2">
+          <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
             {getTitle()}
           </h3>
-          <p className="text-white/90 mb-4 leading-relaxed">
+          <p className={`${isLightMode ? 'text-slate-800' : 'text-white/90'} mb-4 leading-relaxed`}>
             {activeNudge.nudge_message}
           </p>
           
@@ -84,7 +105,10 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
             <Button
               onClick={handleAccept}
               size="sm"
-              className="bg-white text-gray-900 hover:bg-white/90 font-medium flex-1 sm:flex-none"
+              className={`${isLightMode 
+                ? 'bg-slate-800 text-white hover:bg-slate-900' 
+                : 'bg-white text-gray-900 hover:bg-white/90'
+              } font-medium flex-1 sm:flex-none`}
             >
               {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               <Heart className="h-4 w-4 mr-2" />
@@ -94,7 +118,10 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
               onClick={handleDismiss}
               size="sm"
               variant="ghost"
-              className="text-white hover:bg-white/20 border border-white/30 flex-1 sm:flex-none text-xs sm:text-sm px-3"
+              className={`${isLightMode 
+                ? 'text-slate-700 hover:bg-slate-200/50 border border-slate-300' 
+                : 'text-white hover:bg-white/20 border border-white/30'
+              } flex-1 sm:flex-none text-xs sm:text-sm px-3`}
             >
               In gentle time
             </Button>

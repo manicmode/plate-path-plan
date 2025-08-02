@@ -177,15 +177,15 @@ function analyzeSmartBreathingNudgeConditions(context: NudgeContext): NudgeDecis
   const now = new Date()
   const daysSinceLastBreathing = context.lastBreathingDate 
     ? Math.floor((now.getTime() - new Date(context.lastBreathingDate).getTime()) / (1000 * 60 * 60 * 24))
-    : 999
+    : 7 // Default to 7 days instead of 999 to avoid confusing display
 
-  // Check for no breathing session in last 48 hours
-  if (daysSinceLastBreathing >= 2) {
+  // Check for no breathing session in last 24 hours (changed from 48 hours)
+  if (daysSinceLastBreathing >= 1) {
     return {
       shouldNudge: true,
       nudgeType: 'smart_nudge',
       nudgeReason: 'skipped_breathing',
-      nudgeMessage: `It's been ${daysSinceLastBreathing} days since your last breathing practice. Take a moment to breathe and center yourself.`
+      nudgeMessage: `It's been ${daysSinceLastBreathing === 7 ? 'a while' : `${daysSinceLastBreathing} days`} since your last breathing practice. Take a moment to breathe and center yourself.`
     }
   }
 
