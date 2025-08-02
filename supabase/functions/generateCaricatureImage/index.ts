@@ -81,11 +81,13 @@ serve(async (req) => {
 
     console.log('🎨 Generating caricatures with OpenAI DALL-E...');
 
-    // Generate 3 caricature variations using OpenAI with fitness themes
+    // Generate 3 caricature variations using MidJourney-style prompts for funny, recognizable caricatures
     const caricaturePrompts = [
-      "Create a vibrant Pixar-style 3D cartoon caricature with fitness/wellness theme. Show the person with bright athletic wear, surrounded by dumbbells, yoga mats, and healthy foods. Maintain clear facial resemblance with positive emotion. Colorful and energetic!",
-      "Create a digital painting caricature with exaggerated features, showing them in workout gear or yoga pose. Style should be like animated movie art with fitness elements like protein shakes and gym equipment. Preserve facial likeness with happy expression.",
-      "Create a fun cartoon illustration caricature with fitness elements like meditation poses, running shoes, or healthy lifestyle items. Bright colors, playful style similar to health app mascots. Keep clear facial resemblance and joyful mood."
+      `Professional caricature illustration with exaggerated facial features but strong resemblance to original person, similar to celebrity caricatures of Will Smith or Gordon Ramsay. Oversized distinctive features (eyes, nose, smile), vibrant colors, playful cartoon style with fitness/wellness elements. High-quality digital art with smooth gradients and comic book aesthetic. Energetic and humorous but clearly recognizable.`,
+      
+      `Pixar-style 3D rendered caricature with amplified facial characteristics, maintaining clear facial identity. Exaggerated proportions in a fun, animated movie character style. Bright saturated colors, smooth 3D rendering, expressive cartoon features. Include subtle fitness/health motifs. Professional animation studio quality with detailed lighting and textures.`,
+      
+      `Comic book caricature art with bold, exaggerated features and strong facial resemblance. Dynamic cartoon style with vivid colors and dramatic shading. Amplified distinctive facial characteristics while preserving identity. Clean line art with professional comic illustration quality. Fun and energetic expression with subtle wellness/fitness theme elements.`
     ];
 
     const generatedImages = [];

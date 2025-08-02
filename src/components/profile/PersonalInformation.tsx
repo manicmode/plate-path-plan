@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, Camera, RefreshCw, Sparkles } from 'lucide-react';
+import { User, Settings, Camera, RefreshCw, Sparkles, Clock } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react';
 import { CaricatureModal } from './CaricatureModal';
@@ -30,6 +30,12 @@ interface PersonalInformationProps {
     avatar_variant_2?: string;
     avatar_variant_3?: string;
     selected_avatar_variant?: number;
+    caricature_history?: Array<{
+      timestamp: string;
+      variants: string[];
+      generated_at: string;
+    }>;
+    last_caricature_generation?: string;
   } | null;
   isEditing: boolean;
   onFormDataChange: (updates: Partial<any>) => void;
@@ -57,6 +63,26 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
     selected_avatar_variant: user?.selected_avatar_variant
   };
 
+  // Calculate cooldown
+  const calculateCooldown = () => {
+    if (!user?.last_caricature_generation) return null;
+    
+    const lastGen = new Date(user.last_caricature_generation);
+    const now = new Date();
+    const thirtyDaysLater = new Date(lastGen.getTime() + (30 * 24 * 60 * 60 * 1000));
+    
+    if (now < thirtyDaysLater) {
+      const daysLeft = Math.ceil((thirtyDaysLater.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        daysLeft,
+        nextAvailable: thirtyDaysLater.toLocaleDateString()
+      };
+    }
+    return null;
+  };
+
+  const cooldown = calculateCooldown();
+
   const displayName = formData.first_name && formData.last_name 
     ? `${formData.first_name} ${formData.last_name}`
     : user?.name || user?.email || 'User';
@@ -73,45 +99,80 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '100ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <div className="flex flex-col items-center space-y-4">
-          {/* 🎭 My Avatar Section */}
-          <div className="text-center space-y-3">
-            <h3 className="text-lg font-semibold text-foreground flex items-center justify-center gap-2">
-              🎭 My Avatar
-            </h3>
-            <div 
-              className="relative cursor-pointer group"
-              onClick={() => setCaricatureModalOpen(true)}
-            >
-            <Avatar className={`${isMobile ? 'w-20 h-20' : 'w-24 h-24'} ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-300`}>
-              {currentAvatarUrl ? (
-                <AvatarImage 
-                  src={currentAvatarUrl} 
-                  className="object-cover"
-                />
-              ) : (
-                <AvatarFallback className={`${isMobile ? 'text-2xl' : 'text-3xl'} gradient-primary text-white`}>
-                  {displayName.charAt(0).toUpperCase()}
-                </AvatarFallback>
+          {/* 🎭 My Avatar Section - Enhanced */}
+          <div className="text-center space-y-4 p-6 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 rounded-2xl border border-primary/10">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                🎭 My Avatar
+              </h3>
+              {cooldown && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-full">
+                  <Clock className="h-3 w-3 text-orange-600" />
+                  <span className="text-xs text-orange-600 font-medium">{cooldown.daysLeft}d</span>
+                </div>
               )}
-            </Avatar>
-            <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-              {currentAvatarUrl ? (
-                <RefreshCw className="h-6 w-6 text-white" />
-              ) : (
-                <Camera className="h-6 w-6 text-white" />
-              )}
-            </div>
-            {currentAvatarUrl && (
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                <Sparkles className="h-3 w-3 text-white" />
-              </div>
-            )}
             </div>
             
-            {/* Generation count display */}
-            <p className="text-xs text-muted-foreground">
-              Generations: {generationCount}/{3}
-            </p>
+            <div 
+              className="relative cursor-pointer group mx-auto w-fit"
+              onClick={() => setCaricatureModalOpen(true)}
+            >
+              <Avatar className={`${isMobile ? 'w-28 h-28' : 'w-32 h-32'} ring-4 ring-primary/20 hover:ring-primary/50 transition-all duration-300 group-hover:scale-105 shadow-lg`}>
+                {currentAvatarUrl ? (
+                  <AvatarImage 
+                    src={currentAvatarUrl} 
+                    className="object-cover"
+                  />
+                ) : (
+                  <AvatarFallback className={`${isMobile ? 'text-3xl' : 'text-4xl'} gradient-primary text-white`}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
+                {currentAvatarUrl ? (
+                  <RefreshCw className="h-7 w-7 text-white group-hover:rotate-180 transition-transform duration-500" />
+                ) : (
+                  <Camera className="h-7 w-7 text-white" />
+                )}
+              </div>
+              
+              {/* Magic sparkle indicator */}
+              {currentAvatarUrl && (
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center animate-pulse">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+              )}
+              
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-md -z-10"></div>
+            </div>
+            
+            {/* Enhanced status display */}
+            <div className="space-y-2">
+              {cooldown ? (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                    Next generation in {cooldown.daysLeft} days
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Available on {cooldown.nextAvailable}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                  ✨ Ready to generate new avatars!
+                </p>
+              )}
+              
+              {user?.caricature_history && user.caricature_history.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {user.caricature_history.length} generation{user.caricature_history.length !== 1 ? 's' : ''} • {user.caricature_history.reduce((total, batch) => total + batch.variants.length, 0)} avatars
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Name and Info Section */}
@@ -198,6 +259,8 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
         generationCount={generationCount}
         onGenerationCountUpdate={handleGenerationCountUpdate}
         avatarVariants={avatarVariants}
+        caricatureHistory={user?.caricature_history}
+        lastCaricatureGeneration={user?.last_caricature_generation}
       />
     </Card>
   );
