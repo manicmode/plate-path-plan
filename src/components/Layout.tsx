@@ -91,7 +91,7 @@ const Layout = ({ children }: LayoutProps) => {
                 alt=""
                 className="winged-v-icon"
                 style={{ 
-                  height: '70%',
+                  height: '85%',
                   objectFit: 'contain',
                   filter: 'brightness(0) invert(1)',
                   display: 'block',
