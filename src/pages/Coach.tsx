@@ -584,6 +584,15 @@ Take a breath... let's explore your nutrition journey together with care and int
         </CardContent>
       </Card>
 
+      {/* Nutrition Skill Panel */}
+      <SkillPanel
+        title="🧠 Nutrition Expert Skills"
+        icon={<Brain className="h-4 w-4 text-purple-600" />}
+        categories={nutritionSkillCategories}
+        onCommandClick={handleQuickQuestion}
+        isLoading={isLoading}
+        gradientColors="from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20"
+      />
 
       {/* Wellness Nudges Section */}
       {nudgeContent.isLoading ? (
@@ -747,16 +756,6 @@ Take a breath... let's explore your nutrition journey together with care and int
           )}
         </CardContent>
       </Card>
-
-      {/* Nutrition Skill Panel */}
-      <SkillPanel
-        title="🧠 Nutrition Expert Skills"
-        icon={<Brain className="h-4 w-4 text-purple-600" />}
-        categories={nutritionSkillCategories}
-        onCommandClick={handleQuickQuestion}
-        isLoading={isLoading}
-        gradientColors="from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20"
-      />
       </div>
     </div>
   );

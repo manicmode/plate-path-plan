@@ -101,6 +101,16 @@ const RecoveryCoachSection = () => {
 
         {/* AI Chat Box */}
         <RecoveryAIChat />
+
+        {/* Recovery Skill Panel */}
+        <SkillPanel
+          title="🧘 Recovery Expert Skills"
+          icon={<Heart className="h-4 w-4 text-orange-600" />}
+          categories={recoverySkillCategories}
+          onCommandClick={handleCommand}
+          isLoading={false}
+          gradientColors="from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20"
+        />
         
         {/* Command Buttons */}
         <RecoveryCommandBar />
@@ -113,16 +123,6 @@ const RecoveryCoachSection = () => {
         
         {/* AI Insights or Patterns */}
         <RecoveryInsights />
-
-        {/* Recovery Skill Panel */}
-        <SkillPanel
-          title="🧘 Recovery Expert Skills"
-          icon={<Heart className="h-4 w-4 text-orange-600" />}
-          categories={recoverySkillCategories}
-          onCommandClick={handleCommand}
-          isLoading={false}
-          gradientColors="from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20"
-        />
       </div>
     </div>
   );

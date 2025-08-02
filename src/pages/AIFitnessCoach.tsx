@@ -472,6 +472,16 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           </CardContent>
         </Card>
 
+        {/* Exercise Skill Panel */}
+        <SkillPanel
+          title="💪 Fitness Expert Skills"
+          icon={<Dumbbell className="h-4 w-4 text-indigo-600" />}
+          categories={exerciseSkillCategories}
+          onCommandClick={handlePromptClick}
+          isLoading={isLoading}
+          gradientColors="from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
+        />
+
         {/* AI Routine Generator Hero Box */}
         <div className="w-full mb-6">
           <button
@@ -827,16 +837,6 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </div>
           </CardContent>
         </Card>
-
-        {/* Exercise Skill Panel */}
-        <SkillPanel
-          title="💪 Fitness Expert Skills"
-          icon={<Dumbbell className="h-4 w-4 text-indigo-600" />}
-          categories={exerciseSkillCategories}
-          onCommandClick={handlePromptClick}
-          isLoading={isLoading}
-          gradientColors="from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
-        />
       </div>
 
       {/* Workout Preferences Modal */}
