@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useTheme } from 'next-themes';
 
 interface CircularProgressProps {
   value: number;
@@ -10,11 +11,18 @@ interface CircularProgressProps {
 }
 
 export const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 10 }: CircularProgressProps) => {
+  const { theme } = useTheme();
   const percentage = Math.min((value / max) * 100, 100);
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDasharray = circumference;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  // Enhanced glow effect for dark mode only
+  const isDark = theme === 'dark';
+  const progressFilter = isDark 
+    ? 'drop-shadow(0 0 8px rgba(255,255,255,0.1)) drop-shadow(0 0 12px currentColor)' 
+    : 'drop-shadow(0 0 6px rgba(0,0,0,0.3))';
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -39,7 +47,8 @@ export const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 
           className="transition-all duration-[2s] ease-out"
           strokeLinecap="round"
           style={{
-            filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.3))'
+            filter: progressFilter,
+            color: color
           }}
         />
       </svg>
