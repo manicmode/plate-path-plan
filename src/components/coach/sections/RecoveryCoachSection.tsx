@@ -115,14 +115,14 @@ const RecoveryCoachSection = () => {
         {/* Command Buttons */}
         <RecoveryCommandBar />
         
-        {/* Nudge Window */}
-        <RecoveryNudgeSection />
-        
         {/* Tips or Motivation */}
         <RecoveryTips />
         
         {/* AI Insights or Patterns */}
         <RecoveryInsights />
+
+        {/* 🧠 Coach Nudge Zone (Moved to Bottom) */}
+        <RecoveryNudgeSection />
       </div>
     </div>
   );

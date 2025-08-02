@@ -705,7 +705,7 @@ Take a breath... let's explore your nutrition journey together with care and int
         </CardContent>
       </Card>
 
-      {/* 📣 Nudge Zone - At the Bottom (Nutrition Coach Personality) */}
+      {/* 🧠 Coach Nudge Zone (Moved to Bottom) */}
       {nudgeContent.isLoading ? (
         <Card className="glass-card border-0 rounded-3xl">
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>

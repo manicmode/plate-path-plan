@@ -523,73 +523,6 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           </CardContent>
         </Card>
 
-
-        {/* Fitness Nudges Section */}
-        {nudgeContent.isLoading ? (
-          <Card className="glass-card border-0 rounded-3xl">
-            <CardContent className="p-6">
-              <LoadingNudgeState />
-            </CardContent>
-          </Card>
-        ) : nudgeContent.hasAnyContent ? (
-          <>
-            {/* Meditation Nudges Section */}
-            {nudgeContent.hasMeditationContent && (
-              <Card className="glass-card border-0 rounded-3xl">
-                <CardContent className="p-6">
-                  <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-                </CardContent>
-              </Card>
-            )}
-
-
-            {/* Yoga Nudges Section */}
-            {nudgeContent.hasYogaContent && (
-              <Card className="glass-card border-0 rounded-3xl">
-                <CardContent className="p-6">
-                  <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Sleep Nudges Section */}
-            {nudgeContent.hasSleepContent && (
-              <Card className="glass-card border-0 rounded-3xl">
-                <CardContent className="p-6">
-                  <AISleepNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Thermotherapy Nudges Section */}
-            {nudgeContent.hasThermotherapyContent && (
-              <Card className="glass-card border-0 rounded-3xl">
-                <CardContent className="p-6">
-                  <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Recovery Challenge Coach Section */}
-            {nudgeContent.hasRecoveryContent && (
-              <Card className="glass-card border-0 rounded-3xl">
-                <CardContent className="p-6">
-                  <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
-                </CardContent>
-              </Card>
-            )}
-          </>
-        ) : (
-          <Card className="glass-card border-0 rounded-3xl">
-            <CardContent className="p-6">
-              <EmptyNudgeState 
-                message="No recent fitness suggestions available"
-                type="fitness"
-              />
-            </CardContent>
-          </Card>
-        )}
-
         {/* Social Accountability Section */}
         {(nudgeOpportunities?.length > 0 || groupStats) && (
           <Card className="border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5 mb-0 !mb-0">
@@ -837,6 +770,71 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </div>
           </CardContent>
         </Card>
+
+        {/* 🧠 Coach Nudge Zone (Moved to Bottom) */}
+        {nudgeContent.isLoading ? (
+          <Card className="glass-card border-0 rounded-3xl">
+            <CardContent className="p-6">
+              <LoadingNudgeState />
+            </CardContent>
+          </Card>
+        ) : nudgeContent.hasAnyContent ? (
+          <>
+            {/* Meditation Nudges Section */}
+            {nudgeContent.hasMeditationContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AINudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Yoga Nudges Section */}
+            {nudgeContent.hasYogaContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sleep Nudges Section */}
+            {nudgeContent.hasSleepContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AISleepNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Thermotherapy Nudges Section */}
+            {nudgeContent.hasThermotherapyContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recovery Challenge Coach Section */}
+            {nudgeContent.hasRecoveryContent && (
+              <Card className="glass-card border-0 rounded-3xl">
+                <CardContent className="p-6">
+                  <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </CardContent>
+              </Card>
+            )}
+          </>
+        ) : (
+          <Card className="glass-card border-0 rounded-3xl">
+            <CardContent className="p-6">
+              <EmptyNudgeState 
+                message="No recent fitness suggestions available"
+                type="fitness"
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Workout Preferences Modal */}
