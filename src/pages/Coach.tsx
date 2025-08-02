@@ -15,10 +15,6 @@ import { RecipeStorage, type SavedRecipe } from '@/lib/recipeStorage';
 import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
-import { AIBreathingNudgeChatEntries } from '@/components/breathing/AIBreathingNudgeChatEntries';
-import { AIYogaNudgeChatEntries } from '@/components/yoga/AIYogaNudgeChatEntries';
-import { AISleepNudgeChatEntries } from '@/components/sleep/AISleepNudgeChatEntries';
-import { AIThermotherapyNudgeChatEntries } from '@/components/thermotherapy/AIThermotherapyNudgeChatEntries';
 import { AIRecoveryChallengeChatEntries } from '@/components/recovery/AIRecoveryChallengeChatEntries';
 import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
 import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
@@ -525,8 +521,6 @@ const Coach = () => {
         </CardContent>
       </Card>
 
-      {/* Breathing Nudge Banner */}
-      <BreathingNudgeBanner />
 
       {/* Wellness Nudges Section */}
       {nudgeContent.isLoading ? (
@@ -546,38 +540,16 @@ const Coach = () => {
             </Card>
           )}
 
-          {/* Breathing Nudges Section */}
-          {nudgeContent.hasBreathingContent && (
+          {/* No recent nutrition nudges message when none are available */}
+          {!nudgeContent.hasMeditationContent && !nudgeContent.hasRecoveryContent && (
             <Card className="glass-card border-0 rounded-3xl">
               <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <AIBreathingNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Yoga Nudges Section */}
-          {nudgeContent.hasYogaContent && (
-            <Card className="glass-card border-0 rounded-3xl">
-              <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <AIYogaNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sleep Nudges Section */}
-          {nudgeContent.hasSleepContent && (
-            <Card className="glass-card border-0 rounded-3xl">
-              <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <AISleepNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Thermotherapy Nudges Section */}
-          {nudgeContent.hasThermotherapyContent && (
-            <Card className="glass-card border-0 rounded-3xl">
-              <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-                <AIThermotherapyNudgeChatEntries maxEntries={3} showOnlyRecent={true} />
+                <div className="text-center py-8">
+                  <ChefHat className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground text-sm">
+                    No new nudges for this section yet. Keep going strong!
+                  </p>
+                </div>
               </CardContent>
             </Card>
           )}
