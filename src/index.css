@@ -143,11 +143,10 @@
   /* Prevent mobile overscroll bounce/pull behavior */
   html, body {
     overflow-x: hidden;
-    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
     /* Prevent pull-to-refresh and bounce on mobile */
-    overscroll-behavior-y: none;
-    -webkit-overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    -webkit-overscroll-behavior-x: none;
   }
 
   body {
