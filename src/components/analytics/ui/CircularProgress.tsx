@@ -10,7 +10,7 @@ interface CircularProgressProps {
   strokeWidth?: number;
 }
 
-export const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 10 }: CircularProgressProps) => {
+export const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 12 }: CircularProgressProps) => {
   const { theme } = useTheme();
   const percentage = Math.min((value / max) * 100, 100);
   const radius = (size - strokeWidth) / 2;
@@ -21,7 +21,7 @@ export const CircularProgress = ({ value, max, color, size = 120, strokeWidth = 
   // Enhanced glow effect for dark mode only
   const isDark = theme === 'dark';
   const progressFilter = isDark 
-    ? 'drop-shadow(0 0 8px rgba(255,255,255,0.1)) drop-shadow(0 0 12px currentColor)' 
+    ? 'drop-shadow(0 0 12px rgba(255,255,255,0.2)) drop-shadow(0 0 16px currentColor) drop-shadow(0 0 24px currentColor)' 
     : 'drop-shadow(0 0 6px rgba(0,0,0,0.3))';
 
   return (
