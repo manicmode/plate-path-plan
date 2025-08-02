@@ -128,44 +128,59 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                   duration: 3,
                   ease: "easeInOut"
                 }}
-                className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl relative overflow-hidden"
-              >
-                {/* Winged V Logo */}
-                <motion.div
-                  animate={{
-                    filter: [
-                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.8))',
-                      'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 1))',
-                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.8))'
-                    ]
-                  }}
-                  transition={{ 
-                    repeat: Infinity, 
-                    duration: 2,
-                    ease: "easeInOut"
-                  }}
-                  className="relative z-10"
-                >
-                  <img 
-                    src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
-                    alt="VOYAGE Winged V" 
-                    className="w-14 h-14 object-contain"
-                  />
-                </motion.div>
+                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-700 to-gray-900 shadow-2xl relative overflow-hidden"
+               >
+                 {/* Ambient Glow Behind V */}
+                 <motion.div
+                   animate={{
+                     opacity: [0.3, 0.6, 0.3],
+                     scale: [0.9, 1.1, 0.9]
+                   }}
+                   transition={{
+                     repeat: Infinity,
+                     duration: 3,
+                     ease: "easeInOut"
+                   }}
+                   className="absolute inset-0 bg-gradient-radial from-teal-400/20 via-blue-500/10 to-transparent rounded-2xl blur-sm"
+                 />
 
-                {/* Flash Effect */}
-                <motion.div
-                  animate={{
-                    opacity: [0, 1, 0],
-                    scale: [0.8, 1.2, 0.8]
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 4,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute inset-0 bg-gradient-radial from-white/30 via-transparent to-transparent rounded-2xl"
-                />
+                 {/* Winged V Logo */}
+                 <motion.div
+                   animate={{
+                     filter: [
+                       'drop-shadow(0 0 15px rgba(20, 184, 166, 0.6))',
+                       'drop-shadow(0 0 25px rgba(59, 130, 246, 0.8))',
+                       'drop-shadow(0 0 15px rgba(20, 184, 166, 0.6))'
+                     ]
+                   }}
+                   transition={{ 
+                     repeat: Infinity, 
+                     duration: 2,
+                     ease: "easeInOut"
+                   }}
+                   className="relative z-10"
+                 >
+                   <img 
+                     src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
+                     alt="VOYAGE Winged V" 
+                     className="w-16 h-16 object-contain"
+                   />
+                 </motion.div>
+
+                 {/* Flash Effect */}
+                 <motion.div
+                   animate={{
+                     opacity: [0, 0.8, 0],
+                     scale: [0.8, 1.3, 0.8]
+                   }}
+                   transition={{
+                     repeat: Infinity,
+                     duration: 4,
+                     ease: "easeInOut",
+                     delay: 2
+                   }}
+                   className="absolute inset-0 bg-gradient-radial from-teal-300/40 via-blue-400/20 to-transparent rounded-2xl"
+                 />
 
                 {/* Circulating Stars */}
                 {[...Array(6)].map((_, i) => (
