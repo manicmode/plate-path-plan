@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell, TrendingUp, BarChart3 } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -397,100 +398,121 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           <LevelProgressBar theme="exercise" />
         </div>
 
-        {/* AI Chat Component */}
-        <Card className="border-2 border-indigo-300 dark:border-indigo-700 mb-0 !mb-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-indigo-600" />
-              AI Chat Assistant
+        {/* AI Chat Box */}
+        <Card className="glass-card border-0 rounded-3xl">
+          <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+            <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+              <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
+              <span>Chat with Your Coach</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Chat Messages */}
-              <div className="bg-muted/30 rounded-lg p-4 min-h-[300px] max-h-[400px] overflow-y-auto space-y-3">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] p-4 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                          : 'bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-800 text-foreground border border-gray-200 dark:border-gray-600'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {message.role === 'assistant' && message.emoji && (
-                          <span className="text-lg flex-shrink-0 mt-0.5">{message.emoji}</span>
-                        )}
-                        <p className="text-sm whitespace-pre-line leading-relaxed">{message.content}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                 {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">🤖</span>
-                        <div className="flex flex-col gap-1">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Analyzing your fitness data...
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+            {/* Messages Container with optimized height for mobile */}
+            <div className={`${isMobile ? 'h-[500px]' : 'h-[600px]'} flex flex-col`}>
+              <ScrollArea className="flex-1 px-3 w-full">
+                <div className="space-y-4 py-2">
+                  {messages.map((message, index) => (
+                    <div key={index}>
+                      <div
+                        className={`flex items-start space-x-3 w-full ${
+                          message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                        }`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            message.role === 'user'
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-blue-500 text-white'
+                          }`}
+                        >
+                          {message.role === 'user' ? '👤' : message.emoji || '🤖'}
+                        </div>
+                        <div
+                            className={`flex-1 p-3 rounded-2xl break-words ${
+                              message.role === 'user'
+                                ? 'bg-orange-500 text-white max-w-[80%] ml-auto'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
+                            }`}
+                          style={{ 
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            wordBreak: 'break-word'
+                          }}
+                        >
+                          <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed whitespace-pre-wrap`}>
+                            {message.content}
                           </p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Smart Prompt Buttons */}
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground font-medium">🚀 Quick Actions - Get instant insights:</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {smartPrompts.map((prompt, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      onClick={() => handlePromptClick(prompt.message)}
-                      className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
-                      disabled={isLoading}
-                    >
-                      <span className="mr-2 text-lg">{prompt.emoji}</span>
-                      <span className="text-sm font-medium">{prompt.text}</span>
-                    </Button>
                   ))}
+                  {isLoading && (
+                    <div className="flex items-start space-x-3 w-full">
+                      <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
+                        🤖
+                      </div>
+                      <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
+                            Thinking...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </ScrollArea>
+            </div>
 
-              {/* Chat Input */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ask your AI fitness coach anything..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
-                  className="flex-1"
-                  disabled={isLoading}
-                />
-                <Button
-                  onClick={() => handleSendMessage(inputMessage)}
-                  disabled={isLoading || !inputMessage.trim()}
-                  className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                >
+            {/* Input Area */}
+            <div className={`flex space-x-2 mt-4`}>
+              <Input
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
+                placeholder="Ask your fitness coach..."
+                disabled={isLoading}
+                className="flex-1 rounded-2xl"
+              />
+              <Button
+                onClick={() => handleSendMessage(inputMessage)}
+                disabled={!inputMessage.trim() || isLoading}
+                size="sm"
+                className="bg-orange-500 hover:bg-orange-600 rounded-2xl px-4"
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
                   <Send className="h-4 w-4" />
-                </Button>
-              </div>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Smart Prompt Buttons */}
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground font-medium">🚀 Quick Actions - Get instant insights:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {smartPrompts.map((prompt, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                onClick={() => handlePromptClick(prompt.message)}
+                className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
+                disabled={isLoading}
+              >
+                <span className="mr-2 text-lg">{prompt.emoji}</span>
+                <span className="text-sm font-medium">{prompt.text}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
 
         {/* 🎮 Coach Gamification System - Praise Messages */}
         <AnimatePresence>
