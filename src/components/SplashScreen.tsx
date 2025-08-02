@@ -130,13 +130,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                {/* Cinematic Winged V Logo */}
+                {/* Serene Lotus Flower Icon */}
                 <motion.div
                   animate={{
                     filter: [
-                      'drop-shadow(0 0 30px rgba(20, 184, 166, 0.8)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
-                      'drop-shadow(0 0 50px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 80px rgba(147, 51, 234, 0.5))',
-                      'drop-shadow(0 0 30px rgba(20, 184, 166, 0.8)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))'
+                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))',
+                      'drop-shadow(0 0 30px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
+                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))'
                     ]
                   }}
                   transition={{ 
@@ -144,115 +144,49 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                     duration: 4,
                     ease: "easeInOut"
                   }}
-                  className="w-14 h-14 flex items-center justify-center relative"
                 >
-                  {/* Main Winged V Logo */}
-                  <motion.img
-                    src="/lovable-uploads/862d48fb-84de-473c-88a2-b654e5b83609.png"
-                    alt=""
-                    animate={{
-                      scale: [1, 1.05, 1],
-                      opacity: [0.95, 1, 0.95],
-                      filter: [
-                        'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))',
-                        'brightness(0) invert(1) drop-shadow(0 0 35px rgba(255, 255, 255, 1))',
-                        'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))'
-                      ]
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 3,
-                      ease: "easeInOut"
-                    }}
-                    className="w-12 h-12 object-contain z-10"
-                    style={{
-                      filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.95))',
-                      textShadow: '0 0 40px rgba(255, 255, 255, 0.9)'
-                    }}
-                  />
-                  
-                  {/* Ambient Glow Behind V */}
-                  <motion.div
-                    animate={{
-                      opacity: [0.3, 0.5, 0.3],
-                      scale: [1, 1.1, 1]
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 4,
-                      ease: "easeInOut"
-                    }}
-                    className="absolute inset-0 flex items-center justify-center z-0"
+                  <svg 
+                    width="40" 
+                    height="40" 
+                    viewBox="0 0 512 512" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="drop-shadow-xl"
                   >
-                    <div className="w-10 h-10 rounded-full bg-white/20 blur-md" />
-                  </motion.div>
-                  
-                  {/* Rotating Energy Rings */}
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 8,
-                      ease: "linear"
-                    }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <div className="w-10 h-10 rounded-full border border-teal-400/30 border-dashed" />
-                  </motion.div>
-                  
-                  <motion.div
-                    animate={{ rotate: -360 }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 12,
-                      ease: "linear"
-                    }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <div className="w-12 h-12 rounded-full border border-purple-400/20 border-dotted" />
-                  </motion.div>
-                  
-                  {/* Rising Particle Mist */}
-                  {[...Array(8)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{
-                        opacity: [0, 0.8, 0],
-                        scale: [0.3, 1, 0.3],
-                        y: [15, -15, 15],
-                        x: [0, Math.sin(i) * 5, 0]
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 3 + Math.random() * 2,
-                        delay: Math.random() * 3,
-                        ease: "easeInOut"
-                      }}
-                      className="absolute w-1 h-1 rounded-full bg-gradient-to-r from-white/60 to-teal-300/80"
-                      style={{
-                        left: `${20 + Math.cos(i * 45 * Math.PI / 180) * 25}px`,
-                        top: `${20 + Math.sin(i * 45 * Math.PI / 180) * 25}px`,
-                        filter: 'blur(0.5px)'
-                      }}
+                    <defs>
+                      {/* VOYAGE Brand Gradient */}
+                      <linearGradient id="voyageLotusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#14b8a6" /> {/* Teal */}
+                        <stop offset="50%" stopColor="#3b82f6" /> {/* Sky Blue */}
+                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
+                      </linearGradient>
+                      
+                      {/* Soft Glow Filter */}
+                      <filter id="sereneGlow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    
+                    {/* Lotus Flower Shape Based on Uploaded Silhouette */}
+                    <path 
+                      d="M256 50c-50 0-90 40-120 80-20 30-30 60-30 90 0 60 40 110 100 130 20 10 40 10 50 10s30 0 50-10c60-20 100-70 100-130 0-30-10-60-30-90-30-40-70-80-120-80z M200 180c-10-20-20-40-20-60 0-20 10-40 30-50 20-10 40-10 46-10v120z M312 180v-120c6 0 26 0 46 10 20 10 30 30 30 50 0 20-10 40-20 60z M256 460c-80 0-150-60-180-140-10-30-10-60 0-80 10-20 30-30 50-30h260c20 0 40 10 50 30 10 20 10 50 0 80-30 80-100 140-180 140z M150 250c-10 0-20 10-20 20 0 60 50 110 110 110h32c60 0 110-50 110-110 0-10-10-20-20-20z"
+                      fill="url(#voyageLotusGradient)"
+                      filter="url(#sereneGlow)"
                     />
-                  ))}
-                  
-                  {/* Lens Flare Effect */}
-                  <motion.div
-                    animate={{
-                      opacity: [0, 0.4, 0],
-                      scale: [0.8, 1.2, 0.8],
-                      rotate: [0, 180, 360]
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 6,
-                      ease: "easeInOut"
-                    }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-gradient-radial from-white/10 via-teal-400/5 to-transparent" />
-                  </motion.div>
+                    
+                    {/* Center Detail */}
+                    <circle 
+                      cx="256" 
+                      cy="280" 
+                      r="15" 
+                      fill="rgba(255,255,255,0.9)"
+                      filter="url(#sereneGlow)"
+                    />
+                  </svg>
                 </motion.div>
               </motion.div>
             </motion.div>

@@ -30,6 +30,3 @@ verify_jwt = true
 
 [functions.generateCaricatureImage]
 verify_jwt = true
-
-[functions.cleanup-unverified-accounts]
-verify_jwt = true

@@ -25,10 +25,6 @@ import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
-import { SupabaseRedirectGate } from '@/components/auth/SupabaseRedirectGate';
-
-// Lazy load auth callback
-const AuthCallback = lazy(() => import('@/components/auth/AuthCallback').then(module => ({ default: module.AuthCallback })));
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -122,11 +118,7 @@ function AppContent() {
           <BodyScanReminderChecker />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
-              {/* Normal root route */}
-              <Route path="/" element={<Index />} />
-              
               {/* Fullscreen pages without Layout */}
-              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/recovery-player" element={
@@ -150,17 +142,16 @@ function AppContent() {
                 </ProtectedRoute>
               } />
               
-              {/* Regular pages with Layout - only match specific paths, not root */}
-              <Route path="/home" element={
-                <Layout>
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                </Layout>
-              } />
+              {/* Regular pages with Layout */}
               <Route path="*" element={
                 <Layout>
                   <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/home" element={
+                      <ProtectedRoute>
+                        <Home />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/camera" element={
                       <ProtectedRoute>
                         <Camera />
@@ -379,9 +370,6 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      {/* Gate component to handle Supabase redirects before any routing */}
-      <SupabaseRedirectGate />
-      
       <ErrorBoundary>
         <ThemeProvider>
           <SoundProvider>

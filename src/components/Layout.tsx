@@ -82,9 +82,12 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen gradient-main transition-all duration-300">
       {/* Enhanced Header with better spacing */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <header className="glass-card sticky top-0 z-50 border-0 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
+              <span className={`text-white font-bold ${isMobile ? 'text-base' : 'text-xl'}`}>V</span>
+            </div>
             <div>
               <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
               <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-600 dark:text-gray-300 font-medium`}>AI Wellness Assistant</p>
@@ -109,8 +112,16 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content with adjusted padding for explore page */}
       <main className={`max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 ${
-        shouldShowNavigation ? (isMobile ? 'pb-32' : 'pb-40') : 'pb-8'
-      } min-h-[calc(100vh-140px)]`}>
+        shouldShowNavigation ? (
+          isExplorePage 
+            ? 'pb-20' // Reduced padding for explore page
+            : (isMobile ? 'pb-40' : 'pb-60')
+        ) : 'pb-8'
+      } ${
+        isExplorePage 
+          ? 'h-[calc(100vh-160px)]' // Precise height for explore page
+          : 'min-h-[calc(100vh-140px)]'
+      }`}>
         {children}
       </main>
 

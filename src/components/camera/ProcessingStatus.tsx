@@ -65,7 +65,7 @@ export const ProcessingStatus = ({
 
   if (isProcessing) {
     return (
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 relative z-10 max-w-md mx-auto">
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
         <CardContent className="p-6">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="flex items-center gap-3">
