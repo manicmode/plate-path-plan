@@ -285,6 +285,11 @@ export const CaricatureModal = ({
     fileInputRef.current?.click();
   };
 
+  const handleTouchEnd = (callback: () => void) => (e: React.TouchEvent) => {
+    e.preventDefault();
+    callback();
+  };
+
   const savedVariants = avatarVariants ? [
     avatarVariants.variant_1,
     avatarVariants.variant_2,
@@ -316,11 +321,14 @@ export const CaricatureModal = ({
         </DialogHeader>
         
         {step === 'upload' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Large Avatar Display */}
             <div className="text-center">
-              <div className="relative mb-6">
-                <Avatar className="w-32 h-32 mx-auto ring-4 ring-primary/20 hover:ring-primary/40 transition-all duration-300">
+              <div className="relative mb-4">
+                <Avatar className={cn(
+                  "mx-auto ring-4 ring-primary/20 hover:ring-primary/40 transition-all duration-300",
+                  isMobile ? "w-40 h-40" : "w-48 h-48"
+                )}>
                   <AvatarImage src={currentAvatarUrl} className="object-cover" />
                   <AvatarFallback className="text-4xl gradient-primary text-white">
                     {userId.slice(0, 2).toUpperCase()}
@@ -333,24 +341,39 @@ export const CaricatureModal = ({
                 )}
               </div>
               
-              <p className="text-lg text-muted-foreground mb-6">
+              <p className={cn("text-muted-foreground mb-4", isMobile ? "text-base" : "text-lg")}>
                 Create magical AI caricature avatars that look just like you!
               </p>
               
               {/* Cooldown Display */}
               {cooldown && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-xl border border-orange-200 dark:border-orange-800">
+                <div className="mb-4 p-3 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-xl border border-orange-200 dark:border-orange-800">
                   <div className="flex items-center justify-center gap-2 text-orange-700 dark:text-orange-300">
                     <Clock className="h-5 w-5" />
-                    <span className="font-medium">Next avatar generation available in {cooldown.daysLeft} days</span>
+                    <span className="font-medium text-sm">Next avatar generation available in {cooldown.daysLeft} days</span>
                   </div>
-                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
-                    🎨 Your next avatar set will be available on {cooldown.nextAvailable}!
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                    🎨 Available on {cooldown.nextAvailable}!
                   </p>
                 </div>
               )}
               
-              <div className="space-y-4">
+              {/* Photo Upload Preview */}
+              {uploadedImage && (
+                <div className="mb-4 p-3 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden ring-2 ring-green-300">
+                      <img src={uploadedImage} alt="Uploaded photo" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-green-700 dark:text-green-300 font-medium text-sm">✅ Image Ready!</p>
+                      <p className="text-green-600 dark:text-green-400 text-xs">Photo uploaded successfully</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-3">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -359,22 +382,43 @@ export const CaricatureModal = ({
                   className="hidden"
                 />
                 
-                <Button 
-                  onClick={handleUploadClick}
-                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  size="lg"
-                  disabled={isGenerating || generationDisabled}
-                >
-                  <Upload className="w-5 h-5 mr-3" />
-                  Upload Photo
-                </Button>
+                {!uploadedImage ? (
+                  <Button 
+                    onClick={handleUploadClick}
+                    onTouchEnd={handleTouchEnd(handleUploadClick)}
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 active:scale-95 transition-transform"
+                    size="lg"
+                    disabled={isGenerating || generationDisabled}
+                  >
+                    <Upload className="w-5 h-5 mr-3" />
+                    Upload Photo
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleUploadClick}
+                    onTouchEnd={handleTouchEnd(handleUploadClick)}
+                    variant="outline"
+                    className="w-full h-12 text-base font-medium border-2 border-primary/30 hover:border-primary/60 active:scale-95 transition-transform"
+                    size="lg"
+                    disabled={isGenerating || generationDisabled}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Replace Photo
+                  </Button>
+                )}
                 
                 {uploadedImage && !cooldown && (
                   <Button 
                     onClick={generateCaricatureVariants}
-                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600"
+                    onTouchEnd={handleTouchEnd(generateCaricatureVariants)}
+                    className={cn(
+                      "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
+                      "active:scale-95 transition-all duration-200",
+                      !isGenerating && !generationDisabled && "animate-pulse hover:animate-none",
+                      "shadow-lg hover:shadow-xl"
+                    )}
                     size="lg"
-                    disabled={isGenerating || generationDisabled}
+                    disabled={isGenerating || generationDisabled || !uploadedImage}
                   >
                     {isGenerating ? (
                       <>
@@ -384,7 +428,10 @@ export const CaricatureModal = ({
                     ) : (
                       <>
                         <Wand2 className="w-5 h-5 mr-3" />
-                        Generate 3 Caricatures
+                        <span className="relative">
+                          Generate 3 Caricatures
+                          <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-yellow-300 animate-pulse" />
+                        </span>
                       </>
                     )}
                   </Button>
@@ -396,8 +443,12 @@ export const CaricatureModal = ({
                       setVariants(savedVariants);
                       setStep('variants');
                     }}
+                    onTouchEnd={handleTouchEnd(() => {
+                      setVariants(savedVariants);
+                      setStep('variants');
+                    })}
                     variant="outline"
-                    className="w-full h-12 text-base font-medium border-2 border-primary/30 hover:border-primary/60"
+                    className="w-full h-12 text-base font-medium border-2 border-primary/30 hover:border-primary/60 active:scale-95 transition-transform"
                     size="lg"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -417,7 +468,8 @@ export const CaricatureModal = ({
                       <div
                         key={index}
                         className="relative cursor-pointer group"
-                        onClick={() => handleSelectVariant(avatar, 1)}
+                         onClick={() => handleSelectVariant(avatar, 1)}
+                        onTouchEnd={handleTouchEnd(() => handleSelectVariant(avatar, 1))}
                       >
                         <img
                           src={avatar}
@@ -432,12 +484,13 @@ export const CaricatureModal = ({
                   </div>
                 </div>
                 
-                {/* Action Buttons */}
+                 {/* Action Buttons */}
                 <div className="flex gap-3">
                   <Button
                     onClick={handleSurpriseMe}
+                    onTouchEnd={handleTouchEnd(handleSurpriseMe)}
                     variant="outline"
-                    className="flex-1 h-12 font-medium"
+                    className="flex-1 h-12 font-medium active:scale-95 transition-transform"
                     disabled={allHistoricalAvatars.length === 0}
                   >
                     <Shuffle className="w-4 h-4 mr-2" />
@@ -445,8 +498,9 @@ export const CaricatureModal = ({
                   </Button>
                   <Button
                     onClick={handleExportAvatar}
+                    onTouchEnd={handleTouchEnd(handleExportAvatar)}
                     variant="outline"
-                    className="flex-1 h-12 font-medium"
+                    className="flex-1 h-12 font-medium active:scale-95 transition-transform"
                     disabled={!currentAvatarUrl}
                   >
                     <Download className="w-4 h-4 mr-2" />
@@ -485,7 +539,8 @@ export const CaricatureModal = ({
                       "border-4 border-transparent hover:border-primary/40",
                       "bg-gradient-to-br from-primary/10 to-secondary/10"
                     )}
-                    onClick={() => handleSelectVariant(variant, index + 1)}
+                     onClick={() => handleSelectVariant(variant, index + 1)}
+                    onTouchEnd={handleTouchEnd(() => handleSelectVariant(variant, index + 1))}
                     onMouseEnter={() => setHoveredVariant(variant)}
                     onMouseLeave={() => setHoveredVariant(null)}
                   >
