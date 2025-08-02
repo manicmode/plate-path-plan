@@ -12,7 +12,7 @@ import { ChatModalProvider } from '@/contexts/ChatModalContext';
 import { SoundProvider } from '@/contexts/SoundContext';
 import { RewardsProvider } from '@/contexts/RewardsContext';
 import Layout from '@/components/Layout';
-import { LoadingScreen } from '@/components/LoadingScreen';
+import { SmartLoadingScreen } from '@/components/SmartLoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { DailyMoodModal } from '@/components/mood/DailyMoodModal';
@@ -116,7 +116,7 @@ function AppContent() {
       {!isColdStart && (
         <>
           <BodyScanReminderChecker />
-          <Suspense fallback={<LoadingScreen />}>
+          <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
               {/* Fullscreen pages without Layout */}
               <Route path="/shared-routine" element={<SharedRoutine />} />
