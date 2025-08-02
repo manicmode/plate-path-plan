@@ -333,6 +333,7 @@ class SoundManager {
       const audio = new Audio();
       audio.volume = config.volume || 0.7;
       audio.preload = 'auto';
+      audio.crossOrigin = 'anonymous';
       
       console.log(`🎚️ Volume set to:`, audio.volume);
       
@@ -346,21 +347,39 @@ class SoundManager {
         audio.setAttribute('playsinline', 'true');
         audio.setAttribute('webkit-playsinline', 'true');
       }
-      
-      audio.addEventListener('canplaythrough', () => {
-        console.log(`✅ Successfully loaded sound: ${key} from ${config.url}`);
-        this.audioCache[key] = audio;
-        resolve(audio);
-      });
 
-      audio.addEventListener('error', (e) => {
-        console.error(`❌ Failed to load sound "${key}" from URL: ${config.url}`, e);
+      // Enhanced error handling with detailed logging
+      audio.onerror = (e) => {
+        console.error(`❌ Audio error for "${key}":`, e);
         console.error('❌ Audio element error details:', {
           error: e,
           audioSrc: audio.src,
           audioReadyState: audio.readyState,
           audioNetworkState: audio.networkState
         });
+        reject(e);
+      };
+
+      audio.oncanplaythrough = () => {
+        console.log(`✅ Can play through: ${key} from ${config.url}`);
+        this.audioCache[key] = audio;
+        resolve(audio);
+      };
+
+      audio.onplay = () => {
+        console.log(`🎵 Playback started for: ${key}`);
+      };
+      
+      audio.addEventListener('canplaythrough', () => {
+        console.log(`✅ Successfully loaded sound: ${key} from ${config.url}`);
+        if (!this.audioCache[key]) {
+          this.audioCache[key] = audio;
+          resolve(audio);
+        }
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.error(`❌ Failed to load sound "${key}" from URL: ${config.url}`, e);
         reject(e);
       });
 
@@ -487,29 +506,39 @@ class SoundManager {
       }
     }
     
-    // Use a promise to handle potential autoplay restrictions
+    // Use a promise to handle potential autoplay restrictions with enhanced error handling
     console.log(`🎵 Starting audio.play() for "${soundKey}"...`);
-    const playPromise = audio.play();
     
-    if (playPromise !== undefined) {
-      try {
-        await playPromise;
-        console.log(`✅ Startup sound played successfully for "${soundKey}"`);
-      } catch (playError: any) {
-        console.error(`❌ Failed to play startup sound "${soundKey}":`, playError);
-        console.error(`❌ Audio element state:`, {
-          src: audio.src,
-          volume: audio.volume,
-          readyState: audio.readyState,
-          networkState: audio.networkState,
-          paused: audio.paused,
-          currentTime: audio.currentTime,
-          duration: audio.duration
+    try {
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        await playPromise.catch((playError: any) => {
+          console.error(`❌ Failed to play sound "${soundKey}":`, playError);
+          console.error(`❌ Audio element state:`, {
+            src: audio.src,
+            volume: audio.volume,
+            readyState: audio.readyState,
+            networkState: audio.networkState,
+            paused: audio.paused,
+            currentTime: audio.currentTime,
+            duration: audio.duration
+          });
+          
+          // Check for common mobile autoplay restrictions
+          if (playError.name === 'NotAllowedError') {
+            console.warn(`⚠️ Autoplay blocked for "${soundKey}" - user interaction required`);
+          }
+          throw playError;
         });
-        throw playError;
+        
+        console.log(`✅ Sound played successfully for "${soundKey}"`);
+      } else {
+        console.warn(`⚠️ play() returned undefined for "${soundKey}"`);
       }
-    } else {
-      console.warn(`⚠️ play() returned undefined for "${soundKey}"`);
+    } catch (error: any) {
+      console.error(`❌ Unexpected error playing "${soundKey}":`, error);
+      throw error;
     }
   }
 
