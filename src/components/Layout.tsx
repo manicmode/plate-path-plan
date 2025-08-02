@@ -87,10 +87,18 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
               <img 
-                src="/lovable-uploads/5e3b23ef-0bc9-4e07-a43b-e4bdcff103b0.png" 
-                alt="VOYAGE Logo" 
-                className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} object-contain`}
-                style={{ filter: 'brightness(0) invert(1)' }}
+                src="/lovable-uploads/862d48fb-84de-473c-88a2-b654e5b83609.png"
+                alt=""
+                className="winged-v-icon"
+                style={{ 
+                  height: '85%',
+                  objectFit: 'contain',
+                  filter: 'brightness(0) invert(1)',
+                  display: 'block',
+                  margin: 'auto'
+                }}
+                onLoad={() => console.log('✅ Winged V logo loaded successfully')}
+                onError={() => console.error('❌ Failed to load winged V logo')}
               />
             </div>
             <div>

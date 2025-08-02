@@ -130,13 +130,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl"
               >
-                {/* Amazing Neon Rocket Logo */}
+                {/* Cinematic Winged V Logo */}
                 <motion.div
                   animate={{
                     filter: [
-                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))',
-                      'drop-shadow(0 0 30px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
-                      'drop-shadow(0 0 20px rgba(20, 184, 166, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3))'
+                      'drop-shadow(0 0 30px rgba(20, 184, 166, 0.8)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))',
+                      'drop-shadow(0 0 50px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 80px rgba(147, 51, 234, 0.5))',
+                      'drop-shadow(0 0 30px rgba(20, 184, 166, 0.8)) drop-shadow(0 0 60px rgba(147, 51, 234, 0.4))'
                     ]
                   }}
                   transition={{ 
@@ -144,145 +144,115 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                     duration: 4,
                     ease: "easeInOut"
                   }}
+                  className="w-14 h-14 flex items-center justify-center relative"
                 >
-                  <svg 
-                    width="60" 
-                    height="60" 
-                    viewBox="0 0 100 120" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="drop-shadow-xl"
+                  {/* Main Winged V Logo */}
+                  <motion.img
+                    src="/lovable-uploads/862d48fb-84de-473c-88a2-b654e5b83609.png"
+                    alt=""
+                    animate={{
+                      scale: [1, 1.05, 1],
+                      opacity: [0.95, 1, 0.95],
+                      filter: [
+                        'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))',
+                        'brightness(0) invert(1) drop-shadow(0 0 35px rgba(255, 255, 255, 1))',
+                        'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.9))'
+                      ]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 3,
+                      ease: "easeInOut"
+                    }}
+                    className="w-12 h-12 object-contain z-10"
+                    style={{
+                      filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.95))',
+                      textShadow: '0 0 40px rgba(255, 255, 255, 0.9)'
+                    }}
+                  />
+                  
+                  {/* Ambient Glow Behind V */}
+                  <motion.div
+                    animate={{
+                      opacity: [0.3, 0.5, 0.3],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 4,
+                      ease: "easeInOut"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center z-0"
                   >
-                    <defs>
-                      {/* VOYAGE Brand Rocket Gradient */}
-                      <linearGradient id="voyageRocketGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#14b8a6" /> {/* Teal */}
-                        <stop offset="50%" stopColor="#3b82f6" /> {/* Sky Blue */}
-                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
-                      </linearGradient>
-                      
-                      {/* Flame Gradient */}
-                      <linearGradient id="flameGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#f59e0b" /> {/* Amber */}
-                        <stop offset="50%" stopColor="#ef4444" /> {/* Red */}
-                        <stop offset="100%" stopColor="#8b5cf6" /> {/* Violet */}
-                      </linearGradient>
-                      
-                      {/* Rocket Glow Filter */}
-                      <filter id="rocketGlow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                        <feMerge>
-                          <feMergeNode in="coloredBlur"/>
-                          <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                      </filter>
-                      
-                      {/* Swirl Gradient */}
-                      <linearGradient id="swirlGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.6" />
-                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.3" />
-                      </linearGradient>
-                    </defs>
-                    
-                    {/* Transformation Swirls */}
-                    <path 
-                      d="M20 80 Q30 70, 40 80 T60 80" 
-                      stroke="url(#swirlGradient)" 
-                      strokeWidth="2" 
-                      fill="none" 
-                      opacity="0.7"
-                      filter="url(#rocketGlow)"
+                    <div className="w-10 h-10 rounded-full bg-white/20 blur-md" />
+                  </motion.div>
+                  
+                  {/* Rotating Energy Rings */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 8,
+                      ease: "linear"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-10 h-10 rounded-full border border-teal-400/30 border-dashed" />
+                  </motion.div>
+                  
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 12,
+                      ease: "linear"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-12 h-12 rounded-full border border-purple-400/20 border-dotted" />
+                  </motion.div>
+                  
+                  {/* Rising Particle Mist */}
+                  {[...Array(8)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{
+                        opacity: [0, 0.8, 0],
+                        scale: [0.3, 1, 0.3],
+                        y: [15, -15, 15],
+                        x: [0, Math.sin(i) * 5, 0]
+                      }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 3 + Math.random() * 2,
+                        delay: Math.random() * 3,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute w-1 h-1 rounded-full bg-gradient-to-r from-white/60 to-teal-300/80"
+                      style={{
+                        left: `${20 + Math.cos(i * 45 * Math.PI / 180) * 25}px`,
+                        top: `${20 + Math.sin(i * 45 * Math.PI / 180) * 25}px`,
+                        filter: 'blur(0.5px)'
+                      }}
                     />
-                    <path 
-                      d="M10 90 Q20 85, 30 90 T50 90" 
-                      stroke="url(#swirlGradient)" 
-                      strokeWidth="1.5" 
-                      fill="none" 
-                      opacity="0.5"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Body - Main */}
-                    <ellipse 
-                      cx="50" 
-                      cy="35" 
-                      rx="8" 
-                      ry="25" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Nose Cone */}
-                    <path 
-                      d="M42 10 L50 5 L58 10 L58 20 Q58 25, 50 25 Q42 25, 42 20 Z" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Fins */}
-                    <path 
-                      d="M35 50 L42 55 L42 65 L35 60 Z" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    <path 
-                      d="M65 50 L58 55 L58 65 L65 60 Z" 
-                      fill="url(#voyageRocketGradient)"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Window */}
-                    <circle 
-                      cx="50" 
-                      cy="25" 
-                      r="4" 
-                      fill="rgba(255,255,255,0.9)"
-                      filter="url(#rocketGlow)"
-                    />
-                    <circle 
-                      cx="50" 
-                      cy="25" 
-                      r="2" 
-                      fill="#3b82f6"
-                      opacity="0.8"
-                    />
-                    
-                    {/* Exhaust Flames */}
-                    <path 
-                      d="M45 60 Q50 70, 55 60 Q50 75, 45 60" 
-                      fill="url(#flameGradient)"
-                      filter="url(#rocketGlow)"
-                      opacity="0.9"
-                    />
-                    <path 
-                      d="M47 60 Q50 68, 53 60 Q50 72, 47 60" 
-                      fill="#fbbf24"
-                      filter="url(#rocketGlow)"
-                      opacity="0.8"
-                    />
-                    
-                    {/* Additional Transform Swirls */}
-                    <path 
-                      d="M70 75 Q75 70, 80 75 T90 75" 
-                      stroke="url(#swirlGradient)" 
-                      strokeWidth="1.5" 
-                      fill="none" 
-                      opacity="0.6"
-                      filter="url(#rocketGlow)"
-                    />
-                    
-                    {/* Rocket Detail Lines */}
-                    <line 
-                      x1="45" y1="40" x2="55" y2="40" 
-                      stroke="rgba(255,255,255,0.6)" 
-                      strokeWidth="1"
-                    />
-                    <line 
-                      x1="45" y1="45" x2="55" y2="45" 
-                      stroke="rgba(255,255,255,0.4)" 
-                      strokeWidth="1"
-                    />
-                  </svg>
+                  ))}
+                  
+                  {/* Lens Flare Effect */}
+                  <motion.div
+                    animate={{
+                      opacity: [0, 0.4, 0],
+                      scale: [0.8, 1.2, 0.8],
+                      rotate: [0, 180, 360]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 6,
+                      ease: "easeInOut"
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-gradient-radial from-white/10 via-teal-400/5 to-transparent" />
+                  </motion.div>
                 </motion.div>
               </motion.div>
             </motion.div>

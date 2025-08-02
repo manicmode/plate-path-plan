@@ -25,6 +25,7 @@ import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
+import { SupabaseRedirectPage } from '@/components/auth/SupabaseRedirectPage';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -146,7 +147,7 @@ function AppContent() {
               <Route path="*" element={
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<Index />} />
+                    <Route path="/" element={<SupabaseRedirectPage />} />
                     <Route path="/home" element={
                       <ProtectedRoute>
                         <Home />
