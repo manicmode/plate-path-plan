@@ -130,102 +130,72 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
                 }}
                 className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 shadow-2xl relative overflow-hidden"
               >
-                {/* Cinematic Winged V Logo */}
+                {/* Winged V Logo */}
                 <motion.div
                   animate={{
                     filter: [
-                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 30px rgba(20, 184, 166, 0.4))',
-                      'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 45px rgba(59, 130, 246, 0.5))',
-                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 30px rgba(20, 184, 166, 0.4))'
+                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.8))',
+                      'brightness(0) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 1))',
+                      'brightness(0) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.8))'
                     ]
                   }}
                   transition={{ 
                     repeat: Infinity, 
-                    duration: 4,
+                    duration: 2,
                     ease: "easeInOut"
                   }}
                   className="relative z-10"
                 >
                   <img 
-                    src="/lovable-uploads/8b733bb4-dd63-4976-af54-e31fe8815724.png" 
-                    alt="VOYAGE Winged V - Symbol of Transformation" 
+                    src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
+                    alt="VOYAGE Winged V" 
                     className="w-14 h-14 object-contain"
-                    style={{ 
-                      filter: 'brightness(0) invert(1)',
-                      textShadow: '0 0 20px rgba(255, 255, 255, 0.8)'
-                    }}
                   />
                 </motion.div>
 
-                {/* 3D Embossed Shadow Effect */}
+                {/* Flash Effect */}
                 <motion.div
                   animate={{
-                    opacity: [0.3, 0.6, 0.3]
-                  }}
-                  transition={{ 
-                    repeat: Infinity, 
-                    duration: 3,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20 rounded-2xl"
-                />
-
-                {/* Crystalline Inner Glow */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.05, 1],
-                    opacity: [0.2, 0.4, 0.2]
-                  }}
-                  transition={{ 
-                    repeat: Infinity, 
-                    duration: 2.5,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute inset-2 bg-gradient-radial from-white/20 via-transparent to-transparent rounded-xl"
-                />
-
-                {/* Rising Particle Mist */}
-                {[...Array(8)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ 
-                      opacity: 0,
-                      y: 10,
-                      x: (i - 4) * 2
-                    }}
-                    animate={{
-                      opacity: [0, 0.6, 0],
-                      y: [-10, -40],
-                      x: [(i - 4) * 2, (i - 4) * 3]
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 3 + i * 0.5,
-                      ease: "easeOut",
-                      delay: i * 0.3
-                    }}
-                    className="absolute w-0.5 h-0.5 bg-white/60 rounded-full blur-[0.5px]"
-                    style={{
-                      left: `${45 + (i - 4) * 1}%`,
-                      bottom: '10%'
-                    }}
-                  />
-                ))}
-
-                {/* Lens Flare Effect */}
-                <motion.div
-                  animate={{
-                    opacity: [0, 0.8, 0],
-                    scale: [0.8, 1.2, 0.8],
-                    rotate: [0, 180, 360]
+                    opacity: [0, 1, 0],
+                    scale: [0.8, 1.2, 0.8]
                   }}
                   transition={{
                     repeat: Infinity,
-                    duration: 6,
+                    duration: 4,
                     ease: "easeInOut"
                   }}
-                  className="absolute inset-0 bg-gradient-conic from-transparent via-white/10 to-transparent rounded-2xl"
+                  className="absolute inset-0 bg-gradient-radial from-white/30 via-transparent to-transparent rounded-2xl"
                 />
+
+                {/* Circulating Stars */}
+                {[...Array(6)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      rotate: 360,
+                      opacity: [0.3, 1, 0.3]
+                    }}
+                    transition={{
+                      rotate: {
+                        repeat: Infinity,
+                        duration: 8,
+                        ease: "linear"
+                      },
+                      opacity: {
+                        repeat: Infinity,
+                        duration: 3,
+                        ease: "easeInOut",
+                        delay: i * 0.5
+                      }
+                    }}
+                    className="absolute w-1 h-1 bg-white rounded-full"
+                    style={{
+                      left: `${50 + 35 * Math.cos((i * 60 * Math.PI) / 180)}%`,
+                      top: `${50 + 35 * Math.sin((i * 60 * Math.PI) / 180)}%`,
+                      transformOrigin: `${-35 * Math.cos((i * 60 * Math.PI) / 180)}px ${-35 * Math.sin((i * 60 * Math.PI) / 180)}px`
+                    }}
+                  />
+                ))}
               </motion.div>
             </motion.div>
 
