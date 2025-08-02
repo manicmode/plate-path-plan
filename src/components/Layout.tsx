@@ -87,7 +87,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
               <img 
-                src={`/lovable-uploads/ebeba38e-6641-4052-9011-e341f9241b08.png?t=${Date.now()}`}
+                src={`/lovable-uploads/9fccd970-0cf7-4e00-bd74-44c194db10ae.png?t=${Date.now()}`}
                 alt="VOYAGE Winged Logo" 
                 className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} object-contain`}
                 style={{ filter: 'brightness(0) invert(1)' }}
