@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { CalendarIcon, Clock, X } from 'lucide-react';
+import { CalendarIcon, Clock } from 'lucide-react';
+import { CloseButton } from '@/components/ui/close-button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,14 +106,7 @@ export function AddWorkoutModal({ isOpen, onClose, onSave }: AddWorkoutModalProp
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Add New Workout
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="absolute top-4 right-4 rounded-full hover:bg-muted z-10"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <CloseButton onClick={onClose} />
           </div>
         </DialogHeader>
 

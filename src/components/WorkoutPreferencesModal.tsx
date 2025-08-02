@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { X, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { CloseButton } from '@/components/ui/close-button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
@@ -237,14 +238,10 @@ export const WorkoutPreferencesModal: React.FC<WorkoutPreferencesModalProps> = (
                 Workout Preferences
               </DialogTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="absolute top-4 right-4 rounded-full hover:bg-gray-800 text-gray-400 hover:text-white z-10"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <CloseButton 
+              onClick={onClose} 
+              className="hover:bg-gray-800 text-gray-400 hover:text-white"
+            />
           </div>
         </DialogHeader>
 

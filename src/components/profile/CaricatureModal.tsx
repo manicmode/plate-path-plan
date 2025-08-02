@@ -356,11 +356,11 @@ export const CaricatureModal = ({
     fileInputRef.current?.click();
   };
 
-  const handleTouchEnd = (callback: () => void) => (e: React.TouchEvent) => {
+  // Remove problematic touch handler - Button component handles this properly
+  const handleButtonClick = (callback: () => void) => (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Prevent double-tap issues by debouncing
-    setTimeout(callback, 50);
+    callback();
   };
 
   const savedVariants = avatarVariants ? [
@@ -458,7 +458,6 @@ export const CaricatureModal = ({
                 {!uploadedImage ? (
                   <Button 
                     onClick={handleUploadClick}
-                    onTouchEnd={handleTouchEnd(handleUploadClick)}
                     className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 active:scale-95 transition-transform"
                     size="lg"
                     disabled={isGenerating || generationDisabled}
@@ -469,7 +468,6 @@ export const CaricatureModal = ({
                 ) : (
                   <Button 
                     onClick={handleUploadClick}
-                    onTouchEnd={handleTouchEnd(handleUploadClick)}
                     variant="outline"
                     className="w-full h-12 text-base font-medium border-2 border-primary/30 hover:border-primary/60 active:scale-95 transition-transform"
                     size="lg"
@@ -483,7 +481,6 @@ export const CaricatureModal = ({
                 {uploadedImage && !cooldown && (
                   <Button 
                     onClick={generateCaricatureVariants}
-                    onTouchEnd={handleTouchEnd(generateCaricatureVariants)}
                     className={cn(
                       "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
                       "active:scale-95 transition-all duration-200",
@@ -517,10 +514,6 @@ export const CaricatureModal = ({
                       setVariants(savedVariants);
                       setStep('variants');
                     }}
-                    onTouchEnd={handleTouchEnd(() => {
-                      setVariants(savedVariants);
-                      setStep('variants');
-                    })}
                     variant="outline"
                     className="w-full h-12 text-base font-medium border-2 border-primary/30 hover:border-primary/60 active:scale-95 transition-transform"
                     size="lg"
@@ -543,7 +536,6 @@ export const CaricatureModal = ({
                         key={index}
                         className="relative cursor-pointer group"
                          onClick={() => handleSelectVariant(avatar, 1)}
-                        onTouchEnd={handleTouchEnd(() => handleSelectVariant(avatar, 1))}
                       >
                         <img
                           src={avatar}
@@ -562,7 +554,6 @@ export const CaricatureModal = ({
                 <div className="flex gap-3">
                   <Button
                     onClick={handleSurpriseMe}
-                    onTouchEnd={handleTouchEnd(handleSurpriseMe)}
                     variant="outline"
                     className="flex-1 h-12 font-medium active:scale-95 transition-transform"
                     disabled={allHistoricalAvatars.length === 0}
@@ -572,7 +563,6 @@ export const CaricatureModal = ({
                   </Button>
                   <Button
                     onClick={handleExportAvatar}
-                    onTouchEnd={handleTouchEnd(handleExportAvatar)}
                     variant="outline"
                     className="flex-1 h-12 font-medium active:scale-95 transition-transform"
                     disabled={!currentAvatarUrl}
@@ -614,7 +604,6 @@ export const CaricatureModal = ({
                       "bg-gradient-to-br from-primary/10 to-secondary/10"
                     )}
                      onClick={() => handleSelectVariant(variant, index + 1)}
-                    onTouchEnd={handleTouchEnd(() => handleSelectVariant(variant, index + 1))}
                     onMouseEnter={() => setHoveredVariant(variant)}
                     onMouseLeave={() => setHoveredVariant(null)}
                   >

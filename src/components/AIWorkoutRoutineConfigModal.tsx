@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, Target, Clock, Dumbbell, Calendar, User, X } from 'lucide-react';
+import { Loader2, Sparkles, Target, Clock, Dumbbell, Calendar, User } from 'lucide-react';
+import { CloseButton } from '@/components/ui/close-button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
@@ -224,14 +225,7 @@ export const AIWorkoutRoutineConfigModal: React.FC<AIWorkoutRoutineConfigModalPr
               <Sparkles className="h-5 w-5 text-primary" />
               AI Routine Generator
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="absolute top-4 right-4 rounded-full hover:bg-muted z-10 transition-all duration-200"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <CloseButton onClick={onClose} />
           </div>
         </DialogHeader>
 

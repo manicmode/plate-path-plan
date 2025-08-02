@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { CloseButton } from '@/components/ui/close-button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,14 +101,7 @@ export const ExerciseLogForm = ({ isOpen, onClose, onSubmit }: ExerciseLogFormPr
         <DialogHeader className="pr-12">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">Log Exercise</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="absolute top-4 right-4 rounded-full hover:bg-muted z-10"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <CloseButton onClick={onClose} />
           </div>
         </DialogHeader>
         

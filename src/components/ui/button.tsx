@@ -44,17 +44,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
     
-    // Fix double-tap issues on mobile by handling both pointer and click events
+    // Optimized event handling to prevent double-tap issues
     const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-      // Prevent event bubbling that can cause double-tap issues
       e.stopPropagation();
       props.onPointerDown?.(e);
     };
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-      // Ensure click events are handled properly
       e.stopPropagation();
-      props.onClick?.(e);
+      // Only call onClick if button is not disabled
+      if (!props.disabled) {
+        props.onClick?.(e);
+      }
     };
 
     return (
@@ -63,7 +64,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
-        {...props}
+        // Remove custom onClick from props to prevent double handling
+        {...(({ onClick, onPointerDown, ...rest }) => rest)(props)}
       />
     )
   }
