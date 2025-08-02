@@ -29,6 +29,7 @@ import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
+import { AvatarHeroCard } from '@/components/profile/AvatarHeroCard';
 import { HealthGoalSettings } from '@/components/profile/HealthGoalSettings';
 import { ContactSync } from '@/components/profile/ContactSync';
 import { FollowStatsCard } from '@/components/social/FollowStatsCard';
@@ -294,7 +295,10 @@ const ProfileContent = () => {
 
   return (
     <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''}`}>
-      {/* Page Title - Properly spaced from header */}
+      {/* Avatar Hero Card - At the very top */}
+      <AvatarHeroCard user={user} />
+
+      {/* Page Title */}
       <div className="text-center">
         <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
         <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>Manage your account and nutrition goals</p>
