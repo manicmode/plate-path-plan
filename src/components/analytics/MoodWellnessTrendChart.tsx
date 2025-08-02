@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Heart, Zap, Shield, AlertTriangle, Calendar, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
@@ -427,36 +427,47 @@ export const MoodWellnessTrendChart: React.FC = () => {
       </CardHeader>
 
       <CardContent>
-        <div className="h-80">
-          <div className="w-full h-full">
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart 
-              width={800} 
-              height={320} 
               data={chartData} 
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              margin={{ 
+                top: 20, 
+                right: isMobile ? 10 : 30, 
+                left: isMobile ? 10 : 20, 
+                bottom: 5 
+              }}
               onClick={handleChartClick}
               style={{ cursor: 'pointer' }}
             >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="formattedDate" 
-                fontSize={isMobile ? 10 : 12}
+                fontSize={isMobile ? 9 : 12}
                 tick={{ fill: 'currentColor' }}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? 'end' : 'middle'}
+                height={isMobile ? 60 : 30}
+                interval={isMobile ? 1 : 0}
               />
               <YAxis 
                 domain={[1, 10]} 
-                fontSize={isMobile ? 10 : 12}
+                fontSize={isMobile ? 9 : 12}
                 tick={{ fill: 'currentColor' }}
+                width={isMobile ? 25 : 60}
               />
               <RechartsTooltip content={<CustomTooltip />} />
-              <Legend />
+              <Legend 
+                fontSize={isMobile ? 10 : 12}
+                wrapperStyle={{ paddingTop: '10px' }}
+              />
               
               <Line
                 type="monotone"
                 dataKey="mood"
                 stroke="#EC4899"
-                strokeWidth={2}
-                dot={{ fill: '#EC4899', strokeWidth: 2, r: 4, cursor: 'pointer' }}
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ fill: '#EC4899', strokeWidth: 2, r: isMobile ? 3 : 4, cursor: 'pointer' }}
                 name="Mood"
                 connectNulls={false}
               />
@@ -464,8 +475,8 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 type="monotone"
                 dataKey="energy"
                 stroke="#F59E0B"
-                strokeWidth={2}
-                dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4, cursor: 'pointer' }}
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ fill: '#F59E0B', strokeWidth: 2, r: isMobile ? 3 : 4, cursor: 'pointer' }}
                 name="Energy"
                 connectNulls={false}
               />
@@ -473,8 +484,8 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 type="monotone"
                 dataKey="wellness"
                 stroke="#10B981"
-                strokeWidth={2}
-                dot={{ fill: '#10B981', strokeWidth: 2, r: 4, cursor: 'pointer' }}
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ fill: '#10B981', strokeWidth: 2, r: isMobile ? 3 : 4, cursor: 'pointer' }}
                 name="Wellness"
                 connectNulls={false}
               />
@@ -495,7 +506,7 @@ export const MoodWellnessTrendChart: React.FC = () => {
                 />
               )}
             </LineChart>
-          </div>
+          </ResponsiveContainer>
         </div>
 
         {/* Chart Legend */}
