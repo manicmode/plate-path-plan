@@ -86,7 +86,18 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-r from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center neon-glow animate-pulse`}>
-              <span className={`text-white font-bold ${isMobile ? 'text-base' : 'text-xl'}`}>V</span>
+              <svg 
+                width={isMobile ? '16' : '24'} 
+                height={isMobile ? '16' : '24'} 
+                viewBox="0 0 100 100" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path 
+                  d="M25 20 L50 75 L75 20 L65 20 L50 60 L35 20 Z" 
+                  fill="white"
+                />
+              </svg>
             </div>
             <div>
               <h1 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white`}>VOYAGE</h1>
