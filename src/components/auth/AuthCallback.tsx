@@ -36,10 +36,8 @@ export const AuthCallback = () => {
 
           console.log('✅ Session established successfully');
           
-          // Wait a moment for auth state to propagate
-          setTimeout(() => {
-            navigate('/home', { replace: true });
-          }, 500);
+          // Navigate to home immediately
+          navigate('/home', { replace: true });
         } else {
           console.log('🔄 No tokens in URL, redirecting to home');
           navigate('/home', { replace: true });
