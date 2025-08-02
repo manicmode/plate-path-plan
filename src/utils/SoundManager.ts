@@ -100,7 +100,7 @@ class SoundManager {
       preload: true
     },
     startup_chime: {
-      url: 'https://uzoiiijqtahohfafqirm.supabase.co/storage/v1/object/public/sounds/startup_chime.wav',
+      url: 'https://uzoiiijqtahohfafqirm.supabase.co/storage/v1/object/public/sounds/startup_chime.mp3',
       volume: 0.5,
       preload: true
     },
