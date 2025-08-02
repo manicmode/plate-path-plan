@@ -93,16 +93,7 @@ export default function AIFitnessCoach() {
     { emoji: '🤝', text: 'Team Check', message: 'How is our squad doing? Any teammates who need support?' }
   ];
 
-  // Show social coach message in chat if available
-  useEffect(() => {
-    if (socialCoachMessage && messages[messages.length - 1]?.content !== socialCoachMessage) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: socialCoachMessage,
-        emoji: '🤝'
-      }]);
-    }
-  }, [socialCoachMessage]);
+  // Remove social coach message injection to keep chat clean - move to nudge section instead
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
@@ -495,25 +486,6 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           </CardContent>
         </Card>
 
-        {/* Smart Prompt Buttons */}
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground font-medium">🚀 Quick Actions - Get instant insights:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {smartPrompts.map((prompt, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                onClick={() => handlePromptClick(prompt.message)}
-                className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
-                disabled={isLoading}
-              >
-                <span className="mr-2 text-lg">{prompt.emoji}</span>
-                <span className="text-sm font-medium">{prompt.text}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-
         {/* 🎮 Coach Gamification System - Praise Messages */}
         <AnimatePresence>
           {showPraiseMessage && (
@@ -534,6 +506,25 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           isLoading={isLoading}
           gradientColors="from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
         />
+
+        {/* Quick Actions - Smart Prompt Buttons */}
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground font-medium">🚀 Quick Actions - Get instant insights:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {smartPrompts.map((prompt, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                onClick={() => handlePromptClick(prompt.message)}
+                className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
+                disabled={isLoading}
+              >
+                <span className="mr-2 text-lg">{prompt.emoji}</span>
+                <span className="text-sm font-medium">{prompt.text}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
 
         {/* AI Routine Generator Hero Box */}
         <div className="w-full mb-6">
