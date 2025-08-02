@@ -20,6 +20,8 @@ import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
 import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
 import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
+import { SkillPanel } from '@/components/coach/SkillPanel';
+import { Target, TrendingUp, ShoppingCart, AlertTriangle, BarChart3 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -362,6 +364,65 @@ const Coach = () => {
     { label: "🌈 Anti-Inflammatory Dish", prompt: "Create an anti-inflammatory recipe with superfoods" },
   ];
 
+  // Nutrition Skill Panel Categories
+  const nutritionSkillCategories = [
+    {
+      title: "Smart Tracking Insights",
+      icon: <Target className="h-4 w-4 text-blue-600" />,
+      commands: [
+        { label: "What nutrients am I consistently missing this week?", prompt: "What nutrients am I consistently missing this week? Analyze my food logs." },
+        { label: "Show me my macro trends over the past month", prompt: "Show me my macro trends over the past month and what patterns you notice." },
+        { label: "Which meals give me the best energy levels?", prompt: "Which meals give me the best energy levels based on my tracking?" },
+        { label: "How accurate is my calorie tracking?", prompt: "How accurate is my calorie tracking? Any suggestions for improvement?" },
+        { label: "What time of day do I eat the most calories?", prompt: "What time of day do I eat the most calories and is this optimal?" },
+      ]
+    },
+    {
+      title: "Optimize My Diet",
+      icon: <TrendingUp className="h-4 w-4 text-green-600" />,
+      commands: [
+        { label: "Food swaps to reduce inflammation", prompt: "Which food swaps would reduce inflammation based on my logs?" },
+        { label: "Boost my metabolism naturally", prompt: "How can I boost my metabolism naturally with better food choices?" },
+        { label: "Improve my micronutrient profile", prompt: "How can I improve my micronutrient profile with strategic food choices?" },
+        { label: "Balance my blood sugar better", prompt: "What changes can I make to balance my blood sugar better throughout the day?" },
+        { label: "Increase protein absorption", prompt: "How can I increase protein absorption and utilization?" },
+      ]
+    },
+    {
+      title: "Meal Planning & Grocery Help",
+      icon: <ShoppingCart className="h-4 w-4 text-orange-600" />,
+      commands: [
+        { label: "Shopping list for high-protein, low-carb meals", prompt: "Generate a shopping list for high-protein, low-carb meals this week" },
+        { label: "Budget-friendly meal prep ideas", prompt: "Give me budget-friendly meal prep ideas for this week" },
+        { label: "Quick breakfast options for busy mornings", prompt: "What are some quick breakfast options for busy mornings that hit my macros?" },
+        { label: "Plan meals around my workout schedule", prompt: "Plan meals around my workout schedule for optimal performance and recovery" },
+        { label: "Healthy snacks for between meals", prompt: "Suggest healthy snacks for between meals that support my goals" },
+      ]
+    },
+    {
+      title: "Health Risk Warnings",
+      icon: <AlertTriangle className="h-4 w-4 text-red-600" />,
+      commands: [
+        { label: "Have I eaten too many processed foods lately?", prompt: "Have I eaten too many processed foods lately? What's the impact?" },
+        { label: "Am I getting enough fiber?", prompt: "Am I getting enough fiber in my diet? Show me the numbers." },
+        { label: "Check my sodium intake", prompt: "Check my sodium intake - am I exceeding healthy limits?" },
+        { label: "Are there any nutrient deficiencies?", prompt: "Are there any nutrient deficiencies I should be concerned about?" },
+        { label: "Is my sugar intake too high?", prompt: "Is my sugar intake too high? Include hidden sugars in analysis." },
+      ]
+    },
+    {
+      title: "Goal Progress Questions",
+      icon: <BarChart3 className="h-4 w-4 text-purple-600" />,
+      commands: [
+        { label: "How close am I to my monthly nutrition goals?", prompt: "How close am I to hitting my monthly nutrition goals?" },
+        { label: "What's working best in my current plan?", prompt: "What's working best in my current nutrition plan?" },
+        { label: "Where am I struggling the most?", prompt: "Where am I struggling the most with my nutrition goals?" },
+        { label: "Adjust my targets based on progress", prompt: "Should I adjust my nutrition targets based on my progress?" },
+        { label: "Celebrate my nutrition wins", prompt: "What nutrition wins should I celebrate this week?" },
+      ]
+    }
+  ];
+
   return (
     <div className="max-w-md mx-auto w-full px-4">
       <div className={`space-y-6 animate-fade-in ${isMobile ? 'pb-24' : 'pb-32'}`}>
@@ -684,6 +745,16 @@ const Coach = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Nutrition Skill Panel */}
+      <SkillPanel
+        title="🧠 Nutrition Expert Skills"
+        icon={<Brain className="h-4 w-4 text-purple-600" />}
+        categories={nutritionSkillCategories}
+        onCommandClick={handleQuickQuestion}
+        isLoading={isLoading}
+        gradientColors="from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20"
+      />
       </div>
     </div>
   );

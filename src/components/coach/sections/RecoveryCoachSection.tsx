@@ -4,11 +4,77 @@ import { RecoveryCommandBar } from '@/components/coach/recovery/RecoveryCommandB
 import { RecoveryNudgeSection } from '@/components/coach/recovery/RecoveryNudgeSection';
 import { RecoveryTips } from '@/components/coach/recovery/RecoveryTips';
 import { RecoveryInsights } from '@/components/coach/recovery/RecoveryInsights';
+import { SkillPanel } from '@/components/coach/SkillPanel';
+import { Heart, Moon, Wind, Brain, Activity } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 
 const RecoveryCoachSection = () => {
   const isMobile = useIsMobile();
+
+  const handleCommand = (command: string) => {
+    // This will be handled by the RecoveryAIChat component
+    console.log('Recovery skill command:', command);
+  };
+
+  // Recovery Skill Panel Categories
+  const recoverySkillCategories = [
+    {
+      title: "Sleep Optimization",
+      icon: <Moon className="h-4 w-4 text-blue-600" />,
+      commands: [
+        { label: "Analyze my sleep patterns", prompt: "Analyze my sleep patterns and tell me how to improve my sleep quality." },
+        { label: "Best bedtime routine for recovery", prompt: "What's the best bedtime routine for optimal recovery and performance?" },
+        { label: "How much sleep do I really need?", prompt: "How much sleep do I really need based on my training intensity?" },
+        { label: "Fix my sleep schedule", prompt: "Help me fix my inconsistent sleep schedule and get better rest." },
+        { label: "Sleep environment optimization", prompt: "How can I optimize my sleep environment for deeper recovery?" },
+      ]
+    },
+    {
+      title: "Stress Management",
+      icon: <Brain className="h-4 w-4 text-green-600" />,
+      commands: [
+        { label: "Quick stress relief techniques", prompt: "Give me quick stress relief techniques I can use anywhere." },
+        { label: "Manage workout stress and burnout", prompt: "How can I manage workout stress and prevent burnout?" },
+        { label: "Mindfulness for better recovery", prompt: "How can mindfulness practices improve my recovery?" },
+        { label: "Deal with training anxiety", prompt: "Help me deal with training anxiety and performance pressure." },
+        { label: "Work-life-fitness balance", prompt: "How can I better balance work, life, and fitness commitments?" },
+      ]
+    },
+    {
+      title: "Breathing & Meditation",
+      icon: <Wind className="h-4 w-4 text-purple-600" />,
+      commands: [
+        { label: "Best breathing exercises for recovery", prompt: "What are the best breathing exercises for post-workout recovery?" },
+        { label: "Meditation techniques for athletes", prompt: "Teach me meditation techniques specifically designed for athletes." },
+        { label: "Breathing for better sleep", prompt: "How can breathing techniques help me fall asleep faster?" },
+        { label: "Reduce anxiety with breathwork", prompt: "Show me breathing exercises to reduce anxiety and stress." },
+        { label: "Morning breathing routine", prompt: "Create a morning breathing routine to start my day energized." },
+      ]
+    },
+    {
+      title: "Active Recovery",
+      icon: <Activity className="h-4 w-4 text-orange-600" />,
+      commands: [
+        { label: "Best active recovery activities", prompt: "What are the best active recovery activities for my training style?" },
+        { label: "Yoga sequences for recovery", prompt: "Design yoga sequences that enhance recovery between workouts." },
+        { label: "Stretching routine for muscle recovery", prompt: "Create a stretching routine to improve muscle recovery." },
+        { label: "Light cardio for recovery days", prompt: "What light cardio activities are best for recovery days?" },
+        { label: "Foam rolling and mobility work", prompt: "Teach me proper foam rolling and mobility techniques." },
+      ]
+    },
+    {
+      title: "Recovery Tracking",
+      icon: <Heart className="h-4 w-4 text-red-600" />,
+      commands: [
+        { label: "Signs I need more recovery time", prompt: "What are the signs that I need more recovery time between workouts?" },
+        { label: "Track my recovery metrics", prompt: "What recovery metrics should I track to optimize my performance?" },
+        { label: "Heart rate variability insights", prompt: "How can heart rate variability help me understand my recovery?" },
+        { label: "Energy levels throughout the day", prompt: "Analyze my energy levels and suggest recovery improvements." },
+        { label: "Recovery vs. overtraining signs", prompt: "Help me distinguish between normal fatigue and overtraining." },
+      ]
+    }
+  ];
 
   return (
     <div className="max-w-md mx-auto w-full px-4">
@@ -47,6 +113,16 @@ const RecoveryCoachSection = () => {
         
         {/* AI Insights or Patterns */}
         <RecoveryInsights />
+
+        {/* Recovery Skill Panel */}
+        <SkillPanel
+          title="🧘 Recovery Expert Skills"
+          icon={<Heart className="h-4 w-4 text-orange-600" />}
+          categories={recoverySkillCategories}
+          onCommandClick={handleCommand}
+          isLoading={false}
+          gradientColors="from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20"
+        />
       </div>
     </div>
   );

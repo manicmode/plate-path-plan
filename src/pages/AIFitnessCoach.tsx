@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell, TrendingUp, BarChart3 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,7 @@ import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
 import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
 import { WorkoutPreferencesModal } from '@/components/WorkoutPreferencesModal';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
+import { SkillPanel } from '@/components/coach/SkillPanel';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -294,6 +295,65 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
       title: "Nutrition Timing",
       description: "When to eat for maximum performance",
       icon: "⏰"
+    }
+  ];
+
+  // Exercise Skill Panel Categories
+  const exerciseSkillCategories = [
+    {
+      title: "Performance Analysis",
+      icon: <BarChart3 className="h-4 w-4 text-blue-600" />,
+      commands: [
+        { label: "Analyze my workout performance trends", prompt: "Analyze my workout performance trends and tell me what patterns you see." },
+        { label: "Which exercises am I strongest at?", prompt: "Which exercises am I strongest at and which need the most work?" },
+        { label: "How consistent have I been with training?", prompt: "How consistent have I been with my training schedule this month?" },
+        { label: "Am I making progress towards my goals?", prompt: "Am I making progress towards my fitness goals? Show me the data." },
+        { label: "What's my workout intensity like?", prompt: "What's my workout intensity like compared to optimal levels?" },
+      ]
+    },
+    {
+      title: "Form & Technique Optimization",
+      icon: <Target className="h-4 w-4 text-green-600" />,
+      commands: [
+        { label: "Check my squat form", prompt: "Check my squat form and give me specific technique improvements." },
+        { label: "How to improve my deadlift?", prompt: "How can I improve my deadlift technique and increase my numbers safely?" },
+        { label: "Perfect my push-up form", prompt: "Help me perfect my push-up form for maximum effectiveness." },
+        { label: "Common form mistakes I'm making", prompt: "What are the most common form mistakes I might be making?" },
+        { label: "Progressive overload strategy", prompt: "What's the best progressive overload strategy for my current level?" },
+      ]
+    },
+    {
+      title: "Workout Planning & Splits",
+      icon: <Dumbbell className="h-4 w-4 text-purple-600" />,
+      commands: [
+        { label: "Design a push/pull/legs split", prompt: "Design an optimal push/pull/legs split for my goals and schedule." },
+        { label: "Create a home workout routine", prompt: "Create an effective home workout routine with minimal equipment." },
+        { label: "Plan workouts around my schedule", prompt: "Plan my workouts around my busy schedule - I have limited time." },
+        { label: "Adjust routine for muscle imbalances", prompt: "Adjust my routine to fix muscle imbalances I might have." },
+        { label: "Periodization for strength gains", prompt: "Create a periodization plan for maximum strength gains." },
+      ]
+    },
+    {
+      title: "Recovery & Injury Prevention",
+      icon: <TrendingUp className="h-4 w-4 text-orange-600" />,
+      commands: [
+        { label: "Am I overtraining?", prompt: "Am I showing signs of overtraining? How can I tell?" },
+        { label: "Optimal rest between workouts", prompt: "What's the optimal rest time between workouts for my intensity?" },
+        { label: "Prevent common workout injuries", prompt: "How can I prevent the most common workout injuries?" },
+        { label: "Active recovery strategies", prompt: "What are the best active recovery strategies for my training style?" },
+        { label: "Sleep impact on my workouts", prompt: "How is my sleep affecting my workout performance and recovery?" },
+      ]
+    },
+    {
+      title: "Motivation & Accountability",
+      icon: <Users className="h-4 w-4 text-red-600" />,
+      commands: [
+        { label: "I'm losing motivation to train", prompt: "I'm losing motivation to train consistently. Help me get back on track." },
+        { label: "Set challenging but achievable goals", prompt: "Set challenging but achievable fitness goals for the next 3 months." },
+        { label: "Track my fitness milestones", prompt: "Help me track and celebrate my fitness milestones and achievements." },
+        { label: "Find my workout accountability partner", prompt: "How can I find and work with a workout accountability partner?" },
+        { label: "Break through training plateaus", prompt: "I've hit a plateau in my training. How do I break through it?" },
+      ]
     }
   ];
 
@@ -767,6 +827,16 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </div>
           </CardContent>
         </Card>
+
+        {/* Exercise Skill Panel */}
+        <SkillPanel
+          title="💪 Fitness Expert Skills"
+          icon={<Dumbbell className="h-4 w-4 text-indigo-600" />}
+          categories={exerciseSkillCategories}
+          onCommandClick={handlePromptClick}
+          isLoading={isLoading}
+          gradientColors="from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
+        />
       </div>
 
       {/* Workout Preferences Modal */}
