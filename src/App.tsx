@@ -25,7 +25,7 @@ import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
-import { ConditionalRootRouter } from '@/components/auth/ConditionalRootRouter';
+import { SupabaseRedirectGate } from '@/components/auth/SupabaseRedirectGate';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -119,8 +119,8 @@ function AppContent() {
           <BodyScanReminderChecker />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
-              {/* Conditional root handler - synchronously checks for Supabase redirect params */}
-              <Route path="/" element={<ConditionalRootRouter />} />
+              {/* Normal root route */}
+              <Route path="/" element={<Index />} />
               
               {/* Fullscreen pages without Layout */}
               <Route path="/shared-routine" element={<SharedRoutine />} />
@@ -375,6 +375,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
+      {/* Gate component to handle Supabase redirects before any routing */}
+      <SupabaseRedirectGate />
+      
       <ErrorBoundary>
         <ThemeProvider>
           <SoundProvider>
