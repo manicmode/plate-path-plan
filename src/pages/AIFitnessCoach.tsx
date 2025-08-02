@@ -30,6 +30,7 @@ import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { SkillPanel } from '@/components/coach/SkillPanel';
 import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
+import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -488,6 +489,11 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </div>
           </CardContent>
         </Card>
+
+        {/* My Praise Button */}
+        <div className="flex justify-center">
+          <MyPraiseModal coachType="exercise" />
+        </div>
 
         {/* 🎮 Coach Gamification System - Praise Messages */}
         <AnimatePresence>

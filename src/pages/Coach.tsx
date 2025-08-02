@@ -24,6 +24,7 @@ import { SkillPanel } from '@/components/coach/SkillPanel';
 import { Target, TrendingUp, ShoppingCart, AlertTriangle, BarChart3 } from 'lucide-react';
 import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
+import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
 
 interface Message {
@@ -603,7 +604,12 @@ Take a breath... let's explore your nutrition journey together with care and int
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+
+        {/* My Praise Button */}
+        <div className="flex justify-center">
+          <MyPraiseModal coachType="nutrition" />
+        </div>
 
       {/* 🎮 Coach Gamification System - Praise Messages */}
       <AnimatePresence>

@@ -11,6 +11,7 @@ import { Sparkles } from 'lucide-react';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
+import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
 
 const RecoveryCoachSection = () => {
@@ -116,6 +117,11 @@ const RecoveryCoachSection = () => {
 
         {/* AI Chat Box */}
         <RecoveryAIChat />
+
+        {/* My Praise Button */}
+        <div className="flex justify-center">
+          <MyPraiseModal coachType="recovery" />
+        </div>
 
         {/* 🎮 Coach Gamification System - Praise Messages */}
         <AnimatePresence>
