@@ -84,7 +84,7 @@ const Home = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const { playGoalHit, playFoodLogConfirm, isEnabled } = useSound();
+  const { playGoalHit, playFoodLogConfirm, playStartupChime, isEnabled } = useSound();
   
   // State for daily nutrition targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -151,6 +151,47 @@ const Home = () => {
   
   // Team victory celebrations
   useTeamVictoryCelebrations();
+
+  // Startup chime playback - play once when app loads and user reaches home screen
+  useEffect(() => {
+    // Only attempt to play startup chime if sound is enabled
+    if (!isEnabled) {
+      console.log('🔊 Startup chime skipped - sound disabled');
+      return;
+    }
+
+    // Check if we've already played the startup chime today to prevent duplicates
+    const today = new Date().toISOString().split('T')[0];
+    const lastPlayedKey = `startup_chime_played_${today}`;
+    const hasPlayedToday = localStorage.getItem(lastPlayedKey) === 'true';
+    
+    if (hasPlayedToday) {
+      console.log('🔊 Startup chime skipped - already played today');
+      return;
+    }
+
+    // Wait for the app to fully load and render, then play startup chime
+    const playStartupSound = async () => {
+      try {
+        // Small delay to ensure full render completion
+        setTimeout(async () => {
+          console.log('🔊 Attempting to play startup chime...');
+          await playStartupChime();
+          
+          // Mark as played today to prevent duplicates
+          localStorage.setItem(lastPlayedKey, 'true');
+          console.log('🔊 Startup chime played successfully');
+        }, 300);
+      } catch (error) {
+        console.warn('🔊 Startup chime failed to play:', error);
+      }
+    };
+
+    // Only play if user is logged in and not in loading state
+    if (user && !authLoading) {
+      playStartupSound();
+    }
+  }, [user, authLoading, isEnabled, playStartupChime]);
 
   // Listen for challenge celebration events
   useEffect(() => {
