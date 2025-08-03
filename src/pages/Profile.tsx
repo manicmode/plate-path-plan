@@ -57,7 +57,7 @@ export default function Profile() {
 }
 
 const ProfileContent = () => {
-  const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
+  const { user, updateProfile, updateSelectedTrackers, logout, refreshUser } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
   
@@ -129,11 +129,23 @@ const ProfileContent = () => {
   }, [location]);
 
   const handleSave = async () => {
-    console.log('Saving profile with trackers:', formData.selectedTrackers);
+    console.log('[DEBUG] Profile: Starting save process...');
+    console.log('[DEBUG] Profile: Saving profile with data:', {
+      first_name: formData.first_name,
+      trackers: formData.selectedTrackers
+    });
     
-    // Update profile in Supabase
-    if (user?.id) {
-      try {
+    // Phase 1: Add loading state for better UX
+    const toastId = toast({
+      title: "Saving...",
+      description: "Updating your profile",
+    });
+    
+    try {
+      // Update profile in Supabase
+      if (user?.id) {
+        console.log('[DEBUG] Profile: Updating Supabase with first_name:', formData.first_name);
+        
         const { error } = await supabase
           .from('user_profiles')
           .update({
@@ -143,45 +155,57 @@ const ProfileContent = () => {
           .eq('user_id', user.id);
         
         if (error) {
-          console.error('Error updating profile:', error);
+          console.error('[ERROR] Profile: Supabase update failed:', error);
           toast({
             title: "Error",
-            description: "Failed to save profile changes.",
+            description: "Failed to save profile changes to database.",
             variant: "destructive"
           });
           return;
         }
-      } catch (error) {
-        console.error('Error updating profile:', error);
-        toast({
-          title: "Error", 
-          description: "Failed to save profile changes.",
-          variant: "destructive"
+        
+        console.log('[DEBUG] Profile: Supabase update successful');
+        
+        // Phase 1: Update local context immediately for instant UI feedback
+        updateProfile({
+          first_name: formData.first_name,
+          targetCalories: Number(formData.targetCalories),
+          targetProtein: Number(formData.targetProtein),
+          targetCarbs: Number(formData.targetCarbs),
+          targetFat: Number(formData.targetFat),
+          targetHydration: Number(formData.targetHydration),
+          targetSupplements: Number(formData.targetSupplements),
+          allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
+          dietaryGoals: formData.dietaryGoals,
         });
-        return;
+        
+        // Update selected trackers
+        await updateSelectedTrackers(formData.selectedTrackers);
+        
+        // Phase 2: Refresh user data from database to ensure consistency
+        console.log('[DEBUG] Profile: Refreshing user profile from database...');
+        await refreshUser();
+        console.log('[DEBUG] Profile: Profile refresh complete');
+        
+        // Phase 4: Success feedback
+        setIsEditing(false);
+        toast({
+          title: "✅ Profile updated!",
+          description: "Your changes have been saved successfully.",
+        });
+        
+        console.log('[DEBUG] Profile: Save process completed successfully');
+      } else {
+        throw new Error('User ID not available');
       }
+    } catch (error) {
+      console.error('[ERROR] Profile: Save process failed:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to save profile changes. Please try again.",
+        variant: "destructive"
+      });
     }
-    
-    updateProfile({
-      first_name: formData.first_name,
-      targetCalories: Number(formData.targetCalories),
-      targetProtein: Number(formData.targetProtein),
-      targetCarbs: Number(formData.targetCarbs),
-      targetFat: Number(formData.targetFat),
-      targetHydration: Number(formData.targetHydration),
-      targetSupplements: Number(formData.targetSupplements),
-      allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
-      dietaryGoals: formData.dietaryGoals,
-    });
-    
-    // Update selected trackers - this will trigger localStorage and user state updates
-    await updateSelectedTrackers(formData.selectedTrackers);
-    
-    setIsEditing(false);
-    toast({
-      title: "Profile Updated!",
-      description: "Changes will appear on the home page.",
-    });
   };
 
   const handleCancel = () => {

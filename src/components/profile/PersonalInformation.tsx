@@ -50,8 +50,9 @@ const dietaryGoalOptions = [
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
   
+  // Phase 2 & 3: Use current user data first, then fallback to form data for real-time updates
   const displayName = getDisplayName({
-    first_name: formData.first_name,
+    first_name: user?.first_name || formData.first_name,
     email: user?.email
   });
 
