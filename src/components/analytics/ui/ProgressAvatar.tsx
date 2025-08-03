@@ -33,7 +33,10 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
 }) => {
   // Get display name with proper fallbacks following priority
   const getDisplayName = () => {
-    // Priority 1: first_name + last_name (if both exist)
+    // Priority 1: nickname (processed by the hook's getDisplayName function)
+    if (nickname && nickname.trim()) return nickname.trim();
+    
+    // Priority 2: Construct from first_name + last_name (if both exist)
     if (name && name.trim()) {
       const trimmedName = name.trim();
       // Check if it looks like "first last" format
@@ -41,9 +44,6 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
       // Otherwise treat as first name only
       return trimmedName;
     }
-    
-    // Priority 2: nickname 
-    if (nickname && nickname.trim()) return nickname.trim();
     
     // Priority 3: email prefix if available
     if (email) return email.split('@')[0];
