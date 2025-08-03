@@ -122,17 +122,17 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
               >
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <ProgressAvatar 
-                        avatar={friend.avatar}
-                        nickname={friend.nickname}
-                        weeklyProgress={friend.weeklyProgress}
-                        dailyStreak={friend.streak}
-                        weeklyStreak={0}
-                        size="sm"
-                      />
-                      <div>
-                        <h3 className="font-semibold text-sm">{friend.nickname}</h3>
+                     <div className="flex items-center gap-3">
+                       <ProgressAvatar 
+                         avatar={friend.avatar}
+                         nickname={friend.nickname}
+                         weeklyProgress={friend.weeklyProgress}
+                         dailyStreak={friend.streak}
+                         weeklyStreak={0}
+                         size="sm"
+                         showStats={false}
+                       />
+                       <div>
                         {getOnlineStatus(friend.isOnline, friend.lastSeen)}
                       </div>
                     </div>
@@ -176,20 +176,20 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
                 </div>
                 
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <ProgressAvatar 
-                      avatar={friend.avatar}
-                      nickname={friend.nickname}
-                      weeklyProgress={friend.weeklyProgress}
-                      dailyStreak={friend.streak}
-                      weeklyStreak={0}
-                      size="md"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1">{friend.nickname}</h3>
-                      {getOnlineStatus(friend.isOnline, friend.lastSeen)}
-                    </div>
-                  </div>
+                   <div className="flex items-center gap-3 mb-4">
+                     <ProgressAvatar 
+                       avatar={friend.avatar}
+                       nickname={friend.nickname}
+                       weeklyProgress={friend.weeklyProgress}
+                       dailyStreak={friend.streak}
+                       weeklyStreak={0}
+                       size="md"
+                       showStats={false}
+                     />
+                     <div className="flex-1">
+                       {getOnlineStatus(friend.isOnline, friend.lastSeen)}
+                     </div>
+                   </div>
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">

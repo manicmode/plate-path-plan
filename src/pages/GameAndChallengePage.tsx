@@ -1067,30 +1067,31 @@ function GameAndChallengeContent() {
                         </div>
                       )}
                       
-                      <div className={cn(
-                        "flex items-center",
-                        isMobile ? "flex-col space-y-2" : "justify-between"
-                      )}>
-                        <div className={cn(
-                          "flex items-center",
-                          isMobile ? "w-full justify-between" : "gap-4"
-                        )}>
-                           <div className={cn(
-                             "font-bold text-muted-foreground",
-                             isMobile ? "text-lg w-8" : "text-2xl w-8"
-                           )}>
-                            {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
-                           </div>
-                          
-                          {/* Enhanced Progress Avatar */}
-                          <ProgressAvatar 
-                            avatar={user.avatar}
-                            nickname={user.nickname}
-                            weeklyProgress={user.weeklyProgress}
-                            dailyStreak={user.dailyStreak}
-                            weeklyStreak={user.weeklyStreak}
-                            size={isMobile ? "sm" : "md"}
-                          />
+                       <div className={cn(
+                         "flex items-center",
+                         isMobile ? "flex-col space-y-3" : "justify-between"
+                       )}>
+                         <div className={cn(
+                           "flex items-center",
+                           isMobile ? "w-full justify-center gap-3" : "gap-4"
+                         )}>
+                            <div className={cn(
+                              "font-bold text-muted-foreground",
+                              isMobile ? "text-lg" : "text-2xl"
+                            )}>
+                             {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
+                            </div>
+                           
+                           {/* Enhanced Progress Avatar - showStats=false to only show name */}
+                           <ProgressAvatar 
+                             avatar={user.avatar}
+                             nickname={user.nickname}
+                             weeklyProgress={user.weeklyProgress}
+                             dailyStreak={user.dailyStreak}
+                             weeklyStreak={user.weeklyStreak}
+                             size={isMobile ? "sm" : "md"}
+                             showStats={false}
+                           />
                           
                              {!isMobile && (
                                <div className="flex items-center gap-3 text-sm">

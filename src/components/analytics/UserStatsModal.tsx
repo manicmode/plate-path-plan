@@ -251,12 +251,12 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               <Sparkles className="absolute bottom-8 left-16 h-2 w-2 text-purple-400/60 animate-ping delay-500" />
             </div>
             
-            <div className="relative flex flex-col items-center text-center gap-2">
+            <div className="relative flex flex-col items-center text-center gap-3">
               {/* Large Caricature Avatar Display */}
               {caricatureAvatar ? (
-                <div className="relative mb-4">
+                <div className="relative mb-2">
                   {/* Large caricature avatar - prominently displayed */}
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 relative">
                     <img 
                       src={caricatureAvatar} 
                       alt={`${user.nickname}'s avatar`}
@@ -301,9 +301,9 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                 </div>
               ) : (
                 /* Fallback to emoji avatar with progress ring */
-                <div className="relative">
+                <div className="relative mb-2">
                   {/* Compact Progress Ring */}
-                  <div className="relative w-16 h-16 sm:w-20 sm:h-20">
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24">
                     <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
                       <circle
                         cx="50"
@@ -337,7 +337,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                     {/* ENLARGED Avatar with enhanced glow */}
                     <div className="absolute inset-2 flex items-center justify-center">
                       <div className={cn(
-                        "text-2xl sm:text-3xl relative",
+                        "text-3xl sm:text-4xl relative",
                         "hover:animate-bounce transition-all duration-300 cursor-pointer",
                         "drop-shadow-2xl filter"
                       )}>
@@ -367,22 +367,25 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               )}
               
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
-              <div className="w-full">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)]">
-                    {user.nickname}
-                  </h2>
-                  
+              <div className="w-full text-center">
+                <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
+                  {user.nickname}
+                </h2>
+                
+                {/* Optional: Top goal emoji or title could go here */}
+                {/* Add this section later if needed based on user data structure */}
+                
+                <div className="flex items-center justify-center gap-2 mb-3">
                   {/* ENHANCED Rank Badge with glow */}
                   <div className={cn(
-                    "flex items-center gap-1 px-2 py-1 rounded-full",
+                    "flex items-center gap-1 px-3 py-1.5 rounded-full",
                     "bg-gradient-to-r from-primary/40 to-secondary/40",
                     "border border-primary/50 backdrop-blur-sm",
                     "transform hover:scale-110 transition-all duration-300",
                     "shadow-lg shadow-primary/30"
                   )}>
                     {getRankIcon()}
-                    <Badge variant="secondary" className="text-xs font-bold px-1 py-0">
+                    <Badge variant="secondary" className="text-sm font-bold px-2 py-0">
                       #{user.rank}
                     </Badge>
                   </div>

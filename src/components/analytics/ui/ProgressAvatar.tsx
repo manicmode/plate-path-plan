@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Flame, Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ProgressAvatarProps {
   avatar: string;
@@ -34,7 +35,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col items-center gap-2">
       {/* Progress Ring with Avatar */}
       <div className="relative">
         <div className={`${progressSize} relative`}>
@@ -91,19 +92,30 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
         </Badge>
       </div>
 
-      {/* Stats */}
+      {/* User Name - Always shown below avatar */}
+      <div className="text-center max-w-20">
+        <div 
+          className={cn(
+            "font-semibold text-center leading-tight",
+            size === 'sm' ? "text-xs" : size === 'md' ? "text-sm" : "text-base",
+            "truncate max-w-full"
+          )}
+          title={nickname} // Show full name on hover
+        >
+          {nickname}
+        </div>
+      </div>
+
+      {/* Stats - Only shown if showStats is true */}
       {showStats && (
-        <div className="flex flex-col gap-1">
-          <div className="font-semibold text-sm">{nickname}</div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Flame className="h-3 w-3 text-orange-500" />
-              <span>{dailyStreak}d</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-blue-500" />
-              <span>{weeklyStreak}w</span>
-            </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Flame className="h-3 w-3 text-orange-500" />
+            <span>{dailyStreak}d</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-blue-500" />
+            <span>{weeklyStreak}w</span>
           </div>
         </div>
       )}
