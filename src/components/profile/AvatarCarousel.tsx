@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
@@ -31,8 +31,18 @@ export const AvatarCarousel = ({
 }: AvatarCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isChanging, setIsChanging] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+
+  // Debug logging
+  console.log('AvatarCarousel Debug:', {
+    isOpen,
+    caricatureHistory: caricatureHistory?.length || 0,
+    currentAvatarUrl,
+    currentIndex,
+    isReady
+  });
 
   // Get all historical avatars with generation dates
   const getAllHistoricalAvatars = () => {
@@ -60,21 +70,58 @@ export const AvatarCarousel = ({
 
   // Set initial index to current avatar when modal opens
   useEffect(() => {
-    if (isOpen && currentAvatarUrl) {
-      const currentIndex = allAvatars.findIndex(avatar => avatar.url === currentAvatarUrl);
-      if (currentIndex !== -1) {
-        setCurrentIndex(currentIndex);
+    if (isOpen && allAvatars.length > 0) {
+      console.log('Setting up carousel with avatars:', allAvatars.length);
+      
+      if (currentAvatarUrl) {
+        const foundIndex = allAvatars.findIndex(avatar => avatar.url === currentAvatarUrl);
+        if (foundIndex !== -1) {
+          console.log('Found current avatar at index:', foundIndex);
+          setCurrentIndex(foundIndex);
+        } else {
+          console.log('Current avatar not found in history, using index 0');
+          setCurrentIndex(0);
+        }
+      } else {
+        setCurrentIndex(0);
       }
+      
+      // Small delay to ensure everything is ready
+      setTimeout(() => setIsReady(true), 100);
+    } else if (!isOpen) {
+      setIsReady(false);
     }
-  }, [isOpen, currentAvatarUrl, allAvatars]);
+  }, [isOpen, currentAvatarUrl, allAvatars.length]);
 
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : allAvatars.length - 1));
-  };
+  const handlePrevious = React.useCallback((e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!isReady || allAvatars.length === 0) return;
+    
+    console.log('Previous clicked, current index:', currentIndex);
+    setCurrentIndex((prev) => {
+      const newIndex = prev > 0 ? prev - 1 : allAvatars.length - 1;
+      console.log('Moving to index:', newIndex);
+      return newIndex;
+    });
+  }, [isReady, allAvatars.length, currentIndex]);
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev < allAvatars.length - 1 ? prev + 1 : 0));
-  };
+  const handleNext = React.useCallback((e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!isReady || allAvatars.length === 0) return;
+    
+    console.log('Next clicked, current index:', currentIndex);
+    setCurrentIndex((prev) => {
+      const newIndex = prev < allAvatars.length - 1 ? prev + 1 : 0;
+      console.log('Moving to index:', newIndex);
+      return newIndex;
+    });
+  }, [isReady, allAvatars.length, currentIndex]);
 
   const handleChooseAvatar = async () => {
     if (isChanging || !allAvatars[currentIndex]) return;
@@ -165,7 +212,10 @@ export const AvatarCarousel = ({
     }
   };
 
-  if (!isOpen || allAvatars.length === 0) return null;
+  if (!isOpen || allAvatars.length === 0) {
+    console.log('Carousel not showing:', { isOpen, avatarCount: allAvatars.length });
+    return null;
+  }
 
   const currentAvatar = allAvatars[currentIndex];
   const isCurrentlyActive = currentAvatar?.url === currentAvatarUrl;
@@ -207,9 +257,19 @@ export const AvatarCarousel = ({
             {/* Previous button */}
             <Button
               onClick={handlePrevious}
+              disabled={!isReady}
               variant="ghost"
               size="icon"
-              className="absolute left-4 z-40 text-white hover:bg-white/10 w-12 h-12"
+              className={cn(
+                "absolute left-4 z-40 text-white hover:bg-white/10 w-12 h-12",
+                "transition-all duration-200",
+                !isReady && "opacity-50 cursor-not-allowed"
+              )}
+              style={{
+                touchAction: 'manipulation',
+                userSelect: 'none',
+                WebkitTapHighlightColor: 'transparent'
+              }}
             >
               <ChevronLeft className="h-8 w-8" />
             </Button>
@@ -247,17 +307,24 @@ export const AvatarCarousel = ({
               {/* Choose button */}
               <Button
                 onClick={handleChooseAvatar}
-                disabled={isChanging || isCurrentlyActive}
+                disabled={isChanging || isCurrentlyActive || !isReady}
                 className={cn(
                   "w-full h-14 text-lg font-semibold rounded-2xl",
                   "transition-all duration-200",
                   isCurrentlyActive 
                     ? "bg-yellow-500 hover:bg-yellow-600 text-black"
                     : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white",
-                  isChanging && "opacity-50 cursor-not-allowed"
+                  (isChanging || !isReady) && "opacity-50 cursor-not-allowed"
                 )}
+                style={{
+                  touchAction: 'manipulation',
+                  userSelect: 'none',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
               >
-                {isChanging ? (
+                {!isReady ? (
+                  "Loading..."
+                ) : isChanging ? (
                   "Updating..."
                 ) : isCurrentlyActive ? (
                   <>
@@ -273,9 +340,19 @@ export const AvatarCarousel = ({
             {/* Next button */}
             <Button
               onClick={handleNext}
+              disabled={!isReady}
               variant="ghost"
               size="icon"
-              className="absolute right-4 z-40 text-white hover:bg-white/10 w-12 h-12"
+              className={cn(
+                "absolute right-4 z-40 text-white hover:bg-white/10 w-12 h-12",
+                "transition-all duration-200",
+                !isReady && "opacity-50 cursor-not-allowed"
+              )}
+              style={{
+                touchAction: 'manipulation',
+                userSelect: 'none',
+                WebkitTapHighlightColor: 'transparent'
+              }}
             >
               <ChevronRight className="h-8 w-8" />
             </Button>
