@@ -620,6 +620,11 @@ function GameAndChallengeContent() {
                                     user.first_name || user.name)}
                                 email={user.isCurrentUser ? currentUser?.email : user.email}
                                 avatar_url={user.isCurrentUser ? currentUser?.avatar_url : user.avatar_url}
+                                user={{
+                                  first_name: user.isCurrentUser ? currentUser?.first_name : user.first_name,
+                                  last_name: user.isCurrentUser ? currentUser?.last_name : user.last_name,
+                                  username: undefined // Not available in current type
+                                }}
                               />
                           
                              {!isMobile && (

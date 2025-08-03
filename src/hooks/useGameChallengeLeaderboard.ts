@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { getDisplayName } from '@/lib/displayName';
 
 const DEBUG = false;
 
@@ -61,39 +62,6 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return Math.floor(userIndex / 20) + 1;
   };
 
-  const getDisplayName = useCallback((userProfile: any): string => {
-    // PRIORITY 1: Try first_name + last_name combination
-    const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
-    if (fullName && fullName !== '' && !fullName.includes('undefined') && !fullName.includes('null')) {
-      if (DEBUG) console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
-      return fullName;
-    }
-    
-    // PRIORITY 2: Try first_name only if available
-    if (userProfile.first_name && userProfile.first_name.trim() && userProfile.first_name.trim() !== 'undefined' && userProfile.first_name.trim() !== 'null') {
-      if (DEBUG) console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
-      return userProfile.first_name.trim();
-    }
-    
-    // PRIORITY 3: Try username as last resort before email
-    if (userProfile.username && userProfile.username.trim() && userProfile.username.trim() !== 'User') {
-      if (DEBUG) console.log(`Hook getDisplayName: Using username "${userProfile.username}" for user ${userProfile.user_id}`);
-      return userProfile.username.trim();
-    }
-    
-    // FINAL FALLBACK: Email prefix only if absolutely no name data exists
-    if (userProfile.email) {
-      const emailPrefix = userProfile.email.split('@')[0];
-      if (emailPrefix) {
-        if (DEBUG) console.log(`Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
-        return emailPrefix;
-      }
-    }
-    
-    // Ultimate fallback
-    if (DEBUG) console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
-    return 'User';
-  }, []);
 
   const fetchNutritionLeaderboard = async (): Promise<LeaderboardUser[]> => {
     // Get all users with their profiles and nutrition data - include email from auth.users
@@ -485,7 +453,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         setIsLoading(false);
       }
     }
-  }, [category, user?.id, activeTab, getDisplayName]);
+  }, [category, user?.id, activeTab]);
 
   // Force refresh function that invalidates cache
   const forceRefresh = useCallback(async () => {

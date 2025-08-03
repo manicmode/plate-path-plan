@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Flame, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getDisplayName, getDisplayInitials } from '@/lib/displayName';
 
 interface ProgressAvatarProps {
   avatar: string;
@@ -16,6 +17,12 @@ interface ProgressAvatarProps {
   name?: string; // Real user name from profile
   email?: string; // Fallback for name
   avatar_url?: string; // Caricature avatar URL
+  // Add user data fields for proper display name calculation
+  user?: {
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+  };
 }
 
 export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
@@ -29,26 +36,26 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   isCurrentUser = false,
   name,
   email,
-  avatar_url
+  avatar_url,
+  user
 }) => {
-  // Helper function for display name - following priority: first_name + last_name → username → email prefix → "User"
-  const getDisplayName = () => {
-    // PRIORITY 1: ALWAYS use nickname if it exists (processed by hook's getDisplayName)
-    // The hook already handles first_name + last_name logic, so trust its result
-    if (nickname && nickname.trim() && nickname !== 'User') {
-      return nickname.trim();
-    }
-    
-    // PRIORITY 2: Fallback to constructing name from individual fields (shouldn't happen if hook works correctly)
-    if (name && name.trim() && name.trim() !== 'undefined' && name.trim() !== 'null') {
-      return name.trim();
-    }
-    
-    // PRIORITY 3: Final fallback
-    return 'User';
-  };
+  // Use centralized display name helper
+  const displayName = getDisplayName({
+    first_name: user?.first_name,
+    last_name: user?.last_name,
+    username: user?.username,
+    nickname: nickname,
+    email: email
+  });
 
-  const displayName = getDisplayName();
+  // Get proper initials for avatar fallback
+  const displayInitials = getDisplayInitials({
+    first_name: user?.first_name,
+    last_name: user?.last_name,
+    username: user?.username,
+    nickname: nickname,
+    email: email
+  });
 
   const sizeClasses = {
     sm: { avatar: 'h-10 w-10', progress: 'h-12 w-12', stroke: 3, text: 'text-xs' },
@@ -123,7 +130,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
                 />
               ) : null}
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                {avatar_url ? '👤' : avatar || displayName.charAt(0).toUpperCase()}
+                {avatar_url ? displayInitials : avatar || displayInitials}
               </AvatarFallback>
             </Avatar>
           </div>

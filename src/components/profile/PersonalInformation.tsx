@@ -1,4 +1,5 @@
 
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getDisplayName } from '@/lib/displayName';
 
 interface PersonalInformationProps {
   formData: {
@@ -50,9 +52,11 @@ const dietaryGoalOptions = [
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
   
-  const displayName = formData.first_name && formData.last_name 
-    ? `${formData.first_name} ${formData.last_name}`
-    : user?.name || user?.email || 'User';
+  const displayName = getDisplayName({
+    first_name: formData.first_name,
+    last_name: formData.last_name,
+    email: user?.email
+  });
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '100ms' }}>
