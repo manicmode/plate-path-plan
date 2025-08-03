@@ -90,16 +90,15 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
     if (error) throw error;
 
-    // Get user emails from auth metadata
-    const usersWithEmails = await Promise.all(
-      users.map(async (userProfile) => {
-        // For current user, get email from auth context
-        if (userProfile.user_id === user?.id && user?.email) {
-          return { ...userProfile, email: user.email };
-        }
-        return userProfile;
-      })
-    );
+    // Get user emails - for current user only (others will use names if available)
+    const usersWithEmails = users.map((userProfile) => {
+      // For current user, get email from auth context
+      if (userProfile.user_id === user?.id && user?.email) {
+        return { ...userProfile, email: user.email };
+      }
+      // For other users, we'll rely on first_name/last_name display
+      return userProfile;
+    });
 
     // Calculate scores based on nutrition logs for the past 30 days
     const thirtyDaysAgo = new Date();
@@ -179,16 +178,15 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
     if (error) throw error;
 
-    // Get user emails from auth metadata
-    const usersWithEmails = await Promise.all(
-      users.map(async (userProfile) => {
-        // For current user, get email from auth context
-        if (userProfile.user_id === user?.id && user?.email) {
-          return { ...userProfile, email: user.email };
-        }
-        return userProfile;
-      })
-    );
+    // Get user emails - for current user only (others will use names if available)
+    const usersWithEmails = users.map((userProfile) => {
+      // For current user, get email from auth context
+      if (userProfile.user_id === user?.id && user?.email) {
+        return { ...userProfile, email: user.email };
+      }
+      // For other users, we'll rely on first_name/last_name display
+      return userProfile;
+    });
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -277,16 +275,15 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
     if (error) throw error;
 
-    // Get user emails from auth metadata
-    const usersWithEmails = await Promise.all(
-      users.map(async (userProfile) => {
-        // For current user, get email from auth context
-        if (userProfile.user_id === user?.id && user?.email) {
-          return { ...userProfile, email: user.email };
-        }
-        return userProfile;
-      })
-    );
+    // Get user emails - for current user only (others will use names if available)
+    const usersWithEmails = users.map((userProfile) => {
+      // For current user, get email from auth context
+      if (userProfile.user_id === user?.id && user?.email) {
+        return { ...userProfile, email: user.email };
+      }
+      // For other users, we'll rely on first_name/last_name display
+      return userProfile;
+    });
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

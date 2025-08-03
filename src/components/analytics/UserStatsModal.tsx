@@ -264,8 +264,8 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* Large Caricature Avatar Display */}
               {caricatureAvatar ? (
                 <div className="relative mb-2">
-                  {/* ENLARGED Large caricature avatar - prominently displayed */}
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 relative">
+                  {/* DOUBLED SIZE Large caricature avatar - prominently displayed */}
+                  <div className="w-64 h-64 sm:w-80 sm:h-80 relative">
                     <img 
                       src={caricatureAvatar} 
                       alt={`${user.nickname}'s avatar`}
@@ -311,8 +311,8 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               ) : (
                 /* Fallback to emoji avatar with progress ring */
                 <div className="relative mb-2">
-                  {/* ENLARGED Progress Ring */}
-                  <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+                  {/* DOUBLED SIZE Progress Ring */}
+                  <div className="relative w-64 h-64 sm:w-80 sm:h-80">
                     <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
                       <circle
                         cx="50"
