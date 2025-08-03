@@ -18,6 +18,12 @@ export interface LeaderboardUser {
   dailyStreak?: number;
   weeklyStreak?: number;
   group_id: number;
+  // Real user data fields
+  first_name?: string;
+  last_name?: string;
+  name?: string;
+  email?: string;
+  avatar_url?: string;
 }
 
 export interface GroupedLeaderboard {
@@ -55,18 +61,21 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
     if (fullName) return fullName;
     
+    // Try nickname if available
+    if (userProfile.nickname && userProfile.nickname.trim()) return userProfile.nickname.trim();
+    
     // Fallback to email prefix if available
     if (userProfile.email) {
       const emailPrefix = userProfile.email.split('@')[0];
       if (emailPrefix) return emailPrefix;
     }
     
-    // Final fallback - use just fallback emoji without "User" prefix
-    return fallbackEmoji;
+    // Final fallback
+    return 'User';
   };
 
   const fetchNutritionLeaderboard = async (): Promise<LeaderboardUser[]> => {
-    // Get all users with their profiles and nutrition data
+    // Get all users with their profiles and nutrition data - include email from auth.users
     const { data: users, error } = await supabase
       .from('user_profiles')
       .select(`
@@ -81,13 +90,24 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
     if (error) throw error;
 
+    // Get user emails from auth metadata
+    const usersWithEmails = await Promise.all(
+      users.map(async (userProfile) => {
+        // For current user, get email from auth context
+        if (userProfile.user_id === user?.id && user?.email) {
+          return { ...userProfile, email: user.email };
+        }
+        return userProfile;
+      })
+    );
+
     // Calculate scores based on nutrition logs for the past 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const leaderboardUsers: LeaderboardUser[] = [];
 
-    for (const userProfile of users) {
+    for (const userProfile of usersWithEmails) {
 
       const { data: nutritionLogs } = await supabase
         .from('nutrition_logs')
@@ -104,12 +124,12 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       );
       const consistency = (uniqueDays.size / 30) * 100;
 
-      const groupId = calculateUserGroup(userProfile.user_id, users);
+      const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
       leaderboardUsers.push({
         id: userProfile.user_id,
         nickname: getDisplayName(userProfile, '🌟'),
-        avatar: '🌟',
+        avatar: '🌟', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: userProfile.current_nutrition_streak || 0,
         rank: 0, // Will be set after sorting
@@ -126,7 +146,12 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         weeklyProgress: 0, // Will be calculated
         dailyStreak: userProfile.current_nutrition_streak || 0,
         weeklyStreak: Math.floor((userProfile.current_nutrition_streak || 0) / 7),
-        group_id: groupId
+        group_id: groupId,
+        // Add real user data
+        first_name: userProfile.first_name,
+        last_name: userProfile.last_name,
+        email: 'email' in userProfile ? userProfile.email : undefined,
+        avatar_url: userProfile.avatar_url
       });
     }
 
@@ -154,12 +179,23 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
     if (error) throw error;
 
+    // Get user emails from auth metadata
+    const usersWithEmails = await Promise.all(
+      users.map(async (userProfile) => {
+        // For current user, get email from auth context
+        if (userProfile.user_id === user?.id && user?.email) {
+          return { ...userProfile, email: user.email };
+        }
+        return userProfile;
+      })
+    );
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const leaderboardUsers: LeaderboardUser[] = [];
 
-    for (const userProfile of users) {
+    for (const userProfile of usersWithEmails) {
       const { data: workoutLogs } = await supabase
         .from('workout_completions')
         .select('created_at, duration_minutes')
@@ -188,31 +224,41 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         }
       }
 
-      const groupId = calculateUserGroup(userProfile.user_id, users);
+      const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
       leaderboardUsers.push({
         id: userProfile.user_id,
         nickname: getDisplayName(userProfile, '💪'),
-        avatar: '💪',
+        avatar: '💪', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
         rank: 0,
         isCurrentUser: userProfile.user_id === user?.id,
-        consistency: workoutDates.length > 0 ? (workoutDates.length / 30) * 100 : 0,
-        improvement: 0,
         mealsLoggedThisWeek: workoutLogs?.filter(log => {
           const logDate = new Date(log.created_at);
           const weekAgo = new Date();
           weekAgo.setDate(weekAgo.getDate() - 7);
           return logDate >= weekAgo;
         }).length || 0,
-        totalMealsThisWeek: 7, // 7 workout days
-        weeklyProgress: 0,
+        totalMealsThisWeek: 7, // 7 days per week for workouts
+        weeklyProgress: 0, // Will be calculated
         dailyStreak: currentStreak,
         weeklyStreak: Math.floor(currentStreak / 7),
-        group_id: groupId
+        group_id: groupId,
+        // Add real user data
+        first_name: userProfile.first_name,
+        last_name: userProfile.last_name,
+        email: 'email' in userProfile ? userProfile.email : undefined,
+        avatar_url: userProfile.avatar_url
       });
     }
+
+    // Calculate weekly progress for each user
+    leaderboardUsers.forEach(user => {
+      user.weeklyProgress = user.totalMealsThisWeek > 0 
+        ? Math.round((user.mealsLoggedThisWeek! / user.totalMealsThisWeek!) * 100)
+        : 0;
+    });
 
     return leaderboardUsers;
   };
@@ -231,12 +277,23 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
     if (error) throw error;
 
+    // Get user emails from auth metadata
+    const usersWithEmails = await Promise.all(
+      users.map(async (userProfile) => {
+        // For current user, get email from auth context
+        if (userProfile.user_id === user?.id && user?.email) {
+          return { ...userProfile, email: user.email };
+        }
+        return userProfile;
+      })
+    );
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const leaderboardUsers: LeaderboardUser[] = [];
 
-    for (const userProfile of users) {
+    for (const userProfile of usersWithEmails) {
       const { data: recoveryLogs } = await supabase
         .from('recovery_session_logs')
         .select('created_at, duration_minutes, category')
@@ -271,12 +328,12 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         }
       }
 
-      const groupId = calculateUserGroup(userProfile.user_id, users);
+      const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
       leaderboardUsers.push({
         id: userProfile.user_id,
         nickname: getDisplayName(userProfile, '🧘'),
-        avatar: '🧘',
+        avatar: '🧘', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
         rank: 0,
@@ -293,7 +350,12 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         weeklyProgress: 0,
         dailyStreak: currentStreak,
         weeklyStreak: Math.floor(currentStreak / 7),
-        group_id: groupId
+        group_id: groupId,
+        // Add real user data
+        first_name: userProfile.first_name,
+        last_name: userProfile.last_name,
+        email: 'email' in userProfile ? userProfile.email : undefined,
+        avatar_url: userProfile.avatar_url
       });
     }
 

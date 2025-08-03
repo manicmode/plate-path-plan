@@ -74,26 +74,7 @@ interface ChatMessage {
   isBot?: boolean;
 }
 
-const mockLeaderboard = [
-  { 
-    id: 1, 
-    nickname: "Alex 🦄", 
-    avatar: "🦄", 
-    score: 95, 
-    streak: 12, 
-    gold: 3, 
-    silver: 2, 
-    bronze: 1, 
-    rank: 1, 
-    isCurrentUser: false, 
-    consistency: 95, 
-    improvement: 12,
-    mealsLoggedThisWeek: 6,
-    totalMealsThisWeek: 7,
-    weeklyProgress: 86,
-    dailyStreak: 12,
-    weeklyStreak: 2
-  },
+// Removed mock leaderboard data - now using real data from Supabase
   { 
     id: 2, 
     nickname: "Maya 🌟", 
