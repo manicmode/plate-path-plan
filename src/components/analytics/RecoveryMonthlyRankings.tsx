@@ -13,7 +13,7 @@ export const RecoveryMonthlyRankings: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedUser, setSelectedUser] = useState<RecoveryLeaderboardUser | null>(null);
   
-  const { leaderboard, loading, refresh } = useRecoveryLeaderboard();
+  const { leaderboard, loading, refreshLeaderboard } = useRecoveryLeaderboard();
   const { toast } = useToast();
   const { playChallengeWin } = useSound();
   const { user } = useAuth();
@@ -26,7 +26,7 @@ export const RecoveryMonthlyRankings: React.FC = () => {
       newMonth.setMonth(newMonth.getMonth() + 1);
     }
     setCurrentMonth(newMonth);
-    refresh();
+    refreshLeaderboard();
   };
 
   const formatMonthYear = (date: Date) => {

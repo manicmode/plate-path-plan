@@ -118,86 +118,52 @@ function GameAndChallengeContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Recovery leaderboard hook
-  const { leaderboard: recoveryLeaderboard, loading: recoveryLoading, refresh: refreshRecoveryLeaderboard } = useRecoveryLeaderboard();
+  const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
-  // Real challenge leaderboards - ONLY load active tab to prevent performance issues
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition, hasTimedOut: nutritionTimedOut } = useGameChallengeLeaderboard(challengeMode === 'nutrition' || challengeMode === 'combined' ? 'nutrition' : 'nutrition');
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise, hasTimedOut: exerciseTimedOut } = useGameChallengeLeaderboard(challengeMode === 'exercise' ? 'exercise' : 'exercise');
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery, hasTimedOut: recoveryTimedOut } = useGameChallengeLeaderboard(challengeMode === 'recovery' ? 'recovery' : 'recovery');
+  // Real challenge leaderboards
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition');
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise');
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery');
   
   // Use the scroll-to-top hook
   useScrollToTop();
-
-  // Force cache invalidation and refresh on component mount to ensure fresh data after DB updates
-  useEffect(() => {
-    console.log('🔄 GameAndChallengePage: Forcing cache invalidation on mount...');
-    const forceRefreshAll = async () => {
-      console.log('🔄 GameAndChallengePage: Refreshing all leaderboards to get updated user names...');
-      await Promise.all([
-        refreshNutrition(),
-        refreshExercise(), 
-        refreshRecovery(),
-        refreshRecoveryLeaderboard() // Also refresh this one
-      ]);
-      console.log('✅ GameAndChallengePage: All leaderboards refreshed');
-    };
-    
-    forceRefreshAll();
-  }, [refreshNutrition, refreshExercise, refreshRecovery, refreshRecoveryLeaderboard]);
 
   // Update chat modal state in context when chatroom manager opens/closes
   useEffect(() => {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Get real leaderboard data based on challenge mode - ONLY ACTIVE TAB
+  // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
   let isLoading = false;
   let isEmpty = false;
-  let hasTimedOut = false;
   
   switch (challengeMode) {
     case 'nutrition':
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
-      hasTimedOut = nutritionTimedOut;
       break;
     case 'exercise':
-      currentLeaderboard = exerciseLeaderboard.currentUserGroup || [];
+      currentLeaderboard = exerciseLeaderboard.currentUserGroup;
       isLoading = exerciseLoading;
       isEmpty = exerciseLeaderboard.isEmpty;
-      hasTimedOut = exerciseTimedOut;
       break;
     case 'recovery':
-      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup || [];
+      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup;
       isLoading = recoveryRealLoading;
       isEmpty = recoveryRealLeaderboard.isEmpty;
-      hasTimedOut = recoveryTimedOut;
       break;
     case 'combined':
     default:
       // Use nutrition leaderboard as default for combined view
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
-      hasTimedOut = nutritionTimedOut;
       break;
   }
   
-  // Debug logging for leaderboard data
-  console.log('🔍 GameAndChallengePage: Current leaderboard data:', {
-    challengeMode,
-    leaderboardLength: currentLeaderboard?.length || 0,
-    isLoading,
-    isEmpty,
-    firstUser: currentLeaderboard?.[0] || null,
-    nutritionData: nutritionLeaderboard,
-    exerciseData: exerciseLeaderboard,
-    recoveryData: recoveryRealLeaderboard
-  });
-  
-  const optimizedLeaderboard = optimizeForMobile(currentLeaderboard || []);
+  const optimizedLeaderboard = optimizeForMobile(currentLeaderboard);
   const optimizedFriends = optimizeForMobile([]);
   const optimizedHallOfFame = optimizeForMobile([]);
 
@@ -546,22 +512,6 @@ function GameAndChallengeContent() {
                         </div>
                       ))}
                     </div>
-                  ) : hasTimedOut ? (
-                    <div className="text-center py-12">
-                      <div className="text-6xl mb-4">⚠️</div>
-                      <h3 className="text-xl font-semibold mb-2 text-red-600">
-                        Something went wrong
-                      </h3>
-                      <p className="text-muted-foreground mb-6">
-                        Loading is taking too long. Please refresh the page.
-                      </p>
-                      <Button 
-                        onClick={() => window.location.reload()}
-                        className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white"
-                      >
-                        Refresh Page
-                      </Button>
-                    </div>
                   ) : isEmpty ? (
                     <div className="text-center py-12">
                       <div className="text-6xl mb-4">
@@ -604,16 +554,7 @@ function GameAndChallengeContent() {
                           </p>
                         </div>
                       )}
-                      {(currentLeaderboard || []).map((user) => {
-                        console.debug('🎯 Rendering leaderboard user:', user);
-                        
-                        // Safety check for user data
-                        if (!user || !user.id) {
-                          console.warn('⚠️ Skipping invalid user:', user);
-                          return null;
-                        }
-                        
-                        return (
+                      {currentLeaderboard.map((user) => (
                       <div
                        key={user.id}
                        className={cn(
@@ -746,9 +687,8 @@ function GameAndChallengeContent() {
                           )}
                         </div>
                       </div>
-                     </div>
-                        );
-                      })}
+                    </div>
+                      ))}
                     </div>
                  )}
                </CardContent>
@@ -846,14 +786,8 @@ function GameAndChallengeContent() {
                           </Button>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {(currentLeaderboard || []).map((user, index) => {
-                            console.debug('🎯 Rendering mobile leaderboard user:', user);
-                            if (!user || !user.id) {
-                              console.warn('⚠️ Skipping invalid mobile user:', user);
-                              return null;
-                            }
-                            return (
+                       <div className="space-y-2">
+                         {currentLeaderboard.map((user, index) => (
                          <div
                            key={user.id}
                             className={cn(
@@ -878,47 +812,46 @@ function GameAndChallengeContent() {
                                {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${user.rank}`}
                              </div>
                              
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <div className="text-lg flex-shrink-0">{user.avatar || '👤'}</div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-sm flex items-center gap-1 truncate">
-                                    <span className="truncate">{user.nickname || 'User'}</span>
-                                    {user.isCurrentUser && (
-                                      <Badge variant="secondary" className="text-xs h-5 flex-shrink-0">YOU</Badge>
-                                    )}
-                                  </div>
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      <span>Score: {user.score || 0}</span>
-                                      <span>•</span>
-                                      <span>{user.weeklyProgress || 0}%</span>
-                                    </div>
+                             <div className="flex items-center gap-2 flex-1 min-w-0">
+                               <div className="text-lg flex-shrink-0">{user.avatar}</div>
+                               <div className="flex-1 min-w-0">
+                                 <div className="font-semibold text-sm flex items-center gap-1 truncate">
+                                   <span className="truncate">{user.nickname}</span>
+                                   {user.isCurrentUser && (
+                                     <Badge variant="secondary" className="text-xs h-5 flex-shrink-0">YOU</Badge>
+                                   )}
                                  </div>
-                               </div>
-                            </div>
-                            
-                             <div className="flex flex-col items-end">
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Flame className="h-3 w-3 text-orange-500" />
-                                  <span>{(user as any).currentStreak || user.streak || 0}d</span>
+                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                     <span>Score: {user.score}</span>
+                                     <span>•</span>
+                                     <span>{user.weeklyProgress}%</span>
+                                   </div>
                                 </div>
-                              
-                              <div className="flex items-center gap-1 mt-1">
-                                {(user.improvement || 0) > 0 ? (
-                                  <>
-                                    <TrendingUp className="h-3 w-3 text-green-600" />
-                                    <span className="text-xs text-green-600">+{user.improvement || 0}</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <TrendingDown className="h-3 w-3" />
-                                    <span className="text-xs">{user.improvement || 0}</span>
-                                  </>
-                                )}
                               </div>
                             </div>
-                          </div>
-                           );
-                         })}
+                            
+                            <div className="flex flex-col items-end">
+                               <div className="flex items-center gap-1 text-xs">
+                                 <Flame className="h-3 w-3 text-orange-500" />
+                                 <span>{(user as any).currentStreak || user.streak || 0}d</span>
+                               </div>
+                             
+                             <div className="flex items-center gap-1 mt-1">
+                               {user.improvement > 0 ? (
+                                 <>
+                                   <TrendingUp className="h-3 w-3 text-green-600" />
+                                   <span className="text-xs text-green-600">+{user.improvement}</span>
+                                 </>
+                               ) : (
+                                 <>
+                                   <TrendingDown className="h-3 w-3" />
+                                   <span className="text-xs">{user.improvement}</span>
+                                 </>
+                               )}
+                             </div>
+                           </div>
+                         </div>
+                          ))}
                        </div>
                      )}
                   </CardContent>

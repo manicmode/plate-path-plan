@@ -34,17 +34,10 @@ interface FriendCardProps {
 }
 
 const FriendCard = ({ friend, onClick }: FriendCardProps) => {
-  // Safety checks for friend data
-  const friendName = friend?.name || friend?.email?.split('@')[0] || 'Friend';
-  const progressPercentage = Math.round((friend?.metadata?.chatCount || 0) * 10 + Math.random() * 30);
-  const lastActiveText = friend?.metadata?.lastInteraction 
+  const progressPercentage = Math.round((friend.metadata?.chatCount || 0) * 10 + Math.random() * 30);
+  const lastActiveText = friend.metadata?.lastInteraction 
     ? new Date(friend.metadata.lastInteraction).toLocaleDateString()
     : 'Recently';
-
-  if (!friend || !friend.id) {
-    console.warn('⚠️ FriendCard: Invalid friend data:', friend);
-    return null;
-  }
 
   return (
     <Card 
@@ -55,8 +48,8 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
         <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar className="h-12 w-12">
-              <AvatarFallback className="text-lg bg-gradient-to-br from-primary/20 to-secondary/20">
-                {friendName?.charAt(0)?.toUpperCase() || '👤'}
+              <AvatarFallback className="text-lg">
+                {friend.name?.charAt(0) || '👤'}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -top-1 -right-1 text-sm">
@@ -68,7 +61,7 @@ const FriendCard = ({ friend, onClick }: FriendCardProps) => {
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-sm truncate">{friendName}</h3>
+              <h3 className="font-semibold text-sm truncate">{friend.name}</h3>
               {friend.metadata?.isFollowing && (
                 <Badge variant="outline" className="text-xs px-1 py-0">
                   Following
@@ -113,12 +106,6 @@ export const MyFriendsTab = () => {
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { friends, isLoading } = useFriendTagging(true);
-  
-  console.debug('🔍 MyFriendsTab: Friends data:', {
-    friendsCount: friends?.length || 0,
-    isLoading,
-    friends: friends?.slice(0, 3)
-  });
 
   if (selectedFriend) {
     return (
@@ -160,14 +147,14 @@ export const MyFriendsTab = () => {
           <div className="grid grid-cols-3 gap-4 mb-1">
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
-                <div className="text-2xl font-bold text-primary">{(friends || []).length}</div>
+                <div className="text-2xl font-bold text-primary">{friends.length}</div>
                 <div className="text-sm text-muted-foreground">Total Friends</div>
               </CardContent>
             </Card>
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
                 <div className="text-2xl font-bold text-emerald-600">
-                  {(friends || []).filter(f => (f as any)?.metadata?.activityStatus === 'recently_active').length}
+                  {friends.filter(f => (f as any).metadata?.activityStatus === 'recently_active').length}
                 </div>
                 <div className="text-sm text-muted-foreground">Active Today</div>
               </CardContent>
@@ -175,7 +162,7 @@ export const MyFriendsTab = () => {
             <Card className="h-20">
               <CardContent className="p-4 text-center h-full flex flex-col justify-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {(friends || []).filter(f => (f as any)?.metadata?.sharedChallenges > 0).length}
+                  {friends.filter(f => (f as any).metadata?.sharedChallenges > 0).length}
                 </div>
                 <div className="text-sm text-muted-foreground">In Challenges</div>
               </CardContent>
@@ -190,7 +177,7 @@ export const MyFriendsTab = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="text-sm text-muted-foreground mt-2">Loading friends...</p>
                 </div>
-               ) : (friends || []).length === 0 ? (
+               ) : friends.length === 0 ? (
                 <div className="text-center py-4 space-y-3">
                   <div>
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -234,16 +221,14 @@ export const MyFriendsTab = () => {
                      <InviteFriends />
                   </div>
                 </div>
-               ) : (
-                (friends || [])
-                  .filter(friend => friend && friend.id) // Filter out invalid friends
-                  .map((friend) => (
-                    <FriendCard
-                      key={friend.id}
-                      friend={friend}
-                      onClick={() => setSelectedFriend(friend)}
-                    />
-                  ))
+              ) : (
+                friends.map((friend) => (
+                  <FriendCard
+                    key={friend.id}
+                    friend={friend}
+                    onClick={() => setSelectedFriend(friend)}
+                  />
+                ))
               )}
             </div>
           </ScrollArea>

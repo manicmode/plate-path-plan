@@ -33,47 +33,24 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
 }) => {
   // Get display name - STRICTLY prioritize nickname (processed by hook) over all other fields
   const getDisplayName = () => {
-    console.debug('🎯 ProgressAvatar getDisplayName: Raw props received:', {
-      nickname: `"${nickname || 'undefined'}"`,
-      name: `"${name || 'undefined'}"`,
-      email: `"${email || 'undefined'}"`
-    });
-
-    // Treat empty strings as null and handle null values properly
-    const cleanNickname = nickname && nickname.trim() !== '' && nickname !== 'null' && nickname !== 'undefined' ? nickname.trim() : null;
-    const cleanName = name && name.trim() !== '' && name !== 'null' && name !== 'undefined' ? name.trim() : null;
-    const cleanEmail = email && email.trim() !== '' && email !== 'null' && email !== 'undefined' ? email.trim() : null;
-
-    console.debug('🧹 ProgressAvatar: Cleaned data:', {
-      cleanNickname: `"${cleanNickname || 'null'}"`,
-      cleanName: `"${cleanName || 'null'}"`,
-      cleanEmail: `"${cleanEmail || 'null'}"`
-    });
-
+    console.log(`ProgressAvatar: nickname="${nickname}", name="${name}", email="${email}"`);
+    
     // PRIORITY 1: ALWAYS use nickname if it exists (processed by hook's getDisplayName)
     // The hook already handles first_name + last_name logic, so trust its result
-    if (cleanNickname && cleanNickname !== 'User') {
-      console.debug(`✅ ProgressAvatar: Using nickname from hook "${cleanNickname}"`);
-      return cleanNickname;
+    if (nickname && nickname.trim() && nickname !== 'User') {
+      console.log(`ProgressAvatar: Using nickname from hook "${nickname}"`);
+      return nickname.trim();
     }
     
     // PRIORITY 2: Fallback to constructing name from individual fields (shouldn't happen if hook works correctly)
-    if (cleanName && cleanName !== 'User') {
-      console.debug(`✅ ProgressAvatar: Using name field "${cleanName}"`);
-      return cleanName;
+    if (name && name.trim() && name.trim() !== 'undefined' && name.trim() !== 'null') {
+      const trimmedName = name.trim();
+      console.log(`ProgressAvatar: Using name field "${trimmedName}"`);
+      return trimmedName;
     }
     
-    // PRIORITY 3: Email prefix fallback
-    if (cleanEmail) {
-      const emailPrefix = cleanEmail.split('@')[0];
-      if (emailPrefix && emailPrefix !== 'undefined') {
-        console.debug(`⚠️ ProgressAvatar: Using email prefix "${emailPrefix}"`);
-        return emailPrefix;
-      }
-    }
-    
-    // PRIORITY 4: Final fallback
-    console.debug('❌ ProgressAvatar: Using "User" fallback');
+    // PRIORITY 3: Final fallback
+    console.log('ProgressAvatar: Using "User" fallback');
     return 'User';
   };
 
@@ -88,8 +65,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   const { avatar: avatarSize, progress: progressSize, stroke, text } = sizeClasses[size];
   const circumference = Math.PI * (64 - stroke * 2);
   const strokeDasharray = circumference;
-  const safeWeeklyProgress = Math.max(0, Math.min(100, weeklyProgress || 0)); // Ensure valid percentage
-  const strokeDashoffset = circumference - (safeWeeklyProgress / 100) * circumference;
+  const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
 
   return (
     <div className={cn(
@@ -151,7 +127,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
                 />
               ) : null}
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                {avatar || (displayName && displayName.charAt(0).toUpperCase()) || '👤'}
+                {avatar || displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -162,11 +138,11 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
           variant="secondary" 
           className="absolute -top-1 -right-1 h-6 w-8 text-xs font-bold bg-primary text-primary-foreground"
         >
-          {safeWeeklyProgress}%
+          {weeklyProgress}%
         </Badge>
       </div>
 
-      {/* User Name - Always shown below avatar with safe fallback */}
+      {/* User Name - Always shown below avatar */}
       <div className="text-center max-w-20">
         <div 
           className={cn(
@@ -174,9 +150,9 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
             size === 'sm' ? "text-xs" : size === 'md' ? "text-sm" : "text-base",
             "truncate max-w-full"
           )}
-          title={displayName || 'User'} // Show full name on hover with fallback
+          title={displayName} // Show full name on hover
         >
-          {displayName || 'User'}
+          {displayName}
         </div>
       </div>
 
@@ -185,11 +161,11 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Flame className="h-3 w-3 text-orange-500" />
-            <span>{dailyStreak || 0}d</span>
+            <span>{dailyStreak}d</span>
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-blue-500" />
-            <span>{weeklyStreak || 0}w</span>
+            <span>{weeklyStreak}w</span>
           </div>
         </div>
       )}

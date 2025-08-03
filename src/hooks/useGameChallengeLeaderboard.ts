@@ -1,9 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-
-// Debug toggle - set to false to disable logging
-const DEBUG = false;
 
 export interface LeaderboardUser {
   id: string;
@@ -44,16 +41,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     isEmpty: true
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingTimeoutReached, setLoadingTimeoutReached] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0); // Force refresh key
   const { user } = useAuth();
-  const fetchInProgress = useRef(false);
-
-  // 10-second loading timeout
-  useEffect(() => {
-    const timeout = setTimeout(() => setLoadingTimeoutReached(true), 10000);
-    return () => clearTimeout(timeout);
-  }, [refreshKey]);
 
   const calculateUserGroup = (userId: string, allUsers: any[]): number => {
     // Sort users by created_at to ensure consistent grouping
@@ -69,61 +58,36 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   };
 
   const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
-    if (DEBUG) {
-      console.debug('🔍 Hook getDisplayName: Raw data received:', {
-        user_id: userProfile.user_id,
-        first_name: `"${userProfile.first_name || 'undefined'}"`,
-        last_name: `"${userProfile.last_name || 'undefined'}"`,
-        nickname: `"${userProfile.nickname || 'undefined'}"`,
-        email: `"${userProfile.email || 'undefined'}"`
-      });
-    }
-
-    // Treat empty strings as null - this is the key fix
-    const cleanFirstName = userProfile.first_name && userProfile.first_name.trim() !== '' && userProfile.first_name !== 'null' ? userProfile.first_name.trim() : null;
-    const cleanLastName = userProfile.last_name && userProfile.last_name.trim() !== '' && userProfile.last_name !== 'null' ? userProfile.last_name.trim() : null;
-    const cleanNickname = userProfile.nickname && userProfile.nickname.trim() !== '' && userProfile.nickname !== 'null' ? userProfile.nickname.trim() : null;
-    const cleanEmail = userProfile.email && userProfile.email.trim() !== '' && userProfile.email !== 'null' ? userProfile.email.trim() : null;
-
-    if (DEBUG) {
-      console.debug('🧹 Hook getDisplayName: Cleaned data:', {
-        cleanFirstName: `"${cleanFirstName || 'null'}"`,
-        cleanLastName: `"${cleanLastName || 'null'}"`,
-        cleanNickname: `"${cleanNickname || 'null'}"`,
-        cleanEmail: `"${cleanEmail || 'null'}"`
-      });
-    }
-
     // PRIORITY 1: Try first_name + last_name combination
-    if (cleanFirstName && cleanLastName) {
-      const fullName = `${cleanFirstName} ${cleanLastName}`;
-      console.debug(`✅ Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
+    const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
+    if (fullName && fullName !== '' && !fullName.includes('undefined') && !fullName.includes('null')) {
+      console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
       return fullName;
     }
     
     // PRIORITY 2: Try first_name only if available
-    if (cleanFirstName) {
-      console.debug(`✅ Hook getDisplayName: Using first_name "${cleanFirstName}" for user ${userProfile.user_id}`);
-      return cleanFirstName;
+    if (userProfile.first_name && userProfile.first_name.trim() && userProfile.first_name.trim() !== 'undefined' && userProfile.first_name.trim() !== 'null') {
+      console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
+      return userProfile.first_name.trim();
     }
     
     // PRIORITY 3: Try nickname/username as last resort before email
-    if (cleanNickname && cleanNickname !== 'User') {
-      console.debug(`✅ Hook getDisplayName: Using nickname "${cleanNickname}" for user ${userProfile.user_id}`);
-      return cleanNickname;
+    if (userProfile.nickname && userProfile.nickname.trim() && userProfile.nickname.trim() !== 'User') {
+      console.log(`Hook getDisplayName: Using nickname "${userProfile.nickname}" for user ${userProfile.user_id}`);
+      return userProfile.nickname.trim();
     }
     
-    // PRIORITY 4: Email prefix only if absolutely no name data exists
-    if (cleanEmail) {
-      const emailPrefix = cleanEmail.split('@')[0];
-      if (emailPrefix && emailPrefix !== 'undefined') {
-        console.debug(`⚠️ Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
+    // FINAL FALLBACK: Email prefix only if absolutely no name data exists
+    if (userProfile.email) {
+      const emailPrefix = userProfile.email.split('@')[0];
+      if (emailPrefix) {
+        console.log(`Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
         return emailPrefix;
       }
     }
     
     // Ultimate fallback
-    console.debug(`❌ Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
+    console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
     return 'User';
   };
 
@@ -412,13 +376,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return leaderboardUsers;
   };
 
-  const fetchLeaderboard = useCallback(async () => {
-    if (fetchInProgress.current || !user) return;
-    
-    fetchInProgress.current = true;
+  const fetchLeaderboard = async () => {
     try {
       setIsLoading(true);
-      setLoadingTimeoutReached(false);
       
       let allUsers: LeaderboardUser[] = [];
       
@@ -436,43 +396,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
           allUsers = [];
       }
 
-      if (DEBUG) {
-        console.debug('🔍 useGameChallengeLeaderboard: Raw leaderboard data:', {
-          category,
-          userCount: allUsers.length,
-          rawUsers: allUsers.slice(0, 3).map(u => ({ id: u.id, nickname: u.nickname, score: u.score }))
-        });
-      }
-
       if (!user) {
-        console.warn('❌ useGameChallengeLeaderboard: No user found, returning empty leaderboard');
-        setLeaderboard({
-          currentUserGroup: [],
-          currentUserRank: null,
-          totalUsers: 0,
-          isEmpty: true
-        });
-        return;
-      }
-
-      console.debug('🔍 useGameChallengeLeaderboard: Processing leaderboard data:', {
-        category,
-        userCount: allUsers.length,
-        user: user.id,
-        sampleUser: allUsers[0] || null
-      });
-
-      // Filter out invalid users and add safety checks
-      const validUsers = allUsers.filter(u => {
-        const isValid = u && u.id && u.nickname;
-        if (!isValid) {
-          console.warn('⚠️ Filtering out invalid user:', u);
-        }
-        return isValid;
-      });
-
-      if (validUsers.length === 0) {
-        console.warn('⚠️ useGameChallengeLeaderboard: No valid users found');
         setLeaderboard({
           currentUserGroup: [],
           currentUserRank: null,
@@ -483,7 +407,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       }
 
       // Sort all users by score
-      const sortedUsers = validUsers.sort((a, b) => (b.score || 0) - (a.score || 0));
+      const sortedUsers = allUsers.sort((a, b) => b.score - a.score);
       
       // Assign global ranks
       sortedUsers.forEach((user, index) => {
@@ -497,19 +421,10 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       // Get users in the same group as current user
       const currentUserGroup = sortedUsers
         .filter(u => u.group_id === currentUserGroupId)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .sort((a, b) => b.score - a.score)
         .map((user, index) => ({ ...user, rank: index + 1 }));
 
       const currentUserRank = currentUser?.rank || null;
-
-      console.debug('✅ useGameChallengeLeaderboard: Leaderboard processed successfully:', {
-        category,
-        totalUsers: sortedUsers.length,
-        currentUserGroupSize: currentUserGroup.length,
-        currentUserRank,
-        isEmpty: sortedUsers.length === 0,
-        firstGroupUser: currentUserGroup[0] || null
-      });
 
       setLeaderboard({
         currentUserGroup,
@@ -519,7 +434,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       });
 
     } catch (error) {
-      console.error('❌ useGameChallengeLeaderboard: Error fetching leaderboard:', error);
+      console.error('Error fetching leaderboard:', error);
       setLeaderboard({
         currentUserGroup: [],
         currentUserRank: null,
@@ -528,36 +443,22 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       });
     } finally {
       setIsLoading(false);
-      fetchInProgress.current = false;
     }
-  }, [category, user?.id]); // Stable dependencies
+  };
 
   // Force refresh function that invalidates cache
-  const forceRefresh = useCallback(async () => {
-    if (DEBUG) console.log('🔄 Force refreshing leaderboard - invalidating cache...');
-    setLeaderboard({
-      currentUserGroup: [],
-      currentUserRank: null,
-      totalUsers: 0,
-      isEmpty: true
-    });
+  const forceRefresh = async () => {
     setRefreshKey(prev => prev + 1);
     await fetchLeaderboard();
-  }, [fetchLeaderboard]);
+  };
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [fetchLeaderboard, refreshKey]); // Only depend on stable callback
+  }, [category, user?.id, refreshKey]); // Include refreshKey to force refresh
 
   return {
-    leaderboard: loadingTimeoutReached && isLoading ? {
-      currentUserGroup: [],
-      currentUserRank: null,
-      totalUsers: 0,
-      isEmpty: true
-    } : leaderboard,
-    isLoading: loadingTimeoutReached ? false : isLoading,
-    refresh: forceRefresh,
-    hasTimedOut: loadingTimeoutReached
+    leaderboard,
+    isLoading,
+    refresh: forceRefresh // Use force refresh instead of simple fetch
   };
 };
