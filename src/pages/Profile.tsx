@@ -74,7 +74,6 @@ const ProfileContent = () => {
   
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
-    last_name: user?.last_name || '',
     email: user?.email || '',
     targetCalories: user?.targetCalories || 2000,
     targetProtein: user?.targetProtein || 150,
@@ -139,7 +138,6 @@ const ProfileContent = () => {
           .from('user_profiles')
           .update({
             first_name: formData.first_name,
-            last_name: formData.last_name,
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
@@ -166,7 +164,6 @@ const ProfileContent = () => {
     
     updateProfile({
       first_name: formData.first_name,
-      last_name: formData.last_name,
       targetCalories: Number(formData.targetCalories),
       targetProtein: Number(formData.targetProtein),
       targetCarbs: Number(formData.targetCarbs),
@@ -193,7 +190,6 @@ const ProfileContent = () => {
     setUserSelectedTrackers(originalTrackers);
     setFormData({
       first_name: user?.first_name || '',
-      last_name: user?.last_name || '',
       email: user?.email || '',
       targetCalories: user?.targetCalories || 2000,
       targetProtein: user?.targetProtein || 150,

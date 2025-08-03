@@ -506,12 +506,12 @@ const AuthForm = () => {
                 <div className="space-y-2">
                   <Label htmlFor="register-name" className="flex items-center space-x-2">
                     <User className="h-4 w-4 text-emerald-600" />
-                    <span>Full Name</span>
+                    <span>Profile Name</span>
                   </Label>
                   <Input
                     id="register-name"
                     type="text"
-                    placeholder="Enter your full name"
+                    placeholder="Enter your profile name"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}

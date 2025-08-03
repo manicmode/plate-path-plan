@@ -49,7 +49,6 @@ interface UserStatsModalProps {
     selected_avatar_variant?: number;
     name?: string; // Real user name from profile
     first_name?: string;
-    last_name?: string;
     email?: string; // Fallback for name
   };
 }

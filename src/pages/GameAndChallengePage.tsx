@@ -63,6 +63,7 @@ import { useChallenge } from '@/contexts/ChallengeContext';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
+import { getDisplayName } from '@/lib/displayName';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
@@ -612,17 +613,18 @@ function GameAndChallengeContent() {
                                 showStats={false}
                                 isCurrentUser={user.isCurrentUser}
                                 name={user.isCurrentUser ? 
-                                  (currentUser?.first_name && currentUser?.last_name ? 
-                                    `${currentUser.first_name} ${currentUser.last_name}` : 
-                                    currentUser?.first_name || currentUser?.name) : 
-                                  (user.first_name && user.last_name ? 
-                                    `${user.first_name} ${user.last_name}` : 
-                                    user.first_name || user.name)}
+                                  getDisplayName({
+                                    first_name: currentUser?.first_name,
+                                    email: currentUser?.email
+                                  }) : 
+                                  getDisplayName({
+                                    first_name: user.first_name,
+                                    email: user.email
+                                  })}
                                 email={user.isCurrentUser ? currentUser?.email : user.email}
                                 avatar_url={user.isCurrentUser ? currentUser?.avatar_url : user.avatar_url}
                                 user={{
                                   first_name: user.isCurrentUser ? currentUser?.first_name : user.first_name,
-                                  last_name: user.isCurrentUser ? currentUser?.last_name : user.last_name,
                                   username: undefined // Not available in current type
                                 }}
                               />

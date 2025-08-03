@@ -78,9 +78,8 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
 
   return {
     ...supabaseUser,
-    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
-    first_name: profile?.first_name || '',
-    last_name: profile?.last_name || '',
+    name: supabaseUser.user_metadata?.first_name || supabaseUser.email?.split('@')[0] || '',
+    first_name: profile?.first_name || supabaseUser.user_metadata?.first_name || '',
     avatar_url: profile?.avatar_url || undefined,
     caricature_generation_count: profile?.caricature_generation_count || 0,
     caricature_history: profile?.caricature_history || [],

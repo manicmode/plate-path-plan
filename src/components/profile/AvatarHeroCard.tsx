@@ -15,7 +15,6 @@ interface AvatarHeroCardProps {
     user_id?: string;
     name?: string;
     first_name?: string;
-    last_name?: string;
     email?: string;
     avatar_url?: string;
     caricature_generation_count?: number;
@@ -68,7 +67,6 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
 
   const displayName = getDisplayName({
     first_name: user?.first_name,
-    last_name: user?.last_name,
     email: user?.email
   });
 

@@ -131,8 +131,7 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
       const formattedTributes: Tribute[] = tributesData?.map(tribute => {
         const profile = profiles?.find(p => p.user_id === tribute.user_id);
         const authorName = profile ? getDisplayName({
-          first_name: profile.first_name,
-          last_name: profile.last_name
+          first_name: profile.first_name
         }) : 'Anonymous';
         
         // Parse reactions safely

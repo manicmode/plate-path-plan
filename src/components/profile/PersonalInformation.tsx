@@ -12,7 +12,6 @@ import { getDisplayName } from '@/lib/displayName';
 interface PersonalInformationProps {
   formData: {
     first_name: string;
-    last_name: string;
     email: string;
   };
   user: {
@@ -20,7 +19,6 @@ interface PersonalInformationProps {
     user_id?: string;
     name?: string;
     first_name?: string;
-    last_name?: string;
     email?: string;
     dietaryGoals?: string[];
     avatar_url?: string;
@@ -54,7 +52,6 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   
   const displayName = getDisplayName({
     first_name: formData.first_name,
-    last_name: formData.last_name,
     email: user?.email
   });
 
@@ -116,27 +113,15 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       {/* Editable Fields */}
       {isEditing && (
         <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-4'}`}>
-            <div className="space-y-2">
-              <Label htmlFor="first_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>First Name</Label>
-              <Input
-                id="first_name"
-                value={formData.first_name}
-                onChange={(e) => onFormDataChange({ first_name: e.target.value })}
-                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-                placeholder="Enter first name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="last_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Last Name</Label>
-              <Input
-                id="last_name"
-                value={formData.last_name}
-                onChange={(e) => onFormDataChange({ last_name: e.target.value })}
-                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-                placeholder="Enter last name"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="first_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Profile Name</Label>
+            <Input
+              id="first_name"
+              value={formData.first_name}
+              onChange={(e) => onFormDataChange({ first_name: e.target.value })}
+              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+              placeholder="Enter your profile name"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Email</Label>

@@ -42,7 +42,6 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   // Use centralized display name helper
   const displayName = getDisplayName({
     first_name: user?.first_name,
-    last_name: user?.last_name,
     username: user?.username,
     nickname: nickname,
     email: email
@@ -51,7 +50,6 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   // Get proper initials for avatar fallback
   const displayInitials = getDisplayInitials({
     first_name: user?.first_name,
-    last_name: user?.last_name,
     username: user?.username,
     nickname: nickname,
     email: email
