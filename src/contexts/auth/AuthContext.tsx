@@ -273,14 +273,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Replace refreshUser
   const refreshUser = ReactModule.useCallback(async () => {
     try {
+      console.log('🔄 [REFRESH DEBUG] Starting user refresh...');
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return setUser(null);
-      const extendedUser = await loadExtendedProfile(authUser);
+      if (!authUser) {
+        console.log('🔄 [REFRESH DEBUG] No auth user found, setting to null');
+        return setUser(null);
+      }
+      
+      console.log('🔄 [REFRESH DEBUG] Auth user found, creating extended user...');
+      const extendedUser = await createExtendedUser(authUser);
+      console.log('🔄 [REFRESH DEBUG] Extended user created:', {
+        id: extendedUser.id,
+        first_name: extendedUser.first_name,
+        email: extendedUser.email
+      });
+      
       if (extendedUser) setUser(extendedUser);
-    } catch {
-      console.error('❌ Error refreshing user');
+    } catch (error) {
+      console.error('❌ [REFRESH DEBUG] Error refreshing user:', error);
     }
-  }, [loadExtendedProfile]);
+  }, []);
 
   const contextValue: AuthContextType = {
     user,

@@ -162,10 +162,11 @@ const ProfileContent = () => {
     setIsLoading(true);
 
     try {
-      console.log('💾 Saving profile data:', {
+      console.log('💾 [SAVE DEBUG] Starting profile save:', {
         userId: user.id,
-        firstName: profileName.trim() || null,
-        formData: formData.first_name
+        profileName: profileName,
+        trimmedName: profileName.trim() || null,
+        userEmail: user.email
       });
 
       // Update the user_profiles table directly
@@ -173,13 +174,21 @@ const ProfileContent = () => {
         .from('user_profiles')
         .update({
           first_name: profileName.trim() || null,
-          last_name: null // Add last_name support if needed later
+          last_name: null, // Add last_name support if needed later
+          updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
         .select();
 
+      console.log('💾 [SAVE DEBUG] Supabase update response:', {
+        updateResult,
+        updateError,
+        hasError: !!updateError,
+        resultLength: updateResult?.length || 0
+      });
+
       if (updateError) {
-        console.error('❌ Profile update failed:', updateError);
+        console.error('❌ [SAVE DEBUG] Profile update failed:', updateError);
         toast({
           title: "Error",
           description: `Failed to save profile: ${updateError.message}`,
@@ -188,19 +197,50 @@ const ProfileContent = () => {
         return;
       }
 
-      console.log('✅ Profile update successful:', updateResult);
+      if (!updateResult || updateResult.length === 0) {
+        console.warn('⚠️ [SAVE DEBUG] No rows were updated - profile may not exist');
+        // Try to insert if update didn't affect any rows
+        const { data: insertResult, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            first_name: profileName.trim() || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select();
+
+        console.log('💾 [SAVE DEBUG] Insert fallback response:', {
+          insertResult,
+          insertError
+        });
+
+        if (insertError) {
+          console.error('❌ [SAVE DEBUG] Profile insert failed:', insertError);
+          toast({
+            title: "Error",
+            description: `Failed to create profile: ${insertError.message}`,
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      console.log('✅ [SAVE DEBUG] Profile save successful, starting refresh...');
 
       // Small delay to ensure DB commit
       await new Promise((res) => setTimeout(res, 500));
       
+      console.log('🔄 [SAVE DEBUG] Calling refreshUser...');
       // Force refresh user context
       await refreshUser();
       
       setTimeout(() => {
-        console.log('🧠 User context after refresh:', {
+        console.log('🧠 [SAVE DEBUG] User context after refresh:', {
           user_id: user?.id,
           first_name: user?.first_name,
-          email: user?.email
+          email: user?.email,
+          displayName: getDisplayName(user)
         });
       }, 1000);
 
@@ -210,7 +250,7 @@ const ProfileContent = () => {
       });
       setIsEditing(false);
     } catch (error) {
-      console.error('❌ Unexpected error saving profile:', error);
+      console.error('❌ [SAVE DEBUG] Unexpected error saving profile:', error);
       toast({
         title: "Error", 
         description: "Unexpected error saving profile",
