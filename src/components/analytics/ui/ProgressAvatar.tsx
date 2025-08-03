@@ -31,32 +31,25 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   email,
   avatar_url
 }) => {
-  // Get display name with strict priority for nickname from hook
+  // Get display name - STRICTLY prioritize nickname (processed by hook) over all other fields
   const getDisplayName = () => {
     console.log(`ProgressAvatar: nickname="${nickname}", name="${name}", email="${email}"`);
     
-    // PRIORITY 1: Always use nickname if it exists (processed by hook's getDisplayName)
+    // PRIORITY 1: ALWAYS use nickname if it exists (processed by hook's getDisplayName)
+    // The hook already handles first_name + last_name logic, so trust its result
     if (nickname && nickname.trim() && nickname !== 'User') {
-      console.log(`ProgressAvatar: Using nickname "${nickname}"`);
+      console.log(`ProgressAvatar: Using nickname from hook "${nickname}"`);
       return nickname.trim();
     }
     
-    // PRIORITY 2: Only fallback to constructing name if nickname is missing/empty
-    if (name && name.trim()) {
+    // PRIORITY 2: Fallback to constructing name from individual fields (shouldn't happen if hook works correctly)
+    if (name && name.trim() && name.trim() !== 'undefined' && name.trim() !== 'null') {
       const trimmedName = name.trim();
-      console.log(`ProgressAvatar: Using name "${trimmedName}"`);
-      if (trimmedName.includes(' ')) return trimmedName;
+      console.log(`ProgressAvatar: Using name field "${trimmedName}"`);
       return trimmedName;
     }
     
-    // PRIORITY 3: Email prefix as last resort
-    if (email && email.includes('@')) {
-      const emailPrefix = email.split('@')[0];
-      console.log(`ProgressAvatar: Using email prefix "${emailPrefix}"`);
-      return emailPrefix;
-    }
-    
-    // Final fallback
+    // PRIORITY 3: Final fallback
     console.log('ProgressAvatar: Using "User" fallback');
     return 'User';
   };

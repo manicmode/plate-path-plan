@@ -58,20 +58,26 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   };
 
   const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
-    // Try first_name + last_name combination
+    // PRIORITY 1: Try first_name + last_name combination
     const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
-    if (fullName) {
+    if (fullName && fullName !== '' && !fullName.includes('undefined') && !fullName.includes('null')) {
       console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
       return fullName;
     }
     
-    // Try first_name only if available
-    if (userProfile.first_name && userProfile.first_name.trim()) {
+    // PRIORITY 2: Try first_name only if available
+    if (userProfile.first_name && userProfile.first_name.trim() && userProfile.first_name.trim() !== 'undefined' && userProfile.first_name.trim() !== 'null') {
       console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
       return userProfile.first_name.trim();
     }
     
-    // Fallback to email prefix if available
+    // PRIORITY 3: Try nickname/username as last resort before email
+    if (userProfile.nickname && userProfile.nickname.trim() && userProfile.nickname.trim() !== 'User') {
+      console.log(`Hook getDisplayName: Using nickname "${userProfile.nickname}" for user ${userProfile.user_id}`);
+      return userProfile.nickname.trim();
+    }
+    
+    // FINAL FALLBACK: Email prefix only if absolutely no name data exists
     if (userProfile.email) {
       const emailPrefix = userProfile.email.split('@')[0];
       if (emailPrefix) {
@@ -80,7 +86,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       }
     }
     
-    // Final fallback
+    // Ultimate fallback
     console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
     return 'User';
   };
