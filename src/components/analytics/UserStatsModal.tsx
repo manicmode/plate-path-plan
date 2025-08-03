@@ -377,37 +377,53 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full text-center">
-                <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
+                 <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
                   {(() => {
-                    console.log(`UserStatsModal: first_name="${user.first_name}", last_name="${user.last_name}", nickname="${user.nickname}", email="${user.email}"`);
+                    console.log('🎯 UserStatsModal: Raw user data received:', {
+                      first_name: `"${user.first_name}"`,
+                      last_name: `"${user.last_name}"`,
+                      nickname: `"${user.nickname}"`,
+                      email: `"${user.email}"`
+                    });
+
+                    // Treat empty strings as null - this is the key fix
+                    const cleanFirstName = user.first_name && user.first_name.trim() !== '' ? user.first_name.trim() : null;
+                    const cleanLastName = user.last_name && user.last_name.trim() !== '' ? user.last_name.trim() : null;
+                    const cleanNickname = user.nickname && user.nickname.trim() !== '' ? user.nickname.trim() : null;
+
+                    console.log('🧹 UserStatsModal: Cleaned user data:', {
+                      cleanFirstName: `"${cleanFirstName}"`,
+                      cleanLastName: `"${cleanLastName}"`,
+                      cleanNickname: `"${cleanNickname}"`
+                    });
                     
                     // PRIORITY 1: first_name + last_name (properly trimmed)
-                    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-                    if (fullName && fullName !== '' && !fullName.includes('undefined') && !fullName.includes('null')) {
-                      console.log(`UserStatsModal: Using fullName "${fullName}"`);
+                    if (cleanFirstName && cleanLastName) {
+                      const fullName = `${cleanFirstName} ${cleanLastName}`;
+                      console.log(`✅ UserStatsModal: Using fullName "${fullName}"`);
                       return fullName;
                     }
                     
                     // PRIORITY 2: first_name only
-                    if (user.first_name && user.first_name.trim() && user.first_name.trim() !== 'undefined' && user.first_name.trim() !== 'null') {
-                      console.log(`UserStatsModal: Using first_name "${user.first_name}"`);
-                      return user.first_name.trim();
+                    if (cleanFirstName) {
+                      console.log(`✅ UserStatsModal: Using first_name "${cleanFirstName}"`);
+                      return cleanFirstName;
                     }
                     
                     // PRIORITY 3: nickname (processed by hook)
-                    if (user.nickname && user.nickname.trim() && user.nickname !== 'User') {
-                      console.log(`UserStatsModal: Using nickname "${user.nickname}"`);
-                      return user.nickname.trim();
+                    if (cleanNickname && cleanNickname !== 'User') {
+                      console.log(`✅ UserStatsModal: Using nickname "${cleanNickname}"`);
+                      return cleanNickname;
                     }
                     
                     // FINAL FALLBACK: email prefix only if no name exists
                     if (user.email) {
-                      console.log(`UserStatsModal: Using email prefix fallback`);
+                      console.log(`⚠️ UserStatsModal: Using email prefix fallback`);
                       return user.email.split('@')[0];
                     }
                     
                     // Ultimate fallback
-                    console.log(`UserStatsModal: Using "User" fallback`);
+                    console.log(`❌ UserStatsModal: Using "User" fallback`);
                     return 'User';
                   })()}
                 </h2>

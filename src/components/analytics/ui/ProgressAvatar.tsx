@@ -33,24 +33,36 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
 }) => {
   // Get display name - STRICTLY prioritize nickname (processed by hook) over all other fields
   const getDisplayName = () => {
-    console.log(`ProgressAvatar: nickname="${nickname}", name="${name}", email="${email}"`);
-    
+    console.log('🎯 ProgressAvatar getDisplayName: Raw props received:', {
+      nickname: `"${nickname}"`,
+      name: `"${name}"`,
+      email: `"${email}"`
+    });
+
+    // Treat empty strings as null
+    const cleanNickname = nickname && nickname.trim() !== '' ? nickname.trim() : null;
+    const cleanName = name && name.trim() !== '' ? name.trim() : null;
+
+    console.log('🧹 ProgressAvatar: Cleaned data:', {
+      cleanNickname: `"${cleanNickname}"`,
+      cleanName: `"${cleanName}"`
+    });
+
     // PRIORITY 1: ALWAYS use nickname if it exists (processed by hook's getDisplayName)
     // The hook already handles first_name + last_name logic, so trust its result
-    if (nickname && nickname.trim() && nickname !== 'User') {
-      console.log(`ProgressAvatar: Using nickname from hook "${nickname}"`);
-      return nickname.trim();
+    if (cleanNickname && cleanNickname !== 'User') {
+      console.log(`✅ ProgressAvatar: Using nickname from hook "${cleanNickname}"`);
+      return cleanNickname;
     }
     
     // PRIORITY 2: Fallback to constructing name from individual fields (shouldn't happen if hook works correctly)
-    if (name && name.trim() && name.trim() !== 'undefined' && name.trim() !== 'null') {
-      const trimmedName = name.trim();
-      console.log(`ProgressAvatar: Using name field "${trimmedName}"`);
-      return trimmedName;
+    if (cleanName && cleanName !== 'undefined' && cleanName !== 'null') {
+      console.log(`✅ ProgressAvatar: Using name field "${cleanName}"`);
+      return cleanName;
     }
     
     // PRIORITY 3: Final fallback
-    console.log('ProgressAvatar: Using "User" fallback');
+    console.log('❌ ProgressAvatar: Using "User" fallback');
     return 'User';
   };
 

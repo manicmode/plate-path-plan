@@ -58,36 +58,55 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   };
 
   const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
+    console.log('🔍 Hook getDisplayName: Raw data received:', {
+      user_id: userProfile.user_id,
+      first_name: `"${userProfile.first_name}"`,
+      last_name: `"${userProfile.last_name}"`,
+      nickname: `"${userProfile.nickname}"`,
+      email: `"${userProfile.email}"`
+    });
+
+    // Treat empty strings as null - this is the key fix
+    const cleanFirstName = userProfile.first_name && userProfile.first_name.trim() !== '' ? userProfile.first_name.trim() : null;
+    const cleanLastName = userProfile.last_name && userProfile.last_name.trim() !== '' ? userProfile.last_name.trim() : null;
+    const cleanNickname = userProfile.nickname && userProfile.nickname.trim() !== '' ? userProfile.nickname.trim() : null;
+
+    console.log('🧹 Hook getDisplayName: Cleaned data:', {
+      cleanFirstName: `"${cleanFirstName}"`,
+      cleanLastName: `"${cleanLastName}"`,
+      cleanNickname: `"${cleanNickname}"`
+    });
+
     // PRIORITY 1: Try first_name + last_name combination
-    const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
-    if (fullName && fullName !== '' && !fullName.includes('undefined') && !fullName.includes('null')) {
-      console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
+    if (cleanFirstName && cleanLastName) {
+      const fullName = `${cleanFirstName} ${cleanLastName}`;
+      console.log(`✅ Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
       return fullName;
     }
     
     // PRIORITY 2: Try first_name only if available
-    if (userProfile.first_name && userProfile.first_name.trim() && userProfile.first_name.trim() !== 'undefined' && userProfile.first_name.trim() !== 'null') {
-      console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
-      return userProfile.first_name.trim();
+    if (cleanFirstName) {
+      console.log(`✅ Hook getDisplayName: Using first_name "${cleanFirstName}" for user ${userProfile.user_id}`);
+      return cleanFirstName;
     }
     
     // PRIORITY 3: Try nickname/username as last resort before email
-    if (userProfile.nickname && userProfile.nickname.trim() && userProfile.nickname.trim() !== 'User') {
-      console.log(`Hook getDisplayName: Using nickname "${userProfile.nickname}" for user ${userProfile.user_id}`);
-      return userProfile.nickname.trim();
+    if (cleanNickname && cleanNickname !== 'User') {
+      console.log(`✅ Hook getDisplayName: Using nickname "${cleanNickname}" for user ${userProfile.user_id}`);
+      return cleanNickname;
     }
     
     // FINAL FALLBACK: Email prefix only if absolutely no name data exists
     if (userProfile.email) {
       const emailPrefix = userProfile.email.split('@')[0];
       if (emailPrefix) {
-        console.log(`Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
+        console.log(`⚠️ Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
         return emailPrefix;
       }
     }
     
     // Ultimate fallback
-    console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
+    console.log(`❌ Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
     return 'User';
   };
 
@@ -448,6 +467,14 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
   // Force refresh function that invalidates cache
   const forceRefresh = async () => {
+    console.log('🔄 Force refreshing leaderboard - invalidating cache...');
+    setLeaderboard({
+      currentUserGroup: [],
+      currentUserRank: null,
+      totalUsers: 0,
+      isEmpty: true
+    }); // Clear current data to force fresh fetch
+    setIsLoading(true); // Show loading state
     setRefreshKey(prev => prev + 1);
     await fetchLeaderboard();
   };
