@@ -114,9 +114,16 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
+      // Phase 5: Enhanced display name for leaderboard consistency
+      const displayName = getDisplayName({
+        first_name: userProfile.first_name,
+        username: undefined,
+        email: 'email' in userProfile ? userProfile.email : undefined
+      });
+
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: getDisplayName(userProfile),
+        nickname: displayName,
         avatar: '🌟', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: userProfile.current_nutrition_streak || 0,
@@ -213,9 +220,16 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
+      // Phase 5: Enhanced display name for exercise leaderboard consistency
+      const displayName = getDisplayName({
+        first_name: userProfile.first_name,
+        username: undefined,
+        email: 'email' in userProfile ? userProfile.email : undefined
+      });
+
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: getDisplayName(userProfile),
+        nickname: displayName,
         avatar: '💪', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -316,9 +330,16 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
+      // Phase 5: Enhanced display name for recovery leaderboard consistency  
+      const displayName = getDisplayName({
+        first_name: userProfile.first_name,
+        username: undefined,
+        email: 'email' in userProfile ? userProfile.email : undefined
+      });
+
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: getDisplayName(userProfile),
+        nickname: displayName,
         avatar: '🧘', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,

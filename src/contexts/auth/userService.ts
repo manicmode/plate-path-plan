@@ -5,6 +5,8 @@ import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 
 export const loadUserProfile = async (userId: string) => {
   try {
+    console.log('[DEBUG] UserService: Loading profile for user:', userId);
+    
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -12,13 +14,19 @@ export const loadUserProfile = async (userId: string) => {
       .maybeSingle();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error loading user profile:', error);
+      console.error('[ERROR] UserService: Profile load failed:', error);
       return null;
     }
 
+    console.log('[DEBUG] UserService: Profile loaded:', {
+      user_id: userId,
+      first_name: data?.first_name,
+      profile_exists: !!data
+    });
+
     return data;
   } catch (error) {
-    console.error('Error in loadUserProfile:', error);
+    console.error('[ERROR] UserService: Exception in loadUserProfile:', error);
     return null;
   }
 };

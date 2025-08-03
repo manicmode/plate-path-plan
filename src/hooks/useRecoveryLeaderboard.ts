@@ -469,8 +469,11 @@ export const useRecoveryLeaderboard = () => {
       // Transform the data into the expected format
       const leaderboardData: RecoveryLeaderboardUser[] = recoveryMetrics.map((metric, index) => {
         const profile = profiles.find(p => p.user_id === metric.user_id);
+        // Phase 5: Enhanced display name for recovery leaderboard consistency
         const displayName = profile ? getDisplayName({
-          first_name: profile.first_name
+          first_name: profile.first_name,
+          username: undefined,
+          email: undefined
         }) : 'Anonymous User';
         
         // Determine dominant recovery type

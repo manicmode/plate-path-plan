@@ -1,4 +1,4 @@
-// Centralized display name helper function
+// Phase 3: Enhanced centralized display name helper function
 export function getDisplayName(user: {
   first_name?: string;
   username?: string;
@@ -8,38 +8,42 @@ export function getDisplayName(user: {
   console.log('[DEBUG] getDisplayName called with:', {
     first_name: user?.first_name,
     username: user?.username,
-    email: user?.email ? user.email.split('@')[0] + '@...' : undefined
+    email: user?.email ? user.email.split('@')[0] + '@...' : undefined,
+    hasValidFirstName: !!(user?.first_name && user.first_name.trim() && user.first_name.trim() !== 'User')
   });
   
-  // PRIORITY 1: first_name
-  if (user?.first_name && user.first_name.trim() && user.first_name.trim() !== 'User') {
-    console.log('[DEBUG] getDisplayName: Using first_name:', user.first_name.trim());
-    return user.first_name.trim();
+  // PRIORITY 1: first_name (enhanced validation)
+  if (user?.first_name && user.first_name.trim() && user.first_name.trim() !== 'User' && user.first_name.trim() !== '') {
+    const trimmedName = user.first_name.trim();
+    console.log('[DEBUG] getDisplayName: ✅ Using first_name:', trimmedName);
+    return trimmedName;
   }
   
-  // PRIORITY 2: username
-  if (user?.username && user.username.trim() && user.username.trim() !== 'User') {
-    console.log('[DEBUG] getDisplayName: Using username:', user.username.trim());
-    return user.username.trim();
+  // PRIORITY 2: username (no last_name usage anywhere)
+  if (user?.username && user.username.trim() && user.username.trim() !== 'User' && user.username.trim() !== '') {
+    const trimmedUsername = user.username.trim();
+    console.log('[DEBUG] getDisplayName: Using username:', trimmedUsername);
+    return trimmedUsername;
   }
   
   // PRIORITY 3: nickname (fallback for processed names)
-  if (user?.nickname && user.nickname.trim() && user.nickname.trim() !== 'User') {
-    console.log('[DEBUG] getDisplayName: Using nickname:', user.nickname.trim());
-    return user.nickname.trim();
+  if (user?.nickname && user.nickname.trim() && user.nickname.trim() !== 'User' && user.nickname.trim() !== '') {
+    const trimmedNickname = user.nickname.trim();
+    console.log('[DEBUG] getDisplayName: Using nickname:', trimmedNickname);
+    return trimmedNickname;
   }
   
-  // Phase 3: Defensive fallback - never show full email, use "Profile Name" placeholder
+  // PRIORITY 4: Email prefix (never show full email)
   if (user?.email) {
     const emailPrefix = user.email.split('@')[0];
-    if (emailPrefix && emailPrefix !== 'user' && emailPrefix !== 'test') {
+    if (emailPrefix && emailPrefix !== 'user' && emailPrefix !== 'test' && emailPrefix.length > 0) {
       console.log('[DEBUG] getDisplayName: Using email prefix:', emailPrefix);
       return emailPrefix;
     }
   }
   
-  // FINAL FALLBACK: Placeholder instead of 'User'
-  console.log('[DEBUG] getDisplayName: Using fallback placeholder');
+  // FINAL FALLBACK: Professional placeholder - never show full email
+  console.log('[DEBUG] getDisplayName: ⚠️ Using fallback placeholder - no valid display name found');
   return 'Profile Name';
 }
 

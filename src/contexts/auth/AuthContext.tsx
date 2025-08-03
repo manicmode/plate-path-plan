@@ -258,11 +258,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const refreshUser = async () => {
-    if (!session?.user) return;
+    if (!session?.user) {
+      console.warn('[WARN] AuthContext: No session user available for refresh');
+      return;
+    }
     
-    console.log('[DEBUG] AuthContext: Refreshing user profile...');
-    await loadExtendedProfile(session.user);
-    console.log('[DEBUG] AuthContext: User profile refresh complete');
+    console.log('[DEBUG] AuthContext: Starting user profile refresh...');
+    
+    try {
+      // Phase 2: Enhanced refresh with fresh database fetch
+      const freshProfile = await loadUserProfile(session.user.id);
+      console.log('[DEBUG] AuthContext: Fresh profile from DB:', {
+        user_id: session.user.id,
+        first_name: freshProfile?.first_name,
+        profile_exists: !!freshProfile
+      });
+      
+      // Recreate extended user with fresh data
+      const refreshedUser = await createExtendedUser(session.user);
+      
+      console.log('[DEBUG] AuthContext: Refreshed user created:', {
+        first_name: refreshedUser.first_name,
+        email: refreshedUser.email
+      });
+      
+      // Phase 2: Update context with fresh data
+      setUser(refreshedUser);
+      
+      console.log('[DEBUG] AuthContext: User context updated with fresh data');
+      
+    } catch (error) {
+      console.error('[ERROR] AuthContext: Profile refresh failed:', error);
+      throw error; // Re-throw so callers can handle
+    }
   };
 
   const contextValue: AuthContextType = {

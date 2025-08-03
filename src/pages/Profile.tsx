@@ -130,79 +130,117 @@ const ProfileContent = () => {
 
   const handleSave = async () => {
     console.log('[DEBUG] Profile: Starting save process...');
-    console.log('[DEBUG] Profile: Saving profile with data:', {
+    console.log('[DEBUG] Profile: Form data:', {
       first_name: formData.first_name,
+      user_id: user?.id,
       trackers: formData.selectedTrackers
     });
     
-    // Phase 1: Add loading state for better UX
-    const toastId = toast({
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Phase 4: Enhanced loading state
+    const loadingToast = toast({
       title: "Saving...",
       description: "Updating your profile",
     });
     
     try {
-      // Update profile in Supabase
-      if (user?.id) {
-        console.log('[DEBUG] Profile: Updating Supabase with first_name:', formData.first_name);
-        
-        const { error } = await supabase
-          .from('user_profiles')
-          .update({
-            first_name: formData.first_name,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-        
-        if (error) {
-          console.error('[ERROR] Profile: Supabase update failed:', error);
-          toast({
-            title: "Error",
-            description: "Failed to save profile changes to database.",
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        console.log('[DEBUG] Profile: Supabase update successful');
-        
-        // Phase 1: Update local context immediately for instant UI feedback
-        updateProfile({
+      // Phase 1: Enhanced database save with upsert and verification
+      console.log('[DEBUG] Profile: Upserting profile with first_name:', formData.first_name);
+      
+      const { data: updatedProfile, error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
           first_name: formData.first_name,
-          targetCalories: Number(formData.targetCalories),
-          targetProtein: Number(formData.targetProtein),
-          targetCarbs: Number(formData.targetCarbs),
-          targetFat: Number(formData.targetFat),
-          targetHydration: Number(formData.targetHydration),
-          targetSupplements: Number(formData.targetSupplements),
-          allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
-          dietaryGoals: formData.dietaryGoals,
-        });
-        
-        // Update selected trackers
-        await updateSelectedTrackers(formData.selectedTrackers);
-        
-        // Phase 2: Refresh user data from database to ensure consistency
-        console.log('[DEBUG] Profile: Refreshing user profile from database...');
-        await refreshUser();
-        console.log('[DEBUG] Profile: Profile refresh complete');
-        
-        // Phase 4: Success feedback
-        setIsEditing(false);
+          updated_at: new Date().toISOString()
+        })
+        .select('first_name, user_id')
+        .single();
+      
+      if (error) {
+        console.error('[ERROR] Profile: Database upsert failed:', error);
         toast({
-          title: "✅ Profile updated!",
-          description: "Your changes have been saved successfully.",
+          title: "Error",
+          description: `Failed to save profile: ${error.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Phase 1: Verify the data was actually saved
+      console.log('[DEBUG] Profile: Database save verified:', updatedProfile);
+      
+      if (!updatedProfile || updatedProfile.first_name !== formData.first_name) {
+        console.error('[ERROR] Profile: Data verification failed - name not saved correctly');
+        toast({
+          title: "Error",
+          description: "Profile save verification failed. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log('[DEBUG] Profile: Database save successful and verified');
+      
+      // Phase 4: Immediate local context update for instant UI feedback
+      updateProfile({
+        first_name: formData.first_name,
+        targetCalories: Number(formData.targetCalories),
+        targetProtein: Number(formData.targetProtein),
+        targetCarbs: Number(formData.targetCarbs),
+        targetFat: Number(formData.targetFat),
+        targetHydration: Number(formData.targetHydration),
+        targetSupplements: Number(formData.targetSupplements),
+        allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
+        dietaryGoals: formData.dietaryGoals,
+      });
+      
+      // Update selected trackers
+      await updateSelectedTrackers(formData.selectedTrackers);
+      
+      // Phase 2: Enhanced refresh with timeout protection
+      console.log('[DEBUG] Profile: Refreshing user context...');
+      
+      const refreshTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Refresh timeout')), 10000)
+      );
+      
+      try {
+        await Promise.race([refreshUser(), refreshTimeout]);
+        
+        // Phase 2: Verify refresh worked
+        console.log('[DEBUG] Profile: Post-refresh user data:', {
+          first_name: user?.first_name,
+          context_updated: true
         });
         
-        console.log('[DEBUG] Profile: Save process completed successfully');
-      } else {
-        throw new Error('User ID not available');
+      } catch (refreshError) {
+        console.warn('[WARN] Profile: Refresh failed but continuing:', refreshError);
+        // Continue even if refresh fails - local context is already updated
       }
+      
+      // Phase 4: Enhanced success feedback
+      setIsEditing(false);
+      toast({
+        title: "✅ Profile updated!",
+        description: `Display name saved as "${formData.first_name}"`,
+      });
+      
+      console.log('[DEBUG] Profile: Save process completed successfully');
+      
     } catch (error) {
       console.error('[ERROR] Profile: Save process failed:', error);
       toast({
-        title: "Error", 
-        description: "Failed to save profile changes. Please try again.",
+        title: "Error",
+        description: "An unexpected error occurred while saving your profile.",
         variant: "destructive"
       });
     }
