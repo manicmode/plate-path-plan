@@ -40,7 +40,8 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
@@ -120,9 +121,9 @@ function GameAndChallengeContent() {
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
   // Real challenge leaderboards
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading } = useGameChallengeLeaderboard('nutrition');
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading } = useGameChallengeLeaderboard('exercise');
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading } = useGameChallengeLeaderboard('recovery');
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition');
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise');
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery');
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -166,13 +167,35 @@ function GameAndChallengeContent() {
   const optimizedFriends = optimizeForMobile([]);
   const optimizedHallOfFame = optimizeForMobile([]);
 
+  // Manual refresh for leaderboard
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refresh the appropriate leaderboard based on current mode
+      switch (challengeMode) {
+        case 'nutrition':
+          await refreshNutrition();
+          break;
+        case 'exercise':
+          await refreshExercise();
+          break;
+        case 'recovery':
+          await refreshRecovery();
+          break;
+        case 'combined':
+        default:
+          await refreshNutrition();
+          break;
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Mobile pull-to-refresh
   const handleRefresh = async () => {
     if (!isMobile) return;
-    setIsRefreshing(true);
-    // Simulate refresh
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    await handleManualRefresh();
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -388,8 +411,18 @@ function GameAndChallengeContent() {
                        <SelectItem value="improvement">Most Improved</SelectItem>
                      </>
                    )}
-                 </SelectContent>
+                  </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size={isMobile ? "sm" : "default"}
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                {!isMobile && "Refresh"}
+              </Button>
             </div>
           )}
         </div>
