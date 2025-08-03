@@ -61,8 +61,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       if (emailPrefix) return emailPrefix;
     }
     
-    // Final fallback
-    return `User ${fallbackEmoji}`;
+    // Final fallback - use just fallback emoji without "User" prefix
+    return fallbackEmoji;
   };
 
   const fetchNutritionLeaderboard = async (): Promise<LeaderboardUser[]> => {

@@ -40,6 +40,12 @@ interface UserStatsModalProps {
     weeklyProgress: number;
     trend: 'up' | 'down' | 'stable';
     isOnline: boolean;
+    avatar_url?: string;
+    caricature_history?: any[];
+    avatar_variant_1?: string;
+    avatar_variant_2?: string;
+    avatar_variant_3?: string;
+    selected_avatar_variant?: number;
   };
 }
 
@@ -157,6 +163,28 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
     if (user.streak >= 7) return 'from-yellow-500 to-green-600';
     return 'from-blue-500 to-purple-600';
   };
+  
+  // Get user's caricature avatar
+  const getUserCaricatureAvatar = () => {
+    if (user.avatar_url) return user.avatar_url;
+    
+    // Check for variant avatars
+    if (user.selected_avatar_variant) {
+      const variantKey = `avatar_variant_${user.selected_avatar_variant}`;
+      if (user[variantKey as keyof typeof user]) {
+        return user[variantKey as keyof typeof user] as string;
+      }
+    }
+    
+    // Check caricature history for latest
+    if (user.caricature_history && user.caricature_history.length > 0) {
+      return user.caricature_history[user.caricature_history.length - 1];
+    }
+    
+    return null;
+  };
+
+  const caricatureAvatar = getUserCaricatureAvatar();
 
   // Enhanced confetti effect for top performers
   React.useEffect(() => {
@@ -224,70 +252,119 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
             </div>
             
             <div className="relative flex flex-col items-center text-center gap-2">
-              {/* COMPACT Animated Avatar with Progress Ring */}
-              <div className="relative">
-                {/* Compact Progress Ring */}
-                <div className="relative w-16 h-16 sm:w-20 sm:h-20">
-                  <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      stroke="hsl(var(--muted))"
-                      strokeWidth="4"
-                      fill="none"
-                      opacity="0.3"
+              {/* Large Caricature Avatar Display */}
+              {caricatureAvatar ? (
+                <div className="relative mb-4">
+                  {/* Large caricature avatar - prominently displayed */}
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 relative">
+                    <img 
+                      src={caricatureAvatar} 
+                      alt={`${user.nickname}'s avatar`}
+                      className="w-full h-full rounded-full object-cover border-4 border-primary/50 shadow-2xl hover:scale-105 transition-all duration-300"
                     />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      stroke="url(#progressGradient)"
-                      strokeWidth="4"
-                      fill="none"
-                      strokeDasharray={`${(user.weeklyProgress / 100) * 264} 264`}
-                      strokeLinecap="round"
-                      className="transition-all duration-1000 ease-out"
-                    />
-                    <defs>
-                      <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="50%" stopColor="hsl(var(--accent))" />
-                        <stop offset="100%" stopColor="hsl(var(--secondary))" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  
-                  {/* ENLARGED Avatar with enhanced glow */}
-                  <div className="absolute inset-2 flex items-center justify-center">
+                    
+                    {/* Enhanced glow effect behind caricature */}
                     <div className={cn(
-                      "text-2xl sm:text-3xl relative",
-                      "hover:animate-bounce transition-all duration-300 cursor-pointer",
-                      "drop-shadow-2xl filter"
-                    )}>
-                      {user.avatar}
-                      
-                      {/* Dramatic glow effect behind avatar */}
+                      "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
+                      user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
+                    )} style={{ zIndex: -1 }} />
+                    
+                    {/* Progress ring around caricature */}
+                    <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="48"
+                        stroke="hsl(var(--muted))"
+                        strokeWidth="2"
+                        fill="none"
+                        opacity="0.3"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="48"
+                        stroke="url(#progressGradient)"
+                        strokeWidth="2"
+                        fill="none"
+                        strokeDasharray={`${(user.weeklyProgress / 100) * 302} 302`}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                  </div>
+                  
+                  {/* Online indicator */}
+                  {user.isOnline && (
+                    <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-background animate-ping" />
+                  )}
+                </div>
+              ) : (
+                /* Fallback to emoji avatar with progress ring */
+                <div className="relative">
+                  {/* Compact Progress Ring */}
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20">
+                    <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        stroke="hsl(var(--muted))"
+                        strokeWidth="4"
+                        fill="none"
+                        opacity="0.3"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        stroke="url(#progressGradient)"
+                        strokeWidth="4"
+                        fill="none"
+                        strokeDasharray={`${(user.weeklyProgress / 100) * 264} 264`}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                      <defs>
+                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" />
+                          <stop offset="50%" stopColor="hsl(var(--accent))" />
+                          <stop offset="100%" stopColor="hsl(var(--secondary))" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    
+                    {/* ENLARGED Avatar with enhanced glow */}
+                    <div className="absolute inset-2 flex items-center justify-center">
                       <div className={cn(
-                        "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
-                        user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
-                      )} style={{ zIndex: -1 }} />
-                      {/* Enhanced sparkle particles */}
-                      <div className="absolute -inset-3 opacity-0 hover:opacity-100 transition-opacity duration-300">
-                        <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400 animate-ping" />
-                        <Sparkles className="absolute -bottom-1 -left-1 h-2 w-2 text-blue-400 animate-ping delay-300" />
-                        <Sparkles className="absolute top-0 -left-2 h-2 w-2 text-purple-400 animate-ping delay-600" />
-                        <Sparkles className="absolute -top-1 right-0 h-2 w-2 text-green-400 animate-ping delay-900" />
+                        "text-2xl sm:text-3xl relative",
+                        "hover:animate-bounce transition-all duration-300 cursor-pointer",
+                        "drop-shadow-2xl filter"
+                      )}>
+                        {user.avatar}
+                        
+                        {/* Dramatic glow effect behind avatar */}
+                        <div className={cn(
+                          "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
+                          user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
+                        )} style={{ zIndex: -1 }} />
+                        {/* Enhanced sparkle particles */}
+                        <div className="absolute -inset-3 opacity-0 hover:opacity-100 transition-opacity duration-300">
+                          <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400 animate-ping" />
+                          <Sparkles className="absolute -bottom-1 -left-1 h-2 w-2 text-blue-400 animate-ping delay-300" />
+                          <Sparkles className="absolute top-0 -left-2 h-2 w-2 text-purple-400 animate-ping delay-600" />
+                          <Sparkles className="absolute -top-1 right-0 h-2 w-2 text-green-400 animate-ping delay-900" />
+                        </div>
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Compact online indicator */}
+                  {user.isOnline && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-ping" />
+                  )}
                 </div>
-                
-                {/* Compact online indicator */}
-                {user.isOnline && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-ping" />
-                )}
-              </div>
+              )}
               
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full">
