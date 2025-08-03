@@ -123,9 +123,9 @@ function GameAndChallengeContent() {
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
   // Real challenge leaderboards - only fetch for active tab
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition', challengeMode);
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise', challengeMode);
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery', challengeMode);
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, hasError: nutritionError, isTimeout: nutritionTimeout, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition', challengeMode);
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, hasError: exerciseError, isTimeout: exerciseTimeout, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise', challengeMode);
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, hasError: recoveryError, isTimeout: recoveryTimeout, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery', challengeMode);
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -139,22 +139,30 @@ function GameAndChallengeContent() {
   let currentLeaderboard;
   let isLoading = false;
   let isEmpty = false;
+  let hasError = false;
+  let isTimeout = false;
   
   switch (challengeMode) {
     case 'nutrition':
       currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
+      hasError = nutritionError;
+      isTimeout = nutritionTimeout;
       break;
     case 'exercise':
       currentLeaderboard = exerciseLeaderboard.currentUserGroup || [];
       isLoading = exerciseLoading;
       isEmpty = exerciseLeaderboard.isEmpty;
+      hasError = exerciseError;
+      isTimeout = exerciseTimeout;
       break;
     case 'recovery':
       currentLeaderboard = recoveryRealLeaderboard.currentUserGroup || [];
       isLoading = recoveryRealLoading;
       isEmpty = recoveryRealLeaderboard.isEmpty;
+      hasError = recoveryError;
+      isTimeout = recoveryTimeout;
       break;
     case 'combined':
     default:
@@ -162,6 +170,8 @@ function GameAndChallengeContent() {
       currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
+      hasError = nutritionError;
+      isTimeout = nutritionTimeout;
       break;
   }
   
@@ -751,8 +761,49 @@ function GameAndChallengeContent() {
                     </div>
                   </CardHeader>
                    <CardContent className="p-3">
-                      {isLoading ? (
+                      {isTimeout ? (
+                        <div className="text-center py-8">
+                          <div className="text-4xl mb-4">⏰</div>
+                          <h3 className="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">
+                            Request timed out
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-4">
+                            The leaderboard is taking too long to load.
+                          </p>
+                          <Button 
+                            onClick={handleManualRefresh}
+                            className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs"
+                            size="sm"
+                            disabled={isRefreshing}
+                          >
+                            <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
+                            Try Again
+                          </Button>
+                        </div>
+                      ) : hasError ? (
+                        <div className="text-center py-8">
+                          <div className="text-4xl mb-4">⚠️</div>
+                          <h3 className="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">
+                            Could not load leaderboard
+                          </h3>
+                          <p className="text-muted-foreground text-sm mb-4">
+                            Something went wrong. Please refresh to try again.
+                          </p>
+                          <Button 
+                            onClick={handleManualRefresh}
+                            className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white text-xs"
+                            size="sm"
+                            disabled={isRefreshing}
+                          >
+                            <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
+                            Refresh
+                          </Button>
+                        </div>
+                      ) : isLoading ? (
                         <div className="space-y-3">
+                          <div className="text-center py-2">
+                            <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
+                          </div>
                           {[1, 2, 3].map((i) => (
                             <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
                               <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
@@ -770,10 +821,10 @@ function GameAndChallengeContent() {
                             {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘‍♂️'}
                           </div>
                           <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">
-                            {challengeMode === 'recovery' ? "You're the first challenger! Time to inspire others 🔥" : "No challengers yet! Time to be the first to rise 💪"}
+                            No users to show in this leaderboard yet
                           </h3>
                           <p className="text-muted-foreground text-sm mb-4">
-                            Start your {challengeMode} journey today!
+                            Start your {challengeMode} journey today to be the first!
                           </p>
                           <Button 
                             onClick={() => {
@@ -788,10 +839,17 @@ function GameAndChallengeContent() {
                           </Button>
                         </div>
                       ) : (
-                       <div className="space-y-2">
-                         {currentLeaderboard.map((user, index) => (
-                         <div
-                           key={user.id}
+                        <div className="space-y-2">
+                          {(currentLeaderboard || []).map((user, index) => {
+                            // Guard against invalid users - skip rendering if user is malformed
+                            if (!user?.id) {
+                              if (DEBUG) console.warn('Skipping render for user with missing ID:', user);
+                              return null;
+                            }
+                            
+                            return (
+                          <div
+                            key={user.id}
                             className={cn(
                               "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer min-h-[60px]",
                               user.isCurrentUser 
@@ -851,10 +909,11 @@ function GameAndChallengeContent() {
                                  </>
                                )}
                              </div>
-                           </div>
-                         </div>
-                          ))}
-                       </div>
+                            </div>
+                          </div>
+                            );
+                           })}
+                        </div>
                      )}
                   </CardContent>
                 </Card>

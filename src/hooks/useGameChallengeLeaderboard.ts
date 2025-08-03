@@ -43,6 +43,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     isEmpty: true
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [isTimeout, setIsTimeout] = useState(false);
   const refreshCounter = useRef(0);
   const { user } = useAuth();
 
@@ -384,8 +386,21 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       return;
     }
 
+    let timeoutId: NodeJS.Timeout;
+    const abortController = new AbortController();
+    
     try {
       setIsLoading(true);
+      setHasError(false);
+      setIsTimeout(false);
+      
+      // Set 10-second timeout
+      timeoutId = setTimeout(() => {
+        abortController.abort();
+        setIsTimeout(true);
+        setIsLoading(false);
+        console.warn(`Leaderboard fetch timeout for category: ${category}`);
+      }, 10000);
       
       let allUsers: LeaderboardUser[] = [];
       
@@ -403,6 +418,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
           allUsers = [];
       }
 
+      clearTimeout(timeoutId);
+
       if (!user) {
         setLeaderboard({
           currentUserGroup: [],
@@ -413,8 +430,21 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         return;
       }
 
+      // Filter out invalid users and log warnings
+      const validUsers = (allUsers || []).filter(user => {
+        if (!user?.id) {
+          console.warn('Skipping user due to missing ID:', user);
+          return false;
+        }
+        if (!user.nickname && !user.first_name && !user.email) {
+          console.warn('Skipping user due to missing name data:', user);
+          return false;
+        }
+        return true;
+      });
+
       // Sort all users by score
-      const sortedUsers = (allUsers || []).sort((a, b) => b.score - a.score);
+      const sortedUsers = validUsers.sort((a, b) => b.score - a.score);
       
       // Assign global ranks
       sortedUsers.forEach((user, index) => {
@@ -441,7 +471,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       });
 
     } catch (error) {
+      clearTimeout(timeoutId!);
       console.error('Error fetching leaderboard:', error);
+      setHasError(true);
       setLeaderboard({
         currentUserGroup: [],
         currentUserRank: null,
@@ -449,7 +481,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         isEmpty: true
       });
     } finally {
-      setIsLoading(false);
+      if (!isTimeout) {
+        setIsLoading(false);
+      }
     }
   }, [category, user?.id, activeTab, getDisplayName]);
 
@@ -469,6 +503,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   return {
     leaderboard,
     isLoading,
+    hasError,
+    isTimeout,
     refresh: forceRefresh
   };
 };
