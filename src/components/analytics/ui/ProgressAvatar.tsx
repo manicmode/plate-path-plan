@@ -34,9 +34,9 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   // Get display name - STRICTLY prioritize nickname (processed by hook) over all other fields
   const getDisplayName = () => {
     console.log('🎯 ProgressAvatar getDisplayName: Raw props received:', {
-      nickname: `"${nickname}"`,
-      name: `"${name}"`,
-      email: `"${email}"`
+      nickname: `"${nickname || 'undefined'}"`,
+      name: `"${name || 'undefined'}"`,
+      email: `"${email || 'undefined'}"`
     });
 
     // Treat empty strings as null
@@ -61,7 +61,14 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
       return cleanName;
     }
     
-    // PRIORITY 3: Final fallback
+    // PRIORITY 3: Email prefix fallback
+    if (email && email.trim() !== '') {
+      const emailPrefix = email.split('@')[0];
+      console.log(`⚠️ ProgressAvatar: Using email prefix "${emailPrefix}"`);
+      return emailPrefix;
+    }
+    
+    // PRIORITY 4: Final fallback
     console.log('❌ ProgressAvatar: Using "User" fallback');
     return 'User';
   };
@@ -77,7 +84,8 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   const { avatar: avatarSize, progress: progressSize, stroke, text } = sizeClasses[size];
   const circumference = Math.PI * (64 - stroke * 2);
   const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
+  const safeWeeklyProgress = Math.max(0, Math.min(100, weeklyProgress || 0)); // Ensure valid percentage
+  const strokeDashoffset = circumference - (safeWeeklyProgress / 100) * circumference;
 
   return (
     <div className={cn(
@@ -150,11 +158,11 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
           variant="secondary" 
           className="absolute -top-1 -right-1 h-6 w-8 text-xs font-bold bg-primary text-primary-foreground"
         >
-          {weeklyProgress}%
+          {safeWeeklyProgress}%
         </Badge>
       </div>
 
-      {/* User Name - Always shown below avatar */}
+      {/* User Name - Always shown below avatar with safe fallback */}
       <div className="text-center max-w-20">
         <div 
           className={cn(
@@ -162,9 +170,9 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
             size === 'sm' ? "text-xs" : size === 'md' ? "text-sm" : "text-base",
             "truncate max-w-full"
           )}
-          title={displayName} // Show full name on hover
+          title={displayName || 'User'} // Show full name on hover with fallback
         >
-          {displayName}
+          {displayName || 'User'}
         </div>
       </div>
 
@@ -173,11 +181,11 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Flame className="h-3 w-3 text-orange-500" />
-            <span>{dailyStreak}d</span>
+            <span>{dailyStreak || 0}d</span>
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-blue-500" />
-            <span>{weeklyStreak}w</span>
+            <span>{weeklyStreak || 0}w</span>
           </div>
         </div>
       )}

@@ -416,6 +416,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       }
 
       if (!user) {
+        console.log('❌ useGameChallengeLeaderboard: No user found, returning empty leaderboard');
         setLeaderboard({
           currentUserGroup: [],
           currentUserRank: null,
@@ -424,6 +425,13 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         });
         return;
       }
+
+      console.log('🔍 useGameChallengeLeaderboard: Processing leaderboard data:', {
+        category,
+        userCount: allUsers.length,
+        user: user.id,
+        sampleUser: allUsers[0] || null
+      });
 
       // Sort all users by score
       const sortedUsers = allUsers.sort((a, b) => b.score - a.score);
@@ -445,6 +453,15 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const currentUserRank = currentUser?.rank || null;
 
+      console.log('✅ useGameChallengeLeaderboard: Leaderboard processed successfully:', {
+        category,
+        totalUsers: sortedUsers.length,
+        currentUserGroupSize: currentUserGroup.length,
+        currentUserRank,
+        isEmpty: sortedUsers.length === 0,
+        firstGroupUser: currentUserGroup[0] || null
+      });
+
       setLeaderboard({
         currentUserGroup,
         currentUserRank,
@@ -453,7 +470,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       });
 
     } catch (error) {
-      console.error('Error fetching leaderboard:', error);
+      console.error('❌ useGameChallengeLeaderboard: Error fetching leaderboard:', error);
       setLeaderboard({
         currentUserGroup: [],
         currentUserRank: null,

@@ -157,30 +157,42 @@ function GameAndChallengeContent() {
   
   switch (challengeMode) {
     case 'nutrition':
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
       break;
     case 'exercise':
-      currentLeaderboard = exerciseLeaderboard.currentUserGroup;
+      currentLeaderboard = exerciseLeaderboard.currentUserGroup || [];
       isLoading = exerciseLoading;
       isEmpty = exerciseLeaderboard.isEmpty;
       break;
     case 'recovery':
-      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup;
+      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup || [];
       isLoading = recoveryRealLoading;
       isEmpty = recoveryRealLeaderboard.isEmpty;
       break;
     case 'combined':
     default:
       // Use nutrition leaderboard as default for combined view
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
       break;
   }
   
-  const optimizedLeaderboard = optimizeForMobile(currentLeaderboard);
+  // Debug logging for leaderboard data
+  console.log('🔍 GameAndChallengePage: Current leaderboard data:', {
+    challengeMode,
+    leaderboardLength: currentLeaderboard?.length || 0,
+    isLoading,
+    isEmpty,
+    firstUser: currentLeaderboard?.[0] || null,
+    nutritionData: nutritionLeaderboard,
+    exerciseData: exerciseLeaderboard,
+    recoveryData: recoveryRealLeaderboard
+  });
+  
+  const optimizedLeaderboard = optimizeForMobile(currentLeaderboard || []);
   const optimizedFriends = optimizeForMobile([]);
   const optimizedHallOfFame = optimizeForMobile([]);
 
@@ -571,7 +583,9 @@ function GameAndChallengeContent() {
                           </p>
                         </div>
                       )}
-                      {currentLeaderboard.map((user) => (
+                      {(currentLeaderboard || []).map((user) => {
+                        console.log('🎯 Rendering leaderboard user:', user);
+                        return (
                       <div
                        key={user.id}
                        className={cn(
@@ -704,8 +718,9 @@ function GameAndChallengeContent() {
                           )}
                         </div>
                       </div>
-                    </div>
-                      ))}
+                     </div>
+                        );
+                      })}
                     </div>
                  )}
                </CardContent>
@@ -804,7 +819,13 @@ function GameAndChallengeContent() {
                         </div>
                       ) : (
                        <div className="space-y-2">
-                         {currentLeaderboard.map((user, index) => (
+                         {(currentLeaderboard || []).map((user, index) => {
+                           console.log('🎯 Rendering mobile leaderboard user:', user);
+                           if (!user || !user.id) {
+                             console.warn('⚠️ Skipping invalid mobile user:', user);
+                             return null;
+                           }
+                           return (
                          <div
                            key={user.id}
                             className={cn(
@@ -867,8 +888,9 @@ function GameAndChallengeContent() {
                                )}
                              </div>
                            </div>
-                         </div>
-                          ))}
+                          </div>
+                           );
+                         })}
                        </div>
                      )}
                   </CardContent>
