@@ -162,55 +162,45 @@ const ProfileContent = () => {
     setIsLoading(true);
 
     try {
-      const { data: existingProfile, error: fetchError } = await supabase
+      console.log('💾 Saving profile data:', {
+        userId: user.id,
+        firstName: profileName.trim() || null,
+        formData: formData.first_name
+      });
+
+      // Update the user_profiles table directly
+      const { data: updateResult, error: updateError } = await supabase
         .from('user_profiles')
-        .select('*')
+        .update({
+          first_name: profileName.trim() || null,
+          last_name: null // Add last_name support if needed later
+        })
         .eq('user_id', user.id)
-        .single();
+        .select();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      let saveResult;
-      if (existingProfile) {
-        saveResult = await supabase
-          .from('user_profiles')
-          .update({
-            first_name: profileName.trim() || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id)
-          .select()
-          .single();
-      } else {
-        saveResult = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            first_name: profileName.trim() || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-      }
-
-      if (saveResult.error) {
+      if (updateError) {
+        console.error('❌ Profile update failed:', updateError);
         toast({
           title: "Error",
-          description: `Failed to save profile: ${saveResult.error.message}`,
+          description: `Failed to save profile: ${updateError.message}`,
           variant: "destructive"
         });
         return;
       }
 
-      // Confirm saved
+      console.log('✅ Profile update successful:', updateResult);
+
+      // Small delay to ensure DB commit
       await new Promise((res) => setTimeout(res, 500));
+      
+      // Force refresh user context
       await refreshUser();
+      
       setTimeout(() => {
         console.log('🧠 User context after refresh:', {
-          first_name: user?.first_name
+          user_id: user?.id,
+          first_name: user?.first_name,
+          email: user?.email
         });
       }, 1000);
 
@@ -220,6 +210,7 @@ const ProfileContent = () => {
       });
       setIsEditing(false);
     } catch (error) {
+      console.error('❌ Unexpected error saving profile:', error);
       toast({
         title: "Error", 
         description: "Unexpected error saving profile",
