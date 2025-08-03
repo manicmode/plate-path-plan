@@ -61,8 +61,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
     if (fullName) return fullName;
     
-    // Try nickname if available
-    if (userProfile.nickname && userProfile.nickname.trim()) return userProfile.nickname.trim();
+    // Try first_name only if available
+    if (userProfile.first_name && userProfile.first_name.trim()) return userProfile.first_name.trim();
     
     // Fallback to email prefix if available
     if (userProfile.email) {
