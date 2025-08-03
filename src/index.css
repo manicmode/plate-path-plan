@@ -22,7 +22,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 9% 16%;
 
-    --primary: 174 100% 39%;
+    --primary: 174 100% 50%;
     --primary-foreground: 0 0% 98%;
 
     --secondary: 174 30% 96%;
@@ -39,17 +39,17 @@
 
     --border: 174 30% 91%;
     --input: 174 30% 91%;
-    --ring: 174 100% 39%;
+    --ring: 174 100% 50%;
 
     --radius: 1rem;
 
     /* Enhanced Futuristic Color System - Light Mode */
-    --emerald: 174 100% 39%;
+    --emerald: 174 100% 50%;
     --electric-blue: 218 100% 59%;
     --mint: 174 60% 95%;
     --glass-white: 0 0% 100% / 0.98;
     --glass-mint: 174 60% 95% / 0.85;
-    --neon-glow: 174 100% 39% / 0.4;
+    --neon-glow: 174 100% 50% / 0.4;
     
     /* Enhanced Light Gradients with Subtle Section Tints */
     --gradient-main: 
@@ -85,7 +85,7 @@
     --popover: 220 13% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 174 100% 39%;
+    --primary: 174 100% 50%;
     --primary-foreground: 0 0% 98%;
 
     --secondary: 220 13% 15%;
@@ -95,14 +95,14 @@
     --muted-foreground: 220 5% 65%;
 
     --accent: 220 13% 15%;
-    --accent-foreground: 174 100% 39%;
+    --accent-foreground: 174 100% 50%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 13% 18%;
     --input: 220 13% 18%;
-    --ring: 174 100% 39%;
+    --ring: 174 100% 50%;
 
     /* Enhanced Dark Gradients */
     --gradient-main: 
