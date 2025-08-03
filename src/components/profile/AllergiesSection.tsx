@@ -29,7 +29,16 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            
+            // Store current scroll position
+            const currentScrollY = window.scrollY;
+            
             onEditToggle();
+            
+            // Restore scroll position after DOM update
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+            });
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}
