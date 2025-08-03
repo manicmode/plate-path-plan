@@ -295,7 +295,13 @@ const ProfileContent = () => {
 
   return (
     <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''}`}>
-      {/* Avatar Hero Card - At the very top */}
+      {/* Page Title - At the very top */}
+      <div className="text-center">
+        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
+        <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>Manage your account and nutrition goals</p>
+      </div>
+
+      {/* Avatar Hero Card */}
       <AvatarHeroCard user={user} />
 
       {/* Personal Information - Moved directly below avatar */}
@@ -306,12 +312,6 @@ const ProfileContent = () => {
         onFormDataChange={updateFormData}
         onEditToggle={() => setIsEditing(!isEditing)}
       />
-
-      {/* Page Title */}
-      <div className="text-center">
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
-        <p className={`text-emerald-600 dark:text-emerald-400 font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>Manage your account and nutrition goals</p>
-      </div>
 
       {/* Onboarding Completion Card - Show if onboarding not completed */}
       <OnboardingCompletionCard onStartOnboarding={handleStartOnboarding} />
