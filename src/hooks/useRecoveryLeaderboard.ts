@@ -410,6 +410,7 @@ export const useRecoveryLeaderboard = () => {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<RecoveryLeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key for cache invalidation
 
   const fetchRecoveryLeaderboard = async () => {
     if (!user) return;
@@ -468,7 +469,27 @@ export const useRecoveryLeaderboard = () => {
       // Transform the data into the expected format
       const leaderboardData: RecoveryLeaderboardUser[] = recoveryMetrics.map((metric, index) => {
         const profile = profiles.find(p => p.user_id === metric.user_id);
-        const displayName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Anonymous User';
+        
+        // Apply same display name logic as other leaderboards
+        console.log('🔍 useRecoveryLeaderboard: Raw profile data:', {
+          user_id: metric.user_id,
+          first_name: `"${profile?.first_name}"`,
+          last_name: `"${profile?.last_name}"`
+        });
+
+        const cleanFirstName = profile?.first_name && profile.first_name.trim() !== '' ? profile.first_name.trim() : null;
+        const cleanLastName = profile?.last_name && profile.last_name.trim() !== '' ? profile.last_name.trim() : null;
+
+        let displayName = 'Anonymous User';
+        if (cleanFirstName && cleanLastName) {
+          displayName = `${cleanFirstName} ${cleanLastName}`;
+          console.log(`✅ useRecoveryLeaderboard: Using full name "${displayName}" for user ${metric.user_id}`);
+        } else if (cleanFirstName) {
+          displayName = cleanFirstName;
+          console.log(`✅ useRecoveryLeaderboard: Using first name "${displayName}" for user ${metric.user_id}`);
+        } else {
+          console.log(`⚠️ useRecoveryLeaderboard: No name data, using fallback for user ${metric.user_id}`);
+        }
         
         // Determine dominant recovery type
         const types = [
@@ -528,11 +549,13 @@ export const useRecoveryLeaderboard = () => {
 
   useEffect(() => {
     fetchRecoveryLeaderboard();
-  }, [user]);
+  }, [user, refreshKey]); // Include refreshKey to force refresh
 
-  return {
-    leaderboard,
-    loading,
-    refreshLeaderboard: fetchRecoveryLeaderboard
+  // Add refresh function for cache invalidation
+  const refresh = () => {
+    console.log('🔄 useRecoveryLeaderboard: Forcing refresh...');
+    setRefreshKey(prev => prev + 1);
   };
+
+  return { leaderboard, loading, refresh };
 };

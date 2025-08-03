@@ -118,7 +118,7 @@ function GameAndChallengeContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Recovery leaderboard hook
-  const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
+  const { leaderboard: recoveryLeaderboard, loading: recoveryLoading, refresh: refreshRecoveryLeaderboard } = useRecoveryLeaderboard();
   
   // Real challenge leaderboards
   const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition');
@@ -127,6 +127,23 @@ function GameAndChallengeContent() {
   
   // Use the scroll-to-top hook
   useScrollToTop();
+
+  // Force cache invalidation and refresh on component mount to ensure fresh data after DB updates
+  useEffect(() => {
+    console.log('🔄 GameAndChallengePage: Forcing cache invalidation on mount...');
+    const forceRefreshAll = async () => {
+      console.log('🔄 GameAndChallengePage: Refreshing all leaderboards to get updated user names...');
+      await Promise.all([
+        refreshNutrition(),
+        refreshExercise(), 
+        refreshRecovery(),
+        refreshRecoveryLeaderboard() // Also refresh this one
+      ]);
+      console.log('✅ GameAndChallengePage: All leaderboards refreshed');
+    };
+    
+    forceRefreshAll();
+  }, [refreshNutrition, refreshExercise, refreshRecovery, refreshRecoveryLeaderboard]);
 
   // Update chat modal state in context when chatroom manager opens/closes
   useEffect(() => {
