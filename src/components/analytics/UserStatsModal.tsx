@@ -264,12 +264,12 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* Large Caricature Avatar Display */}
               {caricatureAvatar ? (
                 <div className="relative mb-2">
-                  {/* Large caricature avatar - prominently displayed */}
-                  <div className="w-28 h-28 sm:w-36 sm:h-36 relative">
+                  {/* ENLARGED Large caricature avatar - prominently displayed */}
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 relative">
                     <img 
                       src={caricatureAvatar} 
                       alt={`${user.nickname}'s avatar`}
-                      className="w-full h-full rounded-full object-cover border-4 border-primary/50 shadow-2xl hover:scale-105 transition-all duration-300"
+                      className="w-full h-full rounded-full object-cover border-4 border-primary/50 shadow-2xl shadow-primary/30 hover:scale-105 transition-all duration-300"
                     />
                     
                     {/* Enhanced glow effect behind caricature */}
@@ -311,8 +311,8 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               ) : (
                 /* Fallback to emoji avatar with progress ring */
                 <div className="relative mb-2">
-                  {/* Compact Progress Ring */}
-                  <div className="relative w-20 h-20 sm:w-24 sm:h-24">
+                  {/* ENLARGED Progress Ring */}
+                  <div className="relative w-32 h-32 sm:w-40 sm:h-40">
                     <svg className="w-full h-full transform -rotate-90 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
                       <circle
                         cx="50"
@@ -378,10 +378,20 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full text-center">
                 <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
-                  {(user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : 
-                    user.first_name || user.name) || 
-                    user.nickname || 
-                    user.email?.split('@')[0] || 'User'}
+                  {(() => {
+                    // Priority 1: first_name + last_name (properly trimmed)
+                    if (user.first_name && user.last_name) {
+                      return `${user.first_name.trim()} ${user.last_name.trim()}`;
+                    }
+                    // Priority 2: first_name only
+                    if (user.first_name) return user.first_name.trim();
+                    // Priority 3: nickname
+                    if (user.nickname) return user.nickname.trim();
+                    // Priority 4: email prefix
+                    if (user.email) return user.email.split('@')[0];
+                    // Fallback
+                    return 'User';
+                  })()}
                 </h2>
                 
                 {/* Optional: Top goal emoji or title could go here */}

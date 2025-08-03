@@ -31,14 +31,23 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   email,
   avatar_url
 }) => {
-  // Get display name with proper fallbacks
+  // Get display name with proper fallbacks following priority
   const getDisplayName = () => {
-    // Try first_name + last_name first
-    if (name && name.trim()) return name.trim();
-    // Try nickname
+    // Priority 1: first_name + last_name (if both exist)
+    if (name && name.trim()) {
+      const trimmedName = name.trim();
+      // Check if it looks like "first last" format
+      if (trimmedName.includes(' ')) return trimmedName;
+      // Otherwise treat as first name only
+      return trimmedName;
+    }
+    
+    // Priority 2: nickname 
     if (nickname && nickname.trim()) return nickname.trim();
-    // Fallback to email prefix if available
+    
+    // Priority 3: email prefix if available
     if (email) return email.split('@')[0];
+    
     // Last resort
     return 'User';
   };
