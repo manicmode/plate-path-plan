@@ -120,10 +120,10 @@ function GameAndChallengeContent() {
   // Recovery leaderboard hook
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading, refresh: refreshRecoveryLeaderboard } = useRecoveryLeaderboard();
   
-  // Real challenge leaderboards
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition');
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise');
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery');
+  // Real challenge leaderboards - ONLY load active tab to prevent performance issues
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition, hasTimedOut: nutritionTimedOut } = useGameChallengeLeaderboard(challengeMode === 'nutrition' || challengeMode === 'combined' ? 'nutrition' : 'nutrition');
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise, hasTimedOut: exerciseTimedOut } = useGameChallengeLeaderboard(challengeMode === 'exercise' ? 'exercise' : 'exercise');
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery, hasTimedOut: recoveryTimedOut } = useGameChallengeLeaderboard(challengeMode === 'recovery' ? 'recovery' : 'recovery');
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -150,26 +150,30 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Get real leaderboard data based on challenge mode
+  // Get real leaderboard data based on challenge mode - ONLY ACTIVE TAB
   let currentLeaderboard;
   let isLoading = false;
   let isEmpty = false;
+  let hasTimedOut = false;
   
   switch (challengeMode) {
     case 'nutrition':
       currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
+      hasTimedOut = nutritionTimedOut;
       break;
     case 'exercise':
       currentLeaderboard = exerciseLeaderboard.currentUserGroup || [];
       isLoading = exerciseLoading;
       isEmpty = exerciseLeaderboard.isEmpty;
+      hasTimedOut = exerciseTimedOut;
       break;
     case 'recovery':
       currentLeaderboard = recoveryRealLeaderboard.currentUserGroup || [];
       isLoading = recoveryRealLoading;
       isEmpty = recoveryRealLeaderboard.isEmpty;
+      hasTimedOut = recoveryTimedOut;
       break;
     case 'combined':
     default:
@@ -177,6 +181,7 @@ function GameAndChallengeContent() {
       currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
+      hasTimedOut = nutritionTimedOut;
       break;
   }
   
@@ -540,6 +545,22 @@ function GameAndChallengeContent() {
                           <div className="w-12 h-6 bg-teal-100 dark:bg-teal-900 rounded"></div>
                         </div>
                       ))}
+                    </div>
+                  ) : hasTimedOut ? (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">⚠️</div>
+                      <h3 className="text-xl font-semibold mb-2 text-red-600">
+                        Something went wrong
+                      </h3>
+                      <p className="text-muted-foreground mb-6">
+                        Loading is taking too long. Please refresh the page.
+                      </p>
+                      <Button 
+                        onClick={() => window.location.reload()}
+                        className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white"
+                      >
+                        Refresh Page
+                      </Button>
                     </div>
                   ) : isEmpty ? (
                     <div className="text-center py-12">

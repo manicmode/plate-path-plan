@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+
+// Debug toggle - set to false to disable logging
+const DEBUG = false;
 
 export interface LeaderboardUser {
   id: string;
@@ -41,8 +44,16 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     isEmpty: true
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0); // Force refresh key
+  const [loadingTimeoutReached, setLoadingTimeoutReached] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { user } = useAuth();
+  const fetchInProgress = useRef(false);
+
+  // 10-second loading timeout
+  useEffect(() => {
+    const timeout = setTimeout(() => setLoadingTimeoutReached(true), 10000);
+    return () => clearTimeout(timeout);
+  }, [refreshKey]);
 
   const calculateUserGroup = (userId: string, allUsers: any[]): number => {
     // Sort users by created_at to ensure consistent grouping
@@ -58,13 +69,15 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   };
 
   const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
-    console.debug('🔍 Hook getDisplayName: Raw data received:', {
-      user_id: userProfile.user_id,
-      first_name: `"${userProfile.first_name || 'undefined'}"`,
-      last_name: `"${userProfile.last_name || 'undefined'}"`,
-      nickname: `"${userProfile.nickname || 'undefined'}"`,
-      email: `"${userProfile.email || 'undefined'}"`
-    });
+    if (DEBUG) {
+      console.debug('🔍 Hook getDisplayName: Raw data received:', {
+        user_id: userProfile.user_id,
+        first_name: `"${userProfile.first_name || 'undefined'}"`,
+        last_name: `"${userProfile.last_name || 'undefined'}"`,
+        nickname: `"${userProfile.nickname || 'undefined'}"`,
+        email: `"${userProfile.email || 'undefined'}"`
+      });
+    }
 
     // Treat empty strings as null - this is the key fix
     const cleanFirstName = userProfile.first_name && userProfile.first_name.trim() !== '' && userProfile.first_name !== 'null' ? userProfile.first_name.trim() : null;
@@ -72,12 +85,14 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     const cleanNickname = userProfile.nickname && userProfile.nickname.trim() !== '' && userProfile.nickname !== 'null' ? userProfile.nickname.trim() : null;
     const cleanEmail = userProfile.email && userProfile.email.trim() !== '' && userProfile.email !== 'null' ? userProfile.email.trim() : null;
 
-    console.debug('🧹 Hook getDisplayName: Cleaned data:', {
-      cleanFirstName: `"${cleanFirstName || 'null'}"`,
-      cleanLastName: `"${cleanLastName || 'null'}"`,
-      cleanNickname: `"${cleanNickname || 'null'}"`,
-      cleanEmail: `"${cleanEmail || 'null'}"`
-    });
+    if (DEBUG) {
+      console.debug('🧹 Hook getDisplayName: Cleaned data:', {
+        cleanFirstName: `"${cleanFirstName || 'null'}"`,
+        cleanLastName: `"${cleanLastName || 'null'}"`,
+        cleanNickname: `"${cleanNickname || 'null'}"`,
+        cleanEmail: `"${cleanEmail || 'null'}"`
+      });
+    }
 
     // PRIORITY 1: Try first_name + last_name combination
     if (cleanFirstName && cleanLastName) {
@@ -397,9 +412,13 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return leaderboardUsers;
   };
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
+    if (fetchInProgress.current || !user) return;
+    
+    fetchInProgress.current = true;
     try {
       setIsLoading(true);
+      setLoadingTimeoutReached(false);
       
       let allUsers: LeaderboardUser[] = [];
       
@@ -417,11 +436,13 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
           allUsers = [];
       }
 
-      console.debug('🔍 useGameChallengeLeaderboard: Raw leaderboard data:', {
-        category,
-        userCount: allUsers.length,
-        rawUsers: allUsers.slice(0, 3).map(u => ({ id: u.id, nickname: u.nickname, score: u.score }))
-      });
+      if (DEBUG) {
+        console.debug('🔍 useGameChallengeLeaderboard: Raw leaderboard data:', {
+          category,
+          userCount: allUsers.length,
+          rawUsers: allUsers.slice(0, 3).map(u => ({ id: u.id, nickname: u.nickname, score: u.score }))
+        });
+      }
 
       if (!user) {
         console.warn('❌ useGameChallengeLeaderboard: No user found, returning empty leaderboard');
@@ -507,30 +528,36 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       });
     } finally {
       setIsLoading(false);
+      fetchInProgress.current = false;
     }
-  };
+  }, [category, user?.id]); // Stable dependencies
 
   // Force refresh function that invalidates cache
-  const forceRefresh = async () => {
-    console.log('🔄 Force refreshing leaderboard - invalidating cache...');
+  const forceRefresh = useCallback(async () => {
+    if (DEBUG) console.log('🔄 Force refreshing leaderboard - invalidating cache...');
     setLeaderboard({
       currentUserGroup: [],
       currentUserRank: null,
       totalUsers: 0,
       isEmpty: true
-    }); // Clear current data to force fresh fetch
-    setIsLoading(true); // Show loading state
+    });
     setRefreshKey(prev => prev + 1);
     await fetchLeaderboard();
-  };
+  }, [fetchLeaderboard]);
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [category, user?.id, refreshKey]); // Include refreshKey to force refresh
+  }, [fetchLeaderboard, refreshKey]); // Only depend on stable callback
 
   return {
-    leaderboard,
-    isLoading,
-    refresh: forceRefresh // Use force refresh instead of simple fetch
+    leaderboard: loadingTimeoutReached && isLoading ? {
+      currentUserGroup: [],
+      currentUserRank: null,
+      totalUsers: 0,
+      isEmpty: true
+    } : leaderboard,
+    isLoading: loadingTimeoutReached ? false : isLoading,
+    refresh: forceRefresh,
+    hasTimedOut: loadingTimeoutReached
   };
 };
