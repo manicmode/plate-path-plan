@@ -26,8 +26,13 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
         <Button
           variant={isEditing ? "default" : "outline"}
           size="sm"
-          onClick={onEditToggle}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEditToggle();
+          }}
           className="opacity-70 hover:opacity-100"
+          style={{ touchAction: 'manipulation' }}
         >
           <Settings className="h-4 w-4" />
         </Button>

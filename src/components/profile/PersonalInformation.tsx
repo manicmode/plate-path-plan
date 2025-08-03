@@ -85,9 +85,14 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
           {/* Edit Button */}
           <Button
             variant={isEditing ? "default" : "outline"}
-            onClick={onEditToggle}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onEditToggle();
+            }}
             size={isMobile ? "sm" : "default"}
             className="w-fit"
+            style={{ touchAction: 'manipulation' }}
           >
             <Settings className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} ${isMobile ? '' : 'mr-2'}`} />
             {!isMobile && (isEditing ? 'Cancel' : 'Edit Profile')}

@@ -298,6 +298,15 @@ const ProfileContent = () => {
       {/* Avatar Hero Card - At the very top */}
       <AvatarHeroCard user={user} />
 
+      {/* Personal Information - Moved directly below avatar */}
+      <PersonalInformation 
+        formData={formData}
+        user={user}
+        isEditing={isEditing}
+        onFormDataChange={updateFormData}
+        onEditToggle={() => setIsEditing(!isEditing)}
+      />
+
       {/* Page Title */}
       <div className="text-center">
         <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2`}>Profile & Settings</h1>
@@ -320,15 +329,6 @@ const ProfileContent = () => {
 
         {/* Contact Sync & Friends */}
         <ContactSync />
-
-      {/* Personal Information */}
-      <PersonalInformation 
-        formData={formData}
-        user={user}
-        isEditing={isEditing}
-        onFormDataChange={updateFormData}
-        onEditToggle={() => setIsEditing(!isEditing)}
-      />
 
       {/* Nutrition Goals */}
       <NutritionGoals 
