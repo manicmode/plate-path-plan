@@ -123,15 +123,16 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
                      <div className="flex items-center gap-3">
-                       <ProgressAvatar 
-                         avatar={friend.avatar}
-                         nickname={friend.nickname}
-                         weeklyProgress={friend.weeklyProgress}
-                         dailyStreak={friend.streak}
-                         weeklyStreak={0}
-                         size="sm"
-                         showStats={false}
-                       />
+                        <ProgressAvatar 
+                          avatar={friend.avatar}
+                          nickname={friend.nickname}
+                          weeklyProgress={friend.weeklyProgress}
+                          dailyStreak={friend.streak}
+                          weeklyStreak={0}
+                          size="sm"
+                          showStats={false}
+                          isCurrentUser={false}
+                        />
                        <div>
                         {getOnlineStatus(friend.isOnline, friend.lastSeen)}
                       </div>
@@ -177,15 +178,16 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
                 
                 <CardContent className="p-4">
                    <div className="flex items-center gap-3 mb-4">
-                     <ProgressAvatar 
-                       avatar={friend.avatar}
-                       nickname={friend.nickname}
-                       weeklyProgress={friend.weeklyProgress}
-                       dailyStreak={friend.streak}
-                       weeklyStreak={0}
-                       size="md"
-                       showStats={false}
-                     />
+                      <ProgressAvatar 
+                        avatar={friend.avatar}
+                        nickname={friend.nickname}
+                        weeklyProgress={friend.weeklyProgress}
+                        dailyStreak={friend.streak}
+                        weeklyStreak={0}
+                        size="md"
+                        showStats={false}
+                        isCurrentUser={false}
+                      />
                      <div className="flex-1">
                        {getOnlineStatus(friend.isOnline, friend.lastSeen)}
                      </div>

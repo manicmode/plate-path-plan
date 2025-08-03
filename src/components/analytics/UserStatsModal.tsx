@@ -46,6 +46,10 @@ interface UserStatsModalProps {
     avatar_variant_2?: string;
     avatar_variant_3?: string;
     selected_avatar_variant?: number;
+    name?: string; // Real user name from profile
+    first_name?: string;
+    last_name?: string;
+    email?: string; // Fallback for name
   };
 }
 
@@ -369,7 +373,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full text-center">
                 <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
-                  {user.nickname}
+                  {user.name || user.first_name || user.nickname || user.email?.split('@')[0] || 'User'}
                 </h2>
                 
                 {/* Optional: Top goal emoji or title could go here */}

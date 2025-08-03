@@ -12,6 +12,9 @@ interface ProgressAvatarProps {
   weeklyStreak: number;
   size?: 'sm' | 'md' | 'lg';
   showStats?: boolean;
+  isCurrentUser?: boolean;
+  name?: string; // Real user name from profile
+  email?: string; // Fallback for name
 }
 
 export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
@@ -21,8 +24,25 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   dailyStreak,
   weeklyStreak,
   size = 'md',
-  showStats = true
+  showStats = true,
+  isCurrentUser = false,
+  name,
+  email
 }) => {
+  // Get display name with proper fallbacks
+  const getDisplayName = () => {
+    // For current user, prioritize real name over nickname
+    if (isCurrentUser) {
+      if (name && name.trim()) return name.trim();
+      if (email) return email.split('@')[0]; // Use email prefix as fallback
+    }
+    
+    // For other users or if no real name available, use nickname
+    return nickname || 'Unknown User';
+  };
+
+  const displayName = getDisplayName();
+
   const sizeClasses = {
     sm: { avatar: 'h-10 w-10', progress: 'h-12 w-12', stroke: 3, text: 'text-xs' },
     md: { avatar: 'h-12 w-12', progress: 'h-16 w-16', stroke: 4, text: 'text-sm' },
@@ -77,7 +97,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
           <div className="absolute inset-0 flex items-center justify-center">
             <Avatar className={`${avatarSize} text-2xl border-2 border-background shadow-sm`}>
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                {avatar}
+                {avatar || displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -100,9 +120,9 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
             size === 'sm' ? "text-xs" : size === 'md' ? "text-sm" : "text-base",
             "truncate max-w-full"
           )}
-          title={nickname} // Show full name on hover
+          title={displayName} // Show full name on hover
         >
-          {nickname}
+          {displayName}
         </div>
       </div>
 

@@ -57,6 +57,7 @@ import { UserChallengeParticipations } from '@/components/analytics/UserChalleng
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
 import { MyFriendsTab } from '@/components/social/MyFriendsTab';
 import { useChallenge } from '@/contexts/ChallengeContext';
+import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
@@ -615,6 +616,7 @@ export default function GameAndChallengePage() {
 function GameAndChallengeContent() {
   const { challenges, microChallenges, nudgeFriend } = useChallenge();
   const { setIsChatModalOpen } = useChatModal();
+  const { user: currentUser } = useAuth();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
@@ -1082,16 +1084,19 @@ function GameAndChallengeContent() {
                              {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
                             </div>
                            
-                           {/* Enhanced Progress Avatar - showStats=false to only show name */}
-                           <ProgressAvatar 
-                             avatar={user.avatar}
-                             nickname={user.nickname}
-                             weeklyProgress={user.weeklyProgress}
-                             dailyStreak={user.dailyStreak}
-                             weeklyStreak={user.weeklyStreak}
-                             size={isMobile ? "sm" : "md"}
-                             showStats={false}
-                           />
+                            {/* Enhanced Progress Avatar - showStats=false to only show name */}
+                            <ProgressAvatar 
+                              avatar={user.avatar}
+                              nickname={user.nickname}
+                              weeklyProgress={user.weeklyProgress}
+                              dailyStreak={user.dailyStreak}
+                              weeklyStreak={user.weeklyStreak}
+                              size={isMobile ? "sm" : "md"}
+                              showStats={false}
+                              isCurrentUser={user.isCurrentUser}
+                              name={user.isCurrentUser ? currentUser?.name || currentUser?.first_name : undefined}
+                              email={user.isCurrentUser ? currentUser?.email : undefined}
+                            />
                           
                              {!isMobile && (
                                <div className="flex items-center gap-3 text-sm">
