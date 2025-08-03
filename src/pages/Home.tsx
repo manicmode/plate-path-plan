@@ -1362,13 +1362,12 @@ const Home = () => {
                   const percentage = Math.min((macro.current / macro.target) * 100, 100);
                   const Icon = macro.icon;
                   
-                  // Define colors that match the tracker icons
                   const getProgressColor = (name: string) => {
                     switch (name) {
                       case 'Calories':
                         return 'from-emerald-400 to-emerald-600';
                       case 'Protein':
-                        return 'from-blue-400 to-blue-600';
+                        return 'from-cyan-400 to-blue-500 dark:from-cyan-300 dark:to-blue-400';
                       case 'Carbs':
                         return 'from-orange-400 to-orange-600';
                       case 'Fat':
