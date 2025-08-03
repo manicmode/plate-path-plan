@@ -75,13 +75,20 @@ export const CaricatureModal = ({
 
   const cooldown = calculateCooldown();
 
-  // Get all historical avatars
+  // Get all historical avatars with 20 limit and auto-delete oldest
   const getAllHistoricalAvatars = () => {
     const allAvatars: string[] = [];
-    caricatureHistory.forEach(batch => {
+    // Sort history by date (newest first) before extracting avatars
+    const sortedHistory = [...caricatureHistory].sort((a, b) => 
+      new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime()
+    );
+    
+    sortedHistory.forEach(batch => {
       allAvatars.push(...batch.variants);
     });
-    return allAvatars;
+    
+    // Return only the most recent 20 avatars
+    return allAvatars.slice(0, 20);
   };
 
   const allHistoricalAvatars = getAllHistoricalAvatars();
@@ -432,17 +439,17 @@ export const CaricatureModal = ({
           </DialogTitle>
           
           {/* Tab Navigation */}
-          <div className="flex justify-center mt-4 mb-2">
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={step === 'upload' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setStep('upload')}
-                className="rounded-md"
-              >
-                Generate
-              </Button>
-              {allHistoricalAvatars.length > 0 && (
+          {allHistoricalAvatars.length > 0 && (
+            <div className="flex justify-center mt-4 mb-2">
+              <div className="flex bg-muted rounded-lg p-1">
+                <Button
+                  variant={step === 'upload' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStep('upload')}
+                  className="rounded-md"
+                >
+                  Generate
+                </Button>
                 <Button
                   variant={step === 'avatars' ? 'default' : 'ghost'}
                   size="sm"
@@ -451,9 +458,9 @@ export const CaricatureModal = ({
                 >
                   My Avatars
                 </Button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
         </DialogHeader>
         
         {step === 'upload' && (
@@ -542,47 +549,43 @@ export const CaricatureModal = ({
                 )}
                 
                 {uploadedImage && (
-                  hasReachedMonthlyLimit() ? (
-                    <div className="w-full p-4 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-xl border border-orange-200 dark:border-orange-800">
-                      <div className="text-center">
-                        <Clock className="h-8 w-8 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
-                        <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-1">
-                          Monthly Limit Reached
-                        </h4>
-                        <p className="text-sm text-orange-600 dark:text-orange-400">
-                          You've reached your 3 avatar generations this month. Come back next month to generate more!
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button 
-                      onClick={generateCaricatureVariants}
-                      className={cn(
-                        "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
-                        "active:scale-95 transition-all duration-200",
-                        "shadow-lg hover:shadow-xl",
-                        !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse",
-                        isGenerating && "cursor-not-allowed opacity-90"
-                      )}
-                      size="lg"
-                      disabled={isGenerating || generationDisabled || !uploadedImage}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                          Summoning your cartoon twin…
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-5 h-5 mr-3" />
-                          <span className="relative">
-                            Generate 3 Caricatures
-                            <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-yellow-300 animate-pulse" />
-                          </span>
-                        </>
-                      )}
-                    </Button>
-                  )
+                  <Button 
+                    onClick={() => {
+                      if (hasReachedMonthlyLimit()) {
+                        toast({
+                          title: "Monthly limit reached",
+                          description: "You've reached your 3 avatar generations this month. Come back next month to generate more!",
+                          variant: "destructive",
+                        });
+                      } else {
+                        generateCaricatureVariants();
+                      }
+                    }}
+                    className={cn(
+                      "w-full h-14 text-lg font-semibold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600",
+                      "active:scale-95 transition-all duration-200",
+                      "shadow-lg hover:shadow-xl",
+                      !isGenerating && !generationDisabled && uploadedImage && "hover:animate-pulse",
+                      isGenerating && "cursor-not-allowed opacity-90"
+                    )}
+                    size="lg"
+                    disabled={isGenerating || generationDisabled || !uploadedImage}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                        Summoning your cartoon twin…
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-5 h-5 mr-3" />
+                        <span className="relative">
+                          Generate 3 Caricatures
+                          <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-yellow-300 animate-pulse" />
+                        </span>
+                      </>
+                    )}
+                  </Button>
                 )}
 
 
