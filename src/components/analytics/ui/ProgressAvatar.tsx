@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Flame, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ interface ProgressAvatarProps {
   isCurrentUser?: boolean;
   name?: string; // Real user name from profile
   email?: string; // Fallback for name
+  avatar_url?: string; // Caricature avatar URL
 }
 
 export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
@@ -27,17 +28,16 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   showStats = true,
   isCurrentUser = false,
   name,
-  email
+  email,
+  avatar_url
 }) => {
   // Get display name with proper fallbacks
   const getDisplayName = () => {
-    // For current user, prioritize real name over nickname
-    if (isCurrentUser) {
-      if (name && name.trim()) return name.trim();
-      if (email) return email.split('@')[0]; // Use email prefix as fallback
-    }
-    
-    // For other users or if no real name available, use nickname
+    // Try real name first (first_name or name)
+    if (name && name.trim()) return name.trim();
+    // Fallback to email prefix if available
+    if (email) return email.split('@')[0];
+    // Last resort: use nickname
     return nickname || 'Unknown User';
   };
 
@@ -96,6 +96,13 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
           {/* Avatar in center */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Avatar className={`${avatarSize} text-2xl border-2 border-background shadow-sm`}>
+              {avatar_url ? (
+                <AvatarImage 
+                  src={avatar_url} 
+                  alt={`${displayName}'s avatar`}
+                  className="object-cover"
+                />
+              ) : null}
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
                 {avatar || displayName.charAt(0).toUpperCase()}
               </AvatarFallback>

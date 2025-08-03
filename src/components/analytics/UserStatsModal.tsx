@@ -373,7 +373,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full text-center">
                 <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
-                  {user.name || user.first_name || user.nickname || user.email?.split('@')[0] || 'User'}
+                  {user.name || user.first_name || (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : '') || user.email?.split('@')[0] || user.nickname || 'User'}
                 </h2>
                 
                 {/* Optional: Top goal emoji or title could go here */}

@@ -1045,7 +1045,7 @@ function GameAndChallengeContent() {
                         </div>
                       )}
                       {currentLeaderboard.map((user) => (
-                     <div
+                      <div
                        key={user.id}
                        className={cn(
                          "relative rounded-xl border-2 transition-all duration-500 cursor-pointer",
@@ -1063,11 +1063,6 @@ function GameAndChallengeContent() {
                         setIsUserStatsOpen(true);
                       }}
                     >
-                      {user.isCurrentUser && (
-                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-bold">
-                          YOU
-                        </div>
-                      )}
                       
                        <div className={cn(
                          "flex items-center",
@@ -1084,19 +1079,20 @@ function GameAndChallengeContent() {
                              {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
                             </div>
                            
-                            {/* Enhanced Progress Avatar - showStats=false to only show name */}
-                            <ProgressAvatar 
-                              avatar={user.avatar}
-                              nickname={user.nickname}
-                              weeklyProgress={user.weeklyProgress}
-                              dailyStreak={user.dailyStreak}
-                              weeklyStreak={user.weeklyStreak}
-                              size={isMobile ? "sm" : "md"}
-                              showStats={false}
-                              isCurrentUser={user.isCurrentUser}
-                              name={user.isCurrentUser ? currentUser?.name || currentUser?.first_name : undefined}
-                              email={user.isCurrentUser ? currentUser?.email : undefined}
-                            />
+                             {/* Enhanced Progress Avatar - showStats=false to only show name */}
+                             <ProgressAvatar 
+                               avatar={user.avatar}
+                               nickname={user.nickname}
+                               weeklyProgress={user.weeklyProgress}
+                               dailyStreak={user.dailyStreak}
+                               weeklyStreak={user.weeklyStreak}
+                               size={isMobile ? "sm" : "md"}
+                               showStats={false}
+                               isCurrentUser={user.isCurrentUser}
+                               name={user.isCurrentUser ? currentUser?.name || currentUser?.first_name : undefined}
+                               email={user.isCurrentUser ? currentUser?.email : undefined}
+                               avatar_url={user.avatar_url}
+                             />
                           
                              {!isMobile && (
                                <div className="flex items-center gap-3 text-sm">
