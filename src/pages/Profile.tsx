@@ -327,6 +327,14 @@ const ProfileContent = () => {
     setShowOnboarding(true);
   };
 
+  // Debug useEffect to verify context loading
+  useEffect(() => {
+    console.log('🧪 -------- PROFILE DEBUG --------');
+    console.log('🧪 Context user:', user);
+    console.log('🧪 Display name (computed):', getDisplayName(user));
+    console.log('🧪 --------------------------------');
+  }, [user]);
+
   if (showOnboarding || showHealthSettings) {
     return (
       <OnboardingScreen 
