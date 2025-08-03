@@ -62,6 +62,56 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
   const [likes, setLikes] = useState(Math.floor(Math.random() * 50) + 10);
   const [challengeSent, setChallengeSent] = useState(false);
 
+  // Get display name using the same priority logic
+  const getDisplayName = () => {
+    console.debug('🎯 UserStatsModal getDisplayName: Raw user data:', {
+      nickname: `"${user.nickname || 'undefined'}"`,
+      first_name: `"${user.first_name || 'undefined'}"`,
+      last_name: `"${user.last_name || 'undefined'}"`,
+      name: `"${user.name || 'undefined'}"`,
+      email: `"${user.email || 'undefined'}"`
+    });
+
+    // Clean the data
+    const cleanFirstName = user.first_name && user.first_name.trim() !== '' && user.first_name !== 'null' ? user.first_name.trim() : null;
+    const cleanLastName = user.last_name && user.last_name.trim() !== '' && user.last_name !== 'null' ? user.last_name.trim() : null;
+    const cleanNickname = user.nickname && user.nickname.trim() !== '' && user.nickname !== 'null' ? user.nickname.trim() : null;
+    const cleanName = user.name && user.name.trim() !== '' && user.name !== 'null' ? user.name.trim() : null;
+    const cleanEmail = user.email && user.email.trim() !== '' && user.email !== 'null' ? user.email.trim() : null;
+
+    // PRIORITY 1: first_name + last_name
+    if (cleanFirstName && cleanLastName) {
+      return `${cleanFirstName} ${cleanLastName}`;
+    }
+    
+    // PRIORITY 2: first_name only
+    if (cleanFirstName) {
+      return cleanFirstName;
+    }
+
+    // PRIORITY 3: nickname (already processed by hook)
+    if (cleanNickname && cleanNickname !== 'User') {
+      return cleanNickname;
+    }
+
+    // PRIORITY 4: name field
+    if (cleanName && cleanName !== 'User') {
+      return cleanName;
+    }
+    
+    // PRIORITY 5: email prefix
+    if (cleanEmail) {
+      const emailPrefix = cleanEmail.split('@')[0];
+      if (emailPrefix && emailPrefix !== 'undefined') {
+        return emailPrefix;
+      }
+    }
+    
+    return 'User';
+  };
+
+  const displayName = getDisplayName();
+
   // Calculate real stats based on user data
   const calculateStats = () => {
     const baseScore = user.score || 0;
@@ -268,7 +318,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   <div className="w-64 h-64 sm:w-80 sm:h-80 relative">
                     <img 
                       src={caricatureAvatar} 
-                      alt={`${user.nickname}'s avatar`}
+                      alt={`${displayName}'s avatar`}
                       className="w-full h-full rounded-full object-cover border-4 border-primary/50 shadow-2xl shadow-primary/30 hover:scale-105 transition-all duration-300"
                     />
                     
@@ -378,54 +428,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full text-center">
                  <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
-                  {(() => {
-                    console.log('🎯 UserStatsModal: Raw user data received:', {
-                      first_name: `"${user.first_name}"`,
-                      last_name: `"${user.last_name}"`,
-                      nickname: `"${user.nickname}"`,
-                      email: `"${user.email}"`
-                    });
-
-                    // Treat empty strings as null - this is the key fix
-                    const cleanFirstName = user.first_name && user.first_name.trim() !== '' ? user.first_name.trim() : null;
-                    const cleanLastName = user.last_name && user.last_name.trim() !== '' ? user.last_name.trim() : null;
-                    const cleanNickname = user.nickname && user.nickname.trim() !== '' ? user.nickname.trim() : null;
-
-                    console.log('🧹 UserStatsModal: Cleaned user data:', {
-                      cleanFirstName: `"${cleanFirstName}"`,
-                      cleanLastName: `"${cleanLastName}"`,
-                      cleanNickname: `"${cleanNickname}"`
-                    });
-                    
-                    // PRIORITY 1: first_name + last_name (properly trimmed)
-                    if (cleanFirstName && cleanLastName) {
-                      const fullName = `${cleanFirstName} ${cleanLastName}`;
-                      console.log(`✅ UserStatsModal: Using fullName "${fullName}"`);
-                      return fullName;
-                    }
-                    
-                    // PRIORITY 2: first_name only
-                    if (cleanFirstName) {
-                      console.log(`✅ UserStatsModal: Using first_name "${cleanFirstName}"`);
-                      return cleanFirstName;
-                    }
-                    
-                    // PRIORITY 3: nickname (processed by hook)
-                    if (cleanNickname && cleanNickname !== 'User') {
-                      console.log(`✅ UserStatsModal: Using nickname "${cleanNickname}"`);
-                      return cleanNickname;
-                    }
-                    
-                    // FINAL FALLBACK: email prefix only if no name exists
-                    if (user.email) {
-                      console.log(`⚠️ UserStatsModal: Using email prefix fallback`);
-                      return user.email.split('@')[0];
-                    }
-                    
-                    // Ultimate fallback
-                    console.log(`❌ UserStatsModal: Using "User" fallback`);
-                    return 'User';
-                  })()}
+                  {displayName}
                 </h2>
                 
                 {/* Optional: Top goal emoji or title could go here */}

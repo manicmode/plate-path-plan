@@ -584,7 +584,14 @@ function GameAndChallengeContent() {
                         </div>
                       )}
                       {(currentLeaderboard || []).map((user) => {
-                        console.log('🎯 Rendering leaderboard user:', user);
+                        console.debug('🎯 Rendering leaderboard user:', user);
+                        
+                        // Safety check for user data
+                        if (!user || !user.id) {
+                          console.warn('⚠️ Skipping invalid user:', user);
+                          return null;
+                        }
+                        
                         return (
                       <div
                        key={user.id}
@@ -818,14 +825,14 @@ function GameAndChallengeContent() {
                           </Button>
                         </div>
                       ) : (
-                       <div className="space-y-2">
-                         {(currentLeaderboard || []).map((user, index) => {
-                           console.log('🎯 Rendering mobile leaderboard user:', user);
-                           if (!user || !user.id) {
-                             console.warn('⚠️ Skipping invalid mobile user:', user);
-                             return null;
-                           }
-                           return (
+                        <div className="space-y-2">
+                          {(currentLeaderboard || []).map((user, index) => {
+                            console.debug('🎯 Rendering mobile leaderboard user:', user);
+                            if (!user || !user.id) {
+                              console.warn('⚠️ Skipping invalid mobile user:', user);
+                              return null;
+                            }
+                            return (
                          <div
                            key={user.id}
                             className={cn(
@@ -850,44 +857,44 @@ function GameAndChallengeContent() {
                                {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${user.rank}`}
                              </div>
                              
-                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                               <div className="text-lg flex-shrink-0">{user.avatar}</div>
-                               <div className="flex-1 min-w-0">
-                                 <div className="font-semibold text-sm flex items-center gap-1 truncate">
-                                   <span className="truncate">{user.nickname}</span>
-                                   {user.isCurrentUser && (
-                                     <Badge variant="secondary" className="text-xs h-5 flex-shrink-0">YOU</Badge>
-                                   )}
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <div className="text-lg flex-shrink-0">{user.avatar || '👤'}</div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-sm flex items-center gap-1 truncate">
+                                    <span className="truncate">{user.nickname || 'User'}</span>
+                                    {user.isCurrentUser && (
+                                      <Badge variant="secondary" className="text-xs h-5 flex-shrink-0">YOU</Badge>
+                                    )}
+                                  </div>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <span>Score: {user.score || 0}</span>
+                                      <span>•</span>
+                                      <span>{user.weeklyProgress || 0}%</span>
+                                    </div>
                                  </div>
-                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                     <span>Score: {user.score}</span>
-                                     <span>•</span>
-                                     <span>{user.weeklyProgress}%</span>
-                                   </div>
-                                </div>
-                              </div>
+                               </div>
                             </div>
                             
-                            <div className="flex flex-col items-end">
-                               <div className="flex items-center gap-1 text-xs">
-                                 <Flame className="h-3 w-3 text-orange-500" />
-                                 <span>{(user as any).currentStreak || user.streak || 0}d</span>
-                               </div>
-                             
-                             <div className="flex items-center gap-1 mt-1">
-                               {user.improvement > 0 ? (
-                                 <>
-                                   <TrendingUp className="h-3 w-3 text-green-600" />
-                                   <span className="text-xs text-green-600">+{user.improvement}</span>
-                                 </>
-                               ) : (
-                                 <>
-                                   <TrendingDown className="h-3 w-3" />
-                                   <span className="text-xs">{user.improvement}</span>
-                                 </>
-                               )}
-                             </div>
-                           </div>
+                             <div className="flex flex-col items-end">
+                                <div className="flex items-center gap-1 text-xs">
+                                  <Flame className="h-3 w-3 text-orange-500" />
+                                  <span>{(user as any).currentStreak || user.streak || 0}d</span>
+                                </div>
+                              
+                              <div className="flex items-center gap-1 mt-1">
+                                {(user.improvement || 0) > 0 ? (
+                                  <>
+                                    <TrendingUp className="h-3 w-3 text-green-600" />
+                                    <span className="text-xs text-green-600">+{user.improvement || 0}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <TrendingDown className="h-3 w-3" />
+                                    <span className="text-xs">{user.improvement || 0}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
                            );
                          })}

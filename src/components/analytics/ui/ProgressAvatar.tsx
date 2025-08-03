@@ -33,43 +33,47 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
 }) => {
   // Get display name - STRICTLY prioritize nickname (processed by hook) over all other fields
   const getDisplayName = () => {
-    console.log('🎯 ProgressAvatar getDisplayName: Raw props received:', {
+    console.debug('🎯 ProgressAvatar getDisplayName: Raw props received:', {
       nickname: `"${nickname || 'undefined'}"`,
       name: `"${name || 'undefined'}"`,
       email: `"${email || 'undefined'}"`
     });
 
-    // Treat empty strings as null
-    const cleanNickname = nickname && nickname.trim() !== '' ? nickname.trim() : null;
-    const cleanName = name && name.trim() !== '' ? name.trim() : null;
+    // Treat empty strings as null and handle null values properly
+    const cleanNickname = nickname && nickname.trim() !== '' && nickname !== 'null' && nickname !== 'undefined' ? nickname.trim() : null;
+    const cleanName = name && name.trim() !== '' && name !== 'null' && name !== 'undefined' ? name.trim() : null;
+    const cleanEmail = email && email.trim() !== '' && email !== 'null' && email !== 'undefined' ? email.trim() : null;
 
-    console.log('🧹 ProgressAvatar: Cleaned data:', {
-      cleanNickname: `"${cleanNickname}"`,
-      cleanName: `"${cleanName}"`
+    console.debug('🧹 ProgressAvatar: Cleaned data:', {
+      cleanNickname: `"${cleanNickname || 'null'}"`,
+      cleanName: `"${cleanName || 'null'}"`,
+      cleanEmail: `"${cleanEmail || 'null'}"`
     });
 
     // PRIORITY 1: ALWAYS use nickname if it exists (processed by hook's getDisplayName)
     // The hook already handles first_name + last_name logic, so trust its result
     if (cleanNickname && cleanNickname !== 'User') {
-      console.log(`✅ ProgressAvatar: Using nickname from hook "${cleanNickname}"`);
+      console.debug(`✅ ProgressAvatar: Using nickname from hook "${cleanNickname}"`);
       return cleanNickname;
     }
     
     // PRIORITY 2: Fallback to constructing name from individual fields (shouldn't happen if hook works correctly)
-    if (cleanName && cleanName !== 'undefined' && cleanName !== 'null') {
-      console.log(`✅ ProgressAvatar: Using name field "${cleanName}"`);
+    if (cleanName && cleanName !== 'User') {
+      console.debug(`✅ ProgressAvatar: Using name field "${cleanName}"`);
       return cleanName;
     }
     
     // PRIORITY 3: Email prefix fallback
-    if (email && email.trim() !== '') {
-      const emailPrefix = email.split('@')[0];
-      console.log(`⚠️ ProgressAvatar: Using email prefix "${emailPrefix}"`);
-      return emailPrefix;
+    if (cleanEmail) {
+      const emailPrefix = cleanEmail.split('@')[0];
+      if (emailPrefix && emailPrefix !== 'undefined') {
+        console.debug(`⚠️ ProgressAvatar: Using email prefix "${emailPrefix}"`);
+        return emailPrefix;
+      }
     }
     
     // PRIORITY 4: Final fallback
-    console.log('❌ ProgressAvatar: Using "User" fallback');
+    console.debug('❌ ProgressAvatar: Using "User" fallback');
     return 'User';
   };
 
@@ -147,7 +151,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
                 />
               ) : null}
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                {avatar || displayName.charAt(0).toUpperCase()}
+                {avatar || (displayName && displayName.charAt(0).toUpperCase()) || '👤'}
               </AvatarFallback>
             </Avatar>
           </div>

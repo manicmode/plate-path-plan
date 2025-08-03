@@ -48,6 +48,15 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
   const isMobile = useIsMobile();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  
+  // Safety check for friends data
+  const safeFriends = Array.isArray(friends) ? friends.filter(f => f && f.id) : [];
+  
+  console.debug('🔍 FriendsArena: Friends data:', {
+    friendsLength: friends?.length || 0,
+    safeFriendsLength: safeFriends.length,
+    sampleFriend: safeFriends[0] || null
+  });
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -114,7 +123,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
         {isMobile ? (
           // Mobile: Vertical Stack Layout
           <div className="space-y-3">
-            {friends.map((friend) => (
+            {safeFriends.map((friend) => (
               <Card 
                 key={friend.id} 
                 className="border-2 border-muted hover:border-primary/40 transition-all duration-300 cursor-pointer"
@@ -165,7 +174,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
         ) : (
           // Desktop: Horizontal Grid Layout
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {friends.map((friend) => (
+            {safeFriends.map((friend) => (
               <Card 
                 key={friend.id} 
                 className="border-2 border-muted hover:border-primary/40 transition-all duration-300 hover:scale-[1.02] cursor-pointer relative overflow-hidden"
@@ -248,7 +257,7 @@ export const FriendsArena: React.FC<FriendsArenaProps> = ({ friends }) => {
           </div>
         )}
 
-        {friends.length === 0 && (
+        {safeFriends.length === 0 && (
           <div className="text-center py-12">
             <div className={cn(
               "bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4",

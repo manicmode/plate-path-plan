@@ -58,55 +58,57 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   };
 
   const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
-    console.log('🔍 Hook getDisplayName: Raw data received:', {
+    console.debug('🔍 Hook getDisplayName: Raw data received:', {
       user_id: userProfile.user_id,
-      first_name: `"${userProfile.first_name}"`,
-      last_name: `"${userProfile.last_name}"`,
-      nickname: `"${userProfile.nickname}"`,
-      email: `"${userProfile.email}"`
+      first_name: `"${userProfile.first_name || 'undefined'}"`,
+      last_name: `"${userProfile.last_name || 'undefined'}"`,
+      nickname: `"${userProfile.nickname || 'undefined'}"`,
+      email: `"${userProfile.email || 'undefined'}"`
     });
 
     // Treat empty strings as null - this is the key fix
-    const cleanFirstName = userProfile.first_name && userProfile.first_name.trim() !== '' ? userProfile.first_name.trim() : null;
-    const cleanLastName = userProfile.last_name && userProfile.last_name.trim() !== '' ? userProfile.last_name.trim() : null;
-    const cleanNickname = userProfile.nickname && userProfile.nickname.trim() !== '' ? userProfile.nickname.trim() : null;
+    const cleanFirstName = userProfile.first_name && userProfile.first_name.trim() !== '' && userProfile.first_name !== 'null' ? userProfile.first_name.trim() : null;
+    const cleanLastName = userProfile.last_name && userProfile.last_name.trim() !== '' && userProfile.last_name !== 'null' ? userProfile.last_name.trim() : null;
+    const cleanNickname = userProfile.nickname && userProfile.nickname.trim() !== '' && userProfile.nickname !== 'null' ? userProfile.nickname.trim() : null;
+    const cleanEmail = userProfile.email && userProfile.email.trim() !== '' && userProfile.email !== 'null' ? userProfile.email.trim() : null;
 
-    console.log('🧹 Hook getDisplayName: Cleaned data:', {
-      cleanFirstName: `"${cleanFirstName}"`,
-      cleanLastName: `"${cleanLastName}"`,
-      cleanNickname: `"${cleanNickname}"`
+    console.debug('🧹 Hook getDisplayName: Cleaned data:', {
+      cleanFirstName: `"${cleanFirstName || 'null'}"`,
+      cleanLastName: `"${cleanLastName || 'null'}"`,
+      cleanNickname: `"${cleanNickname || 'null'}"`,
+      cleanEmail: `"${cleanEmail || 'null'}"`
     });
 
     // PRIORITY 1: Try first_name + last_name combination
     if (cleanFirstName && cleanLastName) {
       const fullName = `${cleanFirstName} ${cleanLastName}`;
-      console.log(`✅ Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
+      console.debug(`✅ Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
       return fullName;
     }
     
     // PRIORITY 2: Try first_name only if available
     if (cleanFirstName) {
-      console.log(`✅ Hook getDisplayName: Using first_name "${cleanFirstName}" for user ${userProfile.user_id}`);
+      console.debug(`✅ Hook getDisplayName: Using first_name "${cleanFirstName}" for user ${userProfile.user_id}`);
       return cleanFirstName;
     }
     
     // PRIORITY 3: Try nickname/username as last resort before email
     if (cleanNickname && cleanNickname !== 'User') {
-      console.log(`✅ Hook getDisplayName: Using nickname "${cleanNickname}" for user ${userProfile.user_id}`);
+      console.debug(`✅ Hook getDisplayName: Using nickname "${cleanNickname}" for user ${userProfile.user_id}`);
       return cleanNickname;
     }
     
-    // FINAL FALLBACK: Email prefix only if absolutely no name data exists
-    if (userProfile.email) {
-      const emailPrefix = userProfile.email.split('@')[0];
-      if (emailPrefix) {
-        console.log(`⚠️ Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
+    // PRIORITY 4: Email prefix only if absolutely no name data exists
+    if (cleanEmail) {
+      const emailPrefix = cleanEmail.split('@')[0];
+      if (emailPrefix && emailPrefix !== 'undefined') {
+        console.debug(`⚠️ Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
         return emailPrefix;
       }
     }
     
     // Ultimate fallback
-    console.log(`❌ Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
+    console.debug(`❌ Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
     return 'User';
   };
 
@@ -415,8 +417,14 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
           allUsers = [];
       }
 
+      console.debug('🔍 useGameChallengeLeaderboard: Raw leaderboard data:', {
+        category,
+        userCount: allUsers.length,
+        rawUsers: allUsers.slice(0, 3).map(u => ({ id: u.id, nickname: u.nickname, score: u.score }))
+      });
+
       if (!user) {
-        console.log('❌ useGameChallengeLeaderboard: No user found, returning empty leaderboard');
+        console.warn('❌ useGameChallengeLeaderboard: No user found, returning empty leaderboard');
         setLeaderboard({
           currentUserGroup: [],
           currentUserRank: null,
@@ -426,15 +434,35 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         return;
       }
 
-      console.log('🔍 useGameChallengeLeaderboard: Processing leaderboard data:', {
+      console.debug('🔍 useGameChallengeLeaderboard: Processing leaderboard data:', {
         category,
         userCount: allUsers.length,
         user: user.id,
         sampleUser: allUsers[0] || null
       });
 
+      // Filter out invalid users and add safety checks
+      const validUsers = allUsers.filter(u => {
+        const isValid = u && u.id && u.nickname;
+        if (!isValid) {
+          console.warn('⚠️ Filtering out invalid user:', u);
+        }
+        return isValid;
+      });
+
+      if (validUsers.length === 0) {
+        console.warn('⚠️ useGameChallengeLeaderboard: No valid users found');
+        setLeaderboard({
+          currentUserGroup: [],
+          currentUserRank: null,
+          totalUsers: 0,
+          isEmpty: true
+        });
+        return;
+      }
+
       // Sort all users by score
-      const sortedUsers = allUsers.sort((a, b) => b.score - a.score);
+      const sortedUsers = validUsers.sort((a, b) => (b.score || 0) - (a.score || 0));
       
       // Assign global ranks
       sortedUsers.forEach((user, index) => {
@@ -448,12 +476,12 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       // Get users in the same group as current user
       const currentUserGroup = sortedUsers
         .filter(u => u.group_id === currentUserGroupId)
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
         .map((user, index) => ({ ...user, rank: index + 1 }));
 
       const currentUserRank = currentUser?.rank || null;
 
-      console.log('✅ useGameChallengeLeaderboard: Leaderboard processed successfully:', {
+      console.debug('✅ useGameChallengeLeaderboard: Leaderboard processed successfully:', {
         category,
         totalUsers: sortedUsers.length,
         currentUserGroupSize: currentUserGroup.length,
