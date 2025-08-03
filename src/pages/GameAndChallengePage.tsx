@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+
+const DEBUG = false;
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'react-router-dom';
@@ -120,10 +122,10 @@ function GameAndChallengeContent() {
   // Recovery leaderboard hook
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
-  // Real challenge leaderboards
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition');
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise');
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery');
+  // Real challenge leaderboards - only fetch for active tab
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition', challengeMode);
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise', challengeMode);
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery', challengeMode);
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -133,31 +135,31 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Get real leaderboard data based on challenge mode
+  // Get real leaderboard data based on challenge mode - safe array access
   let currentLeaderboard;
   let isLoading = false;
   let isEmpty = false;
   
   switch (challengeMode) {
     case 'nutrition':
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
       break;
     case 'exercise':
-      currentLeaderboard = exerciseLeaderboard.currentUserGroup;
+      currentLeaderboard = exerciseLeaderboard.currentUserGroup || [];
       isLoading = exerciseLoading;
       isEmpty = exerciseLeaderboard.isEmpty;
       break;
     case 'recovery':
-      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup;
+      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup || [];
       isLoading = recoveryRealLoading;
       isEmpty = recoveryRealLeaderboard.isEmpty;
       break;
     case 'combined':
     default:
       // Use nutrition leaderboard as default for combined view
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
       break;
@@ -168,7 +170,7 @@ function GameAndChallengeContent() {
   const optimizedHallOfFame = optimizeForMobile([]);
 
   // Manual refresh for leaderboard
-  const handleManualRefresh = async () => {
+  const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
       // Refresh the appropriate leaderboard based on current mode
@@ -190,7 +192,7 @@ function GameAndChallengeContent() {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [challengeMode, refreshNutrition, refreshExercise, refreshRecovery]);
 
   // Mobile pull-to-refresh
   const handleRefresh = async () => {

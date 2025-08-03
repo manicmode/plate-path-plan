@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+
+const DEBUG = false;
 
 export interface LeaderboardUser {
   id: string;
@@ -33,7 +35,7 @@ export interface GroupedLeaderboard {
   isEmpty: boolean;
 }
 
-export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' | 'recovery') => {
+export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' | 'recovery', activeTab?: string) => {
   const [leaderboard, setLeaderboard] = useState<GroupedLeaderboard>({
     currentUserGroup: [],
     currentUserRank: null,
@@ -41,7 +43,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     isEmpty: true
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0); // Force refresh key
+  const refreshCounter = useRef(0);
   const { user } = useAuth();
 
   const calculateUserGroup = (userId: string, allUsers: any[]): number => {
@@ -57,39 +59,39 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return Math.floor(userIndex / 20) + 1;
   };
 
-  const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
+  const getDisplayName = useCallback((userProfile: any): string => {
     // PRIORITY 1: Try first_name + last_name combination
     const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
     if (fullName && fullName !== '' && !fullName.includes('undefined') && !fullName.includes('null')) {
-      console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
+      if (DEBUG) console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
       return fullName;
     }
     
     // PRIORITY 2: Try first_name only if available
     if (userProfile.first_name && userProfile.first_name.trim() && userProfile.first_name.trim() !== 'undefined' && userProfile.first_name.trim() !== 'null') {
-      console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
+      if (DEBUG) console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
       return userProfile.first_name.trim();
     }
     
-    // PRIORITY 3: Try nickname/username as last resort before email
-    if (userProfile.nickname && userProfile.nickname.trim() && userProfile.nickname.trim() !== 'User') {
-      console.log(`Hook getDisplayName: Using nickname "${userProfile.nickname}" for user ${userProfile.user_id}`);
-      return userProfile.nickname.trim();
+    // PRIORITY 3: Try username as last resort before email
+    if (userProfile.username && userProfile.username.trim() && userProfile.username.trim() !== 'User') {
+      if (DEBUG) console.log(`Hook getDisplayName: Using username "${userProfile.username}" for user ${userProfile.user_id}`);
+      return userProfile.username.trim();
     }
     
     // FINAL FALLBACK: Email prefix only if absolutely no name data exists
     if (userProfile.email) {
       const emailPrefix = userProfile.email.split('@')[0];
       if (emailPrefix) {
-        console.log(`Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
+        if (DEBUG) console.log(`Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
         return emailPrefix;
       }
     }
     
     // Ultimate fallback
-    console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
+    if (DEBUG) console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
     return 'User';
-  };
+  }, []);
 
   const fetchNutritionLeaderboard = async (): Promise<LeaderboardUser[]> => {
     // Get all users with their profiles and nutrition data - include email from auth.users
@@ -144,7 +146,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: getDisplayName(userProfile, '🌟'),
+        nickname: getDisplayName(userProfile),
         avatar: '🌟', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: userProfile.current_nutrition_streak || 0,
@@ -243,7 +245,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: getDisplayName(userProfile, '💪'),
+        nickname: getDisplayName(userProfile),
         avatar: '💪', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -346,7 +348,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: getDisplayName(userProfile, '🧘'),
+        nickname: getDisplayName(userProfile),
         avatar: '🧘', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -376,7 +378,12 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return leaderboardUsers;
   };
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
+    // Only fetch if this category matches the active tab
+    if (activeTab && activeTab !== category && activeTab !== 'combined') {
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -407,7 +414,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       }
 
       // Sort all users by score
-      const sortedUsers = allUsers.sort((a, b) => b.score - a.score);
+      const sortedUsers = (allUsers || []).sort((a, b) => b.score - a.score);
       
       // Assign global ranks
       sortedUsers.forEach((user, index) => {
@@ -427,7 +434,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       const currentUserRank = currentUser?.rank || null;
 
       setLeaderboard({
-        currentUserGroup,
+        currentUserGroup: currentUserGroup || [],
         currentUserRank,
         totalUsers: sortedUsers.length,
         isEmpty: sortedUsers.length === 0
@@ -444,21 +451,24 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [category, user?.id, activeTab, getDisplayName]);
 
   // Force refresh function that invalidates cache
-  const forceRefresh = async () => {
-    setRefreshKey(prev => prev + 1);
+  const forceRefresh = useCallback(async () => {
+    refreshCounter.current += 1;
     await fetchLeaderboard();
-  };
+  }, [fetchLeaderboard]);
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, [category, user?.id, refreshKey]); // Include refreshKey to force refresh
+    // Only fetch when the tab is active or when it's combined mode
+    if (!activeTab || activeTab === category || activeTab === 'combined') {
+      fetchLeaderboard();
+    }
+  }, [fetchLeaderboard, activeTab]);
 
   return {
     leaderboard,
     isLoading,
-    refresh: forceRefresh // Use force refresh instead of simple fetch
+    refresh: forceRefresh
   };
 };

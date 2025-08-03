@@ -31,26 +31,20 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   email,
   avatar_url
 }) => {
-  // Get display name - STRICTLY prioritize nickname (processed by hook) over all other fields
+  // Helper function for display name - following priority: first_name + last_name → username → email prefix → "User"
   const getDisplayName = () => {
-    console.log(`ProgressAvatar: nickname="${nickname}", name="${name}", email="${email}"`);
-    
     // PRIORITY 1: ALWAYS use nickname if it exists (processed by hook's getDisplayName)
     // The hook already handles first_name + last_name logic, so trust its result
     if (nickname && nickname.trim() && nickname !== 'User') {
-      console.log(`ProgressAvatar: Using nickname from hook "${nickname}"`);
       return nickname.trim();
     }
     
     // PRIORITY 2: Fallback to constructing name from individual fields (shouldn't happen if hook works correctly)
     if (name && name.trim() && name.trim() !== 'undefined' && name.trim() !== 'null') {
-      const trimmedName = name.trim();
-      console.log(`ProgressAvatar: Using name field "${trimmedName}"`);
-      return trimmedName;
+      return name.trim();
     }
     
     // PRIORITY 3: Final fallback
-    console.log('ProgressAvatar: Using "User" fallback');
     return 'User';
   };
 
@@ -65,7 +59,9 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   const { avatar: avatarSize, progress: progressSize, stroke, text } = sizeClasses[size];
   const circumference = Math.PI * (64 - stroke * 2);
   const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
+  // Safe calculation with fallback to 0
+  const safeWeeklyProgress = weeklyProgress || 0;
+  const strokeDashoffset = circumference - (safeWeeklyProgress / 100) * circumference;
 
   return (
     <div className={cn(
@@ -127,7 +123,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
                 />
               ) : null}
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                {avatar || displayName.charAt(0).toUpperCase()}
+                {avatar_url ? '👤' : avatar || displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -138,7 +134,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
           variant="secondary" 
           className="absolute -top-1 -right-1 h-6 w-8 text-xs font-bold bg-primary text-primary-foreground"
         >
-          {weeklyProgress}%
+          {safeWeeklyProgress}%
         </Badge>
       </div>
 
@@ -161,11 +157,11 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Flame className="h-3 w-3 text-orange-500" />
-            <span>{dailyStreak}d</span>
+            <span>{dailyStreak || 0}d</span>
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-blue-500" />
-            <span>{weeklyStreak}w</span>
+            <span>{weeklyStreak || 0}w</span>
           </div>
         </div>
       )}
