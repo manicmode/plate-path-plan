@@ -26,6 +26,8 @@ import { useColdStart } from '@/hooks/useColdStart';
 import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
+import { useAuthCallback } from '@/hooks/useAuthCallback';
+import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -97,57 +99,9 @@ const prefetchCriticalComponents = () => {
 function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
   const { isColdStart, completeSplash } = useColdStart();
+  const { isProcessing } = useAuthCallback();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
-
-  // Handle Supabase auth parameters from magic links/signup confirmations
-  useEffect(() => {
-    const handleAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlHash = new URLSearchParams(window.location.hash.substring(1));
-      
-      // Check for Supabase auth parameters in URL
-      const hasAuthParams = 
-        urlParams.has('type') || 
-        urlParams.has('access_token') ||
-        urlHash.has('access_token') ||
-        urlParams.has('token_hash') ||
-        urlHash.has('token_hash');
-      
-      if (hasAuthParams) {
-        console.log('🔗 Detected Supabase auth callback parameters');
-        
-        try {
-          // Let Supabase handle the auth callback automatically
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('Auth callback error:', error);
-          } else if (data.session) {
-            console.log('✅ Auth callback successful, user authenticated');
-          } else {
-            console.log('🔄 Auth callback processed, waiting for session');
-          }
-          
-          // Clean up URL and redirect to home
-          const cleanUrl = window.location.origin + window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
-          
-          // Navigate to home page
-          setTimeout(() => {
-            window.location.href = '/home';
-          }, 100);
-          
-        } catch (error) {
-          console.error('Error handling auth callback:', error);
-          // Still redirect to avoid 404
-          window.location.href = '/home';
-        }
-      }
-    };
-
-    handleAuthCallback();
-  }, []);
 
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
@@ -161,6 +115,9 @@ function AppContent() {
         isVisible={isColdStart} 
         onComplete={completeSplash} 
       />
+      
+      {/* Auth Processing Overlay - shows during magic link processing */}
+      {isProcessing && <AuthProcessingOverlay />}
       
       {/* Main App Content - only render after splash completes */}
       {!isColdStart && (
