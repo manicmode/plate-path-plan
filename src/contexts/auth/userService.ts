@@ -84,9 +84,19 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
   const userTrackers = profile?.selected_trackers || ['calories', 'protein', 'supplements'];
   const autoFilledTrackers = getAutoFilledTrackers(userTrackers);
 
+  // ✅ Enhanced logging for profile to user context mapping
+  console.log('[DEBUG] UserService: Creating extended user with profile mapping:', {
+    supabase_user_id: supabaseUser.id,
+    profile_first_name: profile?.first_name,
+    user_metadata_first_name: supabaseUser.user_metadata?.first_name,
+    final_first_name_will_be: profile?.first_name || supabaseUser.user_metadata?.first_name || '',
+    profile_exists: !!profile
+  });
+
   return {
     ...supabaseUser,
     name: supabaseUser.user_metadata?.first_name || supabaseUser.email?.split('@')[0] || '',
+    // ✅ Ensure correct mapping: prioritize profile.first_name over user_metadata
     first_name: profile?.first_name || supabaseUser.user_metadata?.first_name || '',
     avatar_url: profile?.avatar_url || undefined,
     caricature_generation_count: profile?.caricature_generation_count || 0,

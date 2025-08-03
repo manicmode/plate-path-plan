@@ -26,20 +26,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
 
-  // Load user profile in background
+  // ✅ Enhanced loadExtendedProfile with proper logging and mapping
   const loadExtendedProfile = async (supabaseUser: any) => {
     if (!supabaseUser) return;
     
     try {
       setProfileLoading(true);
       setProfileError(null);
-      console.log('Loading extended user profile...');
+      console.log('[DEBUG] AuthContext: Loading extended profile for user:', supabaseUser.id);
       
       const extendedUser = await createExtendedUser(supabaseUser);
+      
+      // ✅ Ensure loadExtendedProfile correctly maps Supabase response first_name into user context
+      console.log('[DEBUG] AuthContext: Extended user created with first_name mapping:', {
+        supabase_user_id: supabaseUser.id,
+        extended_user_first_name: extendedUser.first_name,
+        extended_user_email: extendedUser.email,
+        mapping_successful: !!extendedUser.first_name
+      });
+      
       setUser(extendedUser);
-      console.log('Extended user profile loaded successfully');
+      console.log('[DEBUG] AuthContext: User context updated with extended profile');
     } catch (error) {
-      console.error('Error loading extended user profile:', error);
+      console.error('[ERROR] AuthContext: Failed to load extended profile:', error);
       setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
       // Set basic user info even if profile creation fails
       setUser({

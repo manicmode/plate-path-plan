@@ -8,7 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { StreakBadgesSection } from '@/components/analytics/StreakBadgesSection';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { getDisplayName } from '@/lib/displayName';
 
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
@@ -60,6 +60,23 @@ const ProfileContent = () => {
   const { user, updateProfile, updateSelectedTrackers, logout, refreshUser } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
+  
+  // ✅ On Profile.tsx page load, print to console what displayName is being loaded
+  useEffect(() => {
+    if (user) {
+      const currentDisplayName = getDisplayName({
+        first_name: user.first_name,
+        username: undefined,
+        email: user.email
+      });
+      console.log('[DEBUG] Profile Page Load - User loaded with displayName:', {
+        displayName: currentDisplayName,
+        user_first_name: user.first_name,
+        user_email: user.email,
+        user_id: user.id
+      });
+    }
+  }, [user]);
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -130,13 +147,14 @@ const ProfileContent = () => {
 
   const handleSave = async () => {
     console.log('[DEBUG] Profile: Starting save process...');
-    console.log('[DEBUG] Profile: Form data:', {
+    console.log('[DEBUG] Profile: Form data to save:', {
       first_name: formData.first_name,
       user_id: user?.id,
-      trackers: formData.selectedTrackers
+      current_user_first_name: user?.first_name
     });
     
     if (!user?.id) {
+      console.error('[ERROR] Profile: User ID not available');
       toast({
         title: "Error",
         description: "User not authenticated.",
@@ -145,41 +163,60 @@ const ProfileContent = () => {
       return;
     }
 
-    // Phase 4: Enhanced loading state
-    const loadingToast = toast({
+    if (!formData.first_name || !formData.first_name.trim()) {
+      console.error('[ERROR] Profile: No first_name provided');
+      toast({
+        title: "Error", 
+        description: "Profile name cannot be empty.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Loading state
+    toast({
       title: "Saving...",
       description: "Updating your profile",
     });
     
     try {
-      // Phase 1: Enhanced database save with upsert and verification
-      console.log('[DEBUG] Profile: Upserting profile with first_name:', formData.first_name);
+      // ✅ FINAL SAFEGUARD: Force upsert logic to always create or update user_profiles row
+      console.log('[DEBUG] Profile: Force upserting user_profiles with:', {
+        user_id: user.id,
+        first_name: formData.first_name.trim(),
+        timestamp: new Date().toISOString()
+      });
       
-      const { data: updatedProfile, error } = await supabase
+      const { data: upsertedProfile, error: upsertError } = await supabase
         .from('user_profiles')
         .upsert({
           user_id: user.id,
-          first_name: formData.first_name,
+          first_name: formData.first_name.trim(),
           updated_at: new Date().toISOString()
         })
-        .select('first_name, user_id')
+        .select('user_id, first_name, updated_at')
         .single();
       
-      if (error) {
-        console.error('[ERROR] Profile: Database upsert failed:', error);
+      if (upsertError) {
+        console.error('[ERROR] Profile: Upsert failed:', upsertError);
         toast({
           title: "Error",
-          description: `Failed to save profile: ${error.message}`,
+          description: `Database save failed: ${upsertError.message}`,
           variant: "destructive"
         });
         return;
       }
       
-      // Phase 1: Verify the data was actually saved
-      console.log('[DEBUG] Profile: Database save verified:', updatedProfile);
+      // ✅ Log right after upsert
+      console.log('[DEBUG] Profile: Upsert successful, returned data:', upsertedProfile);
       
-      if (!updatedProfile || updatedProfile.first_name !== formData.first_name) {
-        console.error('[ERROR] Profile: Data verification failed - name not saved correctly');
+      // Verify the upsert worked
+      if (!upsertedProfile || upsertedProfile.first_name !== formData.first_name.trim()) {
+        console.error('[ERROR] Profile: Upsert verification failed:', {
+          expected: formData.first_name.trim(),
+          actual: upsertedProfile?.first_name,
+          returned_data: upsertedProfile
+        });
         toast({
           title: "Error",
           description: "Profile save verification failed. Please try again.",
@@ -188,11 +225,11 @@ const ProfileContent = () => {
         return;
       }
       
-      console.log('[DEBUG] Profile: Database save successful and verified');
+      console.log('[SUCCESS] Profile: Database upsert verified successfully');
       
-      // Phase 4: Immediate local context update for instant UI feedback
+      // Update local context immediately
       updateProfile({
-        first_name: formData.first_name,
+        first_name: formData.first_name.trim(),
         targetCalories: Number(formData.targetCalories),
         targetProtein: Number(formData.targetProtein),
         targetCarbs: Number(formData.targetCarbs),
@@ -206,38 +243,43 @@ const ProfileContent = () => {
       // Update selected trackers
       await updateSelectedTrackers(formData.selectedTrackers);
       
-      // Phase 2: Enhanced refresh with timeout protection
+      // ✅ Refresh user context and verify
       console.log('[DEBUG] Profile: Refreshing user context...');
+      await refreshUser();
       
-      const refreshTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Refresh timeout')), 10000)
-      );
-      
-      try {
-        await Promise.race([refreshUser(), refreshTimeout]);
-        
-        // Phase 2: Verify refresh worked
-        console.log('[DEBUG] Profile: Post-refresh user data:', {
-          first_name: user?.first_name,
-          context_updated: true
-        });
-        
-      } catch (refreshError) {
-        console.warn('[WARN] Profile: Refresh failed but continuing:', refreshError);
-        // Continue even if refresh fails - local context is already updated
-      }
-      
-      // Phase 4: Enhanced success feedback
-      setIsEditing(false);
-      toast({
-        title: "✅ Profile updated!",
-        description: `Display name saved as "${formData.first_name}"`,
+      // ✅ Log right after refreshUser to check if saved name exists in context
+      console.log('[DEBUG] Profile: Post-refresh context check:', {
+        user_first_name: user?.first_name,
+        expected_first_name: formData.first_name.trim(),
+        context_matches_saved: user?.first_name === formData.first_name.trim(),
+        full_user_context: {
+          id: user?.id,
+          email: user?.email,
+          first_name: user?.first_name
+        }
       });
       
-      console.log('[DEBUG] Profile: Save process completed successfully');
+      // ✅ Only show success toast if first_name is present in refreshed context
+      if (user?.first_name === formData.first_name.trim()) {
+        console.log('[SUCCESS] Profile: Context verified, showing success toast');
+        setIsEditing(false);
+        toast({
+          title: "✅ Profile saved!",
+          description: `Display name saved as "${formData.first_name.trim()}"`,
+        });
+      } else {
+        console.error('[ERROR] Profile: Context verification failed after refresh');
+        toast({
+          title: "Warning",
+          description: "Profile may not have saved correctly. Please check and try again.",
+          variant: "destructive"
+        });
+      }
+      
+      console.log('[DEBUG] Profile: Save process completed');
       
     } catch (error) {
-      console.error('[ERROR] Profile: Save process failed:', error);
+      console.error('[ERROR] Profile: Save process exception:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred while saving your profile.",

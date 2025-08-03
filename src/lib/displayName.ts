@@ -9,8 +9,19 @@ export function getDisplayName(user: {
     first_name: user?.first_name,
     username: user?.username,
     email: user?.email ? user.email.split('@')[0] + '@...' : undefined,
-    hasValidFirstName: !!(user?.first_name && user.first_name.trim() && user.first_name.trim() !== 'User')
+    hasValidFirstName: !!(user?.first_name && user.first_name.trim() && user.first_name.trim() !== 'User'),
+    // ✅ Log clearly if first_name is null or missing
+    first_name_status: user?.first_name ? 'present' : 'null_or_missing'
   });
+  
+  // ✅ Enhanced logging for first_name check
+  if (!user?.first_name) {
+    console.log('[DEBUG] getDisplayName: ❌ first_name is null/missing, will use fallback');
+  } else if (!user.first_name.trim()) {
+    console.log('[DEBUG] getDisplayName: ❌ first_name is empty string, will use fallback');
+  } else if (user.first_name.trim() === 'User') {
+    console.log('[DEBUG] getDisplayName: ❌ first_name is default "User", will use fallback');
+  }
   
   // PRIORITY 1: first_name (enhanced validation)
   if (user?.first_name && user.first_name.trim() && user.first_name.trim() !== 'User' && user.first_name.trim() !== '') {
