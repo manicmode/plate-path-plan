@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -42,35 +41,62 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-    
-    // Optimized event handling to prevent double-tap issues
-    const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      props.onPointerDown?.(e);
-    };
-
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      // Only call onClick if button is not disabled
-      if (!props.disabled) {
-        props.onClick?.(e);
+    // Fix double-tap issues by ensuring proper touch and click handling
+    const handleClick = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+      if (props.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
       }
-    };
+      // Prevent default to avoid iOS double-tap issues
+      e.preventDefault();
+      props.onClick?.(e);
+    }, [props.disabled, props.onClick]);
+
+    // Prevent touch events from interfering with click
+    const handleTouchStart = React.useCallback((e: React.TouchEvent<HTMLButtonElement>) => {
+      if (props.disabled) {
+        e.preventDefault();
+        return;
+      }
+      props.onTouchStart?.(e);
+    }, [props.disabled, props.onTouchStart]);
+
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          {...(({ onClick, onTouchStart, ...rest }) => rest)(props)}
+          ref={ref}
+          onClick={handleClick}
+          onTouchStart={handleTouchStart}
+          style={{ 
+            touchAction: 'manipulation',
+            userSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            ...props.style 
+          }}
+        />
+      );
+    }
 
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        onPointerDown={handlePointerDown}
+        {...(({ onClick, onTouchStart, ...rest }) => rest)(props)}
         onClick={handleClick}
-        // Remove custom onClick from props to prevent double handling
-        {...(({ onClick, onPointerDown, ...rest }) => rest)(props)}
+        onTouchStart={handleTouchStart}
+        style={{ 
+          touchAction: 'manipulation',
+          userSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          ...props.style 
+        }}
       />
-    )
+    );
   }
 )
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
-

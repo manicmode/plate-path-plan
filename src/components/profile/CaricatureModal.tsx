@@ -402,11 +402,13 @@ export const CaricatureModal = ({
     fileInputRef.current?.click();
   };
 
-  // Remove problematic touch handler - Button component handles this properly
+  // Clean click handler for buttons to prevent double-tap issues
   const handleButtonClick = (callback: () => void) => (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    callback();
+    if (!isGenerating && !generationDisabled) {
+      callback();
+    }
   };
 
   const savedVariants = avatarVariants ? [
@@ -442,22 +444,24 @@ export const CaricatureModal = ({
           {allHistoricalAvatars.length > 0 && (
             <div className="flex justify-center mt-4 mb-2">
               <div className="flex bg-muted rounded-lg p-1">
-                <Button
-                  variant={step === 'upload' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setStep('upload')}
-                  className="rounded-md"
-                >
-                  Generate
-                </Button>
-                <Button
-                  variant={step === 'avatars' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setStep('avatars')}
-                  className="rounded-md"
-                >
-                  My Avatars
-                </Button>
+                 <Button
+                   variant={step === 'upload' ? 'default' : 'ghost'}
+                   size="sm"
+                   onClick={handleButtonClick(() => setStep('upload'))}
+                   className="rounded-md"
+                   style={{ touchAction: 'manipulation' }}
+                 >
+                   Generate
+                 </Button>
+                 <Button
+                   variant={step === 'avatars' ? 'default' : 'ghost'}
+                   size="sm"
+                   onClick={handleButtonClick(() => setStep('avatars'))}
+                   className="rounded-md"
+                   style={{ touchAction: 'manipulation' }}
+                 >
+                   My Avatars
+                 </Button>
               </div>
             </div>
           )}

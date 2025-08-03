@@ -93,6 +93,7 @@ export const AvatarCarousel = ({
 
       if (error) throw error;
 
+      // Call onAvatarUpdate before closing to ensure state updates
       onAvatarUpdate(selectedAvatar.url);
       
       // Trigger celebration animation
@@ -108,7 +109,10 @@ export const AvatarCarousel = ({
         description: "Your avatar has been changed successfully",
       });
       
-      onClose();
+      // Small delay to ensure state propagation before closing
+      setTimeout(() => {
+        onClose();
+      }, 100);
     } catch (error) {
       console.error('Failed to update avatar:', error);
       toast({
