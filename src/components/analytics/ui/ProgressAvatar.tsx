@@ -31,24 +31,33 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   email,
   avatar_url
 }) => {
-  // Get display name with proper fallbacks following priority
+  // Get display name with strict priority for nickname from hook
   const getDisplayName = () => {
-    // Priority 1: nickname (processed by the hook's getDisplayName function)
-    if (nickname && nickname.trim()) return nickname.trim();
+    console.log(`ProgressAvatar: nickname="${nickname}", name="${name}", email="${email}"`);
     
-    // Priority 2: Construct from first_name + last_name (if both exist)
+    // PRIORITY 1: Always use nickname if it exists (processed by hook's getDisplayName)
+    if (nickname && nickname.trim() && nickname !== 'User') {
+      console.log(`ProgressAvatar: Using nickname "${nickname}"`);
+      return nickname.trim();
+    }
+    
+    // PRIORITY 2: Only fallback to constructing name if nickname is missing/empty
     if (name && name.trim()) {
       const trimmedName = name.trim();
-      // Check if it looks like "first last" format
+      console.log(`ProgressAvatar: Using name "${trimmedName}"`);
       if (trimmedName.includes(' ')) return trimmedName;
-      // Otherwise treat as first name only
       return trimmedName;
     }
     
-    // Priority 3: email prefix if available
-    if (email) return email.split('@')[0];
+    // PRIORITY 3: Email prefix as last resort
+    if (email && email.includes('@')) {
+      const emailPrefix = email.split('@')[0];
+      console.log(`ProgressAvatar: Using email prefix "${emailPrefix}"`);
+      return emailPrefix;
+    }
     
-    // Last resort
+    // Final fallback
+    console.log('ProgressAvatar: Using "User" fallback');
     return 'User';
   };
 

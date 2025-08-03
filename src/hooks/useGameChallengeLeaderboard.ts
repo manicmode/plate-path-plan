@@ -41,6 +41,7 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     isEmpty: true
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // Force refresh key
   const { user } = useAuth();
 
   const calculateUserGroup = (userId: string, allUsers: any[]): number => {
@@ -59,18 +60,28 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
   const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
     // Try first_name + last_name combination
     const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
-    if (fullName) return fullName;
+    if (fullName) {
+      console.log(`Hook getDisplayName: Using fullName "${fullName}" for user ${userProfile.user_id}`);
+      return fullName;
+    }
     
     // Try first_name only if available
-    if (userProfile.first_name && userProfile.first_name.trim()) return userProfile.first_name.trim();
+    if (userProfile.first_name && userProfile.first_name.trim()) {
+      console.log(`Hook getDisplayName: Using first_name "${userProfile.first_name}" for user ${userProfile.user_id}`);
+      return userProfile.first_name.trim();
+    }
     
     // Fallback to email prefix if available
     if (userProfile.email) {
       const emailPrefix = userProfile.email.split('@')[0];
-      if (emailPrefix) return emailPrefix;
+      if (emailPrefix) {
+        console.log(`Hook getDisplayName: Using email prefix "${emailPrefix}" for user ${userProfile.user_id}`);
+        return emailPrefix;
+      }
     }
     
     // Final fallback
+    console.log(`Hook getDisplayName: Using "User" fallback for user ${userProfile.user_id}`);
     return 'User';
   };
 
@@ -429,13 +440,19 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     }
   };
 
+  // Force refresh function that invalidates cache
+  const forceRefresh = async () => {
+    setRefreshKey(prev => prev + 1);
+    await fetchLeaderboard();
+  };
+
   useEffect(() => {
     fetchLeaderboard();
-  }, [category, user?.id]);
+  }, [category, user?.id, refreshKey]); // Include refreshKey to force refresh
 
   return {
     leaderboard,
     isLoading,
-    refresh: fetchLeaderboard
+    refresh: forceRefresh // Use force refresh instead of simple fetch
   };
 };
