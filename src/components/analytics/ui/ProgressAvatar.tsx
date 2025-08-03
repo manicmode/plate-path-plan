@@ -33,12 +33,14 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
 }) => {
   // Get display name with proper fallbacks
   const getDisplayName = () => {
-    // Try real name first (first_name or name)
+    // Try first_name + last_name first
     if (name && name.trim()) return name.trim();
+    // Try nickname
+    if (nickname && nickname.trim()) return nickname.trim();
     // Fallback to email prefix if available
     if (email) return email.split('@')[0];
-    // Last resort: use nickname
-    return nickname || 'Unknown User';
+    // Last resort
+    return 'User';
   };
 
   const displayName = getDisplayName();
@@ -55,9 +57,19 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className={cn(
+      "flex flex-col items-center gap-2",
+      isCurrentUser && "relative z-10"
+    )}>
       {/* Progress Ring with Avatar */}
-      <div className="relative">
+      <div className={cn(
+        "relative",
+        isCurrentUser && [
+          "ring-2 ring-primary/40 rounded-full",
+          "bg-primary/5 p-1",
+          "shadow-lg shadow-primary/25"
+        ]
+      )}>
         <div className={`${progressSize} relative`}>
           {/* Background Circle */}
           <svg 

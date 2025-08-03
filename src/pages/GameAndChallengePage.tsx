@@ -1079,20 +1079,26 @@ function GameAndChallengeContent() {
                              {user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : `#${user.rank}`}
                             </div>
                            
-                             {/* Enhanced Progress Avatar - showStats=false to only show name */}
-                             <ProgressAvatar 
-                               avatar={user.avatar}
-                               nickname={user.nickname}
-                               weeklyProgress={user.weeklyProgress}
-                               dailyStreak={user.dailyStreak}
-                               weeklyStreak={user.weeklyStreak}
-                               size={isMobile ? "sm" : "md"}
-                               showStats={false}
-                               isCurrentUser={user.isCurrentUser}
-                               name={user.isCurrentUser ? currentUser?.name || currentUser?.first_name : undefined}
-                               email={user.isCurrentUser ? currentUser?.email : undefined}
-                               avatar_url={user.avatar_url}
-                             />
+                              {/* Enhanced Progress Avatar - showStats=false to only show name */}
+                              <ProgressAvatar 
+                                avatar={user.avatar}
+                                nickname={user.nickname}
+                                weeklyProgress={user.weeklyProgress}
+                                dailyStreak={user.dailyStreak}
+                                weeklyStreak={user.weeklyStreak}
+                                size={isMobile ? "sm" : "md"}
+                                showStats={false}
+                                isCurrentUser={user.isCurrentUser}
+                                name={user.isCurrentUser ? 
+                                  (currentUser?.first_name && currentUser?.last_name ? 
+                                    `${currentUser.first_name} ${currentUser.last_name}` : 
+                                    currentUser?.first_name || currentUser?.name) : 
+                                  (user.first_name && user.last_name ? 
+                                    `${user.first_name} ${user.last_name}` : 
+                                    user.first_name || user.name)}
+                                email={user.isCurrentUser ? currentUser?.email : user.email}
+                                avatar_url={user.isCurrentUser ? currentUser?.avatar_url : user.avatar_url}
+                              />
                           
                              {!isMobile && (
                                <div className="flex items-center gap-3 text-sm">
