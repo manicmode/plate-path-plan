@@ -145,146 +145,92 @@ const ProfileContent = () => {
     }
   }, [location]);
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [profileName, setProfileName] = useState(user?.first_name || '');
+
+  // Update profileName when user changes
+  useEffect(() => {
+    setProfileName(user?.first_name || '');
+  }, [user?.first_name]);
+
   const handleSave = async () => {
-    console.log('[DEBUG] Profile: Starting save process...');
-    console.log('[DEBUG] Profile: Form data to save:', {
-      first_name: formData.first_name,
-      user_id: user?.id,
-      current_user_first_name: user?.first_name
-    });
-    
     if (!user?.id) {
-      console.error('[ERROR] Profile: User ID not available');
+      console.error('❌ No user ID available');
       toast({
         title: "Error",
-        description: "User not authenticated.",
+        description: "Unable to save profile: Not authenticated",
         variant: "destructive"
       });
       return;
     }
+    setIsLoading(true);
 
-    if (!formData.first_name || !formData.first_name.trim()) {
-      console.error('[ERROR] Profile: No first_name provided');
+    try {
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      let saveResult;
+      if (existingProfile) {
+        saveResult = await supabase
+          .from('user_profiles')
+          .update({
+            first_name: profileName.trim() || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .select()
+          .single();
+      } else {
+        saveResult = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            first_name: profileName.trim() || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+      }
+
+      if (saveResult.error) {
+        toast({
+          title: "Error",
+          description: `Failed to save profile: ${saveResult.error.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Confirm saved
+      await new Promise((res) => setTimeout(res, 500));
+      await refreshUser();
+      setTimeout(() => {
+        console.log('🧠 User context after refresh:', {
+          first_name: user?.first_name
+        });
+      }, 1000);
+
+      toast({
+        title: "Success",
+        description: "Profile updated successfully!"
+      });
+      setIsEditing(false);
+    } catch (error) {
       toast({
         title: "Error", 
-        description: "Profile name cannot be empty.",
+        description: "Unexpected error saving profile",
         variant: "destructive"
       });
-      return;
-    }
-
-    // Loading state
-    toast({
-      title: "Saving...",
-      description: "Updating your profile",
-    });
-    
-    try {
-      // ✅ FINAL SAFEGUARD: Force upsert logic to always create or update user_profiles row
-      console.log('[DEBUG] Profile: Force upserting user_profiles with:', {
-        user_id: user.id,
-        first_name: formData.first_name.trim(),
-        timestamp: new Date().toISOString()
-      });
-      
-      const { data: upsertedProfile, error: upsertError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: user.id,
-          first_name: formData.first_name.trim(),
-          updated_at: new Date().toISOString()
-        })
-        .select('user_id, first_name, updated_at')
-        .single();
-      
-      if (upsertError) {
-        console.error('[ERROR] Profile: Upsert failed:', upsertError);
-        toast({
-          title: "Error",
-          description: `Database save failed: ${upsertError.message}`,
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // ✅ Log right after upsert
-      console.log('[DEBUG] Profile: Upsert successful, returned data:', upsertedProfile);
-      
-      // Verify the upsert worked
-      if (!upsertedProfile || upsertedProfile.first_name !== formData.first_name.trim()) {
-        console.error('[ERROR] Profile: Upsert verification failed:', {
-          expected: formData.first_name.trim(),
-          actual: upsertedProfile?.first_name,
-          returned_data: upsertedProfile
-        });
-        toast({
-          title: "Error",
-          description: "Profile save verification failed. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      console.log('[SUCCESS] Profile: Database upsert verified successfully');
-      
-      // Update local context immediately
-      updateProfile({
-        first_name: formData.first_name.trim(),
-        targetCalories: Number(formData.targetCalories),
-        targetProtein: Number(formData.targetProtein),
-        targetCarbs: Number(formData.targetCarbs),
-        targetFat: Number(formData.targetFat),
-        targetHydration: Number(formData.targetHydration),
-        targetSupplements: Number(formData.targetSupplements),
-        allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
-        dietaryGoals: formData.dietaryGoals,
-      });
-      
-      // Update selected trackers
-      await updateSelectedTrackers(formData.selectedTrackers);
-      
-      // ✅ Refresh user context and verify
-      console.log('[DEBUG] Profile: Refreshing user context...');
-      await refreshUser();
-      
-      // ✅ Log right after refreshUser to check if saved name exists in context
-      console.log('[DEBUG] Profile: Post-refresh context check:', {
-        user_first_name: user?.first_name,
-        expected_first_name: formData.first_name.trim(),
-        context_matches_saved: user?.first_name === formData.first_name.trim(),
-        full_user_context: {
-          id: user?.id,
-          email: user?.email,
-          first_name: user?.first_name
-        }
-      });
-      
-      // ✅ Only show success toast if first_name is present in refreshed context
-      if (user?.first_name === formData.first_name.trim()) {
-        console.log('[SUCCESS] Profile: Context verified, showing success toast');
-        setIsEditing(false);
-        toast({
-          title: "✅ Profile saved!",
-          description: `Display name saved as "${formData.first_name.trim()}"`,
-        });
-      } else {
-        console.error('[ERROR] Profile: Context verification failed after refresh');
-        toast({
-          title: "Warning",
-          description: "Profile may not have saved correctly. Please check and try again.",
-          variant: "destructive"
-        });
-      }
-      
-      console.log('[DEBUG] Profile: Save process completed');
-      
-    } catch (error) {
-      console.error('[ERROR] Profile: Save process exception:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while saving your profile.",
-        variant: "destructive"
-      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
