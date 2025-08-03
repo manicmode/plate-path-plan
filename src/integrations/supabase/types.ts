@@ -1006,6 +1006,60 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_nutrition_targets: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          created_at: string
+          fat: number | null
+          fiber: number | null
+          hydration_ml: number | null
+          id: string
+          is_enabled: boolean
+          protein: number | null
+          saturated_fat: number | null
+          sodium: number | null
+          sugar: number | null
+          supplement_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fat?: number | null
+          fiber?: number | null
+          hydration_ml?: number | null
+          id?: string
+          is_enabled?: boolean
+          protein?: number | null
+          saturated_fat?: number | null
+          sodium?: number | null
+          sugar?: number | null
+          supplement_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fat?: number | null
+          fiber?: number | null
+          hydration_ml?: number | null
+          id?: string
+          is_enabled?: boolean
+          protein?: number | null
+          saturated_fat?: number | null
+          sodium?: number | null
+          sugar?: number | null
+          supplement_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_scores: {
         Row: {
           created_at: string
