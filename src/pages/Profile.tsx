@@ -354,9 +354,6 @@ const ProfileContent = () => {
         onEditToggle={() => setIsEditing(!isEditing)}
       />
 
-      {/* Daily Targets */}
-      <DailyTargetsCard />
-
       {/* Admin: Backfill Targets for All Users */}
       {user?.email === 'ashkan_e2000@yahoo.com' && (
         <div className="space-y-4">
