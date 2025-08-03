@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Clock, Wand2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CaricatureModal } from './CaricatureModal';
+import { AvatarCarousel } from './AvatarCarousel';
 import { cn } from '@/lib/utils';
 
 interface AvatarHeroCardProps {
@@ -33,6 +34,7 @@ interface AvatarHeroCardProps {
 export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
   const isMobile = useIsMobile();
   const [caricatureModalOpen, setCaricatureModalOpen] = useState(false);
+  const [avatarCarouselOpen, setAvatarCarouselOpen] = useState(false);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(user?.avatar_url);
   const [generationCount, setGenerationCount] = useState(user?.caricature_generation_count || 0);
   
@@ -73,6 +75,15 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
 
   const handleGenerationCountUpdate = (count: number) => {
     setGenerationCount(count);
+  };
+
+  // Check if user has any avatars to show carousel
+  const hasAvatars = user?.caricature_history && user.caricature_history.length > 0;
+
+  const handleAvatarClick = () => {
+    if (hasAvatars) {
+      setAvatarCarouselOpen(true);
+    }
   };
 
   return (
@@ -133,12 +144,16 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
               
               {/* Avatar Container */}
               <div className="relative">
-                <Avatar className={cn(
-                  "ring-4 ring-white/50 dark:ring-gray-800/50",
-                  "shadow-2xl group-hover:scale-105 transition-all duration-500",
-                  "border-4 border-gradient-to-r from-purple-300 to-pink-300",
-                  isMobile ? "w-32 h-32" : "w-40 h-40"
-                )}>
+                <Avatar 
+                  className={cn(
+                    "ring-4 ring-white/50 dark:ring-gray-800/50",
+                    "shadow-2xl group-hover:scale-105 transition-all duration-500",
+                    "border-4 border-gradient-to-r from-purple-300 to-pink-300",
+                    hasAvatars && "cursor-pointer",
+                    isMobile ? "w-32 h-32" : "w-40 h-40"
+                  )}
+                  onClick={handleAvatarClick}
+                >
                   {currentAvatarUrl ? (
                     <AvatarImage 
                       src={currentAvatarUrl} 
@@ -236,6 +251,16 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
         avatarVariants={avatarVariants}
         caricatureHistory={user?.caricature_history}
         lastCaricatureGeneration={user?.last_caricature_generation}
+      />
+
+      {/* Avatar Carousel Modal */}
+      <AvatarCarousel
+        isOpen={avatarCarouselOpen}
+        onClose={() => setAvatarCarouselOpen(false)}
+        userId={user?.user_id || user?.id || ''}
+        currentAvatarUrl={currentAvatarUrl}
+        onAvatarUpdate={handleAvatarUpdate}
+        caricatureHistory={user?.caricature_history}
       />
     </>
   );
