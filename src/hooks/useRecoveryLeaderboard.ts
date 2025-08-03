@@ -472,7 +472,6 @@ export const useRecoveryLeaderboard = () => {
         // Phase 5: Enhanced display name for recovery leaderboard consistency
         const displayName = profile ? getDisplayName({
           first_name: profile.first_name,
-          username: undefined,
           email: undefined
         }) : 'Anonymous User';
         

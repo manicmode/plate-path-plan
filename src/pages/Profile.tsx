@@ -64,11 +64,7 @@ const ProfileContent = () => {
   // ✅ On Profile.tsx page load, print to console what displayName is being loaded
   useEffect(() => {
     if (user) {
-      const currentDisplayName = getDisplayName({
-        first_name: user.first_name,
-        username: undefined,
-        email: user.email
-      });
+      const currentDisplayName = getDisplayName(user);
       console.log('[DEBUG] Profile Page Load - User loaded with displayName:', {
         displayName: currentDisplayName,
         user_first_name: user.first_name,

@@ -117,7 +117,6 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       // Phase 5: Enhanced display name for leaderboard consistency
       const displayName = getDisplayName({
         first_name: userProfile.first_name,
-        username: undefined,
         email: 'email' in userProfile ? userProfile.email : undefined
       });
 
@@ -223,7 +222,6 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       // Phase 5: Enhanced display name for exercise leaderboard consistency
       const displayName = getDisplayName({
         first_name: userProfile.first_name,
-        username: undefined,
         email: 'email' in userProfile ? userProfile.email : undefined
       });
 
@@ -333,7 +331,6 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       // Phase 5: Enhanced display name for recovery leaderboard consistency  
       const displayName = getDisplayName({
         first_name: userProfile.first_name,
-        username: undefined,
         email: 'email' in userProfile ? userProfile.email : undefined
       });
 
