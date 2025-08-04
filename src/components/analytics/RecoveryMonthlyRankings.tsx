@@ -97,7 +97,7 @@ export const RecoveryMonthlyRankings: React.FC = () => {
             
             {/* User Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-2">
                 <div className="text-lg">{user.avatar}</div>
                 <div className="font-semibold text-sm truncate">{user.nickname}</div>
                 {user.isCurrentUser && (
@@ -106,7 +106,7 @@ export const RecoveryMonthlyRankings: React.FC = () => {
               </div>
               
               {/* Fun Title */}
-              <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-2">
+              <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
                 {getFunTitle(user)}
               </div>
               
