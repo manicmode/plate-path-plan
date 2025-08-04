@@ -4,8 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings } from 'lucide-react';
+import { Settings, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
 
 interface PersonalInformationProps {
   formData: {
@@ -49,10 +52,70 @@ const dietaryGoalOptions = [
 
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+  const [username, setUsername] = useState(formData.first_name || '');
   
-  const displayName = formData.first_name && formData.last_name 
-    ? `${formData.first_name} ${formData.last_name}`
-    : user?.name || user?.email || 'User';
+  // Keep username in sync with formData changes
+  useEffect(() => {
+    setUsername(formData.first_name || '');
+  }, [formData.first_name]);
+  
+  const displayName = username || user?.name || user?.email || 'User';
+
+  const handleSave = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not found. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          first_name: username,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('Error updating username:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save username. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update form data to keep parent in sync
+      onFormDataChange({ first_name: username });
+
+      toast({
+        title: "Success!",
+        description: "Username updated successfully.",
+      });
+
+      // Refresh the page to ensure all components reflect the change
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error updating username:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to save username. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '100ms' }}>
@@ -112,36 +175,35 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       {/* Editable Fields */}
       {isEditing && (
         <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-4'}`}>
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="first_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>First Name</Label>
+              <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
               <Input
-                id="first_name"
-                value={formData.first_name}
-                onChange={(e) => onFormDataChange({ first_name: e.target.value })}
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-                placeholder="Enter first name"
+                placeholder="Enter username"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="last_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Last Name</Label>
+              <Label htmlFor="email" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Email</Label>
               <Input
-                id="last_name"
-                value={formData.last_name}
-                onChange={(e) => onFormDataChange({ last_name: e.target.value })}
-                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-                placeholder="Enter last name"
+                id="email"
+                value={formData.email}
+                disabled
+                className={`bg-muted/50 ${isMobile ? 'h-10' : 'h-12'}`}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Email</Label>
-            <Input
-              id="email"
-              value={formData.email}
-              disabled
-              className={`bg-muted/50 ${isMobile ? 'h-10' : 'h-12'}`}
-            />
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !username.trim()}
+              className={`w-full ${isMobile ? 'h-10' : 'h-12'}`}
+              size={isMobile ? "sm" : "default"}
+            >
+              <Save className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
           </div>
         </CardContent>
       )}
