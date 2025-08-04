@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth';
 
 interface PersonalInformationProps {
   formData: {
@@ -53,6 +54,7 @@ const dietaryGoalOptions = [
 export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState(formData.first_name || '');
   
@@ -63,7 +65,12 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   
   const displayName = username || user?.name || user?.email || 'User';
 
-  const handleSave = async () => {
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!user?.id) {
       toast({
         title: "Error",
@@ -73,19 +80,31 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       return;
     }
 
+    if (!username.trim()) {
+      toast({
+        title: "Error",
+        description: "Username cannot be empty.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSaving(true);
+    console.log('💾 Saving username to database:', username);
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .update({
-          first_name: username,
+          first_name: username.trim(),
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
       
       if (error) {
-        console.error('Error updating username:', error);
+        console.error('❌ Error updating username:', error);
         toast({
           title: "Error",
           description: "Failed to save username. Please try again.",
@@ -94,19 +113,26 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
         return;
       }
 
+      console.log('✅ Username saved successfully:', data);
+
       // Update form data to keep parent in sync
-      onFormDataChange({ first_name: username });
+      onFormDataChange({ first_name: username.trim() });
+
+      // Refresh user profile to update auth context
+      if (refreshUser) {
+        await refreshUser();
+      }
+
+      // Exit edit mode
+      onEditToggle();
 
       toast({
         title: "Success!",
         description: "Username updated successfully.",
       });
-
-      // Refresh the page to ensure all components reflect the change
-      window.location.reload();
       
     } catch (error) {
-      console.error('Error updating username:', error);
+      console.error('❌ Error updating username:', error);
       toast({
         title: "Error", 
         description: "Failed to save username. Please try again.",
@@ -175,7 +201,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       {/* Editable Fields */}
       {isEditing && (
         <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <div className="space-y-4">
+          <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Username</Label>
               <Input
@@ -184,6 +210,12 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
                 onChange={(e) => setUsername(e.target.value)}
                 className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
                 placeholder="Enter username"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSave();
+                  }
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -196,7 +228,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
               />
             </div>
             <Button
-              onClick={handleSave}
+              type="submit"
               disabled={isSaving || !username.trim()}
               className={`w-full ${isMobile ? 'h-10' : 'h-12'}`}
               size={isMobile ? "sm" : "default"}
@@ -204,7 +236,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
               <Save className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />
               {isSaving ? 'Saving...' : 'Save'}
             </Button>
-          </div>
+          </form>
         </CardContent>
       )}
 

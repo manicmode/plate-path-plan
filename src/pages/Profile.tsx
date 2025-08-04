@@ -87,6 +87,18 @@ const ProfileContent = () => {
     selectedTrackers: getAutoFilledTrackers(user?.selectedTrackers || ['calories', 'protein', 'supplements']),
   });
 
+  // Keep form data in sync with user changes
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+      }));
+    }
+  }, [user?.first_name, user?.last_name, user?.email]);
+
   // Save tracker preferences whenever selectedTrackers changes
   useEffect(() => {
     if (isEditing && formData.selectedTrackers) {
