@@ -1864,8 +1864,10 @@ export type Database = {
           auto_team_enabled: boolean | null
           badge_icon: string
           banner_image_url: string | null
+          brand_name: string | null
           category: string
           challenge_type: string
+          clicks: number
           created_at: string
           creator_id: string
           description: string
@@ -1873,8 +1875,13 @@ export type Database = {
           follower_only: boolean
           id: string
           invited_user_ids: string[]
+          is_sponsored: boolean
           is_team_challenge: boolean
           max_participants: number
+          product_url: string | null
+          promo_code: string | null
+          reward_description: string | null
+          reward_image_url: string | null
           start_date: string
           status: string
           target_metric: string | null
@@ -1884,13 +1891,16 @@ export type Database = {
           team_size: number | null
           title: string
           updated_at: string
+          views: number
         }
         Insert: {
           auto_team_enabled?: boolean | null
           badge_icon?: string
           banner_image_url?: string | null
+          brand_name?: string | null
           category: string
           challenge_type?: string
+          clicks?: number
           created_at?: string
           creator_id: string
           description: string
@@ -1898,8 +1908,13 @@ export type Database = {
           follower_only?: boolean
           id?: string
           invited_user_ids?: string[]
+          is_sponsored?: boolean
           is_team_challenge?: boolean
           max_participants?: number
+          product_url?: string | null
+          promo_code?: string | null
+          reward_description?: string | null
+          reward_image_url?: string | null
           start_date: string
           status?: string
           target_metric?: string | null
@@ -1909,13 +1924,16 @@ export type Database = {
           team_size?: number | null
           title: string
           updated_at?: string
+          views?: number
         }
         Update: {
           auto_team_enabled?: boolean | null
           badge_icon?: string
           banner_image_url?: string | null
+          brand_name?: string | null
           category?: string
           challenge_type?: string
+          clicks?: number
           created_at?: string
           creator_id?: string
           description?: string
@@ -1923,8 +1941,13 @@ export type Database = {
           follower_only?: boolean
           id?: string
           invited_user_ids?: string[]
+          is_sponsored?: boolean
           is_team_challenge?: boolean
           max_participants?: number
+          product_url?: string | null
+          promo_code?: string | null
+          reward_description?: string | null
+          reward_image_url?: string | null
           start_date?: string
           status?: string
           target_metric?: string | null
@@ -1934,6 +1957,7 @@ export type Database = {
           team_size?: number | null
           title?: string
           updated_at?: string
+          views?: number
         }
         Relationships: []
       }
@@ -4578,6 +4602,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      increment_challenge_clicks: {
+        Args: { challenge_id_param: string }
+        Returns: undefined
+      }
+      increment_challenge_views: {
+        Args: { challenge_id_param: string }
+        Returns: undefined
       }
       log_security_event: {
         Args: {

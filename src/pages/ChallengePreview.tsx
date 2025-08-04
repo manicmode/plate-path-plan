@@ -36,6 +36,12 @@ interface Challenge {
   target_unit: string;
   creator_id: string;
   reward?: string;
+  brand_name?: string;
+  promo_code?: string;
+  product_url?: string;
+  reward_description?: string;
+  is_sponsored?: boolean;
+  reward_image_url?: string;
 }
 
 interface ChallengeStats {
@@ -265,6 +271,52 @@ const ChallengePreview: React.FC = () => {
                       Reward
                     </h3>
                     <p className="text-muted-foreground">{challenge.reward}</p>
+                  </div>
+                )}
+
+                {/* Brand Sponsor Section */}
+                {challenge.is_sponsored && challenge.brand_name && (
+                  <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      {challenge.reward_image_url && (
+                        <img 
+                          src={challenge.reward_image_url} 
+                          alt={challenge.brand_name}
+                          className="w-16 h-16 object-cover rounded border"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Gift className="h-5 w-5 text-yellow-600" />
+                          <h3 className="font-semibold text-yellow-800">
+                            🎁 Reward: {challenge.reward_description || 'Exclusive brand offer'}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-yellow-700 mb-2">
+                          Sponsored by <strong>{challenge.brand_name}</strong>
+                        </p>
+                        {challenge.promo_code && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-yellow-700">Use code:</span>
+                            <code className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm font-mono">
+                              {challenge.promo_code}
+                            </code>
+                          </div>
+                        )}
+                        {challenge.product_url && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            asChild
+                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                          >
+                            <a href={challenge.product_url} target="_blank" rel="noopener noreferrer">
+                              🔗 Visit Store
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

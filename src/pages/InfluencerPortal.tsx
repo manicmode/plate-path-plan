@@ -5,8 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -22,12 +23,21 @@ import {
   ExternalLink,
   Image as ImageIcon,
   TrendingUp,
-  Star
+  Star,
+  Gift,
+  ChevronDown,
+  ChevronUp,
+  Building,
+  Tag,
+  Link as LinkIcon,
+  FileText,
+  DollarSign
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
 
 interface InfluencerProfile {
@@ -56,6 +66,12 @@ interface PublicChallenge {
   completion_rate?: number;
   status: string;
   created_at: string;
+  brand_name?: string;
+  promo_code?: string;
+  product_url?: string;
+  reward_description?: string;
+  is_sponsored?: boolean;
+  reward_image_url?: string;
 }
 
 interface ChallengeStats {
@@ -76,6 +92,8 @@ const InfluencerPortal: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showCreateChallenge, setShowCreateChallenge] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [uploadingReward, setUploadingReward] = useState(false);
+  const [showBrandSection, setShowBrandSection] = useState(false);
 
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -97,7 +115,13 @@ const InfluencerPortal: React.FC = () => {
     max_participants: 100,
     reward: '',
     banner_image_url: '',
-    follower_only: false
+    follower_only: false,
+    brand_name: '',
+    promo_code: '',
+    product_url: '',
+    reward_description: '',
+    is_sponsored: false,
+    reward_image_url: ''
   });
 
   // Check if user has influencer role
@@ -187,7 +211,13 @@ const InfluencerPortal: React.FC = () => {
           max_participants,
           status,
           banner_image_url,
-          created_at
+          created_at,
+          brand_name,
+          promo_code,
+          product_url,
+          reward_description,
+          is_sponsored,
+          reward_image_url
         `)
         .eq('creator_id', user.id)
         .order('created_at', { ascending: false });
@@ -250,6 +280,35 @@ const InfluencerPortal: React.FC = () => {
       toast.error('Failed to upload banner');
     } finally {
       setUploadingBanner(false);
+    }
+  };
+
+  const uploadRewardImage = async (file: File) => {
+    try {
+      setUploadingReward(true);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('challenge-rewards')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('challenge-rewards')
+        .getPublicUrl(filePath);
+
+      setChallengeForm(prev => ({ ...prev, reward_image_url: publicUrl }));
+      toast.success('Reward image uploaded successfully!');
+
+    } catch (error) {
+      console.error('Error uploading reward image:', error);
+      toast.error('Failed to upload reward image');
+    } finally {
+      setUploadingReward(false);
     }
   };
 
@@ -323,7 +382,13 @@ const InfluencerPortal: React.FC = () => {
         target_value: 1,
         target_unit: 'completion',
         category: 'fitness',
-        follower_only: challengeForm.follower_only
+        follower_only: challengeForm.follower_only,
+        brand_name: challengeForm.brand_name || null,
+        promo_code: challengeForm.promo_code || null,
+        product_url: challengeForm.product_url || null,
+        reward_description: challengeForm.reward_description || null,
+        is_sponsored: challengeForm.is_sponsored,
+        reward_image_url: challengeForm.reward_image_url || null
       };
 
       const { error } = await supabase
@@ -343,8 +408,15 @@ const InfluencerPortal: React.FC = () => {
         max_participants: 100,
         reward: '',
         banner_image_url: '',
-        follower_only: false
+        follower_only: false,
+        brand_name: '',
+        promo_code: '',
+        product_url: '',
+        reward_description: '',
+        is_sponsored: false,
+        reward_image_url: ''
       });
+      setShowBrandSection(false);
       fetchInfluencerData();
     } catch (error) {
       console.error('Error creating challenge:', error);
@@ -355,10 +427,28 @@ const InfluencerPortal: React.FC = () => {
   };
 
   const copyInviteLink = async (challengeId: string) => {
+    const challenge = challenges.find(c => c.id === challengeId);
     const inviteLink = `${window.location.origin}/join-challenge/${challengeId}`;
+    
+    let shareText = `Join my ${challenge?.title || 'challenge'}! 🏃‍♀️\n`;
+    
+    // Add brand reward info if sponsored
+    if (challenge?.is_sponsored && challenge?.brand_name) {
+      shareText += `🎁 Sponsored by ${challenge.brand_name}`;
+      if (challenge.promo_code) {
+        shareText += ` — Use ${challenge.promo_code} for exclusive benefits`;
+      }
+      if (challenge.product_url) {
+        shareText += `: ${challenge.product_url}`;
+      }
+      shareText += '\n';
+    }
+    
+    shareText += `Sign up here: ${inviteLink}`;
+    
     try {
-      await navigator.clipboard.writeText(inviteLink);
-      toast.success('Invite link copied to clipboard!');
+      await navigator.clipboard.writeText(shareText);
+      toast.success('Invite link with reward info copied!');
     } catch (error) {
       toast.error('Failed to copy link');
     }
@@ -594,153 +684,308 @@ const InfluencerPortal: React.FC = () => {
                       Fill in the details for your new community challenge
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="challenge-title">Title</Label>
-                      <Input
-                        id="challenge-title"
-                        value={challengeForm.title}
-                        onChange={(e) => setChallengeForm(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="30-Day Fitness Challenge"
-                      />
-                    </div>
+                  <form onSubmit={(e) => { e.preventDefault(); createChallenge(); }}>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="challenge-title">Title</Label>
+                        <Input
+                          id="challenge-title"
+                          value={challengeForm.title}
+                          onChange={(e) => setChallengeForm(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="30-Day Fitness Challenge"
+                          required
+                        />
+                      </div>
 
-                    <div>
-                      <Label htmlFor="challenge-description">Description</Label>
-                      <Textarea
-                        id="challenge-description"
-                        value={challengeForm.description}
-                        onChange={(e) => setChallengeForm(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Describe what participants will do..."
-                        rows={3}
-                      />
-                    </div>
+                      <div>
+                        <Label htmlFor="challenge-description">Description</Label>
+                        <Textarea
+                          id="challenge-description"
+                          value={challengeForm.description}
+                          onChange={(e) => setChallengeForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Describe what participants will do..."
+                          rows={3}
+                          required
+                        />
+                      </div>
 
-                    {/* Banner Upload */}
-                    <div>
-                      <Label htmlFor="banner-upload">Banner Image</Label>
-                      <div className="mt-2">
-                        {challengeForm.banner_image_url ? (
-                          <div className="relative">
-                            <img 
-                              src={challengeForm.banner_image_url} 
-                              alt="Challenge banner" 
-                              className="w-full h-32 object-cover rounded-lg border"
+                      {/* Banner Upload */}
+                      <div>
+                        <Label htmlFor="banner-upload">Banner Image</Label>
+                        <div className="mt-2">
+                          {challengeForm.banner_image_url ? (
+                            <div className="relative">
+                              <img 
+                                src={challengeForm.banner_image_url} 
+                                alt="Challenge banner" 
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="absolute top-2 right-2"
+                                onClick={() => setChallengeForm(prev => ({ ...prev, banner_image_url: '' }))}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleBannerUpload}
+                                className="hidden"
+                                id="banner-upload"
+                                disabled={uploadingBanner}
+                              />
+                              <label htmlFor="banner-upload" className="cursor-pointer">
+                                <div className="flex flex-col items-center">
+                                  {uploadingBanner ? (
+                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+                                  ) : (
+                                    <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                                  )}
+                                  <p className="text-sm text-muted-foreground">
+                                    {uploadingBanner ? 'Uploading...' : 'Click to upload banner image'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    JPEG, PNG up to 10MB
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="challenge-type">Type</Label>
+                          <Select
+                            value={challengeForm.challenge_type}
+                            onValueChange={(value) => setChallengeForm(prev => ({ ...prev, challenge_type: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="fitness">Fitness</SelectItem>
+                              <SelectItem value="nutrition">Nutrition</SelectItem>
+                              <SelectItem value="hydration">Hydration</SelectItem>
+                              <SelectItem value="habit">Habit Building</SelectItem>
+                              <SelectItem value="wellness">Wellness</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="max-participants">Max Participants</Label>
+                          <Input
+                            id="max-participants"
+                            type="number"
+                            value={challengeForm.max_participants}
+                            onChange={(e) => setChallengeForm(prev => ({ ...prev, max_participants: parseInt(e.target.value) || 100 }))}
+                            min="1"
+                            max="1000"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="start-date">Start Date</Label>
+                          <Input
+                            id="start-date"
+                            type="date"
+                            value={challengeForm.start_date}
+                            onChange={(e) => setChallengeForm(prev => ({ ...prev, start_date: e.target.value }))}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="end-date">End Date</Label>
+                          <Input
+                            id="end-date"
+                            type="date"
+                            value={challengeForm.end_date}
+                            onChange={(e) => setChallengeForm(prev => ({ ...prev, end_date: e.target.value }))}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="reward">Reward</Label>
+                        <Input
+                          id="reward"
+                          value={challengeForm.reward}
+                          onChange={(e) => setChallengeForm(prev => ({ ...prev, reward: e.target.value }))}
+                          placeholder="What do participants get for completing?"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="follower_only">Challenge Visibility</Label>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="follower_only"
+                            checked={challengeForm.follower_only}
+                            onCheckedChange={(checked) => setChallengeForm(prev => ({ ...prev, follower_only: checked }))}
+                          />
+                          <Label htmlFor="follower_only" className="text-sm text-muted-foreground">
+                            🔒 Only visible to followers
+                          </Label>
+                        </div>
+                      </div>
+
+                      {/* Brand Collaboration Section */}
+                      <Collapsible open={showBrandSection} onOpenChange={setShowBrandSection}>
+                        <CollapsibleTrigger asChild>
+                          <Button type="button" variant="outline" className="w-full justify-between">
+                            <div className="flex items-center gap-2">
+                              <Gift className="h-4 w-4" />
+                              💼 Add Brand Reward
+                            </div>
+                            {showBrandSection ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-4 mt-4 p-4 border rounded-lg bg-accent/30">
+                          <div className="flex items-center space-x-2 mb-4">
+                            <Switch
+                              id="is_sponsored"
+                              checked={challengeForm.is_sponsored}
+                              onCheckedChange={(checked) => setChallengeForm(prev => ({ ...prev, is_sponsored: checked }))}
                             />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2"
-                              onClick={() => setChallengeForm(prev => ({ ...prev, banner_image_url: '' }))}
-                            >
-                              Remove
-                            </Button>
+                            <Label htmlFor="is_sponsored" className="text-sm font-medium">
+                              ⭐ This is a sponsored challenge
+                            </Label>
                           </div>
-                        ) : (
-                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleBannerUpload}
-                              className="hidden"
-                              id="banner-upload"
-                              disabled={uploadingBanner}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="brand_name" className="flex items-center gap-2">
+                                <Building className="h-4 w-4" />
+                                Brand Name
+                              </Label>
+                              <Input
+                                id="brand_name"
+                                placeholder="e.g., CleanGreens"
+                                value={challengeForm.brand_name}
+                                onChange={(e) => setChallengeForm(prev => ({ ...prev, brand_name: e.target.value }))}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="promo_code" className="flex items-center gap-2">
+                                <Tag className="h-4 w-4" />
+                                Promo Code
+                              </Label>
+                              <Input
+                                id="promo_code"
+                                placeholder="e.g., VOYAGE10"
+                                value={challengeForm.promo_code}
+                                onChange={(e) => setChallengeForm(prev => ({ ...prev, promo_code: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="product_url" className="flex items-center gap-2">
+                              <LinkIcon className="h-4 w-4" />
+                              Product URL
+                            </Label>
+                            <Input
+                              id="product_url"
+                              placeholder="https://brand.com/product"
+                              value={challengeForm.product_url}
+                              onChange={(e) => setChallengeForm(prev => ({ ...prev, product_url: e.target.value }))}
                             />
-                            <label htmlFor="banner-upload" className="cursor-pointer">
-                              <div className="flex flex-col items-center">
-                                {uploadingBanner ? (
-                                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="reward_description" className="flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Reward Description
+                            </Label>
+                            <Textarea
+                              id="reward_description"
+                              placeholder="e.g., 10% off all products with free shipping"
+                              value={challengeForm.reward_description}
+                              onChange={(e) => setChallengeForm(prev => ({ ...prev, reward_description: e.target.value }))}
+                              rows={3}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-2">
+                              <ImageIcon className="h-4 w-4" />
+                              Reward Image (optional)
+                            </Label>
+                            <div className="flex gap-4">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => document.getElementById('reward-image-upload')?.click()}
+                                disabled={uploadingReward}
+                                className="flex-1"
+                              >
+                                {uploadingReward ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 ) : (
-                                  <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                                  <Upload className="h-4 w-4 mr-2" />
                                 )}
-                                <p className="text-sm text-muted-foreground">
-                                  {uploadingBanner ? 'Uploading...' : 'Click to upload banner image'}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  JPEG, PNG up to 10MB
-                                </p>
+                                Upload Brand Logo/Product
+                              </Button>
+                              <input
+                                id="reward-image-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) uploadRewardImage(file);
+                                }}
+                                className="hidden"
+                              />
+                            </div>
+                            {challengeForm.reward_image_url && (
+                              <div className="mt-2">
+                                <img 
+                                  src={challengeForm.reward_image_url} 
+                                  alt="Reward preview" 
+                                  className="w-20 h-20 object-cover rounded border"
+                                />
                               </div>
-                            </label>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
+                        </CollapsibleContent>
+                      </Collapsible>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="challenge-type">Type</Label>
-                        <Select
-                          value={challengeForm.challenge_type}
-                          onValueChange={(value) => setChallengeForm(prev => ({ ...prev, challenge_type: value }))}
+                      <div className="flex gap-2 pt-4">
+                        <Button 
+                          type="submit" 
+                          disabled={saving}
+                          className="flex-1"
                         >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="fitness">Fitness</SelectItem>
-                            <SelectItem value="nutrition">Nutrition</SelectItem>
-                            <SelectItem value="hydration">Hydration</SelectItem>
-                            <SelectItem value="habit">Habit Building</SelectItem>
-                            <SelectItem value="wellness">Wellness</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="max-participants">Max Participants</Label>
-                        <Input
-                          id="max-participants"
-                          type="number"
-                          value={challengeForm.max_participants}
-                          onChange={(e) => setChallengeForm(prev => ({ ...prev, max_participants: parseInt(e.target.value) || 100 }))}
-                          min="1"
-                          max="1000"
-                        />
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Plus className="h-4 w-4 mr-2" />
+                          )}
+                          Create Challenge
+                        </Button>
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowCreateChallenge(false)}
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="start-date">Start Date</Label>
-                        <Input
-                          id="start-date"
-                          type="date"
-                          value={challengeForm.start_date}
-                          onChange={(e) => setChallengeForm(prev => ({ ...prev, start_date: e.target.value }))}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="end-date">End Date</Label>
-                        <Input
-                          id="end-date"
-                          type="date"
-                          value={challengeForm.end_date}
-                          onChange={(e) => setChallengeForm(prev => ({ ...prev, end_date: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="reward">Reward</Label>
-                      <Input
-                        id="reward"
-                        value={challengeForm.reward}
-                        onChange={(e) => setChallengeForm(prev => ({ ...prev, reward: e.target.value }))}
-                        placeholder="What do participants get for completing?"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setShowCreateChallenge(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={createChallenge} disabled={saving}>
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Create Challenge
-                      </Button>
-                    </div>
-                  </div>
+                  </form>
                 </DialogContent>
               </Dialog>
             </CardContent>
@@ -786,8 +1031,31 @@ const InfluencerPortal: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-lg truncate">{challenge.title}</h3>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-lg truncate">{challenge.title}</h3>
+                                {challenge.is_sponsored && (
+                                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Sponsored
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-muted-foreground text-sm mb-2 line-clamp-2">{challenge.description}</p>
+                              
+                              {/* Brand info if sponsored */}
+                              {challenge.is_sponsored && challenge.brand_name && (
+                                <div className="mb-2 p-2 bg-yellow-50/50 rounded border border-yellow-200/50">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Gift className="h-4 w-4 text-yellow-600" />
+                                    <span className="font-medium text-yellow-800">
+                                      Sponsored by {challenge.brand_name}
+                                    </span>
+                                  </div>
+                                  {challenge.reward_description && (
+                                    <p className="text-xs text-yellow-700 mt-1">{challenge.reward_description}</p>
+                                  )}
+                                </div>
+                              )}
                               
                               {/* Challenge Stats */}
                               {stats && (
