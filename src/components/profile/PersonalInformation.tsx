@@ -125,14 +125,15 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
               placeholder="Enter your profile name"
             />
             {onSave && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onSave}
-                className="mt-2"
-              >
-                Save
-              </Button>
+              <div className="flex justify-center mt-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onSave}
+                >
+                  Save
+                </Button>
+              </div>
             )}
           </div>
           <div className="space-y-2">
