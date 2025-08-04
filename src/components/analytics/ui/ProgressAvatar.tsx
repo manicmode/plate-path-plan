@@ -3,7 +3,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Flame, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getDisplayName, getDisplayInitials } from '@/lib/displayName';
 
 interface ProgressAvatarProps {
   avatar: string;
@@ -17,12 +16,6 @@ interface ProgressAvatarProps {
   name?: string; // Real user name from profile
   email?: string; // Fallback for name
   avatar_url?: string; // Caricature avatar URL
-  // Add user data fields for proper display name calculation
-  user?: {
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-  };
 }
 
 export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
@@ -36,20 +29,30 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   isCurrentUser = false,
   name,
   email,
-  avatar_url,
-  user
+  avatar_url
 }) => {
-  // Use centralized display name helper
-  const displayName = getDisplayName({
-    first_name: user?.first_name,
-    email: email
-  });
+  // Get display name with proper fallbacks following priority
+  const getDisplayName = () => {
+    // Priority 1: first_name + last_name (if both exist)
+    if (name && name.trim()) {
+      const trimmedName = name.trim();
+      // Check if it looks like "first last" format
+      if (trimmedName.includes(' ')) return trimmedName;
+      // Otherwise treat as first name only
+      return trimmedName;
+    }
+    
+    // Priority 2: nickname 
+    if (nickname && nickname.trim()) return nickname.trim();
+    
+    // Priority 3: email prefix if available
+    if (email) return email.split('@')[0];
+    
+    // Last resort
+    return 'User';
+  };
 
-  // Get proper initials for avatar fallback
-  const displayInitials = getDisplayInitials({
-    first_name: user?.first_name,
-    email: email
-  });
+  const displayName = getDisplayName();
 
   const sizeClasses = {
     sm: { avatar: 'h-10 w-10', progress: 'h-12 w-12', stroke: 3, text: 'text-xs' },
@@ -60,9 +63,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
   const { avatar: avatarSize, progress: progressSize, stroke, text } = sizeClasses[size];
   const circumference = Math.PI * (64 - stroke * 2);
   const strokeDasharray = circumference;
-  // Safe calculation with fallback to 0
-  const safeWeeklyProgress = weeklyProgress || 0;
-  const strokeDashoffset = circumference - (safeWeeklyProgress / 100) * circumference;
+  const strokeDashoffset = circumference - (weeklyProgress / 100) * circumference;
 
   return (
     <div className={cn(
@@ -124,7 +125,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
                 />
               ) : null}
               <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/20 to-secondary/20">
-                {avatar_url ? displayInitials : avatar || displayInitials}
+                {avatar || displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -135,7 +136,7 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
           variant="secondary" 
           className="absolute -top-1 -right-1 h-6 w-8 text-xs font-bold bg-primary text-primary-foreground"
         >
-          {safeWeeklyProgress}%
+          {weeklyProgress}%
         </Badge>
       </div>
 
@@ -158,11 +159,11 @@ export const ProgressAvatar: React.FC<ProgressAvatarProps> = ({
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Flame className="h-3 w-3 text-orange-500" />
-            <span>{dailyStreak || 0}d</span>
+            <span>{dailyStreak}d</span>
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-blue-500" />
-            <span>{weeklyStreak || 0}w</span>
+            <span>{weeklyStreak}w</span>
           </div>
         </div>
       )}

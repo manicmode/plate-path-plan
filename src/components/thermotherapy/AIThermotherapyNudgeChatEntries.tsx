@@ -50,18 +50,18 @@ export function AIThermotherapyNudgeChatEntries({
   return (
     <div className="space-y-4">
       {filteredNudges.map((nudge) => (
-        <div key={nudge.id} className="bg-gradient-to-r from-orange-100 to-red-100 dark:from-blue-900/20 dark:to-red-900/20 border border-orange-400 dark:border-orange-500/30 rounded-lg p-4">
+        <div key={nudge.id} className="bg-gradient-to-r from-blue-900/20 to-red-900/20 border border-orange-500/30 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <div className="mt-1">
               {getNudgeIcon(nudge.nudge_type)}
             </div>
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                <span className="text-sm font-medium text-orange-300">
                   {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
                   {nudge.nudge_type === 'ai_coach' ? '🔥❄️ Thermal Harmony Guide' : '⚡ Sacred Temperature Therapy'}
                 </span>
-                <span className="text-xs text-gray-600 dark:text-white/50">
+                <span className="text-xs text-white/50">
                   {new Date(nudge.delivered_at).toLocaleTimeString([], { 
                     hour: 'numeric', 
                     minute: '2-digit' 
@@ -69,7 +69,7 @@ export function AIThermotherapyNudgeChatEntries({
                 </span>
               </div>
               
-              <p className="text-gray-800 dark:text-white/90 text-sm leading-relaxed">
+              <p className="text-white/90 text-sm leading-relaxed">
                 {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
                 {nudge.nudge_type === 'ai_coach' ? '🌙 ' : '💫 '}
                 {nudge.nudge_message}
@@ -80,7 +80,7 @@ export function AIThermotherapyNudgeChatEntries({
                   <Button
                     onClick={() => handleNudgeAccept(nudge.id)}
                     size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700 text-white !text-white"
+                    className="bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700 text-white"
                   >
                     Begin Thermal Journey
                     <ArrowRight className="ml-1 h-3 w-3" />
@@ -89,7 +89,7 @@ export function AIThermotherapyNudgeChatEntries({
                     onClick={() => dismissNudge(nudge.id)}
                     size="sm"
                     variant="outline"
-                    className="border-gray-400 text-gray-700 hover:bg-gray-100 dark:border-white/20 dark:text-white/70 dark:hover:bg-white/10"
+                    className="border-white/20 text-white/70 hover:bg-white/10"
                   >
                     Hold this moment
                   </Button>

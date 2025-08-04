@@ -26,45 +26,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
 
 
-  // Replace loadExtendedProfile
-  const loadExtendedProfile = ReactModule.useCallback(async (baseUser: any): Promise<ExtendedUser | null> => {
-    if (!baseUser?.id) return null;
+  // Load user profile in background
+  const loadExtendedProfile = async (supabaseUser: any) => {
+    if (!supabaseUser) return;
+    
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', baseUser.id)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          const { data: newProfile, error: createError } = await supabase
-            .from('user_profiles')
-            .insert({
-              user_id: baseUser.id,
-              first_name: null,
-              username: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-          if (createError) return baseUser as ExtendedUser;
-          return { ...baseUser, ...newProfile } as ExtendedUser;
-        }
-        return baseUser as ExtendedUser;
-      }
-
-      return {
-        ...baseUser,
-        ...data,
-        email: baseUser.email,
-        id: baseUser.id
-      } as ExtendedUser;
-    } catch {
-      return baseUser as ExtendedUser;
+      setProfileLoading(true);
+      setProfileError(null);
+      console.log('Loading extended user profile...');
+      
+      const extendedUser = await createExtendedUser(supabaseUser);
+      setUser(extendedUser);
+      console.log('Extended user profile loaded successfully');
+    } catch (error) {
+      console.error('Error loading extended user profile:', error);
+      setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
+      // Set basic user info even if profile creation fails
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        created_at: supabaseUser.created_at,
+        selectedTrackers: ['calories', 'hydration', 'supplements']
+      } as ExtendedUser);
+    } finally {
+      setProfileLoading(false);
     }
-  }, []);
+  };
 
   // Custom signOut function with proper state management
   const handleSignOut = async () => {
@@ -270,29 +257,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile({ selectedTrackers: trackers });
   };
 
-  // Replace refreshUser
-  const refreshUser = ReactModule.useCallback(async () => {
-    try {
-      console.log('🔄 [REFRESH DEBUG] Starting user refresh...');
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        console.log('🔄 [REFRESH DEBUG] No auth user found, setting to null');
-        return setUser(null);
-      }
-      
-      console.log('🔄 [REFRESH DEBUG] Auth user found, creating extended user...');
-      const extendedUser = await createExtendedUser(authUser);
-      console.log('🔄 [REFRESH DEBUG] Extended user created:', {
-        id: extendedUser.id,
-        first_name: extendedUser.first_name,
-        email: extendedUser.email
-      });
-      
-      if (extendedUser) setUser(extendedUser);
-    } catch (error) {
-      console.error('❌ [REFRESH DEBUG] Error refreshing user:', error);
-    }
-  }, []);
+  const refreshUser = async () => {
+    if (!session?.user) return;
+    
+    console.log('[DEBUG] AuthContext: Refreshing user profile...');
+    await loadExtendedProfile(session.user);
+    console.log('[DEBUG] AuthContext: User profile refresh complete');
+  };
 
   const contextValue: AuthContextType = {
     user,

@@ -4,6 +4,7 @@ import { User, Session } from '@supabase/supabase-js';
 export interface ExtendedUser extends User {
   name?: string;
   first_name?: string;
+  last_name?: string;
   avatar_url?: string;
   caricature_generation_count?: number;
   caricature_history?: any[];

@@ -41,7 +41,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   }
 
   const getNudgeIcon = () => {
-    const iconColor = isLightMode ? "text-gray-800" : "text-white"
+    const iconColor = isLightMode ? "text-slate-700" : "text-white"
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
         return <Brain className={`h-6 w-6 ${iconColor}`} />
@@ -56,11 +56,11 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     if (isLightMode) {
       switch (activeNudge.nudge_type) {
         case 'ai_coach':
-          return "bg-gradient-to-r from-violet-200 to-purple-200 border border-violet-400"
+          return "bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200"
         case 'daily_reminder':
-          return "bg-gradient-to-r from-blue-200 to-cyan-200 border border-blue-400"
+          return "bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200"
         default:
-          return "bg-gradient-to-r from-emerald-200 to-teal-200 border border-emerald-400"
+          return "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200"
       }
     }
     
@@ -87,17 +87,17 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   }
 
   return (
-    <div className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white'} shadow-lg mb-6 rounded-lg`}>
+    <Card className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} shadow-lg mb-6`}>
       <div className="flex items-start gap-4">
-        <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-500/20' : 'bg-white/20'} rounded-full`}>
+        <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-200/80' : 'bg-white/20'} rounded-full`}>
           {getNudgeIcon()}
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-gray-900' : 'text-white'}`}>
+          <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
             {getTitle()}
           </h3>
-          <p className={`${isLightMode ? 'text-gray-900' : 'text-white/90'} mb-4 leading-relaxed`}>
+          <p className={`${isLightMode ? 'text-slate-800' : 'text-white/90'} mb-4 leading-relaxed`}>
             {activeNudge.nudge_message}
           </p>
           
@@ -105,7 +105,10 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
             <Button
               onClick={handleAccept}
               size="sm"
-              className="bg-gray-900 text-white hover:bg-gray-800 !text-white font-medium flex-1 sm:flex-none"
+              className={`${isLightMode 
+                ? 'bg-slate-800 text-white hover:bg-slate-900' 
+                : 'bg-white text-gray-900 hover:bg-white/90'
+              } font-medium flex-1 sm:flex-none`}
             >
               {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               <Heart className="h-4 w-4 mr-2" />
@@ -125,6 +128,6 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }

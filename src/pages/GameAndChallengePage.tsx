@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-
-const DEBUG = false;
+import React, { useState, useEffect } from 'react';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
@@ -42,8 +40,7 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Lock,
-  RefreshCw
+  Lock
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ProgressAvatar } from '@/components/analytics/ui/ProgressAvatar';
@@ -63,7 +60,6 @@ import { useChallenge } from '@/contexts/ChallengeContext';
 import { useAuth } from '@/contexts/auth';
 import { cn } from '@/lib/utils';
 import { ChatroomManager } from '@/components/analytics/ChatroomManager';
-import { getDisplayName } from '@/lib/displayName';
 import { SmartTeamUpPrompt } from '@/components/social/SmartTeamUpPrompt';
 import { useRecoveryLeaderboard } from '@/hooks/useRecoveryLeaderboard';
 import { useGameChallengeLeaderboard } from '@/hooks/useGameChallengeLeaderboard';
@@ -98,7 +94,6 @@ function GameAndChallengeContent() {
   const { challenges, microChallenges, nudgeFriend } = useChallenge();
   const { setIsChatModalOpen } = useChatModal();
   const { user: currentUser } = useAuth();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
@@ -124,10 +119,10 @@ function GameAndChallengeContent() {
   // Recovery leaderboard hook
   const { leaderboard: recoveryLeaderboard, loading: recoveryLoading } = useRecoveryLeaderboard();
   
-  // Real challenge leaderboards - only fetch for active tab
-  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading, hasError: nutritionError, isTimeout: nutritionTimeout, refresh: refreshNutrition } = useGameChallengeLeaderboard('nutrition', challengeMode);
-  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading, hasError: exerciseError, isTimeout: exerciseTimeout, refresh: refreshExercise } = useGameChallengeLeaderboard('exercise', challengeMode);
-  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading, hasError: recoveryError, isTimeout: recoveryTimeout, refresh: refreshRecovery } = useGameChallengeLeaderboard('recovery', challengeMode);
+  // Real challenge leaderboards
+  const { leaderboard: nutritionLeaderboard, isLoading: nutritionLoading } = useGameChallengeLeaderboard('nutrition');
+  const { leaderboard: exerciseLeaderboard, isLoading: exerciseLoading } = useGameChallengeLeaderboard('exercise');
+  const { leaderboard: recoveryRealLeaderboard, isLoading: recoveryRealLoading } = useGameChallengeLeaderboard('recovery');
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -137,43 +132,33 @@ function GameAndChallengeContent() {
     setIsChatModalOpen(isChatroomManagerOpen);
   }, [isChatroomManagerOpen, setIsChatModalOpen]);
 
-  // Get real leaderboard data based on challenge mode - safe array access
+  // Get real leaderboard data based on challenge mode
   let currentLeaderboard;
   let isLoading = false;
   let isEmpty = false;
-  let hasError = false;
-  let isTimeout = false;
   
   switch (challengeMode) {
     case 'nutrition':
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
-      hasError = nutritionError;
-      isTimeout = nutritionTimeout;
       break;
     case 'exercise':
-      currentLeaderboard = exerciseLeaderboard.currentUserGroup || [];
+      currentLeaderboard = exerciseLeaderboard.currentUserGroup;
       isLoading = exerciseLoading;
       isEmpty = exerciseLeaderboard.isEmpty;
-      hasError = exerciseError;
-      isTimeout = exerciseTimeout;
       break;
     case 'recovery':
-      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup || [];
+      currentLeaderboard = recoveryRealLeaderboard.currentUserGroup;
       isLoading = recoveryRealLoading;
       isEmpty = recoveryRealLeaderboard.isEmpty;
-      hasError = recoveryError;
-      isTimeout = recoveryTimeout;
       break;
     case 'combined':
     default:
       // Use nutrition leaderboard as default for combined view
-      currentLeaderboard = nutritionLeaderboard.currentUserGroup || [];
+      currentLeaderboard = nutritionLeaderboard.currentUserGroup;
       isLoading = nutritionLoading;
       isEmpty = nutritionLeaderboard.isEmpty;
-      hasError = nutritionError;
-      isTimeout = nutritionTimeout;
       break;
   }
   
@@ -181,35 +166,13 @@ function GameAndChallengeContent() {
   const optimizedFriends = optimizeForMobile([]);
   const optimizedHallOfFame = optimizeForMobile([]);
 
-  // Manual refresh for leaderboard
-  const handleManualRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      // Refresh the appropriate leaderboard based on current mode
-      switch (challengeMode) {
-        case 'nutrition':
-          await refreshNutrition();
-          break;
-        case 'exercise':
-          await refreshExercise();
-          break;
-        case 'recovery':
-          await refreshRecovery();
-          break;
-        case 'combined':
-        default:
-          await refreshNutrition();
-          break;
-      }
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [challengeMode, refreshNutrition, refreshExercise, refreshRecovery]);
-
   // Mobile pull-to-refresh
   const handleRefresh = async () => {
     if (!isMobile) return;
-    await handleManualRefresh();
+    setIsRefreshing(true);
+    // Simulate refresh
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -279,14 +242,11 @@ function GameAndChallengeContent() {
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
               <div className="flex items-center justify-between">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="rounded-full"
-                  onClick={() => navigate('/explore')}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
+                <Link to="/explore">
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </Link>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
                 <div className="w-10"></div> {/* Spacer for balance */}
               </div>
@@ -428,18 +388,8 @@ function GameAndChallengeContent() {
                        <SelectItem value="improvement">Most Improved</SelectItem>
                      </>
                    )}
-                  </SelectContent>
+                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-                {!isMobile && "Refresh"}
-              </Button>
             </div>
           )}
         </div>
@@ -617,20 +567,14 @@ function GameAndChallengeContent() {
                                 showStats={false}
                                 isCurrentUser={user.isCurrentUser}
                                 name={user.isCurrentUser ? 
-                                  getDisplayName({
-                                    first_name: currentUser?.first_name,
-                                    email: currentUser?.email
-                                  }) : 
-                                  getDisplayName({
-                                    first_name: user.first_name,
-                                    email: user.email
-                                  })}
+                                  (currentUser?.first_name && currentUser?.last_name ? 
+                                    `${currentUser.first_name} ${currentUser.last_name}` : 
+                                    currentUser?.first_name || currentUser?.name) : 
+                                  (user.first_name && user.last_name ? 
+                                    `${user.first_name} ${user.last_name}` : 
+                                    user.first_name || user.name)}
                                 email={user.isCurrentUser ? currentUser?.email : user.email}
                                 avatar_url={user.isCurrentUser ? currentUser?.avatar_url : user.avatar_url}
-                                user={{
-                                  first_name: user.isCurrentUser ? currentUser?.first_name : user.first_name,
-                                  username: undefined // Not available in current type
-                                }}
                               />
                           
                              {!isMobile && (
@@ -772,49 +716,8 @@ function GameAndChallengeContent() {
                     </div>
                   </CardHeader>
                    <CardContent className="p-3">
-                      {isTimeout ? (
-                        <div className="text-center py-8">
-                          <div className="text-4xl mb-4">⏰</div>
-                          <h3 className="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">
-                            Request timed out
-                          </h3>
-                          <p className="text-muted-foreground text-sm mb-4">
-                            The leaderboard is taking too long to load.
-                          </p>
-                          <Button 
-                            onClick={handleManualRefresh}
-                            className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs"
-                            size="sm"
-                            disabled={isRefreshing}
-                          >
-                            <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
-                            Try Again
-                          </Button>
-                        </div>
-                      ) : hasError ? (
-                        <div className="text-center py-8">
-                          <div className="text-4xl mb-4">⚠️</div>
-                          <h3 className="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">
-                            Could not load leaderboard
-                          </h3>
-                          <p className="text-muted-foreground text-sm mb-4">
-                            Something went wrong. Please refresh to try again.
-                          </p>
-                          <Button 
-                            onClick={handleManualRefresh}
-                            className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white text-xs"
-                            size="sm"
-                            disabled={isRefreshing}
-                          >
-                            <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
-                            Refresh
-                          </Button>
-                        </div>
-                      ) : isLoading ? (
+                      {isLoading ? (
                         <div className="space-y-3">
-                          <div className="text-center py-2">
-                            <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
-                          </div>
                           {[1, 2, 3].map((i) => (
                             <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-lg border">
                               <div className="w-8 h-8 bg-teal-200 dark:bg-teal-800 rounded-full"></div>
@@ -832,10 +735,10 @@ function GameAndChallengeContent() {
                             {challengeMode === 'nutrition' ? '🥗' : challengeMode === 'exercise' ? '💪' : '🧘‍♂️'}
                           </div>
                           <h3 className="text-lg font-semibold mb-2 text-teal-700 dark:text-teal-300">
-                            No users to show in this leaderboard yet
+                            {challengeMode === 'recovery' ? "You're the first challenger! Time to inspire others 🔥" : "No challengers yet! Time to be the first to rise 💪"}
                           </h3>
                           <p className="text-muted-foreground text-sm mb-4">
-                            Start your {challengeMode} journey today to be the first!
+                            Start your {challengeMode} journey today!
                           </p>
                           <Button 
                             onClick={() => {
@@ -850,17 +753,10 @@ function GameAndChallengeContent() {
                           </Button>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {(currentLeaderboard || []).map((user, index) => {
-                            // Guard against invalid users - skip rendering if user is malformed
-                            if (!user?.id) {
-                              if (DEBUG) console.warn('Skipping render for user with missing ID:', user);
-                              return null;
-                            }
-                            
-                            return (
-                          <div
-                            key={user.id}
+                       <div className="space-y-2">
+                         {currentLeaderboard.map((user, index) => (
+                         <div
+                           key={user.id}
                             className={cn(
                               "flex items-center justify-between p-3 rounded-lg transition-all duration-300 border cursor-pointer min-h-[60px]",
                               user.isCurrentUser 
@@ -920,11 +816,10 @@ function GameAndChallengeContent() {
                                  </>
                                )}
                              </div>
-                            </div>
-                          </div>
-                            );
-                           })}
-                        </div>
+                           </div>
+                         </div>
+                          ))}
+                       </div>
                      )}
                   </CardContent>
                 </Card>

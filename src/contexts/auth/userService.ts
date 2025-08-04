@@ -5,8 +5,6 @@ import { getAutoFilledTrackers } from '@/lib/trackerUtils';
 
 export const loadUserProfile = async (userId: string) => {
   try {
-    console.log('[DEBUG] UserService: Loading profile for user:', userId);
-    
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -14,19 +12,13 @@ export const loadUserProfile = async (userId: string) => {
       .maybeSingle();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('[ERROR] UserService: Profile load failed:', error);
+      console.error('Error loading user profile:', error);
       return null;
     }
 
-    console.log('[DEBUG] UserService: Profile loaded:', {
-      user_id: userId,
-      first_name: data?.first_name,
-      profile_exists: !!data
-    });
-
     return data;
   } catch (error) {
-    console.error('[ERROR] UserService: Exception in loadUserProfile:', error);
+    console.error('Error in loadUserProfile:', error);
     return null;
   }
 };
@@ -84,20 +76,11 @@ export const createExtendedUser = async (supabaseUser: User): Promise<ExtendedUs
   const userTrackers = profile?.selected_trackers || ['calories', 'protein', 'supplements'];
   const autoFilledTrackers = getAutoFilledTrackers(userTrackers);
 
-  // ✅ Enhanced logging for profile to user context mapping
-  console.log('[DEBUG] UserService: Creating extended user with profile mapping:', {
-    supabase_user_id: supabaseUser.id,
-    profile_first_name: profile?.first_name,
-    user_metadata_first_name: supabaseUser.user_metadata?.first_name,
-    final_first_name_will_be: profile?.first_name || supabaseUser.user_metadata?.first_name || '',
-    profile_exists: !!profile
-  });
-
   return {
     ...supabaseUser,
-    name: supabaseUser.user_metadata?.first_name || supabaseUser.email?.split('@')[0] || '',
-    // ✅ Ensure correct mapping: prioritize profile.first_name over user_metadata
-    first_name: profile?.first_name || supabaseUser.user_metadata?.first_name || '',
+    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
+    first_name: profile?.first_name || '',
+    last_name: profile?.last_name || '',
     avatar_url: profile?.avatar_url || undefined,
     caricature_generation_count: profile?.caricature_generation_count || 0,
     caricature_history: profile?.caricature_history || [],

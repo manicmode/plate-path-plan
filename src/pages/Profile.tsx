@@ -8,7 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { StreakBadgesSection } from '@/components/analytics/StreakBadgesSection';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLocation } from 'react-router-dom';
-import { getDisplayName } from '@/lib/displayName';
+import { toast } from 'sonner';
 
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
@@ -57,22 +57,9 @@ export default function Profile() {
 }
 
 const ProfileContent = () => {
-  const { user, updateProfile, updateSelectedTrackers, logout, refreshUser } = useAuth();
+  const { user, updateProfile, updateSelectedTrackers, logout } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
-  
-  // ✅ On Profile.tsx page load, print to console what displayName is being loaded
-  useEffect(() => {
-    if (user) {
-      const currentDisplayName = getDisplayName(user);
-      console.log('[DEBUG] Profile Page Load - User loaded with displayName:', {
-        displayName: currentDisplayName,
-        user_first_name: user.first_name,
-        user_email: user.email,
-        user_id: user.id
-      });
-    }
-  }, [user]);
   
   // Use the scroll-to-top hook
   useScrollToTop();
@@ -87,6 +74,7 @@ const ProfileContent = () => {
   
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
     email: user?.email || '',
     targetCalories: user?.targetCalories || 2000,
     targetProtein: user?.targetProtein || 150,
@@ -141,124 +129,62 @@ const ProfileContent = () => {
     }
   }, [location]);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [profileName, setProfileName] = useState(user?.first_name || '');
-
-  // Update profileName when user changes
-  useEffect(() => {
-    setProfileName(user?.first_name || '');
-  }, [user?.first_name]);
-
   const handleSave = async () => {
-    if (!user?.id) {
-      console.error('❌ No user ID available');
-      toast({
-        title: "Error",
-        description: "Unable to save profile: Not authenticated",
-        variant: "destructive"
-      });
-      return;
-    }
-    setIsLoading(true);
-
-    try {
-      console.log('💾 [SAVE DEBUG] Starting profile save:', {
-        userId: user.id,
-        formDataFirstName: formData.first_name,
-        trimmedName: formData.first_name.trim() || null,
-        userEmail: user.email
-      });
-
-      // Update the user_profiles table directly
-      const { data: updateResult, error: updateError } = await supabase
-        .from('user_profiles')
-        .update({
-          first_name: formData.first_name.trim() || null,
-          last_name: null, // Add last_name support if needed later
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .select();
-
-      console.log('💾 [SAVE DEBUG] Supabase update response:', {
-        updateResult,
-        updateError,
-        hasError: !!updateError,
-        resultLength: updateResult?.length || 0
-      });
-
-      if (updateError) {
-        console.error('❌ [SAVE DEBUG] Profile update failed:', updateError);
-        toast({
-          title: "Error",
-          description: `Failed to save profile: ${updateError.message}`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (!updateResult || updateResult.length === 0) {
-        console.warn('⚠️ [SAVE DEBUG] No rows were updated - profile may not exist');
-        // Try to insert if update didn't affect any rows
-        const { data: insertResult, error: insertError } = await supabase
+    console.log('Saving profile with trackers:', formData.selectedTrackers);
+    
+    // Update profile in Supabase
+    if (user?.id) {
+      try {
+        const { error } = await supabase
           .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            first_name: formData.first_name.trim() || null,
-            created_at: new Date().toISOString(),
+          .update({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
             updated_at: new Date().toISOString()
           })
-          .select();
-
-        console.log('💾 [SAVE DEBUG] Insert fallback response:', {
-          insertResult,
-          insertError
-        });
-
-        if (insertError) {
-          console.error('❌ [SAVE DEBUG] Profile insert failed:', insertError);
+          .eq('user_id', user.id);
+        
+        if (error) {
+          console.error('Error updating profile:', error);
           toast({
             title: "Error",
-            description: `Failed to create profile: ${insertError.message}`,
+            description: "Failed to save profile changes.",
             variant: "destructive"
           });
           return;
         }
-      }
-
-      console.log('✅ [SAVE DEBUG] Profile save successful, starting refresh...');
-
-      // Small delay to ensure DB commit
-      await new Promise((res) => setTimeout(res, 500));
-      
-      console.log('🔄 [SAVE DEBUG] Calling refreshUser...');
-      // Force refresh user context
-      await refreshUser();
-      
-      setTimeout(() => {
-        console.log('🧠 [SAVE DEBUG] User context after refresh:', {
-          user_id: user?.id,
-          first_name: user?.first_name,
-          email: user?.email,
-          displayName: getDisplayName(user)
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error", 
+          description: "Failed to save profile changes.",
+          variant: "destructive"
         });
-      }, 1000);
-
-      toast({
-        title: "Success",
-        description: "Profile updated successfully!"
-      });
-      setIsEditing(false);
-    } catch (error) {
-      console.error('❌ [SAVE DEBUG] Unexpected error saving profile:', error);
-      toast({
-        title: "Error", 
-        description: "Unexpected error saving profile",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+        return;
+      }
     }
+    
+    updateProfile({
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      targetCalories: Number(formData.targetCalories),
+      targetProtein: Number(formData.targetProtein),
+      targetCarbs: Number(formData.targetCarbs),
+      targetFat: Number(formData.targetFat),
+      targetHydration: Number(formData.targetHydration),
+      targetSupplements: Number(formData.targetSupplements),
+      allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
+      dietaryGoals: formData.dietaryGoals,
+    });
+    
+    // Update selected trackers - this will trigger localStorage and user state updates
+    await updateSelectedTrackers(formData.selectedTrackers);
+    
+    setIsEditing(false);
+    toast({
+      title: "Profile Updated!",
+      description: "Changes will appear on the home page.",
+    });
   };
 
   const handleCancel = () => {
@@ -267,6 +193,7 @@ const ProfileContent = () => {
     setUserSelectedTrackers(originalTrackers);
     setFormData({
       first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
       email: user?.email || '',
       targetCalories: user?.targetCalories || 2000,
       targetProtein: user?.targetProtein || 150,
@@ -358,14 +285,6 @@ const ProfileContent = () => {
     setShowOnboarding(true);
   };
 
-  // Debug useEffect to verify context loading
-  useEffect(() => {
-    console.log('🧪 -------- PROFILE DEBUG --------');
-    console.log('🧪 Context user:', user);
-    console.log('🧪 Display name (computed):', getDisplayName(user));
-    console.log('🧪 --------------------------------');
-  }, [user]);
-
   if (showOnboarding || showHealthSettings) {
     return (
       <OnboardingScreen 
@@ -392,7 +311,6 @@ const ProfileContent = () => {
         isEditing={isEditing}
         onFormDataChange={updateFormData}
         onEditToggle={() => setIsEditing(!isEditing)}
-        onSave={handleSave}
       />
 
       {/* Onboarding Completion Card - Show if onboarding not completed */}

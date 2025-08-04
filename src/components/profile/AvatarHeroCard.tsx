@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { CaricatureModal } from './CaricatureModal';
 import { AvatarCarousel } from './AvatarCarousel';
 import { cn } from '@/lib/utils';
-import { getDisplayName } from '@/lib/displayName';
 
 interface AvatarHeroCardProps {
   user: {
@@ -15,6 +14,7 @@ interface AvatarHeroCardProps {
     user_id?: string;
     name?: string;
     first_name?: string;
+    last_name?: string;
     email?: string;
     avatar_url?: string;
     caricature_generation_count?: number;
@@ -65,10 +65,9 @@ export const AvatarHeroCard = ({ user }: AvatarHeroCardProps) => {
 
   const cooldown = calculateCooldown();
 
-  const displayName = getDisplayName({
-    first_name: user?.first_name,
-    email: user?.email
-  });
+  const displayName = user?.first_name && user?.last_name 
+    ? `${user.first_name} ${user.last_name}`
+    : user?.name || user?.email || 'User';
 
   const handleAvatarUpdate = (url: string) => {
     setCurrentAvatarUrl(url);

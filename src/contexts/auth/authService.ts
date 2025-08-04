@@ -167,7 +167,7 @@ export const registerUser = async (email: string, password: string, name?: strin
       email,
       password,
       options: {
-        data: name ? { first_name: name } : undefined,
+        data: name ? { name } : undefined,
         emailRedirectTo,
       },
     });

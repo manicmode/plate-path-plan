@@ -1,6 +1,5 @@
 
 import React, { useState } from "react";
-import { getDisplayName } from '@/lib/displayName';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +48,7 @@ interface UserStatsModalProps {
     selected_avatar_variant?: number;
     name?: string; // Real user name from profile
     first_name?: string;
+    last_name?: string;
     email?: string; // Fallback for name
   };
 }
@@ -61,29 +61,14 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(Math.floor(Math.random() * 50) + 10);
   const [challengeSent, setChallengeSent] = useState(false);
-  const [dataNotFound, setDataNotFound] = useState(false);
 
-  // Check if user data is valid
-  React.useEffect(() => {
-    if (isOpen && (!user || !user?.id)) {
-      setDataNotFound(true);
-      // Auto-close modal after 3 seconds if no data
-      setTimeout(() => {
-        onClose();
-        setDataNotFound(false);
-      }, 3000);
-    } else {
-      setDataNotFound(false);
-    }
-  }, [isOpen, user, onClose]);
-
-  // Calculate real stats based on user data - with safe fallbacks
+  // Calculate real stats based on user data
   const calculateStats = () => {
-    const baseScore = user?.score || 0;
+    const baseScore = user.score || 0;
     return {
       lifetimeBestScore: Math.max(baseScore, baseScore * 1.2),
       totalChallengesCompleted: Math.floor(baseScore / 10) + 5,
-      personalBestStreak: Math.max(user?.streak || 0, (user?.streak || 0) + 3),
+      personalBestStreak: Math.max(user.streak, user.streak + 3),
       favoriteChallengeCategory: "Nutrition Tracking",
       joinedDate: "Member since 2024",
       totalActiveHours: Math.floor(baseScore / 5) + 20,
@@ -175,34 +160,33 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
   };
 
   const getRankIcon = () => {
-    if (user?.rank === 1) return <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 animate-pulse" />;
-    if (user?.rank === 2) return <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />;
-    if (user?.rank === 3) return <Award className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />;
+    if (user.rank === 1) return <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 animate-pulse" />;
+    if (user.rank === 2) return <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />;
+    if (user.rank === 3) return <Award className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />;
     return <Star className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />;
   };
 
   const getStreakColor = () => {
-    const streak = user?.streak || 0;
-    if (streak >= 30) return 'from-red-500 to-orange-600';
-    if (streak >= 14) return 'from-orange-500 to-yellow-600';
-    if (streak >= 7) return 'from-yellow-500 to-green-600';
+    if (user.streak >= 30) return 'from-red-500 to-orange-600';
+    if (user.streak >= 14) return 'from-orange-500 to-yellow-600';
+    if (user.streak >= 7) return 'from-yellow-500 to-green-600';
     return 'from-blue-500 to-purple-600';
   };
   
-  // Get user's caricature avatar - with safe access
+  // Get user's caricature avatar
   const getUserCaricatureAvatar = () => {
-    if (user?.avatar_url) return user.avatar_url;
+    if (user.avatar_url) return user.avatar_url;
     
     // Check for variant avatars
-    if (user?.selected_avatar_variant) {
+    if (user.selected_avatar_variant) {
       const variantKey = `avatar_variant_${user.selected_avatar_variant}`;
-      if (user?.[variantKey as keyof typeof user]) {
+      if (user[variantKey as keyof typeof user]) {
         return user[variantKey as keyof typeof user] as string;
       }
     }
     
     // Check caricature history for latest
-    if (user?.caricature_history && user.caricature_history.length > 0) {
+    if (user.caricature_history && user.caricature_history.length > 0) {
       return user.caricature_history[user.caricature_history.length - 1];
     }
     
@@ -211,9 +195,9 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
 
   const caricatureAvatar = getUserCaricatureAvatar();
 
-  // Enhanced confetti effect for top performers - with safety
+  // Enhanced confetti effect for top performers
   React.useEffect(() => {
-    if (isOpen && user?.rank && user.rank <= 3) {
+    if (isOpen && user.rank <= 3) {
       setTimeout(() => {
         const colors = user.rank === 1 ? ['#FFD700', '#FFA500', '#FFFF00'] : 
                       user.rank === 2 ? ['#C0C0C0', '#E5E5E5', '#B8B8B8'] : 
@@ -246,25 +230,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
         }
       }, 400);
     }
-  }, [isOpen, user?.rank]);
-
-  // Show data not found message if user is invalid
-  if (dataNotFound) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-md p-6 text-center">
-          <div className="text-4xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold mb-2">User data not found</h2>
-          <p className="text-muted-foreground mb-4">
-            This user's profile information could not be loaded.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Modal will close automatically...
-          </p>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  }, [isOpen, user.rank]);
 
   return (
     <TooltipProvider>
@@ -302,14 +268,14 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   <div className="w-64 h-64 sm:w-80 sm:h-80 relative">
                     <img 
                       src={caricatureAvatar} 
-                      alt={`${user?.nickname || 'User'}'s avatar`}
+                      alt={`${user.nickname}'s avatar`}
                       className="w-full h-full rounded-full object-cover border-4 border-primary/50 shadow-2xl shadow-primary/30 hover:scale-105 transition-all duration-300"
                     />
                     
                     {/* Enhanced glow effect behind caricature */}
                     <div className={cn(
                       "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
-                      user?.rank === 1 ? "bg-yellow-400" : user?.rank === 2 ? "bg-gray-400" : user?.rank === 3 ? "bg-amber-600" : "bg-primary"
+                      user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
                     )} style={{ zIndex: -1 }} />
                     
                     {/* Progress ring around caricature */}
@@ -330,7 +296,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                         stroke="url(#progressGradient)"
                         strokeWidth="2"
                         fill="none"
-                        strokeDasharray={`${((user?.weeklyProgress || 0) / 100) * 302} 302`}
+                        strokeDasharray={`${(user.weeklyProgress / 100) * 302} 302`}
                         strokeLinecap="round"
                         className="transition-all duration-1000 ease-out"
                       />
@@ -338,7 +304,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   </div>
                   
                   {/* Online indicator */}
-                  {user?.isOnline && (
+                  {user.isOnline && (
                     <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-background animate-ping" />
                   )}
                 </div>
@@ -364,7 +330,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                         stroke="url(#progressGradient)"
                         strokeWidth="4"
                         fill="none"
-                        strokeDasharray={`${((user?.weeklyProgress || 0) / 100) * 264} 264`}
+                        strokeDasharray={`${(user.weeklyProgress / 100) * 264} 264`}
                         strokeLinecap="round"
                         className="transition-all duration-1000 ease-out"
                       />
@@ -384,12 +350,12 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                         "hover:animate-bounce transition-all duration-300 cursor-pointer",
                         "drop-shadow-2xl filter"
                       )}>
-                        {user?.avatar || '👤'}
+                        {user.avatar}
                         
                         {/* Dramatic glow effect behind avatar */}
                         <div className={cn(
                           "absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse",
-                          user?.rank === 1 ? "bg-yellow-400" : user?.rank === 2 ? "bg-gray-400" : user?.rank === 3 ? "bg-amber-600" : "bg-primary"
+                          user.rank === 1 ? "bg-yellow-400" : user.rank === 2 ? "bg-gray-400" : user.rank === 3 ? "bg-amber-600" : "bg-primary"
                         )} style={{ zIndex: -1 }} />
                         {/* Enhanced sparkle particles */}
                         <div className="absolute -inset-3 opacity-0 hover:opacity-100 transition-opacity duration-300">
@@ -403,7 +369,7 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
                   </div>
                   
                   {/* Compact online indicator */}
-                  {user?.isOnline && (
+                  {user.isOnline && (
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-ping" />
                   )}
                 </div>
@@ -412,7 +378,20 @@ export const UserStatsModal: React.FC<UserStatsModalProps> = ({
               {/* DRAMATIC User Info Section - ENLARGED NAME */}
               <div className="w-full text-center">
                 <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent drop-shadow-2xl shadow-white/50 filter [text-shadow:_0_2px_10px_rgb(255_255_255_/_30%)] mb-2">
-                  {getDisplayName(user)}
+                  {(() => {
+                    // Priority 1: first_name + last_name (properly trimmed)
+                    if (user.first_name && user.last_name) {
+                      return `${user.first_name.trim()} ${user.last_name.trim()}`;
+                    }
+                    // Priority 2: first_name only
+                    if (user.first_name) return user.first_name.trim();
+                    // Priority 3: nickname
+                    if (user.nickname) return user.nickname.trim();
+                    // Priority 4: email prefix
+                    if (user.email) return user.email.split('@')[0];
+                    // Fallback
+                    return 'User';
+                  })()}
                 </h2>
                 
                 {/* Optional: Top goal emoji or title could go here */}

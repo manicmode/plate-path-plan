@@ -1,5 +1,4 @@
 
-import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getDisplayName } from '@/lib/displayName';
 
 interface PersonalInformationProps {
   formData: {
     first_name: string;
+    last_name: string;
     email: string;
   };
   user: {
@@ -19,6 +18,7 @@ interface PersonalInformationProps {
     user_id?: string;
     name?: string;
     first_name?: string;
+    last_name?: string;
     email?: string;
     dietaryGoals?: string[];
     avatar_url?: string;
@@ -37,7 +37,6 @@ interface PersonalInformationProps {
   isEditing: boolean;
   onFormDataChange: (updates: Partial<any>) => void;
   onEditToggle: () => void;
-  onSave?: () => void;
 }
 
 const dietaryGoalOptions = [
@@ -48,14 +47,12 @@ const dietaryGoalOptions = [
   { id: 'general_health', label: 'General Health' },
 ];
 
-export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle, onSave }: PersonalInformationProps) => {
+export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
   
-  // Phase 2 & 3: Use current user data first, then fallback to form data for real-time updates
-  const displayName = getDisplayName({
-    first_name: user?.first_name || formData.first_name,
-    email: user?.email
-  });
+  const displayName = formData.first_name && formData.last_name 
+    ? `${formData.first_name} ${formData.last_name}`
+    : user?.name || user?.email || 'User';
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '100ms' }}>
@@ -115,26 +112,27 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
       {/* Editable Fields */}
       {isEditing && (
         <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <div className="space-y-2">
-            <Label htmlFor="first_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Profile Name</Label>
-            <Input
-              id="first_name"
-              value={formData.first_name}
-              onChange={(e) => onFormDataChange({ first_name: e.target.value })}
-              className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
-              placeholder="Enter your profile name"
-            />
-            {onSave && (
-              <div className="flex justify-center mt-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={onSave}
-                >
-                  Save
-                </Button>
-              </div>
-            )}
+          <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-4'}`}>
+            <div className="space-y-2">
+              <Label htmlFor="first_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>First Name</Label>
+              <Input
+                id="first_name"
+                value={formData.first_name}
+                onChange={(e) => onFormDataChange({ first_name: e.target.value })}
+                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+                placeholder="Enter first name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="last_name" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Last Name</Label>
+              <Input
+                id="last_name"
+                value={formData.last_name}
+                onChange={(e) => onFormDataChange({ last_name: e.target.value })}
+                className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
+                placeholder="Enter last name"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="email" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Email</Label>

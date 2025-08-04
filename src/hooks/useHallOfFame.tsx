@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getDisplayName } from '@/lib/displayName';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -130,9 +129,9 @@ export const useHallOfFame = (championUserId?: string, year: number = new Date()
 
       const formattedTributes: Tribute[] = tributesData?.map(tribute => {
         const profile = profiles?.find(p => p.user_id === tribute.user_id);
-        const authorName = profile ? getDisplayName({
-          first_name: profile.first_name
-        }) : 'Anonymous';
+        const authorName = profile ? 
+          `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Anonymous' : 
+          'Anonymous';
         
         // Parse reactions safely
         let reactions: { emoji: string; count: number; userReacted: boolean }[] = [];

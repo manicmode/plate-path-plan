@@ -1,9 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-import { getDisplayName } from '@/lib/displayName';
-
-const DEBUG = false;
 
 export interface LeaderboardUser {
   id: string;
@@ -36,7 +33,7 @@ export interface GroupedLeaderboard {
   isEmpty: boolean;
 }
 
-export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' | 'recovery', activeTab?: string) => {
+export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' | 'recovery') => {
   const [leaderboard, setLeaderboard] = useState<GroupedLeaderboard>({
     currentUserGroup: [],
     currentUserRank: null,
@@ -44,9 +41,6 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     isEmpty: true
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [isTimeout, setIsTimeout] = useState(false);
-  const refreshCounter = useRef(0);
   const { user } = useAuth();
 
   const calculateUserGroup = (userId: string, allUsers: any[]): number => {
@@ -62,6 +56,23 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return Math.floor(userIndex / 20) + 1;
   };
 
+  const getDisplayName = (userProfile: any, fallbackEmoji = '🌟'): string => {
+    // Try first_name + last_name combination
+    const fullName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
+    if (fullName) return fullName;
+    
+    // Try first_name only if available
+    if (userProfile.first_name && userProfile.first_name.trim()) return userProfile.first_name.trim();
+    
+    // Fallback to email prefix if available
+    if (userProfile.email) {
+      const emailPrefix = userProfile.email.split('@')[0];
+      if (emailPrefix) return emailPrefix;
+    }
+    
+    // Final fallback
+    return 'User';
+  };
 
   const fetchNutritionLeaderboard = async (): Promise<LeaderboardUser[]> => {
     // Get all users with their profiles and nutrition data - include email from auth.users
@@ -114,15 +125,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
-      // Phase 5: Enhanced display name for leaderboard consistency
-      const displayName = getDisplayName({
-        first_name: userProfile.first_name,
-        email: 'email' in userProfile ? userProfile.email : undefined
-      });
-
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: displayName,
+        nickname: getDisplayName(userProfile, '🌟'),
         avatar: '🌟', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: userProfile.current_nutrition_streak || 0,
@@ -219,15 +224,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
-      // Phase 5: Enhanced display name for exercise leaderboard consistency
-      const displayName = getDisplayName({
-        first_name: userProfile.first_name,
-        email: 'email' in userProfile ? userProfile.email : undefined
-      });
-
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: displayName,
+        nickname: getDisplayName(userProfile, '💪'),
         avatar: '💪', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -328,15 +327,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
 
       const groupId = calculateUserGroup(userProfile.user_id, usersWithEmails);
 
-      // Phase 5: Enhanced display name for recovery leaderboard consistency  
-      const displayName = getDisplayName({
-        first_name: userProfile.first_name,
-        email: 'email' in userProfile ? userProfile.email : undefined
-      });
-
       leaderboardUsers.push({
         id: userProfile.user_id,
-        nickname: displayName,
+        nickname: getDisplayName(userProfile, '🧘'),
         avatar: '🧘', // This will be overridden by the avatar_url
         score: Math.round(averageScore),
         streak: currentStreak,
@@ -366,27 +359,9 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
     return leaderboardUsers;
   };
 
-  const fetchLeaderboard = useCallback(async () => {
-    // Only fetch if this category matches the active tab
-    if (activeTab && activeTab !== category && activeTab !== 'combined') {
-      return;
-    }
-
-    let timeoutId: NodeJS.Timeout;
-    const abortController = new AbortController();
-    
+  const fetchLeaderboard = async () => {
     try {
       setIsLoading(true);
-      setHasError(false);
-      setIsTimeout(false);
-      
-      // Set 10-second timeout
-      timeoutId = setTimeout(() => {
-        abortController.abort();
-        setIsTimeout(true);
-        setIsLoading(false);
-        console.warn(`Leaderboard fetch timeout for category: ${category}`);
-      }, 10000);
       
       let allUsers: LeaderboardUser[] = [];
       
@@ -404,8 +379,6 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
           allUsers = [];
       }
 
-      clearTimeout(timeoutId);
-
       if (!user) {
         setLeaderboard({
           currentUserGroup: [],
@@ -416,21 +389,8 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         return;
       }
 
-      // Filter out invalid users and log warnings
-      const validUsers = (allUsers || []).filter(user => {
-        if (!user?.id) {
-          console.warn('Skipping user due to missing ID:', user);
-          return false;
-        }
-        if (!user.nickname && !user.first_name && !user.email) {
-          console.warn('Skipping user due to missing name data:', user);
-          return false;
-        }
-        return true;
-      });
-
       // Sort all users by score
-      const sortedUsers = validUsers.sort((a, b) => b.score - a.score);
+      const sortedUsers = allUsers.sort((a, b) => b.score - a.score);
       
       // Assign global ranks
       sortedUsers.forEach((user, index) => {
@@ -450,16 +410,14 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
       const currentUserRank = currentUser?.rank || null;
 
       setLeaderboard({
-        currentUserGroup: currentUserGroup || [],
+        currentUserGroup,
         currentUserRank,
         totalUsers: sortedUsers.length,
         isEmpty: sortedUsers.length === 0
       });
 
     } catch (error) {
-      clearTimeout(timeoutId!);
       console.error('Error fetching leaderboard:', error);
-      setHasError(true);
       setLeaderboard({
         currentUserGroup: [],
         currentUserRank: null,
@@ -467,30 +425,17 @@ export const useGameChallengeLeaderboard = (category: 'nutrition' | 'exercise' |
         isEmpty: true
       });
     } finally {
-      if (!isTimeout) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
-  }, [category, user?.id, activeTab]);
-
-  // Force refresh function that invalidates cache
-  const forceRefresh = useCallback(async () => {
-    refreshCounter.current += 1;
-    await fetchLeaderboard();
-  }, [fetchLeaderboard]);
+  };
 
   useEffect(() => {
-    // Only fetch when the tab is active or when it's combined mode
-    if (!activeTab || activeTab === category || activeTab === 'combined') {
-      fetchLeaderboard();
-    }
-  }, [fetchLeaderboard, activeTab]);
+    fetchLeaderboard();
+  }, [category, user?.id]);
 
   return {
     leaderboard,
     isLoading,
-    hasError,
-    isTimeout,
-    refresh: forceRefresh
+    refresh: fetchLeaderboard
   };
 };

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { getDisplayName } from '@/lib/displayName';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 
@@ -469,11 +468,7 @@ export const useRecoveryLeaderboard = () => {
       // Transform the data into the expected format
       const leaderboardData: RecoveryLeaderboardUser[] = recoveryMetrics.map((metric, index) => {
         const profile = profiles.find(p => p.user_id === metric.user_id);
-        // Phase 5: Enhanced display name for recovery leaderboard consistency
-        const displayName = profile ? getDisplayName({
-          first_name: profile.first_name,
-          email: undefined
-        }) : 'Anonymous User';
+        const displayName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Anonymous User';
         
         // Determine dominant recovery type
         const types = [

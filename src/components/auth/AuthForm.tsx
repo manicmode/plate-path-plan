@@ -16,7 +16,6 @@ import { validateEmail as validateEmailSecure, validatePassword, sanitizeText } 
 import { validateFormUuids } from '@/lib/uuidValidationMiddleware';
 import { validateNotificationData } from '@/lib/notificationValidation';
 import { supabase } from '@/integrations/supabase/client';
-import { cleanupAuthState } from '@/lib/authUtils';
 
 const AuthForm = () => {
   const { login, register, resendEmailConfirmation, user } = useAuth();
@@ -54,37 +53,6 @@ const AuthForm = () => {
       console.log('Form cleared after sign out');
     }
   }, [user]);
-
-  // Debug tab switching
-  useEffect(() => {
-    console.log('Current tab changed to:', currentTab);
-  }, [currentTab]);
-
-  // Debug forgot password dialog state
-  useEffect(() => {
-    console.log('Dialog open:', showForgotPassword);
-  }, [showForgotPassword]);
-
-  // Clean up corrupted auth tokens on mount
-  useEffect(() => {
-    const checkAndCleanAuthState = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error && error.message.includes('invalid claim')) {
-          console.log('🧹 Detected corrupted auth tokens, cleaning up...');
-          cleanupAuthState();
-          await supabase.auth.signOut();
-          console.log('✅ Auth tokens cleaned');
-        }
-      } catch (error) {
-        console.log('🧹 Auth state check failed, cleaning up...', error);
-        cleanupAuthState();
-        console.log('✅ Auth tokens cleaned');
-      }
-    };
-    
-    checkAndCleanAuthState();
-  }, []);
 
   // Handle rate limit countdown
   useEffect(() => {
@@ -323,7 +291,6 @@ const AuthForm = () => {
   };
 
   const handleForgotPassword = async () => {
-    console.log('Forgot Password function called');
     if (!forgotPasswordEmail) {
       toast.error('Please enter your email address');
       return;
@@ -437,19 +404,11 @@ const AuthForm = () => {
 
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as 'login' | 'register')} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg">
-              <TabsTrigger 
-                value="login" 
-                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800"
-                onClick={() => console.log('Login tab clicked')}
-              >
+            <TabsList className="grid w-full grid-cols-2 glass-button border-0">
+              <TabsTrigger value="login" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
                 Sign In
               </TabsTrigger>
-              <TabsTrigger 
-                value="register" 
-                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800"
-                onClick={() => console.log('Register tab clicked')}
-              >
+              <TabsTrigger value="register" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
                 Sign Up
               </TabsTrigger>
             </TabsList>
@@ -499,15 +458,14 @@ const AuthForm = () => {
                 {/* Forgot Password Section */}
                 <div className="text-center space-y-3 mt-4">
                   <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-                     <DialogTrigger asChild>
-                       <Button 
-                         variant="ghost" 
-                         className="text-base font-medium text-primary hover:text-primary/80 underline underline-offset-4 p-2 h-auto border border-border/20 hover:border-border/40 transition-all"
-                         onClick={() => console.log('Forgot Password trigger clicked')}
-                       >
-                         🔑 Forgot your password?
-                       </Button>
-                     </DialogTrigger>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="text-base font-medium text-primary hover:text-primary/80 underline underline-offset-4 p-2 h-auto border border-border/20 hover:border-border/40 transition-all"
+                      >
+                        🔑 Forgot your password?
+                      </Button>
+                    </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle>Reset Password</DialogTitle>
@@ -548,12 +506,12 @@ const AuthForm = () => {
                 <div className="space-y-2">
                   <Label htmlFor="register-name" className="flex items-center space-x-2">
                     <User className="h-4 w-4 text-emerald-600" />
-                    <span>Profile Name</span>
+                    <span>Full Name</span>
                   </Label>
                   <Input
                     id="register-name"
                     type="text"
-                    placeholder="Enter your profile name"
+                    placeholder="Enter your full name"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
                     className={`glass-button border-0 ${isMobile ? 'h-12' : 'h-12'}`}
