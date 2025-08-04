@@ -301,6 +301,51 @@ export type Database = {
         }
         Relationships: []
       }
+      body_scan_results: {
+        Row: {
+          arms_score: number
+          back_score: number
+          body_scan_id: string
+          chest_score: number
+          core_score: number
+          created_at: string
+          glutes_score: number
+          id: string
+          legs_score: number
+          shoulders_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arms_score?: number
+          back_score?: number
+          body_scan_id: string
+          chest_score?: number
+          core_score?: number
+          created_at?: string
+          glutes_score?: number
+          id?: string
+          legs_score?: number
+          shoulders_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arms_score?: number
+          back_score?: number
+          body_scan_id?: string
+          chest_score?: number
+          core_score?: number
+          created_at?: string
+          glutes_score?: number
+          id?: string
+          legs_score?: number
+          shoulders_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       body_scans: {
         Row: {
           ai_generated_at: string | null

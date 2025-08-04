@@ -23,7 +23,9 @@ serve(async (req) => {
       regenerate_type,
       target_day,
       locked_days = [],
-      current_routine_data = null
+      current_routine_data = null,
+      body_scan_results = null,
+      weak_muscle_groups = null
     } = await req.json();
 
     console.log('Generating routine for user:', user_id, 'type:', regenerate_type);
@@ -58,7 +60,9 @@ serve(async (req) => {
       regenerate_type,
       target_day,
       locked_days,
-      current_routine_data
+      current_routine_data,
+      body_scan_results,
+      weak_muscle_groups
     });
 
     console.log('Sending prompt to OpenAI...');
@@ -170,7 +174,9 @@ function buildIntelligentPrompt({
   regenerate_type,
   target_day,
   locked_days,
-  current_routine_data
+  current_routine_data,
+  body_scan_results,
+  weak_muscle_groups
 }) {
   const baseInfo = `
 USER PROFILE:
@@ -185,6 +191,14 @@ RECENT ACTIVITY:
 ${recentLogs?.slice(0, 5).map(log => 
   `- ${log.exercise_type} (${log.duration_minutes}min, ${log.intensity})`
 ).join('\n') || 'No recent activity'}
+
+BODY SCAN ANALYSIS:
+${body_scan_results && weak_muscle_groups ? `
+- Body Scan Available: YES
+- Weak Muscle Groups Identified: ${weak_muscle_groups.groups.join(', ')}
+- Scores: ${Object.entries(weak_muscle_groups.scores).map(([group, score]) => `${group}: ${score}`).join(', ')}
+- PRIORITY: Focus on strengthening these muscle groups with 15-20% more exercises/volume
+` : '- Body Scan Available: NO - Use standard routine generation'}
 `;
 
   if (regenerate_type === 'full_week') {
@@ -198,6 +212,11 @@ REQUIREMENTS:
 - Progressive difficulty throughout the week
 - Include warm-up, main work, cool-down for each day
 - Avoid overtraining any muscle group
+${weak_muscle_groups ? `
+- BODY SCAN FOCUS: Increase emphasis on weak muscle groups (${weak_muscle_groups.groups.join(', ')})
+- Add 1-2 extra exercises targeting these groups per relevant workout day
+- Ensure weekly balance while addressing weaknesses
+` : ''}
 
 ${current_routine_data ? `CURRENT ROUTINE (for reference): ${JSON.stringify(current_routine_data)}` : ''}
 
@@ -216,7 +235,8 @@ Return JSON format:
     "tuesday": [],
     // ... tracking which groups trained each day
   },
-  "ai_reasoning": "Brief explanation of the routine design choices"
+  "ai_reasoning": "Brief explanation of the routine design choices and body scan focus areas",
+  "body_scan_emphasis": ${weak_muscle_groups ? `["${weak_muscle_groups.groups.join('", "')}"]` : 'null'}
 }`;
   }
 
@@ -237,6 +257,9 @@ REQUIREMENTS:
 - Ensure variety from previous ${target_day} routine
 - Maintain overall weekly balance
 - Same duration target as before
+${weak_muscle_groups ? `
+- BODY SCAN FOCUS: If this day targets weak muscle groups (${weak_muscle_groups.groups.join(', ')}), add extra emphasis
+` : ''}
 
 Return JSON with the same format but only update the specified day.`;
   }

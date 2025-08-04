@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useBodyScanResults } from './useBodyScanResults';
 
 interface RoutinePreferences {
   fitness_level: string;
@@ -31,6 +32,7 @@ export function useIntelligentRoutine() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+  const { latestResults: bodyScanResults, weakMuscleGroups, isLoading: bodyScanLoading } = useBodyScanResults();
 
   useEffect(() => {
     loadData();
@@ -106,7 +108,9 @@ export function useIntelligentRoutine() {
           regenerate_type: 'full_week',
           locked_days: [],
           current_routine_data: currentRoutine,
-          preferences: newPreferences || preferences
+          preferences: newPreferences || preferences,
+          body_scan_results: bodyScanResults,
+          weak_muscle_groups: weakMuscleGroups
         }
       });
 
@@ -157,7 +161,9 @@ export function useIntelligentRoutine() {
           regenerate_type: 'single_day',
           target_day: day,
           locked_days: currentRoutine.locked_days,
-          current_routine_data: currentRoutine
+          current_routine_data: currentRoutine,
+          body_scan_results: bodyScanResults,
+          weak_muscle_groups: weakMuscleGroups
         }
       });
 
@@ -252,12 +258,14 @@ export function useIntelligentRoutine() {
   return {
     currentRoutine,
     preferences,
-    isLoading,
+    isLoading: isLoading || bodyScanLoading,
     isGenerating,
     generateRoutine,
     regenerateDay,
     toggleDayLock,
     savePreferences,
-    refreshData: loadData
+    refreshData: loadData,
+    bodyScanResults,
+    weakMuscleGroups
   };
 }

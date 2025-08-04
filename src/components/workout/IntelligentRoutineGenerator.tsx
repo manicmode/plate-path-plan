@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyRoutineDay } from './WeeklyRoutineDay';
 import { RoutineGenerationSettings } from './RoutineGenerationSettings';
+import { BodyScanSummary } from './BodyScanSummary';
+import { useIntelligentRoutine } from '@/hooks/useIntelligentRoutine';
 
 interface RoutineData {
   id: string;
@@ -21,91 +23,29 @@ interface RoutineData {
 }
 
 export function IntelligentRoutineGenerator() {
-  const [currentRoutine, setCurrentRoutine] = useState<RoutineData | null>(null);
-  const [lockedDays, setLockedDays] = useState<number[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { 
+    currentRoutine, 
+    isLoading, 
+    isGenerating, 
+    generateRoutine, 
+    regenerateDay: regenerateDayHook, 
+    toggleDayLock: toggleDayLockHook,
+    weakMuscleGroups 
+  } = useIntelligentRoutine();
+  
   const [generatingDay, setGeneratingDay] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
 
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-  useEffect(() => {
-    loadCurrentRoutine();
-  }, []);
-
-  const loadCurrentRoutine = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('ai_generated_routines')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data) {
-        setCurrentRoutine(data);
-        setLockedDays(data.locked_days || []);
-      }
-    } catch (error) {
-      console.log('No current routine found');
-    }
-  };
-
   const generateFullRoutine = async (preferences?: any) => {
-    setIsGenerating(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Deactivate current routine
-      if (currentRoutine) {
-        await supabase
-          .from('ai_generated_routines')
-          .update({ is_active: false })
-          .eq('id', currentRoutine.id);
-      }
-
-      const { data, error } = await supabase.functions.invoke('generate-intelligent-routine', {
-        body: {
-          user_id: user.id,
-          regenerate_type: 'full_week',
-          locked_days: lockedDays,
-          current_routine_data: currentRoutine,
-          preferences
-        }
-      });
-
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-
-      setCurrentRoutine(data.routine);
-      
-      toast({
-        title: "🎯 New Routine Generated!",
-        description: "Your intelligent workout plan is ready",
-      });
-
-    } catch (error) {
-      console.error('Generation error:', error);
-      toast({
-        title: "Generation Failed",
-        description: error.message || "Failed to generate routine. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+    await generateRoutine(preferences);
   };
 
   const regenerateDay = async (day: string) => {
     const dayIndex = daysOfWeek.indexOf(day);
-    if (lockedDays.includes(dayIndex)) {
+    if (currentRoutine?.locked_days?.includes(dayIndex)) {
       toast({
         title: "Day is Locked",
         description: "Unlock the day first to regenerate it",
@@ -116,36 +56,7 @@ export function IntelligentRoutineGenerator() {
 
     setGeneratingDay(day);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data, error } = await supabase.functions.invoke('generate-intelligent-routine', {
-        body: {
-          user_id: user.id,
-          regenerate_type: 'single_day',
-          target_day: day,
-          locked_days: lockedDays,
-          current_routine_data: currentRoutine
-        }
-      });
-
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-
-      setCurrentRoutine(data.routine);
-      
-      toast({
-        title: `✨ ${day.charAt(0).toUpperCase() + day.slice(1)} Regenerated!`,
-        description: "New exercises added with intelligent variation",
-      });
-
-    } catch (error) {
-      console.error('Day regeneration error:', error);
-      toast({
-        title: "Regeneration Failed",
-        description: error.message || "Failed to regenerate day. Please try again.",
-        variant: "destructive",
-      });
+      await regenerateDayHook(day, dayIndex);
     } finally {
       setGeneratingDay(null);
     }
@@ -153,24 +64,7 @@ export function IntelligentRoutineGenerator() {
 
   const toggleDayLock = async (day: string) => {
     const dayIndex = daysOfWeek.indexOf(day);
-    const newLockedDays = lockedDays.includes(dayIndex)
-      ? lockedDays.filter(d => d !== dayIndex)
-      : [...lockedDays, dayIndex];
-    
-    setLockedDays(newLockedDays);
-
-    // Update in database
-    if (currentRoutine) {
-      await supabase
-        .from('ai_generated_routines')
-        .update({ locked_days: newLockedDays })
-        .eq('id', currentRoutine.id);
-    }
-
-    toast({
-      title: `${day.charAt(0).toUpperCase() + day.slice(1)} ${newLockedDays.includes(dayIndex) ? 'Locked' : 'Unlocked'}`,
-      description: newLockedDays.includes(dayIndex) ? "Day is protected from changes" : "Day can now be regenerated",
-    });
+    await toggleDayLockHook(dayIndex);
   };
 
   if (!currentRoutine && !isGenerating) {
@@ -267,15 +161,18 @@ export function IntelligentRoutineGenerator() {
                 {goal}
               </Badge>
             ))}
-            {lockedDays.length > 0 && (
+            {currentRoutine?.locked_days && currentRoutine.locked_days.length > 0 && (
               <Badge variant="outline" className="text-amber-600">
                 <Lock className="mr-1 h-3 w-3" />
-                {lockedDays.length} locked day{lockedDays.length !== 1 ? 's' : ''}
+                {currentRoutine.locked_days.length} locked day{currentRoutine.locked_days.length !== 1 ? 's' : ''}
               </Badge>
             )}
           </div>
         </CardHeader>
       </Card>
+
+      {/* Body Scan Summary */}
+      <BodyScanSummary weakMuscleGroups={weakMuscleGroups} />
 
       {/* Loading State */}
       {isGenerating && (
@@ -300,7 +197,7 @@ export function IntelligentRoutineGenerator() {
               key={day}
               day={day}
               dayData={currentRoutine.weekly_routine_data?.[day]}
-              isLocked={lockedDays.includes(index)}
+              isLocked={currentRoutine.locked_days?.includes(index) || false}
               isRegenerating={generatingDay === day}
               onToggleLock={() => toggleDayLock(day)}
               onRegenerate={() => regenerateDay(day)}
