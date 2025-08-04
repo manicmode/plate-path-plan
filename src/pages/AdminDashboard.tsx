@@ -36,6 +36,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface User {
@@ -72,6 +83,17 @@ const AdminDashboard = () => {
   });
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [activatingAdmin, setActivatingAdmin] = useState(false);
+  const [roleChangeDialog, setRoleChangeDialog] = useState<{
+    isOpen: boolean;
+    userId: string;
+    userName: string;
+    newRole: 'admin' | 'moderator' | 'user';
+  }>({
+    isOpen: false,
+    userId: '',
+    userName: '',
+    newRole: 'user'
+  });
 
   // Check if user has admin role and any roles
   useEffect(() => {
@@ -174,9 +196,27 @@ const AdminDashboard = () => {
           new Date(u.created_at) > monthAgo
         ).length;
 
+        // Calculate active users (users with recent activity)
+        let activeUsersCount = 0;
+        try {
+          const { data: recentActivity, error: activityError } = await supabase
+            .from('nutrition_logs')
+            .select('user_id')
+            .gte('created_at', weekAgo.toISOString())
+            .limit(1000);
+
+          if (!activityError && recentActivity) {
+            const activeUserIds = new Set(recentActivity.map(log => log.user_id));
+            activeUsersCount = activeUserIds.size;
+          }
+        } catch (error) {
+          console.log('Could not fetch activity data, using total users as fallback');
+          activeUsersCount = combinedUsers.length;
+        }
+
         setStats({
           totalUsers: combinedUsers.length,
-          activeUsers: combinedUsers.length, // Simplified for now
+          activeUsers: activeUsersCount,
           weeklyGrowth: weeklyNewUsers,
           monthlyGrowth: monthlyNewUsers
         });
@@ -196,7 +236,17 @@ const AdminDashboard = () => {
     loadAdminData();
   }, [isAdmin, toast]);
 
-  const updateUserRole = async (userId: string, role: 'admin' | 'moderator' | 'user') => {
+  const handleRoleChange = (userId: string, userName: string, newRole: 'admin' | 'moderator' | 'user') => {
+    setRoleChangeDialog({
+      isOpen: true,
+      userId,
+      userName,
+      newRole
+    });
+  };
+
+  const confirmRoleChange = async () => {
+    const { userId, newRole } = roleChangeDialog;
     try {
       // Remove existing roles
       await supabase
@@ -207,21 +257,23 @@ const AdminDashboard = () => {
       // Add new role
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role });
+        .insert({ user_id: userId, role: newRole });
 
       if (error) throw error;
 
       // Update local state
       setUsers(users.map(user => 
         user.id === userId 
-          ? { ...user, user_roles: [{ role }] }
+          ? { ...user, user_roles: [{ role: newRole }] }
           : user
       ));
 
       toast({
         title: "Success",
-        description: `User role updated to ${role}`,
+        description: `User role updated to ${newRole}`,
       });
+
+      setRoleChangeDialog({ isOpen: false, userId: '', userName: '', newRole: 'user' });
     } catch (error) {
       console.error('Error updating user role:', error);
       toast({
@@ -467,7 +519,12 @@ const AdminDashboard = () => {
                         <TableCell>
                           <Select
                             value={user.user_roles?.[0]?.role || 'user'}
-                            onValueChange={(value) => updateUserRole(user.id, value as any)}
+                            onValueChange={(value) => {
+                              const userName = user.profiles?.first_name || user.profiles?.last_name 
+                                ? `${user.profiles.first_name || ''} ${user.profiles.last_name || ''}`.trim()
+                                : user.email;
+                              handleRoleChange(user.id, userName, value as 'admin' | 'moderator' | 'user');
+                            }}
                           >
                             <SelectTrigger className="w-32">
                               <SelectValue />
@@ -572,6 +629,27 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Role Change Confirmation Dialog */}
+      <AlertDialog open={roleChangeDialog.isOpen} onOpenChange={(open) => 
+        setRoleChangeDialog(prev => ({ ...prev, isOpen: open }))
+      }>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Role Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change <strong>{roleChangeDialog.userName}</strong>'s role to{' '}
+              <strong>{roleChangeDialog.newRole}</strong>? This action will immediately affect their permissions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRoleChange}>
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
