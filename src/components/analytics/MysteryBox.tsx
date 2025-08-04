@@ -23,29 +23,20 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
   const [isMoving, setIsMoving] = useState(false);
   const [movementInterval, setMovementInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // ✨ VERIFIED FIX: Immediate movement on mount + regular intervals (only when claimable)
+  // ✨ ALWAYS MOVE: Gift box moves regardless of claimable state for engagement
   useEffect(() => {
     // 🔒 DOM GUARD: Only run on client side
     if (typeof window === 'undefined') return;
-    
-    // 🛑 STOP MOVEMENT: Don't move if box can't be claimed
-    if (!canClaimBox) {
-      if (movementInterval) {
-        clearInterval(movementInterval);
-        setMovementInterval(null);
-      }
-      return;
-    }
     
     const generateNewPosition = () => {
       setIsMoving(true);
       
       const newPosition = {
-        bottom: Math.floor(Math.random() * 250) + 100, // Min: 100px (above nav), Max: 350px
-        right: Math.floor(Math.random() * 140) + 10     // Min: 10px, Max: 150px (stays on screen)
+        bottom: Math.floor(Math.random() * 200) + 120, // Min: 120px (above nav), Max: 320px
+        right: Math.floor(Math.random() * 120) + 20     // Min: 20px, Max: 140px (stays on screen)
       };
       
-      console.log('🎁 Gift box moving to new position:', newPosition);
+      console.log('🎁 Gift box moving to new position:', newPosition, 'canClaim:', canClaimBox);
       setFloatingPosition(newPosition);
       
       // Reset moving state after transition completes
@@ -55,14 +46,14 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     // 🔧 IMMEDIATE MOVEMENT on mount - no waiting
     generateNewPosition();
     
-    // Continue moving every 5 seconds - only when claimable
-    const interval = setInterval(generateNewPosition, 5000);
+    // Continue moving every 4 seconds - always move for engagement
+    const interval = setInterval(generateNewPosition, 4000);
     setMovementInterval(interval);
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [canClaimBox]); // Depend on canClaimBox to stop movement after claiming
+  }, []); // No dependencies - always move
 
 
   const handleBoxClick = (e: React.MouseEvent) => {
@@ -95,10 +86,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     }, 300);
   };
 
-  // ✅ CONDITIONAL RENDERING: Hide box during cooldown period
-  if (!canClaimBox) {
-    return <></>;
-  }
+  // ✅ ALWAYS SHOW: Gift box is always visible for engagement
 
   const formatTimeLeft = (ms: number) => {
     const days = Math.floor(ms / (1000 * 60 * 60 * 24));
@@ -123,15 +111,20 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           width: '64px',
           height: '64px',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #FFB200, #FF7F00)',
-          boxShadow: '0 0 12px 4px rgba(255, 174, 0, 0.4)',
+          background: canClaimBox 
+            ? 'linear-gradient(135deg, #FFB200, #FF7F00)'
+            : 'linear-gradient(135deg, #666, #999)',
+          boxShadow: canClaimBox 
+            ? '0 0 12px 4px rgba(255, 174, 0, 0.4)'
+            : '0 0 8px 2px rgba(128, 128, 128, 0.3)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 999999,
-          cursor: 'pointer',
-          animation: 'gift-pulse 2s infinite',
-          transition: 'transform 0.2s ease',
+          cursor: canClaimBox ? 'pointer' : 'not-allowed',
+          animation: canClaimBox ? 'gift-pulse 2s infinite' : 'none',
+          transition: 'bottom 0.8s ease, right 0.8s ease, transform 0.2s ease',
+          opacity: canClaimBox ? 1 : 0.6,
           pointerEvents: 'auto'
         }}
         onMouseEnter={(e) => {
