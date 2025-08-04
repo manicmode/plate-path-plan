@@ -40,6 +40,7 @@ import { ExerciseGoalsInitializer } from '@/components/exercise/ExerciseGoalsIni
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useWorkoutTrophy } from '@/hooks/useWorkoutTrophy';
+import { WorkoutForecastChart } from '@/components/workout/WorkoutForecastChart';
 
 const ExerciseHub = () => {
   const { showCompletionModal } = useWorkoutCompletion();
@@ -1343,6 +1344,11 @@ const ExerciseHub = () => {
                     {/* AI Progress Overview */}
                     <div className="mb-8">
                       <ProgressOverviewCard />
+                    </div>
+
+                    {/* AI Workout Forecast */}
+                    <div className="mb-8">
+                      <WorkoutForecastChart />
                     </div>
 
                     {/* Coach Motivation Card */}

@@ -4755,6 +4755,18 @@ export type Database = {
         Args: { challenge_id_param: string }
         Returns: boolean
       }
+      get_workout_trends_summary: {
+        Args: { target_user_id: string }
+        Returns: {
+          total_weeks_analyzed: number
+          avg_weekly_workouts: number
+          overall_completion_rate: number
+          overall_skip_rate: number
+          trend_direction: string
+          consistency_rating: string
+          top_exercise_categories: string[]
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
