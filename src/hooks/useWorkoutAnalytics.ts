@@ -33,6 +33,8 @@ export const useWorkoutAnalytics = () => {
   const [trendData, setTrendData] = useState<TrendData[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Calculate workout streaks from completion data
   const calculateStreaks = useCallback((completions: any[]): WorkoutStreak => {
@@ -237,45 +239,70 @@ export const useWorkoutAnalytics = () => {
     return insights.slice(0, 4); // Limit to 4 insights
   }, []);
 
-  // Main data loading effect
+  // Main data loading effect with retry logic
   useEffect(() => {
     const loadWorkoutData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Fetch last 60 days of workout completions for trend analysis
-        const completions = await getWorkoutCompletions(100);
+        // Add timeout and abort controller for mobile
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
         
-        // Filter to last 30 days for current metrics
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const recentCompletions = completions.filter(c => 
-          new Date(c.completedAt || '') >= thirtyDaysAgo
-        );
-        
-        setWorkoutHistory(recentCompletions);
-        
-        // Calculate all metrics
-        const calculatedStreaks = calculateStreaks(completions);
-        const calculatedMuscleData = calculateMuscleGroupData(recentCompletions);
-        const calculatedTrends = calculateTrendData(recentCompletions, completions);
-        const generatedInsights = generateInsights(recentCompletions, calculatedTrends, calculatedMuscleData);
-        
-        setStreaks(calculatedStreaks);
-        setMuscleGroupData(calculatedMuscleData);
-        setTrendData(calculatedTrends);
-        setInsights(generatedInsights);
+        try {
+          // Fetch last 60 days of workout completions for trend analysis
+          const completions = await getWorkoutCompletions(100);
+          clearTimeout(timeoutId);
+          
+          // Filter to last 30 days for current metrics
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
+          const recentCompletions = completions.filter(c => 
+            new Date(c.completedAt || '') >= thirtyDaysAgo
+          );
+          
+          setWorkoutHistory(recentCompletions);
+          
+          // Calculate all metrics with safety checks
+          const calculatedStreaks = calculateStreaks(completions || []);
+          const calculatedMuscleData = calculateMuscleGroupData(recentCompletions || []);
+          const calculatedTrends = calculateTrendData(recentCompletions || [], completions || []);
+          const generatedInsights = generateInsights(recentCompletions || [], calculatedTrends, calculatedMuscleData);
+          
+          setStreaks(calculatedStreaks);
+          setMuscleGroupData(calculatedMuscleData);
+          setTrendData(calculatedTrends);
+          setInsights(generatedInsights);
+          setRetryCount(0); // Reset retry count on success
+          
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          throw fetchError;
+        }
         
       } catch (error) {
         console.error('Error loading workout analytics:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load workout data');
+        
+        // Auto-retry logic for network errors (max 3 retries)
+        if (retryCount < 3 && (error as any)?.message?.includes('fetch')) {
+          const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+          console.log(`Retrying in ${retryDelay}ms (attempt ${retryCount + 1}/3)`);
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, retryDelay);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadWorkoutData();
-  }, [getWorkoutCompletions, calculateStreaks, calculateMuscleGroupData, calculateTrendData, generateInsights]);
+    // Debounce for mobile to prevent rapid calls
+    const timeoutId = setTimeout(loadWorkoutData, 100);
+    return () => clearTimeout(timeoutId);
+  }, [getWorkoutCompletions, calculateStreaks, calculateMuscleGroupData, calculateTrendData, generateInsights, retryCount]);
 
   return {
     workoutHistory,
@@ -284,6 +311,8 @@ export const useWorkoutAnalytics = () => {
     trendData,
     insights,
     isLoading: isLoading || exerciseLoading,
+    error,
+    retryCount,
     // Also expose original hooks' data for backward compatibility
     summary,
     weeklyChartData,

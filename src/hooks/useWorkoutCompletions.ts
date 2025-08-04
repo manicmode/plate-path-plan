@@ -23,27 +23,45 @@ export const useWorkoutCompletions = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const getWorkoutCompletions = async (limit = 10): Promise<WorkoutCompletionData[]> => {
-    if (!user?.id) return [];
+    if (!user?.id) {
+      console.warn('getWorkoutCompletions: No user ID available');
+      return [];
+    }
 
     setIsLoading(true);
     try {
+      // Add timeout for mobile performance
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const { data, error } = await supabase
         .from('workout_completions')
         .select('*')
         .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
-        .limit(limit);
+        .limit(limit)
+        .abortSignal(controller.signal);
 
-      if (error) throw error;
+      clearTimeout(timeoutId);
+
+      if (error) {
+        console.error('Supabase error in getWorkoutCompletions:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('No data returned from workout_completions query');
+        return [];
+      }
 
       return data.map(item => ({
         id: item.id,
         workoutId: item.workout_id,
         workoutType: item.workout_type as 'ai_routine' | 'manual' | 'pre_made',
-        durationMinutes: item.duration_minutes,
-        exercisesCount: item.exercises_count,
-        setsCount: item.sets_count,
-        musclesWorked: item.muscles_worked,
+        durationMinutes: item.duration_minutes || 0,
+        exercisesCount: item.exercises_count || 0,
+        setsCount: item.sets_count || 0,
+        musclesWorked: item.muscles_worked || [],
         difficultyFeedback: item.difficulty_feedback as 'too_easy' | 'just_right' | 'too_hard',
         journalEntry: item.journal_entry,
         motivationalMessage: item.motivational_message,
@@ -52,11 +70,16 @@ export const useWorkoutCompletions = () => {
       }));
     } catch (error) {
       console.error('Error fetching workout completions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch workout history.",
-        variant: "destructive"
-      });
+      
+      // Don't show toast for network errors to avoid spam
+      if (!(error as any)?.message?.includes('fetch') && !(error as any)?.name?.includes('AbortError')) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch workout history.",
+          variant: "destructive"
+        });
+      }
+      
       return [];
     } finally {
       setIsLoading(false);

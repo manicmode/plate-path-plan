@@ -34,7 +34,11 @@ export const PerformanceChartsSection = () => {
   }, [user?.id, viewMode]);
 
   const fetchPerformanceData = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('fetchPerformanceData: No user ID available');
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
@@ -43,30 +47,52 @@ export const PerformanceChartsSection = () => {
         ? subDays(new Date(), 7)
         : subWeeks(new Date(), 4);
 
-      // Fetch workout performance logs
-      const { data: performanceLogs, error: perfError } = await supabase
-        .from('workout_performance_logs')
-        .select('performance_score, total_sets_count, completed_sets_count, skipped_steps_count, difficulty_rating, created_at')
-        .eq('user_id', user.id)
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: true });
+      // Add timeout for mobile performance
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      if (perfError) throw perfError;
+      try {
+        // Fetch workout performance logs
+        const { data: performanceLogs, error: perfError } = await supabase
+          .from('workout_performance_logs')
+          .select('performance_score, total_sets_count, completed_sets_count, skipped_steps_count, difficulty_rating, created_at')
+          .eq('user_id', user.id)
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true })
+          .abortSignal(controller.signal);
 
-      // Fetch workout adaptations
-      const { data: adaptations, error: adaptError } = await supabase
-        .from('workout_adaptations')
-        .select('adaptation_type, created_at')
-        .eq('user_id', user.id)
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: true });
+        if (perfError) {
+          console.error('Performance logs error:', perfError);
+          throw perfError;
+        }
 
-      if (adaptError) throw adaptError;
+        // Fetch workout adaptations
+        const { data: adaptations, error: adaptError } = await supabase
+          .from('workout_adaptations')
+          .select('adaptation_type, created_at')
+          .eq('user_id', user.id)
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true })
+          .abortSignal(controller.signal);
 
-      setPerformanceData(performanceLogs || []);
-      setAdaptationData(adaptations || []);
+        clearTimeout(timeoutId);
+
+        // Don't fail if adaptations fail - it's secondary data
+        if (adaptError) {
+          console.warn('Adaptations fetch failed:', adaptError);
+        }
+
+        setPerformanceData(performanceLogs || []);
+        setAdaptationData(adaptations || []);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
     } catch (error) {
       console.error('Error fetching performance data:', error);
+      // Set empty arrays to prevent crashes
+      setPerformanceData([]);
+      setAdaptationData([]);
     } finally {
       setLoading(false);
     }
