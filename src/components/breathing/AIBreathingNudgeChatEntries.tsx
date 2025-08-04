@@ -101,10 +101,10 @@ export const AIBreathingNudgeChatEntries: React.FC<AIBreathingNudgeChatEntriesPr
               
               {nudge.user_action === 'pending' && (
                 <div className="flex space-x-2">
-                  <Button
+                   <Button
                     onClick={() => handleNudgeAccept(nudge.id)}
                     size="sm"
-                    className="text-xs h-7 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
+                    className="text-xs h-7 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white !text-white"
                   >
                     Let&apos;s Breathe
                     <ArrowRight className="h-3 w-3 ml-1" />

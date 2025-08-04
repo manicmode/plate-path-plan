@@ -41,13 +41,13 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
   const getNudgeIcon = () => {
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return <Brain className="h-5 w-5 text-blue-600" />
+        return <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
       case 'smart_nudge':
-        return <Sparkles className="h-5 w-5 text-purple-600" />
+        return <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
       case 'daily_reminder':
-        return <Calendar className="h-5 w-5 text-green-600" />
+        return <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
       default:
-        return <Brain className="h-5 w-5 text-blue-600" />
+        return <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
     }
   }
 
@@ -106,7 +106,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
             <Button
               onClick={handleAccept}
               size="sm"
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white !text-white"
             >
               {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               🌙 Embrace Stillness
@@ -115,7 +115,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
               onClick={handleDismiss}
               variant="outline"
               size="sm"
-              className="px-4"
+              className="px-4 border-gray-400 text-gray-700 hover:bg-gray-100 dark:border-white/20 dark:text-white/70 dark:hover:bg-white/10"
             >
               Peacefully defer
             </Button>
