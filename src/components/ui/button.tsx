@@ -68,16 +68,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return (
         <Slot
           className={cn(buttonVariants({ variant, size, className }))}
-          {...(({ onClick, onTouchStart, ...rest }) => rest)(props)}
+          {...props}
           ref={ref}
-          onClick={handleClick}
-          onTouchStart={handleTouchStart}
-          style={{ 
-            touchAction: 'manipulation',
-            userSelect: 'none',
-            WebkitTapHighlightColor: 'transparent',
-            ...props.style 
-          }}
         />
       );
     }
