@@ -3764,6 +3764,8 @@ export type Database = {
           reps_completed: string | null
           routine_id: string | null
           sets_completed: number | null
+          skipped_set_reasons: string[] | null
+          skipped_sets: number
           target_reps: string | null
           target_sets: number | null
           updated_at: string
@@ -3783,6 +3785,8 @@ export type Database = {
           reps_completed?: string | null
           routine_id?: string | null
           sets_completed?: number | null
+          skipped_set_reasons?: string[] | null
+          skipped_sets?: number
           target_reps?: string | null
           target_sets?: number | null
           updated_at?: string
@@ -3802,6 +3806,8 @@ export type Database = {
           reps_completed?: string | null
           routine_id?: string | null
           sets_completed?: number | null
+          skipped_set_reasons?: string[] | null
+          skipped_sets?: number
           target_reps?: string | null
           target_sets?: number | null
           updated_at?: string
@@ -4385,7 +4391,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      workout_skipping_analysis: {
+        Row: {
+          avg_skipped_sets: number | null
+          day_name: string | null
+          exercise_name: string | null
+          exercise_type: string | null
+          last_workout_date: string | null
+          total_skipped_sets: number | null
+          total_workouts: number | null
+          user_id: string | null
+          workout_week: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_challenge_invitation: {
