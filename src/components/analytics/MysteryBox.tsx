@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useRewards, type Reward } from '@/contexts/RewardsContext';
 import { RewardModal } from './RewardModal';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MysteryBoxProps {
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -13,6 +14,7 @@ interface MysteryBoxProps {
 export function MysteryBox({ position = 'top-right', className }: MysteryBoxProps) {
   // ✅ ALL HOOKS FIRST - No early returns before hooks
   const { canClaimBox, claimMysteryBox, timeUntilNextBox } = useRewards();
+  const isMobile = useIsMobile();
   const [showModal, setShowModal] = useState(false);
   const [claimedReward, setClaimedReward] = useState<Reward | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -40,12 +42,18 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     const generateNewPosition = () => {
       setIsMoving(true);
       
+      // Adjust minimum bottom position based on device type
+      // Mobile: Keep above bottom navigation (usually ~80px) with extra padding
+      // Desktop: Can go lower as there's no bottom navigation
+      const minBottom = isMobile ? 140 : 100; // Higher minimum on mobile to avoid nav overlap
+      const maxBottom = isMobile ? 300 : 350; // Slightly lower max on mobile for better UX
+      
       const newPosition = {
-        bottom: Math.floor(Math.random() * 250) + 100, // Min: 100px (above nav), Max: 350px
+        bottom: Math.floor(Math.random() * (maxBottom - minBottom)) + minBottom,
         right: Math.floor(Math.random() * 140) + 10     // Min: 10px, Max: 150px (stays on screen)
       };
       
-      console.log('🎁 Gift box moving to new position:', newPosition);
+      console.log('🎁 Gift box moving to new position:', newPosition, { isMobile });
       setFloatingPosition(newPosition);
       
       // Reset moving state after transition completes
@@ -62,7 +70,7 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [canClaimBox]); // Depend on canClaimBox to stop movement after claiming
+  }, [canClaimBox, isMobile]); // Depend on canClaimBox and isMobile to adjust positioning
 
 
   const handleBoxClick = (e: React.MouseEvent) => {
