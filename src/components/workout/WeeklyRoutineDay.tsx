@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Unlock, RefreshCw, Loader2, Clock, Target, Play } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface Exercise {
@@ -58,73 +59,101 @@ export function WeeklyRoutineDay({
   };
 
   return (
-    <Card className={cn(
-      "transition-all duration-200",
-      isLocked && "ring-2 ring-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20",
-      isRegenerating && "animate-pulse",
-      isRestDay && "opacity-75"
-    )}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              {day.charAt(0).toUpperCase() + day.slice(1)}
-              {dayData?.estimated_duration && (
-                <Badge variant="outline" className="text-xs">
-                  <Clock className="mr-1 h-3 w-3" />
-                  {dayData.estimated_duration}min
-                </Badge>
-              )}
-            </CardTitle>
-            {dayData?.focus && (
-              <p className={cn("text-sm font-medium", getIntensityColor(dayData.focus))}>
-                {dayData.focus}
-              </p>
-            )}
-          </div>
-          
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggleLock}
-              className={cn(
-                "h-8 w-8 p-0",
-                isLocked && "text-amber-600 hover:text-amber-700"
-              )}
-            >
-              {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-            </Button>
-            
-            {!isRestDay && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRegenerate}
-                disabled={isLocked || isRegenerating}
-                className="h-8 w-8 p-0"
-              >
-                {isRegenerating ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3 w-3" />
+    <TooltipProvider>
+      <Card className={cn(
+        "transition-all duration-200",
+        isLocked && "ring-2 ring-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20",
+        isRegenerating && "animate-pulse",
+        isRestDay && "opacity-75"
+      )}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                {day.charAt(0).toUpperCase() + day.slice(1)}
+                {dayData?.estimated_duration && (
+                  <Badge variant="outline" className="text-xs">
+                    <Clock className="mr-1 h-3 w-3" />
+                    {dayData.estimated_duration}min
+                  </Badge>
                 )}
-              </Button>
-            )}
+                {isLocked && (
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                    Locked
+                  </Badge>
+                )}
+              </CardTitle>
+              {dayData?.focus && (
+                <p className={cn("text-sm font-medium", getIntensityColor(dayData.focus))}>
+                  {dayData.focus}
+                </p>
+              )}
+            </div>
+            
+            <div className="flex gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleLock}
+                    className={cn(
+                      "h-8 w-8 p-0",
+                      isLocked && "text-amber-600 hover:text-amber-700"
+                    )}
+                  >
+                    {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isLocked ? "Unlock day to allow changes" : "Lock day to prevent changes"}
+                </TooltipContent>
+              </Tooltip>
+              
+              {!isRestDay && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onRegenerate}
+                      disabled={isLocked || isRegenerating}
+                      className={cn(
+                        "h-8 w-8 p-0",
+                        (isLocked || isRegenerating) && "opacity-50"
+                      )}
+                    >
+                      {isRegenerating ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isLocked 
+                      ? "Unlock day to regenerate" 
+                      : isRegenerating 
+                        ? "Regenerating workout..." 
+                        : "Regenerate this day's workout"
+                    }
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Muscle Groups */}
-        {muscleGroups.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {muscleGroups.map((group) => (
-              <Badge key={group} variant="secondary" className="text-xs">
-                {group}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </CardHeader>
+          {/* Muscle Groups */}
+          {muscleGroups.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {muscleGroups.map((group) => (
+                <Badge key={group} variant="secondary" className="text-xs">
+                  {group}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardHeader>
 
       <CardContent className="pt-0">
         {isRestDay ? (
@@ -197,6 +226,7 @@ export function WeeklyRoutineDay({
                 size="sm" 
                 className="w-full mt-4"
                 variant="outline"
+                disabled={isLocked}
               >
                 <Play className="mr-2 h-4 w-4" />
                 Start {day.charAt(0).toUpperCase() + day.slice(1)} Workout
@@ -206,5 +236,6 @@ export function WeeklyRoutineDay({
         )}
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 }

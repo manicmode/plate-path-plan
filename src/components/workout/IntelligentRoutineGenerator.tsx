@@ -182,8 +182,27 @@ export function IntelligentRoutineGenerator() {
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
               <h3 className="font-medium">Generating your intelligent routine...</h3>
               <p className="text-sm text-muted-foreground">
-                Analyzing your goals, equipment, and recent activity
+                Analyzing your goals, equipment, recent activity, and body scan results
               </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Day Regeneration Status */}
+      {generatingDay && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div>
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  Regenerating {generatingDay.charAt(0).toUpperCase() + generatingDay.slice(1)}
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Using body scan insights and muscle group balance...
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
