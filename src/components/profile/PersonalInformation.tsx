@@ -218,15 +218,6 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
                 }}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Email</Label>
-              <Input
-                id="email"
-                value={formData.email}
-                disabled
-                className={`bg-muted/50 ${isMobile ? 'h-10' : 'h-12'}`}
-              />
-            </div>
             <Button
               type="submit"
               disabled={isSaving || !username.trim()}
