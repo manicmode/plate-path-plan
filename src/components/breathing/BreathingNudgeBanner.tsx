@@ -87,7 +87,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   }
 
   return (
-    <Card className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} shadow-lg mb-6`}>
+    <div className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white'} shadow-lg mb-6 rounded-lg`}>
       <div className="flex items-start gap-4">
         <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-500/20' : 'bg-white/20'} rounded-full`}>
           {getNudgeIcon()}
@@ -125,6 +125,6 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   )
 }
