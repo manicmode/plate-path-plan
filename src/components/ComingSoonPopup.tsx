@@ -29,7 +29,7 @@ export const ComingSoonPopup: React.FC<ComingSoonPopupProps> = ({
           
           <div className="text-center space-y-2">
             <h3 className="text-lg font-semibold text-foreground">
-              {feature} Feature
+              {feature}
             </h3>
             <p className="text-muted-foreground">
               This feature is coming soon, hang tight!
