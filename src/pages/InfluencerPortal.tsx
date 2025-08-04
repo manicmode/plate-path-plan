@@ -48,13 +48,13 @@ interface PublicChallenge {
   description: string;
   challenge_type: string;
   start_date: string;
-  end_date: string;
+  duration_days: number;
   max_participants: number;
-  is_active: boolean;
   banner_image_url: string;
   participant_count?: number;
   completion_rate?: number;
-  status?: string;
+  status: string;
+  created_at: string;
 }
 
 interface ChallengeStats {
@@ -310,7 +310,8 @@ const InfluencerPortal: React.FC = () => {
         status: 'pending',
         target_metric: 'custom',
         target_value: 1,
-        target_unit: 'completion'
+        target_unit: 'completion',
+        category: 'fitness'
       };
 
       const { error } = await supabase
@@ -798,10 +799,10 @@ const InfluencerPortal: React.FC = () => {
 
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <Badge variant="outline">{challenge.challenge_type}</Badge>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  {new Date(challenge.start_date).toLocaleDateString()} - {new Date(challenge.end_date).toLocaleDateString()}
-                                </div>
+                                 <div className="flex items-center gap-1">
+                                   <Calendar className="h-4 w-4" />
+                                   {new Date(challenge.start_date).toLocaleDateString()} - {new Date(new Date(challenge.start_date).getTime() + challenge.duration_days * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                                 </div>
                               </div>
                             </div>
                             

@@ -27,7 +27,7 @@ interface InfluencerProfile {
   bio: string;
   profile_image_url: string;
   category: string;
-  social_links: any[];
+  social_links: any;
   username: string;
   welcome_message: string;
   is_active: boolean;
@@ -39,7 +39,7 @@ interface PublicChallenge {
   description: string;
   challenge_type: string;
   start_date: string;
-  end_date: string;
+  duration_days: number;
   banner_image_url: string;
   status: string;
   max_participants: number;
@@ -86,7 +86,7 @@ const PublicInfluencerProfile: React.FC = () => {
           description,
           challenge_type,
           start_date,
-          end_date,
+          duration_days,
           banner_image_url,
           status,
           max_participants
@@ -108,7 +108,7 @@ const PublicInfluencerProfile: React.FC = () => {
           return {
             ...challenge,
             participant_count: participants?.length || 0
-          };
+          } as PublicChallenge;
         })
       );
 
@@ -326,12 +326,12 @@ const PublicInfluencerProfile: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {new Date(challenge.start_date).toLocaleDateString()} - {new Date(challenge.end_date).toLocaleDateString()}
-                          </span>
-                        </div>
+                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                           <Calendar className="h-4 w-4" />
+                           <span>
+                             {new Date(challenge.start_date).toLocaleDateString()} - {new Date(new Date(challenge.start_date).getTime() + challenge.duration_days * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                           </span>
+                         </div>
 
                         <Button 
                           className="w-full"

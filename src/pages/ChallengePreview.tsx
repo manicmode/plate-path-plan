@@ -27,7 +27,7 @@ interface Challenge {
   description: string;
   challenge_type: string;
   start_date: string;
-  end_date: string;
+  duration_days: number;
   max_participants: number;
   banner_image_url: string;
   status: string;
@@ -142,7 +142,7 @@ const ChallengePreview: React.FC = () => {
   const getDaysRemaining = () => {
     if (!challenge) return 0;
     const today = new Date();
-    const endDate = new Date(challenge.end_date);
+    const endDate = new Date(new Date(challenge.start_date).getTime() + challenge.duration_days * 24 * 60 * 60 * 1000);
     const diffTime = endDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
@@ -274,7 +274,7 @@ const ChallengePreview: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium">Duration</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(challenge.start_date).toLocaleDateString()} - {new Date(challenge.end_date).toLocaleDateString()}
+                        {new Date(challenge.start_date).toLocaleDateString()} - {new Date(new Date(challenge.start_date).getTime() + challenge.duration_days * 24 * 60 * 60 * 1000).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
