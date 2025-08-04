@@ -33,12 +33,22 @@ export const ExerciseAnalyticsSection = () => {
 
   console.log("ExerciseAnalyticsSection rendered");
 
-  // Memoize date calculations to prevent infinite re-renders
-  const chartData = React.useMemo(() => {
+  // Stable date array to prevent infinite re-renders
+  const dateArray = React.useMemo(() => {
     const today = new Date();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
+    const dates: string[] = [];
 
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      dates.push(`${date.getMonth() + 1}/${date.getDate()}`);
+    }
+
+    return dates;
+  }, []);
+
+  // Memoize chart data calculations to prevent infinite re-renders
+  const chartData = React.useMemo(() => {
     // Format workout frequency data from real exercise data
     const workoutFrequencyData = weeklyChartData.map((day) => ({
       day: day.day,
@@ -49,12 +59,12 @@ export const ExerciseAnalyticsSection = () => {
 
     // Format duration chart data with stable date calculation
     const durationChartData = weeklyChartData.map((day, index) => ({
-      date: `${todayMonth}/${todayDate - (6 - index)}`,
+      date: dateArray[index] || `${index + 1}/1`,
       duration: day.duration
     }));
 
     return { workoutFrequencyData, durationChartData };
-  }, [weeklyChartData]);
+  }, [weeklyChartData, dateArray]);
 
   // Calculate workout metrics from real data
   const totalWorkouts = workoutHistory.length;
