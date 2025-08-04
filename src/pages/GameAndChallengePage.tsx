@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 const DEBUG = false;
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
@@ -98,6 +98,7 @@ function GameAndChallengeContent() {
   const { challenges, microChallenges, nudgeFriend } = useChallenge();
   const { setIsChatModalOpen } = useChatModal();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { optimizeForMobile, shouldLazyLoad } = useMobileOptimization({
     enableLazyLoading: true,
@@ -278,11 +279,14 @@ function GameAndChallengeContent() {
             // Mobile Tab Navigation
             <div className="flex flex-col space-y-2">
               <div className="flex items-center justify-between">
-                <Link to="/explore">
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full"
+                  onClick={() => navigate('/explore')}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">Game & Challenge</h1>
                 <div className="w-10"></div> {/* Spacer for balance */}
               </div>
