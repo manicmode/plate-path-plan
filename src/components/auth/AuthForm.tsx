@@ -403,7 +403,10 @@ const AuthForm = () => {
         </CardHeader>
 
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as 'login' | 'register')} className="space-y-4">
+          <Tabs value={currentTab} onValueChange={(value) => {
+            console.log('🔄 Tab switching to:', value);
+            setCurrentTab(value as 'login' | 'register');
+          }} className="space-y-4">
             <TabsList className="grid w-full grid-cols-2 glass-button border-0">
               <TabsTrigger value="login" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
                 Sign In
@@ -457,11 +460,18 @@ const AuthForm = () => {
                 
                 {/* Forgot Password Section */}
                 <div className="text-center space-y-3 mt-4">
-                  <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+                 <Dialog open={showForgotPassword} onOpenChange={(open) => {
+                    console.log('🔐 Dialog open change:', open);
+                    setShowForgotPassword(open);
+                  }}>
                     <DialogTrigger asChild>
                       <Button 
                         variant="ghost" 
                         className="text-base font-medium text-primary hover:text-primary/80 underline underline-offset-4 p-2 h-auto border border-border/20 hover:border-border/40 transition-all"
+                        onClick={() => {
+                          console.log('🔐 Forgot password button clicked');
+                          setShowForgotPassword(true);
+                        }}
                       >
                         🔑 Forgot your password?
                       </Button>

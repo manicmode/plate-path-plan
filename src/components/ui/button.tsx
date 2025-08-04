@@ -41,19 +41,17 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    // Fix double-tap issues by ensuring proper touch and click handling
+    // Improved click handling that doesn't interfere with Radix UI components
     const handleClick = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
       if (props.disabled) {
         e.preventDefault();
         e.stopPropagation();
         return;
       }
-      // Only prevent default for non-Link buttons to allow navigation
-      if (!asChild) {
-        e.preventDefault();
-      }
+      
+      // Let the original onClick handler run without interference
       props.onClick?.(e);
-    }, [props.disabled, props.onClick, asChild]);
+    }, [props.disabled, props.onClick]);
 
     // Prevent touch events from interfering with click
     const handleTouchStart = React.useCallback((e: React.TouchEvent<HTMLButtonElement>) => {
@@ -78,7 +76,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        {...(({ onClick, onTouchStart, ...rest }) => rest)(props)}
+        {...props}
         onClick={handleClick}
         onTouchStart={handleTouchStart}
         style={{ 
