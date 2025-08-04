@@ -41,6 +41,7 @@ import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 import { useRealExerciseData } from '@/hooks/useRealExerciseData';
 import { useWorkoutTrophy } from '@/hooks/useWorkoutTrophy';
 import { WorkoutForecastChart } from '@/components/workout/WorkoutForecastChart';
+import { MuscleGroupTrendsSection } from '@/components/workout/MuscleGroupTrendsSection';
 
 const ExerciseHub = () => {
   const { showCompletionModal } = useWorkoutCompletion();
@@ -1339,6 +1340,11 @@ const ExerciseHub = () => {
                           { muscle: 'Shoulders', frequency: 7, fullMark: 15 }
                         ]} />
                       </div>
+                    </div>
+
+                    {/* Muscle Group Trends Section */}
+                    <div className="mb-8">
+                      <MuscleGroupTrendsSection />
                     </div>
 
                     {/* AI Progress Overview */}
