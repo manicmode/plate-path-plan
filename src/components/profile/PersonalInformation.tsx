@@ -37,6 +37,7 @@ interface PersonalInformationProps {
   isEditing: boolean;
   onFormDataChange: (updates: Partial<any>) => void;
   onEditToggle: () => void;
+  onSave?: () => void;
 }
 
 const dietaryGoalOptions = [
@@ -47,7 +48,7 @@ const dietaryGoalOptions = [
   { id: 'general_health', label: 'General Health' },
 ];
 
-export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle }: PersonalInformationProps) => {
+export const PersonalInformation = ({ formData, user, isEditing, onFormDataChange, onEditToggle, onSave }: PersonalInformationProps) => {
   const isMobile = useIsMobile();
   
   // Phase 2 & 3: Use current user data first, then fallback to form data for real-time updates
@@ -123,6 +124,16 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
               className={`glass-button border-0 ${isMobile ? 'h-10' : 'h-12'}`}
               placeholder="Enter your profile name"
             />
+            {onSave && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onSave}
+                className="mt-2"
+              >
+                Save
+              </Button>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email" className={`${isMobile ? 'text-sm' : 'text-base'}`}>Email</Label>

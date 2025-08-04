@@ -164,8 +164,8 @@ const ProfileContent = () => {
     try {
       console.log('💾 [SAVE DEBUG] Starting profile save:', {
         userId: user.id,
-        profileName: profileName,
-        trimmedName: profileName.trim() || null,
+        formDataFirstName: formData.first_name,
+        trimmedName: formData.first_name.trim() || null,
         userEmail: user.email
       });
 
@@ -173,7 +173,7 @@ const ProfileContent = () => {
       const { data: updateResult, error: updateError } = await supabase
         .from('user_profiles')
         .update({
-          first_name: profileName.trim() || null,
+          first_name: formData.first_name.trim() || null,
           last_name: null, // Add last_name support if needed later
           updated_at: new Date().toISOString()
         })
@@ -204,7 +204,7 @@ const ProfileContent = () => {
           .from('user_profiles')
           .insert({
             user_id: user.id,
-            first_name: profileName.trim() || null,
+            first_name: formData.first_name.trim() || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -392,6 +392,7 @@ const ProfileContent = () => {
         isEditing={isEditing}
         onFormDataChange={updateFormData}
         onEditToggle={() => setIsEditing(!isEditing)}
+        onSave={handleSave}
       />
 
       {/* Onboarding Completion Card - Show if onboarding not completed */}
