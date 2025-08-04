@@ -95,8 +95,8 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   return (
     <Card className={`p-6 mb-6 rounded-xl shadow-md ${
       isLightMode 
-        ? 'bg-slate-100 text-slate-900 border border-slate-200' 
-        : 'bg-neutral-900 text-white border border-neutral-700'
+        ? 'bg-white text-slate-900 border border-slate-200' 
+        : 'bg-gray-800 text-white border border-gray-700'
     }`}>
       <div className="flex items-start gap-4">
         <div className={`flex-shrink-0 p-2 rounded-full ${
