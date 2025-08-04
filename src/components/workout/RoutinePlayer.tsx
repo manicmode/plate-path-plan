@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkoutCompletion } from '@/contexts/WorkoutCompletionContext';
 import { useWorkoutAdaptations } from '@/hooks/useWorkoutAdaptations';
+import { PostWorkoutModal } from './PostWorkoutModal';
 
 interface Exercise {
   name: string;
@@ -88,6 +89,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const [skippedSets, setSkippedSets] = useState(0);
   const [skippedSetsByExercise, setSkippedSetsByExercise] = useState<{[key: string]: number}>({});
   const [skippedStepsIds, setSkippedStepsIds] = useState<Set<string>>(new Set());
+  const [showPostWorkoutModal, setShowPostWorkoutModal] = useState(false);
 
   // Check for AI adaptations and load adapted workout if available
   useEffect(() => {
@@ -333,35 +335,9 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
       console.error('Error marking workout complete:', error);
     }
 
-    // Show completion modal with workout stats
-    showCompletionModal({
-      workoutType: 'ai_routine',
-      durationMinutes: actualDurationMinutes,
-      exercisesCount: activeWorkout?.exercises.length || 0,
-      setsCount: workoutSteps.reduce((total, step) => 
-        step.type === 'exercise' ? total + 1 : total, 0
-      ),
-      musclesWorked: [...new Set(activeWorkout?.exercises.map(ex => {
-        const name = ex.name.toLowerCase();
-        if (name.includes('bench') || name.includes('press') || name.includes('push')) return 'Chest';
-        if (name.includes('pull') || name.includes('row')) return 'Back';
-        if (name.includes('squat') || name.includes('leg')) return 'Legs';
-        if (name.includes('curl') || name.includes('bicep')) return 'Biceps';
-        if (name.includes('tricep') || name.includes('dip')) return 'Triceps';
-        if (name.includes('shoulder') || name.includes('lateral')) return 'Shoulders';
-        return 'Full Body';
-      }) || [])],
-      workoutData: {
-        title: activeWorkout?.title,
-        week,
-        day,
-        completedSteps,
-        totalSteps: workoutSteps.length,
-        skippedSets,
-        skippedSetsByExercise,
-        routineId: 'current_routine'
-      }
-    });
+    // Show post-workout modal with AI feedback
+    setShowPostWorkoutModal(true);
+
   };
 
   const handleStart = () => {
@@ -394,6 +370,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     setSkippedSets(0);
     setSkippedSetsByExercise({});
     setSkippedStepsIds(new Set());
+    setShowPostWorkoutModal(false);
   };
 
   const handleSkipSet = () => {
@@ -736,6 +713,27 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Post-Workout AI Feedback Modal */}
+        <PostWorkoutModal 
+          isOpen={showPostWorkoutModal}
+          onClose={() => setShowPostWorkoutModal(false)}
+          workoutData={{
+            title: activeWorkout?.title || workout?.title || 'Workout',
+            setsCompleted: completedSteps,
+            setsSkipped: skippedSets,
+            totalSets: workoutSteps.reduce((total, step) => 
+              step.type === 'exercise' ? total + 1 : total, 0
+            ),
+            durationMinutes: workoutStartTime 
+              ? Math.round((Date.now() - workoutStartTime) / 60000) 
+              : workout?.duration || 0,
+            routineId: 'current_routine',
+            skippedSetsByExercise,
+            performanceScore: Math.round((completedSteps / workoutSteps.length) * 100),
+            intensity: 'moderate'
+          }}
+        />
       </div>
     </div>
   );

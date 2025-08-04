@@ -3750,6 +3750,72 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_feedback: {
+        Row: {
+          adaptation_suggestions: Json | null
+          coach_comment: string
+          created_at: string
+          emoji: string
+          id: string
+          intensity_level: string | null
+          mood_label: string
+          performance_score: number | null
+          routine_id: string | null
+          sets_completed: number
+          sets_skipped: number
+          total_sets: number
+          updated_at: string
+          user_id: string
+          user_response: string | null
+          user_response_emoji: string | null
+          workout_duration_minutes: number | null
+          workout_log_id: string | null
+          workout_title: string | null
+        }
+        Insert: {
+          adaptation_suggestions?: Json | null
+          coach_comment: string
+          created_at?: string
+          emoji: string
+          id?: string
+          intensity_level?: string | null
+          mood_label: string
+          performance_score?: number | null
+          routine_id?: string | null
+          sets_completed?: number
+          sets_skipped?: number
+          total_sets?: number
+          updated_at?: string
+          user_id: string
+          user_response?: string | null
+          user_response_emoji?: string | null
+          workout_duration_minutes?: number | null
+          workout_log_id?: string | null
+          workout_title?: string | null
+        }
+        Update: {
+          adaptation_suggestions?: Json | null
+          coach_comment?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          intensity_level?: string | null
+          mood_label?: string
+          performance_score?: number | null
+          routine_id?: string | null
+          sets_completed?: number
+          sets_skipped?: number
+          total_sets?: number
+          updated_at?: string
+          user_id?: string
+          user_response?: string | null
+          user_response_emoji?: string | null
+          workout_duration_minutes?: number | null
+          workout_log_id?: string | null
+          workout_title?: string | null
+        }
+        Relationships: []
+      }
       workout_logs: {
         Row: {
           completed_at: string
