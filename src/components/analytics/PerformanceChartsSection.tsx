@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -27,13 +27,9 @@ export const PerformanceChartsSection = () => {
   const [adaptationData, setAdaptationData] = useState<AdaptationData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchPerformanceData();
-    }
-  }, [user?.id, viewMode]);
+  console.log("PerformanceChartsSection rendered");
 
-  const fetchPerformanceData = async () => {
+  const fetchPerformanceData = useCallback(async () => {
     if (!user?.id) {
       console.warn('fetchPerformanceData: No user ID available');
       setLoading(false);
@@ -96,7 +92,13 @@ export const PerformanceChartsSection = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, viewMode]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchPerformanceData();
+    }
+  }, [user?.id, fetchPerformanceData]);
 
   // Chart 1: Performance Score Over Time
   const performanceScoreData = performanceData.map(item => ({

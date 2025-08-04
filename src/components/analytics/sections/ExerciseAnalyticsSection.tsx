@@ -31,19 +31,30 @@ export const ExerciseAnalyticsSection = () => {
     latestInsight,
   } = useWorkoutAnalytics();
 
-  // Format workout frequency data from real exercise data
-  const workoutFrequencyData = weeklyChartData.map((day) => ({
-    day: day.day,
-    workouts: day.duration > 0 ? 1 : 0, // Count days with any workout
-    calories: day.calories,
-    duration: day.duration
-  }));
+  console.log("ExerciseAnalyticsSection rendered");
 
-  // Format duration chart data
-  const durationChartData = weeklyChartData.map((day, index) => ({
-    date: `${new Date().getMonth() + 1}/${new Date().getDate() - (6 - index)}`,
-    duration: day.duration
-  }));
+  // Memoize date calculations to prevent infinite re-renders
+  const chartData = React.useMemo(() => {
+    const today = new Date();
+    const todayMonth = today.getMonth() + 1;
+    const todayDate = today.getDate();
+
+    // Format workout frequency data from real exercise data
+    const workoutFrequencyData = weeklyChartData.map((day) => ({
+      day: day.day,
+      workouts: day.duration > 0 ? 1 : 0, // Count days with any workout
+      calories: day.calories,
+      duration: day.duration
+    }));
+
+    // Format duration chart data with stable date calculation
+    const durationChartData = weeklyChartData.map((day, index) => ({
+      date: `${todayMonth}/${todayDate - (6 - index)}`,
+      duration: day.duration
+    }));
+
+    return { workoutFrequencyData, durationChartData };
+  }, [weeklyChartData]);
 
   // Calculate workout metrics from real data
   const totalWorkouts = workoutHistory.length;
@@ -169,10 +180,10 @@ return (
       {/* Workout Frequency & Duration Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Chart unavailable</div>}>
-          <WorkoutFrequencyChart data={workoutFrequencyData || []} />
+          <WorkoutFrequencyChart data={chartData.workoutFrequencyData || []} />
         </ErrorBoundary>
         <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Chart unavailable</div>}>
-          <ExerciseProgressChart data={durationChartData || []} />
+          <ExerciseProgressChart data={chartData.durationChartData || []} />
         </ErrorBoundary>
       </div>
 
