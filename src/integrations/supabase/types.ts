@@ -988,6 +988,8 @@ export type Database = {
           social_links: Json | null
           updated_at: string
           user_id: string
+          username: string | null
+          welcome_message: string | null
         }
         Insert: {
           bio?: string | null
@@ -1000,6 +1002,8 @@ export type Database = {
           social_links?: Json | null
           updated_at?: string
           user_id: string
+          username?: string | null
+          welcome_message?: string | null
         }
         Update: {
           bio?: string | null
@@ -1012,6 +1016,8 @@ export type Database = {
           social_links?: Json | null
           updated_at?: string
           user_id?: string
+          username?: string | null
+          welcome_message?: string | null
         }
         Relationships: []
       }
@@ -1780,6 +1786,7 @@ export type Database = {
         Row: {
           auto_team_enabled: boolean | null
           badge_icon: string
+          banner_image_url: string | null
           category: string
           challenge_type: string
           created_at: string
@@ -1803,6 +1810,7 @@ export type Database = {
         Insert: {
           auto_team_enabled?: boolean | null
           badge_icon?: string
+          banner_image_url?: string | null
           category: string
           challenge_type?: string
           created_at?: string
@@ -1826,6 +1834,7 @@ export type Database = {
         Update: {
           auto_team_enabled?: boolean | null
           badge_icon?: string
+          banner_image_url?: string | null
           category?: string
           challenge_type?: string
           created_at?: string

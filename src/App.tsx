@@ -82,6 +82,8 @@ const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
 const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
 const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
 const InfluencerPortal = lazy(() => import('@/pages/InfluencerPortal'));
+const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
+const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -355,6 +357,12 @@ function AppContent() {
                         <InfluencerPortal />
                       </ProtectedRoute>
                     } />
+                    <Route path="/challenge-preview/:id" element={
+                      <ProtectedRoute>
+                        <ChallengePreview />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/influencer/:username" element={<PublicInfluencerProfile />} />
                     <Route path="/404" element={<NotFound />} />
                     <Route path="*" element={<Navigate to="/404" replace />} />
                   </Routes>
