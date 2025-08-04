@@ -108,37 +108,48 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
           position: 'fixed',
           bottom: `${floatingPosition.bottom}px`,
           right: `${floatingPosition.right}px`,
-          width: '64px',
-          height: '64px',
+          width: '72px',
+          height: '72px',
           borderRadius: '50%',
           background: canClaimBox 
-            ? 'linear-gradient(135deg, #FFB200, #FF7F00)'
-            : 'linear-gradient(135deg, #666, #999)',
+            ? 'linear-gradient(135deg, #FFD700, #FF8C00, #FF4500, #DC143C)'
+            : 'linear-gradient(135deg, #4A5568, #718096)',
           boxShadow: canClaimBox 
-            ? '0 0 12px 4px rgba(255, 174, 0, 0.4)'
-            : '0 0 8px 2px rgba(128, 128, 128, 0.3)',
+            ? '0 0 30px 8px rgba(255, 215, 0, 0.6), 0 0 60px 12px rgba(255, 140, 0, 0.4), 0 0 90px 16px rgba(255, 69, 0, 0.2)'
+            : '0 0 15px 4px rgba(113, 128, 150, 0.3)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 999999,
           cursor: canClaimBox ? 'pointer' : 'not-allowed',
-          animation: canClaimBox ? 'gift-pulse 2s infinite' : 'none',
-          transition: 'bottom 0.8s ease, right 0.8s ease, transform 0.2s ease',
-          opacity: canClaimBox ? 1 : 0.6,
-          pointerEvents: 'auto'
+          animation: canClaimBox ? 'gift-pulse 1.5s ease-in-out infinite' : 'none',
+          transition: 'bottom 0.8s ease, right 0.8s ease, transform 0.2s ease, box-shadow 0.3s ease',
+          opacity: canClaimBox ? 1 : 0.7,
+          pointerEvents: 'auto',
+          border: canClaimBox ? '3px solid rgba(255, 255, 255, 0.3)' : '2px solid rgba(255, 255, 255, 0.1)'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)';
+          if (canClaimBox) {
+            e.currentTarget.style.transform = 'scale(1.15) translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 0 40px 12px rgba(255, 215, 0, 0.8), 0 0 80px 16px rgba(255, 140, 0, 0.6), 0 0 120px 20px rgba(255, 69, 0, 0.3)';
+          } else {
+            e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+          }
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'scale(1) translateY(0)';
+          if (canClaimBox) {
+            e.currentTarget.style.boxShadow = '0 0 30px 8px rgba(255, 215, 0, 0.6), 0 0 60px 12px rgba(255, 140, 0, 0.4), 0 0 90px 16px rgba(255, 69, 0, 0.2)';
+          }
         }}
       >
         <Gift 
-          size={32} 
+          size={36} 
           color="white" 
           style={{ 
-            filter: 'drop-shadow(0 0 2px white)', 
+            filter: canClaimBox 
+              ? 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))'
+              : 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.5))', 
             pointerEvents: 'none' 
           }} 
         />
