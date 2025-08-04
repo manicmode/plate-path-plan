@@ -6,18 +6,16 @@ export interface MuscleGroupTrend {
   user_id: string;
   muscle_group: string;
   week_start: string;
-  total_completed_sets: number;
-  total_planned_sets: number;
-  total_skipped_sets: number;
+  total_sets: number;
+  total_exercises: number;
+  total_skipped: number;
+  avg_sets_per_exercise: number;
+  unique_exercises: number;
   completion_rate: number;
   skip_rate: number;
-  workout_sessions: number;
-  unique_exercises: number;
-  most_common_exercises: string[];
-  completion_rate_change: number;
-  sets_change: number;
-  consistency_badge: 'excellent' | 'good' | 'fair' | 'needs_work';
-  trend_direction: 'improving' | 'declining' | 'stable';
+  prev_week_sets: number;
+  trend_direction: string;
+  top_exercises: string[];
 }
 
 export interface MuscleGroupSummary {

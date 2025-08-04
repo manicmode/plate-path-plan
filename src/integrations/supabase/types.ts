@@ -4797,7 +4797,7 @@ export type Database = {
           user_id_param?: string
           severity_param?: string
         }
-        Returns: string
+        Returns: undefined
       }
       process_yearly_hall_of_fame: {
         Args: { target_year: number }

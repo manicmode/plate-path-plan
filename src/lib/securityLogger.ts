@@ -9,6 +9,7 @@ export interface SecurityEvent {
 
 export const logSecurityEvent = async (event: SecurityEvent) => {
   try {
+    // Call the updated log_security_event function
     const { error } = await supabase.rpc('log_security_event', {
       event_type_param: event.eventType,
       event_details_param: event.eventDetails || {},
@@ -18,6 +19,19 @@ export const logSecurityEvent = async (event: SecurityEvent) => {
 
     if (error) {
       console.warn('Failed to log security event:', error);
+      // Fallback: try direct insert if RPC fails
+      const { error: insertError } = await supabase
+        .from('security_events')
+        .insert({
+          event_type: event.eventType,
+          event_details: event.eventDetails || {},
+          severity: event.severity || 'low',
+          user_id: event.userId
+        });
+      
+      if (insertError) {
+        console.warn('Failed to insert security event directly:', insertError);
+      }
     }
   } catch (error) {
     console.warn('Security logging error:', error);
