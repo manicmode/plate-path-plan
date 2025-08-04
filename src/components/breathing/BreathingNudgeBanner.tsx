@@ -86,8 +86,17 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     }
   }
 
+  console.log('BreathingNudgeBanner render:', { 
+    isLightMode, 
+    activeNudge: activeNudge?.nudge_type, 
+    bannerStyle: getBannerStyle() 
+  });
+
   return (
-    <Card className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} mb-6`}>
+    <Card 
+      className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} mb-6`}
+      style={{ background: isLightMode ? 'var(--gradient-breathe-nudge)' : undefined }}
+    >
       <div className="flex items-start gap-4">
         <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-200/80' : 'bg-white/20'} rounded-full`}>
           {getNudgeIcon()}

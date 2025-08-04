@@ -77,9 +77,18 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
     }
   }
 
+  console.log('MeditationNudgeBanner render:', { 
+    activeNudge: activeNudge?.nudge_type, 
+    bannerStyle: getBannerStyle(),
+    isMobile 
+  });
+
   return (
     <div className={`fixed top-4 left-4 right-4 z-50 animate-slide-down ${isMobile ? 'max-w-full' : 'max-w-lg mx-auto'}`}>
-      <Card className={`relative overflow-hidden bg-gradient-to-r ${getBannerStyle()} border backdrop-blur-sm`}>
+      <Card 
+        className={`relative overflow-hidden bg-gradient-to-r ${getBannerStyle()} border backdrop-blur-sm`}
+        style={{ background: 'var(--gradient-meditation-nudge)', borderColor: 'var(--border-meditation-nudge)' }}
+      >
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-2">
