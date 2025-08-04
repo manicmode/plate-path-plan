@@ -4606,6 +4606,17 @@ export type Database = {
         Args: { p_user_id: string; p_year: number }
         Returns: number
       }
+      calculate_workout_forecast: {
+        Args: { target_user_id: string }
+        Returns: {
+          forecast_week: number
+          predicted_workouts: number
+          predicted_completion_rate: number
+          predicted_skipped_sets: number
+          confidence_score: number
+          trend_direction: string
+        }[]
+      }
       calculate_yearly_score: {
         Args: { target_user_id: string; target_year: number }
         Returns: number
