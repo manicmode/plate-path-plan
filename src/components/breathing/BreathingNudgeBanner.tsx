@@ -41,7 +41,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   }
 
   const getNudgeIcon = () => {
-    const iconColor = isLightMode ? "text-slate-700" : "text-white"
+    const iconColor = isLightMode ? "text-gray-800" : "text-white"
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
         return <Brain className={`h-6 w-6 ${iconColor}`} />
@@ -56,11 +56,11 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     if (isLightMode) {
       switch (activeNudge.nudge_type) {
         case 'ai_coach':
-          return "bg-gradient-to-r from-violet-100 to-purple-100 border border-violet-300"
+          return "bg-gradient-to-r from-violet-200 to-purple-200 border border-violet-400"
         case 'daily_reminder':
-          return "bg-gradient-to-r from-blue-100 to-cyan-100 border border-blue-300"
+          return "bg-gradient-to-r from-blue-200 to-cyan-200 border border-blue-400"
         default:
-          return "bg-gradient-to-r from-emerald-100 to-teal-100 border border-emerald-300"
+          return "bg-gradient-to-r from-emerald-200 to-teal-200 border border-emerald-400"
       }
     }
     

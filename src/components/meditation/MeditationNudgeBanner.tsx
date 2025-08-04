@@ -54,13 +54,13 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
   const getBannerStyle = () => {
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800'
+        return 'from-blue-200 to-indigo-200 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-400 dark:border-blue-800'
       case 'smart_nudge':
-        return 'from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-300 dark:border-purple-800'
+        return 'from-purple-200 to-pink-200 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-400 dark:border-purple-800'
       case 'daily_reminder':
-        return 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-800'
+        return 'from-green-200 to-emerald-200 dark:from-green-900/20 dark:to-emerald-900/20 border-green-400 dark:border-green-800'
       default:
-        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800'
+        return 'from-blue-200 to-indigo-200 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-400 dark:border-blue-800'
     }
   }
 
