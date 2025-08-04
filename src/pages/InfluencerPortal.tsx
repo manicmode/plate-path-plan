@@ -40,6 +40,7 @@ interface InfluencerProfile {
   is_active: boolean;
   username: string;
   welcome_message: string;
+  auto_notify_followers: boolean;
 }
 
 interface PublicChallenge {
@@ -70,6 +71,7 @@ const InfluencerPortal: React.FC = () => {
   const [profile, setProfile] = useState<InfluencerProfile | null>(null);
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
   const [challengeStats, setChallengeStats] = useState<Map<string, ChallengeStats>>(new Map());
+  const [followerCount, setFollowerCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreateChallenge, setShowCreateChallenge] = useState(false);
@@ -94,7 +96,8 @@ const InfluencerPortal: React.FC = () => {
     end_date: '',
     max_participants: 100,
     reward: '',
-    banner_image_url: ''
+    banner_image_url: '',
+    follower_only: false
   });
 
   // Check if user has influencer role
@@ -161,6 +164,14 @@ const InfluencerPortal: React.FC = () => {
           username: profileData.username || '',
           welcome_message: profileData.welcome_message || ''
         });
+        
+        // Fetch follower count
+        const { data: followers } = await supabase
+          .from('influencer_followers')
+          .select('id', { count: 'exact' })
+          .eq('influencer_id', profileData.id);
+        
+        setFollowerCount(followers?.length || 0);
       }
 
       // Fetch challenges created by this influencer
@@ -311,7 +322,8 @@ const InfluencerPortal: React.FC = () => {
         target_metric: 'custom',
         target_value: 1,
         target_unit: 'completion',
-        category: 'fitness'
+        category: 'fitness',
+        follower_only: challengeForm.follower_only
       };
 
       const { error } = await supabase
@@ -330,7 +342,8 @@ const InfluencerPortal: React.FC = () => {
         end_date: '',
         max_participants: 100,
         reward: '',
-        banner_image_url: ''
+        banner_image_url: '',
+        follower_only: false
       });
       fetchInfluencerData();
     } catch (error) {

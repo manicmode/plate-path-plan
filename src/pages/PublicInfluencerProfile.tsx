@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,11 @@ import {
   Mail,
   Loader2,
   MessageSquare,
-  Star
+  Star,
+  Heart,
+  Lock,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
 
 interface InfluencerProfile {
@@ -44,22 +49,59 @@ interface PublicChallenge {
   status: string;
   max_participants: number;
   participant_count?: number;
+  follower_only?: boolean;
 }
 
 const PublicInfluencerProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<InfluencerProfile | null>(null);
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (username) {
-      fetchInfluencerProfile();
+      fetchInfluencerData();
     }
-  }, [username]);
+  }, [username, user]);
 
-  const fetchInfluencerProfile = async () => {
+  const checkFollowStatus = async (influencerId: string) => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('influencer_followers')
+        .select('id')
+        .eq('influencer_id', influencerId)
+        .eq('follower_id', user.id)
+        .single();
+
+      setIsFollowing(!!data && !error);
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+    }
+  };
+
+  const fetchFollowerCount = async (influencerId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('influencer_followers')
+        .select('id', { count: 'exact' })
+        .eq('influencer_id', influencerId);
+
+      if (!error) {
+        setFollowerCount(data?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching follower count:', error);
+    }
+  };
+
+  const fetchInfluencerData = async () => {
     if (!username) return;
 
     try {
@@ -77,6 +119,12 @@ const PublicInfluencerProfile: React.FC = () => {
 
       setProfile(profileData);
 
+      // Check follow status and fetch follower count
+      if (user?.id) {
+        await checkFollowStatus(profileData.id);
+      }
+      await fetchFollowerCount(profileData.id);
+
       // Fetch active challenges by this influencer
       const { data: challengesData, error: challengesError } = await supabase
         .from('private_challenges')
@@ -89,17 +137,27 @@ const PublicInfluencerProfile: React.FC = () => {
           duration_days,
           banner_image_url,
           status,
-          max_participants
+          max_participants,
+          follower_only
         `)
         .eq('creator_id', profileData.user_id)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (challengesError) throw challengesError;
+      if (challengesError) {
+        console.error('Error fetching challenges:', challengesError);
+      }
+
+      // Filter challenges based on follower status
+      let visibleChallenges = challengesData || [];
+      if (!isFollowing) {
+        // Non-followers can only see public challenges
+        visibleChallenges = challengesData?.filter(challenge => !challenge.follower_only) || [];
+      }
 
       // Fetch participant counts for each challenge
       const challengesWithStats = await Promise.all(
-        (challengesData || []).map(async (challenge) => {
+        visibleChallenges.map(async (challenge) => {
           const { data: participants } = await supabase
             .from('private_challenge_participations')
             .select('id')
@@ -125,6 +183,51 @@ const PublicInfluencerProfile: React.FC = () => {
   const joinChallenge = async (challengeId: string) => {
     // This would typically navigate to a join challenge page
     navigate(`/join-challenge/${challengeId}`);
+  };
+
+  const handleFollow = async () => {
+    if (!user?.id || !profile) {
+      toast.error('Please log in to follow influencers');
+      return;
+    }
+
+    try {
+      setFollowLoading(true);
+
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('influencer_followers')
+          .delete()
+          .eq('influencer_id', profile.id)
+          .eq('follower_id', user.id);
+
+        if (error) throw error;
+
+        setIsFollowing(false);
+        setFollowerCount(prev => Math.max(0, prev - 1));
+        toast.success(`Unfollowed ${profile.name}`);
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('influencer_followers')
+          .insert({
+            influencer_id: profile.id,
+            follower_id: user.id
+          });
+
+        if (error) throw error;
+
+        setIsFollowing(true);
+        setFollowerCount(prev => prev + 1);
+        toast.success(`Now following ${profile.name}!`);
+      }
+    } catch (error) {
+      console.error('Error updating follow status:', error);
+      toast.error('Failed to update follow status');
+    } finally {
+      setFollowLoading(false);
+    }
   };
 
   const getSocialIcon = (platform: string) => {
@@ -206,31 +309,57 @@ const PublicInfluencerProfile: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-6">
-              {/* Profile Image */}
-              <div className="flex-shrink-0">
-                {profile.profile_image_url ? (
+              {/* Profile Image & Basic Info */}
+              <div className="text-center space-y-4">
+                <div className="relative">
                   <img 
-                    src={profile.profile_image_url} 
+                    src={profile.profile_image_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'} 
                     alt={profile.name}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-primary/10"
+                    className="w-32 h-32 rounded-full mx-auto object-cover"
                   />
-                ) : (
-                  <div className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="h-16 w-16 text-primary/50" />
-                  </div>
-                )}
-              </div>
-
-              {/* Profile Info */}
-              <div className="flex-1 space-y-4">
+                </div>
+                
                 <div>
                   <h1 className="text-3xl font-bold">{profile.name}</h1>
                   <p className="text-muted-foreground">@{profile.username}</p>
-                  <Badge className={`mt-2 ${getCategoryColor(profile.category)}`}>
-                    {profile.category}
-                  </Badge>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <Users className="h-4 w-4" />
+                    <span className="text-sm text-muted-foreground">
+                      {followerCount} follower{followerCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
 
+                {user && user.id !== profile.user_id && (
+                  <Button 
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    variant={isFollowing ? "outline" : "default"}
+                    className="w-full max-w-xs"
+                  >
+                    {followLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : isFollowing ? (
+                      <>
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Follow
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <Badge variant="secondary" className="text-sm">
+                  {profile.category}
+                </Badge>
+              </div>
+
+              {/* Profile Details */}
+              <div className="flex-1 space-y-4">
                 {profile.bio && (
                   <p className="text-muted-foreground">{profile.bio}</p>
                 )}
@@ -248,7 +377,7 @@ const PublicInfluencerProfile: React.FC = () => {
                 )}
 
                 {/* Social Links */}
-                {profile.social_links && profile.social_links.length > 0 && (
+                {profile.social_links && Array.isArray(profile.social_links) && profile.social_links.length > 0 && (
                   <div className="flex gap-3">
                     {profile.social_links.map((link: any, index: number) => (
                       <Button
@@ -311,27 +440,33 @@ const PublicInfluencerProfile: React.FC = () => {
                       )}
                       
                       <div className="p-4 space-y-3">
-                        <div>
-                          <h3 className="font-semibold text-lg line-clamp-1">{challenge.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {challenge.description}
-                          </p>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-lg">{challenge.title}</h3>
+                            {challenge.follower_only && (
+                              <Lock className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                          <Badge variant="outline">{challenge.challenge_type}</Badge>
                         </div>
 
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {challenge.description}
+                        </p>
+
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <Badge variant="outline">{challenge.challenge_type}</Badge>
                           <div className="flex items-center gap-1">
                             <Users className="h-4 w-4" />
                             <span>{challenge.participant_count} joined</span>
                           </div>
                         </div>
 
-                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                           <Calendar className="h-4 w-4" />
-                           <span>
-                             {new Date(challenge.start_date).toLocaleDateString()} - {new Date(new Date(challenge.start_date).getTime() + challenge.duration_days * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                           </span>
-                         </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            {new Date(challenge.start_date).toLocaleDateString()} - {new Date(new Date(challenge.start_date).getTime() + challenge.duration_days * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                          </span>
+                        </div>
 
                         <Button 
                           className="w-full"
@@ -360,16 +495,18 @@ const PublicInfluencerProfile: React.FC = () => {
                 </p>
               </div>
               
-              <div className="flex justify-center gap-3">
-                <Button>
-                  <Star className="h-4 w-4 mr-2" />
-                  Follow {profile.name}
-                </Button>
-                <Button variant="outline">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Get in Touch
-                </Button>
-              </div>
+              {!isFollowing && user && user.id !== profile.user_id && (
+                <div className="flex justify-center gap-3">
+                  <Button onClick={handleFollow} disabled={followLoading}>
+                    <Star className="h-4 w-4 mr-2" />
+                    Follow {profile.name}
+                  </Button>
+                  <Button variant="outline">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Get in Touch
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
