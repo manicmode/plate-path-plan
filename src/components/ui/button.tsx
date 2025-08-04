@@ -48,10 +48,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         e.stopPropagation();
         return;
       }
-      // Prevent default to avoid iOS double-tap issues
-      e.preventDefault();
+      // Only prevent default for non-Link buttons to allow navigation
+      if (!asChild) {
+        e.preventDefault();
+      }
       props.onClick?.(e);
-    }, [props.disabled, props.onClick]);
+    }, [props.disabled, props.onClick, asChild]);
 
     // Prevent touch events from interfering with click
     const handleTouchStart = React.useCallback((e: React.TouchEvent<HTMLButtonElement>) => {
