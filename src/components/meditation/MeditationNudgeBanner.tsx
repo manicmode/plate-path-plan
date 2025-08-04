@@ -84,7 +84,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-2">
               {getNudgeIcon()}
-              <span className="font-semibold text-slate-800 dark:text-gray-200 text-sm">
+              <span className="font-semibold text-gray-900 dark:text-gray-200 text-sm">
                 {getTitle()}
               </span>
             </div>
@@ -98,7 +98,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
             </Button>
           </div>
           
-          <p className="text-slate-700 dark:text-gray-300 text-sm mb-4 leading-relaxed">
+          <p className="text-gray-900 dark:text-gray-300 text-sm mb-4 leading-relaxed">
             {activeNudge.nudge_message}
           </p>
           

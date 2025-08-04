@@ -94,10 +94,10 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+          <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-gray-900' : 'text-white'}`}>
             {getTitle()}
           </h3>
-          <p className={`${isLightMode ? 'text-slate-800' : 'text-white/90'} mb-4 leading-relaxed`}>
+          <p className={`${isLightMode ? 'text-gray-900' : 'text-white/90'} mb-4 leading-relaxed`}>
             {activeNudge.nudge_message}
           </p>
           
