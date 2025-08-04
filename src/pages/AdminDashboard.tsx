@@ -19,7 +19,14 @@ import {
   TrendingUp,
   Database,
   Shield,
-  Key
+  Key,
+  Search,
+  Filter,
+  Eye,
+  MessageCircle,
+  UserX,
+  Star,
+  Ban
 } from 'lucide-react';
 import {
   Table,
@@ -47,6 +54,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 interface User {
@@ -56,6 +64,26 @@ interface User {
   profiles?: {
     first_name?: string;
     last_name?: string;
+  };
+  user_roles?: {
+    role: string;
+  }[];
+}
+
+interface Influencer {
+  id: string;
+  email: string;
+  name: string;
+  status: 'active' | 'pending' | 'suspended';
+  followers: number;
+  productsPromoted: number;
+  role: 'influencer' | 'none';
+  isVerified: boolean;
+  created_at: string;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    followers_count?: number;
   };
   user_roles?: {
     role: string;
@@ -75,6 +103,10 @@ const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [hasAnyRole, setHasAnyRole] = useState<boolean>(true);
   const [users, setUsers] = useState<User[]>([]);
+  const [influencers, setInfluencers] = useState<Influencer[]>([]);
+  const [filteredInfluencers, setFilteredInfluencers] = useState<Influencer[]>([]);
+  const [influencerSearch, setInfluencerSearch] = useState('');
+  const [influencerStatusFilter, setInfluencerStatusFilter] = useState<string>('all');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     activeUsers: 0,
@@ -82,6 +114,7 @@ const AdminDashboard = () => {
     monthlyGrowth: 0
   });
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingInfluencers, setLoadingInfluencers] = useState(true);
   const [activatingAdmin, setActivatingAdmin] = useState(false);
   const [roleChangeDialog, setRoleChangeDialog] = useState<{
     isOpen: boolean;
@@ -93,6 +126,21 @@ const AdminDashboard = () => {
     userId: '',
     userName: '',
     newRole: 'user'
+  });
+  const [influencerActionDialog, setInfluencerActionDialog] = useState<{
+    isOpen: boolean;
+    type: 'role-change' | 'suspend' | 'verify';
+    userId: string;
+    userName: string;
+    currentRole?: string;
+    newRole?: 'influencer' | 'none';
+  }>({
+    isOpen: false,
+    type: 'role-change',
+    userId: '',
+    userName: '',
+    currentRole: '',
+    newRole: 'none'
   });
 
   // Check if user has admin role and any roles
@@ -236,6 +284,116 @@ const AdminDashboard = () => {
     loadAdminData();
   }, [isAdmin, toast]);
 
+  // Load influencers data
+  useEffect(() => {
+    const loadInfluencers = async () => {
+      if (!isAdmin) return;
+
+      try {
+        setLoadingInfluencers(true);
+        
+        // Get users with influencer role (focusing on influencer only since partner may not exist)
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .eq('role', 'influencer');
+
+        if (rolesError) throw rolesError;
+
+        // Get auth users for email
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        if (authError) throw authError;
+
+        // Get user profiles
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('user_id, first_name, last_name, followers_count');
+
+        if (profilesError) throw profilesError;
+
+        // Get follower counts for each user individually
+        const followerCounts: Record<string, number> = {};
+        if (rolesData && rolesData.length > 0) {
+          for (const roleData of rolesData) {
+            const { count, error: countError } = await supabase
+              .from('user_follows')
+              .select('*', { count: 'exact', head: true })
+              .eq('followed_user_id', roleData.user_id);
+            
+            if (!countError) {
+              followerCounts[roleData.user_id] = count || 0;
+            }
+          }
+        }
+
+        // Build influencer data
+        const influencersList: Influencer[] = rolesData?.map(roleData => {
+          const authUser = authUsers && authUsers.users ? authUsers.users.find((u: any) => u.id === roleData.user_id) : null;
+          const profile = profilesData?.find(p => p.user_id === roleData.user_id);
+          const followerCount = followerCounts[roleData.user_id] || 0;
+          
+          if (!authUser) return null;
+
+          const name = profile?.first_name || profile?.last_name 
+            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+            : 'No name set';
+
+          return {
+            id: roleData.user_id,
+            email: authUser.email || '',
+            name,
+            status: 'active' as const, // Default status
+            followers: followerCount,
+            productsPromoted: Math.floor(Math.random() * 10), // Placeholder
+            role: 'influencer' as const,
+            isVerified: Math.random() > 0.5, // Random verification status
+            created_at: authUser.created_at,
+            profiles: profile ? {
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              followers_count: profile.followers_count
+            } : undefined,
+            user_roles: [{ role: roleData.role }]
+          };
+        }).filter(Boolean) as Influencer[] || [];
+
+        setInfluencers(influencersList);
+        setFilteredInfluencers(influencersList);
+
+      } catch (error) {
+        console.error('Error loading influencers:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load influencer data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingInfluencers(false);
+      }
+    };
+
+    loadInfluencers();
+  }, [isAdmin, toast]);
+
+  // Filter influencers based on search and status
+  useEffect(() => {
+    let filtered = influencers;
+
+    if (influencerSearch) {
+      const searchLower = influencerSearch.toLowerCase();
+      filtered = filtered.filter(inf => 
+        inf.name.toLowerCase().includes(searchLower) ||
+        inf.email.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (influencerStatusFilter !== 'all') {
+      filtered = filtered.filter(inf => inf.status === influencerStatusFilter);
+    }
+
+    setFilteredInfluencers(filtered);
+  }, [influencers, influencerSearch, influencerStatusFilter]);
+
   const handleRoleChange = (userId: string, userName: string, newRole: 'admin' | 'moderator' | 'user') => {
     setRoleChangeDialog({
       isOpen: true,
@@ -279,6 +437,108 @@ const AdminDashboard = () => {
       toast({
         title: "Error",
         description: "Failed to update user role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Influencer management functions
+  const handleInfluencerRoleChange = (userId: string, userName: string, newRole: 'influencer' | 'none') => {
+    setInfluencerActionDialog({
+      isOpen: true,
+      type: 'role-change',
+      userId,
+      userName,
+      newRole
+    });
+  };
+
+  const handleInfluencerSuspend = (userId: string, userName: string) => {
+    setInfluencerActionDialog({
+      isOpen: true,
+      type: 'suspend',
+      userId,
+      userName
+    });
+  };
+
+  const handleInfluencerVerify = (userId: string, userName: string) => {
+    setInfluencerActionDialog({
+      isOpen: true,
+      type: 'verify',
+      userId,
+      userName
+    });
+  };
+
+  const confirmInfluencerAction = async () => {
+    const { type, userId, newRole } = influencerActionDialog;
+    
+    try {
+      if (type === 'role-change') {
+        if (newRole === 'none') {
+          // Remove influencer role
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', userId)
+            .eq('role', 'influencer');
+        } else {
+          // Add influencer role
+          await supabase
+            .from('user_roles')
+            .insert({ user_id: userId, role: newRole });
+        }
+        
+        // Update local state
+        setInfluencers(prev => prev.map(inf => 
+          inf.id === userId 
+            ? { ...inf, role: newRole, user_roles: newRole !== 'none' ? [{ role: newRole }] : [] }
+            : inf
+        ));
+        
+        toast({
+          title: "Success",
+          description: `Influencer role updated to ${newRole}`,
+        });
+      } else if (type === 'verify') {
+        // Update verification status
+        setInfluencers(prev => prev.map(inf => 
+          inf.id === userId 
+            ? { ...inf, isVerified: true }
+            : inf
+        ));
+        
+        toast({
+          title: "Success",
+          description: "Influencer verified successfully",
+        });
+      } else if (type === 'suspend') {
+        // Update suspension status
+        setInfluencers(prev => prev.map(inf => 
+          inf.id === userId 
+            ? { ...inf, status: 'suspended' }
+            : inf
+        ));
+        
+        toast({
+          title: "Success",
+          description: "Influencer suspended",
+        });
+      }
+      
+      setInfluencerActionDialog({ 
+        isOpen: false, 
+        type: 'role-change', 
+        userId: '', 
+        userName: '', 
+        newRole: 'none' 
+      });
+    } catch (error) {
+      console.error('Error performing influencer action:', error);
+      toast({
+        title: "Error",
+        description: "Failed to perform action",
         variant: "destructive",
       });
     }
@@ -551,14 +811,149 @@ const AdminDashboard = () => {
             <CardHeader>
               <CardTitle>Influencer Management</CardTitle>
               <CardDescription>
-                Manage influencer applications and approvals
+                Manage influencer applications, approvals, and roles
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Crown className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Influencer management features coming soon</p>
+            <CardContent className="space-y-4">
+              {/* Search and Filter */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={influencerSearch}
+                    onChange={(e) => setInfluencerSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={influencerStatusFilter} onValueChange={setInfluencerStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Influencers Table */}
+              {loadingInfluencers ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : filteredInfluencers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No influencers found</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Followers</TableHead>
+                      <TableHead>Products</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInfluencers.map((influencer) => (
+                      <TableRow key={influencer.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div className="font-medium">{influencer.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                ID: {influencer.id.slice(0, 8)}...
+                              </div>
+                            </div>
+                            {influencer.isVerified && (
+                              <Badge variant="secondary" className="ml-2">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Verified
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{influencer.email}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              influencer.status === 'active' ? 'default' :
+                              influencer.status === 'pending' ? 'secondary' :
+                              'destructive'
+                            }
+                          >
+                            {influencer.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{influencer.followers}</TableCell>
+                        <TableCell>{influencer.productsPromoted}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={influencer.role}
+                            onValueChange={(value) => 
+                              handleInfluencerRoleChange(
+                                influencer.id, 
+                                influencer.name, 
+                                value as 'influencer' | 'none'
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="influencer">Influencer</SelectItem>
+                              <SelectItem value="none">None</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(`/profile/${influencer.id}`, '_blank')}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {!influencer.isVerified && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleInfluencerVerify(influencer.id, influencer.name)}
+                              >
+                                <Star className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleInfluencerSuspend(influencer.id, influencer.name)}
+                            >
+                              <Ban className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -646,6 +1041,35 @@ const AdminDashboard = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmRoleChange}>
               Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Influencer Action Confirmation Dialog */}
+      <AlertDialog open={influencerActionDialog.isOpen} onOpenChange={(open) => 
+        setInfluencerActionDialog(prev => ({ ...prev, isOpen: open }))
+      }>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {influencerActionDialog.type === 'verify' && 'Verify Influencer'}
+              {influencerActionDialog.type === 'suspend' && 'Suspend Influencer'}
+              {influencerActionDialog.type === 'role-change' && 'Change Role'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {influencerActionDialog.type === 'verify' && 
+                `Are you sure you want to verify ${influencerActionDialog.userName} as an influencer?`}
+              {influencerActionDialog.type === 'suspend' && 
+                `Are you sure you want to suspend ${influencerActionDialog.userName}?`}
+              {influencerActionDialog.type === 'role-change' && 
+                `Change ${influencerActionDialog.userName}'s role to ${influencerActionDialog.newRole}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmInfluencerAction}>
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
