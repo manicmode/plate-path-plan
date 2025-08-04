@@ -239,7 +239,7 @@ export const useWorkoutAnalytics = () => {
     return insights.slice(0, 4); // Limit to 4 insights
   }, []);
 
-  // Main data loading effect with retry logic
+  // Main data loading effect with retry logic - MINIMAL DEPENDENCIES
   useEffect(() => {
     const loadWorkoutData = async () => {
       try {
@@ -299,10 +299,9 @@ export const useWorkoutAnalytics = () => {
       }
     };
 
-    // Debounce for mobile to prevent rapid calls
-    const timeoutId = setTimeout(loadWorkoutData, 100);
-    return () => clearTimeout(timeoutId);
-  }, [getWorkoutCompletions, calculateStreaks, calculateMuscleGroupData, calculateTrendData, generateInsights, retryCount]);
+    // Only run on mount and manual retry - avoid unstable function dependencies
+    loadWorkoutData();
+  }, [retryCount]); // MINIMAL DEPS - only retryCount
 
   return {
     workoutHistory,

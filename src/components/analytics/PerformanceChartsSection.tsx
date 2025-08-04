@@ -39,9 +39,11 @@ export const PerformanceChartsSection = () => {
     try {
       setLoading(true);
       
+      // Stable date calculation - fix infinite render issue
+      const now = new Date();
       const startDate = viewMode === 'week' 
-        ? subDays(new Date(), 7)
-        : subWeeks(new Date(), 4);
+        ? subDays(now, 7)
+        : subWeeks(now, 4);
 
       // Add timeout for mobile performance
       const controller = new AbortController();
