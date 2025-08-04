@@ -87,6 +87,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const [currentAdaptation, setCurrentAdaptation] = useState<any>(null);
   const [skippedSets, setSkippedSets] = useState(0);
   const [skippedSetsByExercise, setSkippedSetsByExercise] = useState<{[key: string]: number}>({});
+  const [skippedStepsIds, setSkippedStepsIds] = useState<Set<string>>(new Set());
 
   // Check for AI adaptations and load adapted workout if available
   useEffect(() => {
@@ -390,27 +391,53 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     setIsPaused(false);
     setCompletedSteps(0);
     setWorkoutCompleted(false);
+    setSkippedSets(0);
+    setSkippedSetsByExercise({});
+    setSkippedStepsIds(new Set());
   };
 
   const handleSkipSet = () => {
     const currentStep = workoutSteps[currentStepIndex];
     if (currentStep?.type === 'exercise' && currentStep.exerciseName) {
-      // Track skipped set
-      setSkippedSets(prev => prev + 1);
-      setSkippedSetsByExercise(prev => ({
-        ...prev,
-        [currentStep.exerciseName!]: (prev[currentStep.exerciseName!] || 0) + 1
-      }));
+      const stepId = `${currentStep.exerciseName}-${currentStep.setNumber}`;
+      const isCurrentlySkipped = skippedStepsIds.has(stepId);
       
-      // Show toast notification
-      toast({
-        title: "Set marked as skipped",
-        description: `${currentStep.exerciseName} - Set ${currentStep.setNumber}`,
-        duration: 2000
-      });
-      
-      // Move to next step
-      handleStepComplete();
+      if (isCurrentlySkipped) {
+        // Undo skip
+        setSkippedStepsIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(stepId);
+          return newSet;
+        });
+        setSkippedSets(prev => prev - 1);
+        setSkippedSetsByExercise(prev => ({
+          ...prev,
+          [currentStep.exerciseName!]: Math.max(0, (prev[currentStep.exerciseName!] || 0) - 1)
+        }));
+        
+        toast({
+          title: "Skip undone",
+          description: `${currentStep.exerciseName} - Set ${currentStep.setNumber}`,
+          duration: 2000
+        });
+      } else {
+        // Mark as skipped
+        setSkippedStepsIds(prev => new Set(prev).add(stepId));
+        setSkippedSets(prev => prev + 1);
+        setSkippedSetsByExercise(prev => ({
+          ...prev,
+          [currentStep.exerciseName!]: (prev[currentStep.exerciseName!] || 0) + 1
+        }));
+        
+        toast({
+          title: "Set marked as skipped",
+          description: `${currentStep.exerciseName} - Set ${currentStep.setNumber}`,
+          duration: 2000
+        });
+        
+        // Move to next step
+        handleStepComplete();
+      }
     }
   };
 
@@ -559,7 +586,9 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         {currentStep && (
           <Card className={`border-2 ${
             currentStep.type === 'exercise' 
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' 
+              ? skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`)
+                ? 'border-red-300 bg-red-50 dark:bg-red-950/20 opacity-75'
+                : 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
               : 'border-green-500 bg-green-50 dark:bg-green-950/20'
           }`}>
             <CardHeader className="text-center">
@@ -576,13 +605,28 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
               
               {currentStep.type === 'exercise' ? (
                 <div>
-                  <CardTitle className="text-2xl mb-2">{currentStep.exerciseName}</CardTitle>
-                  <p className="text-lg">
+                  <CardTitle className={`text-2xl mb-2 ${
+                    skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`)
+                      ? 'line-through text-muted-foreground'
+                      : ''
+                  }`}>
+                    {currentStep.exerciseName}
+                  </CardTitle>
+                  <p className={`text-lg ${
+                    skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`)
+                      ? 'line-through text-muted-foreground'
+                      : ''
+                  }`}>
                     Set {currentStep.setNumber} of {currentStep.totalSets}
                   </p>
                   <p className="text-muted-foreground">
                     Target: {currentStep.reps} reps
                   </p>
+                  {skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`) && (
+                    <Badge variant="destructive" className="mt-2">
+                      Skipped
+                    </Badge>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -605,12 +649,19 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
                 <div className="mb-4">
                   <Button 
                     onClick={handleSkipSet}
-                    variant="outline"
+                    variant={skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`) ? "default" : "outline"}
                     size="sm"
-                    className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/20"
+                    className={
+                      skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`)
+                        ? "bg-red-600 hover:bg-red-700 text-white"
+                        : "text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/20"
+                    }
                   >
                     <X className="h-4 w-4 mr-2" />
-                    Skip Set
+                    {skippedStepsIds.has(`${currentStep.exerciseName}-${currentStep.setNumber}`) 
+                      ? "Undo Skip" 
+                      : "Skip Set"
+                    }
                   </Button>
                 </div>
               )}
