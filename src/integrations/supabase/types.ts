@@ -850,6 +850,51 @@ export type Database = {
         }
         Relationships: []
       }
+      follower_notifications_queue: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          follower_id: string
+          id: string
+          influencer_id: string
+          notification_type: string
+          sent: boolean
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          follower_id: string
+          id?: string
+          influencer_id: string
+          notification_type?: string
+          sent?: boolean
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          follower_id?: string
+          id?: string
+          influencer_id?: string
+          notification_type?: string
+          sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follower_notifications_queue_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "private_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follower_notifications_queue_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       food_recognitions: {
         Row: {
           confidence_scores: number[] | null
@@ -976,8 +1021,38 @@ export type Database = {
         }
         Relationships: []
       }
+      influencer_followers: {
+        Row: {
+          created_at: string
+          follower_id: string
+          id: string
+          influencer_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          id?: string
+          influencer_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          id?: string
+          influencer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_followers_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       influencers: {
         Row: {
+          auto_notify_followers: boolean
           bio: string | null
           category: string | null
           created_at: string
@@ -992,6 +1067,7 @@ export type Database = {
           welcome_message: string | null
         }
         Insert: {
+          auto_notify_followers?: boolean
           bio?: string | null
           category?: string | null
           created_at?: string
@@ -1006,6 +1082,7 @@ export type Database = {
           welcome_message?: string | null
         }
         Update: {
+          auto_notify_followers?: boolean
           bio?: string | null
           category?: string | null
           created_at?: string
@@ -1793,6 +1870,7 @@ export type Database = {
           creator_id: string
           description: string
           duration_days: number
+          follower_only: boolean
           id: string
           invited_user_ids: string[]
           is_team_challenge: boolean
@@ -1817,6 +1895,7 @@ export type Database = {
           creator_id: string
           description: string
           duration_days: number
+          follower_only?: boolean
           id?: string
           invited_user_ids?: string[]
           is_team_challenge?: boolean
@@ -1841,6 +1920,7 @@ export type Database = {
           creator_id?: string
           description?: string
           duration_days?: number
+          follower_only?: boolean
           id?: string
           invited_user_ids?: string[]
           is_team_challenge?: boolean
