@@ -4457,6 +4457,24 @@ export type Database = {
       }
     }
     Views: {
+      workout_progress_analytics: {
+        Row: {
+          avg_duration_minutes: number | null
+          completion_rate: number | null
+          sets_growth_rate: number | null
+          skip_rate: number | null
+          total_sets_completed: number | null
+          total_sets_planned: number | null
+          total_skipped_sets: number | null
+          total_workouts: number | null
+          user_id: string | null
+          week_rank: number | null
+          week_start: string | null
+          workout_days: number | null
+          workout_growth_rate: number | null
+        }
+        Relationships: []
+      }
       workout_skipping_analysis: {
         Row: {
           avg_skipped_sets: number | null
