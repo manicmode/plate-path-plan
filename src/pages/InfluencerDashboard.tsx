@@ -1,0 +1,345 @@
+import { useState } from 'react';
+import { useAuth } from '@/contexts/auth';
+import { InfluencerGuard } from '@/components/auth/InfluencerGuard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { 
+  User, 
+  Trophy, 
+  Package, 
+  BarChart3, 
+  Megaphone,
+  Edit3,
+  Save,
+  Plus,
+  Calendar,
+  Users,
+  Eye,
+  Heart,
+  MessageCircle
+} from 'lucide-react';
+
+const ProfileTab = () => {
+  const { user } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Profile Information
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              className="ml-auto"
+            >
+              {isEditing ? <Save className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
+              {isEditing ? 'Save' : 'Edit'}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Display Name</Label>
+              <Input 
+                id="name" 
+                defaultValue={user?.name || ''} 
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                defaultValue={user?.email || ''} 
+                disabled
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="bio">Bio</Label>
+            <Textarea 
+              id="bio" 
+              placeholder="Tell your followers about yourself..."
+              disabled={!isEditing}
+              rows={4}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const ChallengesTab = () => {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">My Challenges</h3>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Challenge
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">30-Day Fitness Challenge</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>Participants: 127</p>
+              <p>Status: Active</p>
+              <p>Duration: 30 days</p>
+            </div>
+            <Button size="sm" variant="outline" className="mt-3">
+              Manage
+            </Button>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-dashed">
+          <CardContent className="flex items-center justify-center h-32">
+            <Button variant="ghost" className="text-muted-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Create New Challenge
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const ProductsTab = () => {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Promoted Products</h3>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Product
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Premium Protein Powder</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>Category: Supplements</p>
+              <p>Commission: 15%</p>
+              <p>Clicks: 1,234</p>
+            </div>
+            <Button size="sm" variant="outline" className="mt-3">
+              View Details
+            </Button>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-dashed">
+          <CardContent className="flex items-center justify-center h-32">
+            <Button variant="ghost" className="text-muted-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Product
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const AnalyticsTab = () => {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Followers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">2,341</div>
+            <p className="text-xs text-muted-foreground">+12% from last month</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">45,231</div>
+            <p className="text-xs text-muted-foreground">+8% from last month</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Engagement Rate</CardTitle>
+            <Heart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">4.8%</div>
+            <p className="text-xs text-muted-foreground">+2.1% from last month</p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            Analytics chart placeholder
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const BroadcastsTab = () => {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Broadcasts</h3>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Compose Message
+        </Button>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Quick Broadcast</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea 
+            placeholder="What would you like to share with your followers?"
+            rows={4}
+          />
+          <div className="flex gap-2">
+            <Button>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Send Now
+            </Button>
+            <Button variant="outline">
+              <Calendar className="h-4 w-4 mr-2" />
+              Schedule
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Recent Broadcasts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="border-l-2 border-primary pl-4">
+              <p className="text-sm">Welcome to my new fitness challenge!</p>
+              <p className="text-xs text-muted-foreground">2 hours ago • 156 views</p>
+            </div>
+            <div className="border-l-2 border-muted pl-4">
+              <p className="text-sm">Don't forget to check out my latest product recommendations</p>
+              <p className="text-xs text-muted-foreground">1 day ago • 89 views</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const InfluencerDashboardContent = () => {
+  const { user } = useAuth();
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <Avatar className="h-16 w-16">
+          <AvatarImage src={user?.avatar_url} />
+          <AvatarFallback>
+            {user?.name?.split(' ').map(n => n[0]).join('') || user?.email?.[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h1 className="text-2xl font-bold">Welcome back, {user?.name || 'Influencer'}!</h1>
+          <p className="text-muted-foreground">Manage your influence and grow your community</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="challenges" className="flex items-center gap-2">
+            <Trophy className="h-4 w-4" />
+            <span className="hidden sm:inline">Challenges</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Products</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Analytics</span>
+          </TabsTrigger>
+          <TabsTrigger value="broadcasts" className="flex items-center gap-2">
+            <Megaphone className="h-4 w-4" />
+            <span className="hidden sm:inline">Broadcasts</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile">
+          <ProfileTab />
+        </TabsContent>
+
+        <TabsContent value="challenges">
+          <ChallengesTab />
+        </TabsContent>
+
+        <TabsContent value="products">
+          <ProductsTab />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <AnalyticsTab />
+        </TabsContent>
+
+        <TabsContent value="broadcasts">
+          <BroadcastsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default function InfluencerDashboard() {
+  return (
+    <InfluencerGuard>
+      <InfluencerDashboardContent />
+    </InfluencerGuard>
+  );
+}
