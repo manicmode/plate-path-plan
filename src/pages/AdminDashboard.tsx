@@ -18,7 +18,8 @@ import {
   Activity,
   TrendingUp,
   Database,
-  Shield
+  Shield,
+  Key
 } from 'lucide-react';
 import {
   Table,
@@ -61,6 +62,7 @@ const AdminDashboard = () => {
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [hasAnyRole, setHasAnyRole] = useState<boolean>(true);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
@@ -69,33 +71,41 @@ const AdminDashboard = () => {
     monthlyGrowth: 0
   });
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [activatingAdmin, setActivatingAdmin] = useState(false);
 
-  // Check if user has admin role
+  // Check if user has admin role and any roles
   useEffect(() => {
     const checkAdminRole = async () => {
       if (!user) {
         setIsAdmin(false);
+        setHasAnyRole(true);
         return;
       }
 
       try {
-        const { data, error } = await supabase
+        // Check for any roles
+        const { data: allRoles, error: allRolesError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
+          .eq('user_id', user.id);
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error checking admin role:', error);
+        if (allRolesError && allRolesError.code !== 'PGRST116') {
+          console.error('Error checking roles:', allRolesError);
           setIsAdmin(false);
+          setHasAnyRole(true);
           return;
         }
 
-        setIsAdmin(!!data);
+        const hasRoles = allRoles && allRoles.length > 0;
+        setHasAnyRole(hasRoles);
+
+        // Check specifically for admin role
+        const adminRole = allRoles?.find(r => r.role === 'admin');
+        setIsAdmin(!!adminRole);
       } catch (error) {
-        console.error('Error checking admin role:', error);
+        console.error('Error checking roles:', error);
         setIsAdmin(false);
+        setHasAnyRole(true);
       }
     };
 
@@ -222,6 +232,34 @@ const AdminDashboard = () => {
     }
   };
 
+  const activateAdminAccess = async () => {
+    setActivatingAdmin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('activate-admin');
+      
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Admin access activated successfully",
+      });
+
+      // Reload the page to refresh role check
+      window.location.reload();
+    } catch (error) {
+      console.error('Error activating admin access:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to activate admin access",
+        variant: "destructive",
+      });
+    } finally {
+      setActivatingAdmin(false);
+    }
+  };
+
   // Show loading while checking authentication and admin status
   if (loading || isAdmin === null) {
     return (
@@ -236,8 +274,41 @@ const AdminDashboard = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Block access if not admin
-  if (!isAdmin) {
+  // Show admin activation if user has no roles
+  if (!isAdmin && !hasAnyRole) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Key className="w-12 h-12 mx-auto text-primary mb-4" />
+            <CardTitle>Admin Access Required</CardTitle>
+            <CardDescription>
+              No admin role detected. If you're the system administrator, you can activate admin access below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <Button 
+              onClick={activateAdminAccess}
+              disabled={activatingAdmin}
+              className="w-full"
+            >
+              {activatingAdmin ? 'Activating...' : 'Activate Admin Access'}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.history.back()}
+              className="w-full"
+            >
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Block access if not admin but has other roles
+  if (!isAdmin && hasAnyRole) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-md">
