@@ -13,6 +13,7 @@ import { StreakTrackerCard } from '@/components/analytics/StreakTrackerCard';
 import { SmartTrendInsightsCard } from '@/components/analytics/SmartTrendInsightsCard';
 import { MonthlyExerciseReportCard } from '@/components/exercise/MonthlyExerciseReportCard';
 import { PerformanceChartsSection } from '@/components/analytics/PerformanceChartsSection';
+import { MuscleGroupAnalytics } from '@/components/analytics/MuscleGroupAnalytics';
 import { useWorkoutAnalytics } from '@/hooks/useWorkoutAnalytics';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
@@ -249,6 +250,11 @@ return (
       {/* Monthly Exercise Report */}
       <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Monthly report unavailable</div>}>
         <MonthlyExerciseReportCard />
+      </ErrorBoundary>
+
+      {/* Muscle Group Analytics */}
+      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Muscle group analytics unavailable</div>}>
+        <MuscleGroupAnalytics />
       </ErrorBoundary>
 
       {/* Performance Charts Section */}
