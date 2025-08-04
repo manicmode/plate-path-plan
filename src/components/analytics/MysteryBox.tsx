@@ -118,8 +118,8 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
         onClick={handleBoxClick}
         style={{
           position: 'fixed',
-          top: '20px',
-          right: '20px',
+          bottom: `${floatingPosition.bottom}px`,
+          right: `${floatingPosition.right}px`,
           width: '64px',
           height: '64px',
           borderRadius: '50%',
