@@ -51,7 +51,7 @@ import { ChallengeCreationModal } from '@/components/analytics/ChallengeCreation
 import { ChallengeCard } from '@/components/analytics/ChallengeCard';
 import { MicroChallengeCreationModal } from '@/components/analytics/MicroChallengeCreationModal';
 import { MicroChallengeCard } from '@/components/analytics/MicroChallengeCard';
-import { MysteryBox } from '@/components/analytics/MysteryBox';
+
 import { PublicChallengesBrowse } from '@/components/analytics/PublicChallengesBrowse';
 import { UserChallengeParticipations } from '@/components/analytics/UserChallengeParticipations';
 import { UserStatsModal } from '@/components/analytics/UserStatsModal';
@@ -109,7 +109,7 @@ function GameAndChallengeContent() {
   const [sortBy, setSortBy] = useState('score');
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [showMicroChallengeModal, setShowMicroChallengeModal] = useState(false);
-  const [showRewardBox, setShowRewardBox] = useState(false);
+  
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUserStatsOpen, setIsUserStatsOpen] = useState(false);
   const [isChatroomManagerOpen, setIsChatroomManagerOpen] = useState(false);
@@ -1038,43 +1038,6 @@ function GameAndChallengeContent() {
             onOpenChange={setShowMicroChallengeModal}
           />
 
-          {/* Mobile-Optimized Mystery Reward Box */}
-          <div className={cn(
-            "fixed z-40",
-            isMobile 
-              ? "bottom-4 right-4" 
-              : "bottom-6 right-6"
-          )}>
-            <Button
-              onClick={() => setShowRewardBox(!showRewardBox)}
-              className={cn(
-                "rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-2xl",
-                isMobile 
-                  ? "w-12 h-12 animate-pulse" 
-                  : "w-16 h-16 animate-bounce"
-              )}
-              size="sm"
-            >
-              <Gift className={cn(isMobile ? "h-6 w-6" : "h-8 w-8")} />
-            </Button>
-            
-            {showRewardBox && (
-              <div className={cn(
-                "absolute bg-background border rounded-lg p-3 shadow-xl animate-scale-in",
-                isMobile 
-                  ? "bottom-14 right-0 w-48" 
-                  : "bottom-20 right-0"
-              )}>
-                <h4 className={cn("font-bold mb-2", isMobile ? "text-sm" : "")}>🎁 Mystery Box</h4>
-                <p className={cn("text-muted-foreground mb-3", isMobile ? "text-xs" : "text-sm")}>
-                  Complete daily challenges to unlock rewards!
-                </p>
-                <Button size="sm" className="w-full">
-                  Open Box
-                </Button>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* User Stats Modal */}
