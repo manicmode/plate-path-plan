@@ -56,11 +56,11 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     if (isLightMode) {
       switch (activeNudge.nudge_type) {
         case 'ai_coach':
-          return "bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200"
+          return "bg-gradient-to-r from-violet-100 to-purple-100 border border-violet-300"
         case 'daily_reminder':
-          return "bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200"
+          return "bg-gradient-to-r from-blue-100 to-cyan-100 border border-blue-300"
         default:
-          return "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200"
+          return "bg-gradient-to-r from-emerald-100 to-teal-100 border border-emerald-300"
       }
     }
     
@@ -89,7 +89,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   return (
     <Card className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} shadow-lg mb-6`}>
       <div className="flex items-start gap-4">
-        <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-200/80' : 'bg-white/20'} rounded-full`}>
+        <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-300/60' : 'bg-white/20'} rounded-full`}>
           {getNudgeIcon()}
         </div>
         
