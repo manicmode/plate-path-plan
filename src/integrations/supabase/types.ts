@@ -4457,6 +4457,26 @@ export type Database = {
       }
     }
     Views: {
+      muscle_group_trends: {
+        Row: {
+          completion_rate: number | null
+          completion_rate_change: number | null
+          consistency_badge: string | null
+          most_common_exercises: string[] | null
+          muscle_group: string | null
+          sets_change: number | null
+          skip_rate: number | null
+          total_completed_sets: number | null
+          total_planned_sets: number | null
+          total_skipped_sets: number | null
+          trend_direction: string | null
+          unique_exercises: number | null
+          user_id: string | null
+          week_start: string | null
+          workout_sessions: number | null
+        }
+        Relationships: []
+      }
       workout_progress_analytics: {
         Row: {
           avg_duration_minutes: number | null
