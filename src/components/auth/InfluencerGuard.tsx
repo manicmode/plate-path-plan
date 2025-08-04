@@ -9,7 +9,7 @@ interface InfluencerGuardProps {
 }
 
 export const InfluencerGuard = ({ children, fallback }: InfluencerGuardProps) => {
-  const { role, loading } = useUserRole();
+  const { isInfluencer, loading } = useUserRole();
 
   if (loading) {
     return (
@@ -19,8 +19,6 @@ export const InfluencerGuard = ({ children, fallback }: InfluencerGuardProps) =>
       </div>
     );
   }
-
-  const isInfluencer = role === 'influencer';
 
   if (!isInfluencer) {
     return fallback || (

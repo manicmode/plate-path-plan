@@ -21,16 +21,25 @@ export const useUserRole = () => {
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
-          .order('role', { ascending: true }) // admin first, then moderator, then user
-          .limit(1)
-          .single();
+          .eq('user_id', user.id);
 
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
           console.error('Error fetching user role:', error);
           setRole('user'); // Default to user role
+        } else if (data && data.length > 0) {
+          // Priority order: admin > influencer > moderator > user
+          const roles = data.map(r => r.role);
+          if (roles.includes('admin')) {
+            setRole('admin');
+          } else if (roles.includes('influencer')) {
+            setRole('influencer');
+          } else if (roles.includes('moderator')) {
+            setRole('moderator');
+          } else {
+            setRole('user');
+          }
         } else {
-          setRole(data?.role || 'user');
+          setRole('user');
         }
       } catch (error) {
         console.error('Error fetching user role:', error);
@@ -49,5 +58,6 @@ export const useUserRole = () => {
     isAdmin: role === 'admin',
     isModerator: role === 'moderator' || role === 'admin',
     isUser: role === 'user' || role === 'moderator' || role === 'admin',
+    isInfluencer: role === 'influencer' || role === 'admin', // Admins have influencer access too
   };
 };
