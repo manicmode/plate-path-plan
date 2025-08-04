@@ -81,6 +81,7 @@ const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
 const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
 const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
 const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
+const InfluencerPortal = lazy(() => import('@/pages/InfluencerPortal'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -347,6 +348,11 @@ function AppContent() {
                     <Route path="/admin/security-logs" element={
                       <ProtectedRoute>
                         <SecurityLogsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/influencer-portal" element={
+                      <ProtectedRoute>
+                        <InfluencerPortal />
                       </ProtectedRoute>
                     } />
                     <Route path="/404" element={<NotFound />} />

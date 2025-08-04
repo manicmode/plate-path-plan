@@ -976,6 +976,45 @@ export type Database = {
         }
         Relationships: []
       }
+      influencers: {
+        Row: {
+          bio: string | null
+          category: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          profile_image_url: string | null
+          social_links: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          profile_image_url?: string | null
+          social_links?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          profile_image_url?: string | null
+          social_links?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ingredient_flags: {
         Row: {
           category: string
@@ -4533,6 +4572,7 @@ export type Database = {
         | "moderator"
         | "user"
         | "recovery_challenge_participant"
+        | "influencer"
       suggestion_type: "praise" | "warning" | "tip"
     }
     CompositeTypes: {
@@ -4666,6 +4706,7 @@ export const Constants = {
         "moderator",
         "user",
         "recovery_challenge_participant",
+        "influencer",
       ],
       suggestion_type: ["praise", "warning", "tip"],
     },
