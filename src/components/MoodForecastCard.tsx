@@ -84,7 +84,7 @@ export const MoodForecastCard = () => {
 
   if (loading) {
     return (
-      <Card className="border-0 rounded-3xl bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+      <Card className="border-0 rounded-3xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/20 dark:to-blue-900/20 shadow-lg">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <div className="space-y-3">
             <Skeleton className="h-6 w-3/4" />
@@ -98,7 +98,7 @@ export const MoodForecastCard = () => {
 
   if (!prediction) {
     return (
-      <Card className="border-0 rounded-3xl bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:shadow-lg transition-all duration-300">
+      <Card className="border-0 rounded-3xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/20 dark:to-blue-900/20 hover:shadow-lg transition-all duration-300">
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
           <div className="text-center space-y-4">
             <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} gradient-primary rounded-full flex items-center justify-center mx-auto`}>
@@ -136,7 +136,7 @@ export const MoodForecastCard = () => {
   }
 
   return (
-    <Card className="border-0 rounded-3xl bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:shadow-lg transition-all duration-300">
+    <Card className="border-0 rounded-3xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/20 dark:to-blue-900/20 hover:shadow-lg transition-all duration-300">
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

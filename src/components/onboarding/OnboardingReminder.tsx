@@ -21,7 +21,7 @@ export const OnboardingReminder = ({ onStartOnboarding }: OnboardingReminderProp
   if (!isVisible) return null;
 
   return (
-    <Card className="mb-6 border-emerald-200 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20">
+    <Card className="mb-6 border-emerald-300 bg-gradient-to-r from-emerald-100 to-blue-100 dark:from-emerald-900/20 dark:to-blue-900/20 shadow-lg">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">

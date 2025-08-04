@@ -143,7 +143,7 @@ export function RewardModal({ open, onOpenChange, reward }: RewardModalProps) {
 
             {/* Action based on type */}
             {reward.type === 'streak_booster' && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 mb-6 border border-green-200 dark:border-green-800">
+              <div className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 mb-6 border border-green-200 dark:border-green-800 shadow-lg">
                 <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-400">
                   <Zap className="h-5 w-5" />
                   <span className="font-semibold">Boost Activated!</span>
@@ -152,7 +152,7 @@ export function RewardModal({ open, onOpenChange, reward }: RewardModalProps) {
             )}
 
             {reward.type === 'badge' && (
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg p-4 mb-6 border border-purple-200 dark:border-purple-800">
+              <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg p-4 mb-6 border border-purple-200 dark:border-purple-800 shadow-lg">
                 <div className="flex items-center justify-center gap-2 text-purple-700 dark:text-purple-400">
                   <Trophy className="h-5 w-5" />
                   <span className="font-semibold">Badge Earned!</span>

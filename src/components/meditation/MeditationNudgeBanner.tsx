@@ -54,13 +54,13 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
   const getBannerStyle = () => {
     switch (activeNudge.nudge_type) {
       case 'ai_coach':
-        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800'
+        return 'from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800 shadow-lg'
       case 'smart_nudge':
-        return 'from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-300 dark:border-purple-800'
+        return 'from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-300 dark:border-purple-800 shadow-lg'
       case 'daily_reminder':
-        return 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-800'
+        return 'from-green-100 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-800 shadow-lg'
       default:
-        return 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800'
+        return 'from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-300 dark:border-blue-800 shadow-lg'
     }
   }
 
@@ -79,7 +79,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
 
   return (
     <div className={`fixed top-4 left-4 right-4 z-50 animate-slide-down ${isMobile ? 'max-w-full' : 'max-w-lg mx-auto'}`}>
-      <Card className={`relative overflow-hidden bg-gradient-to-r ${getBannerStyle()} shadow-lg border backdrop-blur-sm`}>
+      <Card className={`relative overflow-hidden bg-gradient-to-r ${getBannerStyle()} border backdrop-blur-sm`}>
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-2">
