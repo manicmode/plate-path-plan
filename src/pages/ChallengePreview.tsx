@@ -17,7 +17,8 @@ import {
   ExternalLink,
   CheckCircle,
   Star,
-  Clock
+  Clock,
+  Gift
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
