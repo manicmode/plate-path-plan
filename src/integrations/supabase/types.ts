@@ -4459,53 +4459,41 @@ export type Database = {
     Views: {
       muscle_group_trends: {
         Row: {
+          avg_sets_per_exercise: number | null
           completion_rate: number | null
-          completion_rate_change: number | null
-          consistency_badge: string | null
-          most_common_exercises: string[] | null
           muscle_group: string | null
-          sets_change: number | null
+          prev_week_sets: number | null
           skip_rate: number | null
-          total_completed_sets: number | null
-          total_planned_sets: number | null
-          total_skipped_sets: number | null
+          top_exercises: string[] | null
+          total_exercises: number | null
+          total_sets: number | null
+          total_skipped: number | null
           trend_direction: string | null
           unique_exercises: number | null
           user_id: string | null
           week_start: string | null
-          workout_sessions: number | null
         }
         Relationships: []
       }
       workout_progress_analytics: {
         Row: {
-          avg_duration_minutes: number | null
-          completion_rate: number | null
-          sets_growth_rate: number | null
-          skip_rate: number | null
-          total_sets_completed: number | null
-          total_sets_planned: number | null
-          total_skipped_sets: number | null
-          total_workouts: number | null
+          avg_completion_rate: number | null
+          performance_tier: string | null
+          routine_name: string | null
+          total_sessions: number | null
           user_id: string | null
-          week_rank: number | null
           week_start: string | null
-          workout_days: number | null
-          workout_growth_rate: number | null
         }
         Relationships: []
       }
       workout_skipping_analysis: {
         Row: {
           avg_skipped_sets: number | null
-          day_name: string | null
-          exercise_name: string | null
-          exercise_type: string | null
-          last_workout_date: string | null
-          total_skipped_sets: number | null
+          completion_rate: number | null
+          high_skip_rate: number | null
           total_workouts: number | null
           user_id: string | null
-          workout_week: string | null
+          week_start: string | null
         }
         Relationships: []
       }
