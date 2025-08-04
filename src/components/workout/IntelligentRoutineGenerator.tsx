@@ -30,7 +30,8 @@ export function IntelligentRoutineGenerator() {
     generateRoutine, 
     regenerateDay: regenerateDayHook, 
     toggleDayLock: toggleDayLockHook,
-    weakMuscleGroups 
+    weakMuscleGroups,
+    skipAdaptations
   } = useIntelligentRoutine();
   
   const [generatingDay, setGeneratingDay] = useState<string | null>(null);
@@ -171,8 +172,14 @@ export function IntelligentRoutineGenerator() {
         </CardHeader>
       </Card>
 
-      {/* Body Scan Summary */}
-      <BodyScanSummary weakMuscleGroups={weakMuscleGroups} />
+      {/* Body Scan & Skip Adaptation Summaries */}
+      <BodyScanSummary 
+        weakMuscleGroups={weakMuscleGroups} 
+        skipAdaptations={skipAdaptations ? {
+          hasAdaptations: skipAdaptations.hasAdaptations,
+          summary: skipAdaptations.summary
+        } : null}
+      />
 
       {/* Loading State */}
       {isGenerating && (

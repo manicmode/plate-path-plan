@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useBodyScanResults } from './useBodyScanResults';
+import { useSkipAdaptations } from './useSkipAdaptations';
 
 interface RoutinePreferences {
   fitness_level: string;
@@ -33,6 +34,7 @@ export function useIntelligentRoutine() {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const { latestResults: bodyScanResults, weakMuscleGroups, isLoading: bodyScanLoading } = useBodyScanResults();
+  const { skipAnalysis, isLoading: skipLoading } = useSkipAdaptations();
 
   useEffect(() => {
     loadData();
@@ -258,7 +260,7 @@ export function useIntelligentRoutine() {
   return {
     currentRoutine,
     preferences,
-    isLoading: isLoading || bodyScanLoading,
+    isLoading: isLoading || bodyScanLoading || skipLoading,
     isGenerating,
     generateRoutine,
     regenerateDay,
@@ -266,6 +268,7 @@ export function useIntelligentRoutine() {
     savePreferences,
     refreshData: loadData,
     bodyScanResults,
-    weakMuscleGroups
+    weakMuscleGroups,
+    skipAdaptations: skipAnalysis
   };
 }

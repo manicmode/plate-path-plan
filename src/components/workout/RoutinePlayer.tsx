@@ -15,7 +15,8 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  Info
+  Info,
+  X
 } from 'lucide-react';
 import { useSound } from '@/contexts/SoundContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,6 +85,8 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
   const [activeWorkout, setActiveWorkout] = useState<typeof workout>(workout);
   const [showAdaptationInfo, setShowAdaptationInfo] = useState(false);
   const [currentAdaptation, setCurrentAdaptation] = useState<any>(null);
+  const [skippedSets, setSkippedSets] = useState(0);
+  const [skippedSetsByExercise, setSkippedSetsByExercise] = useState<{[key: string]: number}>({});
 
   // Check for AI adaptations and load adapted workout if available
   useEffect(() => {
@@ -254,6 +257,7 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         completed_sets_count: completedSteps,
         total_sets_count: workoutSteps.length,
         skipped_steps_count: Math.max(0, workoutSteps.length - completedSteps),
+        skipped_sets_count: skippedSets,
         extra_rest_seconds: Math.max(0, (actualDurationMinutes - (activeWorkout?.duration || 45)) * 60),
         difficulty_rating: null, // Will be set by user in completion modal
         energy_level: null,
@@ -269,6 +273,25 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         }) || [])],
         notes: null
       };
+
+      // Also log individual exercise data with skipped sets
+      for (const exercise of activeWorkout?.exercises || []) {
+        const exerciseSkippedSets = skippedSetsByExercise[exercise.name] || 0;
+        await supabase.from('workout_logs').insert({
+          user_id: user?.id,
+          routine_id: 'current_routine',
+          day_name: `Day ${day}`,
+          day_index: day,
+          exercise_name: exercise.name,
+          exercise_type: 'strength',
+          sets_completed: Math.max(0, exercise.sets - exerciseSkippedSets),
+          target_sets: exercise.sets,
+          reps_completed: exercise.reps,
+          target_reps: exercise.reps,
+          skipped_sets: exerciseSkippedSets,
+          duration_seconds: Math.round((actualDurationMinutes * 60) / (activeWorkout?.exercises.length || 1))
+        });
+      }
 
       // Log performance data
       const { error: perfError } = await supabase
@@ -333,6 +356,8 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
         day,
         completedSteps,
         totalSteps: workoutSteps.length,
+        skippedSets,
+        skippedSetsByExercise,
         routineId: 'current_routine'
       }
     });
@@ -365,6 +390,28 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
     setIsPaused(false);
     setCompletedSteps(0);
     setWorkoutCompleted(false);
+  };
+
+  const handleSkipSet = () => {
+    const currentStep = workoutSteps[currentStepIndex];
+    if (currentStep?.type === 'exercise' && currentStep.exerciseName) {
+      // Track skipped set
+      setSkippedSets(prev => prev + 1);
+      setSkippedSetsByExercise(prev => ({
+        ...prev,
+        [currentStep.exerciseName!]: (prev[currentStep.exerciseName!] || 0) + 1
+      }));
+      
+      // Show toast notification
+      toast({
+        title: "Set marked as skipped",
+        description: `${currentStep.exerciseName} - Set ${currentStep.setNumber}`,
+        duration: 2000
+      });
+      
+      // Move to next step
+      handleStepComplete();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -547,11 +594,26 @@ export function RoutinePlayer({ week, day, workout }: RoutinePlayerProps) {
               )}
             </CardHeader>
             
-            {/* Timer */}
+            {/* Timer and Skip Set Button */}
             <CardContent className="text-center">
               <div className="text-6xl font-bold mb-4 font-mono">
                 {formatTime(timeRemaining)}
               </div>
+              
+              {/* Skip Set Button for Exercise Steps */}
+              {currentStep.type === 'exercise' && (
+                <div className="mb-4">
+                  <Button 
+                    onClick={handleSkipSet}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/20"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Skip Set
+                  </Button>
+                </div>
+              )}
               
               {/* Next exercise preview */}
               {currentStep.type === 'rest' && currentStepIndex < workoutSteps.length - 1 && (

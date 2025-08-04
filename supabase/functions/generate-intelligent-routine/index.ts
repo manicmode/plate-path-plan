@@ -52,11 +52,30 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(20);
 
+    // Get workout performance and skipped sets analysis
+    const { data: workoutLogs } = await supabase
+      .from('workout_logs')
+      .select('*')
+      .eq('user_id', user_id)
+      .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .order('completed_at', { ascending: false })
+      .limit(50);
+
+    // Get skipping analysis from the view
+    const { data: skippingAnalysis } = await supabase
+      .from('workout_skipping_analysis')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('workout_week', { ascending: false })
+      .limit(10);
+
     // Build AI prompt based on regeneration type
     const prompt = buildIntelligentPrompt({
       preferences,
       profile,
       recentLogs,
+      workoutLogs,
+      skippingAnalysis,
       regenerate_type,
       target_day,
       locked_days,
@@ -171,6 +190,8 @@ function buildIntelligentPrompt({
   preferences,
   profile,
   recentLogs,
+  workoutLogs,
+  skippingAnalysis,
   regenerate_type,
   target_day,
   locked_days,
@@ -199,7 +220,41 @@ ${body_scan_results && weak_muscle_groups ? `
 - Scores: ${Object.entries(weak_muscle_groups.scores).map(([group, score]) => `${group}: ${score}`).join(', ')}
 - PRIORITY: Focus on strengthening these muscle groups with 15-20% more exercises/volume
 ` : '- Body Scan Available: NO - Use standard routine generation'}
+
+SKIPPED SETS ANALYSIS:
+${skippingAnalysis && skippingAnalysis.length > 0 && skippingAnalysis.some(s => s.avg_skipped_sets > 0) ? `
+- Total Workouts Analyzed: ${skippingAnalysis.reduce((sum, s) => sum + s.total_workouts, 0)}
+- High Skip Rate Exercises: ${skippingAnalysis.filter(s => s.avg_skipped_sets > 1).map(s => `${s.exercise_name} (${s.avg_skipped_sets.toFixed(1)} sets/workout)`).join(', ') || 'None'}
+- Day Patterns: ${skippingAnalysis.filter(s => s.avg_skipped_sets > 0.5).map(s => `${s.day_name}: ${s.avg_skipped_sets.toFixed(1)} avg skips`).join(', ') || 'No clear patterns'}
+- ADAPTATION NEEDED: ${getAdaptationRecommendations(skippingAnalysis)}
+` : '- No skipping data available or minimal skips detected'}
+
+WORKOUT COMPLETION DATA:
+${workoutLogs && workoutLogs.length >= 3 ? `
+- Recent Workouts: ${workoutLogs.length} logged in last 7 days
+- Average Completion Rate: ${(workoutLogs.reduce((sum, log) => sum + (log.sets_completed / Math.max(log.target_sets, 1)), 0) / workoutLogs.length * 100).toFixed(0)}%
+- Total Skipped Sets: ${workoutLogs.reduce((sum, log) => sum + (log.skipped_sets || 0), 0)}
+` : '- Insufficient workout history (less than 3 workouts) - Using standard generation'}
 `;
+
+  function getAdaptationRecommendations(analysis) {
+    if (!analysis || analysis.length === 0) return 'None needed';
+    
+    const highSkipExercises = analysis.filter(s => s.avg_skipped_sets > 1);
+    const recommendations = [];
+    
+    if (highSkipExercises.length > 0) {
+      const legExercises = highSkipExercises.filter(s => s.exercise_name.toLowerCase().includes('squat') || s.exercise_name.toLowerCase().includes('leg'));
+      if (legExercises.length > 0) recommendations.push('Reduce leg exercise intensity');
+      
+      const chestExercises = highSkipExercises.filter(s => s.exercise_name.toLowerCase().includes('bench') || s.exercise_name.toLowerCase().includes('press'));
+      if (chestExercises.length > 0) recommendations.push('Simplify chest exercises');
+      
+      if (recommendations.length === 0) recommendations.push('General volume reduction needed');
+    }
+    
+    return recommendations.join(', ') || 'Focus on easier alternatives for high-skip exercises';
+  }
 
   if (regenerate_type === 'full_week') {
     return `${baseInfo}
@@ -216,6 +271,11 @@ ${weak_muscle_groups ? `
 - BODY SCAN FOCUS: Increase emphasis on weak muscle groups (${weak_muscle_groups.groups.join(', ')})
 - Add 1-2 extra exercises targeting these groups per relevant workout day
 - Ensure weekly balance while addressing weaknesses
+` : ''}
+${skippingAnalysis && skippingAnalysis.some(s => s.avg_skipped_sets > 1) ? `
+- SKIP ADAPTATION: Reduce difficulty for exercises with high skip rates
+- Offer easier alternatives for frequently skipped movements
+- Consider shorter sets or lower intensity for problem areas
 ` : ''}
 
 ${current_routine_data ? `CURRENT ROUTINE (for reference): ${JSON.stringify(current_routine_data)}` : ''}
@@ -235,8 +295,9 @@ Return JSON format:
     "tuesday": [],
     // ... tracking which groups trained each day
   },
-  "ai_reasoning": "Brief explanation of the routine design choices and body scan focus areas",
-  "body_scan_emphasis": ${weak_muscle_groups ? `["${weak_muscle_groups.groups.join('", "')}"]` : 'null'}
+  "ai_reasoning": "Brief explanation of the routine design choices, body scan focus areas, and skip adaptations",
+  "body_scan_emphasis": ${weak_muscle_groups ? `["${weak_muscle_groups.groups.join('", "')}"]` : 'null'},
+  "skip_adaptations": ${skippingAnalysis && skippingAnalysis.some(s => s.avg_skipped_sets > 1) ? `["Reduced difficulty for high-skip exercises", "Alternative movements provided"]` : 'null'}
 }`;
   }
 
@@ -259,6 +320,9 @@ REQUIREMENTS:
 - Same duration target as before
 ${weak_muscle_groups ? `
 - BODY SCAN FOCUS: If this day targets weak muscle groups (${weak_muscle_groups.groups.join(', ')}), add extra emphasis
+` : ''}
+${skippingAnalysis && skippingAnalysis.some(s => s.avg_skipped_sets > 1) ? `
+- SKIP ADAPTATION: If this day has high skip rates, provide easier alternatives
 ` : ''}
 
 Return JSON with the same format but only update the specified day.`;
