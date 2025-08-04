@@ -93,12 +93,15 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
   });
 
   return (
-    <Card 
-      className={`${getBannerStyle()} p-6 ${isLightMode ? 'text-slate-900' : 'text-white border-0'} mb-6`}
-      style={{ background: isLightMode ? 'var(--gradient-breathe-nudge)' : undefined }}
-    >
+    <Card className={`p-6 mb-6 rounded-xl shadow-md ${
+      isLightMode 
+        ? 'bg-slate-100 text-slate-900 border border-slate-200' 
+        : 'bg-neutral-900 text-white border border-neutral-700'
+    }`}>
       <div className="flex items-start gap-4">
-        <div className={`flex-shrink-0 p-2 ${isLightMode ? 'bg-slate-200/80' : 'bg-white/20'} rounded-full`}>
+        <div className={`flex-shrink-0 p-2 rounded-full ${
+          isLightMode ? 'bg-slate-200' : 'bg-neutral-700'
+        }`}>
           {getNudgeIcon()}
         </div>
         
@@ -106,7 +109,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
           <h3 className={`font-semibold text-lg mb-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
             {getTitle()}
           </h3>
-          <p className={`${isLightMode ? 'text-slate-800' : 'text-white/90'} mb-4 leading-relaxed`}>
+          <p className={`mb-4 leading-relaxed ${isLightMode ? 'text-slate-700' : 'text-slate-200'}`}>
             {activeNudge.nudge_message}
           </p>
           
@@ -114,10 +117,11 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
             <Button
               onClick={handleAccept}
               size="sm"
-              className={`${isLightMode 
-                ? 'bg-slate-800 text-white hover:bg-slate-900' 
-                : 'bg-white text-gray-900 hover:bg-white/90'
-              } font-medium flex-1 sm:flex-none`}
+              className={`font-medium flex-1 sm:flex-none ${
+                isLightMode 
+                  ? 'bg-slate-800 text-white hover:bg-slate-900' 
+                  : 'bg-white text-slate-900 hover:bg-slate-100'
+              }`}
             >
               {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               <Heart className="h-4 w-4 mr-2" />
@@ -127,10 +131,11 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
               onClick={handleDismiss}
               size="sm"
               variant="ghost"
-              className={`${isLightMode 
-                ? 'text-slate-700 hover:bg-slate-200/50 border border-slate-300' 
-                : 'text-white hover:bg-white/20 border border-white/30'
-              } flex-1 sm:flex-none text-xs sm:text-sm px-3`}
+              className={`flex-1 sm:flex-none text-xs sm:text-sm px-3 ${
+                isLightMode 
+                  ? 'text-slate-600 hover:bg-slate-200 border border-slate-300' 
+                  : 'text-slate-300 hover:bg-neutral-800 border border-neutral-600'
+              }`}
             >
               In gentle time
             </Button>

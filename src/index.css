@@ -540,19 +540,6 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  /* Nudge Card Override Styles - Force visibility in light mode */
-  :root {
-    --gradient-breathe-nudge: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 50%, #a7f3d0 100%);
-    --gradient-meditation-nudge: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
-    --border-meditation-nudge: #3b82f6;
-  }
-
-  .dark {
-    --gradient-breathe-nudge: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.4) 100%);
-    --gradient-meditation-nudge: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.4) 100%);
-    --border-meditation-nudge: rgba(59, 130, 246, 0.5);
-  }
-
   /* Enhanced Trophy Tab Glow Effects */
   .glow {
     box-shadow: 0 0 15px rgba(255, 193, 7, 0.6), 0 0 25px rgba(255, 193, 7, 0.4);

@@ -85,10 +85,9 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
 
   return (
     <div className={`fixed top-4 left-4 right-4 z-50 animate-slide-down ${isMobile ? 'max-w-full' : 'max-w-lg mx-auto'}`}>
-      <Card 
-        className={`relative overflow-hidden bg-gradient-to-r ${getBannerStyle()} border backdrop-blur-sm`}
-        style={{ background: 'var(--gradient-meditation-nudge)', borderColor: 'var(--border-meditation-nudge)' }}
-      >
+      <Card className={`relative overflow-hidden p-4 rounded-xl shadow-md ${
+        'bg-slate-100 text-slate-900 border border-slate-200 dark:bg-neutral-900 dark:text-white dark:border-neutral-700'
+      }`}>
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-2">
@@ -107,7 +106,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
             </Button>
           </div>
           
-          <p className="text-slate-700 dark:text-gray-300 text-sm mb-4 leading-relaxed">
+          <p className="text-slate-700 dark:text-slate-200 text-sm mb-4 leading-relaxed">
             {activeNudge.nudge_message}
           </p>
           
@@ -115,7 +114,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
             <Button
               onClick={handleAccept}
               size="sm"
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="flex-1 bg-slate-800 text-white hover:bg-slate-900 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
             >
               {/* 🎭 Coach Personality Nudge - Recovery Coach: Gentle, soothing, poetic */}
               🌙 Embrace Stillness
@@ -124,7 +123,7 @@ export const MeditationNudgeBanner: React.FC<MeditationNudgeBannerProps> = ({
               onClick={handleDismiss}
               variant="outline"
               size="sm"
-              className="px-4"
+              className="px-4 text-slate-600 hover:bg-slate-200 border-slate-300 dark:text-slate-300 dark:hover:bg-neutral-800 dark:border-neutral-600"
             >
               Peacefully defer
             </Button>
