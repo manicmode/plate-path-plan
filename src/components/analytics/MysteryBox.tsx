@@ -22,17 +22,10 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     right: 80
   });
 
-  // 🎯 NEW LOGIC: Show box based on availability state
+  // 🎯 SMART FLOATING LOGIC: Only show when ready to be opened
   const shouldShowBox = () => {
-    if (canClaimBox) return 'ready'; // Show glowing, animated box
-    
-    // Show dimmed box only in the last 24 hours before it becomes available
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    if (timeUntilNextBox > 0 && timeUntilNextBox <= oneDayInMs) {
-      return 'countdown'; // Show dimmed box with countdown
-    }
-    
-    return 'hidden'; // Don't show at all
+    if (canClaimBox) return 'ready'; // Show glowing, animated floating box
+    return 'hidden'; // Hide completely during cooldown
   };
 
   const boxState = shouldShowBox();
@@ -113,70 +106,45 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
             onClick={handleBoxClick}
             style={{
               position: 'fixed',
-              bottom: boxState === 'countdown' ? '120px' : `${floatingPosition.bottom}px`, // Fixed position when in countdown
-              right: boxState === 'countdown' ? '80px' : `${floatingPosition.right}px`,   // Fixed position when in countdown
+              bottom: `${floatingPosition.bottom}px`,
+              right: `${floatingPosition.right}px`,
               width: '72px',
               height: '72px',
               borderRadius: '50%',
-              background: boxState === 'ready' 
-                ? 'linear-gradient(135deg, #FFD700, #FF8C00, #FF4500, #DC143C)'
-                : 'linear-gradient(135deg, #4A5568, #718096)',
-              boxShadow: boxState === 'ready'
-                ? '0 0 30px 8px rgba(255, 215, 0, 0.6), 0 0 60px 12px rgba(255, 140, 0, 0.4), 0 0 90px 16px rgba(255, 69, 0, 0.2)'
-                : '0 0 10px 3px rgba(113, 128, 150, 0.2)',
+              background: 'linear-gradient(135deg, #FFD700, #FF8C00, #FF4500, #DC143C)',
+              boxShadow: '0 0 30px 8px rgba(255, 215, 0, 0.6), 0 0 60px 12px rgba(255, 140, 0, 0.4), 0 0 90px 16px rgba(255, 69, 0, 0.2)',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               zIndex: 999999,
-              cursor: boxState === 'ready' ? 'pointer' : 'not-allowed',
-              animation: boxState === 'ready' ? 'gift-pulse 1.5s ease-in-out infinite' : 'pulse 2s ease-in-out infinite',
-              transition: boxState === 'ready' ? 'bottom 0.8s ease, right 0.8s ease, transform 0.2s ease, box-shadow 0.3s ease' : 'transform 0.2s ease',
-              opacity: boxState === 'ready' ? 1 : 0.4,
+              cursor: 'pointer',
+              animation: 'gift-pulse 1.5s ease-in-out infinite',
+              transition: 'bottom 0.8s ease, right 0.8s ease, transform 0.2s ease, box-shadow 0.3s ease',
+              opacity: 1,
               pointerEvents: 'auto',
-              border: boxState === 'ready' ? '3px solid rgba(255, 255, 255, 0.3)' : '2px solid rgba(255, 255, 255, 0.1)'
+              border: '3px solid rgba(255, 255, 255, 0.3)'
             }}
             onMouseEnter={(e) => {
-              if (boxState === 'ready') {
-                e.currentTarget.style.transform = 'scale(1.15) translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 0 40px 12px rgba(255, 215, 0, 0.8), 0 0 80px 16px rgba(255, 140, 0, 0.6), 0 0 120px 20px rgba(255, 69, 0, 0.3)';
-              } else {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }
+              e.currentTarget.style.transform = 'scale(1.15) translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 0 40px 12px rgba(255, 215, 0, 0.8), 0 0 80px 16px rgba(255, 140, 0, 0.6), 0 0 120px 20px rgba(255, 69, 0, 0.3)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              if (boxState === 'ready') {
-                e.currentTarget.style.boxShadow = '0 0 30px 8px rgba(255, 215, 0, 0.6), 0 0 60px 12px rgba(255, 140, 0, 0.4), 0 0 90px 16px rgba(255, 69, 0, 0.2)';
-              }
+              e.currentTarget.style.boxShadow = '0 0 30px 8px rgba(255, 215, 0, 0.6), 0 0 60px 12px rgba(255, 140, 0, 0.4), 0 0 90px 16px rgba(255, 69, 0, 0.2)';
             }}
           >
-            {boxState === 'ready' ? (
-              <Gift 
-                size={36} 
-                color="white" 
-                style={{ 
-                  filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))',
-                  pointerEvents: 'none' 
-                }} 
-              />
-            ) : (
-              <Clock 
-                size={32} 
-                color="white" 
-                style={{ 
-                  filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.5))',
-                  pointerEvents: 'none' 
-                }} 
-              />
-            )}
+            <Gift 
+              size={36} 
+              color="white" 
+              style={{ 
+                filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 8px rgba(255, 215, 0, 0.6))',
+                pointerEvents: 'none' 
+              }} 
+            />
           </div>
         </TooltipTrigger>
         <TooltipContent side="left" className="bg-card border shadow-lg">
-          {boxState === 'ready' ? (
-            <p className="text-sm font-medium">🎁 Mystery Box Ready!</p>
-          ) : (
-            <p className="text-sm">🎁 Ready in {formatTimeLeft(timeUntilNextBox)}</p>
-          )}
+          <p className="text-sm font-medium">🎁 Mystery Box Ready!</p>
         </TooltipContent>
       </Tooltip>
 
