@@ -69,23 +69,28 @@ export const MultiAIFoodDetection = ({
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 animate-pulse text-primary" />
-            Analyzing with Multiple AI Systems
+          <CardTitle className="flex flex-col items-center gap-3 text-center">
+            <Sparkles className="h-6 w-6 animate-pulse text-primary" />
+            <div>
+              <div className="text-lg font-bold text-foreground">
+                Your plate decoded by the world's smartest food vision system.
+              </div>
+              <div className="text-sm text-muted-foreground mt-2 font-normal">
+                Powered by GPT-Vision — trained on trillions of food examples to understand meals, ingredients, and health impact instantly.
+              </div>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="text-center text-muted-foreground">
-              Running food detection across multiple AI systems...
+              Analyzing your food with advanced AI vision...
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              {['Google Vision', 'CalorieMama', 'GPT-4 Vision', 'Claude Vision'].map((system) => (
-                <div key={system} className="flex items-center gap-2 p-2 rounded-lg bg-muted">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                  {system}
-                </div>
-              ))}
+            <div className="flex justify-center">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-primary">GPT-4 Vision</span>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -106,7 +111,7 @@ export const MultiAIFoodDetection = ({
           </Button>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Select the food items you want to log. Items are ranked by AI consensus and confidence.
+          Select the food items you want to log. Items are ranked by confidence level.
         </p>
       </CardHeader>
       <CardContent>
@@ -179,7 +184,7 @@ export const MultiAIFoodDetection = ({
                         {Math.round(Math.min(food.confidence * 100, 100))}% confidence
                       </Badge>
                       <Badge variant="outline" className="text-xs">
-                        {food.sources.length} AI{food.sources.length > 1 ? 's' : ''}
+                        GPT Vision
                       </Badge>
                     </div>
                   </div>

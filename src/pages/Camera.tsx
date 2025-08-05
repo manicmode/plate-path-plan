@@ -471,24 +471,24 @@ const CameraPage = () => {
       }
       
       // STEP 2: Only reach here if NOT a barcode - proceed with multi-AI food detection
-      console.log('=== MULTI-AI FOOD DETECTION PATH ===');
-      console.log('Image does not appear to be a barcode, proceeding with multi-AI food detection...');
+      console.log('=== GPT FOOD DETECTION PATH ===');
+      console.log('Image does not appear to be a barcode, proceeding with GPT food detection...');
       
       // If not a barcode, proceed with multi-AI food recognition
       const imageBase64 = convertToBase64(selectedImage);
       
-      setProcessingStep('Initializing AI systems...');
+      setProcessingStep('Initializing GPT food vision...');
       setIsMultiAILoading(true);
       setShowMultiAIDetection(true);
       
       try {
-        console.log('Calling multi-AI food detection...');
-        setProcessingStep('Running multi-AI detection...');
+        console.log('Calling GPT food detection...');
+        setProcessingStep('Analyzing with GPT Vision...');
         
         // Call the new multi-AI detection system
         const detectionResults = await detectFoodsFromAllSources(imageBase64);
         
-        console.log('Multi-AI detection results:', detectionResults);
+        console.log('GPT detection results:', detectionResults);
         
         // Enhance results with calorie estimates
         setProcessingStep('Estimating nutrition...');
@@ -519,13 +519,13 @@ const CameraPage = () => {
         setMultiAIResults(enhancedResults);
         
         if (enhancedResults.length > 0) {
-          toast.success(`Found ${enhancedResults.length} food item(s) across multiple AI systems!`);
+          toast.success(`Found ${enhancedResults.length} food item(s) with GPT Vision!`);
         } else {
           toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
         }
         
       } catch (error) {
-        console.error('Multi-AI food detection failed:', error);
+        console.error('GPT food detection failed:', error);
         toast.error('Food detection failed. Please try again or use manual entry.');
         setShowMultiAIDetection(false);
       } finally {
