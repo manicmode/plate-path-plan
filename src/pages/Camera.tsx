@@ -1921,6 +1921,10 @@ const CameraPage = () => {
             isLoading={isMultiAILoading}
             onConfirm={handleMultiAIConfirm}
             onCancel={handleMultiAICancel}
+            onAddManually={() => {
+              setShowMultiAIDetection(false);
+              setShowManualFoodEntry(true);
+            }}
           />
         </div>
       )}

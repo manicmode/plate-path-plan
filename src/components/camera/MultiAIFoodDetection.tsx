@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { X, CheckCircle, Sparkles, Info } from 'lucide-react';
+import { X, CheckCircle, Sparkles, Info, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DetectedFood {
@@ -21,13 +21,15 @@ interface MultiAIFoodDetectionProps {
   isLoading: boolean;
   onConfirm: (selectedFoods: DetectedFood[]) => void;
   onCancel: () => void;
+  onAddManually: () => void;
 }
 
 export const MultiAIFoodDetection = ({ 
   detectedFoods, 
   isLoading, 
   onConfirm, 
-  onCancel 
+  onCancel,
+  onAddManually 
 }: MultiAIFoodDetectionProps) => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
@@ -56,7 +58,7 @@ export const MultiAIFoodDetection = ({
       case 'caloriemama': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'gpt': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'claude': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-      case 'gastronet': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
+      
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
@@ -75,8 +77,8 @@ export const MultiAIFoodDetection = ({
             <div className="text-center text-muted-foreground">
               Running food detection across multiple AI systems...
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-              {['Google Vision', 'CalorieMama', 'GPT-4 Vision', 'Claude Vision', 'GastroNet'].map((system) => (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              {['Google Vision', 'CalorieMama', 'GPT-4 Vision', 'Claude Vision'].map((system) => (
                 <div key={system} className="flex items-center gap-2 p-2 rounded-lg bg-muted">
                   <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                   {system}
@@ -172,7 +174,7 @@ export const MultiAIFoodDetection = ({
                     </div>
                     <div className="flex items-center gap-2 ml-3">
                       <Badge variant="secondary" className="text-xs">
-                        {Math.round(food.confidence * 100)}% confidence
+                        {Math.round(Math.min(food.confidence * 100, 100))}% confidence
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         {food.sources.length} AI{food.sources.length > 1 ? 's' : ''}
@@ -200,6 +202,22 @@ export const MultiAIFoodDetection = ({
           <div className="text-center py-8 text-muted-foreground">
             <p>No food items detected with sufficient confidence.</p>
             <p className="text-sm mt-2">Try taking a clearer photo or use manual entry.</p>
+          </div>
+        )}
+
+        {detectedFoods.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <Button 
+              variant="outline" 
+              onClick={onAddManually}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manually
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Can't find what you're looking for? Add it manually.
+            </p>
           </div>
         )}
 

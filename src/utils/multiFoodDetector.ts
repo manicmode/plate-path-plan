@@ -123,32 +123,6 @@ async function callGPT4Vision(imageBase64: string): Promise<Array<{ name: string
   }
 }
 
-// GastroNet API call for food detection (placeholder)
-async function callGastroNet(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
-  try {
-    console.log('Calling GastroNet API (simulated)...');
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock response with realistic food detection data
-    const mockResponse = [
-      { name: 'Scrambled Eggs', confidence: 0.83, source: 'GastroNet' },
-      { name: 'Avocado Toast', confidence: 0.76, source: 'GastroNet' }
-    ];
-    
-    console.log('GastroNet detected food items (simulated):', mockResponse);
-    return mockResponse;
-    
-  } catch (error) {
-    console.error('GastroNet detection failed:', error);
-    return [];
-  }
-}
-
-async function detectWithGastroNet(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
-  return await callGastroNet(image);
-}
 
 async function detectWithClarifai(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   // TODO: Implement Clarifai API food detection
@@ -188,13 +162,29 @@ async function detectWithClaude(image: string): Promise<Array<{ name: string; co
   return await callClaudeVision(image);
 }
 
+// Filter to remove irrelevant or generic labels
+function isRelevantFoodItem(name: string): boolean {
+  const normalizedName = name.trim().toLowerCase();
+  const irrelevantLabels = [
+    'food', 'dishware', 'serveware', 'comfort food', 'fast food', 
+    'ingredient', 'recipe', 'cuisine', 'meal', 'lunch', 'dinner', 'cooked meat'
+  ];
+  
+  // Check if the name is just one of the irrelevant labels
+  if (irrelevantLabels.includes(normalizedName)) {
+    return false;
+  }
+  
+  // Allow if it's part of a more specific phrase (e.g., "chicken dinner" is OK)
+  return true;
+}
+
 export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; confidence: number; sources: string[] }[]> {
-  // Run all AI detectors in parallel
-  const [googleResults, calorieMamaResults, gptResults, gastroNetResults, claudeResults, clarifaiResults] = await Promise.all([
+  // Run only real AI detectors in parallel (removed GastroNet mock)
+  const [googleResults, calorieMamaResults, gptResults, claudeResults, clarifaiResults] = await Promise.all([
     detectWithGoogle(image),
     detectWithCalorieMama(image),
     detectWithChatGPT(image),
-    detectWithGastroNet(image),
     detectWithClaude(image),
     detectWithClarifai(image)
   ]);
@@ -204,7 +194,6 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
     ...googleResults,
     ...calorieMamaResults,
     ...gptResults,
-    ...gastroNetResults,
     ...claudeResults,
     ...clarifaiResults
   ];
@@ -215,16 +204,25 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
   for (const item of allResults) {
     const normalizedName = item.name.trim().toLowerCase();
     
+    // Filter out irrelevant items
+    if (!isRelevantFoodItem(item.name)) {
+      console.log('Filtered out irrelevant item:', item.name);
+      continue;
+    }
+    
+    // Cap confidence at 100%
+    const cappedConfidence = Math.min(item.confidence * 100, 100) / 100;
+    
     if (!foodMap[normalizedName]) {
       foodMap[normalizedName] = {
         name: item.name, // Keep original casing from first occurrence
-        confidence: item.confidence,
+        confidence: cappedConfidence,
         sources: [item.source]
       };
     } else {
       // Merge with existing entry
       const existing = foodMap[normalizedName];
-      existing.confidence = Math.max(existing.confidence, item.confidence); // Keep highest confidence
+      existing.confidence = Math.max(existing.confidence, cappedConfidence); // Keep highest confidence
       if (!existing.sources.includes(item.source)) {
         existing.sources.push(item.source);
       }
