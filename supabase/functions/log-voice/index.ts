@@ -112,7 +112,33 @@ serve(async (req) => {
   }
 
   try {
+    // Log function start and check for API key availability
+    console.log('🔍 log-voice function started');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    console.log('🔍 OpenAI API key present:', !!OPENAI_API_KEY);
+    console.log('🔍 OpenAI API key length:', OPENAI_API_KEY ? OPENAI_API_KEY.length : 0);
+    
+    if (!OPENAI_API_KEY) {
+      console.error('❌ OpenAI API key not configured in Supabase secrets');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          errorType: "CONFIG_ERROR",
+          errorMessage: "AI analysis service is not configured",
+          suggestions: ["OpenAI API key is missing from Supabase secrets", "Please contact support"]
+        }),
+        { 
+          status: 500,
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
+        }
+      );
+    }
+
     const { text } = await req.json();
+    console.log('🔍 Received text input:', text);
     
     if (!text) {
       return new Response(
@@ -132,17 +158,13 @@ serve(async (req) => {
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured');
-    }
-
     // Preprocess the input text with food mapping
     const preprocessedText = preprocessFoodText(text);
     console.log('Original text:', text);
     console.log('Preprocessed text:', preprocessedText);
 
     // Enhanced OpenAI prompt with specific examples and instructions
+    console.log('🔍 Making OpenAI API request...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
