@@ -1111,7 +1111,7 @@ const Home = () => {
 
 
         {/* Enhanced Net Calorie Card - Added proper spacing */}
-        <div className="mt-8">
+        <div className="mt-12">
           <Card 
             className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
           >
