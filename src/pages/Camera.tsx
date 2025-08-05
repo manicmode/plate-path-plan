@@ -26,7 +26,6 @@ import { validateImageFile, getImageDimensions } from '@/utils/imageValidation';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsScreen';
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
-import { FinalMealSummary } from '@/components/camera/FinalMealSummary';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
@@ -68,7 +67,6 @@ interface FoodItem {
   name: string;
   quantity?: string;
   preparation?: string;
-  calories?: number;
 }
 
 interface VoiceApiResponse {
@@ -131,16 +129,6 @@ const CameraPage = () => {
   // Manual entry states
   const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
   const [showManualFoodEntry, setShowManualFoodEntry] = useState(false);
-  
-  // Final meal summary states
-  const [showFinalMealSummary, setShowFinalMealSummary] = useState(false);
-  const [confirmedMealItems, setConfirmedMealItems] = useState<Array<{
-    id: string;
-    name: string;
-    portion: string;
-    calories?: number;
-    foodData: any;
-  }>>([]);
   
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'main' | 'saved' | 'recent'>('main');
@@ -547,38 +535,29 @@ const CameraPage = () => {
       // Step 2: Parse food items with OpenAI
       setProcessingStep('Extracting food items...');
       
-      console.log("📸 Sending to parse-food-items edge function...");
-      console.log("🔍 Vision data being sent:", JSON.stringify(data, null, 2));
-      
       try {
         const parseResponse = await supabase.functions.invoke('parse-food-items', {
-          body: { 
-            visionResults: data,
-            imageDataUrl: `data:image/jpeg;base64,${imageBase64}`  // Include image data for vision fallback
-          }
+          body: { visionResults: data }
         });
 
         if (parseResponse.error || parseResponse.data?.error) {
           console.error('Food parsing error:', parseResponse.error || parseResponse.data?.message);
-          const errorMsg = parseResponse.data?.message || 'Food detection failed';
-          
-          // Show proper error state instead of fallback
-          setShowError(true);
-          setErrorType('detection_failed');
-          setErrorMessage('We couldn\'t detect any food from the image. Please try again or enter manually.');
-          setErrorSuggestions([
-            'Try taking a clearer photo with better lighting',
-            'Use the voice input to describe your meal',
-            'Enter food details manually'
-          ]);
-          
-          toast.error(errorMsg);
+          // Fallback to original logic
+          const processedFoods = await processNutritionData('photo', data);
+          if (processedFoods.length > 0) {
+            setRecognizedFoods(processedFoods);
+            setInputSource('photo');
+            setShowConfirmation(true);
+            toast.success(`Detected ${processedFoods.length} food item(s)!`);
+          } else {
+            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
+          }
           return;
         }
 
         // Handle new response format with metadata
         const responseData = parseResponse.data;
-        let parsedItems: Array<{name: string, portion: string, confidence?: string, method?: string, calories?: number}>;
+        let parsedItems: Array<{name: string, portion: string, confidence?: string, method?: string}>;
         let analysisMetadata: any = {};
         
         if (responseData.items && responseData.analysis) {
@@ -600,18 +579,16 @@ const CameraPage = () => {
 
         // Validate parsed items
         if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-          console.log('No valid food items parsed, showing error state');
-          
-          setShowError(true);
-          setErrorType('detection_failed');
-          setErrorMessage('We couldn\'t detect any food from the image. Please try again or enter manually.');
-          setErrorSuggestions([
-            'Try taking a clearer photo with better lighting',
-            'Use the voice input to describe your meal',
-            'Enter food details manually'
-          ]);
-          
-          toast.error('No food items detected');
+          console.log('No valid food items parsed, falling back to original logic');
+          const processedFoods = await processNutritionData('photo', data);
+          if (processedFoods.length > 0) {
+            setRecognizedFoods(processedFoods);
+            setInputSource('photo');
+            setShowConfirmation(true);
+            toast.success(`Detected ${processedFoods.length} food item(s)!`);
+          } else {
+            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
+          }
           return;
         }
 
@@ -620,9 +597,7 @@ const CameraPage = () => {
           id: `item-${index}`,
           name: item.name || 'Unknown Food',
           portion: item.portion || '1 serving',
-          calories: item.calories,
-          selected: false,
-          isAIInferred: (item as any).isAIInferred || false  // Pass through AI inferred flag, cast to any for flexibility
+          selected: false
         }));
 
         console.log('Created summary items:', summaryItems);
@@ -634,17 +609,16 @@ const CameraPage = () => {
 
       } catch (parseError) {
         console.error('Food parsing failed:', parseError);
-        
-        setShowError(true);
-        setErrorType('detection_failed');
-        setErrorMessage('We couldn\'t detect any food from the image. Please try again or enter manually.');
-        setErrorSuggestions([
-          'Try taking a clearer photo with better lighting',
-          'Use the voice input to describe your meal',
-          'Enter food details manually'
-        ]);
-        
-        toast.error('Food detection failed');
+        // Fallback to original logic
+        const processedFoods = await processNutritionData('photo', data);
+        if (processedFoods.length > 0) {
+          setRecognizedFoods(processedFoods);
+          setInputSource('photo');
+          setShowConfirmation(true);
+          toast.success(`Detected ${processedFoods.length} food item(s)!`);
+        } else {
+          toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
+        }
       }
       
     } catch (error) {
@@ -1098,7 +1072,6 @@ const CameraPage = () => {
             id: `voice-item-${index}`,
             name: displayName,
             portion: item.quantity || '1 serving',
-            calories: item.calories,
             selected: true
           };
         });
@@ -1207,7 +1180,6 @@ const CameraPage = () => {
             id: `manual-item-${index}`,
             name: displayName,
             portion: item.quantity || '1 serving',
-            calories: item.calories,
             selected: true
           };
         });
@@ -1353,14 +1325,6 @@ const CameraPage = () => {
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
-  
-  // Handler for manual entry from summary panel
-  const handleManualEntryFromSummary = () => {
-    setShowSummaryPanel(false);
-    // Don't reset the selectedImage - keep it visible for reference
-    setShowManualFoodEntry(true);
-  };
-
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
     setShowSummaryPanel(false);
@@ -1396,7 +1360,6 @@ const CameraPage = () => {
       id: item.id,
       name: item.name,
       portion: item.portion,
-      calories: item.calories,
       selected: true
     }));
     
@@ -1410,9 +1373,11 @@ const CameraPage = () => {
 
   const processCurrentItem = async (items: SummaryItem[], index: number) => {
     if (index >= items.length) {
-      // All items processed - show final meal summary instead of logging immediately
-      console.log('🎉 All items processed, showing final meal summary');
-      setShowFinalMealSummary(true);
+      // All items processed
+      setPendingItems([]);
+      setCurrentItemIndex(0);
+      toast.success(`All ${items.length} food items logged successfully!`);
+      navigate('/home');
       return;
     }
 
@@ -1504,140 +1469,90 @@ const CameraPage = () => {
     };
 
     try {
-      // Store the confirmed item for final meal logging instead of logging immediately
-      const currentPendingItem = pendingItems[currentItemIndex];
-      const confirmedItem = {
-        id: currentPendingItem.id,
-        name: foodItem.name,
-        portion: foodItem.serving || 'Estimated portion',
-        calories: foodItem.calories,
-        foodData: foodItem
-      };
+      // Add the current food item to nutrition context
+      addFood(foodItem);
+      confirmationDebug.saveToContext = true;
+      console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
       
-      setConfirmedMealItems(prev => [...prev, confirmedItem]);
-      console.log('✅ ITEM STORED FOR FINAL MEAL LOGGING:', confirmedItem);
-      
-      // Check if there are more pending items to process
-      if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
-        const nextIndex = currentItemIndex + 1;
-        setCurrentItemIndex(nextIndex);
-        setShowConfirmation(false); // Close current confirmation
-        
-        console.log(`🔄 PROCEEDING TO NEXT ITEM: ${nextIndex + 1} of ${pendingItems.length}`);
-        
-        // Show transition screen between items if multiple items
-        if (pendingItems.length > 1) {
-          setShowTransition(true);
-        } else {
-          setTimeout(() => {
-            processCurrentItem(pendingItems, nextIndex);
-          }, 300);
-        }
-      } else {
-        // All items processed, close confirmation and trigger final summary
-        console.log(`🎉 ALL ITEMS CONFIRMED - Showing final meal summary`);
-        setShowConfirmation(false);
-        processCurrentItem(pendingItems, pendingItems.length); // Trigger final summary
+      // Save to Supabase
+      console.log('💾 STEP 1: Saving to Supabase database...');
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .insert({
+          user_id: user?.id,
+          food_name: foodItem.name,
+          calories: foodItem.calories,
+          protein: foodItem.protein,
+          carbs: foodItem.carbs,
+          fat: foodItem.fat,
+          fiber: foodItem.fiber,
+          sugar: foodItem.sugar,
+          sodium: foodItem.sodium,
+          confidence: foodItem.confidence,
+          serving_size: foodItem.serving || 'Estimated portion',
+          source: 'vision_api',
+          image_url: selectedImage || null,
+        })
+        .select();
+
+      if (error) {
+        confirmationDebug.errors.push(`Database save error: ${error.message}`);
+        console.error('❌ DATABASE SAVE FAILED:', error);
+        toast.error('Failed to save food item');
+        return;
       }
       
-    } catch (error) {
-      confirmationDebug.errors.push(`Confirmation exception: ${error.message}`);
-      console.error('❌ CONFIRMATION EXCEPTION:', error);
-      toast.error('Failed to confirm food item');
-      return;
-    }
-  };
-
-  // Final meal logging handlers
-  const handleLogEntireMeal = async () => {
-    try {
-      console.log('🍽️ === LOGGING ENTIRE MEAL ===');
-      console.log('📊 Confirmed items to log:', confirmedMealItems);
-      
-      // Log all confirmed items to database
-      for (const item of confirmedMealItems) {
-        const foodItem = item.foodData;
-        
-        // Add to nutrition context
-        addFood(foodItem);
-        
-        // Save to Supabase
-        const { data, error } = await supabase
-          .from('nutrition_logs')
-          .insert({
-            user_id: user?.id,
-            food_name: foodItem.name,
-            calories: foodItem.calories,
-            protein: foodItem.protein,
-            carbs: foodItem.carbs,
-            fat: foodItem.fat,
-            fiber: foodItem.fiber,
-            sugar: foodItem.sugar,
-            sodium: foodItem.sodium,
-            confidence: foodItem.confidence,
-            serving_size: foodItem.serving || 'Estimated portion',
-            source: 'vision_api',
-            image_url: selectedImage || null,
-          })
-          .select();
-
-        if (error) {
-          console.error('❌ DATABASE SAVE FAILED for item:', item.name, error);
-          toast.error(`Failed to save ${item.name}`);
-          return;
-        }
-        
-        // Score the meal quality
-        await scoreMealAfterInsert(data, error);
-      }
+      confirmationDebug.saveToDatabase = true;
+      console.log('✅ DATABASE SAVE SUCCESS - Food logged to nutrition_logs table');
       
       // Refresh saved foods list
       if (refetchSavedFoods) {
         await refetchSavedFoods();
       }
       
+      // Score the meal quality
+      await scoreMealAfterInsert(data, error);
+      
+    } catch (error) {
+      confirmationDebug.errors.push(`Save exception: ${error.message}`);
+      console.error('❌ SAVE EXCEPTION:', error);
+      toast.error('Failed to save food item');
+      return;
+    }
+
+    console.log('🍽️ === FOOD CONFIRMATION DEBUG SUMMARY ===');
+    console.log('📊 Confirmation Debug Log:', confirmationDebug);
+    console.log('✅ Food item successfully confirmed and logged');
+
+    // Check if there are more pending items to process
+    if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
+      const nextIndex = currentItemIndex + 1;
+      setCurrentItemIndex(nextIndex);
+      setShowConfirmation(false); // Close current confirmation
+      
+      console.log(`🔄 PROCEEDING TO NEXT ITEM: ${nextIndex + 1} of ${pendingItems.length}`);
+      
+      // Show transition screen between items if multiple items
+      if (pendingItems.length > 1) {
+        setShowTransition(true);
+      } else {
+        setTimeout(() => {
+          processCurrentItem(pendingItems, nextIndex);
+        }, 300);
+      }
+    } else {
+      // All items processed, reset state and navigate
+      const totalItems = pendingItems.length || 1;
+      console.log(`🎉 ALL ITEMS PROCESSED - Total logged: ${totalItems}`);
+      
       // Play success sound
       playFoodLogConfirm();
       
-      // Show success message
-      toast.success('Meal Logged! ✅');
-      
-      // Reset state and navigate
-      setShowFinalMealSummary(false);
-      setConfirmedMealItems([]);
+      toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
+      setShowConfirmation(false);
       resetState();
       navigate('/home');
-      
-    } catch (error) {
-      console.error('❌ MEAL LOGGING EXCEPTION:', error);
-      toast.error('Failed to log meal');
     }
-  };
-
-  const handleEditItemFromSummary = (itemId: string) => {
-    // Find the item in confirmed items
-    const itemIndex = confirmedMealItems.findIndex(item => item.id === itemId);
-    if (itemIndex === -1) return;
-    
-    // Find the corresponding pending item
-    const pendingIndex = pendingItems.findIndex(item => item.id === itemId);
-    if (pendingIndex === -1) return;
-    
-    // Remove from confirmed items (will be re-added when user confirms again)
-    setConfirmedMealItems(prev => prev.filter(item => item.id !== itemId));
-    
-    // Close final summary and show confirmation for this specific item
-    setShowFinalMealSummary(false);
-    setCurrentItemIndex(pendingIndex);
-    setShowConfirmation(true);
-  };
-
-  const handleCloseFinalSummary = () => {
-    setShowFinalMealSummary(false);
-    setConfirmedMealItems([]);
-    setPendingItems([]);
-    setCurrentItemIndex(0);
-    resetState();
   };
 
   // Test mode debug summary - shows comprehensive validation results
@@ -1689,10 +1604,6 @@ const CameraPage = () => {
     setShowSummaryPanel(false);
     setSummaryItems([]);
     setShowTransition(false);
-    
-    // Reset final meal summary state
-    setShowFinalMealSummary(false);
-    setConfirmedMealItems([]);
     
     resetErrorState();
     setValidationWarning(null);
@@ -2183,7 +2094,6 @@ const CameraPage = () => {
           isOpen={showSummaryPanel}
           onClose={() => setShowSummaryPanel(false)}
           onNext={handleSummaryNext}
-          onManualEntry={handleManualEntryFromSummary}
           items={summaryItems}
         />
       )}
@@ -2269,15 +2179,6 @@ const CameraPage = () => {
           setShowManualFoodEntry(false);
         }}
         initialBarcode={failedBarcode}
-      />
-
-      {/* Final Meal Summary Modal */}
-      <FinalMealSummary
-        isOpen={showFinalMealSummary}
-        onClose={handleCloseFinalSummary}
-        onLogMeal={handleLogEntireMeal}
-        onEditItem={handleEditItemFromSummary}
-        items={confirmedMealItems}
       />
 
       {/* Debug components removed - clean production interface */}

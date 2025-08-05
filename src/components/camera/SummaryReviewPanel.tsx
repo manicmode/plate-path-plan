@@ -3,23 +3,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, ArrowRight, Info, Plus, Brain } from 'lucide-react';
+import { CheckCircle, ArrowRight, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export interface SummaryItem {
   id: string;
   name: string;
   portion: string;
-  calories?: number;
   selected: boolean;
-  isAIInferred?: boolean;  // Flag for vision fallback results
 }
 
 interface SummaryReviewPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onNext: (selectedItems: SummaryItem[]) => void;
-  onManualEntry?: () => void;
   items: SummaryItem[];
 }
 
@@ -27,7 +24,6 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
   isOpen,
   onClose,
   onNext,
-  onManualEntry,
   items: initialItems
 }) => {
   const [items, setItems] = useState<SummaryItem[]>(initialItems);
@@ -123,23 +119,10 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
                         <Badge variant="outline" className="text-xs">
                           #{index + 1}
                         </Badge>
-                        {item.isAIInferred && (
-                          <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 flex items-center gap-1">
-                            <Brain className="h-3 w-3" />
-                            AI Inferred
-                          </Badge>
-                        )}
                       </div>
-                      <div className="mt-1 space-y-1">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {item.portion}
-                          {item.calories && (
-                            <span className="ml-2 text-xs text-gray-500 dark:text-gray-500 font-medium">
-                              — {item.calories} cal
-                            </span>
-                          )}
-                        </p>
-                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {item.portion}
+                      </p>
                     </div>
 
                     {item.selected && (
@@ -159,20 +142,6 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
               <p>You'll see individual confirmation screens for each selected item where you can adjust portions and nutrition details.</p>
             </div>
           </div>
-
-          {/* Manual Entry Prompt - Show when 0-3 items detected */}
-          {items.length <= 3 && onManualEntry && (
-            <div className="mb-4">
-              <Button
-                variant="outline"
-                onClick={onManualEntry}
-                className="w-full flex items-center justify-center gap-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-emerald-300 hover:text-emerald-600 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Didn't detect everything? Tap here to add the rest manually or describe it.
-              </Button>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3">

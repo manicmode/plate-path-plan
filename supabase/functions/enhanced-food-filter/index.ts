@@ -34,10 +34,7 @@ class FoodDetectionFilter {
     'cutlery', 'utensil', 'napkin', 'table', 'tray', 'container', 'packaging',
     'wrapper', 'bag', 'box', 'can', 'bottle', 'jar', 'lid', 'background',
     'surface', 'counter', 'kitchen', 'dining', 'restaurant', 'produce',
-    'market', 'grocery', 'shelf', 'display', 'label', 'text', 'logo',
-    'dishware', 'serveware', 'gastronomy', 'brunch', 'cuisine', 'tableware',
-    'ingredient', 'culinary arts', 'garnish', 'breakfast', 'lunch', 'dinner',
-    'scene', 'meal'
+    'market', 'grocery', 'shelf', 'display', 'label', 'text', 'logo'
   ];
 
   // 🔄 Generic/overlapping terms to suppress
@@ -72,16 +69,10 @@ class FoodDetectionFilter {
    */
   public filterDetectedItems(detectedItems: DetectedItem[]): FilteredFoodItem[] {
     console.log('🧠 Starting Ultimate AI Detection Filtering...');
-    console.log('🔍 Filter Input Items:', JSON.stringify(detectedItems, null, 2));
     console.log(`📊 Input: ${detectedItems.length} detected items`);
 
     // Step 1: Remove non-food items
     const foodOnlyItems = this.removeNonFoodItems(detectedItems);
-    const removedNonFood = detectedItems.filter(item => 
-      !foodOnlyItems.some(filtered => filtered.name === item.name)
-    );
-    console.log('🗑️ Non-food items removed:', removedNonFood.map(item => `${item.name} (${(item.confidence || item.score).toFixed(3)})`));
-    console.log('🍽️ Food items kept:', foodOnlyItems.map(item => `${item.name} (${(item.confidence || item.score).toFixed(3)})`));
     console.log(`🔍 After non-food removal: ${foodOnlyItems.length} items`);
 
     // Step 2: Apply confidence thresholds
@@ -97,12 +88,7 @@ class FoodDetectionFilter {
     console.log(`🍲 After composite dish prioritization: ${prioritizedItems.length} items`);
 
     // Step 5: Suppress generic terms
-    const beforeGenericSuppression = [...prioritizedItems];
     const refinedItems = this.suppressGenericTerms(prioritizedItems);
-    const suppressedGeneric = beforeGenericSuppression.filter(item => 
-      !refinedItems.some(filtered => filtered.name === item.name)
-    );
-    console.log('🗑️ Generic terms suppressed:', suppressedGeneric.map(item => item.name));
     console.log(`🎯 After generic term suppression: ${refinedItems.length} items`);
 
     // Step 6: Apply context-based override rules
@@ -111,7 +97,6 @@ class FoodDetectionFilter {
 
     // Step 7: Sort by priority hierarchy
     const finalItems = this.sortByPriorityHierarchy(contextFilteredItems);
-    console.log('✅ Filter Output Items:', JSON.stringify(finalItems, null, 2));
     console.log(`✅ Final output: ${finalItems.length} items`);
 
     return finalItems.slice(0, 4); // Limit to 1-4 items max
@@ -128,7 +113,7 @@ class FoodDetectionFilter {
       );
       
       if (isNonFood) {
-        console.log(`🚫 Filtered non-food: ${item.name} (confidence: ${(item.confidence || item.score).toFixed(3)})`);
+        console.log(`🚫 Filtered non-food: ${item.name}`);
       }
       
       return !isNonFood;
@@ -138,16 +123,14 @@ class FoodDetectionFilter {
   /**
    * 📈 Step 2: Apply confidence thresholds
    */
-   private applyConfidenceThresholds(items: DetectedItem[]): DetectedItem[] {
+  private applyConfidenceThresholds(items: DetectedItem[]): DetectedItem[] {
     const filtered = items.filter(item => {
-      // Use confidence > 92% to eliminate false positives
-      const threshold = items.length < 2 ? 0.6 : 0.92;
+      // Use confidence > 75% unless fewer than 2 items detected
+      const threshold = items.length < 2 ? 0.6 : 0.75;
       const hasGoodConfidence = item.confidence >= threshold || item.score >= threshold;
       
       if (!hasGoodConfidence) {
-        console.log(`📉 Low confidence filtered: ${item.name} (confidence: ${(item.confidence || item.score).toFixed(3)}, threshold: ${threshold.toFixed(2)})`);
-      } else {
-        console.log(`✅ Confidence passed: ${item.name} (confidence: ${(item.confidence || item.score).toFixed(3)})`);
+        console.log(`📉 Low confidence filtered: ${item.name} (${item.confidence || item.score})`);
       }
       
       return hasGoodConfidence;
