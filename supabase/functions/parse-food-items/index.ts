@@ -248,34 +248,69 @@ EXAMPLE:
   {"name": "fresh strawberries", "portion": "½ cup", "calories": 25, "confidence": "medium", "method": "context_analysis"}
 ]`;
     } else {
-      // Standard analysis prompt  
-      prompt = `Analyze this food image focusing ONLY on edible food items. Identify individual items separately with realistic portion estimates.
+      // NEW INTELLIGENT CONTEXT-AWARE PROMPT
+      prompt = `You are an AI food analyst with expertise in meal composition and nutrition. Your task is to analyze filtered detection data and intelligently infer the complete meal composition.
 
-STRICT FILTERING RULES:
-1. EXCLUDE ALL non-food objects: plates, bowls, forks, knives, spoons, utensils, containers, napkins, tables, glasses, serveware
-2. EXCLUDE abstract labels like "brunch", "meal", "dish", "cuisine", "serveware"
-3. IDENTIFY individual food items separately (e.g., if you see "toast and eggs", list as separate items: "toast" and "scrambled eggs")
-4. Estimate portions in realistic units (e.g., "2 slices bread", "1 cup rice", "4 oz chicken")
-5. Use clean, simple food names without marketing terms
+FILTERED DETECTION DATA:
+${inputText}
 
-PORTION ESTIMATION: Be realistic with serving sizes:
-- Count discrete items (2 cookies, 3 meatballs)
-- Use standard measurements (1 cup, ½ cup, 4 oz)
-- Include estimated calories if confident
+INTELLIGENT ANALYSIS INSTRUCTIONS:
 
-Input data: ${inputText}
+🔍 CONTEXT INFERENCE:
+- Analyze the detected items to understand the meal type (breakfast, lunch, dinner)
+- Infer missing items that are typically present in this type of meal
+- Consider common food pairings and meal patterns
+
+🚫 ELIMINATE VAGUE TERMS:
+- Remove meaningless labels like "garnish", "ingredient", "produce", "food"
+- Convert generic terms to specific foods (e.g., "fruit" → "strawberries")
+- Ignore abstract concepts like "cuisine", "meal", "dish"
+
+🧠 SMART INFERENCE EXAMPLES:
+- If you see "citrus" → likely "orange slices" or "grapefruit"
+- If breakfast context + "bread" → likely "toast" 
+- If "protein" detected → infer "eggs" or "bacon" for breakfast
+- If "avocado" + toast context → "avocado toast"
+
+📊 OUTPUT REQUIREMENTS:
+- List 3-6 specific, realistic food items
+- Include realistic portion sizes and accurate calorie estimates
+- Prioritize common breakfast/meal foods over obscure items
+- Each item must be a real, edible food with nutritional value
+
+TYPICAL BREAKFAST FOODS TO CONSIDER:
+🍞 Toast, bagels, English muffins, pastries
+🥑 Avocado (sliced, mashed, whole)
+🥚 Eggs (scrambled, fried, poached, omelette)
+🥞 Pancakes, waffles, French toast
+🍓 Fresh fruit (berries, banana, citrus, melon)
+🥓 Bacon, sausage, ham
+🧈 Butter, cream cheese, jam
+☕ Coffee, juice, milk
+
+EXAMPLE ANALYSIS:
+Input: "citrus, garnish, culinary arts, produce"
+Smart Output:
+[
+  {"name": "orange slices", "portion": "1 medium orange", "calories": 60, "confidence": "medium", "method": "context_inference"},
+  {"name": "whole grain toast", "portion": "2 slices", "calories": 160, "confidence": "medium", "method": "context_inference"},
+  {"name": "avocado", "portion": "½ avocado", "calories": 120, "confidence": "medium", "method": "context_inference"}
+]
 
 Return a JSON array with objects containing:
-- \`name\`: Clean, specific food name (e.g., "grilled chicken", "brown rice")
-- \`portion\`: Realistic portion size with units (e.g., "4 oz", "½ cup", "2 pieces")
-- \`calories\`: Estimated calories if possible (optional)
-- \`confidence\`: Detection confidence as "high", "medium", or "low"
-- \`method\`: "visual_detection"
+- \`name\`: Specific food name (e.g., "whole grain toast", "sliced avocado", "scrambled eggs")
+- \`portion\`: Realistic portion size (e.g., "2 slices", "½ avocado", "2 eggs")
+- \`calories\`: Estimated calories (required - must be a number)
+- \`confidence\`: "high" for detected items, "medium" for likely inferred items, "low" for educated guesses
+- \`method\`: "context_inference"
 
-Only include actual edible food items you can see in the image.`;
+Focus on practical, nutritious foods that people actually eat for meals.`;
     }
 
-    console.log("🧠 Final OpenAI Prompt:", prompt);
+    console.log("🧠 INTELLIGENT OpenAI Prompt Being Sent:");
+    console.log("=" .repeat(80));
+    console.log(prompt);
+    console.log("=" .repeat(80));
     
     // Call OpenAI with enhanced prompt
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -315,7 +350,11 @@ Only include actual edible food items you can see in the image.`;
 
     const data = await response.json();
     const aiResponse = data.choices[0]?.message?.content || '';
-    console.log('📦 Raw OpenAI Response:', aiResponse);
+    
+    console.log("📦 RAW OpenAI Response:");
+    console.log("=" .repeat(80));
+    console.log(aiResponse);
+    console.log("=" .repeat(80));
     console.log('🔧 OpenAI Response Metadata:', {
       model: data.model,
       usage: data.usage,
