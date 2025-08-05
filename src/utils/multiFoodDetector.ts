@@ -3,106 +3,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // Real Google Vision API call via Supabase edge function
-async function detectWithGoogle(image: string): Promise<string[]> {
-  try {
-    console.log('Calling Google Vision via Supabase edge function...');
-    
-    const { data, error } = await supabase.functions.invoke('vision-label-reader', {
-      body: { imageBase64: image }
-    });
-
-    if (error) {
-      console.error('Vision API error:', error);
-      return [];
-    }
-
-    if (!data) {
-      console.log('No data returned from vision API');
-      return [];
-    }
-
-    console.log('Vision API response:', data);
-
-    // Extract food items from various sources in the response
-    const foodItems: string[] = [];
-    
-    // Add food labels (most relevant)
-    if (data.foodLabels && Array.isArray(data.foodLabels)) {
-      foodItems.push(...data.foodLabels.map((label: any) => 
-        typeof label === 'string' ? label : label.name || label.description
-      ).filter(Boolean));
-    }
-
-    // Add general labels that might be food-related
-    if (data.labels && Array.isArray(data.labels)) {
-      const foodRelatedLabels = data.labels
-        .map((label: any) => typeof label === 'string' ? label : label.name || label.description)
-        .filter((label: string) => {
-          const lowerLabel = label.toLowerCase();
-          return lowerLabel.includes('food') || 
-                 lowerLabel.includes('fruit') || 
-                 lowerLabel.includes('vegetable') || 
-                 lowerLabel.includes('meat') || 
-                 lowerLabel.includes('drink') ||
-                 lowerLabel.includes('bread') ||
-                 lowerLabel.includes('dairy');
-        });
-      foodItems.push(...foodRelatedLabels);
-    }
-
-    // Remove duplicates and normalize
-    const uniqueFoodItems = [...new Set(foodItems)]
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-
-    console.log('Extracted food items from Google Vision:', uniqueFoodItems);
-    return uniqueFoodItems;
-
-  } catch (error) {
-    console.error('Google Vision detection failed:', error);
-    return [];
-  }
+async function detectWithGoogle(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  return await callGoogleVision(image);
 }
 
-async function detectWithCalorieMama(image: string): Promise<string[]> {
-  return await callCalorieMama(image);
-}
-
-// CalorieMama API call for food detection
-async function callCalorieMama(imageBase64: string): Promise<string[]> {
-  try {
-    console.log('Calling CalorieMama API for food detection...');
-    
-    // Call our Supabase edge function that handles CalorieMama API
-    const { data, error } = await supabase.functions.invoke('caloriemama-food-detector', {
-      body: { imageBase64: imageBase64 }
-    });
-
-    if (error) {
-      console.error('CalorieMama API error:', error);
-      return [];
-    }
-
-    if (!data || !data.foodItems) {
-      console.log('No food items returned from CalorieMama');
-      return [];
-    }
-
-    console.log('CalorieMama detected food items:', data.foodItems);
-    return Array.isArray(data.foodItems) ? data.foodItems : [];
-
-  } catch (error) {
-    console.error('CalorieMama detection failed:', error);
-    return [];
-  }
-}
-
-async function detectWithChatGPT(image: string): Promise<string[]> {
-  return await callGPT4Vision(image);
-}
-
-// GPT-4 Vision API call for food detection
-// Google Vision API call for food detection (isolated from vision-label-reader)
 async function callGoogleVision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   try {
     console.log('Calling Google Vision for food detection...');
@@ -131,7 +35,55 @@ async function callGoogleVision(imageBase64: string): Promise<Array<{ name: stri
   }
 }
 
-async function callGPT4Vision(imageBase64: string): Promise<string[]> {
+async function detectWithCalorieMama(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  return await callCalorieMama(image);
+}
+
+// CalorieMama API call for food detection
+async function callCalorieMama(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  try {
+    console.log('Calling CalorieMama API for food detection...');
+    
+    // Call our Supabase edge function that handles CalorieMama API
+    const { data, error } = await supabase.functions.invoke('caloriemama-food-detector', {
+      body: { imageBase64: imageBase64 }
+    });
+
+    if (error) {
+      console.error('CalorieMama API error:', error);
+      return [];
+    }
+
+    if (!data || !data.foodItems) {
+      console.log('No food items returned from CalorieMama');
+      return [];
+    }
+
+    console.log('CalorieMama detected food items:', data.foodItems);
+    // Convert string array to structured format
+    const structuredItems = Array.isArray(data.foodItems) 
+      ? data.foodItems.map((item: any) => ({
+          name: typeof item === 'string' ? item : item.name,
+          confidence: typeof item === 'object' && item.confidence ? item.confidence : 0.8,
+          source: 'caloriemama'
+        }))
+      : [];
+    
+    return structuredItems;
+
+  } catch (error) {
+    console.error('CalorieMama detection failed:', error);
+    return [];
+  }
+}
+
+async function detectWithChatGPT(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  return await callGPT4Vision(image);
+}
+
+// GPT-4 Vision API call for food detection
+
+async function callGPT4Vision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   try {
     console.log('Calling GPT-4 Vision for food detection...');
     
@@ -154,7 +106,16 @@ async function callGPT4Vision(imageBase64: string): Promise<string[]> {
     }
 
     console.log('GPT-4 Vision detected food items:', data.foodItems);
-    return Array.isArray(data.foodItems) ? data.foodItems : [];
+    // Convert string array to structured format
+    const structuredItems = Array.isArray(data.foodItems) 
+      ? data.foodItems.map((item: any) => ({
+          name: typeof item === 'string' ? item : item.name,
+          confidence: typeof item === 'object' && item.confidence ? item.confidence : 0.85,
+          source: 'gpt'
+        }))
+      : [];
+    
+    return structuredItems;
 
   } catch (error) {
     console.error('GPT-4 Vision detection failed:', error);
@@ -185,12 +146,11 @@ async function callGastroNet(image: string): Promise<Array<{ name: string; confi
   }
 }
 
-async function detectWithGastroNet(image: string): Promise<string[]> {
-  const results = await callGastroNet(image);
-  return results.map(item => item.name);
+async function detectWithGastroNet(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  return await callGastroNet(image);
 }
 
-async function detectWithClarifai(image: string): Promise<string[]> {
+async function detectWithClarifai(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   // TODO: Implement Clarifai API food detection
   console.log('Clarifai detection (placeholder)', image.slice(0, 50));
   return [];
@@ -224,33 +184,63 @@ async function callClaudeVision(imageBase64: string): Promise<Array<{ name: stri
   }
 }
 
-async function detectWithClaude(image: string): Promise<string[]> {
-  const results = await callClaudeVision(image);
-  return results.map(item => item.name);
+async function detectWithClaude(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  return await callClaudeVision(image);
 }
 
-export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; sources: string[] }[]> {
-  const results: Record<string, string[]> = {
-    Google: await detectWithGoogle(image),
-    CalorieMama: await detectWithCalorieMama(image),
-    ChatGPT: await detectWithChatGPT(image),
-    GastroNet: await detectWithGastroNet(image),
-    Claude: await detectWithClaude(image),
-    Clarifai: await detectWithClarifai(image),      // placeholder
-  };
+export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; confidence: number; sources: string[] }[]> {
+  // Run all AI detectors in parallel
+  const [googleResults, calorieMamaResults, gptResults, gastroNetResults, claudeResults, clarifaiResults] = await Promise.all([
+    detectWithGoogle(image),
+    detectWithCalorieMama(image),
+    detectWithChatGPT(image),
+    detectWithGastroNet(image),
+    detectWithClaude(image),
+    detectWithClarifai(image)
+  ]);
 
-  const foodMap: Record<string, Set<string>> = {};
+  // Combine all results into a single array
+  const allResults = [
+    ...googleResults,
+    ...calorieMamaResults,
+    ...gptResults,
+    ...gastroNetResults,
+    ...claudeResults,
+    ...clarifaiResults
+  ];
 
-  for (const [source, items] of Object.entries(results)) {
-    for (let item of items) {
-      item = item.trim().toLowerCase(); // Normalize
-      if (!foodMap[item]) foodMap[item] = new Set();
-      foodMap[item].add(source);
+  // Create a map to merge duplicates by lowercase name
+  const foodMap: Record<string, { name: string; confidence: number; sources: string[] }> = {};
+
+  for (const item of allResults) {
+    const normalizedName = item.name.trim().toLowerCase();
+    
+    if (!foodMap[normalizedName]) {
+      foodMap[normalizedName] = {
+        name: item.name, // Keep original casing from first occurrence
+        confidence: item.confidence,
+        sources: [item.source]
+      };
+    } else {
+      // Merge with existing entry
+      const existing = foodMap[normalizedName];
+      existing.confidence = Math.max(existing.confidence, item.confidence); // Keep highest confidence
+      if (!existing.sources.includes(item.source)) {
+        existing.sources.push(item.source);
+      }
     }
   }
 
-  return Object.entries(foodMap).map(([name, sources]) => ({
-    name,
-    sources: Array.from(sources),
-  }));
+  // Convert to array and sort
+  const finalResults = Object.values(foodMap).sort((a, b) => {
+    // First sort by number of sources (more sources = higher priority)
+    if (a.sources.length !== b.sources.length) {
+      return b.sources.length - a.sources.length;
+    }
+    // Then sort by confidence (descending)
+    return b.confidence - a.confidence;
+  });
+
+  console.log('Final merged and sorted results:', finalResults);
+  return finalResults;
 }
