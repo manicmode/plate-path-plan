@@ -4865,6 +4865,13 @@ export type Database = {
         Args: { challenge_id_param: string }
         Returns: undefined
       }
+      validate_role_assignment: {
+        Args: {
+          target_user_id: string
+          new_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
