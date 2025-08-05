@@ -9,28 +9,50 @@ async function detectWithGoogle(image: string): Promise<Array<{ name: string; co
 
 async function callGoogleVision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   try {
-    console.log('Calling Google Vision for food detection...');
+    console.log('🔍 [Google Vision] Starting food detection call...');
+    console.log('🔍 [Google Vision] Image data length:', imageBase64.length);
     
     // Call our dedicated Google Vision edge function
     const { data, error } = await supabase.functions.invoke('google-vision-food-detector', {
       body: { imageBase64: imageBase64 }
     });
 
+    console.log('🔍 [Google Vision] Raw response data:', data);
+    console.log('🔍 [Google Vision] Raw response error:', error);
+
     if (error) {
-      console.error('Google Vision API error:', error);
+      console.error('🔴 [Google Vision] API error:', error);
       return [];
     }
 
-    if (!data || !data.foodItems) {
-      console.log('No food items returned from Google Vision');
+    if (!data) {
+      console.log('🔴 [Google Vision] No data returned from API');
       return [];
     }
 
-    console.log('Google Vision detected food items:', data.foodItems);
+    if (!data.foodItems) {
+      console.log('🔴 [Google Vision] No foodItems property in response');
+      console.log('🔍 [Google Vision] Full response structure:', JSON.stringify(data, null, 2));
+      return [];
+    }
+
+    console.log('✅ [Google Vision] Food items detected:', data.foodItems);
+    console.log('🔍 [Google Vision] Items count:', Array.isArray(data.foodItems) ? data.foodItems.length : 'Not an array');
+    
+    if (Array.isArray(data.foodItems)) {
+      data.foodItems.forEach((item: any, index: number) => {
+        console.log(`🔍 [Google Vision] Item ${index}:`, {
+          name: item.name,
+          confidence: item.confidence,
+          source: item.source
+        });
+      });
+    }
+
     return Array.isArray(data.foodItems) ? data.foodItems : [];
 
   } catch (error) {
-    console.error('Google Vision detection failed:', error);
+    console.error('🔴 [Google Vision] Detection failed with exception:', error);
     return [];
   }
 }
@@ -42,37 +64,55 @@ async function detectWithCalorieMama(image: string): Promise<Array<{ name: strin
 // CalorieMama API call for food detection
 async function callCalorieMama(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   try {
-    console.log('Calling CalorieMama API for food detection...');
+    console.log('🍕 [CalorieMama] Starting food detection call...');
+    console.log('🍕 [CalorieMama] Image data length:', imageBase64.length);
     
     // Call our Supabase edge function that handles CalorieMama API
     const { data, error } = await supabase.functions.invoke('caloriemama-food-detector', {
       body: { imageBase64: imageBase64 }
     });
 
+    console.log('🍕 [CalorieMama] Raw response data:', data);
+    console.log('🍕 [CalorieMama] Raw response error:', error);
+
     if (error) {
-      console.error('CalorieMama API error:', error);
+      console.error('🔴 [CalorieMama] API error:', error);
       return [];
     }
 
-    if (!data || !data.foodItems) {
-      console.log('No food items returned from CalorieMama');
+    if (!data) {
+      console.log('🔴 [CalorieMama] No data returned from API');
       return [];
     }
 
-    console.log('CalorieMama detected food items:', data.foodItems);
+    if (!data.foodItems) {
+      console.log('🔴 [CalorieMama] No foodItems property in response');
+      console.log('🍕 [CalorieMama] Full response structure:', JSON.stringify(data, null, 2));
+      return [];
+    }
+
+    console.log('✅ [CalorieMama] Food items detected:', data.foodItems);
+    console.log('🍕 [CalorieMama] Items count:', Array.isArray(data.foodItems) ? data.foodItems.length : 'Not an array');
+    console.log('🍕 [CalorieMama] Items type check:', typeof data.foodItems);
+
     // Convert string array to structured format
     const structuredItems = Array.isArray(data.foodItems) 
-      ? data.foodItems.map((item: any) => ({
-          name: typeof item === 'string' ? item : item.name,
-          confidence: typeof item === 'object' && item.confidence ? item.confidence : 0.8,
-          source: 'caloriemama'
-        }))
+      ? data.foodItems.map((item: any, index: number) => {
+          const structuredItem = {
+            name: typeof item === 'string' ? item : item.name,
+            confidence: typeof item === 'object' && item.confidence ? item.confidence : 0.8,
+            source: 'caloriemama'
+          };
+          console.log(`🍕 [CalorieMama] Structured item ${index}:`, structuredItem);
+          return structuredItem;
+        })
       : [];
     
+    console.log('🍕 [CalorieMama] Final structured items:', structuredItems);
     return structuredItems;
 
   } catch (error) {
-    console.error('CalorieMama detection failed:', error);
+    console.error('🔴 [CalorieMama] Detection failed with exception:', error);
     return [];
   }
 }
@@ -180,7 +220,10 @@ function isRelevantFoodItem(name: string): boolean {
 }
 
 export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; confidence: number; sources: string[] }[]> {
+  console.log('🚀 [Multi-AI] Starting multi-source food detection...');
+  
   // Run only real AI detectors in parallel (removed GastroNet mock)
+  console.log('🚀 [Multi-AI] Calling all detection services in parallel...');
   const [googleResults, calorieMamaResults, gptResults, claudeResults, clarifaiResults] = await Promise.all([
     detectWithGoogle(image),
     detectWithCalorieMama(image),
@@ -188,6 +231,13 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
     detectWithClaude(image),
     detectWithClarifai(image)
   ]);
+
+  console.log('🚀 [Multi-AI] Detection results summary:');
+  console.log('  - Google Vision:', googleResults.length, 'items');
+  console.log('  - CalorieMama:', calorieMamaResults.length, 'items');
+  console.log('  - GPT-4 Vision:', gptResults.length, 'items');
+  console.log('  - Claude Vision:', claudeResults.length, 'items');
+  console.log('  - Clarifai:', clarifaiResults.length, 'items');
 
   // Combine all results into a single array
   const allResults = [
@@ -198,20 +248,25 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
     ...clarifaiResults
   ];
 
+  console.log('🚀 [Multi-AI] Total combined results before filtering:', allResults.length);
+  console.log('🚀 [Multi-AI] All raw results:', allResults);
+
   // Create a map to merge duplicates by lowercase name
   const foodMap: Record<string, { name: string; confidence: number; sources: string[] }> = {};
 
   for (const item of allResults) {
     const normalizedName = item.name.trim().toLowerCase();
+    console.log(`🔍 [Multi-AI] Processing item: "${item.name}" (confidence: ${item.confidence}, source: ${item.source})`);
     
     // Filter out irrelevant items
     if (!isRelevantFoodItem(item.name)) {
-      console.log('Filtered out irrelevant item:', item.name);
+      console.log('🗑️ [Multi-AI] Filtered out irrelevant item:', item.name);
       continue;
     }
     
     // Cap confidence at 100%
     const cappedConfidence = Math.min(item.confidence * 100, 100) / 100;
+    console.log(`🔍 [Multi-AI] Capped confidence: ${item.confidence} -> ${cappedConfidence}`);
     
     if (!foodMap[normalizedName]) {
       foodMap[normalizedName] = {
@@ -219,6 +274,7 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
         confidence: cappedConfidence,
         sources: [item.source]
       };
+      console.log(`✅ [Multi-AI] Added new item to map: "${item.name}"`);
     } else {
       // Merge with existing entry
       const existing = foodMap[normalizedName];
@@ -226,8 +282,11 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
       if (!existing.sources.includes(item.source)) {
         existing.sources.push(item.source);
       }
+      console.log(`🔗 [Multi-AI] Merged with existing item: "${item.name}" (sources: ${existing.sources.join(', ')})`);
     }
   }
+
+  console.log('🚀 [Multi-AI] Food map after processing:', foodMap);
 
   // Convert to array and sort
   const finalResults = Object.values(foodMap).sort((a, b) => {
@@ -239,6 +298,7 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
     return b.confidence - a.confidence;
   });
 
-  console.log('Final merged and sorted results:', finalResults);
+  console.log('✅ [Multi-AI] Final merged and sorted results:', finalResults);
+  console.log('✅ [Multi-AI] Total final results:', finalResults.length);
   return finalResults;
 }
