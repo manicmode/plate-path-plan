@@ -196,46 +196,46 @@ async function detectWithClarifai(image: string): Promise<string[]> {
   return [];
 }
 
-async function enhanceWithClaude(imageBase64: string, combinedLabels: string[]): Promise<string[]> {
-  // Skip Claude if we have 3+ items and high confidence
-  if (combinedLabels.length >= 3) {
-    console.log('Skipping Claude enhancement - sufficient labels found:', combinedLabels.length);
-    return [];
-  }
-
+async function callClaudeVision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   try {
-    // TODO: Implement Claude 3 Vision API call
-    // Send image and existing labels to Claude
-    // Ask Claude to confirm which food items are actually present
-    console.log('Claude enhancement (placeholder)', {
-      imageLength: imageBase64.length,
-      existingLabels: combinedLabels
+    console.log('Calling Claude Vision for food detection...');
+    
+    // Call our Supabase edge function that handles Claude Vision API
+    const { data, error } = await supabase.functions.invoke('claude-vision-food-detector', {
+      body: { imageBase64: imageBase64 }
     });
-    
-    // Placeholder response - would normally call Anthropic API
-    const mockResponse = "Based on the image, I can confirm the following food items: apple, banana, sandwich";
-    
-    // Parse Claude's response into array of food items
-    const foodItems = mockResponse
-      .replace(/^.*following food items:\s*/i, '')
-      .split(/[,\n]/)
-      .map(item => item.trim().toLowerCase())
-      .filter(item => item.length > 0);
-    
-    console.log('Claude enhanced food items:', foodItems);
-    return foodItems;
+
+    if (error) {
+      console.error('Claude Vision API error:', error);
+      return [];
+    }
+
+    if (!data || !data.foodItems) {
+      console.log('No food items returned from Claude Vision');
+      return [];
+    }
+
+    console.log('Claude Vision detected food items:', data.foodItems);
+    return Array.isArray(data.foodItems) ? data.foodItems : [];
+
   } catch (error) {
-    console.error('Claude enhancement failed:', error);
+    console.error('Claude Vision detection failed:', error);
     return [];
   }
 }
 
+async function detectWithClaude(image: string): Promise<string[]> {
+  const results = await callClaudeVision(image);
+  return results.map(item => item.name);
+}
+
 export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; sources: string[] }[]> {
   const results: Record<string, string[]> = {
-    Google: await detectWithGoogle(image),          // placeholder
-    CalorieMama: await detectWithCalorieMama(image),// placeholder
-    ChatGPT: await detectWithChatGPT(image),        // placeholder
-    GastroNet: await detectWithGastroNet(image),    // placeholder
+    Google: await detectWithGoogle(image),
+    CalorieMama: await detectWithCalorieMama(image),
+    ChatGPT: await detectWithChatGPT(image),
+    GastroNet: await detectWithGastroNet(image),
+    Claude: await detectWithClaude(image),
     Clarifai: await detectWithClarifai(image),      // placeholder
   };
 
