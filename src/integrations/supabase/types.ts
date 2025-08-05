@@ -4499,12 +4499,13 @@ export type Database = {
       }
       workout_skipping_analysis: {
         Row: {
+          avg_completion_rate: number | null
           avg_skipped_sets: number | null
-          completion_rate: number | null
-          high_skip_rate: number | null
+          month_year: string | null
+          perfect_workouts: number | null
           total_workouts: number | null
           user_id: string | null
-          week_start: string | null
+          workouts_with_skips: number | null
         }
         Relationships: []
       }
