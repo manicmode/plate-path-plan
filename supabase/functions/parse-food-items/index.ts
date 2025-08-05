@@ -204,6 +204,10 @@ serve(async (req) => {
     // Enhanced OpenAI prompt based on detection method
     let prompt = '';
     
+    console.log("🧠 Detection method selected:", detectionMethod);
+    console.log("🍲 Using complex dish fallback:", useComplexDishFallback);
+    console.log("📊 Input text for OpenAI:", inputText);
+    
     if (useComplexDishFallback) {
       // Enhanced complex dish analysis prompt
       prompt = `You are analyzing a breakfast/meal photo. Your task is to identify INDIVIDUAL EDIBLE FOOD ITEMS that are clearly visible.
@@ -273,6 +277,8 @@ Return a JSON array with objects containing:
 Only include actual edible food items you can see in the image.`;
     }
 
+    console.log("🧠 Final OpenAI Prompt:", prompt);
+    
     // Call OpenAI with enhanced prompt
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -311,7 +317,12 @@ Only include actual edible food items you can see in the image.`;
 
     const data = await response.json();
     const aiResponse = data.choices[0]?.message?.content || '';
-    console.log('OpenAI parsing response:', aiResponse);
+    console.log('📦 Raw OpenAI Response:', aiResponse);
+    console.log('🔧 OpenAI Response Metadata:', {
+      model: data.model,
+      usage: data.usage,
+      finish_reason: data.choices[0]?.finish_reason
+    });
 
 
     // Marketing words/phrases blacklist

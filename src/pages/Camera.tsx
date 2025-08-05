@@ -547,6 +547,9 @@ const CameraPage = () => {
       // Step 2: Parse food items with OpenAI
       setProcessingStep('Extracting food items...');
       
+      console.log("📸 Sending to parse-food-items edge function...");
+      console.log("🔍 Vision data being sent:", JSON.stringify(data, null, 2));
+      
       try {
         const parseResponse = await supabase.functions.invoke('parse-food-items', {
           body: { visionResults: data }

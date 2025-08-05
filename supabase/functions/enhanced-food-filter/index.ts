@@ -69,10 +69,15 @@ class FoodDetectionFilter {
    */
   public filterDetectedItems(detectedItems: DetectedItem[]): FilteredFoodItem[] {
     console.log('🧠 Starting Ultimate AI Detection Filtering...');
+    console.log('🔍 Filter Input Items:', JSON.stringify(detectedItems, null, 2));
     console.log(`📊 Input: ${detectedItems.length} detected items`);
 
     // Step 1: Remove non-food items
     const foodOnlyItems = this.removeNonFoodItems(detectedItems);
+    const removedNonFood = detectedItems.filter(item => 
+      !foodOnlyItems.some(filtered => filtered.name === item.name)
+    );
+    console.log('🗑️ Non-food items removed:', removedNonFood.map(item => item.name));
     console.log(`🔍 After non-food removal: ${foodOnlyItems.length} items`);
 
     // Step 2: Apply confidence thresholds
@@ -88,7 +93,12 @@ class FoodDetectionFilter {
     console.log(`🍲 After composite dish prioritization: ${prioritizedItems.length} items`);
 
     // Step 5: Suppress generic terms
+    const beforeGenericSuppression = [...prioritizedItems];
     const refinedItems = this.suppressGenericTerms(prioritizedItems);
+    const suppressedGeneric = beforeGenericSuppression.filter(item => 
+      !refinedItems.some(filtered => filtered.name === item.name)
+    );
+    console.log('🗑️ Generic terms suppressed:', suppressedGeneric.map(item => item.name));
     console.log(`🎯 After generic term suppression: ${refinedItems.length} items`);
 
     // Step 6: Apply context-based override rules
@@ -97,6 +107,7 @@ class FoodDetectionFilter {
 
     // Step 7: Sort by priority hierarchy
     const finalItems = this.sortByPriorityHierarchy(contextFilteredItems);
+    console.log('✅ Filter Output Items:', JSON.stringify(finalItems, null, 2));
     console.log(`✅ Final output: ${finalItems.length} items`);
 
     return finalItems.slice(0, 4); // Limit to 1-4 items max
