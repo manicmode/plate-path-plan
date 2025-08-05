@@ -1165,7 +1165,21 @@ const CameraPage = () => {
       return;
     }
     
-    // Convert to RecognizedFood format for confirmation flow
+    // Convert selected foods to SummaryItem format for sequential confirmation flow
+    const summaryItems: SummaryItem[] = selectedFoods.map((food, index) => ({
+      id: `multi-ai-${index}`,
+      name: food.name,
+      portion: food.portion || '1 serving',
+      selected: true // All selected foods should be processed
+    }));
+    
+    console.log('Starting sequential confirmation flow for:', summaryItems.length, 'items');
+    
+    // Set up the sequential confirmation flow
+    setPendingItems(summaryItems);
+    setCurrentItemIndex(0);
+    
+    // Store the original food data for when we need nutrition info
     const foods: RecognizedFood[] = selectedFoods.map(food => ({
       name: food.name,
       calories: food.calories || 100, // Default fallback
@@ -1179,12 +1193,16 @@ const CameraPage = () => {
       serving: food.portion || '1 serving'
     }));
     
-    console.log('Starting confirmation flow for:', foods.length, 'items');
-    
-    // Use the standard confirmation flow - process first item
     setRecognizedFoods(foods);
-    setShowConfirmation(true);
     setInputSource('photo');
+    
+    // Show transition screen if multiple items, otherwise go directly to first confirmation
+    if (summaryItems.length > 1) {
+      setShowTransition(true);
+    } else {
+      // For single item, go directly to confirmation
+      processCurrentItem(summaryItems, 0);
+    }
   };
 
   // Handler for adding manually entered food to multi-AI results
