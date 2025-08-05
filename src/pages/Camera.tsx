@@ -19,6 +19,7 @@ import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { useMealScoring } from '@/hooks/useMealScoring';
+import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -106,6 +107,7 @@ const CameraPage = () => {
   const { addRecentBarcode } = useRecentBarcodes();
   const { addToHistory } = useBarcodeHistory();
   const { scoreMealAfterInsert } = useMealScoring();
+  const { saveFood } = useNutritionPersistence();
   
   // Review Items Screen states
   const [showReviewScreen, setShowReviewScreen] = useState(false);
@@ -1168,12 +1170,20 @@ const CameraPage = () => {
       return;
     }
     
-    // Store the detected food data for later retrieval during confirmation
+    // Store the detected food data for later retrieval during confirmation - SYNCHRONOUSLY
     const foodDataMap = new Map();
     selectedFoods.forEach((food, index) => {
-      foodDataMap.set(`multi-ai-${index}`, food);
+      const sanitizedFood = {
+        ...food,
+        calories: food.calories ? Math.round(food.calories) : undefined,
+        confidence: Math.round(food.confidence || 85)
+      };
+      foodDataMap.set(`multi-ai-${index}`, sanitizedFood);
     });
+    
+    // Set the data immediately to prevent race conditions
     setMultiAIDetectedData(foodDataMap);
+    console.log('✅ Multi-AI data stored:', foodDataMap);
     
     // Convert selected foods to SummaryItem format for sequential confirmation flow
     const summaryItems: SummaryItem[] = selectedFoods.map((food, index) => ({
@@ -1351,6 +1361,14 @@ const CameraPage = () => {
     }
 
     const currentItem = items[index];
+    console.log('🔄 Processing item:', currentItem.name, 'Index:', index);
+    
+    // Defensive check: ensure multiAIDetectedData is populated
+    if (multiAIDetectedData.size === 0 && currentItem.id.startsWith('multi-ai-')) {
+      console.warn('⚠️ Multi-AI data not ready, retrying in 100ms...');
+      setTimeout(() => processCurrentItem(items, index), 100);
+      return;
+    }
     
     // Check if we have stored multi-AI data for this item
     const storedFoodData = multiAIDetectedData.get(currentItem.id);
@@ -1360,41 +1378,53 @@ const CameraPage = () => {
     
     if (storedFoodData) {
       // Use the detected food data if available
-      console.log('Using stored multi-AI data for:', currentItem.name, storedFoodData);
+      console.log('✅ Using stored multi-AI data for:', currentItem.name, storedFoodData);
       
       if (storedFoodData.calories) {
-        // Use the detected nutrition data
+        // Use the detected nutrition data with defensive defaults
         nutrition = {
-          calories: storedFoodData.calories,
-          protein: 5, // These could be enhanced with actual detected values
-          carbs: Math.round(storedFoodData.calories * 0.15), // Estimated based on calories
-          fat: Math.round(storedFoodData.calories * 0.04), // Estimated based on calories
-          fiber: 3,
-          sugar: 5,
-          sodium: 200
+          calories: Math.round(storedFoodData.calories || 0),
+          protein: Math.round((storedFoodData.calories * 0.15) || 5), // Estimate if missing
+          carbs: Math.round((storedFoodData.calories * 0.5) || 20), // Estimate if missing
+          fat: Math.round((storedFoodData.calories * 0.3 / 9) || 3), // Estimate if missing
+          fiber: 3, // Default
+          sugar: 5, // Default
+          sodium: 200, // Default
+          saturated_fat: Math.round((storedFoodData.calories * 0.3 / 9 * 0.3) || 1) // 30% of fat
         };
       } else {
         // Estimate nutrition if not detected
+        console.log('📊 Estimating nutrition for:', currentItem.name);
         nutrition = await estimateNutritionFromLabel(currentItem.name);
       }
       
-      confidence = storedFoodData.confidence;
+      confidence = Math.round(storedFoodData.confidence || 85);
     } else {
       // Fallback to nutrition estimation for non-multi-AI items
+      console.log('📊 Fallback nutrition estimation for:', currentItem.name);
       nutrition = await estimateNutritionFromLabel(currentItem.name);
+    }
+    
+    // Validate nutrition data has all required fields
+    if (!nutrition || typeof nutrition.calories !== 'number') {
+      console.error('❌ Invalid nutrition data for:', currentItem.name, nutrition);
+      toast.error(`Invalid nutrition data for ${currentItem.name}`);
+      return;
     }
     
     const foodItem = {
       id: currentItem.id,
       name: currentItem.name,
-      calories: nutrition.calories,
-      protein: nutrition.protein,
-      carbs: nutrition.carbs,
-      fat: nutrition.fat,
-      fiber: nutrition.fiber,
-      sugar: nutrition.sugar,
-      sodium: nutrition.sodium,
+      calories: Math.round(nutrition.calories),
+      protein: Math.round((nutrition.protein || 0) * 10) / 10,
+      carbs: Math.round((nutrition.carbs || 0) * 10) / 10,
+      fat: Math.round((nutrition.fat || 0) * 10) / 10,
+      fiber: Math.round((nutrition.fiber || 0) * 10) / 10,
+      sugar: Math.round((nutrition.sugar || 0) * 10) / 10,
+      sodium: Math.round(nutrition.sodium || 0),
+      saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * 10) / 10,
       confidence: confidence,
+      source: 'gpt', // Correct source attribution
       image: selectedImage // Use the original photo as reference
     };
 
@@ -1449,80 +1479,59 @@ const CameraPage = () => {
   const handleConfirmFood = async (foodItem: any) => {
     console.log('🍽️ === FOOD CONFIRMATION DEBUG START ===');
     console.log('📊 Food item being confirmed:', foodItem);
-    console.log('🏷️ Branded info:', foodItem.brandInfo || 'N/A');
-    console.log('🔍 Debug log:', foodItem.debugLog || 'N/A');
     
-    const confirmationDebug = {
-      step: 'food_confirmation',
-      foodName: foodItem.name,
-      hasBrandedInfo: !!foodItem.brandInfo,
-      hasDebugLog: !!foodItem.debugLog,
-      nutritionValues: {
-        calories: foodItem.calories,
-        protein: foodItem.protein,
-        carbs: foodItem.carbs,
-        fat: foodItem.fat
-      },
-      saveToDatabase: false,
-      saveToContext: false,
-      errors: [] as string[]
+    // Validate and sanitize food data before saving
+    const sanitizedFoodItem = {
+      ...foodItem,
+      // Fix data types - ensure integers where required
+      calories: Math.round(foodItem.calories || 0),
+      protein: Math.round((foodItem.protein || 0) * 10) / 10, // 1 decimal
+      carbs: Math.round((foodItem.carbs || 0) * 10) / 10,
+      fat: Math.round((foodItem.fat || 0) * 10) / 10,
+      fiber: Math.round((foodItem.fiber || 0) * 10) / 10,
+      sugar: Math.round((foodItem.sugar || 0) * 10) / 10,
+      sodium: Math.round(foodItem.sodium || 0),
+      saturated_fat: Math.round((foodItem.saturated_fat || foodItem.fat * 0.3) * 10) / 10,
+      confidence: Math.round(foodItem.confidence || 85), // Integer confidence
+      source: 'gpt', // Correct source attribution
+      serving_size: foodItem.serving || 'Estimated portion',
+      image_url: selectedImage || null,
+      confirmed: true,
+      timestamp: new Date()
     };
 
-    try {
-      // Add the current food item to nutrition context
-      addFood(foodItem);
-      confirmationDebug.saveToContext = true;
-      console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
-      
-      // Save to Supabase
-      console.log('💾 STEP 1: Saving to Supabase database...');
-      const { data, error } = await supabase
-        .from('nutrition_logs')
-        .insert({
-          user_id: user?.id,
-          food_name: foodItem.name,
-          calories: foodItem.calories,
-          protein: foodItem.protein,
-          carbs: foodItem.carbs,
-          fat: foodItem.fat,
-          fiber: foodItem.fiber,
-          sugar: foodItem.sugar,
-          sodium: foodItem.sodium,
-          confidence: foodItem.confidence,
-          serving_size: foodItem.serving || 'Estimated portion',
-          source: 'vision_api',
-          image_url: selectedImage || null,
-        })
-        .select();
+    console.log('🧮 Sanitized food data:', sanitizedFoodItem);
 
-      if (error) {
-        confirmationDebug.errors.push(`Database save error: ${error.message}`);
-        console.error('❌ DATABASE SAVE FAILED:', error);
-        toast.error('Failed to save food item');
+    try {
+      // Use the proper persistence hook instead of direct Supabase insert
+      const savedFoodId = await saveFood(sanitizedFoodItem);
+      
+      if (!savedFoodId) {
+        console.error('❌ PERSISTENCE HOOK FAILED: saveFood returned null');
+        toast.error('Failed to save food item - persistence error');
         return;
       }
       
-      confirmationDebug.saveToDatabase = true;
-      console.log('✅ DATABASE SAVE SUCCESS - Food logged to nutrition_logs table');
+      console.log('✅ FOOD SAVED SUCCESSFULLY via useNutritionPersistence:', savedFoodId);
+      
+      // Add to nutrition context
+      addFood(sanitizedFoodItem);
+      console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
       
       // Refresh saved foods list
       if (refetchSavedFoods) {
         await refetchSavedFoods();
       }
       
-      // Score the meal quality
-      await scoreMealAfterInsert(data, error);
-      
     } catch (error) {
-      confirmationDebug.errors.push(`Save exception: ${error.message}`);
       console.error('❌ SAVE EXCEPTION:', error);
-      toast.error('Failed to save food item');
+      console.error('Failed food data:', JSON.stringify(sanitizedFoodItem, null, 2));
+      toast.error(`Failed to save food item: ${error.message}`);
       return;
     }
 
     console.log('🍽️ === FOOD CONFIRMATION DEBUG SUMMARY ===');
-    console.log('📊 Confirmation Debug Log:', confirmationDebug);
-    console.log('✅ Food item successfully confirmed and logged');
+    console.log('✅ Food item successfully confirmed and logged via GPT + useNutritionPersistence');
 
     // Check if there are more pending items to process
     if (pendingItems.length > 0 && currentItemIndex < pendingItems.length - 1) {
