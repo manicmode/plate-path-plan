@@ -4719,6 +4719,10 @@ export type Database = {
           current_user_rank_position: number
         }[]
       }
+      get_security_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_smart_friend_recommendations: {
         Args: { current_user_id: string }
         Returns: {
