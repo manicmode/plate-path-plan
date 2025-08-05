@@ -1053,14 +1053,18 @@ const Home = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* SmartLog AI Predictions - Added proper spacing */}
-        <div className="mt-20">
-          <SmartLogAI onFoodSelect={(food) => {
-            console.log('AI predicted food selected:', food);
-            // TODO: Integrate with actual food logging system
-          }} />
-        </div>
+      {/* SmartLog AI Predictions - Separate section with custom spacing */}
+      <div className="mt-16 mb-6 sm:mb-8 px-2 sm:px-4">
+        <SmartLogAI onFoodSelect={(food) => {
+          console.log('AI predicted food selected:', food);
+          // TODO: Integrate with actual food logging system
+        }} />
+      </div>
+
+      {/* Secondary Actions Section */}
+      <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
 
         {/* Secondary Actions: Hydration & Supplements */}
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
