@@ -36,7 +36,8 @@ class FoodDetectionFilter {
     'surface', 'counter', 'kitchen', 'dining', 'restaurant', 'produce',
     'market', 'grocery', 'shelf', 'display', 'label', 'text', 'logo',
     'dishware', 'serveware', 'gastronomy', 'brunch', 'cuisine', 'tableware',
-    'ingredient', 'culinary arts', 'garnish'
+    'ingredient', 'culinary arts', 'garnish', 'breakfast', 'lunch', 'dinner',
+    'scene', 'meal'
   ];
 
   // 🔄 Generic/overlapping terms to suppress
@@ -79,7 +80,8 @@ class FoodDetectionFilter {
     const removedNonFood = detectedItems.filter(item => 
       !foodOnlyItems.some(filtered => filtered.name === item.name)
     );
-    console.log('🗑️ Non-food items removed:', removedNonFood.map(item => item.name));
+    console.log('🗑️ Non-food items removed:', removedNonFood.map(item => `${item.name} (${(item.confidence || item.score).toFixed(3)})`));
+    console.log('🍽️ Food items kept:', foodOnlyItems.map(item => `${item.name} (${(item.confidence || item.score).toFixed(3)})`));
     console.log(`🔍 After non-food removal: ${foodOnlyItems.length} items`);
 
     // Step 2: Apply confidence thresholds
@@ -126,7 +128,7 @@ class FoodDetectionFilter {
       );
       
       if (isNonFood) {
-        console.log(`🚫 Filtered non-food: ${item.name}`);
+        console.log(`🚫 Filtered non-food: ${item.name} (confidence: ${(item.confidence || item.score).toFixed(3)})`);
       }
       
       return !isNonFood;
@@ -138,12 +140,14 @@ class FoodDetectionFilter {
    */
    private applyConfidenceThresholds(items: DetectedItem[]): DetectedItem[] {
     const filtered = items.filter(item => {
-      // Use confidence > 92% to eliminate vague labels
+      // Use confidence > 92% to eliminate false positives
       const threshold = items.length < 2 ? 0.6 : 0.92;
       const hasGoodConfidence = item.confidence >= threshold || item.score >= threshold;
       
       if (!hasGoodConfidence) {
-        console.log(`📉 Low confidence filtered: ${item.name} (${item.confidence || item.score})`);
+        console.log(`📉 Low confidence filtered: ${item.name} (confidence: ${(item.confidence || item.score).toFixed(3)}, threshold: ${threshold.toFixed(2)})`);
+      } else {
+        console.log(`✅ Confidence passed: ${item.name} (confidence: ${(item.confidence || item.score).toFixed(3)})`);
       }
       
       return hasGoodConfidence;
