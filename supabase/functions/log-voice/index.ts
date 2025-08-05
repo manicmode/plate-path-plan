@@ -114,10 +114,14 @@ serve(async (req) => {
 
   try {
     // Log function start and check for API key availability
-    console.log('🔍 log-voice function started');
+    console.log('🔍 log-voice function started at:', new Date().toISOString());
+    console.log('🔍 Request method:', req.method);
+    console.log('🔍 Request headers:', Object.fromEntries(req.headers.entries()));
+    
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     console.log('🔍 OpenAI API key present:', !!OPENAI_API_KEY);
     console.log('🔍 OpenAI API key length:', OPENAI_API_KEY ? OPENAI_API_KEY.length : 0);
+    console.log('🔍 OpenAI API key starts with sk-:', OPENAI_API_KEY ? OPENAI_API_KEY.startsWith('sk-') : false);
     
     if (!OPENAI_API_KEY) {
       console.error('❌ OpenAI API key not configured in Supabase secrets');
@@ -138,8 +142,13 @@ serve(async (req) => {
       );
     }
 
-    const { text } = await req.json();
-    console.log('🔍 Received text input:', text);
+    const requestBody = await req.json();
+    console.log('🔍 Request body received:', requestBody);
+    
+    const { text } = requestBody;
+    console.log('🔍 Extracted text input:', text);
+    console.log('🔍 Text input type:', typeof text);
+    console.log('🔍 Text input length:', text ? text.length : 0);
     
     if (!text) {
       return new Response(
@@ -166,6 +175,14 @@ serve(async (req) => {
 
     // Enhanced OpenAI prompt with specific examples and instructions
     console.log('🔍 Making OpenAI API request...');
+    console.log('🔍 OpenAI request payload:', {
+      model: 'gpt-4o-mini',
+      max_tokens: 800,
+      temperature: 0.2,
+      messagesLength: 2,
+      preprocessedText: preprocessedText
+    });
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -232,9 +249,14 @@ Input: "some chicken" → confidence: 40
       }),
     });
 
+    console.log('🔍 OpenAI response status:', response.status);
+    console.log('🔍 OpenAI response headers:', Object.fromEntries(response.headers.entries()));
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
+      console.error('❌ OpenAI API error response:', errorText);
+      console.error('❌ OpenAI API status:', response.status);
+      console.error('❌ OpenAI API status text:', response.statusText);
       
       return new Response(
         JSON.stringify({ 
@@ -254,8 +276,17 @@ Input: "some chicken" → confidence: 40
     }
 
     const data = await response.json();
+    console.log('🔍 OpenAI response data structure:', {
+      hasChoices: !!data.choices,
+      choicesLength: data.choices?.length || 0,
+      hasFirstChoice: !!data.choices?.[0],
+      hasMessage: !!data.choices?.[0]?.message,
+      hasContent: !!data.choices?.[0]?.message?.content
+    });
+    
     const aiResponse = data.choices[0]?.message?.content || '';
-    console.log('Raw AI response:', aiResponse);
+    console.log('✅ Raw AI response:', aiResponse);
+    console.log('🔍 AI response length:', aiResponse.length);
 
     // Try to parse the JSON response
     let structuredData;
@@ -302,8 +333,10 @@ Input: "some chicken" → confidence: 40
       }
       
     } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', parseError);
-      console.error('AI response was:', aiResponse);
+      console.error('❌ Failed to parse AI response as JSON:', parseError);
+      console.error('❌ AI response was:', aiResponse);
+      console.error('❌ AI response type:', typeof aiResponse);
+      console.error('❌ Parse error details:', parseError instanceof Error ? parseError.message : parseError);
       
       return new Response(
         JSON.stringify({ 
@@ -349,6 +382,12 @@ Input: "some chicken" → confidence: 40
       );
     }
 
+    console.log('✅ Successfully processed food analysis:', {
+      foodItemsCount: structuredData.foodItems.length,
+      originalText: text,
+      preprocessedText: preprocessedText
+    });
+    
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -365,13 +404,23 @@ Input: "some chicken" → confidence: 40
     );
 
   } catch (error) {
-    console.error('Error in log-voice function:', error);
+    console.error('❌ Critical error in log-voice function:', error);
+    console.error('❌ Error type:', typeof error);
+    console.error('❌ Error name:', error instanceof Error ? error.name : 'Unknown');
+    console.error('❌ Error message:', error instanceof Error ? error.message : error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     return new Response(
       JSON.stringify({ 
         success: false,
         errorType: "SYSTEM_ERROR",
         errorMessage: "An unexpected error occurred",
-        suggestions: ["Please try again", "Contact support if the problem persists"]
+        suggestions: ["Please try again", "Contact support if the problem persists"],
+        debugInfo: {
+          errorType: typeof error,
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: error instanceof Error ? error.message : String(error)
+        }
       }),
       { 
         status: 500,

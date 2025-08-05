@@ -11,7 +11,13 @@ export interface LogVoiceResponse {
 
 export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> => {
   try {
-    console.log('🔍 Manual Log Debug - Calling log-voice edge function with text:', text);
+    console.log('🔍 [sendToLogVoice] Starting request to log-voice function');
+    console.log('🔍 [sendToLogVoice] Input text:', text);
+    console.log('🔍 [sendToLogVoice] Input text length:', text.length);
+    console.log('🔍 [sendToLogVoice] Input text type:', typeof text);
+    
+    const requestBody = { text };
+    console.log('🔍 [sendToLogVoice] Request body:', requestBody);
     
     const response = await fetch('https://uzoiiijqtahohfafqirm.functions.supabase.co/log-voice', {
       method: 'POST',
@@ -19,15 +25,20 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
         'Content-Type': 'application/json',
         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw'
       },
-      body: JSON.stringify({ text })
+      body: JSON.stringify(requestBody)
     });
+    
+    console.log('🔍 [sendToLogVoice] Response received');
+    console.log('🔍 [sendToLogVoice] Response status:', response.status);
+    console.log('🔍 [sendToLogVoice] Response ok:', response.ok);
+    console.log('🔍 [sendToLogVoice] Response headers:', Object.fromEntries(response.headers.entries()));
 
-    console.log('🔍 Manual Log Debug - Response status:', response.status);
-    console.log('🔍 Manual Log Debug - Response ok:', response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('🔍 Manual Log Debug - Error response text:', errorText);
+      console.error('❌ [sendToLogVoice] HTTP error response:', errorText);
+      console.error('❌ [sendToLogVoice] Response status:', response.status);
+      console.error('❌ [sendToLogVoice] Response status text:', response.statusText);
       
       // Try to parse the error response for better error messages
       try {
@@ -53,7 +64,9 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     }
 
     const data = await response.json();
-    console.log('🔍 Manual Log Debug - Response data:', data);
+    console.log('🔍 [sendToLogVoice] Response data:', data);
+    console.log('🔍 [sendToLogVoice] Data type:', typeof data);
+    console.log('🔍 [sendToLogVoice] Data keys:', Object.keys(data || {}));
     
     // Handle both success and error responses from the enhanced edge function
     if (data.success && data.data) {
@@ -70,7 +83,10 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       };
     }
   } catch (error) {
-    console.error('🔍 Manual Log Debug - Network error:', error);
+    console.error('❌ [sendToLogVoice] Network/parsing error:', error);
+    console.error('❌ [sendToLogVoice] Error type:', typeof error);
+    console.error('❌ [sendToLogVoice] Error name:', error instanceof Error ? error.name : 'Unknown');
+    console.error('❌ [sendToLogVoice] Error message:', error instanceof Error ? error.message : error);
     return {
       message: JSON.stringify({
         success: false,

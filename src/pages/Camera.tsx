@@ -1024,10 +1024,26 @@ const CameraPage = () => {
 
       if (!result.success) {
         // Handle structured error response from edge function
+        console.error('❌ Voice processing failed. Result:', result);
         const errorData = result.message ? JSON.parse(result.message) : {};
+        console.error('❌ Parsed error data:', errorData);
+        
+        // Create detailed error message for debugging
+        let debugMessage = errorData.errorMessage || result.error || 'Failed to process voice input';
+        
+        // Add debug info if available
+        if (errorData.debugInfo) {
+          debugMessage += `\n\nDebug Info:\n- Error Type: ${errorData.debugInfo.errorType}\n- Error Name: ${errorData.debugInfo.errorName}\n- Error Message: ${errorData.debugInfo.errorMessage}`;
+        }
+        
+        // Add original text for reference
+        if (voiceText) {
+          debugMessage += `\n\nOriginal Text: "${voiceText}"`;
+        }
+        
         showErrorState(
           errorData.errorType || 'UNKNOWN_ERROR',
-          errorData.errorMessage || result.error || 'Failed to process voice input',
+          debugMessage,
           errorData.suggestions || ['Please try again with more specific descriptions']
         );
         return;
@@ -1057,10 +1073,23 @@ const CameraPage = () => {
       }
       
     } catch (error) {
-      console.error('Error processing voice input:', error);
-      showErrorState('SYSTEM_ERROR', 'Failed to process voice input. Please try again.', [
+      console.error('❌ Exception in voice processing:', error);
+      
+      // Create detailed error message for debugging
+      let debugMessage = 'Failed to process voice input. Please try again.';
+      
+      if (error instanceof Error) {
+        debugMessage += `\n\nTechnical Details:\n- Error: ${error.name}\n- Message: ${error.message}`;
+      }
+      
+      if (voiceText) {
+        debugMessage += `\n\nOriginal Text: "${voiceText}"`;
+      }
+      
+      showErrorState('SYSTEM_ERROR', debugMessage, [
         'Check your internet connection',
-        'Try again in a moment'
+        'Try again in a moment',
+        'Contact support if this persists'
       ]);
     } finally {
       setIsProcessingVoice(false);
