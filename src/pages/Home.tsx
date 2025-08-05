@@ -1108,10 +1108,11 @@ const Home = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
 
-
-        {/* Enhanced Net Calorie Card - Added proper spacing */}
-        <div className="mt-20">
+      {/* Enhanced Net Calorie Card - Separate section with proper spacing */}
+      <div className="mt-16 px-2 sm:px-4">
+        <div>
           <Card 
             className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
           >
