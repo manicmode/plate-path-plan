@@ -177,15 +177,20 @@ serve(async (req) => {
       });
     };
 
-    // Apply pre-processing filter to vision results
-    const filteredFoodLabels = filterNonFoodLabels(visionResults.foodLabels);
-    const filteredObjects = filterNonFoodLabels(visionResults.objects);
-    const filteredLabels = filterNonFoodLabels(visionResults.labels);
+    // Apply pre-processing filter to vision results with null/undefined guards
+    const filteredFoodLabels = filterNonFoodLabels(visionResults.foodLabels || []);
+    const filteredObjects = filterNonFoodLabels(visionResults.objects || []);
+    const filteredLabels = filterNonFoodLabels(visionResults.labels || []);
 
     console.log('🧹 Pre-processing filter applied:');
-    console.log(`Food labels: ${visionResults.foodLabels.length} → ${filteredFoodLabels.length}`);
-    console.log(`Objects: ${visionResults.objects.length} → ${filteredObjects.length}`);
-    console.log(`Labels: ${visionResults.labels.length} → ${filteredLabels.length}`);
+    console.log(`Food labels: ${(visionResults.foodLabels || []).length} → ${filteredFoodLabels.length}`);
+    console.log(`Objects: ${(visionResults.objects || []).length} → ${filteredObjects.length}`);
+    console.log(`Labels: ${(visionResults.labels || []).length} → ${filteredLabels.length}`);
+    
+    // Log any undefined fields for debugging
+    if (!visionResults.foodLabels) console.log('⚠️ visionResults.foodLabels is undefined');
+    if (!visionResults.objects) console.log('⚠️ visionResults.objects is undefined');
+    if (!visionResults.labels) console.log('⚠️ visionResults.labels is undefined');
 
     // 🧠 Ultimate AI Detection Filtering - Collect all detected items (using filtered data)
     const allDetectedItems = [
@@ -278,11 +283,11 @@ serve(async (req) => {
       detectionMethod = 'context_aware_fallback';
       console.log('🍲 Using context-aware fallback due to limited detection');
       
-      // Create context-aware prompt with detected labels
+      // Create context-aware prompt with detected labels (with null guards)
       const detectedLabels = [
-        ...visionResults.labels.map(l => l.description),
-        ...visionResults.objects.map(o => o.name),
-        ...visionResults.food_labels.map(f => f.description)
+        ...(visionResults.labels || []).map(l => l.description),
+        ...(visionResults.objects || []).map(o => o.name),
+        ...(visionResults.foodLabels || []).map(f => f.description)
       ].slice(0, 8); // Limit to prevent prompt overflow
       inputText = `Scene shows a breakfast/meal with multiple foods. Detected labels: [${detectedLabels.join(', ')}]. Guess what foods are most likely present.`;
       

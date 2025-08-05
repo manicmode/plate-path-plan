@@ -560,16 +560,19 @@ const CameraPage = () => {
 
         if (parseResponse.error || parseResponse.data?.error) {
           console.error('Food parsing error:', parseResponse.error || parseResponse.data?.message);
-          // Fallback to original logic
-          const processedFoods = await processNutritionData('photo', data);
-          if (processedFoods.length > 0) {
-            setRecognizedFoods(processedFoods);
-            setInputSource('photo');
-            setShowConfirmation(true);
-            toast.success(`Detected ${processedFoods.length} food item(s)!`);
-          } else {
-            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
-          }
+          const errorMsg = parseResponse.data?.message || 'Food detection failed';
+          
+          // Show proper error state instead of fallback
+          setShowError(true);
+          setErrorType('detection_failed');
+          setErrorMessage('We couldn\'t detect any food from the image. Please try again or enter manually.');
+          setErrorSuggestions([
+            'Try taking a clearer photo with better lighting',
+            'Use the voice input to describe your meal',
+            'Enter food details manually'
+          ]);
+          
+          toast.error(errorMsg);
           return;
         }
 
@@ -597,16 +600,18 @@ const CameraPage = () => {
 
         // Validate parsed items
         if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-          console.log('No valid food items parsed, falling back to original logic');
-          const processedFoods = await processNutritionData('photo', data);
-          if (processedFoods.length > 0) {
-            setRecognizedFoods(processedFoods);
-            setInputSource('photo');
-            setShowConfirmation(true);
-            toast.success(`Detected ${processedFoods.length} food item(s)!`);
-          } else {
-            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
-          }
+          console.log('No valid food items parsed, showing error state');
+          
+          setShowError(true);
+          setErrorType('detection_failed');
+          setErrorMessage('We couldn\'t detect any food from the image. Please try again or enter manually.');
+          setErrorSuggestions([
+            'Try taking a clearer photo with better lighting',
+            'Use the voice input to describe your meal',
+            'Enter food details manually'
+          ]);
+          
+          toast.error('No food items detected');
           return;
         }
 
@@ -629,16 +634,17 @@ const CameraPage = () => {
 
       } catch (parseError) {
         console.error('Food parsing failed:', parseError);
-        // Fallback to original logic
-        const processedFoods = await processNutritionData('photo', data);
-        if (processedFoods.length > 0) {
-          setRecognizedFoods(processedFoods);
-          setInputSource('photo');
-          setShowConfirmation(true);
-          toast.success(`Detected ${processedFoods.length} food item(s)!`);
-        } else {
-          toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
-        }
+        
+        setShowError(true);
+        setErrorType('detection_failed');
+        setErrorMessage('We couldn\'t detect any food from the image. Please try again or enter manually.');
+        setErrorSuggestions([
+          'Try taking a clearer photo with better lighting',
+          'Use the voice input to describe your meal',
+          'Enter food details manually'
+        ]);
+        
+        toast.error('Food detection failed');
       }
       
     } catch (error) {
