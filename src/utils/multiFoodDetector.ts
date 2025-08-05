@@ -71,9 +71,39 @@ async function detectWithCalorieMama(image: string): Promise<string[]> {
 }
 
 async function detectWithChatGPT(image: string): Promise<string[]> {
-  // TODO: Implement ChatGPT Vision API food detection
-  console.log('ChatGPT Vision detection (placeholder)', image.slice(0, 50));
-  return [];
+  return await callGPT4Vision(image);
+}
+
+// GPT-4 Vision API call for food detection
+async function callGPT4Vision(imageBase64: string): Promise<string[]> {
+  try {
+    console.log('Calling GPT-4 Vision for food detection...');
+    
+    // Call our Supabase edge function that handles OpenAI API
+    const { data, error } = await supabase.functions.invoke('gpt4-vision-food-detector', {
+      body: { 
+        imageBase64: imageBase64,
+        prompt: "You are a food recognition assistant. Look at this image and return only a list of food items that are clearly visible in the photo. Respond only with the food names as a plain JSON array."
+      }
+    });
+
+    if (error) {
+      console.error('GPT-4 Vision API error:', error);
+      return [];
+    }
+
+    if (!data || !data.foodItems) {
+      console.log('No food items returned from GPT-4 Vision');
+      return [];
+    }
+
+    console.log('GPT-4 Vision detected food items:', data.foodItems);
+    return Array.isArray(data.foodItems) ? data.foodItems : [];
+
+  } catch (error) {
+    console.error('GPT-4 Vision detection failed:', error);
+    return [];
+  }
 }
 
 async function detectWithGastroNet(image: string): Promise<string[]> {
