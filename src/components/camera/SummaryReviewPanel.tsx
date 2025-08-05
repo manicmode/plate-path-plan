@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, ArrowRight, Info, Plus } from 'lucide-react';
+import { CheckCircle, ArrowRight, Info, Plus, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export interface SummaryItem {
@@ -12,6 +12,7 @@ export interface SummaryItem {
   portion: string;
   calories?: number;
   selected: boolean;
+  isAIInferred?: boolean;  // Flag for vision fallback results
 }
 
 interface SummaryReviewPanelProps {
@@ -122,6 +123,12 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
                         <Badge variant="outline" className="text-xs">
                           #{index + 1}
                         </Badge>
+                        {item.isAIInferred && (
+                          <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 flex items-center gap-1">
+                            <Brain className="h-3 w-3" />
+                            AI Inferred
+                          </Badge>
+                        )}
                       </div>
                       <div className="mt-1 space-y-1">
                         <p className="text-sm text-gray-600 dark:text-gray-400">

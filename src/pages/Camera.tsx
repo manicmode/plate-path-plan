@@ -552,7 +552,10 @@ const CameraPage = () => {
       
       try {
         const parseResponse = await supabase.functions.invoke('parse-food-items', {
-          body: { visionResults: data }
+          body: { 
+            visionResults: data,
+            imageDataUrl: `data:image/jpeg;base64,${imageBase64}`  // Include image data for vision fallback
+          }
         });
 
         if (parseResponse.error || parseResponse.data?.error) {
@@ -613,7 +616,8 @@ const CameraPage = () => {
           name: item.name || 'Unknown Food',
           portion: item.portion || '1 serving',
           calories: item.calories,
-          selected: false
+          selected: false,
+          isAIInferred: (item as any).isAIInferred || false  // Pass through AI inferred flag, cast to any for flexibility
         }));
 
         console.log('Created summary items:', summaryItems);

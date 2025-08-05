@@ -6,6 +6,115 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Vision-based fallback function for when detection fails
+async function analyzeImageWithCaptioning(imageDataUrl: string): Promise<any[]> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
+
+  console.log('🔍 Using GPT-4 Vision fallback for image analysis');
+
+  const visionPrompt = `You are an expert food analyst examining this image. Your task is to identify ALL visible food items and estimate their portions and calories.
+
+ANALYSIS INSTRUCTIONS:
+🔍 Look carefully at the entire image
+🍽️ Identify every distinct food item you can see
+📊 Provide realistic portion sizes and calorie estimates
+🚫 Ignore plates, utensils, napkins, and decorations
+
+EXPECTED FOOD CATEGORIES:
+• Proteins: eggs, bacon, sausage, chicken, fish
+• Carbs: toast, bagels, pancakes, waffles, cereal, oatmeal  
+• Fruits: berries, bananas, citrus, melon, apples
+• Vegetables: avocado, tomatoes, spinach, peppers
+• Dairy: milk, yogurt, cheese, butter
+• Beverages: coffee, juice, smoothies
+
+OUTPUT REQUIREMENTS:
+- List 3-7 specific food items you can actually see
+- Use specific names (not "fruit" but "strawberries")
+- Include realistic portions and accurate calories
+- Mark confidence based on visibility
+
+EXAMPLE OUTPUT:
+[
+  {"name": "scrambled eggs", "portion": "2 large eggs", "calories": 140, "confidence": "high", "method": "vision_analysis"},
+  {"name": "whole wheat toast", "portion": "2 slices", "calories": 160, "confidence": "high", "method": "vision_analysis"},
+  {"name": "sliced avocado", "portion": "½ medium avocado", "calories": 120, "confidence": "medium", "method": "vision_analysis"},
+  {"name": "fresh strawberries", "portion": "½ cup", "calories": 25, "confidence": "medium", "method": "vision_analysis"}
+]
+
+Return ONLY the JSON array with no additional text.`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: visionPrompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageDataUrl,
+                  detail: 'high'
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.1
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI Vision API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const visionResponse = data.choices[0]?.message?.content || '';
+    
+    console.log('🎯 GPT-4 Vision Response:', visionResponse);
+    console.log('📊 Vision API Usage:', data.usage);
+
+    // Parse the JSON response
+    const cleanedResponse = visionResponse.replace(/```json\s*|\s*```/g, '').trim();
+    const foodItems = JSON.parse(cleanedResponse);
+
+    // Validate and enhance the response
+    const validatedItems = foodItems.map((item: any) => ({
+      name: item.name || 'Unknown Food',
+      portion: item.portion || '1 serving',
+      calories: Number(item.calories) || 100,
+      confidence: item.confidence || 'medium',
+      method: 'vision_analysis'
+    }));
+
+    console.log('✅ Validated Vision Analysis Items:', validatedItems);
+    return validatedItems;
+
+  } catch (error) {
+    console.error('❌ Vision analysis failed:', error);
+    // Return fallback items
+    return [
+      { name: 'mixed breakfast items', portion: '1 serving', calories: 300, confidence: 'low', method: 'vision_fallback' }
+    ];
+  }
+}
+
 interface VisionResults {
   labels: Array<{ description: string; score: number }>;
   foodLabels: Array<{ description: string; score: number }>;
@@ -180,6 +289,56 @@ serve(async (req) => {
       // Add OCR context if available
       if (visionResults.textDetected) {
         inputText += ` Menu/text context: ${visionResults.textDetected}`;
+      }
+    }
+    
+    // 🔍 VISION FALLBACK: If 2 or fewer items detected, use GPT-4 Vision
+    if (visualFoodItems.length <= 2) {
+      console.log('🚨 TRIGGERING VISION FALLBACK: Only', visualFoodItems.length, 'items detected');
+      
+      // Check if we have image data in the request
+      const requestBody = await req.clone().json();
+      if (requestBody.imageDataUrl) {
+        console.log('📷 Using GPT-4 Vision for direct image analysis');
+        
+        try {
+          const visionResults = await analyzeImageWithCaptioning(requestBody.imageDataUrl);
+          
+          // Mark all vision results as "AI Inferred" for frontend
+          const visionResultsWithFlag = visionResults.map(item => ({
+            name: item.name,
+            portion: item.portion,
+            calories: item.calories,
+            confidence: item.confidence || 'medium',
+            method: 'vision_analysis',
+            isAIInferred: true  // Frontend flag
+          }));
+          
+          console.log('✅ Vision fallback successful:', visionResultsWithFlag);
+          
+          return new Response(
+            JSON.stringify({
+              items: visionResultsWithFlag,
+              analysis: {
+                detectionMethod: 'vision_fallback',
+                useComplexDishFallback: false,
+                visualItemsFound: visualFoodItems.length,
+                visionFallbackUsed: true,
+                strongVisualDetection: false,
+                moderateVisualDetection: false,
+                appearsToBeComplexDish: false
+              }
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        } catch (visionError) {
+          console.error('❌ Vision fallback failed:', visionError);
+          // Continue with normal processing
+        }
+      } else {
+        console.log('⚠️ No image data available for vision fallback');
       }
     }
     
