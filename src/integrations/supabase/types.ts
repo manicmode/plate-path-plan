@@ -4475,6 +4475,17 @@ export type Database = {
         }
         Relationships: []
       }
+      routine_performance_analytics: {
+        Row: {
+          avg_completion_rate: number | null
+          performance_grade: string | null
+          routine_name: string | null
+          total_sessions: number | null
+          user_id: string | null
+          week_start: string | null
+        }
+        Relationships: []
+      }
       workout_progress_analytics: {
         Row: {
           avg_completion_rate: number | null
