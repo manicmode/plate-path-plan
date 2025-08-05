@@ -59,7 +59,7 @@ Use emojis, be warm and motivational, avoid generic advice. Make it feel like a 
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4.1-2025-04-14',
+            model: 'gpt-4.1-2025-04-14', // Body scan analysis requires advanced reasoning
             messages: [
               { role: 'system', content: 'You are an expert AI fitness coach who provides detailed, encouraging, and personalized insights with emojis and formatting.' },
               { role: 'user', content: prompt }

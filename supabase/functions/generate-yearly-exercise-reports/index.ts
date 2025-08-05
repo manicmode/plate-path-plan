@@ -403,7 +403,7 @@ Keep the tone upbeat, personal, and motivating. Focus on their unique journey an
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4.1-2025-04-14', // Exercise report analysis requires advanced reasoning
         messages: [
           {
             role: 'system',

@@ -52,7 +52,7 @@ Example tone: "You've built impressive consistency with 45 minutes of recovery p
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4.1-2025-04-14', // Recovery recommendations require advanced analysis
         messages: [
           { 
             role: 'system', 

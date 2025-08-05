@@ -176,7 +176,7 @@ serve(async (req) => {
     // Enhanced OpenAI prompt with specific examples and instructions
     console.log('🔍 Making OpenAI API request...');
     console.log('🔍 OpenAI request payload:', {
-      model: 'gpt-4o-mini',
+        model: 'gpt-4o-mini', // Smart routing handled by GPTRouter
       max_tokens: 800,
       temperature: 0.2,
       messagesLength: 2,

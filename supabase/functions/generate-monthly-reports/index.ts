@@ -735,7 +735,7 @@ Write an encouraging, concise summary (max 150 words) highlighting their progres
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14', // Report analysis requires advanced reasoning
         messages: [
           { role: 'system', content: 'You are a supportive wellness coach writing personalized health reports.' },
           { role: 'user', content: prompt }

@@ -835,7 +835,7 @@ Write an inspiring, comprehensive summary (max 200 words) celebrating their year
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14', // Report analysis requires advanced reasoning
         messages: [
           { role: 'system', content: 'You are a supportive wellness coach writing personalized yearly health reports.' },
           { role: 'user', content: prompt }

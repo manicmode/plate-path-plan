@@ -103,7 +103,7 @@ Return only the JSON as shown above. No intro, no explanations, no markdown, no 
 
     const startTime = Date.now();
     console.log("📤 Sending to OpenAI:", {
-      model: "gpt-4o",
+      model: "gpt-4.1-2025-04-14", // Workout generation requires advanced reasoning
       temperature: 0.7,
       max_tokens: 1500,
       promptLength: totalPromptLength,
@@ -119,7 +119,7 @@ Return only the JSON as shown above. No intro, no explanations, no markdown, no 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4.1-2025-04-14', // Workout generation requires advanced reasoning
           messages: messages,
           temperature: 0.7,
           max_tokens: 1500

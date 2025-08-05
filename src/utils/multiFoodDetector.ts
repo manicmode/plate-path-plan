@@ -1,6 +1,8 @@
-// LOVABLE — MULTI-SOURCE FOOD DETECTION
+// 🧠 GPT-POWERED FOOD DETECTION
+// Now exclusively using GPT models with smart routing
 
 import { supabase } from "@/integrations/supabase/client";
+import { routeGPTModel } from "./GPTRouter";
 
 // Real Google Vision API call via Supabase edge function
 async function detectWithGoogle(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
@@ -234,54 +236,37 @@ function isRelevantFoodItem(name: string): boolean {
 }
 
 export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; confidence: number; sources: string[] }[]> {
-  console.log('🚀 [Multi-AI] Starting multi-source food detection...');
-  console.log('🚀 [Multi-AI] Note: Google Vision & CalorieMama disabled to avoid costs');
+  console.log('🧠 [GPT Detection] Starting smart GPT-powered food detection...');
   
-  // Run only real AI detectors in parallel (Google Vision & CalorieMama disabled)
-  console.log('🚀 [Multi-AI] Calling active detection services in parallel...');
-  const [googleResults, calorieMamaResults, gptResults, claudeResults, clarifaiResults] = await Promise.all([
-    detectWithGoogle(image), // Returns [] - disabled
-    detectWithCalorieMama(image), // Returns [] - disabled
-    detectWithChatGPT(image),
-    detectWithClaude(image),
-    detectWithClarifai(image)
-  ]);
+  // Use GPT as primary detection engine
+  console.log('🧠 [GPT Detection] Using GPT Vision with smart model routing...');
+  const gptResults = await detectWithChatGPT(image);
 
-  console.log('🚀 [Multi-AI] Detection results summary:');
-  // console.log('  - Google Vision:', googleResults.length, 'items (DISABLED)');
-  // console.log('  - CalorieMama:', calorieMamaResults.length, 'items (DISABLED)');
-  console.log('  - GPT-4 Vision:', gptResults.length, 'items');
-  console.log('  - Claude Vision:', claudeResults.length, 'items');
-  console.log('  - Clarifai:', clarifaiResults.length, 'items');
+  console.log('🧠 [GPT Detection] Detection results:');
+  console.log('  - GPT Vision:', gptResults.length, 'items');
 
-  // Combine all results into a single array
-  const allResults = [
-    ...googleResults,
-    ...calorieMamaResults,
-    ...gptResults,
-    ...claudeResults,
-    ...clarifaiResults
-  ];
+  // Use only GPT results for optimal performance and cost efficiency
+  const allResults = [...gptResults];
 
-  console.log('🚀 [Multi-AI] Total combined results before filtering:', allResults.length);
-  console.log('🚀 [Multi-AI] All raw results:', allResults);
+  console.log('🧠 [GPT Detection] Total results before filtering:', allResults.length);
+  console.log('🧠 [GPT Detection] Raw GPT results:', allResults);
 
   // Create a map to merge duplicates by lowercase name
   const foodMap: Record<string, { name: string; confidence: number; sources: string[] }> = {};
 
   for (const item of allResults) {
     const normalizedName = item.name.trim().toLowerCase();
-    console.log(`🔍 [Multi-AI] Processing item: "${item.name}" (confidence: ${item.confidence}, source: ${item.source})`);
+    console.log(`🧠 [GPT Detection] Processing item: "${item.name}" (confidence: ${item.confidence}, source: ${item.source})`);
     
     // Filter out irrelevant items
     if (!isRelevantFoodItem(item.name)) {
-      console.log('🗑️ [Multi-AI] Filtered out irrelevant item:', item.name);
+      console.log('🗑️ [GPT Detection] Filtered out irrelevant item:', item.name);
       continue;
     }
     
     // Cap confidence at 100%
     const cappedConfidence = Math.min(item.confidence * 100, 100) / 100;
-    console.log(`🔍 [Multi-AI] Capped confidence: ${item.confidence} -> ${cappedConfidence}`);
+    console.log(`🧠 [GPT Detection] Capped confidence: ${item.confidence} -> ${cappedConfidence}`);
     
     if (!foodMap[normalizedName]) {
       foodMap[normalizedName] = {
@@ -289,7 +274,7 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
         confidence: cappedConfidence,
         sources: [item.source]
       };
-      console.log(`✅ [Multi-AI] Added new item to map: "${item.name}"`);
+      console.log(`✅ [GPT Detection] Added new item: "${item.name}"`);
     } else {
       // Merge with existing entry
       const existing = foodMap[normalizedName];
@@ -297,23 +282,19 @@ export async function detectFoodsFromAllSources(image: string): Promise<{ name: 
       if (!existing.sources.includes(item.source)) {
         existing.sources.push(item.source);
       }
-      console.log(`🔗 [Multi-AI] Merged with existing item: "${item.name}" (sources: ${existing.sources.join(', ')})`);
+      console.log(`🔗 [GPT Detection] Merged item: "${item.name}" (sources: ${existing.sources.join(', ')})`);
     }
   }
 
-  console.log('🚀 [Multi-AI] Food map after processing:', foodMap);
+  console.log('🧠 [GPT Detection] Food map after processing:', foodMap);
 
-  // Convert to array and sort
+  // Convert to array and sort by confidence
   const finalResults = Object.values(foodMap).sort((a, b) => {
-    // First sort by number of sources (more sources = higher priority)
-    if (a.sources.length !== b.sources.length) {
-      return b.sources.length - a.sources.length;
-    }
-    // Then sort by confidence (descending)
+    // Sort by confidence (descending)
     return b.confidence - a.confidence;
   });
 
-  console.log('✅ [Multi-AI] Final merged and sorted results:', finalResults);
-  console.log('✅ [Multi-AI] Total final results:', finalResults.length);
+  console.log('✅ [GPT Detection] Final results:', finalResults);
+  console.log('✅ [GPT Detection] Total items detected:', finalResults.length);
   return finalResults;
 }

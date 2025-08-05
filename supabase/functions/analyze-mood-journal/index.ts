@@ -126,7 +126,7 @@ Only include tags that are clearly indicated in the text. Confidence should be 0
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4o-mini', // Simple tagging task
             messages: [
               { 
                 role: 'system', 
