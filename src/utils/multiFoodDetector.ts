@@ -4,10 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Real Google Vision API call via Supabase edge function
 async function detectWithGoogle(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
-  return await callGoogleVision(image);
+  // 🚫 DISABLED: Google Vision API to avoid costs
+  // return await callGoogleVision(image);
+  return [];
 }
 
 async function callGoogleVision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  // 🚫 DISABLED: Google Vision API to avoid costs
+  // Keep function structure intact for future reactivation
+  /*
   try {
     console.log('🔍 [Google Vision] Starting food detection call...');
     console.log('🔍 [Google Vision] Image data length:', imageBase64.length);
@@ -55,14 +60,21 @@ async function callGoogleVision(imageBase64: string): Promise<Array<{ name: stri
     console.error('🔴 [Google Vision] Detection failed with exception:', error);
     return [];
   }
+  */
+  return [];
 }
 
 async function detectWithCalorieMama(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
-  return await callCalorieMama(image);
+  // 🚫 DISABLED: CalorieMama API to avoid costs
+  // return await callCalorieMama(image);
+  return [];
 }
 
 // CalorieMama API call for food detection
 async function callCalorieMama(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  // 🚫 DISABLED: CalorieMama API to avoid costs
+  // Keep function structure intact for future reactivation
+  /*
   try {
     console.log('🍕 [CalorieMama] Starting food detection call...');
     console.log('🍕 [CalorieMama] Image data length:', imageBase64.length);
@@ -115,6 +127,8 @@ async function callCalorieMama(imageBase64: string): Promise<Array<{ name: strin
     console.error('🔴 [CalorieMama] Detection failed with exception:', error);
     return [];
   }
+  */
+  return [];
 }
 
 async function detectWithChatGPT(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
@@ -221,20 +235,21 @@ function isRelevantFoodItem(name: string): boolean {
 
 export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; confidence: number; sources: string[] }[]> {
   console.log('🚀 [Multi-AI] Starting multi-source food detection...');
+  console.log('🚀 [Multi-AI] Note: Google Vision & CalorieMama disabled to avoid costs');
   
-  // Run only real AI detectors in parallel (removed GastroNet mock)
-  console.log('🚀 [Multi-AI] Calling all detection services in parallel...');
+  // Run only real AI detectors in parallel (Google Vision & CalorieMama disabled)
+  console.log('🚀 [Multi-AI] Calling active detection services in parallel...');
   const [googleResults, calorieMamaResults, gptResults, claudeResults, clarifaiResults] = await Promise.all([
-    detectWithGoogle(image),
-    detectWithCalorieMama(image),
+    detectWithGoogle(image), // Returns [] - disabled
+    detectWithCalorieMama(image), // Returns [] - disabled
     detectWithChatGPT(image),
     detectWithClaude(image),
     detectWithClarifai(image)
   ]);
 
   console.log('🚀 [Multi-AI] Detection results summary:');
-  console.log('  - Google Vision:', googleResults.length, 'items');
-  console.log('  - CalorieMama:', calorieMamaResults.length, 'items');
+  // console.log('  - Google Vision:', googleResults.length, 'items (DISABLED)');
+  // console.log('  - CalorieMama:', calorieMamaResults.length, 'items (DISABLED)');
   console.log('  - GPT-4 Vision:', gptResults.length, 'items');
   console.log('  - Claude Vision:', claudeResults.length, 'items');
   console.log('  - Clarifai:', clarifaiResults.length, 'items');
