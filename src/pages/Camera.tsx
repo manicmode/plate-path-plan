@@ -1155,96 +1155,41 @@ const CameraPage = () => {
 
   
   const handleMultiAIConfirm = async (selectedFoods: Array<{name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>) => {
-    try {
-      console.log('Confirming selected foods from multi-AI detection:', selectedFoods);
-      
-      // Convert multi-AI results to RecognizedFood format
-      const foods: RecognizedFood[] = [];
-      
-      for (const food of selectedFoods) {
-        // Use the calorie estimates from the multi-AI detection
-        const calories = food.calories || 100;
-        const portion = food.portion || '1 serving';
-        
-        // Get additional nutrition estimates based on calories
-        const nutrition = await estimateNutritionFromLabel(food.name);
-        
-        foods.push({
-          name: food.name,
-          calories: calories,
-          protein: nutrition?.protein || Math.round(calories * 0.15 / 4), // ~15% of calories from protein
-          carbs: nutrition?.carbs || Math.round(calories * 0.55 / 4), // ~55% of calories from carbs  
-          fat: nutrition?.fat || Math.round(calories * 0.30 / 9), // ~30% of calories from fat
-          fiber: nutrition?.fiber || 3,
-          sugar: nutrition?.sugar || 5,
-          sodium: nutrition?.sodium || 300,
-          confidence: Math.round(food.confidence * 100),
-          serving: portion
-        });
-      }
-      
-      // Add foods to context and persist to Supabase
-      for (const food of foods) {
-        addFood({
-          name: food.name,
-          calories: food.calories,
-          protein: food.protein,
-          carbs: food.carbs,
-          fat: food.fat,
-          fiber: food.fiber,
-          sugar: food.sugar,
-          sodium: food.sodium,
-          confidence: food.confidence,
-          image: selectedImage || undefined,
-        });
-
-        // Persist to Supabase nutrition_logs table
-        const { data, error } = await supabase
-          .from('nutrition_logs')
-          .insert({
-            user_id: user?.id,
-            food_name: food.name,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            fiber: food.fiber,
-            sugar: food.sugar,
-            sodium: food.sodium,
-            confidence: food.confidence,
-            serving_size: food.serving,
-            source: 'multi_ai_vision',
-            image_url: selectedImage || null,
-          })
-          .select();
-
-        if (error) {
-          console.error('Error saving to Supabase:', error);
-        } else {
-          // Score the meal quality
-          await scoreMealAfterInsert(data, error);
-        }
-      }
-
-      // Refresh saved foods list
-      if (refetchSavedFoods) {
-        await refetchSavedFoods();
-      }
-
-      // Play success sound
-      playFoodLogConfirm();
-      
-      toast.success(`Added ${foods.length} food item(s) to your log!`);
-      
-      // Reset all states
-      setShowMultiAIDetection(false);
-      setMultiAIResults([]);
-      resetState();
-      
-    } catch (error) {
-      console.error('Error confirming multi-AI foods:', error);
-      toast.error('Failed to save selected foods. Please try again.');
+    console.log('=== MULTI-AI CONFIRMATION ===');
+    console.log('Selected foods:', selectedFoods);
+    
+    setShowMultiAIDetection(false);
+    
+    if (selectedFoods.length === 0) {
+      console.log('No foods selected, returning to main camera view');
+      return;
     }
+    
+    // Convert to RecognizedFood format for confirmation flow
+    const foods: RecognizedFood[] = selectedFoods.map(food => ({
+      name: food.name,
+      calories: food.calories || 100, // Default fallback
+      protein: 5, // Default values
+      carbs: 15,
+      fat: 3,
+      fiber: 2,
+      sugar: 2,
+      sodium: 200,
+      confidence: food.confidence,
+      serving: food.portion || '1 serving'
+    }));
+    
+    console.log('Starting confirmation flow for:', foods.length, 'items');
+    
+    // Use the standard confirmation flow - process first item
+    setRecognizedFoods(foods);
+    setShowConfirmation(true);
+    setInputSource('photo');
+  };
+
+  // Handler for adding manually entered food to multi-AI results
+  const handleAddToMultiAIResults = (food: {name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}) => {
+    setMultiAIResults(prev => [...prev, food]);
   };
 
   const handleMultiAICancel = () => {
@@ -1921,10 +1866,8 @@ const CameraPage = () => {
             isLoading={isMultiAILoading}
             onConfirm={handleMultiAIConfirm}
             onCancel={handleMultiAICancel}
-            onAddManually={() => {
-              setShowMultiAIDetection(false);
-              setShowManualFoodEntry(true);
-            }}
+            onAddManually={() => setShowManualFoodEntry(true)}
+            onAddToResults={handleAddToMultiAIResults}
           />
         </div>
       )}
@@ -2206,10 +2149,27 @@ const CameraPage = () => {
         isOpen={showManualFoodEntry}
         onClose={() => setShowManualFoodEntry(false)}
         onSave={(foodData) => {
-          setRecognizedFoods([foodData]);
-          setShowConfirmation(true);
-          setInputSource('manual');
           setShowManualFoodEntry(false);
+          
+          // Check if we're in multi-AI detection mode
+          if (showMultiAIDetection) {
+            // Add to multi-AI results instead of immediate confirmation
+            const detectedFood = {
+              name: foodData.name,
+              confidence: 100, // Manual entry is 100% confident
+              sources: ['Manual'],
+              calories: foodData.calories,
+              portion: foodData.serving || '1 serving',
+              isEstimate: false
+            };
+            handleAddToMultiAIResults(detectedFood);
+            toast.success(`Added ${foodData.name} to detected items`);
+          } else {
+            // Normal manual entry flow
+            setRecognizedFoods([foodData]);
+            setShowConfirmation(true);
+            setInputSource('manual');
+          }
         }}
         initialBarcode={failedBarcode}
       />

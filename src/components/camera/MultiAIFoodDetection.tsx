@@ -22,6 +22,7 @@ interface MultiAIFoodDetectionProps {
   onConfirm: (selectedFoods: DetectedFood[]) => void;
   onCancel: () => void;
   onAddManually: () => void;
+  onAddToResults: (food: DetectedFood) => void;
 }
 
 export const MultiAIFoodDetection = ({ 
@@ -29,7 +30,8 @@ export const MultiAIFoodDetection = ({
   isLoading, 
   onConfirm, 
   onCancel,
-  onAddManually 
+  onAddManually,
+  onAddToResults 
 }: MultiAIFoodDetectionProps) => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
