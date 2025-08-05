@@ -1,10 +1,67 @@
 // LOVABLE — MULTI-SOURCE FOOD DETECTION
 
-// Placeholder functions for different food detection APIs
+import { supabase } from "@/integrations/supabase/client";
+
+// Real Google Vision API call via Supabase edge function
 async function detectWithGoogle(image: string): Promise<string[]> {
-  // TODO: Implement Google Vision API food detection
-  console.log('Google Vision detection (placeholder)', image.slice(0, 50));
-  return [];
+  try {
+    console.log('Calling Google Vision via Supabase edge function...');
+    
+    const { data, error } = await supabase.functions.invoke('vision-label-reader', {
+      body: { imageBase64: image }
+    });
+
+    if (error) {
+      console.error('Vision API error:', error);
+      return [];
+    }
+
+    if (!data) {
+      console.log('No data returned from vision API');
+      return [];
+    }
+
+    console.log('Vision API response:', data);
+
+    // Extract food items from various sources in the response
+    const foodItems: string[] = [];
+    
+    // Add food labels (most relevant)
+    if (data.foodLabels && Array.isArray(data.foodLabels)) {
+      foodItems.push(...data.foodLabels.map((label: any) => 
+        typeof label === 'string' ? label : label.name || label.description
+      ).filter(Boolean));
+    }
+
+    // Add general labels that might be food-related
+    if (data.labels && Array.isArray(data.labels)) {
+      const foodRelatedLabels = data.labels
+        .map((label: any) => typeof label === 'string' ? label : label.name || label.description)
+        .filter((label: string) => {
+          const lowerLabel = label.toLowerCase();
+          return lowerLabel.includes('food') || 
+                 lowerLabel.includes('fruit') || 
+                 lowerLabel.includes('vegetable') || 
+                 lowerLabel.includes('meat') || 
+                 lowerLabel.includes('drink') ||
+                 lowerLabel.includes('bread') ||
+                 lowerLabel.includes('dairy');
+        });
+      foodItems.push(...foodRelatedLabels);
+    }
+
+    // Remove duplicates and normalize
+    const uniqueFoodItems = [...new Set(foodItems)]
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+
+    console.log('Extracted food items from Google Vision:', uniqueFoodItems);
+    return uniqueFoodItems;
+
+  } catch (error) {
+    console.error('Google Vision detection failed:', error);
+    return [];
+  }
 }
 
 async function detectWithCalorieMama(image: string): Promise<string[]> {
