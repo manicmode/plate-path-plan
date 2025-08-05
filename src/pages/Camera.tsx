@@ -45,6 +45,12 @@ interface RecognizedFood {
   sodium: number;
   confidence: number;
   serving?: string;
+  voiceContext?: {
+    originalText: string;
+    itemIndex: number;
+    totalItems: number;
+    isVoiceInput: boolean;
+  };
 }
 
 interface VisionApiResponse {
@@ -57,23 +63,15 @@ interface VisionApiResponse {
   message?: string;
 }
 
+interface FoodItem {
+  name: string;
+  quantity?: string;
+  preparation?: string;
+}
+
 interface VoiceApiResponse {
   success: boolean;
-  data: {
-    foodItems: Array<{
-      name: string;
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiber: number;
-      sugar: number;
-      sodium: number;
-      confidence: number;
-      serving: string;
-    }>;
-    analysis: string;
-  };
+  items?: FoodItem[];
   originalText: string;
   errorType?: string;
   errorMessage?: string;
@@ -203,22 +201,23 @@ const CameraPage = () => {
     const foods: RecognizedFood[] = [];
     const CONFIDENCE_THRESHOLD = 40; // 40% confidence threshold
     
-    if (source === 'voice' && 'data' in data) {
-      // Process voice API response
+    if (source === 'voice' && 'items' in data) {
+      // Process voice API response (legacy support)
       const voiceData = data as VoiceApiResponse;
-      if (voiceData.success && voiceData.data.foodItems) {
-        voiceData.data.foodItems.forEach(item => {
+      if (voiceData.success && voiceData.items) {
+        // Legacy support - this should not be used in the new multi-item flow
+        voiceData.items.forEach(item => {
           foods.push({
             name: `${item.name} (Voice Input)`,
-            calories: item.calories || 0,
-            protein: item.protein || 0,
-            carbs: item.carbs || 0,
-            fat: item.fat || 0,
-            fiber: item.fiber || 0,
-            sugar: item.sugar || 0,
-            sodium: item.sodium || 0,
-            confidence: item.confidence || 80,
-            serving: item.serving || 'Voice estimated portion',
+            calories: 200, // Default values for legacy support
+            protein: 10,
+            carbs: 30,
+            fat: 8,
+            fiber: 3,
+            sugar: 5,
+            sodium: 300,
+            confidence: 80,
+            serving: item.quantity || 'Voice estimated portion',
           });
         });
       }
@@ -1056,15 +1055,16 @@ const CameraPage = () => {
       console.log('Voice API Response:', voiceApiResponse);
       setVoiceResults(voiceApiResponse);
 
-      // Use unified processing function
-      const processedFoods = await processNutritionData('voice', voiceApiResponse);
-      
-      if (processedFoods.length > 0) {
-        setRecognizedFoods(processedFoods);
-        setShowConfirmation(true);
+      // Handle multiple food items from voice input
+      if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
+        setVoiceFoodItems(voiceApiResponse.items);
+        setCurrentVoiceItemIndex(0);
         setShowVoiceEntry(false);
         resetErrorState();
-        toast.success(`Analyzed ${processedFoods.length} food item(s)! Please review and confirm.`);
+        
+        // Show transcribed text and process first item
+        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
+        await processVoiceFoodItem(voiceApiResponse.items[0], 0, voiceApiResponse.items.length, voiceApiResponse.originalText);
       } else {
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
           'Try mentioning specific food names',
@@ -1144,15 +1144,16 @@ const CameraPage = () => {
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
       setVoiceResults(voiceApiResponse);
 
-      const processedFoods = await processNutritionData('manual', voiceApiResponse);
-      
-      if (processedFoods.length > 0) {
-        setRecognizedFoods(processedFoods);
-        setShowConfirmation(true);
+      // Handle multiple food items from manual input
+      if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
+        setVoiceFoodItems(voiceApiResponse.items);
+        setCurrentVoiceItemIndex(0);
         setShowManualEdit(false);
-        setInputSource('manual');
         resetErrorState();
-        toast.success(`Analyzed ${processedFoods.length} food item(s)! Please review and confirm.`);
+        
+        // Show transcribed text and process first item
+        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
+        await processVoiceFoodItem(voiceApiResponse.items[0], 0, voiceApiResponse.items.length, voiceApiResponse.originalText);
       } else {
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your input.', [
           'Try mentioning specific food names',
@@ -1265,14 +1266,55 @@ const CameraPage = () => {
       
       toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
       resetState();
+      // Handle voice input flow - move to next item or complete
+      if (recognizedFoods[0]?.voiceContext?.isVoiceInput) {
+        const currentFood = recognizedFoods[0];
+        const { itemIndex, totalItems } = currentFood.voiceContext;
+        if (itemIndex < totalItems - 1) {
+          // More items to process
+          const nextIndex = itemIndex + 1;
+          setCurrentVoiceItemIndex(nextIndex);
+          await processVoiceFoodItem(voiceFoodItems[nextIndex], nextIndex, totalItems, currentFood.voiceContext.originalText);
+        } else {
+          // All voice items processed
+          toast.success(`Logged all ${totalItems} food items!`);
+          resetState();
+        }
+        return;
+      }
+
+      // Refresh saved foods list
+      if (refetchSavedFoods) {
+        await refetchSavedFoods();
+      }
+
+      // Play success sound
+      playFoodLogConfirm();
+      
+      toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
+      resetState();
     } catch (error) {
       console.error('Error confirming foods:', error);
       toast.error('Failed to save some items. Please try again.');
     }
   };
 
+  const handleSkipVoiceItem = () => {
+    if (voiceFoodItems.length > 0 && currentVoiceItemIndex < voiceFoodItems.length - 1) {
+      const nextIndex = currentVoiceItemIndex + 1;
+      setCurrentVoiceItemIndex(nextIndex);
+      processVoiceFoodItem(voiceFoodItems[nextIndex], nextIndex, voiceFoodItems.length, voiceResults?.originalText || '');
+    } else {
+      // All voice items processed
+      toast.success('Voice logging completed');
+      resetState();
+    }
+  };
+
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  const [voiceFoodItems, setVoiceFoodItems] = useState<FoodItem[]>([]);
+  const [currentVoiceItemIndex, setCurrentVoiceItemIndex] = useState(0);
 
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
@@ -1369,6 +1411,12 @@ const CameraPage = () => {
   };
 
   const handleSkipFood = () => {
+    // Check if this is a voice input item
+    if (recognizedFoods[0]?.voiceContext?.isVoiceInput) {
+      handleSkipVoiceItem();
+      return;
+    }
+
     console.log(`Skipping item ${currentItemIndex + 1} of ${pendingItems.length}`);
     
     // Check if there are more pending items to process
@@ -1392,6 +1440,50 @@ const CameraPage = () => {
       toast.success(`Completed review: ${totalItems - skippedCount} logged, ${skippedCount} skipped`);
       resetState();
       navigate('/home');
+    }
+  };
+
+  const processVoiceFoodItem = async (item: FoodItem, index: number, total: number, originalText: string) => {
+    try {
+      // Create display name with quantity and preparation
+      let displayName = item.name;
+      if (item.preparation) {
+        displayName = `${item.preparation} ${item.name}`;
+      }
+      
+      // Get nutrition estimation
+      const nutrition = await estimateNutritionFromLabel(displayName);
+      
+      const foodItem = {
+        name: displayName,
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        carbs: nutrition.carbs,
+        fat: nutrition.fat,
+        fiber: nutrition.fiber,
+        sugar: nutrition.sugar,
+        sodium: nutrition.sodium,
+        confidence: 80, // Voice input confidence
+        serving: item.quantity || '1 serving',
+        voiceContext: {
+          originalText,
+          itemIndex: index,
+          totalItems: total,
+          isVoiceInput: true
+        }
+      };
+      
+      setRecognizedFoods([foodItem]);
+      setShowConfirmation(true);
+      setInputSource('voice');
+      
+      if (total > 1) {
+        toast.success(`Item ${index + 1} of ${total}: ${displayName}`);
+      }
+    } catch (error) {
+      console.error('Error processing voice food item:', error);
+      toast.error('Failed to process food item');
+      handleSkipVoiceItem();
     }
   };
 

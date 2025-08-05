@@ -194,54 +194,48 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a nutrition expert specializing in food logging. When a user describes food they ate, extract and estimate nutritional information accurately.
+            content: `You are a nutrition assistant. Extract all food items mentioned in this message.
 
 CRITICAL INSTRUCTIONS:
-1. Always respond with valid JSON in this EXACT format - no additional text:
+1. Return each item in this format as valid JSON - no additional text:
 {
-  "foodItems": [
+  "items": [
     {
-      "name": "descriptive food name",
-      "calories": number,
-      "protein": number,
-      "carbs": number,
-      "fat": number,
-      "fiber": number,
-      "sugar": number,
-      "sodium": number,
-      "confidence": number (0-100),
-      "serving": "serving description"
+      "name": "food name",
+      "quantity": "how much was eaten (if available)",
+      "preparation": "how it was cooked or served (if mentioned)"
     }
-  ],
-  "analysis": "brief analysis text"
+  ]
 }
 
-2. PORTION SIZE GUIDELINES:
-- "1 cup" = standard measuring cup
-- "1 slice" = typical bread/pizza slice
-- "1 oz" = standard weight measure
-- "1 tbsp" = tablespoon measure
-- "1 tsp" = teaspoon measure
+2. EXAMPLES:
+Input: "I had a grilled chicken sandwich, fries, and an iced coffee."
+Output:
+{
+  "items": [
+    { "name": "chicken sandwich", "quantity": "1", "preparation": "grilled" },
+    { "name": "fries", "quantity": "1 serving", "preparation": "" },
+    { "name": "iced coffee", "quantity": "1 cup", "preparation": "" }
+  ]
+}
 
-3. CONFIDENCE SCORING:
-- 90-100: Exact measurements provided (e.g., "1 cup rice")
-- 70-89: Standard portions (e.g., "1 slice pizza", "1 medium apple")
-- 50-69: Estimated portions (e.g., "bowl of cereal", "handful of nuts")
-- Below 50: Very vague descriptions
+Input: "I ate 2 slices of pepperoni pizza and a small salad"
+Output:
+{
+  "items": [
+    { "name": "pepperoni pizza", "quantity": "2 slices", "preparation": "" },
+    { "name": "salad", "quantity": "small", "preparation": "" }
+  ]
+}
 
-4. EXAMPLES:
-Input: "1 cup white rice" → confidence: 95
-Input: "1 slice pepperoni pizza" → confidence: 85
-Input: "bowl of cereal with milk" → confidence: 70
-Input: "some chicken" → confidence: 40
+3. If no clear food items are mentioned, return empty items array.
+4. Be specific with food names but keep them simple.
+5. Include preparation methods only when clearly mentioned.
 
-5. If multiple foods mentioned, create separate items in foodItems array.
-6. Use realistic nutritional values based on USDA data.
-7. Be specific with food names (e.g., "white rice" not just "rice").`
           },
           {
             role: 'user',
-            content: `The user said: "${preprocessedText}". Please analyze this food input and provide nutritional estimates in the required JSON format. Pay attention to portion sizes and assign appropriate confidence scores.`
+            content: `The user said: "${preprocessedText}". Extract all food items mentioned and return in the required JSON format.`
           }
         ],
         max_tokens: 800,
@@ -294,43 +288,10 @@ Input: "some chicken" → confidence: 40
       structuredData = JSON.parse(aiResponse);
       
       // Validate the response structure
-      if (!structuredData.foodItems || !Array.isArray(structuredData.foodItems)) {
+      if (!structuredData.items || !Array.isArray(structuredData.items)) {
         throw new Error('Invalid response structure from AI');
       }
       
-      // Check confidence threshold and filter low-confidence items
-      const lowConfidenceItems = structuredData.foodItems.filter(item => item.confidence < 60);
-      const highConfidenceItems = structuredData.foodItems.filter(item => item.confidence >= 60);
-      
-      if (lowConfidenceItems.length > 0 && highConfidenceItems.length === 0) {
-        // All items have low confidence
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            errorType: "LOW_CONFIDENCE",
-            errorMessage: "Could not accurately identify the food items from your description",
-            suggestions: [
-              "Try using specific measurements like '1 cup' or '2 slices'",
-              "Be more specific about food names and quantities", 
-              "Include cooking methods (e.g., 'grilled chicken', 'steamed broccoli')"
-            ],
-            originalText: text,
-            detectedItems: lowConfidenceItems.map(item => `${item.name} (${item.confidence}% confidence)`)
-          }),
-          { 
-            headers: { 
-              ...corsHeaders, 
-              'Content-Type': 'application/json' 
-            } 
-          }
-        );
-      }
-      
-      // If some items have low confidence, only return high-confidence ones
-      if (lowConfidenceItems.length > 0) {
-        structuredData.foodItems = highConfidenceItems;
-        structuredData.analysis = `${structuredData.analysis} Note: Some items with low confidence were excluded for accuracy.`;
-      }
       
     } catch (parseError) {
       console.error('❌ Failed to parse AI response as JSON:', parseError);
@@ -360,7 +321,7 @@ Input: "some chicken" → confidence: 40
     }
 
     // Check if no food items were detected
-    if (structuredData.foodItems.length === 0) {
+    if (structuredData.items.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -383,7 +344,7 @@ Input: "some chicken" → confidence: 40
     }
 
     console.log('✅ Successfully processed food analysis:', {
-      foodItemsCount: structuredData.foodItems.length,
+      itemsCount: structuredData.items.length,
       originalText: text,
       preprocessedText: preprocessedText
     });
@@ -391,7 +352,7 @@ Input: "some chicken" → confidence: 40
     return new Response(
       JSON.stringify({ 
         success: true,
-        data: structuredData,
+        items: structuredData.items,
         originalText: text,
         preprocessedText: preprocessedText
       }),

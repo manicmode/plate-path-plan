@@ -69,7 +69,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     console.log('🔍 [sendToLogVoice] Data keys:', Object.keys(data || {}));
     
     // Handle both success and error responses from the enhanced edge function
-    if (data.success && data.data) {
+    if (data.success && data.items) {
       return {
         message: JSON.stringify(data), // Return the full structured response
         success: true
