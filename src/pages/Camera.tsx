@@ -1875,12 +1875,10 @@ const CameraPage = () => {
                 className="flex-1 gradient-primary min-w-[120px]"
               >
                 {isProcessingVoice || processingStep ? (
-                  <>
-                    <ProcessingStatus 
-                      isProcessing={true}
-                      processingStep={processingStep || 'Processing...'}
-                    />
-                  </>
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    Processing...
+                  </div>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
@@ -1978,12 +1976,10 @@ const CameraPage = () => {
                 className="flex-1 gradient-primary min-w-[120px]"
               >
                 {isProcessingVoice || processingStep ? (
-                  <>
-                    <ProcessingStatus 
-                      isProcessing={true}
-                      processingStep={processingStep || 'Processing...'}
-                    />
-                  </>
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    Processing...
+                  </div>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
