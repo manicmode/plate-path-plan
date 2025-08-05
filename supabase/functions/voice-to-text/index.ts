@@ -43,14 +43,22 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[Voice-to-Text] Function called, checking request...');
+    
     const { audio } = await req.json();
     
     if (!audio) {
+      console.error('[Voice-to-Text] No audio data provided');
       throw new Error('No audio data provided');
     }
 
+    console.log('[Voice-to-Text] Audio data received, length:', audio.length);
+
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    console.log('[Voice-to-Text] OpenAI API Key present:', !!OPENAI_API_KEY);
+    
     if (!OPENAI_API_KEY) {
+      console.error('[Voice-to-Text] OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
@@ -63,6 +71,8 @@ serve(async (req) => {
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
 
+    console.log('[Voice-to-Text] Sending to OpenAI Whisper...');
+
     // Send to OpenAI Whisper
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -72,11 +82,16 @@ serve(async (req) => {
       body: formData,
     });
 
+    console.log('[Voice-to-Text] OpenAI response status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${await response.text()}`);
+      const errorText = await response.text();
+      console.error('[Voice-to-Text] OpenAI API error:', errorText);
+      throw new Error(`OpenAI API error: ${errorText}`);
     }
 
     const result = await response.json();
+    console.log('[Voice-to-Text] Transcription result:', result);
 
     return new Response(
       JSON.stringify({ text: result.text }),

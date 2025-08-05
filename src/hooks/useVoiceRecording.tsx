@@ -145,11 +145,14 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
             const base64Audio = (reader.result as string).split(',')[1];
             
             try {
-              // Call Supabase function for voice-to-text transcription
-              // TODO: Verify and test the Supabase voice-to-text edge function
+              // Call the voice-to-text edge function with enhanced error logging
+              console.log('[Voice Recording] Sending audio to voice-to-text function, size:', base64Audio.length);
+              
               const { data, error } = await supabase.functions.invoke('voice-to-text', {
                 body: { audio: base64Audio }
               });
+              
+              console.log('[Voice Recording] Response from voice-to-text:', { data, error });
 
               if (error) {
                 throw new Error(error.message || 'Failed to transcribe audio');
