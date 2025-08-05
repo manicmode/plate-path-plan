@@ -151,6 +151,21 @@ function estimateMicronutrientsFromMacros(food: FoodItem): FoodMicronutrients {
 
 // Calculate total micronutrients for an array of foods
 export function calculateTotalMicronutrients(foods: FoodItem[]): FoodMicronutrients {
+  // Add type guard to prevent reduce crashes
+  if (!Array.isArray(foods)) {
+    console.warn('🚨 Foods data is not an array in micronutrient calculation:', foods);
+    return {
+      iron: 0,
+      magnesium: 0,
+      calcium: 0,
+      zinc: 0,
+      vitaminA: 0,
+      vitaminB12: 0,
+      vitaminC: 0,
+      vitaminD: 0,
+    };
+  }
+
   return foods.reduce((totals, food) => {
     const foodMicros = calculateFoodMicronutrients(food);
     return {

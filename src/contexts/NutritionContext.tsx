@@ -210,6 +210,16 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   });
 
   const calculateTotals = (foods: FoodItem[], hydration: HydrationItem[]) => {
+    // Add type guards to prevent reduce crashes
+    if (!Array.isArray(foods)) {
+      console.warn('🚨 Foods data is not an array:', foods);
+      foods = [];
+    }
+    if (!Array.isArray(hydration)) {
+      console.warn('🚨 Hydration data is not an array:', hydration);
+      hydration = [];
+    }
+
     // Only include confirmed foods in the totals calculation
     const confirmedFoods = foods.filter(food => food.confirmed);
     
@@ -233,7 +243,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       totalSaturatedFat: 0,
     });
 
-    const totalHydration = hydration.reduce((total, item) => total + item.volume, 0);
+    const totalHydration = Array.isArray(hydration) 
+      ? hydration.reduce((total, item) => total + item.volume, 0) 
+      : 0;
 
     return { ...foodTotals, totalHydration };
   };
@@ -365,8 +377,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   };
 
   const getTodaysProgress = () => {
-    // Calculate micronutrients from confirmed foods
-    const confirmedFoods = currentDay.foods.filter(food => food.confirmed);
+    // Calculate micronutrients from confirmed foods with type guard
+    const foods = Array.isArray(currentDay.foods) ? currentDay.foods : [];
+    const confirmedFoods = foods.filter(food => food.confirmed);
     const micronutrients = calculateTotalMicronutrients(confirmedFoods);
     
     return {

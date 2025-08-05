@@ -162,8 +162,10 @@ export const useNutritionLoader = () => {
       const loadedData = { foods, hydration, supplements };
       setData(loadedData);
 
-      // Calculate totals for debugging
-      const totalCalories = foods.reduce((sum, food) => sum + food.calories, 0);
+      // Calculate totals for debugging with type guard
+      const totalCalories = Array.isArray(foods) 
+        ? foods.reduce((sum, food) => sum + food.calories, 0) 
+        : 0;
       console.log(`📊 Total calories loaded: ${totalCalories}`);
 
       // Update localStorage cache
