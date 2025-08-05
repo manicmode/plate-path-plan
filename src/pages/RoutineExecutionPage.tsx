@@ -198,8 +198,10 @@ const RoutineExecutionPage = () => {
                           centerDiv.appendChild(textDiv);
                           fallbackDiv.appendChild(centerDiv);
                           
-                          // Clear parent and append safe content
-                          parent.innerHTML = '';
+                          // Clear parent safely and append content
+                          while (parent.firstChild) {
+                            parent.removeChild(parent.firstChild);
+                          }
                           parent.appendChild(fallbackDiv);
                         }
                       }}

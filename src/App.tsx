@@ -28,6 +28,7 @@ import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionMo
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
 import { useAuthCallback } from '@/hooks/useAuthCallback';
 import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
+import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
 
 // Eager load critical components to reduce perceived loading time
 import Home from '@/pages/Home';
@@ -128,6 +129,7 @@ function AppContent() {
       {!isColdStart && (
         <>
           <BodyScanReminderChecker />
+          <ClientSecurityValidator />
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
               {/* Fullscreen pages without Layout */}

@@ -38,8 +38,10 @@ export class XSSProtection {
 
   // Replace innerHTML usage with safe DOM manipulation
   static replaceContent(parent: HTMLElement, content: HTMLElement | HTMLElement[]): void {
-    // Clear existing content
-    parent.innerHTML = '';
+    // Clear existing content using safe methods
+    while (parent.firstChild) {
+      parent.removeChild(parent.firstChild);
+    }
     
     // Add new content safely
     if (Array.isArray(content)) {
