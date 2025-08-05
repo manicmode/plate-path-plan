@@ -67,6 +67,7 @@ interface FoodItem {
   name: string;
   quantity?: string;
   preparation?: string;
+  calories?: number;
 }
 
 interface VoiceApiResponse {
@@ -557,7 +558,7 @@ const CameraPage = () => {
 
         // Handle new response format with metadata
         const responseData = parseResponse.data;
-        let parsedItems: Array<{name: string, portion: string, confidence?: string, method?: string}>;
+        let parsedItems: Array<{name: string, portion: string, confidence?: string, method?: string, calories?: number}>;
         let analysisMetadata: any = {};
         
         if (responseData.items && responseData.analysis) {
@@ -597,6 +598,7 @@ const CameraPage = () => {
           id: `item-${index}`,
           name: item.name || 'Unknown Food',
           portion: item.portion || '1 serving',
+          calories: item.calories,
           selected: false
         }));
 
@@ -1072,6 +1074,7 @@ const CameraPage = () => {
             id: `voice-item-${index}`,
             name: displayName,
             portion: item.quantity || '1 serving',
+            calories: item.calories,
             selected: true
           };
         });
@@ -1180,6 +1183,7 @@ const CameraPage = () => {
             id: `manual-item-${index}`,
             name: displayName,
             portion: item.quantity || '1 serving',
+            calories: item.calories,
             selected: true
           };
         });
@@ -1360,6 +1364,7 @@ const CameraPage = () => {
       id: item.id,
       name: item.name,
       portion: item.portion,
+      calories: item.calories,
       selected: true
     }));
     

@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export interface ReviewItem {
   name: string;
   portion: string;
+  calories?: number;
   selected: boolean;
   id: string;
 }
@@ -116,8 +117,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                           value={item.portion}
                           onChange={(e) => handleItemChange(item.id, 'portion', e.target.value)}
                           placeholder="e.g., 1 cup, 2 slices..."
-                          className="mt-1"
+                           className="mt-1"
                         />
+                        {item.calories && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Estimated: {item.calories} calories
+                          </p>
+                        )}
                       </div>
                     </div>
 

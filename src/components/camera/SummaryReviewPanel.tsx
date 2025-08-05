@@ -10,6 +10,7 @@ export interface SummaryItem {
   id: string;
   name: string;
   portion: string;
+  calories?: number;
   selected: boolean;
 }
 
@@ -120,9 +121,16 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
                           #{index + 1}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {item.portion}
-                      </p>
+                      <div className="mt-1 space-y-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {item.portion}
+                          {item.calories && (
+                            <span className="ml-2 text-xs text-gray-500 dark:text-gray-500 font-medium">
+                              — {item.calories} cal
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
 
                     {item.selected && (
