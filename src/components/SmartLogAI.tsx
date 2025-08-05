@@ -4,6 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface FoodPrediction {
   name: string;
@@ -116,63 +117,11 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
 
   const currentData = getCurrentData();
 
-  return (
-    <div className={`bg-gradient-to-br from-background/95 to-background/90 dark:from-gray-900/95 dark:to-gray-800/90 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-gradient-to-r from-primary/80 to-primary/60 rounded-xl shadow-sm">
-          <Sparkles className="h-5 w-5 text-primary-foreground" />
-        </div>
-        <div>
-          <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-foreground`}>
-            SmartLog AI Predictions
-          </h3>
-          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
-            Your most likely meals, based on real patterns
-          </p>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex items-center justify-center mb-6">
-        <div className="flex bg-muted/60 rounded-full p-1 w-full max-w-md mx-auto">
-          <button 
-            onClick={() => setActiveTab('smart')}
-            className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
-              activeTab === 'smart' 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' 
-                : 'text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            ⚡ Smart
-          </button>
-          <button 
-            onClick={() => setActiveTab('saved')}
-            className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
-              activeTab === 'saved' 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' 
-                : 'text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            🔁 Saved
-          </button>
-          <button 
-            onClick={() => setActiveTab('recent')}
-            className={`flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 ${
-              activeTab === 'recent' 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' 
-                : 'text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            🌈 Recent
-          </button>
-        </div>
-      </div>
-
-      {/* Food Predictions Grid */}
-      {currentData.length > 0 ? (
+  const FoodGrid = ({ data, currentTab }: { data: FoodPrediction[], currentTab: string }) => (
+    <>
+      {data.length > 0 ? (
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-3' : 'gap-4'}`}>
-          {currentData.map((food, index) => (
+          {data.map((food, index) => (
             <div
               key={index}
               className="bg-card dark:bg-gradient-to-br dark:from-slate-800/80 dark:to-slate-700/60 dark:shadow-lg dark:shadow-slate-900/20 rounded-2xl p-4 border border-border/30 shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in hover:border-border/50 flex flex-col min-h-[140px]"
@@ -190,7 +139,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
                 {/* Time Row - Fixed height for alignment */}
                 <div className={`${isMobile ? 'h-5' : 'h-6'} flex items-center mb-2`}>
                   <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
-                    🕒 {activeTab === 'recent' ? 'Logged at' : 'Usually'} {food.time}
+                    🕒 {currentTab === 'recent' ? 'Logged at' : 'Usually'} {food.time}
                   </p>
                 </div>
                 
@@ -216,19 +165,76 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
         // Empty State
         <div className="text-center py-8">
           <div className="text-4xl mb-3">
-            {activeTab === 'saved' ? '🔖' : '📱'}
+            {currentTab === 'saved' ? '🔖' : '📱'}
           </div>
           <p className="text-card-foreground font-medium mb-1">
-            {activeTab === 'saved' ? 'No saved foods yet!' : 'No recent foods yet!'}
+            {currentTab === 'saved' ? 'No saved foods yet!' : 'No recent foods yet!'}
           </p>
           <p className="text-muted-foreground text-sm">
-            {activeTab === 'saved' 
+            {currentTab === 'saved' 
               ? 'Start logging meals to see your favorites here' 
               : 'Your recently logged foods will appear here'
             }
           </p>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div className={`bg-gradient-to-br from-background/95 to-background/90 dark:from-gray-900/95 dark:to-gray-800/90 backdrop-blur-xl rounded-3xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-black/20 ${isMobile ? 'p-5' : 'p-6'}`}>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-gradient-to-r from-primary/80 to-primary/60 rounded-xl shadow-sm">
+          <Sparkles className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <div>
+          <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-foreground`}>
+            SmartLog AI Predictions
+          </h3>
+          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
+            Your most likely meals, based on real patterns
+          </p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="smart" value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
+        {/* Tab Navigation - Custom styled to match existing design */}
+        <div className="flex items-center justify-center mb-6">
+          <TabsList className="flex bg-muted/60 rounded-full p-1 w-full max-w-md mx-auto h-auto">
+            <TabsTrigger 
+              value="smart"
+              className="flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/25 data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:bg-muted/80"
+            >
+              ⚡ Smart
+            </TabsTrigger>
+            <TabsTrigger 
+              value="saved"
+              className="flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/25 data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:bg-muted/80"
+            >
+              🔁 Saved
+            </TabsTrigger>
+            <TabsTrigger 
+              value="recent"
+              className="flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/25 data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:bg-muted/80"
+            >
+              🌈 Recent
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="smart" className="mt-0">
+          <FoodGrid data={DUMMY_PREDICTIONS} currentTab="smart" />
+        </TabsContent>
+
+        <TabsContent value="saved" className="mt-0">
+          <FoodGrid data={savedFoods || []} currentTab="saved" />
+        </TabsContent>
+
+        <TabsContent value="recent" className="mt-0">
+          <FoodGrid data={recentFoods || []} currentTab="recent" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
