@@ -1057,14 +1057,33 @@ const CameraPage = () => {
 
       // Handle multiple food items from voice input
       if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
-        setVoiceFoodItems(voiceApiResponse.items);
-        setCurrentVoiceItemIndex(0);
+        // Show transcribed text
+        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
+        
+        // Convert voice items to summary items for unified processing
+        const voiceSummaryItems: SummaryItem[] = voiceApiResponse.items.map((item, index) => {
+          // Create display name with quantity and preparation
+          let displayName = item.name;
+          if (item.preparation) {
+            displayName = `${item.preparation} ${item.name}`;
+          }
+          
+          return {
+            id: `voice-item-${index}`,
+            name: displayName,
+            portion: item.quantity || '1 serving',
+            selected: true
+          };
+        });
+        
+        // Use unified pending items flow
+        setPendingItems(voiceSummaryItems);
+        setCurrentItemIndex(0);
         setShowVoiceEntry(false);
         resetErrorState();
         
-        // Show transcribed text and process first item
-        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
-        await processVoiceFoodItem(voiceApiResponse.items[0], 0, voiceApiResponse.items.length, voiceApiResponse.originalText);
+        // Process the first item
+        processCurrentItem(voiceSummaryItems, 0);
       } else {
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
           'Try mentioning specific food names',
@@ -1146,14 +1165,33 @@ const CameraPage = () => {
 
       // Handle multiple food items from manual input
       if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
-        setVoiceFoodItems(voiceApiResponse.items);
-        setCurrentVoiceItemIndex(0);
+        // Show transcribed text
+        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
+        
+        // Convert voice items to summary items for unified processing
+        const voiceSummaryItems: SummaryItem[] = voiceApiResponse.items.map((item, index) => {
+          // Create display name with quantity and preparation
+          let displayName = item.name;
+          if (item.preparation) {
+            displayName = `${item.preparation} ${item.name}`;
+          }
+          
+          return {
+            id: `manual-item-${index}`,
+            name: displayName,
+            portion: item.quantity || '1 serving',
+            selected: true
+          };
+        });
+        
+        // Use unified pending items flow
+        setPendingItems(voiceSummaryItems);
+        setCurrentItemIndex(0);
         setShowManualEdit(false);
         resetErrorState();
         
-        // Show transcribed text and process first item
-        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
-        await processVoiceFoodItem(voiceApiResponse.items[0], 0, voiceApiResponse.items.length, voiceApiResponse.originalText);
+        // Process the first item
+        processCurrentItem(voiceSummaryItems, 0);
       } else {
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your input.', [
           'Try mentioning specific food names',
@@ -1266,22 +1304,7 @@ const CameraPage = () => {
       
       toast.success(`Added ${recognizedFoods.length} food item(s) to your log!`);
       resetState();
-      // Handle voice input flow - move to next item or complete
-      if (recognizedFoods[0]?.voiceContext?.isVoiceInput) {
-        const currentFood = recognizedFoods[0];
-        const { itemIndex, totalItems } = currentFood.voiceContext;
-        if (itemIndex < totalItems - 1) {
-          // More items to process
-          const nextIndex = itemIndex + 1;
-          setCurrentVoiceItemIndex(nextIndex);
-          await processVoiceFoodItem(voiceFoodItems[nextIndex], nextIndex, totalItems, currentFood.voiceContext.originalText);
-        } else {
-          // All voice items processed
-          toast.success(`Logged all ${totalItems} food items!`);
-          resetState();
-        }
-        return;
-      }
+      resetState();
 
       // Refresh saved foods list
       if (refetchSavedFoods) {
@@ -1299,22 +1322,8 @@ const CameraPage = () => {
     }
   };
 
-  const handleSkipVoiceItem = () => {
-    if (voiceFoodItems.length > 0 && currentVoiceItemIndex < voiceFoodItems.length - 1) {
-      const nextIndex = currentVoiceItemIndex + 1;
-      setCurrentVoiceItemIndex(nextIndex);
-      processVoiceFoodItem(voiceFoodItems[nextIndex], nextIndex, voiceFoodItems.length, voiceResults?.originalText || '');
-    } else {
-      // All voice items processed
-      toast.success('Voice logging completed');
-      resetState();
-    }
-  };
-
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
-  const [voiceFoodItems, setVoiceFoodItems] = useState<FoodItem[]>([]);
-  const [currentVoiceItemIndex, setCurrentVoiceItemIndex] = useState(0);
 
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
@@ -1411,12 +1420,6 @@ const CameraPage = () => {
   };
 
   const handleSkipFood = () => {
-    // Check if this is a voice input item
-    if (recognizedFoods[0]?.voiceContext?.isVoiceInput) {
-      handleSkipVoiceItem();
-      return;
-    }
-
     console.log(`Skipping item ${currentItemIndex + 1} of ${pendingItems.length}`);
     
     // Check if there are more pending items to process
@@ -1440,50 +1443,6 @@ const CameraPage = () => {
       toast.success(`Completed review: ${totalItems - skippedCount} logged, ${skippedCount} skipped`);
       resetState();
       navigate('/home');
-    }
-  };
-
-  const processVoiceFoodItem = async (item: FoodItem, index: number, total: number, originalText: string) => {
-    try {
-      // Create display name with quantity and preparation
-      let displayName = item.name;
-      if (item.preparation) {
-        displayName = `${item.preparation} ${item.name}`;
-      }
-      
-      // Get nutrition estimation
-      const nutrition = await estimateNutritionFromLabel(displayName);
-      
-      const foodItem = {
-        name: displayName,
-        calories: nutrition.calories,
-        protein: nutrition.protein,
-        carbs: nutrition.carbs,
-        fat: nutrition.fat,
-        fiber: nutrition.fiber,
-        sugar: nutrition.sugar,
-        sodium: nutrition.sodium,
-        confidence: 80, // Voice input confidence
-        serving: item.quantity || '1 serving',
-        voiceContext: {
-          originalText,
-          itemIndex: index,
-          totalItems: total,
-          isVoiceInput: true
-        }
-      };
-      
-      setRecognizedFoods([foodItem]);
-      setShowConfirmation(true);
-      setInputSource('voice');
-      
-      if (total > 1) {
-        toast.success(`Item ${index + 1} of ${total}: ${displayName}`);
-      }
-    } catch (error) {
-      console.error('Error processing voice food item:', error);
-      toast.error('Failed to process food item');
-      handleSkipVoiceItem();
     }
   };
 
