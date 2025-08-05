@@ -31,6 +31,8 @@ import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
+import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
+import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 // Debug components removed for clean production build
 import jsQR from 'jsqr';
 
@@ -125,6 +127,11 @@ const CameraPage = () => {
   const [showManualEdit, setShowManualEdit] = useState(false);
   const [manualEditText, setManualEditText] = useState('');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  
+  // Multi-AI food detection states
+  const [showMultiAIDetection, setShowMultiAIDetection] = useState(false);
+  const [multiAIResults, setMultiAIResults] = useState<Array<{name: string; confidence: number; sources: string[]}>>([]);
+  const [isMultiAILoading, setIsMultiAILoading] = useState(false);
   
   // Manual entry states
   const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
@@ -463,162 +470,39 @@ const CameraPage = () => {
         }
       }
       
-      // STEP 2: Only reach here if NOT a barcode - proceed with food detection
-      console.log('=== FOOD DETECTION PATH ===');
-      console.log('Image does not appear to be a barcode, proceeding with food detection...');
+      // STEP 2: Only reach here if NOT a barcode - proceed with multi-AI food detection
+      console.log('=== MULTI-AI FOOD DETECTION PATH ===');
+      console.log('Image does not appear to be a barcode, proceeding with multi-AI food detection...');
       
-      // If not a barcode, proceed with normal food recognition
+      // If not a barcode, proceed with multi-AI food recognition
       const imageBase64 = convertToBase64(selectedImage);
       
-      setProcessingStep('Compressing image...');
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
-      
-      setProcessingStep('Sending to Vision API...');
-      console.log('Calling Supabase function vision-label-reader...');
-      
-      // Set up 25-second timeout using Promise.race
-      const functionCallPromise = supabase.functions.invoke('vision-label-reader', {
-        body: { imageBase64 }
-      });
-
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          console.log('25-second timeout reached, aborting request');
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-          }
-          reject(new Error('Analysis timed out after 25 seconds'));
-        }, 25000);
-      });
-
-      // Race between function call and timeout
-      const { data, error } = await Promise.race([
-        functionCallPromise,
-        timeoutPromise
-      ]) as any;
-
-      console.log('Function result received');
-
-      // Check if the request was aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        console.log('Request was aborted');
-        toast.error('Analysis timed out');
-        return;
-      }
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        
-        if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
-          toast.error('Analysis timed out - please try again');
-        } else {
-          toast.error(`Analysis failed: ${error.message || 'Unknown error'}`);
-        }
-        return;
-      }
-
-      if (!data) {
-        console.error('No data returned from vision API');
-        toast.error('No data returned from analysis. Please try again.');
-        return;
-      }
-
-      if (data.error) {
-        console.error('Vision API returned error:', data.message);
-        toast.error(`Analysis failed: ${data.message}`);
-        return;
-      }
-
-      console.log('Processing Vision API results...');
-      setVisionResults(data);
-
-      // Step 2: Parse food items with OpenAI
-      setProcessingStep('Extracting food items...');
+      setProcessingStep('Initializing AI systems...');
+      setIsMultiAILoading(true);
+      setShowMultiAIDetection(true);
       
       try {
-        const parseResponse = await supabase.functions.invoke('parse-food-items', {
-          body: { visionResults: data }
-        });
-
-        if (parseResponse.error || parseResponse.data?.error) {
-          console.error('Food parsing error:', parseResponse.error || parseResponse.data?.message);
-          // Fallback to original logic
-          const processedFoods = await processNutritionData('photo', data);
-          if (processedFoods.length > 0) {
-            setRecognizedFoods(processedFoods);
-            setInputSource('photo');
-            setShowConfirmation(true);
-            toast.success(`Detected ${processedFoods.length} food item(s)!`);
-          } else {
-            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
-          }
-          return;
-        }
-
-        // Handle new response format with metadata
-        const responseData = parseResponse.data;
-        let parsedItems: Array<{name: string, portion: string, confidence?: string, method?: string}>;
-        let analysisMetadata: any = {};
+        console.log('Calling multi-AI food detection...');
+        setProcessingStep('Running multi-AI detection...');
         
-        if (responseData.items && responseData.analysis) {
-          // New format with metadata
-          parsedItems = responseData.items;
-          analysisMetadata = responseData.analysis;
-          console.log('🍲 Cooked meal analysis result:', analysisMetadata);
-          console.log('📊 Detection method:', analysisMetadata.detectionMethod);
-          console.log('🔄 Complex dish fallback used:', analysisMetadata.useComplexDishFallback);
-        } else if (Array.isArray(responseData)) {
-          // Legacy format (array only)
-          parsedItems = responseData;
-          console.log('📋 Using legacy response format');
+        // Call the new multi-AI detection system
+        const detectionResults = await detectFoodsFromAllSources(imageBase64);
+        
+        console.log('Multi-AI detection results:', detectionResults);
+        setMultiAIResults(detectionResults);
+        
+        if (detectionResults.length > 0) {
+          toast.success(`Found ${detectionResults.length} food item(s) across multiple AI systems!`);
         } else {
-          throw new Error('Invalid response format');
+          toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
         }
         
-        console.log('✅ Parsed food items:', parsedItems);
-
-        // Validate parsed items
-        if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-          console.log('No valid food items parsed, falling back to original logic');
-          const processedFoods = await processNutritionData('photo', data);
-          if (processedFoods.length > 0) {
-            setRecognizedFoods(processedFoods);
-            setInputSource('photo');
-            setShowConfirmation(true);
-            toast.success(`Detected ${processedFoods.length} food item(s)!`);
-          } else {
-            toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
-          }
-          return;
-        }
-
-        // Step 3: Show Summary Review Panel (New Flow) - items not selected by default
-        const summaryItems: SummaryItem[] = parsedItems.map((item, index) => ({
-          id: `item-${index}`,
-          name: item.name || 'Unknown Food',
-          portion: item.portion || '1 serving',
-          selected: false
-        }));
-
-        console.log('Created summary items:', summaryItems);
-        setSummaryItems(summaryItems);
-        setShowSummaryPanel(true);
-        setInputSource('photo');
-        
-        toast.success(`Found ${parsedItems.length} food item(s) - please review and confirm!`);
-
-      } catch (parseError) {
-        console.error('Food parsing failed:', parseError);
-        // Fallback to original logic
-        const processedFoods = await processNutritionData('photo', data);
-        if (processedFoods.length > 0) {
-          setRecognizedFoods(processedFoods);
-          setInputSource('photo');
-          setShowConfirmation(true);
-          toast.success(`Detected ${processedFoods.length} food item(s)!`);
-        } else {
-          toast.error('The image couldn\'t be clearly identified. Please try another photo or use the manual entry.');
-        }
+      } catch (error) {
+        console.error('Multi-AI food detection failed:', error);
+        toast.error('Food detection failed. Please try again or use manual entry.');
+        setShowMultiAIDetection(false);
+      } finally {
+        setIsMultiAILoading(false);
       }
       
     } catch (error) {
@@ -1242,6 +1126,103 @@ const CameraPage = () => {
     setShowVoiceEntry(true);
   };
 
+  
+  const handleMultiAIConfirm = async (selectedFoods: Array<{name: string; confidence: number; sources: string[]}>) => {
+    try {
+      console.log('Confirming selected foods from multi-AI detection:', selectedFoods);
+      
+      // Convert multi-AI results to RecognizedFood format
+      const foods: RecognizedFood[] = [];
+      
+      for (const food of selectedFoods) {
+        // Estimate nutrition for each selected food item
+        const nutrition = await estimateNutritionFromLabel(food.name);
+        
+        foods.push({
+          name: food.name,
+          calories: nutrition.calories || 200,
+          protein: nutrition.protein || 10,
+          carbs: nutrition.carbs || 30,
+          fat: nutrition.fat || 8,
+          fiber: nutrition.fiber || 3,
+          sugar: nutrition.sugar || 5,
+          sodium: nutrition.sodium || 300,
+          confidence: Math.round(food.confidence * 100),
+          serving: '1 serving'
+        });
+      }
+      
+      // Add foods to context and persist to Supabase
+      for (const food of foods) {
+        addFood({
+          name: food.name,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          fiber: food.fiber,
+          sugar: food.sugar,
+          sodium: food.sodium,
+          confidence: food.confidence,
+          image: selectedImage || undefined,
+        });
+
+        // Persist to Supabase nutrition_logs table
+        const { data, error } = await supabase
+          .from('nutrition_logs')
+          .insert({
+            user_id: user?.id,
+            food_name: food.name,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            fiber: food.fiber,
+            sugar: food.sugar,
+            sodium: food.sodium,
+            confidence: food.confidence,
+            serving_size: food.serving,
+            source: 'multi_ai_vision',
+            image_url: selectedImage || null,
+          })
+          .select();
+
+        if (error) {
+          console.error('Error saving to Supabase:', error);
+        } else {
+          // Score the meal quality
+          await scoreMealAfterInsert(data, error);
+        }
+      }
+
+      // Refresh saved foods list
+      if (refetchSavedFoods) {
+        await refetchSavedFoods();
+      }
+
+      // Play success sound
+      playFoodLogConfirm();
+      
+      toast.success(`Added ${foods.length} food item(s) to your log!`);
+      
+      // Reset all states
+      setShowMultiAIDetection(false);
+      setMultiAIResults([]);
+      resetState();
+      
+    } catch (error) {
+      console.error('Error confirming multi-AI foods:', error);
+      toast.error('Failed to save selected foods. Please try again.');
+    }
+  };
+
+  const handleMultiAICancel = () => {
+    setShowMultiAIDetection(false);
+    setMultiAIResults([]);
+    setIsMultiAILoading(false);
+    resetState();
+  };
+
   const handleEditManually = () => {
     resetErrorState();
     setManualEditText(voiceText || '');
@@ -1605,6 +1586,11 @@ const CameraPage = () => {
     setSummaryItems([]);
     setShowTransition(false);
     
+    // Reset multi-AI detection state
+    setShowMultiAIDetection(false);
+    setMultiAIResults([]);
+    setIsMultiAILoading(false);
+    
     resetErrorState();
     setValidationWarning(null);
     if (fileInputRef.current) {
@@ -1896,6 +1882,18 @@ const CameraPage = () => {
         </Card>
       )}
 
+      {/* Multi-AI Food Detection Results */}
+      {showMultiAIDetection && (
+        <div className="animate-slide-up mb-0 !mb-0">
+          <MultiAIFoodDetection
+            detectedFoods={multiAIResults}
+            isLoading={isMultiAILoading}
+            onConfirm={handleMultiAIConfirm}
+            onCancel={handleMultiAICancel}
+          />
+        </div>
+      )}
+
       {/* Error Display Card */}
       {showError && (
         <Card className="animate-slide-up border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 mb-0 !mb-0">
@@ -1998,7 +1996,7 @@ const CameraPage = () => {
       )}
 
       {/* Photo Analysis Card - Only show for food images, not barcodes */}
-      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && (
+      {selectedImage && !showConfirmation && !showSummaryPanel && !showTransition && pendingItems.length === 0 && !isAnalyzing && inputSource !== 'barcode' && !showMultiAIDetection && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
             <CardTitle>Analyze Your Meal</CardTitle>
