@@ -11,6 +11,8 @@ export interface LogVoiceResponse {
 
 export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> => {
   try {
+    console.log('🔍 Manual Log Debug - Calling log-voice edge function with text:', text);
+    
     const response = await fetch('https://uzoiiijqtahohfafqirm.functions.supabase.co/log-voice', {
       method: 'POST',
       headers: {
@@ -20,11 +22,38 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       body: JSON.stringify({ text })
     });
 
+    console.log('🔍 Manual Log Debug - Response status:', response.status);
+    console.log('🔍 Manual Log Debug - Response ok:', response.ok);
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('🔍 Manual Log Debug - Error response text:', errorText);
+      
+      // Try to parse the error response for better error messages
+      try {
+        const errorData = JSON.parse(errorText);
+        return {
+          message: JSON.stringify(errorData),
+          success: false,
+          error: errorData.errorMessage || `HTTP ${response.status}: ${response.statusText}`
+        };
+      } catch {
+        return {
+          message: JSON.stringify({
+            success: false,
+            errorType: 'HTTP_ERROR',
+            errorMessage: `Request failed with status ${response.status}`,
+            suggestions: ['Check your internet connection', 'Try again in a moment'],
+            details: errorText
+          }),
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`
+        };
+      }
     }
 
     const data = await response.json();
+    console.log('🔍 Manual Log Debug - Response data:', data);
     
     // Handle both success and error responses from the enhanced edge function
     if (data.success && data.data) {
@@ -41,7 +70,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       };
     }
   } catch (error) {
-    console.error('Error calling log-voice API:', error);
+    console.error('🔍 Manual Log Debug - Network error:', error);
     return {
       message: JSON.stringify({
         success: false,

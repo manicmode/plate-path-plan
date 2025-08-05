@@ -1079,14 +1079,34 @@ const CameraPage = () => {
 
     try {
       setProcessingStep('Analyzing...');
+      console.log('🔍 Manual Log Debug - Starting analysis for text:', manualEditText);
       const result = await sendToLogVoice(manualEditText);
+
+      console.log('🔍 Manual Log Debug - sendToLogVoice result:', result);
 
       if (!result.success) {
         const errorData = result.message ? JSON.parse(result.message) : {};
+        console.error('🔍 Manual Log Debug - Analysis failed:', errorData);
+        
+        // Show specific error messages based on error type
+        let errorMessage = errorData.errorMessage || result.error || 'Failed to process manual input';
+        let suggestions = errorData.suggestions || ['Please try again with more specific descriptions'];
+        
+        // Check for specific OpenAI API issues
+        if (errorData.errorType === 'HTTP_ERROR' && errorData.details) {
+          if (errorData.details.includes('API key') || errorData.details.includes('401')) {
+            errorMessage = 'AI analysis service is not properly configured';
+            suggestions = ['The OpenAI API key may not be set up correctly', 'Please contact support'];
+          } else if (errorData.details.includes('timeout') || errorData.details.includes('504')) {
+            errorMessage = 'AI analysis service timed out';
+            suggestions = ['The request took too long to process', 'Try again with a simpler description'];
+          }
+        }
+        
         showErrorState(
-          errorData.errorType || 'UNKNOWN_ERROR',
-          errorData.errorMessage || result.error || 'Failed to process manual input',
-          errorData.suggestions || ['Please try again with more specific descriptions']
+          errorData.errorType || 'ANALYSIS_ERROR',
+          errorMessage,
+          suggestions
         );
         return;
       }
