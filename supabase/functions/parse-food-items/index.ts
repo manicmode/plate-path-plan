@@ -40,21 +40,59 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // 🧠 Ultimate AI Detection Filtering - Collect all detected items
+    // Pre-processing filter to remove non-food labels
+    const filterNonFoodLabels = (items: any[]) => {
+      const utensils = [
+        'plate', 'fork', 'knife', 'spoon', 'bowl', 'cup', 'glass', 'mug',
+        'serveware', 'tableware', 'kitchenware', 'utensil', 'cutlery',
+        'dishware', 'drinkware', 'container', 'platter', 'tray', 'napkin',
+        'table', 'surface', 'dining', 'silverware'
+      ];
+      
+      const ambiguousMealTypes = [
+        'breakfast', 'brunch', 'lunch', 'dinner', 'meal', 'dish', 'cuisine',
+        'snack', 'food', 'eating', 'nutrition', 'cooking', 'recipe',
+        'feast', 'banquet', 'supper'
+      ];
+      
+      const excludeTerms = [...utensils, ...ambiguousMealTypes];
+      
+      return items.filter(item => {
+        const name = item.description || item.name || '';
+        const lowerName = name.toLowerCase();
+        
+        // Filter out excluded terms
+        return !excludeTerms.some(term => 
+          lowerName.includes(term) || lowerName === term
+        );
+      });
+    };
+
+    // Apply pre-processing filter to vision results
+    const filteredFoodLabels = filterNonFoodLabels(visionResults.foodLabels);
+    const filteredObjects = filterNonFoodLabels(visionResults.objects);
+    const filteredLabels = filterNonFoodLabels(visionResults.labels);
+
+    console.log('🧹 Pre-processing filter applied:');
+    console.log(`Food labels: ${visionResults.foodLabels.length} → ${filteredFoodLabels.length}`);
+    console.log(`Objects: ${visionResults.objects.length} → ${filteredObjects.length}`);
+    console.log(`Labels: ${visionResults.labels.length} → ${filteredLabels.length}`);
+
+    // 🧠 Ultimate AI Detection Filtering - Collect all detected items (using filtered data)
     const allDetectedItems = [
-      ...visionResults.foodLabels.map(l => ({ 
+      ...filteredFoodLabels.map(l => ({ 
         name: l.description, 
         confidence: l.score, 
         type: 'food_label' as const,
         score: l.score 
       })),
-      ...visionResults.objects.map(o => ({ 
+      ...filteredObjects.map(o => ({ 
         name: o.name, 
         confidence: o.score, 
         type: 'object' as const,
         score: o.score 
       })),
-      ...visionResults.labels.map(l => ({ 
+      ...filteredLabels.map(l => ({ 
         name: l.description, 
         confidence: l.score, 
         type: 'label' as const,
@@ -261,6 +299,7 @@ Only include actual edible food items you can see in the image.`;
     const data = await response.json();
     const aiResponse = data.choices[0]?.message?.content || '';
     console.log('OpenAI parsing response:', aiResponse);
+
 
     // Marketing words/phrases blacklist
     const marketingBlacklist = [
