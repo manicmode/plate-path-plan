@@ -130,7 +130,7 @@ const CameraPage = () => {
   
   // Multi-AI food detection states
   const [showMultiAIDetection, setShowMultiAIDetection] = useState(false);
-  const [multiAIResults, setMultiAIResults] = useState<Array<{name: string; confidence: number; sources: string[]}>>([]);
+  const [multiAIResults, setMultiAIResults] = useState<Array<{name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>>([]);
   const [isMultiAILoading, setIsMultiAILoading] = useState(false);
   
   // Manual entry states
@@ -489,10 +489,37 @@ const CameraPage = () => {
         const detectionResults = await detectFoodsFromAllSources(imageBase64);
         
         console.log('Multi-AI detection results:', detectionResults);
-        setMultiAIResults(detectionResults);
         
-        if (detectionResults.length > 0) {
-          toast.success(`Found ${detectionResults.length} food item(s) across multiple AI systems!`);
+        // Enhance results with calorie estimates
+        setProcessingStep('Estimating nutrition...');
+        const enhancedResults = await Promise.all(
+          detectionResults.map(async (item) => {
+            try {
+              // Get nutrition estimate for each food item
+              const nutrition = await estimateNutritionFromLabel(item.name);
+              
+              return {
+                ...item,
+                calories: nutrition?.calories || 100, // Fallback to 100 kcal
+                portion: '1 serving', // Default portion
+                isEstimate: !nutrition?.isBranded || nutrition?.calories === undefined
+              };
+            } catch (error) {
+              console.error(`Failed to get nutrition for ${item.name}:`, error);
+              return {
+                ...item,
+                calories: 100, // Fallback
+                portion: '1 serving',
+                isEstimate: true
+              };
+            }
+          })
+        );
+        
+        setMultiAIResults(enhancedResults);
+        
+        if (enhancedResults.length > 0) {
+          toast.success(`Found ${enhancedResults.length} food item(s) across multiple AI systems!`);
         } else {
           toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
         }
@@ -1127,7 +1154,7 @@ const CameraPage = () => {
   };
 
   
-  const handleMultiAIConfirm = async (selectedFoods: Array<{name: string; confidence: number; sources: string[]}>) => {
+  const handleMultiAIConfirm = async (selectedFoods: Array<{name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>) => {
     try {
       console.log('Confirming selected foods from multi-AI detection:', selectedFoods);
       
@@ -1135,20 +1162,24 @@ const CameraPage = () => {
       const foods: RecognizedFood[] = [];
       
       for (const food of selectedFoods) {
-        // Estimate nutrition for each selected food item
+        // Use the calorie estimates from the multi-AI detection
+        const calories = food.calories || 100;
+        const portion = food.portion || '1 serving';
+        
+        // Get additional nutrition estimates based on calories
         const nutrition = await estimateNutritionFromLabel(food.name);
         
         foods.push({
           name: food.name,
-          calories: nutrition.calories || 200,
-          protein: nutrition.protein || 10,
-          carbs: nutrition.carbs || 30,
-          fat: nutrition.fat || 8,
-          fiber: nutrition.fiber || 3,
-          sugar: nutrition.sugar || 5,
-          sodium: nutrition.sodium || 300,
+          calories: calories,
+          protein: nutrition?.protein || Math.round(calories * 0.15 / 4), // ~15% of calories from protein
+          carbs: nutrition?.carbs || Math.round(calories * 0.55 / 4), // ~55% of calories from carbs  
+          fat: nutrition?.fat || Math.round(calories * 0.30 / 9), // ~30% of calories from fat
+          fiber: nutrition?.fiber || 3,
+          sugar: nutrition?.sugar || 5,
+          sodium: nutrition?.sodium || 300,
           confidence: Math.round(food.confidence * 100),
-          serving: '1 serving'
+          serving: portion
         });
       }
       

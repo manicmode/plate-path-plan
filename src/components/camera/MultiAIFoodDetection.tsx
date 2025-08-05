@@ -3,13 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { X, CheckCircle, Sparkles } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { X, CheckCircle, Sparkles, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DetectedFood {
   name: string;
   confidence: number;
   sources: string[];
+  calories?: number;
+  portion?: string;
+  isEstimate?: boolean;
 }
 
 interface MultiAIFoodDetectionProps {
@@ -120,9 +124,53 @@ export const MultiAIFoodDetection = ({
                   className="mt-1"
                 />
                 <div className="flex-1 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-sm">{food.name}</h3>
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-sm">{food.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        {food.calories ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">
+                              Estimated: {food.calories} kcal
+                            </span>
+                            {food.portion && (
+                              <span className="text-xs text-muted-foreground">
+                                per {food.portion}
+                              </span>
+                            )}
+                            {food.isEstimate && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Info className="h-3 w-3 text-muted-foreground" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Estimate only</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">
+                              Estimated: ~100 kcal
+                            </span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="h-3 w-3 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Estimate only</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3">
                       <Badge variant="secondary" className="text-xs">
                         {Math.round(food.confidence * 100)}% confidence
                       </Badge>
