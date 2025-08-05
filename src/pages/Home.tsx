@@ -1361,7 +1361,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-6 max-w-sm' : 'gap-8 max-w-4xl'} w-full`}>
                 {macroCards.map((macro, index) => {
                   const percentage = Math.min((macro.current / macro.target) * 100, 100);
                   const Icon = macro.icon;
@@ -1392,7 +1392,7 @@ const Home = () => {
                   return (
                 <Card
                       key={macro.name}
-                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
+                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-56' : 'h-60'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
                       style={{ animationDelay: `${index * 100}ms` }}
                       onClick={() => openInsights({ 
                         type: macro.name.toLowerCase(), 
@@ -1401,7 +1401,7 @@ const Home = () => {
                       })}
                     >
                       <CardContent className="flex flex-col justify-between h-full p-0">
-                        <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                        <div className={`${isMobile ? 'p-4' : 'p-6'} text-center flex flex-col justify-between h-full`}>
                           <div className="flex-shrink-0">
                             <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
                               <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
@@ -1417,7 +1417,7 @@ const Home = () => {
                             </p>
                           </div>
                           {/* Positioned slider with proper spacing and matching colors */}
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-6 flex-shrink-0">
                             <div
                               className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
                               style={{ width: `${percentage}%` }}
@@ -1475,7 +1475,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-6 max-w-sm' : 'gap-8 max-w-4xl'} w-full`}>
                 {micronutrientCards.map((micro, index) => {
                   const percentage = Math.min((micro.current / micro.target) * 100, 100);
                   const Icon = micro.icon;
@@ -1483,7 +1483,7 @@ const Home = () => {
                   return (
                     <Card
                       key={micro.name}
-                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
+                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-56' : 'h-60'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
                       style={{ animationDelay: `${index * 100}ms` }}
                       onClick={() => openInsights({ 
                         type: micro.name.toLowerCase(), 
@@ -1492,7 +1492,7 @@ const Home = () => {
                       })}
                     >
                       <CardContent className="flex flex-col justify-between h-full p-0">
-                        <div className={`${isMobile ? 'p-3' : 'p-4'} text-center flex flex-col justify-between h-full`}>
+                        <div className={`${isMobile ? 'p-4' : 'p-6'} text-center flex flex-col justify-between h-full`}>
                           <div className="flex-shrink-0">
                             <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${micro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
                               <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
@@ -1508,7 +1508,7 @@ const Home = () => {
                             </p>
                           </div>
                           {/* Progress bar */}
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-6 flex-shrink-0">
                             <div
                               className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
                               style={{ width: `${percentage}%` }}
@@ -1566,14 +1566,14 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-3 max-w-sm' : 'gap-4 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-6 max-w-sm' : 'gap-8 max-w-4xl'} w-full`}>
                 {realToxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
                   return (
                     <Card
                       key={item.name}
-                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer ${
+                      className={`modern-nutrient-card border-0 ${isMobile ? 'h-56' : 'h-60'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer ${
                         isOverThreshold 
                           ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
                           : 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
@@ -1586,7 +1586,7 @@ const Home = () => {
                       })}
                     >
                       <CardContent className="h-full p-0">
-                        <div className={`${isMobile ? 'p-3' : 'p-4'} h-full flex flex-col text-center`}>
+                        <div className={`${isMobile ? 'p-4' : 'p-6'} h-full flex flex-col text-center`}>
                           {/* Top Section: Icon and Title - Fixed Height */}
                           <div className={`flex-shrink-0 ${isMobile ? 'h-20' : 'h-24'} flex flex-col items-center justify-start`}>
                             <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} ${item.bgColor} rounded-2xl flex items-center justify-center mb-2 shadow-lg`}>
@@ -1610,7 +1610,7 @@ const Home = () => {
                           </div>
                           
                           {/* Alert Emojis positioned as last element inside card */}
-                          <div className="flex justify-center mt-2">
+                          <div className="flex justify-center mt-4">
                             <span className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>
                               {isOverThreshold ? '🚨🚨🚨' : '✅✅✅'}
                             </span>
