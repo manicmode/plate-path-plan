@@ -102,6 +102,35 @@ async function detectWithChatGPT(image: string): Promise<string[]> {
 }
 
 // GPT-4 Vision API call for food detection
+// Google Vision API call for food detection (isolated from vision-label-reader)
+async function callGoogleVision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  try {
+    console.log('Calling Google Vision for food detection...');
+    
+    // Call our dedicated Google Vision edge function
+    const { data, error } = await supabase.functions.invoke('google-vision-food-detector', {
+      body: { imageBase64: imageBase64 }
+    });
+
+    if (error) {
+      console.error('Google Vision API error:', error);
+      return [];
+    }
+
+    if (!data || !data.foodItems) {
+      console.log('No food items returned from Google Vision');
+      return [];
+    }
+
+    console.log('Google Vision detected food items:', data.foodItems);
+    return Array.isArray(data.foodItems) ? data.foodItems : [];
+
+  } catch (error) {
+    console.error('Google Vision detection failed:', error);
+    return [];
+  }
+}
+
 async function callGPT4Vision(imageBase64: string): Promise<string[]> {
   try {
     console.log('Calling GPT-4 Vision for food detection...');
