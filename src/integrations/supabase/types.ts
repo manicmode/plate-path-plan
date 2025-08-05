@@ -4815,6 +4815,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_security_violation: {
+        Args: {
+          violation_type: string
+          violation_details: Json
+          user_context?: string
+          severity_level?: string
+        }
+        Returns: undefined
+      }
       process_yearly_hall_of_fame: {
         Args: { target_year: number }
         Returns: Json
@@ -4887,6 +4896,10 @@ export type Database = {
           new_role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      validate_uuid_input_secure: {
+        Args: { input_value: string; context_name?: string }
+        Returns: string
       }
     }
     Enums: {
