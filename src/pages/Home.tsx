@@ -1055,7 +1055,7 @@ const Home = () => {
         </Card>
 
         {/* SmartLog AI Predictions - Added proper spacing */}
-        <div className="mt-8">
+        <div className="mt-12">
           <SmartLogAI onFoodSelect={(food) => {
             console.log('AI predicted food selected:', food);
             // TODO: Integrate with actual food logging system
