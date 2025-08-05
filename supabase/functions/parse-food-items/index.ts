@@ -168,39 +168,58 @@ serve(async (req) => {
     
     if (useComplexDishFallback) {
       // Complex dish analysis prompt
-      prompt = `Analyze this cooked meal/complex dish using visual segmentation principles. The image appears to contain multiple food components in bowls, plates, or mixed together. Use color, texture, and shape analysis to identify distinct food items such as beans, beef chunks, peppers, vegetables, grains, sauces, etc.
+      prompt = `Analyze this cooked meal/complex dish focusing ONLY on edible food items. Identify individual food components separately (e.g., pancakes, toast, avocado, fruit bowl, egg whites) with realistic portion estimates.
 
-IMPORTANT FILTERING RULES:
-1. EXCLUDE non-food objects (plates, bowls, forks, knives, spoons, utensils, containers, napkins, tables)
-2. MERGE similar or duplicate items (e.g., "Bean", "Legume", "Soup beans" → "Beans")
-3. Use the most specific, clear food name for merged items
+STRICT FILTERING RULES:
+1. EXCLUDE ALL non-food objects: plates, bowls, forks, knives, spoons, utensils, containers, napkins, tables, glasses, serveware
+2. EXCLUDE abstract food labels like "brunch", "breakfast", "meal", "dish", "cuisine"
+3. FOCUS ONLY on individual edible items you can actually see
+4. Estimate portions in realistic units (e.g., "2 slices toast", "3 pancakes", "½ avocado", "1 cup fruit")
+5. Use clean, simple food names (e.g., "scrambled eggs" not "protein-rich breakfast eggs")
 
-FALLBACK ANALYSIS: If individual components are unclear, describe this dish and estimate the top 3 most likely ingredients based on visual appearance, colors, textures, and typical cooking patterns.
+PORTION ESTIMATION: Be realistic with serving sizes based on typical portions:
+- Bread: count slices (1-2 slices)
+- Pancakes: count pieces (2-4 pancakes)
+- Eggs: count whole eggs or cups for scrambled
+- Fruits: use common measures (½ avocado, 1 banana, ¼ cup berries)
+- Include estimated calories if confident
 
 Input data: ${inputText}
 
 Return a JSON array with objects containing:
-- \`name\`: Individual food component (e.g., "black beans", "beef chunks", "red peppers") 
-- \`portion\`: Estimated serving size
+- \`name\`: Clean, specific food name (e.g., "scrambled eggs", "whole wheat toast")
+- \`portion\`: Realistic portion size with units (e.g., "2 slices", "3 pancakes", "½ cup")
+- \`calories\`: Estimated calories if possible (optional)
 - \`confidence\`: Detection confidence as "high", "medium", or "low"
 - \`method\`: "visual_segmentation" or "dish_analysis_fallback"
 
-Focus on actual food components visible in the image, not package text or marketing terms.`;
+Only include actual edible food items visible in the image.`;
     } else {
       // Standard analysis prompt  
-      prompt = `Analyze this food image with focus on distinct visible items. Extract INDIVIDUAL food items as separate entries. If multiple foods are visible (like "bread and shrimp" or "salad with chicken"), split them into separate items.
+      prompt = `Analyze this food image focusing ONLY on edible food items. Identify individual items separately with realistic portion estimates.
 
-For cooked meals: Identify distinct components like vegetables, proteins, grains, etc. based on color, texture, and shape differences.
+STRICT FILTERING RULES:
+1. EXCLUDE ALL non-food objects: plates, bowls, forks, knives, spoons, utensils, containers, napkins, tables, glasses, serveware
+2. EXCLUDE abstract labels like "brunch", "meal", "dish", "cuisine", "serveware"
+3. IDENTIFY individual food items separately (e.g., if you see "toast and eggs", list as separate items: "toast" and "scrambled eggs")
+4. Estimate portions in realistic units (e.g., "2 slices bread", "1 cup rice", "4 oz chicken")
+5. Use clean, simple food names without marketing terms
+
+PORTION ESTIMATION: Be realistic with serving sizes:
+- Count discrete items (2 cookies, 3 meatballs)
+- Use standard measurements (1 cup, ½ cup, 4 oz)
+- Include estimated calories if confident
 
 Input data: ${inputText}
 
 Return a JSON array with objects containing:
-- \`name\`: Individual food item name
-- \`portion\`: Estimated serving size  
+- \`name\`: Clean, specific food name (e.g., "grilled chicken", "brown rice")
+- \`portion\`: Realistic portion size with units (e.g., "4 oz", "½ cup", "2 pieces")
+- \`calories\`: Estimated calories if possible (optional)
 - \`confidence\`: Detection confidence as "high", "medium", or "low"
 - \`method\`: "visual_detection"
 
-Focus on real food visible in the image, not marketing text. Each detected food should be its own item.`;
+Only include actual edible food items you can see in the image.`;
     }
 
     // Call OpenAI with enhanced prompt
