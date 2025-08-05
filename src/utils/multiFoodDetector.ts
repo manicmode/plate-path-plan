@@ -65,9 +65,36 @@ async function detectWithGoogle(image: string): Promise<string[]> {
 }
 
 async function detectWithCalorieMama(image: string): Promise<string[]> {
-  // TODO: Implement CalorieMama API food detection
-  console.log('CalorieMama detection (placeholder)', image.slice(0, 50));
-  return [];
+  return await callCalorieMama(image);
+}
+
+// CalorieMama API call for food detection
+async function callCalorieMama(imageBase64: string): Promise<string[]> {
+  try {
+    console.log('Calling CalorieMama API for food detection...');
+    
+    // Call our Supabase edge function that handles CalorieMama API
+    const { data, error } = await supabase.functions.invoke('caloriemama-food-detector', {
+      body: { imageBase64: imageBase64 }
+    });
+
+    if (error) {
+      console.error('CalorieMama API error:', error);
+      return [];
+    }
+
+    if (!data || !data.foodItems) {
+      console.log('No food items returned from CalorieMama');
+      return [];
+    }
+
+    console.log('CalorieMama detected food items:', data.foodItems);
+    return Array.isArray(data.foodItems) ? data.foodItems : [];
+
+  } catch (error) {
+    console.error('CalorieMama detection failed:', error);
+    return [];
+  }
 }
 
 async function detectWithChatGPT(image: string): Promise<string[]> {
