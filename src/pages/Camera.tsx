@@ -1154,6 +1154,9 @@ const CameraPage = () => {
   };
 
   
+  // Store detected food data for multi-AI confirmation flow
+  const [multiAIDetectedData, setMultiAIDetectedData] = useState<Map<string, {name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>>(new Map());
+
   const handleMultiAIConfirm = async (selectedFoods: Array<{name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>) => {
     console.log('=== MULTI-AI CONFIRMATION ===');
     console.log('Selected foods:', selectedFoods);
@@ -1164,6 +1167,13 @@ const CameraPage = () => {
       console.log('No foods selected, returning to main camera view');
       return;
     }
+    
+    // Store the detected food data for later retrieval during confirmation
+    const foodDataMap = new Map();
+    selectedFoods.forEach((food, index) => {
+      foodDataMap.set(`multi-ai-${index}`, food);
+    });
+    setMultiAIDetectedData(foodDataMap);
     
     // Convert selected foods to SummaryItem format for sequential confirmation flow
     const summaryItems: SummaryItem[] = selectedFoods.map((food, index) => ({
@@ -1178,22 +1188,6 @@ const CameraPage = () => {
     // Set up the sequential confirmation flow
     setPendingItems(summaryItems);
     setCurrentItemIndex(0);
-    
-    // Store the original food data for when we need nutrition info
-    const foods: RecognizedFood[] = selectedFoods.map(food => ({
-      name: food.name,
-      calories: food.calories || 100, // Default fallback
-      protein: 5, // Default values
-      carbs: 15,
-      fat: 3,
-      fiber: 2,
-      sugar: 2,
-      sodium: 200,
-      confidence: food.confidence,
-      serving: food.portion || '1 serving'
-    }));
-    
-    setRecognizedFoods(foods);
     setInputSource('photo');
     
     // Show transition screen if multiple items, otherwise go directly to first confirmation
@@ -1357,7 +1351,38 @@ const CameraPage = () => {
     }
 
     const currentItem = items[index];
-    const nutrition = await estimateNutritionFromLabel(currentItem.name);
+    
+    // Check if we have stored multi-AI data for this item
+    const storedFoodData = multiAIDetectedData.get(currentItem.id);
+    
+    let nutrition;
+    let confidence = 85; // Default confidence
+    
+    if (storedFoodData) {
+      // Use the detected food data if available
+      console.log('Using stored multi-AI data for:', currentItem.name, storedFoodData);
+      
+      if (storedFoodData.calories) {
+        // Use the detected nutrition data
+        nutrition = {
+          calories: storedFoodData.calories,
+          protein: 5, // These could be enhanced with actual detected values
+          carbs: Math.round(storedFoodData.calories * 0.15), // Estimated based on calories
+          fat: Math.round(storedFoodData.calories * 0.04), // Estimated based on calories
+          fiber: 3,
+          sugar: 5,
+          sodium: 200
+        };
+      } else {
+        // Estimate nutrition if not detected
+        nutrition = await estimateNutritionFromLabel(currentItem.name);
+      }
+      
+      confidence = storedFoodData.confidence;
+    } else {
+      // Fallback to nutrition estimation for non-multi-AI items
+      nutrition = await estimateNutritionFromLabel(currentItem.name);
+    }
     
     const foodItem = {
       id: currentItem.id,
@@ -1369,7 +1394,7 @@ const CameraPage = () => {
       fiber: nutrition.fiber,
       sugar: nutrition.sugar,
       sodium: nutrition.sodium,
-      confidence: 85, // Estimated confidence for detected items
+      confidence: confidence,
       image: selectedImage // Use the original photo as reference
     };
 
@@ -1584,6 +1609,7 @@ const CameraPage = () => {
     setShowMultiAIDetection(false);
     setMultiAIResults([]);
     setIsMultiAILoading(false);
+    setMultiAIDetectedData(new Map());
     
     resetErrorState();
     setValidationWarning(null);
