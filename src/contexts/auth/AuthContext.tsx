@@ -35,28 +35,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
 
 
-  // Load user profile in background
+  // Load user profile in background with enhanced error handling
   const loadExtendedProfile = async (supabaseUser: any) => {
-    if (!supabaseUser) return;
+    if (!supabaseUser) {
+      console.warn('🚨 LoadExtendedProfile: No supabaseUser provided');
+      return;
+    }
     
     try {
       setProfileLoading(true);
       setProfileError(null);
-      console.log('Loading extended user profile...');
+      console.log('🔄 Loading extended user profile...', { userId: supabaseUser.id });
       
       const extendedUser = await createExtendedUser(supabaseUser);
       setUser(extendedUser);
-      console.log('Extended user profile loaded successfully');
+      console.log('✅ Extended user profile loaded successfully', { userId: supabaseUser.id });
     } catch (error) {
-      console.error('Error loading extended user profile:', error);
+      console.error('🚨 Error loading extended user profile:', error);
       setProfileError(error instanceof Error ? error.message : 'Failed to load profile');
-      // Set basic user info even if profile creation fails
-      setUser({
+      
+      // Create fallback user object to prevent app crashes
+      const fallbackUser = {
         id: supabaseUser.id,
         email: supabaseUser.email,
         created_at: supabaseUser.created_at,
-        selectedTrackers: ['calories', 'hydration', 'supplements']
-      } as ExtendedUser);
+        app_metadata: supabaseUser.app_metadata || {},
+        user_metadata: supabaseUser.user_metadata || {},
+        aud: supabaseUser.aud || 'authenticated',
+        selectedTrackers: ['calories', 'hydration', 'supplements'],
+        display_name: supabaseUser.email?.split('@')[0] || 'User',
+        weight: null,
+        height: null,
+        age: null,
+        gender: null,
+        activity_level: 'moderate',
+        main_health_goal: 'maintain_weight',
+        weight_goal_type: 'maintain'
+      } as ExtendedUser;
+      
+      setUser(fallbackUser);
+      console.log('🔄 Set fallback user to prevent app crash', { userId: supabaseUser.id });
     } finally {
       setProfileLoading(false);
     }
@@ -157,52 +175,85 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       timestamp: new Date().toISOString() 
     });
     
-    // Initialize auth session check and state listener in parallel (not sequential)
+    // Initialize auth session check and state listener with timeout protection
     const initializeAuth = async () => {
+      let timeoutId: NodeJS.Timeout;
+      
       try {
-        // Start both operations simultaneously for faster initialization
-        const [sessionResponse, authListener] = await Promise.all([
-          supabase.auth.getSession(),
-          Promise.resolve(supabase.auth.onAuthStateChange(
-            async (event, session) => {
-              if (!isMounted) return;
+        // Add timeout protection for auth initialization
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Auth initialization timeout after 10 seconds'));
+          }, 10000);
+        });
 
-              if (event === 'PASSWORD_RECOVERY') {
-                setSession(session);
-                setUser(session?.user ?? null);
-                setLoading(false);
-                return;
-              }
+        console.log('🔄 Starting auth initialization...', { isMobile });
 
-              if (event === 'TOKEN_REFRESHED' && session) {
-                setSession(session);
-                setUser(session?.user ?? null);
-                setLoading(false);
-                return;
-              }
+        // Race between auth operations and timeout
+        const result = await Promise.race([
+          Promise.all([
+            supabase.auth.getSession(),
+            Promise.resolve(supabase.auth.onAuthStateChange(
+              async (event, session) => {
+                if (!isMounted) return;
 
-              setSession(session);
-              setUser(session?.user ?? null);
-              setLoading(false);
+                console.log('🔐 Auth state change:', { event, hasSession: !!session, hasUser: !!session?.user });
 
-              // Don't reset session during password recovery
-              if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
-                // Load extended profile asynchronously without blocking the UI
-                setTimeout(() => {
-                  if (isMounted) {
-                    loadExtendedProfile(session.user);
+                try {
+                  if (event === 'PASSWORD_RECOVERY') {
+                    setSession(session);
+                    setUser(session?.user ?? null);
+                    setLoading(false);
+                    return;
                   }
-                }, 0);
+
+                  if (event === 'TOKEN_REFRESHED' && session) {
+                    setSession(session);
+                    setUser(session?.user ?? null);
+                    setLoading(false);
+                    return;
+                  }
+
+                  setSession(session);
+                  setUser(session?.user ?? null);
+                  setLoading(false);
+
+                  // Load extended profile for signed-in users (not during recovery)
+                  if (event === 'SIGNED_IN' && session?.user && !window.location.hash.includes('type=recovery')) {
+                    setTimeout(() => {
+                      if (isMounted) {
+                        loadExtendedProfile(session.user).catch(error => {
+                          console.error('🚨 Profile loading failed in auth state change:', error);
+                        });
+                      }
+                    }, 100); // Small delay to prevent blocking
+                  }
+                } catch (error) {
+                  console.error('🚨 Error in auth state change handler:', error);
+                  // Don't crash the app - just log the error
+                  setLoading(false);
+                }
               }
-            }
-          ))
+            ))
+          ]),
+          timeoutPromise
         ]);
+
+        clearTimeout(timeoutId);
 
         if (!isMounted) return;
 
-        // Set initial session state immediately
-        const { data: { session } } = sessionResponse;
-        console.log('🔐 Auth initialization complete', { 
+        const [sessionResponse, authListener] = result as any;
+
+        // Set initial session state
+        const { data: { session }, error: sessionError } = sessionResponse;
+        
+        if (sessionError) {
+          console.error('🚨 Session error:', sessionError);
+          throw sessionError;
+        }
+
+        console.log('✅ Auth initialization complete', { 
           hasSession: !!session, 
           hasUser: !!session?.user,
           isMobile,
@@ -215,12 +266,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         return authListener.data.subscription;
       } catch (error) {
-        console.error('🚨 Error initializing auth:', error, { 
+        clearTimeout(timeoutId!);
+        console.error('🚨 Critical auth initialization error:', error, { 
           isMobile, 
-          timestamp: new Date().toISOString() 
+          timestamp: new Date().toISOString(),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
         });
+        
         if (isMounted) {
+          // Set safe fallback state
+          setSession(null);
+          setUser(null);
           setLoading(false);
+          setProfileError('Authentication initialization failed');
         }
         return null;
       }

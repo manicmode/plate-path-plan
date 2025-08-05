@@ -171,7 +171,10 @@ root.render(
             <h2 className="text-xl font-bold">Loading Error</h2>
             <p className="text-muted-foreground">Please refresh the page to continue.</p>
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={() => {
+                console.log('🔄 User clicked refresh button');
+                window.location.reload();
+              }} 
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
             >
               Refresh Page

@@ -88,25 +88,43 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       console.log('✅ [Manual Entry] GPT nutrition estimated:', foodData);
 
-      // Save using persistence hook
-      const savedId = await saveFood(foodData);
-      
-      if (savedId) {
-        toast.success(
-          <div className="flex items-center gap-2">
-            <Check className="h-4 w-4 text-emerald-500" />
-            <span><strong>{trimmedName}</strong> added — estimated {nutrition.calories} kcal</span>
-          </div>
-        );
-        onClose();
+      // Enhanced validation before saving
+      const validateFoodData = (data: any) => {
+        if (!data.name || data.name.trim() === '') {
+          throw new Error('Food name is required');
+        }
         
-        // Reset form
-        setFoodName('');
-        setAmountPercentage([100]);
-        setMealType('');
-      } else {
-        toast.error('Failed to save food item');
+        if (data.calories < 0 || data.calories > 5000) {
+          throw new Error(`Invalid calorie value: ${data.calories}`);
+        }
+        
+        return data;
+      };
+
+      const validatedFoodData = validateFoodData(foodData);
+      console.log('✅ [Manual Entry] Food data validation passed');
+
+      // Save using persistence hook with error handling
+      const savedId = await saveFood(validatedFoodData);
+      
+      if (!savedId) {
+        throw new Error('Failed to save food item - no ID returned from saveFood');
       }
+
+      console.log('✅ [Manual Entry] Food saved successfully with ID:', savedId);
+      
+      toast.success(
+        <div className="flex items-center gap-2">
+          <Check className="h-4 w-4 text-emerald-500" />
+          <span><strong>{trimmedName}</strong> added — estimated {nutrition.calories} kcal</span>
+        </div>
+      );
+
+      // Close modal and reset form
+      onClose();
+      setFoodName('');
+      setAmountPercentage([100]);
+      setMealType('');
 
     } catch (error) {
       console.error('❌ [Manual Entry] Error:', error);

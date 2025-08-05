@@ -14,10 +14,9 @@ export const SmartLoadingScreen: React.FC<SmartLoadingScreenProps> = ({ children
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    // Wait for auth to settle and theme to be ready
     const checkReady = () => {
       // Ready when auth is no longer loading AND either:
-      // - User is authenticated (has session) OR
+      // - User is authenticated (has session) OR  
       // - Auth explicitly resolved with no user (not authenticated)
       const authReady = !authLoading && (!!session || session === null);
       const themeReady = !!theme;
@@ -26,13 +25,40 @@ export const SmartLoadingScreen: React.FC<SmartLoadingScreenProps> = ({ children
     };
 
     if (checkReady()) {
+      console.log('✅ SmartLoadingScreen: Components ready', {
+        authLoading,
+        hasSession: !!session,
+        hasUser: !!user,
+        theme,
+        timestamp: new Date().toISOString()
+      });
+      
       setIsReady(true);
       // Add small delay to prevent flash and allow smooth transition
       setTimeout(() => {
         setShowContent(true);
       }, 150);
+    } else {
+      console.log('🔄 SmartLoadingScreen: Still waiting...', {
+        authLoading,
+        hasSession: !!session,
+        hasUser: !!user,
+        theme,
+        timestamp: new Date().toISOString()
+      });
     }
-  }, [authLoading, user, session, theme]);
+
+    // Add timeout protection to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (!isReady) {
+        console.warn('⚠️ SmartLoadingScreen: Timeout reached, forcing ready state');
+        setIsReady(true);
+        setShowContent(true);
+      }
+    }, 15000); // 15 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [authLoading, user, session, theme, isReady]);
 
   // Show loading screen until everything is ready
   if (!isReady) {
@@ -41,6 +67,13 @@ export const SmartLoadingScreen: React.FC<SmartLoadingScreenProps> = ({ children
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-sm text-muted-foreground">Loading...</p>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-muted-foreground mt-2">
+              Auth: {authLoading ? 'loading' : 'ready'} | 
+              Session: {session ? 'yes' : 'no'} | 
+              Theme: {theme || 'loading'}
+            </div>
+          )}
         </div>
       </div>
     );

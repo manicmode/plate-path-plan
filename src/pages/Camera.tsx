@@ -1478,59 +1478,126 @@ const CameraPage = () => {
 
   const handleConfirmFood = async (foodItem: any) => {
     console.log('🍽️ === FOOD CONFIRMATION DEBUG START ===');
-    console.log('📊 Food item being confirmed:', foodItem);
+    console.log('📊 Food item being confirmed:', JSON.stringify(foodItem, null, 2));
+    console.log('🔍 Current user:', user?.id || 'No user');
+    console.log('🔍 Has saveFood function:', typeof saveFood);
     
-    // Validate and sanitize food data before saving
-    const sanitizedFoodItem = {
-      ...foodItem,
-      // Fix data types - ensure integers where required
-      calories: Math.round(foodItem.calories || 0),
-      protein: Math.round((foodItem.protein || 0) * 10) / 10, // 1 decimal
-      carbs: Math.round((foodItem.carbs || 0) * 10) / 10,
-      fat: Math.round((foodItem.fat || 0) * 10) / 10,
-      fiber: Math.round((foodItem.fiber || 0) * 10) / 10,
-      sugar: Math.round((foodItem.sugar || 0) * 10) / 10,
-      sodium: Math.round(foodItem.sodium || 0),
-      saturated_fat: Math.round((foodItem.saturated_fat || foodItem.fat * 0.3) * 10) / 10,
-      confidence: Math.round(foodItem.confidence || 85), // Integer confidence
-      source: 'gpt', // Correct source attribution
-      serving_size: foodItem.serving || 'Estimated portion',
-      image_url: selectedImage || null,
-      confirmed: true,
-      timestamp: new Date()
-    };
+    if (!foodItem) {
+      console.error('🚨 No food item provided to handleConfirmFood');
+      toast.error('No food item to save');
+      return;
+    }
 
-    console.log('🧮 Sanitized food data:', sanitizedFoodItem);
+    if (!user?.id) {
+      console.error('🚨 No authenticated user found');
+      toast.error('User not authenticated');
+      return;
+    }
 
+    // Enhanced validation and sanitization
     try {
-      // Use the proper persistence hook instead of direct Supabase insert
+      const validateAndSanitize = (item: any) => {
+        // Validate required fields
+        if (!item.name && !item.food_name) {
+          throw new Error('Food name is required');
+        }
+
+        const foodName = item.name || item.food_name;
+        if (typeof foodName !== 'string' || foodName.trim() === '') {
+          throw new Error('Valid food name is required');
+        }
+
+        // Sanitize numeric values with enhanced validation
+        const calories = Math.round(Number(item.calories) || 0);
+        if (calories < 0 || calories > 5000) {
+          throw new Error(`Invalid calories value: ${calories}`);
+        }
+
+        return {
+          ...item,
+          name: foodName.trim(),
+          food_name: foodName.trim(),
+          calories,
+          protein: Math.round((Number(item.protein) || 0) * 10) / 10,
+          carbs: Math.round((Number(item.carbs) || 0) * 10) / 10,
+          fat: Math.round((Number(item.fat) || 0) * 10) / 10,
+          fiber: Math.round((Number(item.fiber) || 0) * 10) / 10,
+          sugar: Math.round((Number(item.sugar) || 0) * 10) / 10,
+          sodium: Math.round(Number(item.sodium) || 0),
+          saturated_fat: Math.round((Number(item.saturated_fat) || Number(item.fat) * 0.3 || 0) * 10) / 10,
+          confidence: Math.round(Number(item.confidence) || 85),
+          source: 'gpt',
+          serving_size: item.serving || item.serving_size || 'Estimated portion',
+          image_url: selectedImage || null,
+          confirmed: true,
+          timestamp: new Date()
+        };
+      };
+
+      const sanitizedFoodItem = validateAndSanitize(foodItem);
+      console.log('✅ Food data validation passed');
+      console.log('🧮 Sanitized food data:', JSON.stringify(sanitizedFoodItem, null, 2));
+
+      // Attempt to save using the persistence hook
+      console.log('💾 Attempting to save food via useNutritionPersistence...');
       const savedFoodId = await saveFood(sanitizedFoodItem);
       
       if (!savedFoodId) {
-        console.error('❌ PERSISTENCE HOOK FAILED: saveFood returned null');
-        toast.error('Failed to save food item - persistence error');
-        return;
+        console.error('❌ PERSISTENCE HOOK FAILED: saveFood returned null/undefined');
+        throw new Error('Food save operation failed - no ID returned');
       }
       
       console.log('✅ FOOD SAVED SUCCESSFULLY via useNutritionPersistence:', savedFoodId);
       
       // Add to nutrition context
-      addFood(sanitizedFoodItem);
-      console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
-      
-      // Refresh saved foods list
-      if (refetchSavedFoods) {
-        await refetchSavedFoods();
+      try {
+        addFood(sanitizedFoodItem);
+        console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
+      } catch (contextError) {
+        console.warn('⚠️ Context update failed (non-critical):', contextError);
+        // Don't fail the whole operation for context errors
       }
       
+      // Refresh saved foods list
+      try {
+        if (refetchSavedFoods) {
+          await refetchSavedFoods();
+        }
+      } catch (refetchError) {
+        console.warn('⚠️ Refetch failed (non-critical):', refetchError);
+        // Don't fail the whole operation for refetch errors
+      }
+
+      // Success notification
+      toast.success(`✅ ${sanitizedFoodItem.name} logged successfully!`);
+      
     } catch (error) {
-      console.error('❌ SAVE EXCEPTION:', error);
-      console.error('Failed food data:', JSON.stringify(sanitizedFoodItem, null, 2));
-      toast.error(`Failed to save food item: ${error.message}`);
+      console.error('🚨 CRITICAL ERROR in handleConfirmFood:', error);
+      
+      // Comprehensive error logging
+      const errorContext = {
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : 'No stack trace',
+        foodItem: JSON.stringify(foodItem, null, 2),
+        userId: user?.id,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent.substring(0, 100),
+        selectedImage: selectedImage ? 'present' : 'none'
+      };
+      
+      console.error('🚨 Error context:', errorContext);
+      
+      // User-friendly error message
+      const userMessage = error instanceof Error ? 
+        `Failed to save food: ${error.message}` : 
+        'Failed to save food item - please try again';
+        
+      toast.error(userMessage);
       return;
     }
 
-    console.log('🍽️ === FOOD CONFIRMATION DEBUG SUMMARY ===');
+    console.log('🍽️ === FOOD CONFIRMATION SUCCESS ===');
     console.log('✅ Food item successfully confirmed and logged via GPT + useNutritionPersistence');
 
     // Check if there are more pending items to process
