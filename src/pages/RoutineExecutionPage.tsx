@@ -173,19 +173,34 @@ const RoutineExecutionPage = () => {
                       alt={currentStep.exerciseName}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        // Fallback to placeholder if image doesn't exist
+                        // Fallback to placeholder if image doesn't exist - SECURE VERSION
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent) {
-                          parent.innerHTML = `
-                            <div class="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                              <div class="text-center">
-                                <div class="text-4xl mb-2">💪</div>
-                                <div class="text-sm font-medium">${currentStep.exerciseName?.replace(/-/g, ' ') || 'Exercise'}</div>
-                              </div>
-                            </div>
-                          `;
+                          // Use safe DOM manipulation instead of innerHTML
+                          const fallbackDiv = document.createElement('div');
+                          fallbackDiv.className = 'w-full h-full flex items-center justify-center bg-muted text-muted-foreground';
+                          
+                          const centerDiv = document.createElement('div');
+                          centerDiv.className = 'text-center';
+                          
+                          const emojiDiv = document.createElement('div');
+                          emojiDiv.className = 'text-4xl mb-2';
+                          emojiDiv.textContent = '💪';
+                          
+                          const textDiv = document.createElement('div');
+                          textDiv.className = 'text-sm font-medium';
+                          // Safely set text content to prevent XSS
+                          textDiv.textContent = currentStep.exerciseName?.replace(/-/g, ' ') || 'Exercise';
+                          
+                          centerDiv.appendChild(emojiDiv);
+                          centerDiv.appendChild(textDiv);
+                          fallbackDiv.appendChild(centerDiv);
+                          
+                          // Clear parent and append safe content
+                          parent.innerHTML = '';
+                          parent.appendChild(fallbackDiv);
                         }
                       }}
                     />

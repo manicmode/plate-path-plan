@@ -3,6 +3,8 @@ import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { useSecurityAlerts } from '@/hooks/useSecurityAlerts';
 import { useAdvancedThreatDetection } from '@/hooks/useAdvancedThreatDetection';
 import { useCSPViolationReporting } from '@/hooks/useCSPViolationReporting';
+import { useSecurityEnforcement } from '@/hooks/useSecurityEnforcement';
+import { initializeSecurity } from '@/lib/securityEnhancements';
 import { SecurityAlertsManager } from '@/components/security/SecurityAlertsManager';
 import { EnhancedThreatDetection } from '@/components/security/EnhancedThreatDetection';
 import { DatabaseErrorRecovery } from '@/components/security/DatabaseErrorRecovery';
@@ -25,6 +27,7 @@ import { EnhancedChartSecurity } from '@/components/security/EnhancedChartSecuri
 import { AdvancedInputValidator } from '@/components/security/AdvancedInputValidator';
 import { EnhancedAuthenticationSecurity } from '@/components/security/EnhancedAuthenticationSecurity';
 import { AdvancedThreatCorrelation } from '@/components/security/AdvancedThreatCorrelation';
+import { ComprehensiveSecurityValidator } from '@/components/security/ComprehensiveSecurityValidator';
 
 interface SecurityContextType {
   checkActivityRateLimit: (action: string) => Promise<boolean>;
@@ -50,8 +53,14 @@ interface SecurityProviderProps {
 export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) => {
   const securityMonitoring = useSecurityMonitoring();
   const { detectAnomalousActivity } = useAdvancedThreatDetection();
+  const securityEnforcement = useSecurityEnforcement();
   useSecurityAlerts(); // Initialize security alerts monitoring
   useCSPViolationReporting(); // Initialize CSP violation reporting
+
+  // Initialize security enhancements on mount
+  React.useEffect(() => {
+    initializeSecurity();
+  }, []);
 
   const contextValue = {
     ...securityMonitoring,
@@ -84,6 +93,7 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       <AdvancedInputValidator />
       <EnhancedAuthenticationSecurity />
       <AdvancedThreatCorrelation />
+      <ComprehensiveSecurityValidator />
       
       {children}
     </SecurityContext.Provider>
