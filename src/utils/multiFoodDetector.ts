@@ -162,10 +162,32 @@ async function callGPT4Vision(imageBase64: string): Promise<string[]> {
   }
 }
 
+// GastroNet API call for food detection (placeholder)
+async function callGastroNet(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
+  try {
+    console.log('Calling GastroNet API (simulated)...');
+    
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Mock response with realistic food detection data
+    const mockResponse = [
+      { name: 'Scrambled Eggs', confidence: 0.83, source: 'GastroNet' },
+      { name: 'Avocado Toast', confidence: 0.76, source: 'GastroNet' }
+    ];
+    
+    console.log('GastroNet detected food items (simulated):', mockResponse);
+    return mockResponse;
+    
+  } catch (error) {
+    console.error('GastroNet detection failed:', error);
+    return [];
+  }
+}
+
 async function detectWithGastroNet(image: string): Promise<string[]> {
-  // TODO: Implement GastroNet API food detection
-  console.log('GastroNet detection (placeholder)', image.slice(0, 50));
-  return [];
+  const results = await callGastroNet(image);
+  return results.map(item => item.name);
 }
 
 async function detectWithClarifai(image: string): Promise<string[]> {
