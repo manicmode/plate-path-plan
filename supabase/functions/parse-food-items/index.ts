@@ -148,42 +148,39 @@ serve(async (req) => {
     
     let inputText = '';
     let detectionMethod = '';
-    let useComplexDishFallback = false;
+    // Use fallback if 2 or fewer items detected after filtering
+    let useComplexDishFallback = visualFoodItems.length <= 2;
     
-    if (hasStrongVisualDetection) {
+    if (hasStrongVisualDetection && !useComplexDishFallback) {
       // High confidence visual detection
       const sortedVisualItems = visualFoodItems.sort((a, b) => b.score - a.score);
       inputText = sortedVisualItems.map(item => `${item.description} (${item.type}, confidence: ${item.score.toFixed(2)})`).join(', ');
       detectionMethod = 'high_confidence_visual';
       console.log('🎯 Using high-confidence visual detection:', inputText);
-    } else if (hasModerateVisualDetection || hasWeakVisualDetection) {
-      // Moderate/weak visual detection - check for complex dish
+    } else if ((hasModerateVisualDetection || hasWeakVisualDetection) && !useComplexDishFallback) {
+      // Moderate/weak visual detection
       const sortedVisualItems = visualFoodItems.sort((a, b) => b.score - a.score);
       inputText = sortedVisualItems.map(item => `${item.description} (${item.type}, confidence: ${item.score.toFixed(2)})`).join(', ');
-      
-      if (appearsToBeComplexDish) {
-        useComplexDishFallback = true;
-        detectionMethod = 'complex_dish_detected';
-        console.log('🍲 Complex dish detected with moderate confidence, will use enhanced analysis');
-        
-        // Add OCR context for complex dishes
-        if (visionResults.textDetected) {
-          inputText += `, OCR_CONTEXT: ${visionResults.textDetected}`;
-        }
-      } else {
-        detectionMethod = 'moderate_confidence_visual';
-        console.log('📊 Using moderate-confidence visual detection:', inputText);
-      }
+      detectionMethod = 'moderate_confidence_visual';
+      console.log('📊 Using moderate-confidence visual detection:', inputText);
     } else {
-      // No visual food detection - use all available data
-      inputText = [
-        ...visionResults.labels.map(l => l.description),
-        visionResults.textDetected
-      ].filter(Boolean).join(', ');
-      
+      // Fallback to context-aware guessing
       useComplexDishFallback = true;
-      detectionMethod = 'fallback_all_data';
-      console.log('🔄 No visual food detected, using fallback with complex dish analysis:', inputText);
+      detectionMethod = 'context_aware_fallback';
+      console.log('🍲 Using context-aware fallback due to limited detection');
+      
+      // Create context-aware prompt with detected labels
+      const detectedLabels = [
+        ...visionResults.labels.map(l => l.description),
+        ...visionResults.objects.map(o => o.name),
+        ...visionResults.food_labels.map(f => f.description)
+      ].slice(0, 8); // Limit to prevent prompt overflow
+      inputText = `Scene shows a breakfast/meal with multiple foods. Detected labels: [${detectedLabels.join(', ')}]. Guess what foods are most likely present.`;
+      
+      // Add OCR context if available
+      if (visionResults.textDetected) {
+        inputText += ` Menu/text context: ${visionResults.textDetected}`;
+      }
     }
     
     // If no meaningful input, return error early
@@ -208,46 +205,47 @@ serve(async (req) => {
     console.log("🍲 Using complex dish fallback:", useComplexDishFallback);
     console.log("📊 Input text for OpenAI:", inputText);
     
-    if (useComplexDishFallback) {
-      // Enhanced complex dish analysis prompt
-      prompt = `You are analyzing a breakfast/meal photo. Your task is to identify INDIVIDUAL EDIBLE FOOD ITEMS that are clearly visible.
+    if (useComplexDishFallback || detectionMethod === 'context_aware_fallback') {
+      // Context-aware OpenAI fallback prompt for when filtering fails
+      prompt = `You are an expert food analyst examining a breakfast/meal photo. Based on the visual context and detected labels, identify INDIVIDUAL EDIBLE FOOD ITEMS that are most likely present.
 
-CRITICAL INSTRUCTIONS:
-1. Look for SEPARATE, DISTINCT food items (e.g., toast, avocado, eggs, fruit, pancakes)
-2. IGNORE all utensils, plates, bowls, cups, napkins, tables, decorations
-3. IGNORE vague terms like "garnish", "topping", "side", "meal", "dish"
-4. Count and describe each food item separately
-5. If you see multiple items of the same food, count them accurately
+CONTEXT ANALYSIS:
+${inputText}
 
-WHAT TO LOOK FOR in this image:
-- Sliced bread/toast (count slices)
-- Avocado (sliced or whole portions)
-- Eggs (scrambled, fried, etc.)
-- Pancakes or similar breakfast items
-- Fresh fruit (berries, bananas, etc.)
-- Any other clearly visible food
+YOUR TASK:
+1. Analyze the scene context (breakfast setting, typical food combinations)
+2. Identify 3-5 distinct, realistic food items that would appear in this type of meal
+3. Focus on common breakfast foods: toast, eggs, avocado, fruit, pancakes, etc.
+4. Provide specific names, not generic terms
 
-STRICT FILTERING:
-- NO "garnish" unless you can identify what it actually is (herbs, etc.)
-- NO duplicate entries for the same food item
-- NO utensils or serving dishes
-- Each item must be a real, identifiable food
+STRICT REQUIREMENTS:
+- Each item must be a REAL, SPECIFIC food (not "garnish", "side", "topping")
+- Include realistic portion sizes and calorie estimates
+- NO utensils, plates, or serving items
+- NO duplicate foods
+- Each food item should have calories listed
 
-Input data: ${inputText}
+EXPECTED FOODS in a typical breakfast:
+- Toast or bread (specify type if possible)
+- Avocado (sliced, mashed, etc.)
+- Eggs (scrambled, fried, poached, etc.)
+- Fruit (berries, banana, etc.)
+- Pancakes, waffles, or similar
+- Beverages (coffee, juice, etc.)
 
 Return a JSON array with objects containing:
-- \`name\`: Specific food name (e.g., "avocado slices", "whole wheat toast", "scrambled eggs", "mixed berries")
-- \`portion\`: Realistic portion (e.g., "2 slices", "½ avocado", "1 cup", "3 pancakes")
-- \`calories\`: Estimated calories (required)
-- \`confidence\`: "high", "medium", or "low"
-- \`method\`: "visual_segmentation"
+- \`name\`: Specific food name (e.g., "sourdough toast", "sliced avocado", "scrambled eggs")
+- \`portion\`: Realistic serving size (e.g., "2 slices", "½ avocado", "2 eggs")
+- \`calories\`: Estimated calories (required - must be a number)
+- \`confidence\`: "high" for obvious items, "medium" for likely items, "low" for guessed items
+- \`method\`: "context_analysis"
 
-EXAMPLE output for a breakfast:
+EXAMPLE:
 [
-  {"name": "whole wheat toast", "portion": "2 slices", "calories": 160, "confidence": "high", "method": "visual_segmentation"},
-  {"name": "avocado slices", "portion": "½ avocado", "calories": 120, "confidence": "high", "method": "visual_segmentation"},
-  {"name": "scrambled eggs", "portion": "2 eggs", "calories": 140, "confidence": "medium", "method": "visual_segmentation"},
-  {"name": "mixed berries", "portion": "½ cup", "calories": 40, "confidence": "medium", "method": "visual_segmentation"}
+  {"name": "sourdough toast", "portion": "2 slices", "calories": 180, "confidence": "high", "method": "context_analysis"},
+  {"name": "sliced avocado", "portion": "½ avocado", "calories": 120, "confidence": "high", "method": "context_analysis"},
+  {"name": "scrambled eggs", "portion": "2 eggs", "calories": 140, "confidence": "medium", "method": "context_analysis"},
+  {"name": "fresh strawberries", "portion": "½ cup", "calories": 25, "confidence": "medium", "method": "context_analysis"}
 ]`;
     } else {
       // Standard analysis prompt  

@@ -34,7 +34,9 @@ class FoodDetectionFilter {
     'cutlery', 'utensil', 'napkin', 'table', 'tray', 'container', 'packaging',
     'wrapper', 'bag', 'box', 'can', 'bottle', 'jar', 'lid', 'background',
     'surface', 'counter', 'kitchen', 'dining', 'restaurant', 'produce',
-    'market', 'grocery', 'shelf', 'display', 'label', 'text', 'logo'
+    'market', 'grocery', 'shelf', 'display', 'label', 'text', 'logo',
+    'dishware', 'serveware', 'gastronomy', 'brunch', 'cuisine', 'tableware',
+    'ingredient', 'culinary arts', 'garnish'
   ];
 
   // 🔄 Generic/overlapping terms to suppress
@@ -134,10 +136,10 @@ class FoodDetectionFilter {
   /**
    * 📈 Step 2: Apply confidence thresholds
    */
-  private applyConfidenceThresholds(items: DetectedItem[]): DetectedItem[] {
+   private applyConfidenceThresholds(items: DetectedItem[]): DetectedItem[] {
     const filtered = items.filter(item => {
-      // Use confidence > 75% unless fewer than 2 items detected
-      const threshold = items.length < 2 ? 0.6 : 0.75;
+      // Use confidence > 92% to eliminate vague labels
+      const threshold = items.length < 2 ? 0.6 : 0.92;
       const hasGoodConfidence = item.confidence >= threshold || item.score >= threshold;
       
       if (!hasGoodConfidence) {
