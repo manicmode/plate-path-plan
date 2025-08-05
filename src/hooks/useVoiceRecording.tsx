@@ -10,6 +10,7 @@ interface UseVoiceRecordingReturn {
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<string | null>;
   transcribedText: string | null;
+  isVoiceRecordingSupported: () => boolean;
 }
 
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
@@ -20,6 +21,29 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Check if voice recording is supported
+  const isVoiceRecordingSupported = useCallback(() => {
+    // Check for secure context (HTTPS required for microphone access)
+    if (!window.isSecureContext) {
+      console.warn('Voice recording requires HTTPS');
+      return false;
+    }
+
+    // Check for getUserMedia support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('getUserMedia not supported');
+      return false;
+    }
+
+    // Check for MediaRecorder support
+    if (!window.MediaRecorder) {
+      console.warn('MediaRecorder not supported');
+      return false;
+    }
+
+    return true;
+  }, []);
 
   // Timer effect to track recording duration
   useEffect(() => {
@@ -45,7 +69,14 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   }, [isRecording]);
 
   const startRecording = useCallback(async () => {
+    // Check browser compatibility first
+    if (!isVoiceRecordingSupported()) {
+      toast.error('Voice recording is not supported in this browser or requires HTTPS');
+      return;
+    }
+
     try {
+      console.log('Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           sampleRate: 44100,
@@ -55,6 +86,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
           autoGainControl: true
         }
       });
+      
+      console.log('Microphone access granted, creating MediaRecorder...');
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -72,9 +105,25 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       toast.success('🎤 Recording started...');
     } catch (error) {
       console.error('Error starting recording:', error);
-      toast.error('Could not access microphone. Please check permissions.');
+      
+      // Provide detailed error messages based on error type
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          toast.error('Microphone access denied. Please allow microphone permissions and try again.');
+        } else if (error.name === 'NotFoundError') {
+          toast.error('No microphone found. Please connect a microphone and try again.');
+        } else if (error.name === 'NotReadableError') {
+          toast.error('Microphone is being used by another application. Please close other apps and try again.');
+        } else if (error.name === 'OverconstrainedError') {
+          toast.error('Microphone settings are incompatible. Please try again.');
+        } else {
+          toast.error(`Microphone error: ${error.message}`);
+        }
+      } else {
+        toast.error('Could not access microphone. Please check permissions.');
+      }
     }
-  }, []);
+  }, [isVoiceRecordingSupported]);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
     return new Promise((resolve) => {
@@ -97,6 +146,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
             
             try {
               // Call Supabase function for voice-to-text transcription
+              // TODO: Verify and test the Supabase voice-to-text edge function
               const { data, error } = await supabase.functions.invoke('voice-to-text', {
                 body: { audio: base64Audio }
               });
@@ -136,6 +186,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     });
   }, [isRecording]);
 
+  // TODO: Whitelist the voice recording activity in security validation
+  
   return {
     isRecording,
     isProcessing,
@@ -143,5 +195,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     startRecording,
     stopRecording,
     transcribedText,
+    isVoiceRecordingSupported,
   };
 };
