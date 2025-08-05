@@ -72,7 +72,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       fiber: validatedData.fiber || 0,
       sugar: validatedData.sugar || 0,
       sodium: validatedData.sodium || 0,
-      confidence: 100,
+      confidence: 100, // Manual entries have 100% confidence (integer)
       timestamp: new Date(),
       confirmed: false,
       barcode: validatedData.barcode,
@@ -80,6 +80,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       ingredientsAvailable: false,
       isManualEntry: true
     };
+
+    console.log('🔍 Manual Log Debug - Created food data:', {
+      name: foodData.name,
+      confidence: foodData.confidence,
+      isManualEntry: foodData.isManualEntry
+    });
 
     onSave(foodData);
     onClose();

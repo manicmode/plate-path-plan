@@ -49,6 +49,16 @@ export const useNutritionPersistence = () => {
     if (!user || !food.confirmed) return null;
 
     try {
+      // Ensure confidence is always an integer for database compatibility
+      const confidenceInteger = food.confidence ? Math.round(food.confidence) : 100;
+      
+      console.log('🔍 Manual Log Debug - Food data before database insert:', {
+        name: food.name,
+        confidence: food.confidence,
+        confidenceInteger,
+        calories: food.calories
+      });
+
       const { data, error } = await supabase
         .from('nutrition_logs')
         .insert({
@@ -62,14 +72,14 @@ export const useNutritionPersistence = () => {
           sugar: food.sugar,
           sodium: food.sodium,
           saturated_fat: food.saturated_fat || (food.fat * 0.3), // Fallback: 30% of total fat
-          confidence: food.confidence,
+          confidence: confidenceInteger, // Use integer version
           image_url: food.image,
           created_at: food.timestamp.toISOString()
         })
         .select();
 
       if (error) throw error;
-      console.log('Food saved to database:', food.name);
+      console.log('✅ Food saved to database successfully:', food.name);
       
       // Score the meal quality
       const scoringResult = await scoreMealAfterInsert(data, error);
