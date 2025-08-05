@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react';
+import { logSecurityEvent, SECURITY_EVENTS } from '@/lib/securityLogger';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -21,12 +22,27 @@ export default function ResetPassword() {
   const [isValidToken, setIsValidToken] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
 
-  // Extract code and type from URL query parameters
-// ✅ Extract token and type from URL query parameters
-const queryParams = new URLSearchParams(window.location.search);
-const access_token = queryParams.get('code'); // Supabase sends `code`, not `access_token`
-const type = queryParams.get('type');
-const email = queryParams.get('email'); 
+  // Extract code and type from URL query parameters with enhanced security validation
+  const queryParams = new URLSearchParams(window.location.search);
+  const access_token = queryParams.get('code'); // Supabase sends `code`, not `access_token`
+  const type = queryParams.get('type');
+  const email = queryParams.get('email');
+
+  // Security validation - log suspicious reset attempts
+  useEffect(() => {
+    if (type !== 'recovery' || !access_token || !email) {
+      logSecurityEvent({
+        eventType: SECURITY_EVENTS.INVALID_REQUEST,
+        eventDetails: { 
+          type, 
+          hasToken: !!access_token, 
+          hasEmail: !!email,
+          context: 'password_reset_invalid_params'
+        },
+        severity: 'medium'
+      });
+    }
+  }, [type, access_token, email]);
 
 
 

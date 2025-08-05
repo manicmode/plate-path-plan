@@ -948,7 +948,7 @@ export type Database = {
           id: string
           image_url: string | null
           raw_response: Json | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           confidence_scores?: number[] | null
@@ -957,7 +957,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           raw_response?: Json | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           confidence_scores?: number[] | null
@@ -966,7 +966,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           raw_response?: Json | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1789,7 +1789,7 @@ export type Database = {
           source: string | null
           sugar: number | null
           trigger_tags: string[] | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           calories?: number | null
@@ -1813,7 +1813,7 @@ export type Database = {
           source?: string | null
           sugar?: number | null
           trigger_tags?: string[] | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           calories?: number | null
@@ -1837,7 +1837,7 @@ export type Database = {
           source?: string | null
           sugar?: number | null
           trigger_tags?: string[] | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

@@ -6,6 +6,7 @@ import { Camera, Upload, Check, X, Sparkles, Mic, MicOff, Edit3, ScanBarcode, Fi
 import { useNutrition } from '@/contexts/NutritionContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { sendToLogVoice } from '@/integrations/logVoice';
@@ -142,6 +143,7 @@ const CameraPage = () => {
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
   const { playFoodLogConfirm } = useSound();
+  const { user } = useAuth();
 
   // Effect to handle reset from navigation
   useEffect(() => {
@@ -1179,6 +1181,7 @@ const CameraPage = () => {
         const { data, error } = await supabase
           .from('nutrition_logs')
           .insert({
+            user_id: user?.id,
             food_name: food.name,
             calories: food.calories,
             protein: food.protein,
@@ -1376,6 +1379,7 @@ const CameraPage = () => {
       const { data, error } = await supabase
         .from('nutrition_logs')
         .insert({
+          user_id: user?.id,
           food_name: foodItem.name,
           calories: foodItem.calories,
           protein: foodItem.protein,
