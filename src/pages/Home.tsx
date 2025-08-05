@@ -1390,42 +1390,43 @@ const Home = () => {
                   };
                   
                   return (
-                    <Card
-                      key={macro.name}
-                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-56' : 'h-60'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
-                      style={{ animationDelay: `${index * 100}ms` }}
-                      onClick={() => openInsights({ 
-                        type: macro.name.toLowerCase(), 
-                        name: macro.name, 
-                        color: getProgressColor(macro.name) 
-                      })}
-                    >
-                      <CardContent className="flex flex-col justify-between h-full p-0">
-                        <div className={`${isMobile ? 'p-5' : 'p-6'} text-center flex flex-col justify-between h-full`}>
-                          <div className="flex-shrink-0">
-                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-                              <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+                    <div key={macro.name} className="flex flex-col space-y-3">
+                      <Card
+                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
+                        style={{ animationDelay: `${index * 100}ms` }}
+                        onClick={() => openInsights({ 
+                          type: macro.name.toLowerCase(), 
+                          name: macro.name, 
+                          color: getProgressColor(macro.name) 
+                        })}
+                      >
+                        <CardContent className="flex flex-col justify-center h-full p-0">
+                          <div className={`${isMobile ? 'p-5' : 'p-6'} text-center flex flex-col justify-center h-full`}>
+                            <div className="flex-shrink-0">
+                              <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${macro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                                <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+                              </div>
+                              <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{macro.name}</h4>
                             </div>
-                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{macro.name}</h4>
+                            <div className="flex-grow flex flex-col justify-center space-y-2">
+                              <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
+                                {macro.current.toFixed(0)}{macro.unit}
+                              </p>
+                              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                                of {macro.target}{macro.unit}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-grow flex flex-col justify-center space-y-2">
-                            <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
-                              {macro.current.toFixed(0)}{macro.unit}
-                            </p>
-                            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                              of {macro.target}{macro.unit}
-                            </p>
-                          </div>
-                          {/* Positioned slider with proper spacing and matching colors */}
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
-                            <div
-                              className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                      {/* Progress bar positioned outside the card */}
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 flex-shrink-0">
+                        <div
+                          className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -1443,7 +1444,7 @@ const Home = () => {
       </div>
 
       {/* Fancy Separator Line */}
-      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+      <div className="flex items-center justify-center px-4 sm:px-8 my-16">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
@@ -1481,42 +1482,43 @@ const Home = () => {
                   const Icon = micro.icon;
                   
                   return (
-                    <Card
-                      key={micro.name}
-                      className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-56' : 'h-60'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
-                      style={{ animationDelay: `${index * 100}ms` }}
-                      onClick={() => openInsights({ 
-                        type: micro.name.toLowerCase(), 
-                        name: micro.name, 
-                        color: micro.color 
-                      })}
-                    >
-                      <CardContent className="flex flex-col justify-between h-full p-0">
-                        <div className={`${isMobile ? 'p-5' : 'p-6'} text-center flex flex-col justify-between h-full`}>
-                          <div className="flex-shrink-0">
-                            <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${micro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
-                              <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+                    <div key={micro.name} className="flex flex-col space-y-3">
+                      <Card
+                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-48' : 'h-52'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
+                        style={{ animationDelay: `${index * 100}ms` }}
+                        onClick={() => openInsights({ 
+                          type: micro.name.toLowerCase(), 
+                          name: micro.name, 
+                          color: micro.color 
+                        })}
+                      >
+                        <CardContent className="flex flex-col justify-center h-full p-0">
+                          <div className={`${isMobile ? 'p-5' : 'p-6'} text-center flex flex-col justify-center h-full`}>
+                            <div className="flex-shrink-0">
+                              <div className={`${isMobile ? 'w-14 h-14' : 'w-16 h-16'} bg-gradient-to-br ${micro.color} rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg`}>
+                                <Icon className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'} text-white`} />
+                              </div>
+                              <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{micro.name}</h4>
                             </div>
-                            <h4 className={`font-bold text-gray-900 dark:text-white mb-2 ${isMobile ? 'text-base' : 'text-lg'} leading-tight`}>{micro.name}</h4>
+                            <div className="flex-grow flex flex-col justify-center space-y-2">
+                              <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
+                                {micro.current.toFixed(0)}{micro.unit}
+                              </p>
+                              <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
+                                of {micro.target}{micro.unit}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-grow flex flex-col justify-center space-y-2">
-                            <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold neon-text leading-tight`}>
-                              {micro.current.toFixed(0)}{micro.unit}
-                            </p>
-                            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-500 dark:text-gray-400 leading-tight`}>
-                              of {micro.target}{micro.unit}
-                            </p>
-                          </div>
-                          {/* Progress bar */}
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-4 flex-shrink-0">
-                            <div
-                              className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                      {/* Progress bar positioned outside the card */}
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 flex-shrink-0">
+                        <div
+                          className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -1534,7 +1536,7 @@ const Home = () => {
       </div>
 
       {/* Fancy Separator Line */}
-      <div className="flex items-center justify-center px-4 sm:px-8 my-8">
+      <div className="flex items-center justify-center px-4 sm:px-8 my-16">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
         <div className="mx-4">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center border border-gray-300 dark:border-gray-600">
