@@ -1057,9 +1057,44 @@ const Home = () => {
 
       {/* SmartLog AI Predictions - Separate section with custom spacing */}
       <div className="mt-16 mb-6 sm:mb-8 px-2 sm:px-4">
-        <SmartLogAI onFoodSelect={(food) => {
-          console.log('AI predicted food selected:', food);
-          // TODO: Integrate with actual food logging system
+        <SmartLogAI onFoodSelect={async (food) => {
+          try {
+            console.log('AI predicted food selected:', food);
+            
+            // Create food item with estimated nutritional values
+            const foodItem = {
+              name: food.name,
+              food_name: food.name,
+              calories: food.calories,
+              protein: Math.round(food.calories * 0.15 / 4), // 15% of calories from protein
+              carbs: Math.round(food.calories * 0.45 / 4), // 45% from carbs
+              fat: Math.round(food.calories * 0.35 / 9), // 35% from fat
+              fiber: Math.round(food.calories / 100), // Rough estimate
+              sugar: Math.round(food.calories * 0.1 / 4), // 10% from sugar
+              sodium: Math.round(food.calories * 0.5), // Rough estimate in mg
+              saturated_fat: Math.round(food.calories * 0.1 / 9), // 10% of fat calories
+              serving_size: '1 serving',
+              source: 'SmartLog AI',
+              quality_score: 70, // Default moderate score
+              confidence: 0.8
+            };
+
+            await addFood(foodItem);
+            
+            toast({
+              title: "Food logged successfully! 🎉",
+              description: `${food.name} (${food.calories} calories) added to your daily log`,
+            });
+
+            playFoodLogConfirm();
+          } catch (error) {
+            console.error('Error logging AI food:', error);
+            toast({
+              title: "Logging failed",
+              description: "Unable to log food. Please try again.",
+              variant: "destructive",
+            });
+          }
         }} />
       </div>
 

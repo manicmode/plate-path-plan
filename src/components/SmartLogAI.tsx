@@ -34,7 +34,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
 
   // Fetch saved foods (most frequently logged)
   const { data: savedFoods } = useQuery({
-    queryKey: ['saved-foods', user?.id],
+    queryKey: ['saved-foods', user?.id, activeTab],
     queryFn: async () => {
       if (!user?.id) return [];
       
@@ -75,7 +75,7 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
 
   // Fetch recent foods
   const { data: recentFoods } = useQuery({
-    queryKey: ['recent-foods', user?.id],
+    queryKey: ['recent-foods', user?.id, activeTab],
     queryFn: async () => {
       if (!user?.id) return [];
       
