@@ -230,8 +230,7 @@ Output:
 
 3. If no clear food items are mentioned, return empty items array.
 4. Be specific with food names but keep them simple.
-5. Include preparation methods only when clearly mentioned.
-
+5. Include preparation methods only when clearly mentioned.`
           },
           {
             role: 'user',
