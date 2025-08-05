@@ -1207,7 +1207,7 @@ const Home = () => {
         </div>
 
         {/* Steps and Exercise Cards Container */}
-        <div className={`grid grid-cols-2 gap-3 items-stretch`}>
+        <div className={`grid grid-cols-2 gap-3 items-stretch mt-8`}>
           {/* Steps Tracker Card - Mobile Optimized */}
           <Card 
             className="border-0 rounded-2xl overflow-hidden cursor-pointer h-36"
