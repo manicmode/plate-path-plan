@@ -4815,15 +4815,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      log_security_event_secure: {
-        Args: {
-          event_type_param: string
-          event_details_param?: Json
-          user_id_param?: string
-          severity_param?: string
-        }
-        Returns: undefined
-      }
       log_security_violation: {
         Args: {
           violation_type: string
@@ -4904,14 +4895,6 @@ export type Database = {
           target_user_id: string
           new_role: Database["public"]["Enums"]["app_role"]
         }
-        Returns: boolean
-      }
-      validate_uuid_input_secure: {
-        Args: { input_value: string; context_name?: string }
-        Returns: string
-      }
-      validate_uuid_secure: {
-        Args: { input_value: string }
         Returns: boolean
       }
     }
