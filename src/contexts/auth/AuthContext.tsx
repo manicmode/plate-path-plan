@@ -18,12 +18,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return children as React.ReactElement;
   }
 
+  // Enhanced mobile debugging
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   const [user, setUser] = ReactModule.useState<ExtendedUser | null>(null);
   const [session, setSession] = ReactModule.useState<Session | null>(null);
   const [loading, setLoading] = ReactModule.useState(true);
   const [signingOut, setSigningOut] = ReactModule.useState(false);
   const [profileLoading, setProfileLoading] = ReactModule.useState(false);
   const [profileError, setProfileError] = ReactModule.useState<string | null>(null);
+
+  console.log('🔐 AuthContext initialized', { 
+    isMobile, 
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent.substring(0, 50)
+  });
 
 
   // Load user profile in background
@@ -143,6 +152,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     let isMounted = true;
     
+    console.log('🔐 Initializing auth state...', { 
+      isMobile, 
+      timestamp: new Date().toISOString() 
+    });
+    
     // Initialize auth session check and state listener in parallel (not sequential)
     const initializeAuth = async () => {
       try {
@@ -188,13 +202,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Set initial session state immediately
         const { data: { session } } = sessionResponse;
+        console.log('🔐 Auth initialization complete', { 
+          hasSession: !!session, 
+          hasUser: !!session?.user,
+          isMobile,
+          timestamp: new Date().toISOString() 
+        });
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
         return authListener.data.subscription;
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('🚨 Error initializing auth:', error, { 
+          isMobile, 
+          timestamp: new Date().toISOString() 
+        });
         if (isMounted) {
           setLoading(false);
         }

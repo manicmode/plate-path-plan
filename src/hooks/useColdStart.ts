@@ -6,13 +6,29 @@ const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 export const useColdStart = () => {
   const [isColdStart, setIsColdStart] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  
+  // Mobile detection for enhanced debugging
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   useEffect(() => {
+    console.log('🚀 Cold start detection starting...', { 
+      isMobile, 
+      timestamp: new Date().toISOString() 
+    });
+    
     const checkColdStart = () => {
       try {
         const sessionData = sessionStorage.getItem(COLD_START_KEY);
         const lastActive = localStorage.getItem('last_active');
         const now = Date.now();
+
+        console.log('🚀 Cold start check:', { 
+          hasSessionData: !!sessionData, 
+          lastActive: lastActive ? new Date(parseInt(lastActive)).toISOString() : null,
+          timeSinceActive: lastActive ? now - parseInt(lastActive) : null,
+          isMobile,
+          timestamp: new Date().toISOString()
+        });
 
         // Check if this is a cold start
         const isCold = !sessionData || 
@@ -27,13 +43,28 @@ export const useColdStart = () => {
           localStorage.setItem('last_active', now.toString());
         }
 
-        // Minimum display time to ensure splash is visible
+        console.log('🚀 Cold start result:', { 
+          isColdStart: isCold, 
+          isMobile,
+          timestamp: new Date().toISOString()
+        });
+
+        // Minimum display time to ensure splash is visible, shortened for mobile
+        const minDisplayTime = isMobile ? 2000 : 3000; // Shorter for mobile
         setTimeout(() => {
+          console.log('🚀 Cold start ready timer complete', { 
+            isMobile, 
+            minDisplayTime,
+            timestamp: new Date().toISOString() 
+          });
           setIsReady(true);
-        }, 3000); // 3 seconds minimum, splash screen will control the full duration
+        }, minDisplayTime);
 
       } catch (error) {
-        console.warn('Cold start detection failed:', error);
+        console.warn('🚨 Cold start detection failed:', error, { 
+          isMobile, 
+          timestamp: new Date().toISOString() 
+        });
         setIsColdStart(false);
         setIsReady(true);
       }

@@ -28,8 +28,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
   );
   const { playStartupChime, isEnabled } = useSound();
   
+  // Mobile detection for debugging
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   // Start preloading home data immediately when splash becomes visible
   const { isReady: homeDataReady } = useDeferredHomeDataLoading();
+
+  console.log('💫 SplashScreen render:', { 
+    isVisible, 
+    homeDataReady, 
+    isMobile,
+    theme,
+    timestamp: new Date().toISOString() 
+  });
 
   // Play startup chime when splash becomes visible (only on cold start)
   useEffect(() => {
@@ -64,16 +75,25 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
     if (!isVisible) return;
     
     const timer = setTimeout(() => {
+      console.log('💫 Splash timer triggered:', { 
+        homeDataReady, 
+        isMobile,
+        timestamp: new Date().toISOString() 
+      });
+      
       // Only complete splash when home data is ready too
       if (homeDataReady) {
+        console.log('💫 Completing splash (data ready)');
         // Add extra buffer to ensure smooth transition
         setTimeout(() => {
           onComplete();
         }, 1000);
       } else {
         // If home data isn't ready yet, check every 100ms
+        console.log('💫 Waiting for home data to be ready...');
         const readyCheck = setInterval(() => {
           if (homeDataReady) {
+            console.log('💫 Home data ready, completing splash');
             clearInterval(readyCheck);
             // Add buffer for smooth transition
             setTimeout(() => {
@@ -82,18 +102,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isVisible, onComplet
           }
         }, 100);
         
-        // Force complete after max 10 seconds to avoid infinite loading
+        // Force complete after max time to avoid infinite loading
         const forceTimer = setTimeout(() => {
+          console.log('💫 Force completing splash (timeout)');
           clearInterval(readyCheck);
           onComplete();
-        }, 3500); // Additional 3.5s max wait
+        }, 5000); // Reduced from 3500ms to 5000ms for mobile
         
         return () => {
           clearInterval(readyCheck);
           clearTimeout(forceTimer);
         };
       }
-    }, 6500); // Extended to 6.5s for better quote readability
+    }, 5000); // Reduced from 6.5s to 5s for mobile for faster startup
 
     return () => clearTimeout(timer);
   }, [isVisible, onComplete, homeDataReady]);

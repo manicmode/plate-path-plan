@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import * as React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -17,7 +18,7 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-console.log('App initialization starting...', {
+console.log('🔍 App initialization starting...', {
   isMobile,
   isIOS,
   isSafari,
@@ -31,8 +32,19 @@ console.log('App initialization starting...', {
       return `blocked: ${e.message}`;
     }
   })(),
+  sessionStorage: (() => {
+    try {
+      sessionStorage.setItem('__test__', 'test');
+      sessionStorage.removeItem('__test__');
+      return 'available';
+    } catch (e) {
+      return `blocked: ${e.message}`;
+    }
+  })(),
   url: window.location.href,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
+  documentReadyState: document.readyState,
+  windowLoaded: document.readyState === 'complete'
 });
 
 // Additional mobile-specific checks
@@ -69,9 +81,9 @@ if (!rootElement) {
 
 const root = createRoot(rootElement);
 
-// Add global error handlers for mobile debugging
+// Enhanced global error handlers for mobile debugging
 window.addEventListener('error', (event) => {
-  console.error('Global error caught:', {
+  console.error('🚨 Global error caught:', {
     message: event.message,
     filename: event.filename,
     lineno: event.lineno,
@@ -79,27 +91,37 @@ window.addEventListener('error', (event) => {
     error: event.error,
     stack: event.error?.stack,
     isMobile,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    url: window.location.href
   });
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', {
+  console.error('🚨 Unhandled promise rejection:', {
     reason: event.reason,
     promise: event.promise,
     stack: event.reason?.stack,
     isMobile,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    url: window.location.href
   });
 });
 
-// Add focus/blur handlers to track app state
+// Add visibility change handlers to track app state transitions
 window.addEventListener('focus', () => {
-  console.log('App focused');
+  console.log('🔍 App focused', { timestamp: new Date().toISOString() });
 });
 
 window.addEventListener('blur', () => {
-  console.log('App blurred');
+  console.log('🔍 App blurred', { timestamp: new Date().toISOString() });
+});
+
+document.addEventListener('visibilitychange', () => {
+  console.log('🔍 Visibility changed:', { 
+    hidden: document.hidden, 
+    visibilityState: document.visibilityState,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // For iOS Safari, add specific handlers
@@ -132,8 +154,13 @@ const queryClient = new QueryClient({
   },
 });
 
-// Conditionally wrap with StrictMode for non-mobile devices
-console.log('Rendering app...', { strictMode: !isMobile });
+// Enhanced rendering with mobile debugging
+console.log('🔍 Rendering app...', { 
+  strictMode: !isMobile, 
+  timestamp: new Date().toISOString(),
+  rootElement: !!rootElement,
+  reactVersion: React.version || 'unknown'
+});
 
 root.render(
   <ErrorBoundary>

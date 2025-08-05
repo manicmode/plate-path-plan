@@ -108,6 +108,17 @@ function AppContent() {
   const { isProcessing } = useAuthCallback();
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
+  
+  // Mobile detection for debugging
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  console.log('🔄 AppContent render:', { 
+    isColdStart, 
+    isProcessing, 
+    showMoodModal,
+    isMobile,
+    timestamp: new Date().toISOString() 
+  });
 
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
