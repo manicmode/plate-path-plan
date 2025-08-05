@@ -1329,6 +1329,14 @@ const CameraPage = () => {
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
 
+  
+  // Handler for manual entry from summary panel
+  const handleManualEntryFromSummary = () => {
+    setShowSummaryPanel(false);
+    // Don't reset the selectedImage - keep it visible for reference
+    setShowManualFoodEntry(true);
+  };
+
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
     setShowSummaryPanel(false);
@@ -2099,6 +2107,7 @@ const CameraPage = () => {
           isOpen={showSummaryPanel}
           onClose={() => setShowSummaryPanel(false)}
           onNext={handleSummaryNext}
+          onManualEntry={handleManualEntryFromSummary}
           items={summaryItems}
         />
       )}

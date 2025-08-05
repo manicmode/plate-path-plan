@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, ArrowRight, Info } from 'lucide-react';
+import { CheckCircle, ArrowRight, Info, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export interface SummaryItem {
@@ -18,6 +18,7 @@ interface SummaryReviewPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onNext: (selectedItems: SummaryItem[]) => void;
+  onManualEntry?: () => void;
   items: SummaryItem[];
 }
 
@@ -25,6 +26,7 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
   isOpen,
   onClose,
   onNext,
+  onManualEntry,
   items: initialItems
 }) => {
   const [items, setItems] = useState<SummaryItem[]>(initialItems);
@@ -150,6 +152,20 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
               <p>You'll see individual confirmation screens for each selected item where you can adjust portions and nutrition details.</p>
             </div>
           </div>
+
+          {/* Manual Entry Prompt - Show when 0-3 items detected */}
+          {items.length <= 3 && onManualEntry && (
+            <div className="mb-4">
+              <Button
+                variant="outline"
+                onClick={onManualEntry}
+                className="w-full flex items-center justify-center gap-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Didn't detect everything? Tap here to add the rest manually or describe it.
+              </Button>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3">
