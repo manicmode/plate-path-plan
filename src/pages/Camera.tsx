@@ -2201,30 +2201,6 @@ const CameraPage = () => {
       <ManualFoodEntry
         isOpen={showManualFoodEntry}
         onClose={() => setShowManualFoodEntry(false)}
-        onSave={(foodData) => {
-          setShowManualFoodEntry(false);
-          
-          // Check if we're in multi-AI detection mode
-          if (showMultiAIDetection) {
-            // Add to multi-AI results instead of immediate confirmation
-            const detectedFood = {
-              name: foodData.name,
-              confidence: 100, // Manual entry is 100% confident
-              sources: ['Manual'],
-              calories: foodData.calories,
-              portion: foodData.serving || '1 serving',
-              isEstimate: false
-            };
-            handleAddToMultiAIResults(detectedFood);
-            toast.success(`Added ${foodData.name} to detected items`);
-          } else {
-            // Normal manual entry flow
-            setRecognizedFoods([foodData]);
-            setShowConfirmation(true);
-            setInputSource('manual');
-          }
-        }}
-        initialBarcode={failedBarcode}
       />
 
       {/* Debug components removed - clean production interface */}
