@@ -205,33 +205,46 @@ serve(async (req) => {
     let prompt = '';
     
     if (useComplexDishFallback) {
-      // Complex dish analysis prompt
-      prompt = `Analyze this cooked meal/complex dish focusing ONLY on edible food items. Identify individual food components separately (e.g., pancakes, toast, avocado, fruit bowl, egg whites) with realistic portion estimates.
+      // Enhanced complex dish analysis prompt
+      prompt = `You are analyzing a breakfast/meal photo. Your task is to identify INDIVIDUAL EDIBLE FOOD ITEMS that are clearly visible.
 
-STRICT FILTERING RULES:
-1. EXCLUDE ALL non-food objects: plates, bowls, forks, knives, spoons, utensils, containers, napkins, tables, glasses, serveware
-2. EXCLUDE abstract food labels like "brunch", "breakfast", "meal", "dish", "cuisine"
-3. FOCUS ONLY on individual edible items you can actually see
-4. Estimate portions in realistic units (e.g., "2 slices toast", "3 pancakes", "½ avocado", "1 cup fruit")
-5. Use clean, simple food names (e.g., "scrambled eggs" not "protein-rich breakfast eggs")
+CRITICAL INSTRUCTIONS:
+1. Look for SEPARATE, DISTINCT food items (e.g., toast, avocado, eggs, fruit, pancakes)
+2. IGNORE all utensils, plates, bowls, cups, napkins, tables, decorations
+3. IGNORE vague terms like "garnish", "topping", "side", "meal", "dish"
+4. Count and describe each food item separately
+5. If you see multiple items of the same food, count them accurately
 
-PORTION ESTIMATION: Be realistic with serving sizes based on typical portions:
-- Bread: count slices (1-2 slices)
-- Pancakes: count pieces (2-4 pancakes)
-- Eggs: count whole eggs or cups for scrambled
-- Fruits: use common measures (½ avocado, 1 banana, ¼ cup berries)
-- Include estimated calories if confident
+WHAT TO LOOK FOR in this image:
+- Sliced bread/toast (count slices)
+- Avocado (sliced or whole portions)
+- Eggs (scrambled, fried, etc.)
+- Pancakes or similar breakfast items
+- Fresh fruit (berries, bananas, etc.)
+- Any other clearly visible food
+
+STRICT FILTERING:
+- NO "garnish" unless you can identify what it actually is (herbs, etc.)
+- NO duplicate entries for the same food item
+- NO utensils or serving dishes
+- Each item must be a real, identifiable food
 
 Input data: ${inputText}
 
 Return a JSON array with objects containing:
-- \`name\`: Clean, specific food name (e.g., "scrambled eggs", "whole wheat toast")
-- \`portion\`: Realistic portion size with units (e.g., "2 slices", "3 pancakes", "½ cup")
-- \`calories\`: Estimated calories if possible (optional)
-- \`confidence\`: Detection confidence as "high", "medium", or "low"
-- \`method\`: "visual_segmentation" or "dish_analysis_fallback"
+- \`name\`: Specific food name (e.g., "avocado slices", "whole wheat toast", "scrambled eggs", "mixed berries")
+- \`portion\`: Realistic portion (e.g., "2 slices", "½ avocado", "1 cup", "3 pancakes")
+- \`calories\`: Estimated calories (required)
+- \`confidence\`: "high", "medium", or "low"
+- \`method\`: "visual_segmentation"
 
-Only include actual edible food items visible in the image.`;
+EXAMPLE output for a breakfast:
+[
+  {"name": "whole wheat toast", "portion": "2 slices", "calories": 160, "confidence": "high", "method": "visual_segmentation"},
+  {"name": "avocado slices", "portion": "½ avocado", "calories": 120, "confidence": "high", "method": "visual_segmentation"},
+  {"name": "scrambled eggs", "portion": "2 eggs", "calories": 140, "confidence": "medium", "method": "visual_segmentation"},
+  {"name": "mixed berries", "portion": "½ cup", "calories": 40, "confidence": "medium", "method": "visual_segmentation"}
+]`;
     } else {
       // Standard analysis prompt  
       prompt = `Analyze this food image focusing ONLY on edible food items. Identify individual items separately with realistic portion estimates.
