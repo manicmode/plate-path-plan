@@ -1361,7 +1361,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
                 {macroCards.map((macro, index) => {
                   const percentage = Math.min((macro.current / macro.target) * 100, 100);
                   const Icon = macro.icon;
@@ -1415,12 +1415,14 @@ const Home = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      {/* Progress bar outside and below the tile */}
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div
-                          className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
-                          style={{ width: `${percentage}%` }}
-                        ></div>
+                      {/* Progress bar outside and below the tile - shorter and centered */}
+                      <div className="flex justify-center">
+                        <div className={`${isMobile ? 'w-24' : 'w-32'} bg-gray-200 dark:bg-gray-700 rounded-full h-2`}>
+                          <div
+                            className={`bg-gradient-to-r ${getProgressColor(macro.name)} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1472,7 +1474,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
                 {micronutrientCards.map((micro, index) => {
                   const percentage = Math.min((micro.current / micro.target) * 100, 100);
                   const Icon = micro.icon;
@@ -1503,12 +1505,14 @@ const Home = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      {/* Progress bar outside and below the tile */}
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div
-                          className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
-                          style={{ width: `${percentage}%` }}
-                        ></div>
+                      {/* Progress bar outside and below the tile - shorter and centered */}
+                      <div className="flex justify-center">
+                        <div className={`${isMobile ? 'w-24' : 'w-32'} bg-gray-200 dark:bg-gray-700 rounded-full h-2`}>
+                          <div
+                            className={`bg-gradient-to-r ${micro.color} h-2 rounded-full transition-all duration-1500 shadow-sm`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1560,7 +1564,7 @@ const Home = () => {
           
           <CollapsibleContent className="space-y-6">
             <div className="flex justify-center pt-6">
-              <div className={`grid grid-cols-2 ${isMobile ? 'gap-4 max-w-sm' : 'gap-6 max-w-4xl'} w-full`}>
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-x-4 gap-y-8 max-w-sm' : 'gap-x-6 gap-y-10 max-w-4xl'} w-full`}>
                 {realToxinData.map((item, index) => {
                   const isOverThreshold = item.current > item.threshold;
                   
