@@ -25,12 +25,39 @@ const DUMMY_PREDICTIONS: FoodPrediction[] = [
   { name: "Baked Beans", time: "8:00 PM", calories: 210 },
 ];
 
+// Fallback foods for new users with no log history
+const FALLBACK_FOODS: FoodPrediction[] = [
+  { name: "Eggs", time: "8:00 AM", calories: 140 },
+  { name: "Chicken Breast", time: "12:30 PM", calories: 185 },
+  { name: "Salad", time: "1:00 PM", calories: 80 },
+  { name: "Whole Grain Bread", time: "7:30 AM", calories: 120 },
+  { name: "Avocado", time: "10:00 AM", calories: 160 },
+  { name: "Apple", time: "3:00 PM", calories: 95 },
+];
+
 type TabType = 'smart' | 'saved' | 'recent';
 
 export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('smart');
+
+  // Fetch user's total log count to determine if they're new
+  const { data: logCount } = useQuery({
+    queryKey: ['user-log-count', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      
+      const { count, error } = await supabase
+        .from('nutrition_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user?.id
+  });
 
   // Fetch saved foods (most frequently logged)
   const { data: savedFoods } = useQuery({
@@ -60,8 +87,8 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
         return acc;
       }, {});
 
-      // Sort by frequency and take top 6
-      return Object.entries(foodCounts)
+      // Sort by frequency and get actual saved foods
+      const actualSavedFoods = Object.entries(foodCounts)
         .sort(([,a], [,b]) => b.count - a.count)
         .slice(0, 6)
         .map(([name, data]): FoodPrediction => ({
@@ -69,6 +96,15 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
           time: data.lastTime,
           calories: data.calories
         }));
+
+      // If user has few logs, mix with fallback foods to always show 6 items
+      if (actualSavedFoods.length < 6) {
+        const remainingSlots = 6 - actualSavedFoods.length;
+        const fallbackToAdd = FALLBACK_FOODS.slice(0, remainingSlots);
+        return [...actualSavedFoods, ...fallbackToAdd];
+      }
+
+      return actualSavedFoods;
     },
     enabled: !!user?.id && activeTab === 'saved'
   });
@@ -88,25 +124,52 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
 
       if (error) throw error;
 
-      return data.map((item): FoodPrediction => ({
+      const actualRecentFoods = data.map((item): FoodPrediction => ({
         name: item.food_name,
         time: new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         calories: item.calories || 0
       }));
+
+      // If user has few recent logs, mix with fallback foods to always show 6 items
+      if (actualRecentFoods.length < 6) {
+        const remainingSlots = 6 - actualRecentFoods.length;
+        const fallbackToAdd = FALLBACK_FOODS.slice(0, remainingSlots);
+        return [...actualRecentFoods, ...fallbackToAdd];
+      }
+
+      return actualRecentFoods;
     },
     enabled: !!user?.id && activeTab === 'recent'
   });
 
+  // Smart tab: Mix actual AI predictions with fallbacks based on user's log history
+  const getSmartPredictions = (): FoodPrediction[] => {
+    // If user is very new (less than 5 logs), show mostly fallback foods
+    if (!logCount || logCount < 5) {
+      return FALLBACK_FOODS;
+    }
+    
+    // If user has some history but not much (5-15 logs), mix predictions with fallbacks
+    if (logCount < 15) {
+      const actualPredictions = DUMMY_PREDICTIONS.slice(0, 3);
+      const fallbacksToAdd = FALLBACK_FOODS.slice(0, 3);
+      return [...actualPredictions, ...fallbacksToAdd];
+    }
+    
+    // User has good history, show full AI predictions
+    return DUMMY_PREDICTIONS;
+  };
+
   const getCurrentData = (): FoodPrediction[] => {
     switch (activeTab) {
       case 'smart':
-        return DUMMY_PREDICTIONS;
+        return getSmartPredictions();
       case 'saved':
-        return savedFoods || [];
+        return savedFoods || FALLBACK_FOODS; // Always show fallbacks if no saved foods
       case 'recent':
-        return recentFoods || [];
+        return recentFoods || FALLBACK_FOODS; // Always show fallbacks if no recent foods
       default:
-        return DUMMY_PREDICTIONS;
+        return getSmartPredictions();
     }
   };
 
@@ -224,15 +287,15 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
         </div>
 
         <TabsContent value="smart" className="mt-0">
-          <FoodGrid data={DUMMY_PREDICTIONS} currentTab="smart" />
+          <FoodGrid data={getSmartPredictions()} currentTab="smart" />
         </TabsContent>
 
         <TabsContent value="saved" className="mt-0">
-          <FoodGrid data={savedFoods || []} currentTab="saved" />
+          <FoodGrid data={savedFoods || FALLBACK_FOODS} currentTab="saved" />
         </TabsContent>
 
         <TabsContent value="recent" className="mt-0">
-          <FoodGrid data={recentFoods || []} currentTab="recent" />
+          <FoodGrid data={recentFoods || FALLBACK_FOODS} currentTab="recent" />
         </TabsContent>
       </Tabs>
     </div>
