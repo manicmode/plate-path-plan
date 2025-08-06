@@ -35,15 +35,43 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     console.log('Starting meditation nudge analysis for all users')
 
-    // Get all users from auth.users
-    const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+    // Get all users from auth.users (admin function)
+    const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
     
     if (usersError) {
       console.error('Error fetching users:', usersError)
@@ -72,7 +100,7 @@ serve(async (req) => {
         let nudgeReason = ''
 
         // Check for low mood in last 3 days
-        const { data: moodLogs, error: moodError } = await supabase
+        const { data: moodLogs, error: moodError } = await supabaseAdmin
           .from('mood_logs')
           .select('mood, created_at')
           .eq('user_id', user.id)
@@ -89,7 +117,7 @@ serve(async (req) => {
 
         // Check for intense exercise in last 3 days
         if (!shouldNudge) {
-          const { data: exerciseLogs, error: exerciseError } = await supabase
+          const { data: exerciseLogs, error: exerciseError } = await supabaseAdmin
             .from('exercise_logs')
             .select('intensity, created_at')
             .eq('user_id', user.id)
@@ -107,7 +135,7 @@ serve(async (req) => {
 
         // Check for missed meditation in last 2 days
         if (!shouldNudge) {
-          const { data: recoveryLogs, error: recoveryError } = await supabase
+          const { data: recoveryLogs, error: recoveryError } = await supabaseAdmin
             .from('recovery_logs')
             .select('completed_at')
             .eq('user_id', user.id)
@@ -125,7 +153,7 @@ serve(async (req) => {
 
         // Insert nudge if conditions are met
         if (shouldNudge) {
-          const { error: insertError } = await supabase
+          const { error: insertError } = await supabaseAdmin
             .from('ai_nudges')
             .insert({
               user_id: user.id,
