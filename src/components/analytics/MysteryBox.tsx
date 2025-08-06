@@ -65,6 +65,11 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
     
     if (!canClaimBox) {
       console.log('❌ Cannot claim box - not ready yet');
+      // Show feedback when clicked during cooldown
+      if (timeUntilNextBox > 0) {
+        const timeLeft = formatTimeLeft(timeUntilNextBox);
+        console.log(`⏰ Next box available in: ${timeLeft}`);
+      }
       return;
     }
     
@@ -78,6 +83,8 @@ export function MysteryBox({ position = 'top-right', className }: MysteryBoxProp
         console.log('🎉 Reward claimed:', reward);
         setClaimedReward(reward);
         setShowModal(true);
+      } else {
+        console.log('⚠️ No reward received - this should not happen');
       }
       setIsAnimating(false);
     }, 300);

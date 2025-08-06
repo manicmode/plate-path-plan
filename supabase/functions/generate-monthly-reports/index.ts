@@ -182,6 +182,9 @@ Deno.serve(async (req) => {
         } else {
           console.log(`✅ Successfully generated monthly report for user ${user.user_id}`);
           successCount++;
+          
+          // 📱 Send push notification after successful report creation
+          await sendMonthlyReportNotification(supabase, user.user_id, title);
         }
 
       } catch (error) {
@@ -821,4 +824,48 @@ function generateRecommendations(nutrition: any, mood: any, exercise: any, hydra
   if (nutrition.avgQualityScore < 6) recommendations.push("Choose more whole foods");
   
   return recommendations.slice(0, 4);
+}
+
+async function sendMonthlyReportNotification(supabase: any, userId: string, reportTitle: string) {
+  try {
+    console.log(`📱 Sending monthly report notification to user ${userId}`);
+    
+    // Get user's FCM token for push notifications
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('fcm_token, first_name')
+      .eq('user_id', userId)
+      .single();
+    
+    if (!profile?.fcm_token) {
+      console.log(`⚠️ No FCM token found for user ${userId}, skipping push notification`);
+      return;
+    }
+    
+    // Send push notification
+    const notificationData = {
+      token: profile.fcm_token,
+      title: "🎉 Monthly Report Ready!",
+      body: `Your ${reportTitle} health report is now available to view.`,
+      data: {
+        type: 'monthly_report',
+        userId: userId,
+        reportTitle: reportTitle,
+        url: '/my-reports'
+      }
+    };
+    
+    const { error: pushError } = await supabase.functions.invoke('send-push-notification', {
+      body: notificationData
+    });
+    
+    if (pushError) {
+      console.error(`❌ Failed to send push notification to user ${userId}:`, pushError);
+    } else {
+      console.log(`✅ Successfully sent monthly report notification to user ${userId}`);
+    }
+    
+  } catch (error) {
+    console.error(`💥 Error sending notification to user ${userId}:`, error);
+  }
 }
