@@ -4955,25 +4955,11 @@ export type Database = {
         Returns: undefined
       }
       log_security_event: {
-        Args:
-          | { event_data: Json }
-          | {
-              event_type_param: string
-              event_details_param?: Json
-              user_id_param?: string
-              severity_param?: string
-            }
+        Args: { event_data: Json }
         Returns: undefined
       }
       log_security_violation: {
-        Args:
-          | { violation_type: string; details: string; metadata?: Json }
-          | {
-              violation_type: string
-              violation_details: Json
-              user_context?: string
-              severity_level?: string
-            }
+        Args: { violation_type: string; details: string; metadata?: Json }
         Returns: undefined
       }
       process_yearly_hall_of_fame: {
