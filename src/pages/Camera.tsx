@@ -147,6 +147,7 @@ const CameraPage = () => {
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
   
   // Processing state moved from duplicate declaration below
+  const [isProcessingFood, setIsProcessingFood] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
