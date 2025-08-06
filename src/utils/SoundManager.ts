@@ -176,7 +176,12 @@ class SoundManager {
       if (!this.audioContext) {
         try {
           if (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined') {
-            this.audioContext = new (AudioContext || (window as any).webkitAudioContext)();
+            // Configure AudioContext for non-interrupting, interactive audio
+            // latencyHint: 'interactive' ensures low latency for UI sounds without interrupting background audio
+            this.audioContext = new (AudioContext || (window as any).webkitAudioContext)({
+              latencyHint: 'interactive',
+              sampleRate: 44100  // Standard sample rate for compatibility
+            });
             
             // Add state change listener for monitoring
             this.audioContext.onstatechange = () => {
@@ -184,6 +189,8 @@ class SoundManager {
                 console.log('⚠️ AudioContext suspended on mobile');
               }
             };
+            
+            console.log('✅ AudioContext created with interactive latency hint for non-interrupting playback');
           } else {
             console.warn('❌ AudioContext not available in this browser');
           }

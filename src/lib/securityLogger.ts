@@ -11,10 +11,12 @@ export const logSecurityEvent = async (event: SecurityEvent) => {
   try {
     // Call the updated log_security_event function
     const { error } = await supabase.rpc('log_security_event', {
-      event_type_param: event.eventType,
-      event_details_param: event.eventDetails || {},
-      user_id_param: event.userId || null,
-      severity_param: event.severity || 'low'
+      event_data: {
+        event_type: event.eventType,
+        event_details: event.eventDetails || {},
+        user_id: event.userId || null,
+        severity: event.severity || 'low'
+      }
     });
 
     if (error) {
