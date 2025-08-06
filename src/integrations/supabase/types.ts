@@ -2006,6 +2006,91 @@ export type Database = {
         }
         Relationships: []
       }
+      public_challenge_messages: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          emoji: string | null
+          id: string
+          tagged_users: string[] | null
+          text: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          tagged_users?: string[] | null
+          text?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          tagged_users?: string[] | null
+          text?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_challenge_messages_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "public_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_challenge_participations: {
+        Row: {
+          challenge_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_creator: boolean
+          joined_at: string
+          progress_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_creator?: boolean
+          joined_at?: string
+          progress_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_creator?: boolean
+          joined_at?: string
+          progress_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_challenge_participations_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "public_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_challenges: {
         Row: {
           badge_icon: string
