@@ -34,6 +34,7 @@ import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
+import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 // Debug components removed for clean production build
 import jsQR from 'jsqr';
 
@@ -145,12 +146,31 @@ const CameraPage = () => {
   // Saved foods refetch function
   const [refetchSavedFoods, setRefetchSavedFoods] = useState<(() => Promise<void>) | null>(null);
   
+  // Processing state moved from duplicate declaration below
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
   const { playFoodLogConfirm } = useSound();
   const { user } = useAuth();
+  
+  // Add loading timeout hook for global timeout management
+  const { hasTimedOut, showRecovery, retry, forceSkip } = useLoadingTimeout(
+    isAnalyzing || isMultiAILoading || isProcessingFood,
+    {
+      timeoutMs: 15000,
+      onTimeout: () => {
+        console.error('⏰ Global loading timeout reached');
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        setErrorType('timeout');
+        setErrorMessage('Operation timed out. Please try again.');
+        setShowError(true);
+      }
+    }
+  );
 
   // Effect to handle reset from navigation
   useEffect(() => {
@@ -439,113 +459,145 @@ const CameraPage = () => {
     // Create AbortController for this request
     abortControllerRef.current = new AbortController();
     
+    // Add 15-second global timeout with comprehensive error handling
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('TIMEOUT: Image analysis took too long (15s limit)'));
+      }, 15000);
+    });
+    
     try {
       // STEP 1: Check if this looks like a barcode FIRST
       setProcessingStep('Analyzing image type...');
-      const isBarcode = await isLikelyBarcode(selectedImage);
       
-      if (isBarcode) {
-        console.log('=== BARCODE DETECTION PATH ===');
-        console.log('Image appears to be a barcode, attempting to decode...');
-        setProcessingStep('Detecting barcode...');
-        setInputSource('barcode');
+      // Wrap analysis in Promise.race with timeout
+      const analysisPromise = (async () => {
+        const isBarcode = await isLikelyBarcode(selectedImage);
         
-        const barcodeData = await detectBarcode(selectedImage);
-        
-        if (barcodeData) {
-          console.log('Barcode successfully decoded:', barcodeData);
-          setProcessingStep('Processing barcode...');
+        if (isBarcode) {
+          console.log('=== BARCODE DETECTION PATH ===');
+          console.log('Image appears to be a barcode, attempting to decode...');
+          setProcessingStep('Detecting barcode...');
+          setInputSource('barcode');
           
-          // Process the barcode using existing barcode lookup logic
-          await processBarcodeData(barcodeData);
+          const barcodeData = await detectBarcode(selectedImage);
           
-          // CRITICAL: Hard return here - no food detection allowed
-          console.log('=== BARCODE PATH COMPLETE - STOPPING HERE ===');
-          return;
-        } else {
-          // Barcode detection failed, show fallback message and STOP
-          console.log('=== BARCODE DECODING FAILED - STOPPING HERE ===');
-          toast.error("We couldn't read the barcode. Please try a clearer image or enter the code manually.");
-          
-          // CRITICAL: Hard return here - no food detection fallback
-          return;
-        }
-      }
-      
-      // STEP 2: Only reach here if NOT a barcode - proceed with multi-AI food detection
-      console.log('=== GPT FOOD DETECTION PATH ===');
-      console.log('Image does not appear to be a barcode, proceeding with GPT food detection...');
-      
-      // If not a barcode, proceed with multi-AI food recognition
-      const imageBase64 = convertToBase64(selectedImage);
-      
-      setProcessingStep('Initializing GPT food vision...');
-      setIsMultiAILoading(true);
-      setShowMultiAIDetection(true);
-      
-      try {
-        console.log('Calling GPT food detection...');
-        setProcessingStep('Analyzing with GPT Vision...');
-        
-        // Call the new multi-AI detection system
-        const detectionResults = await detectFoodsFromAllSources(imageBase64);
-        
-        console.log('GPT detection results:', detectionResults);
-        
-        // Enhance results with calorie estimates
-        setProcessingStep('Estimating nutrition...');
-        const enhancedResults = await Promise.all(
-          detectionResults.map(async (item) => {
-            try {
-              // Get nutrition estimate for each food item
-              const nutrition = await estimateNutritionFromLabel(item.name);
-              
-              return {
-                ...item,
-                calories: nutrition?.calories || 100, // Fallback to 100 kcal
-                portion: '1 serving', // Default portion
-                isEstimate: !nutrition?.isBranded || nutrition?.calories === undefined
-              };
-            } catch (error) {
-              console.error(`Failed to get nutrition for ${item.name}:`, error);
-              return {
-                ...item,
-                calories: 100, // Fallback
-                portion: '1 serving',
-                isEstimate: true
-              };
-            }
-          })
-        );
-        
-        setMultiAIResults(enhancedResults);
-        
-        if (enhancedResults.length > 0) {
-          toast.success(`Found ${enhancedResults.length} food item(s) with GPT Vision!`);
-        } else {
-          toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
+          if (barcodeData) {
+            console.log('Barcode successfully decoded:', barcodeData);
+            setProcessingStep('Processing barcode...');
+            
+            // Process the barcode using existing barcode lookup logic
+            await processBarcodeData(barcodeData);
+            
+            // CRITICAL: Hard return here - no food detection allowed
+            console.log('=== BARCODE PATH COMPLETE - STOPPING HERE ===');
+            return;
+          } else {
+            // Barcode detection failed, show fallback message and STOP
+            console.log('=== BARCODE DECODING FAILED - STOPPING HERE ===');
+            toast.error("We couldn't read the barcode. Please try a clearer image or enter the code manually.");
+            
+            // CRITICAL: Hard return here - no food detection fallback
+            return;
+          }
         }
         
-      } catch (error) {
-        console.error('GPT food detection failed:', error);
-        toast.error('Food detection failed. Please try again or use manual entry.');
-        setShowMultiAIDetection(false);
-      } finally {
-        setIsMultiAILoading(false);
-      }
+        // STEP 2: Only reach here if NOT a barcode - proceed with multi-AI food detection
+        console.log('=== GPT FOOD DETECTION PATH ===');
+        console.log('Image does not appear to be a barcode, proceeding with GPT food detection...');
+        
+        // If not a barcode, proceed with multi-AI food recognition
+        const imageBase64 = convertToBase64(selectedImage);
+        
+        setProcessingStep('Initializing GPT food vision...');
+        setIsMultiAILoading(true);
+        setShowMultiAIDetection(true);
+        
+        try {
+          console.log('Calling GPT food detection...');
+          setProcessingStep('Analyzing with GPT Vision...');
+          
+          // Call the new multi-AI detection system with abort signal
+          const detectionResults = await detectFoodsFromAllSources(imageBase64, abortControllerRef.current?.signal);
+          
+          console.log('GPT detection results:', detectionResults);
+          
+          // Enhance results with calorie estimates
+          setProcessingStep('Estimating nutrition...');
+          const enhancedResults = await Promise.all(
+            detectionResults.map(async (item) => {
+              try {
+                // Get nutrition estimate for each food item
+                const nutrition = await estimateNutritionFromLabel(item.name);
+                
+                return {
+                  ...item,
+                  calories: nutrition?.calories || 100, // Fallback to 100 kcal
+                  portion: '1 serving', // Default portion
+                  isEstimate: !nutrition?.isBranded || nutrition?.calories === undefined
+                };
+              } catch (error) {
+                console.error(`Failed to get nutrition for ${item.name}:`, error);
+                return {
+                  ...item,
+                  calories: 100, // Fallback
+                  portion: '1 serving',
+                  isEstimate: true
+                };
+              }
+            })
+          );
+          
+          setMultiAIResults(enhancedResults);
+          
+          if (enhancedResults.length > 0) {
+            toast.success(`Found ${enhancedResults.length} food item(s) with GPT Vision!`);
+          } else {
+            toast.warning('No food items detected with sufficient confidence. Try a clearer photo or manual entry.');
+          }
+          
+        } catch (error) {
+          console.error('GPT food detection failed:', error);
+          toast.error('Food detection failed. Please try again or use manual entry.');
+          setShowMultiAIDetection(false);
+        } finally {
+          setIsMultiAILoading(false);
+        }
+      })();
+      
+      // Race analysis with timeout
+      await Promise.race([analysisPromise, timeoutPromise]);
       
     } catch (error) {
-      console.error('Error analyzing image:', error);
+      console.error('=== IMAGE ANALYSIS FAILED ===', error);
       
-      if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
-        console.log('Request timed out');
-        toast.error('Analysis timed out - please try again');
-      } else if (error.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
-        console.log('Request was aborted due to timeout');
-        toast.error('Analysis timed out');
-      } else {
-        toast.error(`Analysis failed: ${error instanceof Error ? error.message : 'Please try again'}`);
+      if (error.name === 'AbortError') {
+        console.log('Analysis was cancelled');
+        toast.info('Analysis cancelled');
+        return;
       }
+      
+      // Handle timeout errors specifically
+      if (error.message?.includes('TIMEOUT')) {
+        console.error('⏰ Analysis timeout reached');
+        setErrorType('timeout');
+        setErrorMessage('Image analysis timed out. This may be due to slow internet or high server load.');
+        setErrorSuggestions([
+          'Try a clearer, smaller image',
+          'Check your internet connection',
+          'Retry in a few moments',
+          'Try manual food entry instead'
+        ]);
+        setShowError(true);
+        toast.error('Analysis timed out. Please try again or use manual entry.');
+        return;
+      }
+      
+      // Generic fallback with error display
+      setErrorType('analysis');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to analyze image');
+      setShowError(true);
+      toast.error('Failed to analyze image. Please try again.');
     } finally {
       setIsAnalyzing(false);
       setProcessingStep('');
@@ -1356,7 +1408,6 @@ const CameraPage = () => {
 
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
-  const [isProcessingFood, setIsProcessingFood] = useState(false);
 
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
@@ -1576,6 +1627,12 @@ const CameraPage = () => {
   };
 
   const handleConfirmFood = async (foodItem: any) => {
+    // Prevent double-processing
+    if (isProcessingFood) {
+      console.log('⚠️ Already processing food, ignoring duplicate request');
+      return;
+    }
+    
     console.log('🍽️ === FOOD CONFIRMATION DEBUG START ===');
     console.log('📊 Food item being confirmed:', JSON.stringify(foodItem, null, 2));
     console.log('🔍 Current user:', user?.id || 'No user');
@@ -1584,15 +1641,24 @@ const CameraPage = () => {
     // Set processing state to prevent button from becoming clickable
     setIsProcessingFood(true);
     
+    // Add 12-second timeout wrapper for the entire save operation
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('SAVE_TIMEOUT: Food saving took too long (12s limit)'));
+      }, 12000);
+    });
+    
     if (!foodItem) {
       console.error('🚨 No food item provided to handleConfirmFood');
       toast.error('No food item to save');
+      setIsProcessingFood(false);
       return;
     }
 
     if (!user?.id) {
       console.error('🚨 No authenticated user found');
       toast.error('User not authenticated');
+      setIsProcessingFood(false);
       return;
     }
 
@@ -1640,35 +1706,42 @@ const CameraPage = () => {
       console.log('✅ Food data validation passed');
       console.log('🧮 Sanitized food data:', JSON.stringify(sanitizedFoodItem, null, 2));
 
-      // Attempt to save using the persistence hook
-      console.log('💾 Attempting to save food via useNutritionPersistence...');
-      const savedFoodId = await saveFood(sanitizedFoodItem);
-      
-      if (!savedFoodId) {
-        console.error('❌ PERSISTENCE HOOK FAILED: saveFood returned null/undefined');
-        throw new Error('Food save operation failed - no ID returned');
-      }
-      
-      console.log('✅ FOOD SAVED SUCCESSFULLY via useNutritionPersistence:', savedFoodId);
-      
-      // Add to nutrition context
-      try {
-        addFood(sanitizedFoodItem);
-        console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
-      } catch (contextError) {
-        console.warn('⚠️ Context update failed (non-critical):', contextError);
-        // Don't fail the whole operation for context errors
-      }
-      
-      // Refresh saved foods list
-      try {
-        if (refetchSavedFoods) {
-          await refetchSavedFoods();
+      // Race save operation with timeout
+      const savePromise = (async () => {
+        // Attempt to save using the persistence hook
+        console.log('💾 Attempting to save food via useNutritionPersistence...');
+        const savedFoodId = await saveFood(sanitizedFoodItem);
+        
+        if (!savedFoodId) {
+          console.error('❌ PERSISTENCE HOOK FAILED: saveFood returned null/undefined');
+          throw new Error('Food save operation failed - no ID returned');
         }
-      } catch (refetchError) {
-        console.warn('⚠️ Refetch failed (non-critical):', refetchError);
-        // Don't fail the whole operation for refetch errors
-      }
+        
+        console.log('✅ FOOD SAVED SUCCESSFULLY via useNutritionPersistence:', savedFoodId);
+        
+        // Add to nutrition context
+        try {
+          addFood(sanitizedFoodItem);
+          console.log('✅ CONTEXT UPDATE SUCCESS - Food added to nutrition context');
+        } catch (contextError) {
+          console.warn('⚠️ Context update failed (non-critical):', contextError);
+          // Don't fail the whole operation for context errors
+        }
+        
+        // Refresh saved foods list
+        try {
+          if (refetchSavedFoods) {
+            await refetchSavedFoods();
+          }
+        } catch (refetchError) {
+          console.warn('⚠️ Refetch failed (non-critical):', refetchError);
+          // Don't fail the whole operation for refetch errors
+        }
+
+        return savedFoodId;
+      })();
+      
+      await Promise.race([savePromise, timeoutPromise]);
 
       // Success notification
       toast.success(`✅ ${sanitizedFoodItem.name} logged successfully!`);
@@ -1676,30 +1749,36 @@ const CameraPage = () => {
       } catch (error) {
       console.error('🚨 CRITICAL ERROR in handleConfirmFood:', error);
       
-      // Reset processing state on error
-      setIsProcessingFood(false);
-      
-      // Comprehensive error logging
-      const errorContext = {
-        errorName: error instanceof Error ? error.name : 'Unknown',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorStack: error instanceof Error ? error.stack : 'No stack trace',
-        foodItem: JSON.stringify(foodItem, null, 2),
-        userId: user?.id,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent.substring(0, 100),
-        selectedImage: selectedImage ? 'present' : 'none'
-      };
-      
-      console.error('🚨 Error context:', errorContext);
-      
-      // User-friendly error message
-      const userMessage = error instanceof Error ? 
-        `Failed to save food: ${error.message}` : 
-        'Failed to save food item - please try again';
+      // Handle timeout errors specifically
+      if (error.message?.includes('SAVE_TIMEOUT')) {
+        toast.error('Food saving timed out. Please check your internet connection and try again.');
+      } else {
+        // Comprehensive error logging
+        const errorContext = {
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : 'No stack trace',
+          foodItem: JSON.stringify(foodItem, null, 2),
+          userId: user?.id,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent.substring(0, 100),
+          selectedImage: selectedImage ? 'present' : 'none'
+        };
         
-      toast.error(userMessage);
+        console.error('🚨 Error context:', errorContext);
+        
+        // User-friendly error message
+        const userMessage = error instanceof Error ? 
+          `Failed to save food: ${error.message}` : 
+          'Failed to save food item - please try again';
+          
+        toast.error(userMessage);
+      }
+      
       return;
+    } finally {
+      // CRITICAL: Always reset processing state to prevent permanent freeze
+      setIsProcessingFood(false);
     }
 
     console.log('🍽️ === FOOD CONFIRMATION SUCCESS ===');

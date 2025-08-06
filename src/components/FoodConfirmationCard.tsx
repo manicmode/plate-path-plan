@@ -219,52 +219,97 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const handleConfirm = async () => {
+    // Prevent double-processing
+    if (isConfirming || isProcessingFood) {
+      console.log('⚠️ Already processing, ignoring duplicate confirm request');
+      return;
+    }
+    
     setIsConfirming(true);
     
-    // Success animation delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Call the onConfirm with adjusted food - this should create the nutrition log
-    onConfirm(adjustedFood);
-    
-    // Play food log confirmation sound
-    console.log('🔊 Attempting to play food log confirmation sound');
-    playFoodLogConfirm().catch(error => {
-      console.warn('🔊 Food log sound failed:', error);
-    });
-    
-    // Evaluate meal quality after logging
-    // Note: We need the nutrition_log_id, which should be returned from onConfirm
-    // For now, we'll simulate this - in a real implementation, onConfirm should return the created log ID
-    setTimeout(async () => {
-      // This is a temporary solution - in production, onConfirm should return the nutrition log ID
-      try {
-        const { data: recentLogs, error } = await supabase
-          .from('nutrition_logs')
-          .select('id')
-          .eq('food_name', adjustedFood.name)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (recentLogs && recentLogs.length > 0) {
-          await evaluateMealQuality(recentLogs[0].id);
+    try {
+      console.log('🍽️ Starting food confirmation process');
+      
+      // Add 10-second timeout wrapper around onConfirm
+      const confirmPromise = new Promise<void>((resolve, reject) => {
+        try {
+          onConfirm(adjustedFood);
+          resolve();
+        } catch (error) {
+          reject(error);
         }
-      } catch (error) {
-        console.error('Failed to find recent nutrition log for quality evaluation:', error);
+      });
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('CONFIRM_TIMEOUT: Food logging took too long (10s limit)'));
+        }, 10000);
+      });
+      
+      // Race the confirm call with timeout
+      await Promise.race([confirmPromise, timeoutPromise]);
+      
+      // Success animation delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Play food log confirmation sound
+      console.log('🔊 Attempting to play food log confirmation sound');
+      playFoodLogConfirm().catch(error => {
+        console.warn('🔊 Food log sound failed:', error);
+      });
+      
+      // Evaluate meal quality after logging
+      // Note: We need the nutrition_log_id, which should be returned from onConfirm
+      // For now, we'll simulate this - in a real implementation, onConfirm should return the created log ID
+      setTimeout(async () => {
+        // This is a temporary solution - in production, onConfirm should return the nutrition log ID
+        try {
+          const { data: recentLogs, error } = await supabase
+            .from('nutrition_logs')
+            .select('id')
+            .eq('food_name', adjustedFood.name)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (recentLogs && recentLogs.length > 0) {
+            await evaluateMealQuality(recentLogs[0].id);
+          }
+        } catch (error) {
+          console.error('Failed to find recent nutrition log for quality evaluation:', error);
+        }
+      }, 1000);
+      
+      // Show success toast with animation
+      toast({
+        title: `✅ ${adjustedFood.name} logged successfully`,
+        description: `${adjustedFood.calories} calories added to your nutrition log.`,
+        duration: 3000,
+      });
+      
+      // Don't call onClose() for multi-item flows to prevent jumping to home
+      if (!totalItems || totalItems <= 1) {
+        onClose();
       }
-    }, 1000);
-    
-    // Show success toast with animation
-    toast({
-      title: `✅ ${adjustedFood.name} logged successfully`,
-      description: `${adjustedFood.calories} calories added to your nutrition log.`,
-      duration: 3000,
-    });
-    
-    setIsConfirming(false);
-    // Don't call onClose() for multi-item flows to prevent jumping to home
-    if (!totalItems || totalItems <= 1) {
-      onClose();
+      
+    } catch (error) {
+      console.error('❌ Food confirmation failed:', error);
+      
+      // Handle timeout errors
+      if (error.message?.includes('CONFIRM_TIMEOUT')) {
+        toast({
+          title: "⏰ Logging Timeout",
+          description: "Food logging took too long. Please try again.",
+          duration: 4000,
+        });
+      } else {
+        toast({
+          title: "❌ Logging Failed",
+          description: "Failed to log food item. Please try again.",
+          duration: 4000,
+        });
+      }
+    } finally {
+      setIsConfirming(false);
     }
   };
 

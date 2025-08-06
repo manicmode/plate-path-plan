@@ -235,12 +235,42 @@ function isRelevantFoodItem(name: string): boolean {
   return true;
 }
 
-export async function detectFoodsFromAllSources(image: string): Promise<{ name: string; confidence: number; sources: string[] }[]> {
+export async function detectFoodsFromAllSources(image: string, abortSignal?: AbortSignal): Promise<{ name: string; confidence: number; sources: string[] }[]> {
   console.log('🧠 [GPT Detection] Starting smart GPT-powered food detection...');
   
-  // Use GPT as primary detection engine
-  console.log('🧠 [GPT Detection] Using GPT Vision with smart model routing...');
-  const gptResults = await detectWithChatGPT(image);
+  // Add 10-second timeout for food detection
+  const detectionPromise = (async () => {
+    // Check for abort signal
+    if (abortSignal?.aborted) {
+      throw new Error('Detection aborted');
+    }
+
+    // Use GPT as primary detection engine
+    console.log('🧠 [GPT Detection] Using GPT Vision with smart model routing...');
+    const gptResults = await detectWithChatGPT(image);
+    
+    // Check for abort signal after GPT call
+    if (abortSignal?.aborted) {
+      throw new Error('Detection aborted');
+    }
+    
+    return gptResults;
+  })();
+  
+  // Add 10-second timeout to detection
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('DETECTION_TIMEOUT: Food detection took too long (10s limit)'));
+    }, 10000);
+  });
+  
+  let gptResults;
+  try {
+    gptResults = await Promise.race([detectionPromise, timeoutPromise]);
+  } catch (error) {
+    console.error('❌ GPT detection failed or timed out:', error);
+    return [];
+  }
 
   console.log('🧠 [GPT Detection] Detection results:');
   console.log('  - GPT Vision:', gptResults.length, 'items');
