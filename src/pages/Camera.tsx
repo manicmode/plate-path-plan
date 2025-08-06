@@ -1303,6 +1303,7 @@ const CameraPage = () => {
 
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  const [isProcessingFood, setIsProcessingFood] = useState(false);
 
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
@@ -1482,6 +1483,9 @@ const CameraPage = () => {
     console.log('🔍 Current user:', user?.id || 'No user');
     console.log('🔍 Has saveFood function:', typeof saveFood);
     
+    // Set processing state to prevent button from becoming clickable
+    setIsProcessingFood(true);
+    
     if (!foodItem) {
       console.error('🚨 No food item provided to handleConfirmFood');
       toast.error('No food item to save');
@@ -1571,8 +1575,11 @@ const CameraPage = () => {
       // Success notification
       toast.success(`✅ ${sanitizedFoodItem.name} logged successfully!`);
       
-    } catch (error) {
+      } catch (error) {
       console.error('🚨 CRITICAL ERROR in handleConfirmFood:', error);
+      
+      // Reset processing state on error
+      setIsProcessingFood(false);
       
       // Comprehensive error logging
       const errorContext = {
@@ -1616,6 +1623,7 @@ const CameraPage = () => {
           processCurrentItem(pendingItems, nextIndex);
         }, 300);
       }
+      // Keep isProcessingFood true until next item appears
     } else {
       // All items processed, reset state and navigate
       const totalItems = pendingItems.length || 1;
@@ -1626,6 +1634,7 @@ const CameraPage = () => {
       
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
       setShowConfirmation(false);
+      setIsProcessingFood(false); // Reset processing state when completely done
       resetState();
       navigate('/home');
     }
@@ -2156,8 +2165,10 @@ const CameraPage = () => {
       {/* Food Confirmation Card */}
       <FoodConfirmationCard
         isOpen={showConfirmation}
+        isProcessingFood={isProcessingFood}
         onClose={() => {
           setShowConfirmation(false);
+          setIsProcessingFood(false); // Reset processing state when closing
           // Reset multi-item flow if needed
           if (pendingItems.length > 0) {
             setPendingItems([]);

@@ -43,6 +43,7 @@ interface FoodConfirmationCardProps {
   showSkip?: boolean; // Whether to show "Don't Log" button
   currentIndex?: number; // Current item index for multi-item flow
   totalItems?: number; // Total items for multi-item flow
+  isProcessingFood?: boolean; // Whether the parent is processing the food item
 }
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
@@ -53,7 +54,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   foodItem,
   showSkip = false,
   currentIndex,
-  totalItems
+  totalItems,
+  isProcessingFood = false
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -807,14 +809,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   {/* Log Item - Full Width Primary */}
                   <Button
                     onClick={handleConfirm}
-                    disabled={isConfirming || portionPercentage[0] === 0}
+                    disabled={isConfirming || isProcessingFood || portionPercentage[0] === 0}
                     className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
-                      !isConfirming && portionPercentage[0] > 0
+                      !isConfirming && !isProcessingFood && portionPercentage[0] > 0
                         ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    } ${isConfirming ? 'animate-pulse' : ''}`}
+                    } ${(isConfirming || isProcessingFood) ? 'animate-pulse' : ''}`}
                   >
-                    {isConfirming ? (
+                    {isConfirming || isProcessingFood ? (
                       <>
                         <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
                         Logging...
