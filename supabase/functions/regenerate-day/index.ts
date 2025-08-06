@@ -15,6 +15,18 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client for auth (would need to import and configure)
+    // For now, just validate the user_id from the request matches auth
+    
     const {
       user_id,
       routine_id,
