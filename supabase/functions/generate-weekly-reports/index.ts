@@ -135,15 +135,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-  console.log('🕒 Weekly report generation started');
-  
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-  
-  try {
-    const supabase = supabaseAdmin;
+    console.log('🕒 Weekly report generation started');
 
     // Calculate week dates (Sunday to Saturday)
     const now = new Date();
