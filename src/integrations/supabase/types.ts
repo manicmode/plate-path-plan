@@ -221,6 +221,13 @@ export type Database = {
             referencedRelation: "ai_routines"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_routines_parent_routine_id_fkey"
+            columns: ["parent_routine_id"]
+            isOneToOne: false
+            referencedRelation: "routine_performance_analytics"
+            referencedColumns: ["routine_id"]
+          },
         ]
       }
       badges: {
@@ -4113,6 +4120,13 @@ export type Database = {
             referencedRelation: "ai_routines"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "workout_routines_ai_routine_id_fkey"
+            columns: ["ai_routine_id"]
+            isOneToOne: false
+            referencedRelation: "routine_performance_analytics"
+            referencedColumns: ["routine_id"]
+          },
         ]
       }
       workout_sessions: {
@@ -4560,16 +4574,57 @@ export type Database = {
         }
         Relationships: []
       }
+      muscle_group_weekly_analysis: {
+        Row: {
+          avg_duration_seconds: number | null
+          avg_sets_completed: number | null
+          muscle_group: string | null
+          routine_id: string | null
+          times_trained: number | null
+          user_id: string | null
+          week_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generated_routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routine_performance_analytics: {
         Row: {
-          avg_completion_rate: number | null
-          performance_grade: string | null
+          avg_completion_percentage: number | null
+          avg_duration_seconds: number | null
+          completed_workouts: number | null
+          routine_id: string | null
           routine_name: string | null
-          total_sessions: number | null
+          total_workouts: number | null
           user_id: string | null
           week_start: string | null
         }
         Relationships: []
+      }
+      workout_intensity_distribution: {
+        Row: {
+          avg_duration_seconds: number | null
+          completion_category: string | null
+          exercise_count: number | null
+          month_start: string | null
+          routine_id: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generated_routines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workout_progress_analytics: {
         Row: {
@@ -4584,15 +4639,23 @@ export type Database = {
       }
       workout_skipping_analysis: {
         Row: {
-          avg_completion_rate: number | null
-          avg_skipped_sets: number | null
-          month_year: string | null
-          perfect_workouts: number | null
-          total_workouts: number | null
+          avg_skipped_per_exercise: number | null
+          exercises_with_skips: number | null
+          month_start: string | null
+          routine_id: string | null
+          total_exercises: number | null
+          total_skipped_sets: number | null
           user_id: string | null
-          workouts_with_skips: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generated_routines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -4892,21 +4955,25 @@ export type Database = {
         Returns: undefined
       }
       log_security_event: {
-        Args: {
-          event_type_param: string
-          event_details_param?: Json
-          user_id_param?: string
-          severity_param?: string
-        }
+        Args:
+          | { event_data: Json }
+          | {
+              event_type_param: string
+              event_details_param?: Json
+              user_id_param?: string
+              severity_param?: string
+            }
         Returns: undefined
       }
       log_security_violation: {
-        Args: {
-          violation_type: string
-          violation_details: Json
-          user_context?: string
-          severity_level?: string
-        }
+        Args:
+          | { violation_type: string; details: string; metadata?: Json }
+          | {
+              violation_type: string
+              violation_details: Json
+              user_context?: string
+              severity_level?: string
+            }
         Returns: undefined
       }
       process_yearly_hall_of_fame: {
@@ -4980,6 +5047,10 @@ export type Database = {
           target_user_id: string
           new_role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      validate_security_event: {
+        Args: { event_data: Json }
         Returns: boolean
       }
     }
