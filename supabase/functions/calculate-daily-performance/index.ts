@@ -10,20 +10,47 @@ interface DatabaseClient {
   from: (table: string) => any;
 }
 
+// Helper function to get authenticated user
+async function getUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    }
+  );
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Unauthorized' };
+  }
+  
+  return { user, error: null };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { userId, targetDate } = await req.json()
-    
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'User ID is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    // Authenticate user
+    const { user } = await getUser(req);
+    if (!user) {
+      return new Response("Unauthorized", { status: 401 });
     }
+
+    const { targetDate } = await req.json()
+    
+    // Use authenticated user ID instead of trusting client
+    const userId = user.id
 
     const supabaseClient: DatabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -83,8 +110,8 @@ serve(async (req) => {
       .gte('created_at', startOfDay)
       .lte('created_at', endOfDay)
 
-    // Calculate performance score
-    const performanceScore = calculateDailyPerformanceScore({
+    // Calculate performance
+    const performance = calculatePerformance({
       targets,
       nutritionLogs: nutritionLogs || [],
       hydrationLogs: hydrationLogs || [],
@@ -92,39 +119,20 @@ serve(async (req) => {
       toxinDetections: toxinDetections || []
     })
 
-    // Update the targets table with the calculated score
-    const { error: updateError } = await supabaseClient
-      .from('daily_nutrition_targets')
-      .update({ daily_performance_score: performanceScore })
-      .eq('user_id', userId)
-      .eq('target_date', date)
-
-    if (updateError) {
-      console.error('Error updating performance score:', updateError)
-      return new Response(JSON.stringify({ error: 'Failed to update performance score' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      performanceScore: performanceScore.toFixed(2),
-      date 
-    }), {
+    return new Response(JSON.stringify(performance), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    console.error('Error calculating daily performance:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error in calculate-daily-performance:', error)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
 })
 
-function calculateDailyPerformanceScore({
+function calculatePerformance({
   targets,
   nutritionLogs,
   hydrationLogs,
@@ -136,80 +144,113 @@ function calculateDailyPerformanceScore({
   hydrationLogs: any[],
   supplementLogs: any[],
   toxinDetections: any[]
-}): number {
-  let totalScore = 0
-  const maxScore = 100
-
-  // 1. Nutrition Adherence (50 points total)
-  const nutritionScore = calculateNutritionScore(targets, nutritionLogs)
-  totalScore += nutritionScore
-
-  // 2. Hydration Adherence (15 points)
-  const hydrationScore = calculateHydrationScore(targets, hydrationLogs)
-  totalScore += hydrationScore
-
-  // 3. Supplement Adherence (10 points)
-  const supplementScore = calculateSupplementScore(targets, supplementLogs)
-  totalScore += supplementScore
-
-  // 4. Meal Quality Bonus (15 points)
-  const qualityScore = calculateMealQualityScore(nutritionLogs)
-  totalScore += qualityScore
-
-  // 5. Consistency Bonus (10 points) - based on logging frequency
-  const consistencyScore = calculateConsistencyScore(nutritionLogs, hydrationLogs, supplementLogs)
-  totalScore += consistencyScore
-
-  // 6. Toxin Penalty (up to -10 points)
-  const toxinPenalty = calculateToxinPenalty(toxinDetections)
-  totalScore += toxinPenalty
-
-  // Ensure score is between 0 and 100
-  return Math.max(0, Math.min(maxScore, totalScore))
-}
-
-function calculateNutritionScore(targets: any, nutritionLogs: any[]): number {
-  const maxNutritionScore = 50
-  let score = 0
-
-  // Calculate actual totals
-  const actualTotals = nutritionLogs.reduce((acc, log) => ({
+}) {
+  
+  // Aggregate nutrition data
+  const totalNutrition = nutritionLogs.reduce((acc, log) => ({
     calories: acc.calories + (log.calories || 0),
     protein: acc.protein + (log.protein || 0),
     carbs: acc.carbs + (log.carbs || 0),
     fat: acc.fat + (log.fat || 0),
-    fiber: acc.fiber + (log.fiber || 0)
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 })
+    fiber: acc.fiber + (log.fiber || 0),
+    sugar: acc.sugar + (log.sugar || 0),
+    sodium: acc.sodium + (log.sodium || 0)
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 })
 
-  // Score each macro (10 points each)
-  const macros = ['calories', 'protein', 'carbs', 'fat', 'fiber']
-  macros.forEach(macro => {
-    const target = targets[macro]
-    const actual = actualTotals[macro]
-    
-    if (target && target > 0) {
-      const adherence = Math.min(actual / target, 2) // Cap at 200% to prevent over-eating rewards
-      const macroScore = adherence <= 1 
-        ? adherence * 10 // Perfect score at 100% adherence
-        : Math.max(0, 10 - ((adherence - 1) * 5)) // Penalty for exceeding targets
-      
-      score += macroScore
+  // Aggregate hydration
+  const totalHydration = hydrationLogs.reduce((acc, log) => acc + (log.volume || 0), 0)
+
+  // Calculate scores
+  let totalScore = 0
+  
+  // 1. Nutrition Adherence (70 points)
+  const nutritionScore = calculateNutritionScore(targets, totalNutrition)
+  totalScore += nutritionScore
+  
+  // 2. Hydration Adherence (20 points)
+  const hydrationScore = calculateHydrationScore(targets, totalHydration)
+  totalScore += hydrationScore
+  
+  // 3. Supplement Adherence (10 points)
+  const supplementScore = calculateSupplementScore(targets, supplementLogs)
+  totalScore += supplementScore
+  
+  // 4. Toxin Penalty (subtract points)
+  const toxinPenalty = toxinDetections.length * 5 // 5 points penalty per toxin
+  totalScore = Math.max(0, totalScore - toxinPenalty)
+  
+  // 5. Consistency bonus
+  const consistencyScore = calculateConsistencyScore(nutritionLogs, hydrationLogs, supplementLogs)
+  totalScore += consistencyScore
+
+  return {
+    totalScore: Math.min(100, totalScore),
+    breakdown: {
+      nutrition: nutritionScore,
+      hydration: hydrationScore,
+      supplements: supplementScore,
+      consistency: consistencyScore,
+      toxinPenalty: -toxinPenalty
+    },
+    actual: {
+      nutrition: totalNutrition,
+      hydration: totalHydration,
+      supplements: supplementLogs.length,
+      toxins: toxinDetections.length
+    },
+    targets: {
+      calories: targets.calories,
+      protein: targets.protein,
+      carbs: targets.carbs,
+      fat: targets.fat,
+      fiber: targets.fiber,
+      hydration: targets.hydration_ml,
+      supplements: targets.supplement_count
     }
-  })
-
-  return Math.min(score, maxNutritionScore)
+  }
 }
 
-function calculateHydrationScore(targets: any, hydrationLogs: any[]): number {
-  const maxHydrationScore = 15
-  const targetHydration = targets.hydration_ml || 2000 // Default 2L
+function calculateNutritionScore(targets: any, actual: any): number {
+  const maxNutritionScore = 70
+  let score = 0
   
-  const actualHydration = hydrationLogs.reduce((total, log) => total + (log.volume || 0), 0)
-  const adherence = Math.min(actualHydration / targetHydration, 1.5) // Cap at 150%
+  // Calorie adherence (25 points)
+  const calorieAdherence = Math.min(actual.calories / (targets.calories || 1), 1.2)
+  const calorieScore = calorieAdherence <= 1 
+    ? calorieAdherence * 25 
+    : Math.max(0, 25 - (calorieAdherence - 1) * 50) // Penalty for overeating
+  score += calorieScore
   
-  return adherence <= 1 
-    ? adherence * maxHydrationScore
-    : Math.max(0, maxHydrationScore - ((adherence - 1) * 10)) // Slight penalty for excessive hydration
+  // Protein adherence (15 points)
+  const proteinAdherence = Math.min(actual.protein / (targets.protein || 1), 1)
+  score += proteinAdherence * 15
+  
+  // Carb adherence (10 points)
+  const carbAdherence = Math.min(actual.carbs / (targets.carbs || 1), 1.2)
+  const carbScore = carbAdherence <= 1 
+    ? carbAdherence * 10 
+    : Math.max(0, 10 - (carbAdherence - 1) * 20)
+  score += carbScore
+  
+  // Fat adherence (10 points)
+  const fatAdherence = Math.min(actual.fat / (targets.fat || 1), 1.2)
+  const fatScore = fatAdherence <= 1 
+    ? fatAdherence * 10 
+    : Math.max(0, 10 - (fatAdherence - 1) * 20)
+  score += fatScore
+  
+  // Fiber bonus (10 points)
+  const fiberAdherence = Math.min(actual.fiber / (targets.fiber || 1), 1)
+  score += fiberAdherence * 10
+  
+  return Math.min(maxNutritionScore, score)
+}
+
+function calculateHydrationScore(targets: any, actualHydration: number): number {
+  const maxHydrationScore = 20
+  const targetHydration = targets.hydration_ml || 2000
+  const adherence = Math.min(actualHydration / targetHydration, 1)
+  return adherence * maxHydrationScore
 }
 
 function calculateSupplementScore(targets: any, supplementLogs: any[]): number {
@@ -224,46 +265,24 @@ function calculateSupplementScore(targets: any, supplementLogs: any[]): number {
   return adherence * maxSupplementScore
 }
 
-function calculateMealQualityScore(nutritionLogs: any[]): number {
-  const maxQualityScore = 15
-  
-  if (nutritionLogs.length === 0) return 0
-  
-  // Calculate average quality score
-  const logsWithQuality = nutritionLogs.filter(log => log.quality_score !== null)
-  
-  if (logsWithQuality.length === 0) return maxQualityScore * 0.5 // Neutral score if no quality data
-  
-  const avgQualityScore = logsWithQuality.reduce((sum, log) => sum + (log.quality_score || 0), 0) / logsWithQuality.length
-  
-  // Convert 0-100 quality score to 0-15 point scale
-  return (avgQualityScore / 100) * maxQualityScore
-}
-
 function calculateConsistencyScore(nutritionLogs: any[], hydrationLogs: any[], supplementLogs: any[]): number {
   const maxConsistencyScore = 10
   let consistencyPoints = 0
   
-  // Points for having meals logged (up to 6 points)
+  // Points for logging meals (4 points)
   const mealCount = nutritionLogs.length
-  consistencyPoints += Math.min(mealCount * 2, 6) // 2 points per meal, max 6
+  if (mealCount >= 3) consistencyPoints += 4
+  else if (mealCount >= 2) consistencyPoints += 2
+  else if (mealCount >= 1) consistencyPoints += 1
   
-  // Points for hydration logging (2 points)
-  if (hydrationLogs.length > 0) consistencyPoints += 2
+  // Points for hydration logging (4 points)
+  if (hydrationLogs.length >= 6) consistencyPoints += 4
+  else if (hydrationLogs.length >= 4) consistencyPoints += 3
+  else if (hydrationLogs.length >= 2) consistencyPoints += 2
+  else if (hydrationLogs.length >= 1) consistencyPoints += 1
   
   // Points for supplement logging (2 points)
   if (supplementLogs.length > 0) consistencyPoints += 2
   
-  return Math.min(consistencyPoints, maxConsistencyScore)
-}
-
-function calculateToxinPenalty(toxinDetections: any[]): number {
-  const maxPenalty = -10
-  
-  if (toxinDetections.length === 0) return 0
-  
-  // -2 points per toxin detection, capped at -10
-  const penalty = Math.max(toxinDetections.length * -2, maxPenalty)
-  
-  return penalty
+  return Math.min(maxConsistencyScore, consistencyPoints)
 }

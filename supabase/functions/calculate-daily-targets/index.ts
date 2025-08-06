@@ -10,6 +10,31 @@ interface DatabaseClient {
   from: (table: string) => any;
 }
 
+// Helper function to get authenticated user
+async function getUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    }
+  );
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Unauthorized' };
+  }
+  
+  return { user, error: null };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -17,14 +42,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, targetDate, testProfile } = await req.json();
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Authenticate user
+    const { user } = await getUser(req);
+    if (!user) {
+      return new Response("Unauthorized", { status: 401 });
     }
+
+    const { targetDate, testProfile } = await req.json();
+
+    // Use authenticated user ID instead of trusting client
+    const userId = user.id
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
