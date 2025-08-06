@@ -1653,12 +1653,15 @@ const CameraPage = () => {
       // Show transition screen between items if multiple items
       if (pendingItems.length > 1) {
         setShowTransition(true);
+        // Reset processing state immediately since next item will handle its own processing
+        setIsProcessingFood(false);
       } else {
+        // Reset processing state for single item flow
+        setIsProcessingFood(false);
         setTimeout(() => {
           processCurrentItem(pendingItems, nextIndex);
         }, 300);
       }
-      // Keep isProcessingFood true until next item appears
     } else {
       // All items processed, reset state and navigate
       const totalItems = pendingItems.length || 1;
