@@ -1352,6 +1352,11 @@ const CameraPage = () => {
   };
 
   const processCurrentItem = async (items: SummaryItem[], index: number) => {
+    console.log('🔄 Processing item:', index + 1, 'of', items.length);
+    
+    // Reset processing state when starting new item
+    setIsProcessingFood(false);
+    
     if (index >= items.length) {
       // All items processed
       setPendingItems([]);
@@ -1363,6 +1368,9 @@ const CameraPage = () => {
 
     const currentItem = items[index];
     console.log('🔄 Processing item:', currentItem.name, 'Index:', index);
+    
+    // Add debug logging for nutrition tracking
+    console.log('🧪 [DEBUG] Processing nutrition for:', currentItem.name);
     
     // Defensive check: ensure multiAIDetectedData is populated
     if (multiAIDetectedData.size === 0 && currentItem.id.startsWith('multi-ai-')) {
@@ -1376,35 +1384,41 @@ const CameraPage = () => {
     
     let nutrition;
     let confidence = 85; // Default confidence
+    let nutritionSource = 'unknown';
     
     if (storedFoodData) {
-      // Use the detected food data if available
       console.log('✅ Using stored multi-AI data for:', currentItem.name, storedFoodData);
-      
-      if (storedFoodData.calories) {
-        // Use the detected nutrition data with defensive defaults
-        nutrition = {
-          calories: Math.round(storedFoodData.calories || 0),
-          protein: Math.round((storedFoodData.calories * 0.15) || 5), // Estimate if missing
-          carbs: Math.round((storedFoodData.calories * 0.5) || 20), // Estimate if missing
-          fat: Math.round((storedFoodData.calories * 0.3 / 9) || 3), // Estimate if missing
-          fiber: 3, // Default
-          sugar: 5, // Default
-          sodium: 200, // Default
-          saturated_fat: Math.round((storedFoodData.calories * 0.3 / 9 * 0.3) || 1) // 30% of fat
-        };
-      } else {
-        // Estimate nutrition if not detected
-        console.log('📊 Estimating nutrition for:', currentItem.name);
-        nutrition = await estimateNutritionFromLabel(currentItem.name);
-      }
-      
       confidence = Math.round(storedFoodData.confidence || 85);
+      
+      // ALWAYS call individual GPT estimation for each food item
+      console.log('📊 [FIX] Calling individual GPT nutrition estimation for:', currentItem.name);
+      nutrition = await estimateNutritionFromLabel(currentItem.name);
+      nutritionSource = 'gpt-individual';
+      
+      if (!nutrition || typeof nutrition.calories !== 'number') {
+        console.warn('⚠️ GPT estimation failed, using generic fallback for:', currentItem.name);
+        nutrition = {
+          calories: Math.round(storedFoodData.calories || 150),
+          protein: Math.round((storedFoodData.calories * 0.15) || 5),
+          carbs: Math.round((storedFoodData.calories * 0.5) || 20),
+          fat: Math.round((storedFoodData.calories * 0.3 / 9) || 3),
+          fiber: 3,
+          sugar: 5,
+          sodium: 200,
+          saturated_fat: Math.round((storedFoodData.calories * 0.3 / 9 * 0.3) || 1)
+        };
+        nutritionSource = 'generic-fallback';
+      }
     } else {
       // Fallback to nutrition estimation for non-multi-AI items
-      console.log('📊 Fallback nutrition estimation for:', currentItem.name);
+      console.log('📊 [FIX] Individual GPT nutrition estimation for non-multi-AI item:', currentItem.name);
       nutrition = await estimateNutritionFromLabel(currentItem.name);
+      nutritionSource = 'gpt-fallback';
     }
+    
+    // Add debug logging for nutrition source tracking
+    console.log('🧪 [DEBUG] Nutrition source for', currentItem.name + ':', nutritionSource);
+    console.log('🧪 [DEBUG] Final nutrition values:', nutrition);
     
     // Validate nutrition data has all required fields
     if (!nutrition || typeof nutrition.calories !== 'number') {
@@ -1413,6 +1427,25 @@ const CameraPage = () => {
       return;
     }
     
+    // Detect identical nutrition values as a safeguard
+    const identicalValuesCheck = (nutrition: any, itemName: string) => {
+      const checkKey = `${nutrition.calories}-${nutrition.protein}-${nutrition.carbs}-${nutrition.fat}`;
+      const existingItemsJson = sessionStorage.getItem('nutritionFingerprints') || '{}';
+      const existingItems = JSON.parse(existingItemsJson);
+      
+      if (existingItems[checkKey] && existingItems[checkKey] !== itemName) {
+        console.warn('🚨 [IDENTICAL VALUES DETECTED]', itemName, 'has identical nutrition to', existingItems[checkKey]);
+        console.warn('🚨 Values:', checkKey);
+        toast.error(`⚠️ ${itemName} shows identical nutrition to ${existingItems[checkKey]} - verify accuracy!`);
+      } else {
+        existingItems[checkKey] = itemName;
+        sessionStorage.setItem('nutritionFingerprints', JSON.stringify(existingItems));
+      }
+    };
+    
+    // Run the identical values check
+    identicalValuesCheck(nutrition, currentItem.name);
+
     const foodItem = {
       id: currentItem.id,
       name: currentItem.name,
@@ -1425,7 +1458,7 @@ const CameraPage = () => {
       sodium: Math.round(nutrition.sodium || 0),
       saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * 10) / 10,
       confidence: confidence,
-      source: 'gpt', // Correct source attribution
+      source: nutritionSource, // Show actual nutrition source
       image: selectedImage // Use the original photo as reference
     };
 
@@ -1445,6 +1478,8 @@ const CameraPage = () => {
 
   const handleTransitionComplete = () => {
     setShowTransition(false);
+    // Reset processing state when transitioning to next item
+    setIsProcessingFood(false);
     // Immediately show the confirmation dialog to eliminate any gap
     setShowConfirmation(true);
     processCurrentItem(pendingItems, currentItemIndex);
