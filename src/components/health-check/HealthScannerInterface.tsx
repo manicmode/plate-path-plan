@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Camera, Keyboard, Target, Zap, X, Search, Mic, Lightbulb, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { VoiceRecordingButton } from '../ui/VoiceRecordingButton';
 
 interface HealthScannerInterfaceProps {
   onCapture: (imageData: string) => void;
@@ -455,12 +456,13 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
               <Mic className="w-5 h-5 text-blue-500" />
               <span className="font-medium">Voice Recognition</span>
             </div>
-            <Button
-              variant="outline"
-              className="w-full border-blue-300 text-blue-600 hover:bg-blue-50"
-            >
-              🎤 Speak Product Name
-            </Button>
+            <VoiceRecordingButton 
+              onVoiceResult={(text) => {
+                console.log('🎤 Voice result received in HealthScanner:', text);
+                setBarcodeInput(text);
+                handleSearchDatabase();
+              }}
+            />
           </div>
 
           {/* Quick Suggestions - Only show after failed search/voice input */}

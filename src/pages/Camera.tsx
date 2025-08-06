@@ -1008,24 +1008,34 @@ const CameraPage = () => {
   };
 
   const handleVoiceRecording = async () => {
+    console.log('🎤 [Camera] Voice recording triggered', { isRecording, isProcessingVoice });
+    
     if (isRecording) {
       setProcessingStep('Processing...');
+      console.log('🎤 [Camera] Stopping recording...');
       const transcribedText = await stopRecording();
+      console.log('🎤 [Camera] Transcription result:', transcribedText);
+      
       if (transcribedText) {
         setVoiceText(transcribedText);
         setShowVoiceEntry(true);
         setInputSource('voice');
         resetErrorState();
+        console.log('🎤 [Camera] Voice entry UI shown');
       }
       setProcessingStep('');
     } else {
+      console.log('🎤 [Camera] Starting recording...');
       await startRecording();
       resetErrorState();
     }
   };
 
   const processVoiceEntry = async () => {
+    console.log('🎤 [Camera] Processing voice entry:', { voiceText, length: voiceText?.length });
+    
     if (!voiceText.trim()) {
+      console.log('🎤 [Camera] No voice text to process');
       showErrorState('NO_INPUT', 'No voice input detected. Please try recording again.', [
         'Make sure to speak clearly into the microphone',
         'Try recording in a quieter environment'
@@ -1038,13 +1048,15 @@ const CameraPage = () => {
     
     try {
       setProcessingStep('Analyzing...');
+      console.log('🎤 [Camera] Sending to log-voice function:', voiceText);
       const result = await sendToLogVoice(voiceText);
+      console.log('🎤 [Camera] Log-voice result:', result);
 
       if (!result.success) {
         // Handle structured error response from edge function
-        console.error('❌ Voice processing failed. Result:', result);
+        console.error('❌ [Camera] Voice processing failed. Result:', result);
         const errorData = result.message ? JSON.parse(result.message) : {};
-        console.error('❌ Parsed error data:', errorData);
+        console.error('❌ [Camera] Parsed error data:', errorData);
         
         // Create detailed error message for debugging
         let debugMessage = errorData.errorMessage || result.error || 'Failed to process voice input';
@@ -1071,13 +1083,14 @@ const CameraPage = () => {
       // Parse the structured response from the updated edge function
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
 
-      console.log('Voice API Response:', voiceApiResponse);
+      console.log('🎤 [Camera] Voice API Response parsed:', voiceApiResponse);
       setVoiceResults(voiceApiResponse);
 
       // Handle multiple food items from voice input
       if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
         // Show transcribed text
         toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
+        console.log('🎤 [Camera] Processing', voiceApiResponse.items.length, 'food items');
         
         // Convert voice items to summary items for unified processing
         const voiceSummaryItems: SummaryItem[] = voiceApiResponse.items.map((item, index) => {
@@ -1095,6 +1108,8 @@ const CameraPage = () => {
           };
         });
         
+        console.log('🎤 [Camera] Summary items created:', voiceSummaryItems);
+        
         // Use unified pending items flow
         setPendingItems(voiceSummaryItems);
         setCurrentItemIndex(0);
@@ -1102,8 +1117,10 @@ const CameraPage = () => {
         resetErrorState();
         
         // Process the first item
+        console.log('🎤 [Camera] Processing first item...');
         processCurrentItem(voiceSummaryItems, 0);
       } else {
+        console.log('🎤 [Camera] No food items detected in voice response');
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
           'Try mentioning specific food names',
           'Include quantities or portions in your description'
@@ -1111,7 +1128,7 @@ const CameraPage = () => {
       }
       
     } catch (error) {
-      console.error('❌ Exception in voice processing:', error);
+      console.error('❌ [Camera] Exception in voice processing:', error);
       
       // Create detailed error message for debugging
       let debugMessage = 'Failed to process voice input. Please try again.';

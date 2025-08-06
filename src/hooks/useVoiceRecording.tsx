@@ -22,26 +22,32 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Phase 1: Enhanced debug logging
+  const debugLog = (step: string, data?: any) => {
+    console.log(`🎤 [VoiceRecording] ${step}:`, data);
+  };
+
   // Check if voice recording is supported
   const isVoiceRecordingSupported = useCallback(() => {
     // Check for secure context (HTTPS required for microphone access)
     if (!window.isSecureContext) {
-      console.warn('Voice recording requires HTTPS');
+      debugLog('Voice recording requires HTTPS', { isSecureContext: window.isSecureContext });
       return false;
     }
 
     // Check for getUserMedia support
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      console.warn('getUserMedia not supported');
+      debugLog('getUserMedia not supported', { mediaDevices: !!navigator.mediaDevices, getUserMedia: !!navigator.mediaDevices?.getUserMedia });
       return false;
     }
 
     // Check for MediaRecorder support
     if (!window.MediaRecorder) {
-      console.warn('MediaRecorder not supported');
+      debugLog('MediaRecorder not supported', { MediaRecorder: !!window.MediaRecorder });
       return false;
     }
 
+    debugLog('Voice recording fully supported');
     return true;
   }, []);
 
@@ -69,14 +75,17 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   }, [isRecording]);
 
   const startRecording = useCallback(async () => {
+    debugLog('Starting recording process...');
+    
     // Check browser compatibility first
     if (!isVoiceRecordingSupported()) {
+      debugLog('Voice recording not supported');
       toast.error('Voice recording is not supported in this browser or requires HTTPS');
       return;
     }
 
     try {
-      console.log('[Voice Recording] Starting recording process...');
+      debugLog('Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           sampleRate: 44100,
@@ -87,7 +96,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         }
       });
       
-      console.log('[Voice Recording] Microphone access granted, stream:', stream);
+      debugLog('Microphone access granted', { 
+        streamActive: stream.active, 
+        audioTracks: stream.getAudioTracks().length,
+        streamId: stream.id 
+      });
+      
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -95,7 +109,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        console.log('[Voice Recording] Data available, size:', event.data.size);
+        debugLog('Audio data chunk received', { size: event.data.size, type: event.data.type });
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
@@ -103,10 +117,10 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
       mediaRecorder.start(100);
       setIsRecording(true);
-      console.log('[Voice Recording] Recording started successfully');
+      debugLog('Recording started successfully', { state: mediaRecorder.state });
       toast.success('🎤 Recording started...');
     } catch (error) {
-      console.error('[Voice Recording] Error starting recording:', error);
+      debugLog('Error starting recording', error);
       
       // Provide detailed error messages based on error type
       if (error instanceof Error) {
@@ -135,57 +149,57 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       }
 
       mediaRecorderRef.current.onstop = async () => {
-        console.log('[Voice Recording] Recording stopped, processing audio...');
+        debugLog('Recording stopped, processing audio...');
         setIsRecording(false);
         setIsProcessing(true);
 
         try {
-          console.log('[Voice Recording] Audio chunks collected:', audioChunksRef.current.length);
+          debugLog('Audio chunks collected', { count: audioChunksRef.current.length });
           const totalSize = audioChunksRef.current.reduce((total, chunk) => total + chunk.size, 0);
-          console.log('[Voice Recording] Total audio size:', totalSize, 'bytes');
+          debugLog('Total audio size', { bytes: totalSize });
           
           if (totalSize === 0) {
             throw new Error('No audio data recorded');
           }
 
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          console.log('[Voice Recording] Audio blob created, size:', audioBlob.size, 'type:', audioBlob.type);
+          debugLog('Audio blob created', { size: audioBlob.size, type: audioBlob.type });
           
           // Convert to base64 for API call
           const reader = new FileReader();
           reader.onloadend = async () => {
             try {
-              console.log('[Voice Recording] FileReader completed, result length:', (reader.result as string).length);
+              debugLog('FileReader completed', { resultLength: (reader.result as string).length });
               const base64Audio = (reader.result as string).split(',')[1];
-              console.log('[Voice Recording] Base64 audio extracted, length:', base64Audio.length);
+              debugLog('Base64 audio extracted', { length: base64Audio.length });
               
               // Call the voice-to-text edge function with enhanced error logging
-              console.log('[Voice Recording] Sending audio to voice-to-text function...');
+              debugLog('Sending audio to voice-to-text function...');
               
               const { data, error } = await supabase.functions.invoke('voice-to-text', {
                 body: { audio: base64Audio }
               });
               
-              console.log('[Voice Recording] Response from voice-to-text:', { data, error });
+              debugLog('Voice-to-text response received', { hasData: !!data, hasError: !!error });
 
               if (error) {
-                console.error('[Voice Recording] Supabase function error:', error);
+                debugLog('Supabase function error', error);
                 throw new Error(error.message || 'Failed to transcribe audio');
               }
 
               if (!data) {
-                console.error('[Voice Recording] No data returned from function');
+                debugLog('No data returned from function');
                 throw new Error('No response data from transcription service');
               }
 
               const transcription = data.text || 'Could not transcribe audio';
-              console.log('[Voice Recording] Transcription successful:', transcription);
+              debugLog('Transcription successful', { text: transcription, length: transcription.length });
               setTranscribedText(transcription);
               setIsProcessing(false);
               toast.success('🎯 Voice transcribed successfully!');
               resolve(transcription);
             } catch (error) {
-              console.error('[Voice Recording] Error in transcription process:', error);
+              debugLog('Error in transcription process', error);
               setIsProcessing(false);
               toast.error('Failed to transcribe audio. Please try again.');
               resolve(null);
