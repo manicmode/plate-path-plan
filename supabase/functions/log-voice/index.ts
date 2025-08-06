@@ -2,6 +2,7 @@
 // Redeploy triggered at 2025-01-29T10:45:00Z
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -113,10 +114,30 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate user first
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization') ?? '' },
+        },
+      }
+    );
+
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response('Unauthorized', { 
+        status: 401,
+        headers: corsHeaders
+      });
+    }
+
     // Log function start and check for API key availability
     console.log('🔍 log-voice function started at:', new Date().toISOString());
     console.log('🔍 Request method:', req.method);
     console.log('🔍 Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('🔍 Authenticated user:', user.id);
     
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     console.log('🔍 OpenAI API key present:', !!OPENAI_API_KEY);
