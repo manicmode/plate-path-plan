@@ -1,188 +1,249 @@
-import { StrictMode } from "react";
-import * as React from "react";
+import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
-import ErrorBoundary from "./components/ErrorBoundary";
-import { AuthProvider } from "./contexts/auth";
-import { NutritionProvider } from "./contexts/NutritionContext";
-import { NotificationProvider } from "./contexts/NotificationContext";
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { applySecurityHeaders } from "./lib/securityHeaders";
 
-// Apply security headers on app initialization with error handling
+console.log('🚀 Step 1: Starting app initialization...');
+
+// Step 2: Import CSS
 try {
-  applySecurityHeaders();
-  console.log('✅ Security headers applied successfully');
+  require("./index.css");
+  console.log('✅ Step 2: CSS imported successfully');
 } catch (error) {
-  console.warn('⚠️ Failed to apply security headers:', error);
-  // Don't let security headers failure prevent app from loading
+  console.error('🚨 Step 2 FAILED: CSS import failed:', error);
 }
 
-// Enhanced mobile debugging
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+// Step 3: Import App component
+let App: React.ComponentType = () => (
+  <div style={{ 
+    minHeight: '100vh', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    background: 'linear-gradient(to bottom right, #f9fafb, #f3f4f6)'
+  }}>
+    <div style={{ 
+      textAlign: 'center', 
+      padding: '2rem', 
+      background: 'white', 
+      borderRadius: '1rem', 
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' 
+    }}>
+      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>VOYAGE</h1>
+      <p style={{ color: '#6b7280' }}>Fallback App Component</p>
+    </div>
+  </div>
+);
 
-console.log('🔍 App initialization starting...', {
-  isMobile,
-  isIOS,
-  isSafari,
-  userAgent: navigator.userAgent.substring(0, 100),
-  localStorage: (() => {
-    try {
-      localStorage.setItem('__test__', 'test');
-      localStorage.removeItem('__test__');
-      return 'available';
-    } catch (e) {
-      return `blocked: ${e.message}`;
+try {
+  const AppModule = require("./App.tsx");
+  App = AppModule.default || AppModule;
+  console.log('✅ Step 3: App imported successfully');
+} catch (error) {
+  console.error('🚨 Step 3 FAILED: App import failed:', error);
+}
+
+// Step 4: Import ErrorBoundary
+class FallbackErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('🚨 Error caught by fallback boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      return (
+        <div style={{ 
+          minHeight: '100vh', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: '#f3f4f6'
+        }}>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '2rem',
+            background: 'white',
+            borderRadius: '1rem',
+            boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ marginBottom: '1rem' }}>Something went wrong</h2>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: '#3b82f6', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '0.5rem', 
+                cursor: 'pointer' 
+              }}
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
     }
-  })(),
-  sessionStorage: (() => {
-    try {
-      sessionStorage.setItem('__test__', 'test');
-      sessionStorage.removeItem('__test__');
-      return 'available';
-    } catch (e) {
-      return `blocked: ${e.message}`;
-    }
-  })(),
-  url: window.location.href,
-  timestamp: new Date().toISOString(),
-  documentReadyState: document.readyState,
-  windowLoaded: document.readyState === 'complete'
-});
-
-// Additional mobile-specific checks
-if (isMobile) {
-  console.log('Mobile-specific info:', {
-    screen: {
-      width: window.screen.width,
-      height: window.screen.height,
-      availWidth: window.screen.availWidth,
-      availHeight: window.screen.availHeight
-    },
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight
-    },
-    memory: (performance as any).memory ? {
-      used: Math.round((performance as any).memory.usedJSHeapSize / 1048576) + ' MB',
-      total: Math.round((performance as any).memory.totalJSHeapSize / 1048576) + ' MB',
-      limit: Math.round((performance as any).memory.jsHeapSizeLimit / 1048576) + ' MB'
-    } : 'unavailable',
-    connection: (navigator as any).connection ? {
-      effectiveType: (navigator as any).connection.effectiveType,
-      downlink: (navigator as any).connection.downlink,
-      rtt: (navigator as any).connection.rtt
-    } : 'unavailable'
-  });
-}
-
-const rootElement = document.getElementById("root");
-
-if (!rootElement) {
-  throw new Error("Failed to find the root element");
-}
-
-const root = createRoot(rootElement);
-
-// Enhanced global error handlers for mobile debugging
-window.addEventListener('error', (event) => {
-  console.error('🚨 Global error caught:', {
-    message: event.message,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno,
-    error: event.error,
-    stack: event.error?.stack,
-    isMobile,
-    timestamp: new Date().toISOString(),
-    url: window.location.href
-  });
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('🚨 Unhandled promise rejection:', {
-    reason: event.reason,
-    promise: event.promise,
-    stack: event.reason?.stack,
-    isMobile,
-    timestamp: new Date().toISOString(),
-    url: window.location.href
-  });
-});
-
-// Add visibility change handlers to track app state transitions
-window.addEventListener('focus', () => {
-  console.log('🔍 App focused', { timestamp: new Date().toISOString() });
-});
-
-window.addEventListener('blur', () => {
-  console.log('🔍 App blurred', { timestamp: new Date().toISOString() });
-});
-
-document.addEventListener('visibilitychange', () => {
-  console.log('🔍 Visibility changed:', { 
-    hidden: document.hidden, 
-    visibilityState: document.visibilityState,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// For iOS Safari, add specific handlers
-if (isIOS && isSafari) {
-  console.log('iOS Safari detected, adding specific handlers...');
-  
-  // Handle iOS Safari storage issues
-  try {
-    const testStorage = () => {
-      localStorage.setItem('ios_test', 'test');
-      const value = localStorage.getItem('ios_test');
-      localStorage.removeItem('ios_test');
-      return value === 'test';
-    };
-    
-    console.log('iOS Safari storage test:', testStorage() ? 'passed' : 'failed');
-  } catch (error) {
-    console.error('iOS Safari storage test failed:', error);
+    return this.props.children;
   }
 }
 
-// Create QueryClient instance
-const queryClient = new QueryClient({
-  defaultOptions: {
+let ErrorBoundary: React.ComponentType<{ children: React.ReactNode; fallback?: React.ReactNode }> = FallbackErrorBoundary;
+
+try {
+  const ErrorBoundaryModule = require("./components/ErrorBoundary");
+  ErrorBoundary = ErrorBoundaryModule.default || ErrorBoundaryModule;
+  console.log('✅ Step 4: ErrorBoundary imported successfully');
+} catch (error) {
+  console.error('🚨 Step 4 FAILED: ErrorBoundary import failed:', error);
+}
+
+// Step 5: Import AuthProvider
+let AuthProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  console.log('Using fallback AuthProvider');
+  return <>{children}</>;
+};
+
+try {
+  const AuthModule = require("./contexts/auth");
+  AuthProvider = AuthModule.AuthProvider;
+  console.log('✅ Step 5: AuthProvider imported successfully');
+} catch (error) {
+  console.error('🚨 Step 5 FAILED: AuthProvider import failed:', error);
+}
+
+// Step 6: Import NutritionProvider
+let NutritionProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  console.log('Using fallback NutritionProvider');
+  return <>{children}</>;
+};
+
+try {
+  const NutritionModule = require("./contexts/NutritionContext");
+  NutritionProvider = NutritionModule.NutritionProvider;
+  console.log('✅ Step 6: NutritionProvider imported successfully');
+} catch (error) {
+  console.error('🚨 Step 6 FAILED: NutritionProvider import failed:', error);
+}
+
+// Step 7: Import NotificationProvider
+let NotificationProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  console.log('Using fallback NotificationProvider');
+  return <>{children}</>;
+};
+
+try {
+  const NotificationModule = require("./contexts/NotificationContext");
+  NotificationProvider = NotificationModule.NotificationProvider;
+  console.log('✅ Step 7: NotificationProvider imported successfully');
+} catch (error) {
+  console.error('🚨 Step 7 FAILED: NotificationProvider import failed:', error);
+}
+
+// Step 8: Import React Query
+class FallbackQueryClient {
+  defaultOptions = {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
       retry: 1,
-      refetchOnWindowFocus: false, // Reduce unnecessary refetches
+      refetchOnWindowFocus: false,
     },
-  },
-});
+  };
+}
 
-// Enhanced rendering with mobile debugging and error handling
-console.log('🔍 Rendering app...', { 
-  strictMode: !isMobile, 
-  timestamp: new Date().toISOString(),
-  rootElement: !!rootElement,
-  reactVersion: React.version || 'unknown'
-});
+let QueryClient: new() => any = FallbackQueryClient;
+let QueryClientProvider: React.ComponentType<{ client: any; children: React.ReactNode }> = ({ children }) => {
+  console.log('Using fallback QueryClientProvider');
+  return <>{children}</>;
+};
 
+try {
+  const QueryModule = require('@tanstack/react-query');
+  QueryClient = QueryModule.QueryClient;
+  QueryClientProvider = QueryModule.QueryClientProvider;
+  console.log('✅ Step 8: React Query imported successfully');
+} catch (error) {
+  console.error('🚨 Step 8 FAILED: React Query import failed:', error);
+}
+
+// Step 9: Import and apply security headers
+try {
+  const SecurityModule = require("./lib/securityHeaders");
+  SecurityModule.applySecurityHeaders();
+  console.log('✅ Step 9: Security headers applied successfully');
+} catch (error) {
+  console.error('🚨 Step 9 FAILED: Security headers failed:', error);
+}
+
+// Step 10: Mobile detection
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+console.log('✅ Step 10: Mobile detection completed', { isMobile });
+
+// Step 11: Create root
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Failed to find the root element");
+}
+const root = createRoot(rootElement);
+
+// Step 12: Create QueryClient
+let queryClient: any;
+try {
+  queryClient = new QueryClient();
+  console.log('✅ Step 11: QueryClient created successfully');
+} catch (error) {
+  console.error('🚨 Step 11 FAILED: QueryClient creation failed:', error);
+  queryClient = new FallbackQueryClient();
+}
+
+console.log('🚀 Step 12: Starting app render...');
+
+// Step 13: Render app
 try {
   root.render(
     <ErrorBoundary>
       <AuthProvider>
         <ErrorBoundary fallback={
-          <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <div className="text-center space-y-4">
-              <h2 className="text-xl font-bold">Loading Error</h2>
-              <p className="text-muted-foreground">Please refresh the page to continue.</p>
+          <div style={{ 
+            minHeight: '100vh', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '1rem',
+            background: '#f3f4f6'
+          }}>
+            <div style={{ 
+              textAlign: 'center',
+              background: 'white',
+              padding: '2rem',
+              borderRadius: '1rem',
+              boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Loading Error</h2>
+              <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Please refresh the page to continue.</p>
               <button 
-                onClick={() => {
-                  console.log('🔄 User clicked refresh button');
-                  window.location.reload();
-                }} 
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer'
+                }}
               >
                 Refresh Page
               </button>
@@ -206,43 +267,65 @@ try {
       </AuthProvider>
     </ErrorBoundary>
   );
-  console.log('✅ App rendered successfully');
+  console.log('✅ Step 12: App rendered successfully!');
 } catch (error) {
-  console.error('🚨 Critical error during app rendering:', error);
+  console.error('🚨 Step 12 FAILED: App render failed:', error);
   
-  // Fallback render with minimal dependencies
+  // Emergency fallback render
   root.render(
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="text-center space-y-4 bg-white p-8 rounded-lg shadow-lg max-w-md">
-        <div className="text-6xl mb-4">⚠️</div>
-        <h2 className="text-xl font-bold text-gray-900">App Loading Error</h2>
-        <p className="text-gray-600">
-          The application failed to initialize properly. This might be due to a configuration issue or network problem.
-        </p>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#f3f4f6', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '1rem' 
+    }}>
+      <div style={{ 
+        textAlign: 'center', 
+        background: 'white', 
+        padding: '2rem', 
+        borderRadius: '1rem', 
+        boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)',
+        maxWidth: '28rem'
+      }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Critical Error</h2>
+        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>The app failed to start. Check console for details.</p>
         <button 
-          onClick={() => {
-            console.log('🔄 Emergency refresh triggered');
-            window.location.reload();
-          }} 
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '0.5rem 1.5rem',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            marginRight: '0.5rem'
+          }}
         >
-          Refresh Page
+          Refresh
         </button>
         <button 
           onClick={() => {
             try {
               localStorage.clear();
               sessionStorage.clear();
-              console.log('🧹 Storage cleared, refreshing...');
               window.location.reload();
             } catch (e) {
-              console.error('Failed to clear storage:', e);
               window.location.reload();
             }
-          }} 
-          className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 ml-2"
+          }}
+          style={{
+            padding: '0.5rem 1.5rem',
+            background: '#ef4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: 'pointer'
+          }}
         >
-          Clear Data & Refresh
+          Clear & Refresh
         </button>
       </div>
     </div>
