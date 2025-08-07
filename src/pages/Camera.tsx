@@ -1963,6 +1963,49 @@ const CameraPage = () => {
         </Card>
       )}
 
+      {/* Voice Entry Card */}
+      {showVoiceEntry && (
+        <Card className="animate-slide-up mb-0 !mb-0">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mic className="h-5 w-5 text-blue-600" />
+              Voice Input Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">You said:</p>
+              <p className="font-medium">{voiceText}</p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <Button
+                onClick={processVoiceEntry}
+                disabled={isProcessingVoice || !!processingStep}
+                className="flex-1 gradient-primary min-w-[120px]"
+              >
+                {isProcessingVoice || processingStep ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    Processing...
+                  </div>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Analyze
+                  </>
+                )}
+              </Button>
+              
+              <Button variant="outline" onClick={() => setShowVoiceEntry(false)} className="flex-1 min-w-[80px]">
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Camera UI */}
       {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && (
         <Card className="animate-slide-up mb-0 !mb-0">
@@ -2151,48 +2194,6 @@ const CameraPage = () => {
         className="hidden"
       />
 
-      {/* Voice Entry Card */}
-      {showVoiceEntry && (
-        <Card className="animate-slide-up mb-0 !mb-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mic className="h-5 w-5 text-blue-600" />
-              Voice Input Detected
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">You said:</p>
-              <p className="font-medium">{voiceText}</p>
-            </div>
-            
-            <div className="flex space-x-3">
-              <Button
-                onClick={processVoiceEntry}
-                disabled={isProcessingVoice || !!processingStep}
-                className="flex-1 gradient-primary min-w-[120px]"
-              >
-                {isProcessingVoice || processingStep ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    Processing...
-                  </div>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Analyze
-                  </>
-                )}
-              </Button>
-              
-              <Button variant="outline" onClick={() => setShowVoiceEntry(false)} className="flex-1 min-w-[80px]">
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Multi-AI Food Detection Results */}
       {showMultiAIDetection && (
