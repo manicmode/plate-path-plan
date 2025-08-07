@@ -1,48 +1,23 @@
-console.log('🔥 DEBUG: main.tsx starting imports...');
-
 import { StrictMode } from "react";
 import * as React from "react";
-
-console.log('🔥 DEBUG: React imported successfully');
-
 import { createRoot } from "react-dom/client";
-
-console.log('🔥 DEBUG: createRoot imported successfully');
-
 import App from "./App.tsx";
-
-console.log('🔥 DEBUG: App imported successfully');
-
 import "./index.css";
-
-console.log('🔥 DEBUG: index.css imported successfully');
-
 import ErrorBoundary from "./components/ErrorBoundary";
-
-console.log('🔥 DEBUG: ErrorBoundary imported successfully');
-
 import { AuthProvider } from "./contexts/auth";
-
-console.log('🔥 DEBUG: AuthProvider imported successfully');
-
 import { NutritionProvider } from "./contexts/NutritionContext";
-
-console.log('🔥 DEBUG: NutritionProvider imported successfully');
-
 import { NotificationProvider } from "./contexts/NotificationContext";
-
-console.log('🔥 DEBUG: NotificationProvider imported successfully');
-
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-console.log('🔥 DEBUG: React Query imported successfully');
-
 import { applySecurityHeaders } from "./lib/securityHeaders";
 
-console.log('🔥 DEBUG: All imports completed successfully');
-
-// Apply security headers on app initialization
-applySecurityHeaders();
+// Apply security headers on app initialization with error handling
+try {
+  applySecurityHeaders();
+  console.log('✅ Security headers applied successfully');
+} catch (error) {
+  console.warn('⚠️ Failed to apply security headers:', error);
+  // Don't let security headers failure prevent app from loading
+}
 
 // Enhanced mobile debugging
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -185,7 +160,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Enhanced rendering with mobile debugging
+// Enhanced rendering with mobile debugging and error handling
 console.log('🔍 Rendering app...', { 
   strictMode: !isMobile, 
   timestamp: new Date().toISOString(),
@@ -193,40 +168,83 @@ console.log('🔍 Rendering app...', {
   reactVersion: React.version || 'unknown'
 });
 
-root.render(
-  <ErrorBoundary>
-    <AuthProvider>
-      <ErrorBoundary fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="text-center space-y-4">
-            <h2 className="text-xl font-bold">Loading Error</h2>
-            <p className="text-muted-foreground">Please refresh the page to continue.</p>
-            <button 
-              onClick={() => {
-                console.log('🔄 User clicked refresh button');
-                window.location.reload();
-              }} 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
-            >
-              Refresh Page
-            </button>
+try {
+  root.render(
+    <ErrorBoundary>
+      <AuthProvider>
+        <ErrorBoundary fallback={
+          <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="text-center space-y-4">
+              <h2 className="text-xl font-bold">Loading Error</h2>
+              <p className="text-muted-foreground">Please refresh the page to continue.</p>
+              <button 
+                onClick={() => {
+                  console.log('🔄 User clicked refresh button');
+                  window.location.reload();
+                }} 
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+              >
+                Refresh Page
+              </button>
+            </div>
           </div>
-        </div>
-      }>
-        <QueryClientProvider client={queryClient}>
-          <NutritionProvider>
-            <NotificationProvider>
-              {isMobile ? (
-                <App />
-              ) : (
-                <StrictMode>
+        }>
+          <QueryClientProvider client={queryClient}>
+            <NutritionProvider>
+              <NotificationProvider>
+                {isMobile ? (
                   <App />
-                </StrictMode>
-              )}
-            </NotificationProvider>
-          </NutritionProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </AuthProvider>
-  </ErrorBoundary>
-);
+                ) : (
+                  <StrictMode>
+                    <App />
+                  </StrictMode>
+                )}
+              </NotificationProvider>
+            </NutritionProvider>
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+  console.log('✅ App rendered successfully');
+} catch (error) {
+  console.error('🚨 Critical error during app rendering:', error);
+  
+  // Fallback render with minimal dependencies
+  root.render(
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="text-center space-y-4 bg-white p-8 rounded-lg shadow-lg max-w-md">
+        <div className="text-6xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold text-gray-900">App Loading Error</h2>
+        <p className="text-gray-600">
+          The application failed to initialize properly. This might be due to a configuration issue or network problem.
+        </p>
+        <button 
+          onClick={() => {
+            console.log('🔄 Emergency refresh triggered');
+            window.location.reload();
+          }} 
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+        <button 
+          onClick={() => {
+            try {
+              localStorage.clear();
+              sessionStorage.clear();
+              console.log('🧹 Storage cleared, refreshing...');
+              window.location.reload();
+            } catch (e) {
+              console.error('Failed to clear storage:', e);
+              window.location.reload();
+            }
+          }} 
+          className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 ml-2"
+        >
+          Clear Data & Refresh
+        </button>
+      </div>
+    </div>
+  );
+}
