@@ -390,7 +390,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          data-confirmation-card
         >
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
@@ -418,7 +417,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          data-confirmation-card
         >
           <div className="p-6">
             {/* Unknown Product Alert */}
@@ -639,12 +637,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 {currentFoodItem.source && (
                   <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                      📊 Nutrition source: <span className="font-mono text-blue-600 dark:text-blue-400">
-                        {currentFoodItem.source === 'gpt_fallback' ? 'Smart Lookup' : 
-                         currentFoodItem.source === 'gpt_nutrition' ? 'AI estimate' :
-                         currentFoodItem.source === 'hardcode_fallback' ? 'Smart Lookup' :
-                         currentFoodItem.source}
-                      </span>
+                      📊 Nutrition source: <span className="font-mono text-blue-600 dark:text-blue-400">{currentFoodItem.source}</span>
+                      {currentFoodItem.confidence && (
+                        <span className="ml-2">• Confidence: {currentFoodItem.confidence}%</span>
+                      )}
                     </div>
                   </div>
                 )}

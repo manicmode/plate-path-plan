@@ -1116,16 +1116,6 @@ const CameraPage = () => {
         setShowVoiceEntry(false);
         resetErrorState();
         
-        // Auto-scroll to ensure the result is visible after confirmation shows
-        setTimeout(() => {
-          const confirmCard = document.querySelector('[data-confirmation-card]');
-          if (confirmCard) {
-            confirmCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          } else {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-          }
-        }, 200);
-        
         // Process the first item
         console.log('🎤 [Camera] Processing first item...');
         processCurrentItem(voiceSummaryItems, 0);
@@ -2185,7 +2175,7 @@ const CameraPage = () => {
                 {isProcessingVoice || processingStep ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    {processingStep || 'Analyzing voice...'}
+                    Processing...
                   </div>
                 ) : (
                   <>
