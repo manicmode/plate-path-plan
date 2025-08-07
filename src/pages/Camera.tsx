@@ -96,6 +96,7 @@ const CameraPage = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
   const [showVoiceAnalyzing, setShowVoiceAnalyzing] = useState(false);
+  const [showProcessingNextItem, setShowProcessingNextItem] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
@@ -1623,6 +1624,8 @@ const CameraPage = () => {
 
   const handleTransitionComplete = () => {
     setShowTransition(false);
+    // Show processing overlay to prevent main UI from showing during item transition
+    setShowProcessingNextItem(true);
     // Reset processing state when transitioning to next item
     setIsProcessingFood(false);
     // Let processCurrentItem handle showing confirmation when data is ready
@@ -1883,6 +1886,7 @@ const CameraPage = () => {
     setShowConfirmation(false);
     setShowVoiceEntry(false);
     setShowVoiceAnalyzing(false);
+    setShowProcessingNextItem(false);
     setShowManualEdit(false);
     setIsAnalyzing(false);
     setVoiceText('');
@@ -2044,8 +2048,34 @@ const CameraPage = () => {
         </div>
       )}
 
+      {/* Processing Next Item Overlay */}
+      {showProcessingNextItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md animate-slide-up">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-center justify-center">
+                <Clock className="h-5 w-5 text-blue-600 animate-pulse" />
+                Preparing Next Item
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+                <p className="text-gray-600 dark:text-gray-300">
+                  Loading food details...
+                </p>
+              </div>
+              
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Just a moment while we prepare your next item
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Main Camera UI */}
-      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showVoiceEntry && !showTransition && (
+      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showProcessingNextItem && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
@@ -2438,7 +2468,10 @@ const CameraPage = () => {
         foodItem={recognizedFoods[0] || null}
         showSkip={pendingItems.length > 1}
         currentIndex={currentItemIndex}
-        onVoiceAnalyzingComplete={() => setShowVoiceAnalyzing(false)}
+        onVoiceAnalyzingComplete={() => {
+          setShowVoiceAnalyzing(false);
+          setShowProcessingNextItem(false);
+        }}
         totalItems={pendingItems.length}
       />
 
