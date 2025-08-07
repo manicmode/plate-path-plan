@@ -46,6 +46,7 @@ interface FoodConfirmationCardProps {
   currentIndex?: number; // Current item index for multi-item flow
   totalItems?: number; // Total items for multi-item flow
   isProcessingFood?: boolean; // Whether the parent is processing the food item
+  onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
 }
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
@@ -57,7 +58,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   showSkip = false,
   currentIndex,
   totalItems,
-  isProcessingFood = false
+  isProcessingFood = false,
+  onVoiceAnalyzingComplete
 }) => {
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -119,6 +121,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       triggerCoachResponseForIngredients(flaggedIngredients, handleCoachMessage);
     }
   }, [flaggedIngredients, currentFoodItem, triggerCoachResponseForIngredients]);
+
+  // Hide voice analyzing overlay when confirmation modal is fully mounted and open
+  React.useEffect(() => {
+    if (isOpen && currentFoodItem && onVoiceAnalyzingComplete) {
+      // Small delay to ensure the modal is fully rendered before hiding the overlay
+      const timer = setTimeout(() => {
+        onVoiceAnalyzingComplete();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
   if (!currentFoodItem) return null;
 

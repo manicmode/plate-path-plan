@@ -1606,12 +1606,11 @@ const CameraPage = () => {
     
     // Add a small delay to ensure clean transition and prevent old data flash
     setTimeout(() => {
-      // Use the existing FoodConfirmationCard flow FIRST
+      // Use the existing FoodConfirmationCard flow
       setRecognizedFoods([foodItem]);
       setShowConfirmation(true);
       setInputSource('photo');
-      // Hide voice analyzing overlay AFTER showing confirmation to prevent UI flash
-      setShowVoiceAnalyzing(false);
+      // Note: setShowVoiceAnalyzing(false) is now handled by FoodConfirmationCard
     }, 50); // 50ms delay to ensure state is cleared first
     
     if (items.length > 1) {
@@ -2439,6 +2438,7 @@ const CameraPage = () => {
         foodItem={recognizedFoods[0] || null}
         showSkip={pendingItems.length > 1}
         currentIndex={currentItemIndex}
+        onVoiceAnalyzingComplete={() => setShowVoiceAnalyzing(false)}
         totalItems={pendingItems.length}
       />
 
