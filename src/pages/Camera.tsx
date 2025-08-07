@@ -1032,6 +1032,7 @@ const CameraPage = () => {
   };
 
   const processVoiceEntry = async () => {
+    console.log('[LOG] Logging Flow Fixes Activated');
     console.log('🎤 [Camera] Processing voice entry:', { voiceText, length: voiceText?.length });
     
     if (!voiceText.trim()) {
