@@ -29,7 +29,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     const requestBody = { text };
     console.log('🔍 [sendToLogVoice] Request body:', requestBody);
     
-    const response = await fetch('https://uzoiiijqtahohfafqirm.functions.supabase.co/log-voice-gpt5', {
+    const response = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice-gpt5', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -88,18 +88,33 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     
     console.log('🚀 [GPT-5 Voice] Response data:', data);
     
-    // Handle both success and error responses from the enhanced edge function
+    // Normalize response JSON structure
     if (data.success && data.items) {
+      // Successful response with items - ensure clean JSON structure
+      const normalizedData = {
+        success: true,
+        items: data.items,
+        originalText: data.originalText || '',
+        model_used: data.model_used,
+        processing_stats: data.processing_stats,
+        fallback_used: data.fallback_used
+      };
       return {
-        message: JSON.stringify(data), // Return the full structured response
+        message: JSON.stringify(normalizedData),
         success: true
       };
     } else {
-      // Handle structured error responses
-      return {
-        message: JSON.stringify(data), // Return structured error for parsing in Camera.tsx
+      // Handle structured error responses - ensure clean JSON structure
+      const normalizedError = {
         success: false,
-        error: data.errorMessage || data.error || 'Unknown error occurred'
+        errorType: data.errorType || 'PROCESSING_ERROR',
+        errorMessage: data.errorMessage || data.error || 'Unknown error occurred',
+        suggestions: data.suggestions || []
+      };
+      return {
+        message: JSON.stringify(normalizedError),
+        success: false,
+        error: normalizedError.errorMessage
       };
     }
   } catch (error) {
@@ -107,13 +122,17 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     console.error('❌ [sendToLogVoice] Error type:', typeof error);
     console.error('❌ [sendToLogVoice] Error name:', error instanceof Error ? error.name : 'Unknown');
     console.error('❌ [sendToLogVoice] Error message:', error instanceof Error ? error.message : error);
+    
+    // Normalize network errors
+    const normalizedError = {
+      success: false,
+      errorType: 'NETWORK_ERROR',
+      errorMessage: 'Unable to connect to the service',
+      suggestions: ['Check your internet connection', 'Try again in a moment']
+    };
+    
     return {
-      message: JSON.stringify({
-        success: false,
-        errorType: 'NETWORK_ERROR',
-        errorMessage: 'Unable to connect to the service',
-        suggestions: ['Check your internet connection', 'Try again in a moment']
-      }),
+      message: JSON.stringify(normalizedError),
       success: false,
       error: error instanceof Error ? error.message : 'Network error occurred'
     };

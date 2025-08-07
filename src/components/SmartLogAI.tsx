@@ -174,7 +174,8 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
   };
 
   const handleFoodLog = (food: FoodPrediction) => {
-    console.log('Logging food:', food);
+    console.log('SmartLog tile clicked:', food);
+    // Call onFoodSelect to open FoodConfirmation modal instead of instant-log
     onFoodSelect?.(food);
   };
 

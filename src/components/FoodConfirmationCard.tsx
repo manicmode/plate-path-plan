@@ -32,7 +32,7 @@ interface FoodItem {
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
-  source?: string; // Nutrition data source (gpt-individual, gpt-fallback, generic-fallback)
+  source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
   confidence?: number; // Confidence score for the nutrition estimation
 }
 
@@ -247,6 +247,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     if (score >= 70) return 'text-blue-600';
     if (score >= 50) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  // Map technical source names to user-friendly labels
+  const getFriendlySourceLabel = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'branded-database':
+      case 'branded_database':
+        return 'Branded database';
+      case 'usda':
+      case 'openfoodfacts':
+      case 'open_food_facts':
+        return 'Food database';
+      case 'gpt-individual':
+      case 'gpt-fallback':
+      case 'ai-estimate':
+      case 'ai_estimate':
+      case 'multi-ai-fallback':
+        return 'AI estimate';
+      default:
+        return 'Database lookup';
+    }
   };
 
   const handleConfirm = async () => {
@@ -646,14 +667,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   </div>
                 </div>
 
-                {/* Debug Info - Nutrition Source */}
+                {/* Nutrition Source Display - User-friendly labels, no confidence % */}
                 {currentFoodItem.source && (
                   <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                      📊 Nutrition source: <span className="font-mono text-blue-600 dark:text-blue-400">{currentFoodItem.source}</span>
-                      {currentFoodItem.confidence && (
-                        <span className="ml-2">• Confidence: {currentFoodItem.confidence}%</span>
-                      )}
+                      📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
                     </div>
                   </div>
                 )}

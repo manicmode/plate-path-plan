@@ -35,7 +35,8 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
-// Debug components removed for clean production build
+// Import smoke tests for development
+import '@/utils/smokeTests';
 import jsQR from 'jsqr';
 
 interface RecognizedFood {
@@ -1046,40 +1047,93 @@ const CameraPage = () => {
       return;
     }
 
-    // Show voice analyzing overlay to prevent 8 logging options from showing
+    // Show voice analyzing overlay to prevent main camera options from showing
     setIsManualAnalyzing(false);
     setShowVoiceAnalyzing(true);
     setIsProcessingVoice(true);
-    setProcessingStep('Processing...');
+    setProcessingStep('Analyzing voice input...');
     
     try {
-      setProcessingStep('Analyzing...');
-      console.log('🎤 [Camera] Sending to log-voice function:', voiceText);
-      const result = await sendToLogVoice(voiceText);
-      console.log('🎤 [Camera] Log-voice result:', result);
+      console.log('🎤 [Camera] Sending to log-voice-gpt5 function:', voiceText);
+      
+      // Add retry logic for 401/429/5xx errors
+      let retryCount = 0;
+      const maxRetries = 2;
+      let result;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          result = await sendToLogVoice(voiceText);
+          
+          // If successful, break out of retry loop
+          if (result.success) break;
+          
+          // Check if we should retry based on error type
+          const errorData = result.message ? JSON.parse(result.message) : {};
+          const shouldRetry = retryCount < maxRetries && (
+            errorData.errorType === 'HTTP_ERROR' || 
+            result.error?.includes('401') || 
+            result.error?.includes('429') || 
+            result.error?.includes('5')
+          );
+          
+          if (!shouldRetry) break;
+          
+          // Exponential backoff: 1s, 2s
+          const backoffMs = Math.pow(2, retryCount) * 1000;
+          console.log(`🔄 [Camera] Retrying voice request in ${backoffMs}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          retryCount++;
+          
+        } catch (error) {
+          if (retryCount >= maxRetries) throw error;
+          retryCount++;
+          const backoffMs = Math.pow(2, retryCount) * 1000;
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
+      }
+
+      if (!result.success) {
+        // After retries failed, try fallback to log-voice function
+        console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
+        try {
+          const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+            },
+            body: JSON.stringify({ text: voiceText })
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            result = {
+              success: true,
+              message: JSON.stringify({
+                success: true,
+                items: fallbackData.items || [],
+                originalText: fallbackData.originalText || voiceText,
+                model_used: 'gpt-4o (fallback)',
+                fallback_used: true
+              })
+            };
+            console.log('✅ [Camera] Fallback to log-voice succeeded');
+          }
+        } catch (fallbackError) {
+          console.error('❌ [Camera] Fallback also failed:', fallbackError);
+        }
+      }
 
       if (!result.success) {
         // Handle structured error response from edge function
-        console.error('❌ [Camera] Voice processing failed. Result:', result);
+        console.error('❌ [Camera] Voice processing failed after retries. Result:', result);
         const errorData = result.message ? JSON.parse(result.message) : {};
         console.error('❌ [Camera] Parsed error data:', errorData);
         
-        // Create detailed error message for debugging
-        let debugMessage = errorData.errorMessage || result.error || 'Failed to process voice input';
-        
-        // Add debug info if available
-        if (errorData.debugInfo) {
-          debugMessage += `\n\nDebug Info:\n- Error Type: ${errorData.debugInfo.errorType}\n- Error Name: ${errorData.debugInfo.errorName}\n- Error Message: ${errorData.debugInfo.errorMessage}`;
-        }
-        
-        // Add original text for reference
-        if (voiceText) {
-          debugMessage += `\n\nOriginal Text: "${voiceText}"`;
-        }
-        
         showErrorState(
           errorData.errorType || 'UNKNOWN_ERROR',
-          debugMessage,
+          errorData.errorMessage || result.error || 'Failed to process voice input',
           errorData.suggestions || ['Please try again with more specific descriptions']
         );
         return;
@@ -1167,39 +1221,55 @@ const CameraPage = () => {
 
     setIsProcessingVoice(true);
     setIsManualAnalyzing(true);
-    setShowVoiceAnalyzing(true); // Show analyzing overlay for manual entry
-    setProcessingStep('Processing');
+    setShowVoiceAnalyzing(true); // Show "Analyzing Manual Input..." overlay
+    setProcessingStep('Analyzing manual input...');
+    setShowManualEdit(false); // Hide the manual edit form
 
     try {
-      setProcessingStep('Analyzing...');
-      console.log('🔍 Manual Log Debug - Starting analysis for text:', manualEditText);
-      const result = await sendToLogVoice(manualEditText);
+      console.log('🔍 Manual Entry - Starting analysis for text:', manualEditText);
+      
+      // Add retry logic similar to voice processing
+      let retryCount = 0;
+      const maxRetries = 2;
+      let result;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          result = await sendToLogVoice(manualEditText);
+          
+          if (result.success) break;
+          
+          const errorData = result.message ? JSON.parse(result.message) : {};
+          const shouldRetry = retryCount < maxRetries && (
+            errorData.errorType === 'HTTP_ERROR' || 
+            result.error?.includes('401') || 
+            result.error?.includes('429') || 
+            result.error?.includes('5')
+          );
+          
+          if (!shouldRetry) break;
+          
+          const backoffMs = Math.pow(2, retryCount) * 1000;
+          console.log(`🔄 [Manual] Retrying in ${backoffMs}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          retryCount++;
+          
+        } catch (error) {
+          if (retryCount >= maxRetries) throw error;
+          retryCount++;
+        }
+      }
 
-      console.log('🔍 Manual Log Debug - sendToLogVoice result:', result);
+      console.log('🔍 Manual Entry - sendToLogVoice result:', result);
 
       if (!result.success) {
         const errorData = result.message ? JSON.parse(result.message) : {};
-        console.error('🔍 Manual Log Debug - Analysis failed:', errorData);
-        
-        // Show specific error messages based on error type
-        let errorMessage = errorData.errorMessage || result.error || 'Failed to process manual input';
-        let suggestions = errorData.suggestions || ['Please try again with more specific descriptions'];
-        
-        // Check for specific OpenAI API issues
-        if (errorData.errorType === 'HTTP_ERROR' && errorData.details) {
-          if (errorData.details.includes('API key') || errorData.details.includes('401')) {
-            errorMessage = 'AI analysis service is not properly configured';
-            suggestions = ['The OpenAI API key may not be set up correctly', 'Please contact support'];
-          } else if (errorData.details.includes('timeout') || errorData.details.includes('504')) {
-            errorMessage = 'AI analysis service timed out';
-            suggestions = ['The request took too long to process', 'Try again with a simpler description'];
-          }
-        }
+        console.error('🔍 Manual Entry - Analysis failed:', errorData);
         
         showErrorState(
           errorData.errorType || 'ANALYSIS_ERROR',
-          errorMessage,
-          suggestions
+          errorData.errorMessage || result.error || 'Failed to process manual input',
+          errorData.suggestions || ['Please try again with more specific descriptions']
         );
         return;
       }
@@ -1851,7 +1921,7 @@ const CameraPage = () => {
       setShowConfirmation(false); // Close modal first
       setIsProcessingFood(false); // Reset processing state when completely done
       
-      // Play success sound
+      // Play success sound only once at the very end
       playFoodLogConfirm();
       
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
@@ -2029,7 +2099,7 @@ const CameraPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-center justify-center">
                 <Sparkles className="h-5 w-5 text-blue-600 animate-pulse" />
-                {isManualAnalyzing ? 'Analyzing Manual Input' : 'Analyzing Voice Input'}
+                {isManualAnalyzing ? 'Analyzing Manual Input...' : 'Analyzing Voice Input...'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-center">

@@ -216,7 +216,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       <p className="text-gray-600 dark:text-gray-400 text-center text-sm mb-4">
         {platformInfo.isNative 
           ? 'This device doesn\'t support ML Kit barcode scanning.'
-          : 'Camera permissions are required for barcode scanning.'
+          : 'Barcode scanning works best in the native app. Use \'Enter Barcode Manually\' in PWA.'
         }
       </p>
       
