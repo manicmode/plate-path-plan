@@ -17,7 +17,7 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
   totalItems,
   itemName,
   onComplete,
-  duration = 4500
+  duration = 6000
 }) => {
   const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState(Math.ceil(duration / 1000));
@@ -70,11 +70,11 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
             </div>
             
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              Loading next food item...
+              {progress < 50 ? 'Loading next food item...' : 'Analyzing next bite...'}
             </h3>
             
             <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <p>Preparing <span className="font-semibold text-emerald-600 dark:text-emerald-400">{itemName}</span></p>
+              <p>{progress < 50 ? 'Preparing' : 'Analyzing'} <span className="font-semibold text-emerald-600 dark:text-emerald-400">{itemName}</span></p>
               {totalItems > 1 && <p>Item {currentIndex + 1} of {totalItems}</p>}
             </div>
           </div>

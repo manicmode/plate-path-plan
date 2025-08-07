@@ -1043,11 +1043,12 @@ const CameraPage = () => {
       return;
     }
 
+    // Show loading popup instead of blank page
     setIsProcessingVoice(true);
-    setProcessingStep('Processing...');
+    setProcessingStep('Analyzing your voice input...');
     
     try {
-      setProcessingStep('Analyzing...');
+      setProcessingStep('Analyzing voice input...');
       console.log('🎤 [Camera] Sending to log-voice function:', voiceText);
       const result = await sendToLogVoice(voiceText);
       console.log('🎤 [Camera] Log-voice result:', result);
@@ -1079,7 +1080,7 @@ const CameraPage = () => {
         return;
       }
 
-      setProcessingStep('Preparing...');
+      setProcessingStep('Preparing food analysis...');
       // Parse the structured response from the updated edge function
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
 
@@ -1116,9 +1117,21 @@ const CameraPage = () => {
         setShowVoiceEntry(false);
         resetErrorState();
         
-        // Process the first item
+        // Process the first item with auto-scroll
         console.log('🎤 [Camera] Processing first item...');
         processCurrentItem(voiceSummaryItems, 0);
+        
+        // Auto-scroll to confirmation card after a brief delay to ensure rendering
+        setTimeout(() => {
+          const confirmationCard = document.querySelector('[data-confirmation-card]');
+          if (confirmationCard) {
+            confirmationCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+            console.log('🎯 Auto-scrolled to confirmation card');
+          }
+        }, 300);
       } else {
         console.log('🎤 [Camera] No food items detected in voice response');
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
@@ -1605,6 +1618,18 @@ const CameraPage = () => {
       setRecognizedFoods([foodItem]);
       setShowConfirmation(true);
       setInputSource('photo');
+      
+      // Auto-scroll to confirmation card after ensuring it's rendered
+      setTimeout(() => {
+        const confirmationCard = document.querySelector('[data-confirmation-card]');
+        if (confirmationCard) {
+          confirmationCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          console.log('🎯 Auto-scrolled to confirmation card for multi-item');
+        }
+      }, 100);
     }, 50); // 50ms delay to ensure state is cleared first
     
     if (items.length > 1) {
@@ -1621,6 +1646,18 @@ const CameraPage = () => {
     // Immediately show the confirmation dialog to eliminate any gap
     setShowConfirmation(true);
     processCurrentItem(pendingItems, currentItemIndex);
+    
+    // Auto-scroll to confirmation card after transition completes
+    setTimeout(() => {
+      const confirmationCard = document.querySelector('[data-confirmation-card]');
+      if (confirmationCard) {
+        confirmationCard.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        console.log('🎯 Auto-scrolled to confirmation card after transition');
+      }
+    }, 200);
   };
 
   const handleSkipFood = () => {
