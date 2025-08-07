@@ -7,7 +7,7 @@ export const APP_VERSION = {
   MAJOR: 2,
   MINOR: 1,
   PATCH: 0,
-  BUILD_NUMBER: 20250107001, // GPT-5 Migration Build
+  BUILD_NUMBER: 20250107002, // GPT-5 Migration - Secrets & Deploy Build
   get FULL() {
     return `${this.MAJOR}.${this.MINOR}.${this.PATCH}.${this.BUILD_NUMBER}`;
   }
