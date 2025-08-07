@@ -1116,6 +1116,11 @@ const CameraPage = () => {
         setShowVoiceEntry(false);
         resetErrorState();
         
+        // Auto-scroll to ensure the result is visible
+        setTimeout(() => {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }, 100);
+        
         // Process the first item
         console.log('🎤 [Camera] Processing first item...');
         processCurrentItem(voiceSummaryItems, 0);

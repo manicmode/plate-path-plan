@@ -637,10 +637,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 {currentFoodItem.source && (
                   <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                      📊 Nutrition source: <span className="font-mono text-blue-600 dark:text-blue-400">{currentFoodItem.source}</span>
-                      {currentFoodItem.confidence && (
-                        <span className="ml-2">• Confidence: {currentFoodItem.confidence}%</span>
-                      )}
+                      📊 Nutrition source: <span className="font-mono text-blue-600 dark:text-blue-400">
+                        {currentFoodItem.source === 'gpt_fallback' ? 'GPT fallback' : 
+                         currentFoodItem.source === 'gpt_nutrition' ? 'AI estimate' :
+                         currentFoodItem.source}
+                      </span>
                     </div>
                   </div>
                 )}
