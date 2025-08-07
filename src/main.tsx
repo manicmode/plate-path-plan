@@ -1,14 +1,45 @@
+console.log('🔥 DEBUG: main.tsx starting imports...');
+
 import { StrictMode } from "react";
 import * as React from "react";
+
+console.log('🔥 DEBUG: React imported successfully');
+
 import { createRoot } from "react-dom/client";
+
+console.log('🔥 DEBUG: createRoot imported successfully');
+
 import App from "./App.tsx";
+
+console.log('🔥 DEBUG: App imported successfully');
+
 import "./index.css";
+
+console.log('🔥 DEBUG: index.css imported successfully');
+
 import ErrorBoundary from "./components/ErrorBoundary";
+
+console.log('🔥 DEBUG: ErrorBoundary imported successfully');
+
 import { AuthProvider } from "./contexts/auth";
+
+console.log('🔥 DEBUG: AuthProvider imported successfully');
+
 import { NutritionProvider } from "./contexts/NutritionContext";
+
+console.log('🔥 DEBUG: NutritionProvider imported successfully');
+
 import { NotificationProvider } from "./contexts/NotificationContext";
+
+console.log('🔥 DEBUG: NotificationProvider imported successfully');
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+console.log('🔥 DEBUG: React Query imported successfully');
+
 import { applySecurityHeaders } from "./lib/securityHeaders";
+
+console.log('🔥 DEBUG: All imports completed successfully');
 
 // Apply security headers on app initialization
 applySecurityHeaders();

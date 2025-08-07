@@ -1,12 +1,27 @@
 
+console.log('🔥 DEBUG: App.tsx starting imports...');
+
 import React, { Suspense, lazy, useEffect } from 'react';
+
+console.log('🔥 DEBUG: React imported in App.tsx');
+
 import { Toaster } from '@/components/ui/sonner';
+
+console.log('🔥 DEBUG: Toaster imported');
+
 import BodyScanReminderChecker from '@/components/BodyScanReminderChecker';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 
+console.log('🔥 DEBUG: Core components imported');
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+console.log('🔥 DEBUG: Router components imported');
+
 import { ThemeProvider } from '@/contexts/ThemeContext';
+
+console.log('🔥 DEBUG: All App.tsx imports completed successfully');
 import { IngredientAlertProvider } from '@/contexts/IngredientAlertContext';
 import { BadgeProvider } from '@/contexts/BadgeContext';
 import { ChatModalProvider } from '@/contexts/ChatModalContext';
