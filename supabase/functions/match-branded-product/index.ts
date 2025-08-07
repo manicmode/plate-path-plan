@@ -192,7 +192,7 @@ function extractNutrition(product: any): NutritionData | null {
   // Convert per 100g values to reasonable serving sizes
   const servingSizeMultiplier = 0.3; // Assume ~30g serving for most products
 
-  return {
+  const nutrition = {
     calories: Math.round((nutriments.energy_kcal_100g || nutriments['energy-kcal_100g'] || 0) * servingSizeMultiplier),
     protein: Math.round(((nutriments.proteins_100g || nutriments['proteins_100g'] || 0) * servingSizeMultiplier) * 10) / 10,
     carbs: Math.round(((nutriments.carbohydrates_100g || nutriments['carbohydrates_100g'] || 0) * servingSizeMultiplier) * 10) / 10,
@@ -201,6 +201,52 @@ function extractNutrition(product: any): NutritionData | null {
     sugar: Math.round(((nutriments.sugars_100g || nutriments['sugars_100g'] || 0) * servingSizeMultiplier) * 10) / 10,
     sodium: Math.round((nutriments.sodium_100g || nutriments['sodium_100g'] || 0) * servingSizeMultiplier * 1000) // Convert to mg
   };
+
+  return nutrition;
+}
+
+// Check if nutrition data is incomplete/missing
+function isNutritionIncomplete(nutrition: NutritionData): boolean {
+  // Consider incomplete if major macros are all zero or missing
+  const majorMacros = nutrition.protein + nutrition.carbs + nutrition.fat;
+  
+  // If calories are very low but macros exist, it's okay
+  // If major macros are all zero/very low, it's likely incomplete
+  return majorMacros < 0.5 && nutrition.calories < 10;
+}
+
+// Generate fallback nutrition estimates based on food name
+function generateFallbackNutrition(productName: string): NutritionData {
+  const name = productName.toLowerCase();
+  
+  // Smart fallback based on food category patterns
+  if (name.includes('chip') || name.includes('crisp')) {
+    return { calories: 150, protein: 2, carbs: 15, fat: 10, fiber: 1, sugar: 1, sodium: 170 };
+  }
+  if (name.includes('cookie') || name.includes('biscuit')) {
+    return { calories: 130, protein: 2, carbs: 18, fat: 6, fiber: 1, sugar: 8, sodium: 95 };
+  }
+  if (name.includes('yogurt') || name.includes('yoghurt')) {
+    return { calories: 100, protein: 10, carbs: 12, fat: 3, fiber: 0, sugar: 10, sodium: 60 };
+  }
+  if (name.includes('bread') || name.includes('toast')) {
+    return { calories: 80, protein: 3, carbs: 15, fat: 1, fiber: 2, sugar: 1, sodium: 150 };
+  }
+  if (name.includes('juice')) {
+    return { calories: 110, protein: 0, carbs: 26, fat: 0, fiber: 0, sugar: 22, sodium: 10 };
+  }
+  if (name.includes('candy') || name.includes('chocolate')) {
+    return { calories: 200, protein: 2, carbs: 22, fat: 12, fiber: 2, sugar: 20, sodium: 25 };
+  }
+  if (name.includes('meat') || name.includes('chicken') || name.includes('beef')) {
+    return { calories: 180, protein: 25, carbs: 0, fat: 8, fiber: 0, sugar: 0, sodium: 75 };
+  }
+  if (name.includes('salad') || name.includes('vegetable')) {
+    return { calories: 35, protein: 2, carbs: 7, fat: 0, fiber: 3, sugar: 4, sodium: 20 };
+  }
+  
+  // Generic fallback for unknown foods
+  return { calories: 120, protein: 4, carbs: 15, fat: 5, fiber: 2, sugar: 8, sodium: 85 };
 }
 
 serve(async (req) => {
@@ -270,29 +316,56 @@ serve(async (req) => {
             console.log('🥗 Nutrition extraction result:', nutrition ? 'SUCCESS' : 'FAILED');
             
             if (nutrition) {
-              result = {
-                found: true,
-                confidence: 99, // Maximum confidence for exact barcode matches
-                productId: barcode,
-                productName: barcodeData.product.product_name || productName,
-                brandName: barcodeData.product.brands,
-                nutrition,
-                source: 'barcode',
-                debugInfo: {
-                  searchQuery: barcode,
-                  candidatesFound: 1,
-                  matchMethod: 'barcode_exact_match',
-                  fallbackReason: 'none_barcode_success'
-                }
-              };
-              console.log('✅ BARCODE SUCCESS - Exact branded match found:', result.productName);
-              console.log('🎯 OVERRIDING all other logic - returning branded nutrition immediately');
-              return new Response(JSON.stringify(result), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              });
+              // Check if nutrition data is incomplete
+              if (isNutritionIncomplete(nutrition)) {
+                console.log('⚠️ BARCODE FOUND but nutrition data incomplete - using fallback nutrition');
+                const fallbackNutrition = generateFallbackNutrition(barcodeData.product.product_name || productName);
+                
+                result = {
+                  found: true,
+                  confidence: 65, // Lower confidence due to fallback nutrition
+                  productId: barcode,
+                  productName: barcodeData.product.product_name || productName,
+                  brandName: barcodeData.product.brands,
+                  nutrition: fallbackNutrition,
+                  source: 'barcode',
+                  debugInfo: {
+                    searchQuery: barcode,
+                    candidatesFound: 1,
+                    matchMethod: 'barcode_with_fallback_nutrition',
+                    fallbackReason: 'incomplete_nutrition_data_fallback_applied'
+                  }
+                };
+                console.log('✅ BARCODE SUCCESS with fallback nutrition:', result.productName);
+                console.log('📊 Using fallback nutrition due to incomplete data');
+                return new Response(JSON.stringify(result), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+              } else {
+                result = {
+                  found: true,
+                  confidence: 99, // Maximum confidence for exact barcode matches
+                  productId: barcode,
+                  productName: barcodeData.product.product_name || productName,
+                  brandName: barcodeData.product.brands,
+                  nutrition,
+                  source: 'barcode',
+                  debugInfo: {
+                    searchQuery: barcode,
+                    candidatesFound: 1,
+                    matchMethod: 'barcode_exact_match',
+                    fallbackReason: 'none_barcode_success'
+                  }
+                };
+                console.log('✅ BARCODE SUCCESS - Exact branded match found:', result.productName);
+                console.log('🎯 OVERRIDING all other logic - returning branded nutrition immediately');
+                return new Response(JSON.stringify(result), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+              }
             } else {
-              console.log('⚠️ BARCODE FOUND but nutrition data incomplete - will fallback to fuzzy matching');
-              result.debugInfo.fallbackReason = 'barcode_found_incomplete_nutrition';
+              console.log('⚠️ BARCODE FOUND but nutrition extraction failed - will fallback to fuzzy matching');
+              result.debugInfo.fallbackReason = 'barcode_found_nutrition_extraction_failed';
             }
           } else {
             console.log('❌ BARCODE NOT FOUND in Open Food Facts database - will fallback to fuzzy matching');
@@ -363,34 +436,49 @@ serve(async (req) => {
             if (nutrition) {
               const confidence = Math.round(bestScore * 100);
               
+              // Check if nutrition data is incomplete, use fallback if needed
+              let finalNutrition = nutrition;
+              let finalConfidence = confidence;
+              let needsFallback = false;
+              
+              if (isNutritionIncomplete(nutrition)) {
+                console.log('⚠️ Enhanced match found but nutrition incomplete - applying fallback');
+                finalNutrition = generateFallbackNutrition(bestMatch.product_name);
+                finalConfidence = Math.max(50, confidence - 20); // Reduce confidence due to fallback
+                needsFallback = true;
+              }
+              
               result = {
                 found: true,
-                confidence,
+                confidence: finalConfidence,
                 productId: bestMatch.code,
                 productName: bestMatch.product_name,
                 brandName: bestMatch.brands,
-                nutrition,
+                nutrition: finalNutrition,
                 source: 'fuzzy_match',
                 debugInfo: {
                   searchQuery,
                   candidatesFound: result.debugInfo.candidatesFound,
-                  matchMethod: `enhanced_fuzzy_${confidence}%`,
-                  fallbackReason: `match_details: ${bestMatchDetails.join('; ')}`
+                  matchMethod: needsFallback ? `enhanced_fuzzy_${confidence}%_with_fallback` : `enhanced_fuzzy_${confidence}%`,
+                  fallbackReason: needsFallback ? `incomplete_nutrition_fallback_applied: ${bestMatchDetails.join('; ')}` : `match_details: ${bestMatchDetails.join('; ')}`
                 }
               };
 
               console.log(`✅ Enhanced fuzzy match found: "${result.productName}"`);
-              console.log(`🎯 Confidence: ${confidence}% with details: ${bestMatchDetails.join(', ')}`);
+              console.log(`🎯 Confidence: ${finalConfidence}% with details: ${bestMatchDetails.join(', ')}`);
+              if (needsFallback) {
+                console.log('📊 Applied fallback nutrition due to incomplete data');
+              }
 
-              // Return branded data if confidence is >85% (lowered from 90% for enhanced matching)
-              if (confidence >= 85) {
-                console.log(`🚀 HIGH CONFIDENCE MATCH - Returning branded nutrition data`);
+              // Return branded data if confidence is >50% (more lenient with fallback data)
+              if (finalConfidence >= 50) {
+                console.log(`🚀 MATCH ACCEPTED - Returning ${needsFallback ? 'fallback' : 'branded'} nutrition data`);
                 return new Response(JSON.stringify(result), {
                   headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                 });
               } else {
-                console.log(`⚠️ Confidence ${confidence}% below 85% threshold, will fallback to generic`);
-                result.debugInfo.fallbackReason = `enhanced_confidence_${confidence}%_below_85%_threshold`;
+                console.log(`⚠️ Confidence ${finalConfidence}% below 50% threshold, will fallback to generic`);
+                result.debugInfo.fallbackReason = `confidence_${finalConfidence}%_below_50%_threshold`;
               }
             } else {
               console.log('❌ Enhanced match found but nutrition extraction failed');

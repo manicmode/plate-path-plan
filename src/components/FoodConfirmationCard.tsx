@@ -34,6 +34,8 @@ interface FoodItem {
   ingredientsAvailable?: boolean;
   source?: string; // Nutrition data source (gpt-individual, gpt-fallback, generic-fallback)
   confidence?: number; // Confidence score for the nutrition estimation
+  isLowConfidence?: boolean; // Flag for low confidence results
+  warningMessage?: string; // Warning message for low confidence
 }
 
 interface FoodConfirmationCardProps {
@@ -402,6 +404,41 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       >
                         <FileText className="h-4 w-4 mr-1" />
                         Add Ingredients
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Low Confidence Warning */}
+            {currentFoodItem?.isLowConfidence && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800 mb-4">
+                <div className="flex items-start gap-3">
+                  <Info className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                      Nutrition Data Uncertain
+                    </h3>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                      {currentFoodItem.warningMessage || "We had trouble finding accurate nutrition info. You can edit it manually or continue anyway."}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setIsEditOpen(true)}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                      >
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Edit Manually
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConfirm}
+                        className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                      >
+                        Continue Anyway
                       </Button>
                     </div>
                   </div>
