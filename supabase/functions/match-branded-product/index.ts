@@ -500,9 +500,12 @@ serve(async (req) => {
 
     // Method 3: Fallback to generic nutrition estimation
     console.log('🔄 Falling back to generic nutrition estimation');
+    const fallbackNutrition = generateFallbackNutrition(productName);
     result = {
       found: false,
-      confidence: 50, // Generic confidence
+      confidence: 15, // Low confidence for generic fallback
+      productName: productName,
+      nutrition: fallbackNutrition,
       source: 'fallback',
       debugInfo: {
         ...result.debugInfo,
@@ -510,6 +513,8 @@ serve(async (req) => {
         fallbackReason: result.debugInfo.fallbackReason || 'no_suitable_matches_found'
       }
     };
+    
+    console.log('📊 Generated fallback nutrition for:', productName, fallbackNutrition);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
