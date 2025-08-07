@@ -36,8 +36,7 @@ export const BreathingNudgeBanner = ({ onAccept, onDismiss }: BreathingNudgeBann
     // 🎮 Coach Gamification System - Track nudge dismissal  
     await trackNudgeAction(activeNudge.nudge_type, 'dismiss')
     onDismiss?.()
-    // Navigate to breathing tab for gentle sessions
-    navigate('/recovery/breathing')
+    // Don't navigate anywhere - just dismiss the nudge
   }
 
   const getNudgeIcon = () => {
