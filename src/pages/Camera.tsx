@@ -95,6 +95,7 @@ const CameraPage = () => {
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
+  const [showVoiceAnalyzing, setShowVoiceAnalyzing] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
@@ -1043,6 +1044,8 @@ const CameraPage = () => {
       return;
     }
 
+    // Show voice analyzing overlay to prevent 8 logging options from showing
+    setShowVoiceAnalyzing(true);
     setIsProcessingVoice(true);
     setProcessingStep('Processing...');
     
@@ -1149,6 +1152,7 @@ const CameraPage = () => {
     } finally {
       setIsProcessingVoice(false);
       setProcessingStep('');
+      setShowVoiceAnalyzing(false);
     }
   };
 
@@ -1252,6 +1256,7 @@ const CameraPage = () => {
     setErrorSuggestions(suggestions);
     setShowError(true);
     setShowVoiceEntry(false);
+    setShowVoiceAnalyzing(false);
     setShowConfirmation(false);
   };
 
@@ -1601,6 +1606,8 @@ const CameraPage = () => {
     
     // Add a small delay to ensure clean transition and prevent old data flash
     setTimeout(() => {
+      // Hide voice analyzing overlay before showing confirmation
+      setShowVoiceAnalyzing(false);
       // Use the existing FoodConfirmationCard flow
       setRecognizedFoods([foodItem]);
       setShowConfirmation(true);
@@ -1876,6 +1883,7 @@ const CameraPage = () => {
     setRecognizedFoods([]);
     setShowConfirmation(false);
     setShowVoiceEntry(false);
+    setShowVoiceAnalyzing(false);
     setShowManualEdit(false);
     setIsAnalyzing(false);
     setVoiceText('');
@@ -2006,8 +2014,39 @@ const CameraPage = () => {
         </Card>
       )}
 
+      {/* Voice Analyzing Overlay */}
+      {showVoiceAnalyzing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md animate-slide-up">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-center justify-center">
+                <Sparkles className="h-5 w-5 text-blue-600 animate-pulse" />
+                Analyzing Voice Input
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Processing your request:</p>
+                <p className="font-medium text-sm italic">"{voiceText}"</p>
+              </div>
+              
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+                <p className="text-gray-600 dark:text-gray-300">
+                  {processingStep || 'Analyzing food items...'}
+                </p>
+              </div>
+              
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                This may take a few moments
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Main Camera UI */}
-      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && (
+      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
