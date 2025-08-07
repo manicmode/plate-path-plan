@@ -89,7 +89,7 @@ export const MultiAIFoodDetection = ({
             <div className="flex justify-center">
               <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
                 <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-primary">GPT-4 Vision</span>
+                <span className="text-sm font-medium text-primary">GPT Vision</span>
               </div>
             </div>
           </div>

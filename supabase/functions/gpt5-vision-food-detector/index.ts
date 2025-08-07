@@ -1,4 +1,4 @@
-// GPT-5 Optimized Vision Food Detector - Redeployed: 2025-01-08
+// GPT-5 Optimized Vision Food Detector - Fixed Token Parameter: 2025-01-08
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callOpenAI, getModelForFunction } from '../_shared/gpt5-utils.ts';
@@ -29,28 +29,55 @@ serve(async (req) => {
     // Get the appropriate model for vision tasks
     const model = getModelForFunction('gpt5-vision-food-detector', 'gpt-5');
 
-    const result = await callOpenAI('gpt5-vision-food-detector', {
-      model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: prompt || 'You are a food recognition assistant. Look at this image and return only a list of food items that are clearly visible in the photo. Respond only with the food names as a plain JSON array.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
+    let result;
+    
+    try {
+      result = await callOpenAI('gpt5-vision-food-detector', {
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt || 'You are a food recognition assistant. Look at this image and return only a list of food items that are clearly visible in the photo. Respond only with the food names as a plain JSON array.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${imageBase64}`
+                }
               }
-            }
-          ]
-        }
-      ],
-      max_tokens: 300,
-      temperature: 0.1
-    });
+            ]
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.1
+      });
+    } catch (error) {
+      console.error('[gpt5-vision fallback] Primary GPT-5 failed:', error?.message || error);
+      
+      // Fallback to GPT-4 vision function
+      const fallbackUrl = `https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/gpt4-vision-food-detector`;
+      const fallbackResponse = await fetch(fallbackUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': req.headers.get('Authorization') || '',
+        },
+        body: JSON.stringify({ imageBase64, prompt }),
+      });
+      
+      const fallbackData = await fallbackResponse.json();
+      
+      return new Response(JSON.stringify({
+        ...fallbackData,
+        model_used: 'gpt-4o (fallback)',
+        fallback_used: true
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     let foodItems: string[] = [];
     const content = result.data.raw_response || JSON.stringify(result.data);

@@ -9,6 +9,7 @@ export interface OpenAIRequest {
   model: GPTModel;
   messages: Array<{ role: string; content: any }>;
   max_tokens?: number;
+  max_completion_tokens?: number;
   temperature?: number;
   response_format?: { type: string; json_schema?: any };
 }
@@ -80,6 +81,37 @@ export function logModelUsage(
 }
 
 /**
+ * Checks if a model is GPT-5
+ */
+function isGpt5Model(model: string): boolean {
+  return model?.startsWith('gpt-5');
+}
+
+/**
+ * Prepares OpenAI request with model-appropriate token parameter
+ */
+function prepareOpenAIRequest(request: OpenAIRequest): any {
+  const isGpt5 = isGpt5Model(request.model);
+  const requestBody: any = {
+    model: request.model,
+    messages: request.messages,
+    temperature: request.temperature,
+    response_format: request.response_format
+  };
+
+  // Use appropriate token parameter based on model
+  if (request.max_tokens !== undefined) {
+    if (isGpt5) {
+      requestBody.max_completion_tokens = request.max_tokens;
+    } else {
+      requestBody.max_tokens = request.max_tokens;
+    }
+  }
+
+  return requestBody;
+}
+
+/**
  * Makes a centralized OpenAI API call with consistent logging and error handling
  */
 export async function callOpenAI(
@@ -95,13 +127,15 @@ export async function callOpenAI(
   }
 
   try {
+    const requestBody = prepareOpenAIRequest(request);
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(requestBody),
     });
 
     const latencyMs = Date.now() - startTime;
