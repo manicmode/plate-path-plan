@@ -27,6 +27,7 @@ import { WorkoutCompletionProvider } from '@/contexts/WorkoutCompletionContext';
 import { WorkoutCompletionModal } from '@/components/workout/WorkoutCompletionModal';
 import { LevelUpProvider } from '@/contexts/LevelUpContext';
 import { useAuthCallback } from '@/hooks/useAuthCallback';
+import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { AuthProcessingOverlay } from '@/components/auth/AuthProcessingOverlay';
 import { ClientSecurityValidator } from '@/components/security/ClientSecurityValidator';
 
@@ -106,6 +107,7 @@ function AppContent() {
   const { showMoodModal, setShowMoodModal } = useDailyMoodScheduler();
   const { isColdStart, completeSplash } = useColdStart();
   const { isProcessing } = useAuthCallback();
+  const { checkForUpdates } = useVersionCheck(); // Add version checking
   useBodyScanTimelineReminder();
   useBodyScanSharingReminder();
   

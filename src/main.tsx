@@ -9,6 +9,7 @@ import { NutritionProvider } from "./contexts/NutritionContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
+import "./constants/version"; // Initialize version checking
 
 // Apply security headers on app initialization
 applySecurityHeaders();
