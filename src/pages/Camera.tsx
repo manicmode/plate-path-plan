@@ -1032,7 +1032,7 @@ const CameraPage = () => {
   };
 
   const processVoiceEntry = async () => {
-    console.log('[LOG] Logging Flow Fixes Activated');
+    console.log('[VOICE-FLOW] Starting voice entry processing with fixes active');
     console.log('🎤 [Camera] Processing voice entry:', { voiceText, length: voiceText?.length });
     
     if (!voiceText.trim()) {
@@ -1131,11 +1131,11 @@ const CameraPage = () => {
               behavior: 'smooth', 
               block: 'center' 
             });
-            console.log('🎯 Auto-scrolled to confirmation card');
+            console.log('[AUTO-SCROLL] Successfully scrolled to voice confirmation card');
           } else {
-            console.warn('🎯 Confirmation card not found for auto-scroll');
+            console.warn('[AUTO-SCROLL] Voice confirmation card not found for auto-scroll');
           }
-        }, 500); // Increased delay to ensure card is fully rendered
+        }, 400); // Fixed delay for better auto-scroll timing
       } else {
         console.log('🎤 [Camera] No food items detected in voice response');
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
@@ -1632,9 +1632,9 @@ const CameraPage = () => {
             behavior: 'smooth', 
             block: 'center' 
           });
-          console.log('🎯 Auto-scrolled to confirmation card for multi-item');
+          console.log('[AUTO-SCROLL] Successfully scrolled to multi-item confirmation card');
         }
-      }, 100);
+      }, 400);
     }, 50); // 50ms delay to ensure state is cleared first
     
     if (items.length > 1) {
@@ -1660,9 +1660,9 @@ const CameraPage = () => {
           behavior: 'smooth', 
           block: 'center' 
         });
-        console.log('🎯 Auto-scrolled to confirmation card after transition');
+        console.log('[AUTO-SCROLL] Successfully scrolled to confirmation card after transition');
       }
-    }, 200);
+    }, 400);
   };
 
   const handleSkipFood = () => {

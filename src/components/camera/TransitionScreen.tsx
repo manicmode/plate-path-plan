@@ -70,7 +70,8 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
             </div>
             
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              {progress < 50 ? 'Loading next food item...' : 'Analyzing next bite...'}
+              {progress < 30 ? 'Loading next food item...' : 
+               progress < 70 ? 'Analyzing next bite...' : 'Almost ready...'}
             </h3>
             
             <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">

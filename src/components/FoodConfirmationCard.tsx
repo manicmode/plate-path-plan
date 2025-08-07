@@ -272,13 +272,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       
       // Play food log confirmation sound only once per confirmation (only on final item)
       if (!totalItems || currentIndex === undefined || currentIndex >= (totalItems - 1)) {
-        console.log('🔊 Attempting to play food log confirmation sound (final item)');
+        console.log('[SOUND] Final beep played - confirming final item');
         const soundPromise = playFoodLogConfirm().catch(error => {
           console.warn('🔊 Food log sound failed:', error);
         });
         
         // Ensure sound only plays once by waiting for it to complete
         await soundPromise;
+      } else {
+        console.log('[SOUND] Skipping beep - not final item (', currentIndex + 1, 'of', totalItems, ')');
       }
       
       // Evaluate meal quality after logging
@@ -645,8 +647,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
                       📊 Nutrition source: <span className="font-medium text-blue-600 dark:text-blue-400">
                         {currentFoodItem.source === 'gpt_fallback' || currentFoodItem.source === 'gpt-fallback' ? 'Smart Lookup' :
-                         currentFoodItem.source === 'hardcode_fallback' || currentFoodItem.source === 'hardcode-fallback' ? 'AI estimate' :
+                         currentFoodItem.source === 'hardcode_fallback' || currentFoodItem.source === 'hardcode-fallback' ? 'AI Estimate' :
                          currentFoodItem.source === 'multi-ai-fallback' ? 'Smart Lookup' :
+                         currentFoodItem.source === 'branded-database' ? 'Smart Lookup' :
                          currentFoodItem.source}</span>
                     </div>
                   </div>

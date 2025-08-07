@@ -1835,11 +1835,6 @@ const Home = () => {
         onClose={() => setIsComingSoonOpen(false)}
         feature="Influencers"
       />
-      
-      {/* TEMPORARY DEBUG BANNER */}
-      <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50 text-sm font-bold">
-        🚨 Logging Fixes Version Active — If you see this, the real code is running.
-      </div>
     </div>
   );
 };
