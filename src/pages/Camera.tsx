@@ -96,6 +96,7 @@ const CameraPage = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
   const [showVoiceAnalyzing, setShowVoiceAnalyzing] = useState(false);
+  const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
   const [showProcessingNextItem, setShowProcessingNextItem] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
@@ -1046,6 +1047,7 @@ const CameraPage = () => {
     }
 
     // Show voice analyzing overlay to prevent 8 logging options from showing
+    setIsManualAnalyzing(false);
     setShowVoiceAnalyzing(true);
     setIsProcessingVoice(true);
     setProcessingStep('Processing...');
@@ -1164,6 +1166,8 @@ const CameraPage = () => {
     }
 
     setIsProcessingVoice(true);
+    setIsManualAnalyzing(true);
+    setShowVoiceAnalyzing(true); // Show analyzing overlay for manual entry
     setProcessingStep('Processing');
 
     try {
@@ -1886,6 +1890,7 @@ const CameraPage = () => {
     setShowConfirmation(false);
     setShowVoiceEntry(false);
     setShowVoiceAnalyzing(false);
+    setIsManualAnalyzing(false);
     setShowProcessingNextItem(false);
     setShowManualEdit(false);
     setIsAnalyzing(false);
@@ -2024,13 +2029,13 @@ const CameraPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-center justify-center">
                 <Sparkles className="h-5 w-5 text-blue-600 animate-pulse" />
-                Analyzing Voice Input
+                {isManualAnalyzing ? 'Analyzing Manual Input' : 'Analyzing Voice Input'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Processing your request:</p>
-                <p className="font-medium text-sm italic">"{voiceText}"</p>
+                <p className="font-medium text-sm italic">"{isManualAnalyzing ? manualEditText : voiceText}"</p>
               </div>
               
               <div className="flex items-center justify-center space-x-2">
