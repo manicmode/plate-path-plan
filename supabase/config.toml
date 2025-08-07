@@ -33,3 +33,12 @@ verify_jwt = true
 
 [functions.cleanup-unverified-accounts]
 verify_jwt = true
+
+[functions.log-voice-gpt5]
+verify_jwt = true
+
+[functions.gpt5-vision-food-detector]
+verify_jwt = false
+
+[functions.gpt5-smart-food-analyzer]
+verify_jwt = false

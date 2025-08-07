@@ -11,10 +11,9 @@ export interface LogVoiceResponse {
 
 export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> => {
   try {
-    console.log('🔍 [sendToLogVoice] Starting request to log-voice function');
-    console.log('🔍 [sendToLogVoice] Input text:', text);
-    console.log('🔍 [sendToLogVoice] Input text length:', text.length);
-    console.log('🔍 [sendToLogVoice] Input text type:', typeof text);
+    console.log('🚀 [GPT-5 Voice] Starting request to log-voice-gpt5 function');
+    console.log('🚀 [GPT-5 Voice] Input text:', text);
+    const startTime = Date.now();
     
     // Get current session for authenticated request
     const { supabase } = await import('@/integrations/supabase/client');
@@ -30,7 +29,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     const requestBody = { text };
     console.log('🔍 [sendToLogVoice] Request body:', requestBody);
     
-    const response = await fetch('https://uzoiiijqtahohfafqirm.functions.supabase.co/log-voice', {
+    const response = await fetch('https://uzoiiijqtahohfafqirm.functions.supabase.co/log-voice-gpt5', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,7 +38,8 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       body: JSON.stringify(requestBody)
     });
     
-    console.log('🔍 [sendToLogVoice] Response received');
+    const latency = Date.now() - startTime;
+    console.log('🚀 [GPT-5 Voice] Response received in', latency, 'ms');
     console.log('🔍 [sendToLogVoice] Response status:', response.status);
     console.log('🔍 [sendToLogVoice] Response ok:', response.ok);
     console.log('🔍 [sendToLogVoice] Response headers:', Object.fromEntries(response.headers.entries()));
@@ -75,9 +75,18 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     }
 
     const data = await response.json();
-    console.log('🔍 [sendToLogVoice] Response data:', data);
-    console.log('🔍 [sendToLogVoice] Data type:', typeof data);
-    console.log('🔍 [sendToLogVoice] Data keys:', Object.keys(data || {}));
+    
+    // Log GPT-5 performance metrics
+    if (data.processing_stats || data.model_used) {
+      console.log('🚀 [GPT-5 Voice] Performance metrics:', {
+        model: data.model_used || 'gpt-5-mini',
+        latency_ms: latency,
+        tokens: data.processing_stats?.tokens,
+        fallback_used: data.fallback_used || false
+      });
+    }
+    
+    console.log('🚀 [GPT-5 Voice] Response data:', data);
     
     // Handle both success and error responses from the enhanced edge function
     if (data.success && data.items) {

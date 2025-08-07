@@ -141,27 +141,38 @@ async function detectWithChatGPT(image: string): Promise<Array<{ name: string; c
 
 async function callGPT4Vision(imageBase64: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
   try {
-    console.log('Calling GPT-4 Vision for food detection...');
+    console.log('🚀 [GPT-5 Vision] Starting food detection with GPT-5...');
+    const startTime = Date.now();
     
     // Call our Supabase edge function that handles OpenAI API
-    const { data, error } = await supabase.functions.invoke('gpt4-vision-food-detector', {
+    const { data, error } = await supabase.functions.invoke('gpt5-vision-food-detector', {
       body: { 
         imageBase64: imageBase64,
         prompt: "You are a food recognition assistant. Look at this image and return only a list of food items that are clearly visible in the photo. Respond only with the food names as a plain JSON array."
       }
     });
 
+    const latency = Date.now() - startTime;
+    
     if (error) {
-      console.error('GPT-4 Vision API error:', error);
+      console.error('🚀 [GPT-5 Vision] API error:', error);
       return [];
     }
 
     if (!data || !data.foodItems) {
-      console.log('No food items returned from GPT-4 Vision');
+      console.log('🚀 [GPT-5 Vision] No food items returned');
       return [];
     }
 
-    console.log('GPT-4 Vision detected food items:', data.foodItems);
+    // Log GPT-5 performance metrics
+    console.log('🚀 [GPT-5 Vision] Performance metrics:', {
+      model: data.model_used || 'gpt-5',
+      latency_ms: latency,
+      tokens: data.processing_stats?.tokens,
+      fallback_used: data.fallback_used || false
+    });
+    
+    console.log('🚀 [GPT-5 Vision] Food items detected:', data.foodItems);
     // Convert string array to structured format
     const structuredItems = Array.isArray(data.foodItems) 
       ? data.foodItems.map((item: any) => ({
