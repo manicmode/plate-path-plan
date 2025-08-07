@@ -89,7 +89,7 @@ const Layout = ({ children }: LayoutProps) => {
               <img 
                 src="/lovable-uploads/06077524-4274-4512-a53f-779d8e98607f.png" 
                 alt="VOYAGE Winged V Logo" 
-                className={`${isMobile ? 'w-8 h-8' : 'w-11 h-11'} object-contain`}
+                className={`${isMobile ? 'w-9 h-9' : 'w-12 h-12'} object-contain`}
                 style={{ filter: 'brightness(0) invert(1)' }}
               />
             </div>
