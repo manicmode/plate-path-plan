@@ -1,4 +1,4 @@
-// GPT-5 Optimized Vision Food Detector
+// GPT-5 Optimized Vision Food Detector - Redeployed: 2025-01-08
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callOpenAI, getModelForFunction } from '../_shared/gpt5-utils.ts';
