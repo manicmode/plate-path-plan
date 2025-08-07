@@ -1046,6 +1046,7 @@ const CameraPage = () => {
     // Show loading popup instead of blank page
     setIsProcessingVoice(true);
     setProcessingStep('Analyzing your voice input...');
+    setIsAnalyzing(true); // Prevent blank screen
     
     try {
       setProcessingStep('Analyzing voice input...');
@@ -1130,8 +1131,10 @@ const CameraPage = () => {
               block: 'center' 
             });
             console.log('🎯 Auto-scrolled to confirmation card');
+          } else {
+            console.warn('🎯 Confirmation card not found for auto-scroll');
           }
-        }, 300);
+        }, 500); // Increased delay to ensure card is fully rendered
       } else {
         console.log('🎤 [Camera] No food items detected in voice response');
         showErrorState('NO_FOOD_DETECTED', 'Could not identify any food items from your voice input.', [
@@ -1162,6 +1165,7 @@ const CameraPage = () => {
     } finally {
       setIsProcessingVoice(false);
       setProcessingStep('');
+      setIsAnalyzing(false); // Clear analyzing state
     }
   };
 

@@ -270,14 +270,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       // Success animation delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Play food log confirmation sound only once per confirmation
-      console.log('🔊 Attempting to play food log confirmation sound');
-      const soundPromise = playFoodLogConfirm().catch(error => {
-        console.warn('🔊 Food log sound failed:', error);
-      });
-      
-      // Ensure sound only plays once by waiting for it to complete
-      await soundPromise;
+      // Play food log confirmation sound only once per confirmation (only on final item)
+      if (!totalItems || currentIndex === undefined || currentIndex >= (totalItems - 1)) {
+        console.log('🔊 Attempting to play food log confirmation sound (final item)');
+        const soundPromise = playFoodLogConfirm().catch(error => {
+          console.warn('🔊 Food log sound failed:', error);
+        });
+        
+        // Ensure sound only plays once by waiting for it to complete
+        await soundPromise;
+      }
       
       // Evaluate meal quality after logging
       // Note: We need the nutrition_log_id, which should be returned from onConfirm
