@@ -2045,7 +2045,7 @@ const CameraPage = () => {
       )}
 
       {/* Main Camera UI */}
-      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showVoiceEntry && (
+      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardContent className="p-8">
             <div className="text-center space-y-6">
