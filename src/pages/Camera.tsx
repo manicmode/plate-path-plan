@@ -1479,6 +1479,9 @@ const CameraPage = () => {
     // Reset processing state when starting new item
     setIsProcessingFood(false);
     
+    // Clear previous food data to prevent old data from showing briefly
+    setRecognizedFoods([]);
+    
     if (index >= items.length) {
       // All items processed
       setPendingItems([]);
@@ -1596,10 +1599,13 @@ const CameraPage = () => {
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
     
-    // Use the existing FoodConfirmationCard flow
-    setRecognizedFoods([foodItem]);
-    setShowConfirmation(true);
-    setInputSource('photo');
+    // Add a small delay to ensure clean transition and prevent old data flash
+    setTimeout(() => {
+      // Use the existing FoodConfirmationCard flow
+      setRecognizedFoods([foodItem]);
+      setShowConfirmation(true);
+      setInputSource('photo');
+    }, 50); // 50ms delay to ensure state is cleared first
     
     if (items.length > 1) {
       toast.success(`Confirming item ${index + 1} of ${items.length}: ${currentItem.name}`);
@@ -1827,12 +1833,15 @@ const CameraPage = () => {
       const totalItems = pendingItems.length || 1;
       console.log(`🎉 ALL ITEMS PROCESSED - Total logged: ${totalItems}`);
       
+      // Clear state immediately to prevent old data showing during navigation
+      setRecognizedFoods([]); // Clear food data
+      setShowConfirmation(false); // Close modal first
+      setIsProcessingFood(false); // Reset processing state when completely done
+      
       // Play success sound
       playFoodLogConfirm();
       
       toast.success(`Successfully logged ${totalItems} food item${totalItems > 1 ? 's' : ''}!`);
-      setShowConfirmation(false);
-      setIsProcessingFood(false); // Reset processing state when completely done
       resetState();
       navigate('/home');
     }

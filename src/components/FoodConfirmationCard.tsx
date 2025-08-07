@@ -80,15 +80,33 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
-    setCurrentFoodItem(foodItem);
-    setIsChecked(false); // Reset checkbox when new food item is loaded
-    setManualIngredients(''); // Reset manual ingredients
-    
-    // Auto-check ingredients if available
-    if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
-      checkIngredients(foodItem.ingredientsText);
+    // Clear current food item first to prevent showing old data
+    if (foodItem !== currentFoodItem) {
+      setCurrentFoodItem(null);
+      
+      // Brief delay to ensure clean transition in multi-item flow
+      const timer = setTimeout(() => {
+        setCurrentFoodItem(foodItem);
+        setIsChecked(false); // Reset checkbox when new food item is loaded
+        setManualIngredients(''); // Reset manual ingredients
+        
+        // Auto-check ingredients if available
+        if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
+          checkIngredients(foodItem.ingredientsText);
+        }
+      }, 100); // 100ms delay for smooth transition
+      
+      return () => clearTimeout(timer);
+    } else {
+      setCurrentFoodItem(foodItem);
+      setIsChecked(false);
+      setManualIngredients('');
+      
+      if (foodItem?.ingredientsText && foodItem.ingredientsText.length > 0) {
+        checkIngredients(foodItem.ingredientsText);
+      }
     }
-  }, [foodItem, checkIngredients]);
+  }, [foodItem, currentFoodItem, checkIngredients]);
 
   // Trigger coach response when flagged ingredients are detected
   React.useEffect(() => {
@@ -364,6 +382,34 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     if (percentage === 100) return 'Full portion';
     return `${percentage}%`;
   };
+
+  // Show loading state during transition in multi-item flow
+  if (!currentFoodItem && isOpen) {
+    return (
+      <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
+        <DialogContent 
+          showCloseButton={false}
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+        >
+          <div className="p-6 flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
+                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Loading next item...
+              </p>
+              {totalItems > 1 && (
+                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                  Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                </p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>
