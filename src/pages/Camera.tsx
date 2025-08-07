@@ -1604,14 +1604,12 @@ const CameraPage = () => {
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
     
-    // Add a small delay to ensure clean transition and prevent old data flash
-    setTimeout(() => {
-      // Use the existing FoodConfirmationCard flow
-      setRecognizedFoods([foodItem]);
-      setShowConfirmation(true);
-      setInputSource('photo');
-      // Note: setShowVoiceAnalyzing(false) is now handled by FoodConfirmationCard
-    }, 50); // 50ms delay to ensure state is cleared first
+    // Set food data first, then show confirmation to prevent empty flash
+    setRecognizedFoods([foodItem]);
+    setInputSource('photo');
+    // Show confirmation only after food data is set
+    setShowConfirmation(true);
+    // Note: setShowVoiceAnalyzing(false) is now handled by FoodConfirmationCard
     
     if (items.length > 1) {
       toast.success(`Confirming item ${index + 1} of ${items.length}: ${currentItem.name}`);
@@ -1624,8 +1622,7 @@ const CameraPage = () => {
     setShowTransition(false);
     // Reset processing state when transitioning to next item
     setIsProcessingFood(false);
-    // Immediately show the confirmation dialog to eliminate any gap
-    setShowConfirmation(true);
+    // Let processCurrentItem handle showing confirmation when data is ready
     processCurrentItem(pendingItems, currentItemIndex);
   };
 
