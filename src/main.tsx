@@ -10,7 +10,7 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
 import "./constants/version"; // Initialize version checking
-import "./utils/gpt5Testing"; // Initialize E2E testing utilities
+import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 
 // Apply security headers on app initialization
 applySecurityHeaders();

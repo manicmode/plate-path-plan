@@ -45,7 +45,6 @@ import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
-import { GPT5TestingPanel } from '@/components/GPT5TestingPanel';
 
 // Utility function to get current user preferences from localStorage
 const loadUserPreferences = () => {
@@ -1827,13 +1826,6 @@ const Home = () => {
           <StartupSoundTest />
           <CoachCtaDemo />
           <MealScoringTestComponent />
-        </div>
-      )}
-      
-      {/* GPT-5 Testing Panel - Development Only */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-16 mb-6 px-2 sm:px-4">
-          <GPT5TestingPanel />
         </div>
       )}
       
