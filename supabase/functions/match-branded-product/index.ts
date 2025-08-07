@@ -30,16 +30,128 @@ interface BrandedProductMatch {
   productName?: string;
   brandName?: string;
   nutrition?: NutritionData;
-  source: 'barcode' | 'fuzzy_match' | 'fallback';
+  source: 'usda' | 'openfoodfacts' | 'barcode' | 'category_fallback' | 'ai_estimate' | 'failed';
+  category?: string;
+  warningMessage?: string;
   debugInfo: {
     searchQuery: string;
     candidatesFound: number;
     matchMethod: string;
+    searchVariations?: string[];
     fallbackReason?: string;
+    confidenceBreakdown?: Record<string, number>;
   };
 }
 
-// Enhanced fuzzy matching with multi-term analysis
+// Filler words to ignore in matching
+const FILLER_WORDS = new Set([
+  'with', 'a', 'an', 'the', 'extra', 'large', 'small', 'medium', 'regular', 
+  'original', 'classic', 'traditional', 'fresh', 'hot', 'cold', 'new', 'special'
+]);
+
+// Category-based nutrition fallbacks
+const CATEGORY_FALLBACKS: Record<string, NutritionData> = {
+  'burger': { calories: 760, protein: 30, carbs: 50, fat: 45, fiber: 3, sugar: 6, sodium: 1200 },
+  'cheeseburger': { calories: 840, protein: 35, carbs: 52, fat: 52, fiber: 3, sugar: 7, sodium: 1400 },
+  'pizza': { calories: 280, protein: 12, carbs: 30, fat: 12, fiber: 2, sugar: 4, sodium: 640 },
+  'cookie': { calories: 130, protein: 2, carbs: 18, fat: 6, fiber: 1, sugar: 12, sodium: 95 },
+  'shake': { calories: 400, protein: 10, carbs: 50, fat: 15, fiber: 0, sugar: 45, sodium: 200 },
+  'fries': { calories: 365, protein: 4, carbs: 63, fat: 17, fiber: 4, sugar: 0.3, sodium: 246 },
+  'sandwich': { calories: 450, protein: 25, carbs: 40, fat: 22, fiber: 3, sugar: 5, sodium: 900 },
+  'salad': { calories: 180, protein: 8, carbs: 15, fat: 12, fiber: 6, sugar: 8, sodium: 320 },
+  'soup': { calories: 120, protein: 6, carbs: 18, fat: 3, fiber: 3, sugar: 4, sodium: 800 },
+  'pasta': { calories: 350, protein: 12, carbs: 65, fat: 8, fiber: 3, sugar: 3, sodium: 400 },
+  'chicken': { calories: 540, protein: 38, carbs: 25, fat: 31, fiber: 1, sugar: 2, sodium: 1100 },
+  'fish': { calories: 280, protein: 32, carbs: 8, fat: 14, fiber: 0, sugar: 1, sodium: 520 },
+  'taco': { calories: 320, protein: 15, carbs: 28, fat: 17, fiber: 4, sugar: 2, sodium: 640 },
+  'burrito': { calories: 580, protein: 22, carbs: 68, fat: 22, fiber: 8, sugar: 4, sodium: 1200 },
+  'wrap': { calories: 420, protein: 18, carbs: 45, fat: 18, fiber: 5, sugar: 3, sodium: 860 },
+  'donut': { calories: 260, protein: 4, carbs: 31, fat: 14, fiber: 1, sugar: 12, sodium: 300 },
+  'muffin': { calories: 280, protein: 5, carbs: 42, fat: 11, fiber: 2, sugar: 18, sodium: 240 },
+  'cereal': { calories: 150, protein: 4, carbs: 32, fat: 2, fiber: 4, sugar: 12, sodium: 180 },
+  'yogurt': { calories: 100, protein: 6, carbs: 16, fat: 0, fiber: 0, sugar: 14, sodium: 65 },
+  'smoothie': { calories: 220, protein: 8, carbs: 45, fat: 2, fiber: 5, sugar: 38, sodium: 85 }
+};
+
+// Enhanced food categorization
+function detectFoodCategory(foodName: string): string | null {
+  const normalized = foodName.toLowerCase();
+  
+  // Specific brand items first
+  if (normalized.includes('whopper') || normalized.includes('big mac') || normalized.includes('quarter pounder')) {
+    return 'burger';
+  }
+  
+  // General category detection
+  const categoryKeywords = {
+    'burger': ['burger', 'patty', 'beef sandwich'],
+    'cheeseburger': ['cheeseburger', 'cheese burger', 'burger with cheese'],
+    'pizza': ['pizza', 'slice', 'pie'],
+    'fries': ['fries', 'french fries', 'potato fries', 'chips'],
+    'shake': ['shake', 'milkshake', 'smoothie shake'],
+    'sandwich': ['sandwich', 'sub', 'hoagie', 'panini'],
+    'salad': ['salad', 'greens', 'lettuce'],
+    'soup': ['soup', 'broth', 'bisque', 'chowder'],
+    'pasta': ['pasta', 'spaghetti', 'noodles', 'macaroni'],
+    'chicken': ['chicken', 'poultry', 'wings', 'nuggets'],
+    'fish': ['fish', 'salmon', 'tuna', 'cod', 'seafood'],
+    'taco': ['taco', 'soft taco', 'hard taco'],
+    'burrito': ['burrito', 'wrap burrito'],
+    'wrap': ['wrap', 'tortilla wrap'],
+    'donut': ['donut', 'doughnut', 'glazed'],
+    'muffin': ['muffin', 'cupcake'],
+    'cookie': ['cookie', 'biscuit'],
+    'cereal': ['cereal', 'granola', 'oats'],
+    'yogurt': ['yogurt', 'yoghurt'],
+    'smoothie': ['smoothie', 'blend']
+  };
+  
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(keyword => normalized.includes(keyword))) {
+      return category;
+    }
+  }
+  
+  return null;
+}
+
+// Generate search variations for better matching
+function generateSearchVariations(productName: string, ocrText?: string): string[] {
+  const variations: string[] = [productName];
+  const normalized = productName.toLowerCase().trim();
+  
+  // Add OCR text variation
+  if (ocrText) {
+    variations.push(`${productName} ${ocrText}`);
+    variations.push(ocrText);
+  }
+  
+  // Word order variations
+  const words = normalized.split(/\s+/).filter(word => !FILLER_WORDS.has(word));
+  if (words.length > 1) {
+    variations.push(words.reverse().join(' ')); // Reverse order
+    variations.push(words.slice(1).concat(words[0]).join(' ')); // Move first to end
+  }
+  
+  // Brand context additions for known items
+  if (normalized.includes('whopper')) {
+    variations.push('burger king whopper');
+    variations.push('whopper burger king');
+  }
+  if (normalized.includes('big mac')) {
+    variations.push('mcdonalds big mac');
+    variations.push('big mac mcdonalds');
+  }
+  if (normalized.includes('quarter pounder')) {
+    variations.push('mcdonalds quarter pounder');
+    variations.push('quarter pounder mcdonalds');
+  }
+  
+  // Remove duplicates while preserving order
+  return [...new Set(variations)];
+}
+
+// Enhanced similarity calculation
 function calculateSimilarity(str1: string, str2: string): number {
   const longer = str1.length > str2.length ? str1 : str2;
   const shorter = str1.length > str2.length ? str2 : str1;
@@ -71,126 +183,106 @@ function levenshteinDistance(str1: string, str2: string): number {
   return matrix[str2.length][str1.length];
 }
 
-// Enhanced multi-term fuzzy matching for complex product names
-function calculateEnhancedSimilarity(queryName: string, productName: string, ocrText: string = '', brandName: string = ''): {
+// Multi-pass fuzzy matching with confidence breakdown
+function calculateAdvancedSimilarity(queryName: string, productName: string, brandName: string = ''): {
   score: number;
-  matchType: 'exact' | 'fuzzy_high' | 'fuzzy_medium' | 'fuzzy_low';
-  details: string[];
+  confidence: number;
+  breakdown: Record<string, number>;
 } {
   const normalizeText = (text: string) => text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
   
   const queryNorm = normalizeText(queryName);
   const productNorm = normalizeText(productName);
-  const ocrNorm = normalizeText(ocrText);
   const brandNorm = normalizeText(brandName);
   
-  const details: string[] = [];
+  const breakdown: Record<string, number> = {};
   let totalScore = 0;
   let weights = 0;
   
-  // 1. Exact match check
+  // 1. Exact match
   if (queryNorm === productNorm) {
-    return { score: 1.0, matchType: 'exact', details: ['exact_name_match'] };
+    return { score: 1.0, confidence: 100, breakdown: { exact_match: 100 } };
   }
   
-  // 2. Word-by-word matching for complex names like "Nutrail Honey Nut Granola"
-  const queryWords = queryNorm.split(' ').filter(w => w.length > 2);
-  const productWords = productNorm.split(' ').filter(w => w.length > 2);
-  const ocrWords = ocrNorm.split(' ').filter(w => w.length > 2);
+  // 2. Word matching with filler word filtering
+  const queryWords = queryNorm.split(' ').filter(w => w.length > 2 && !FILLER_WORDS.has(w));
+  const productWords = productNorm.split(' ').filter(w => w.length > 2 && !FILLER_WORDS.has(w));
   
   let wordMatchScore = 0;
   let wordMatches = 0;
   
   for (const queryWord of queryWords) {
-    let bestWordMatch = 0;
-    let matchedWord = '';
-    
-    // Check against product words
+    let bestMatch = 0;
     for (const productWord of productWords) {
       const similarity = calculateSimilarity(queryWord, productWord);
-      if (similarity > bestWordMatch) {
-        bestWordMatch = similarity;
-        matchedWord = productWord;
-      }
+      bestMatch = Math.max(bestMatch, similarity);
     }
-    
-    // Also check against OCR words for package text
-    for (const ocrWord of ocrWords) {
-      const similarity = calculateSimilarity(queryWord, ocrWord);
-      if (similarity > bestWordMatch) {
-        bestWordMatch = similarity;
-        matchedWord = ocrWord;
-      }
-    }
-    
-    if (bestWordMatch > 0.7) {
+    if (bestMatch > 0.7) {
       wordMatches++;
-      wordMatchScore += bestWordMatch;
-      details.push(`word_match: ${queryWord} -> ${matchedWord} (${Math.round(bestWordMatch * 100)}%)`);
+      wordMatchScore += bestMatch;
     }
   }
   
   if (queryWords.length > 0) {
-    const avgWordScore = wordMatchScore / queryWords.length;
-    const wordCoverage = wordMatches / queryWords.length;
-    const wordScore = avgWordScore * wordCoverage;
-    totalScore += wordScore * 0.6; // 60% weight for word matching
+    const wordScore = (wordMatchScore / queryWords.length) * (wordMatches / queryWords.length);
+    breakdown.word_matching = Math.round(wordScore * 100);
+    totalScore += wordScore * 0.6;
     weights += 0.6;
-    details.push(`word_coverage: ${wordMatches}/${queryWords.length} (${Math.round(wordCoverage * 100)}%)`);
   }
   
   // 3. Overall string similarity
   const overallSimilarity = calculateSimilarity(queryNorm, productNorm);
-  totalScore += overallSimilarity * 0.3; // 30% weight
+  breakdown.string_similarity = Math.round(overallSimilarity * 100);
+  totalScore += overallSimilarity * 0.3;
   weights += 0.3;
-  details.push(`overall_similarity: ${Math.round(overallSimilarity * 100)}%`);
   
-  // 4. Brand matching boost
-  if (brandNorm && (queryNorm.includes(brandNorm) || ocrNorm.includes(brandNorm))) {
-    const brandBoost = 0.15;
-    totalScore += brandBoost;
+  // 4. Brand boost
+  if (brandNorm && queryNorm.includes(brandNorm)) {
+    breakdown.brand_match = 15;
+    totalScore += 0.15;
     weights += 0.1;
-    details.push(`brand_boost: +${Math.round(brandBoost * 100)}%`);
-  }
-  
-  // 5. OCR context matching for package patterns
-  if (ocrText) {
-    // Look for common package terms that indicate food products
-    const packageTerms = ['net wt', 'weight', 'oz', 'lb', 'gram', 'serving', 'calories', 'nutrition', 'ingredients'];
-    const ocrLower = ocrText.toLowerCase();
-    const packageTermFound = packageTerms.some(term => ocrLower.includes(term));
-    
-    if (packageTermFound) {
-      totalScore += 0.05; // Small boost for package context
-      details.push('package_context_boost: +5%');
-    }
-    
-    // Check if query appears in OCR text
-    const ocrContainsQuery = ocrLower.includes(queryNorm) || queryWords.some(word => ocrLower.includes(word));
-    if (ocrContainsQuery) {
-      totalScore += 0.1;
-      details.push('ocr_contains_query: +10%');
-    }
   }
   
   const finalScore = Math.min(totalScore / Math.max(weights, 1), 1.0);
+  const confidence = Math.round(finalScore * 100);
   
-  // Determine match type based on score
-  let matchType: 'exact' | 'fuzzy_high' | 'fuzzy_medium' | 'fuzzy_low';
-  if (finalScore >= 0.9) matchType = 'fuzzy_high';
-  else if (finalScore >= 0.75) matchType = 'fuzzy_medium';
-  else matchType = 'fuzzy_low';
-  
-  return { score: finalScore, matchType, details };
+  return { score: finalScore, confidence, breakdown };
 }
 
-// Extract nutrition data from Open Food Facts product
-function extractNutrition(product: any): NutritionData | null {
+// Extract nutrition from USDA or Open Food Facts
+function extractNutritionUSDA(product: any): NutritionData | null {
+  if (!product.foodNutrients) return null;
+  
+  const nutrients: Record<string, number> = {};
+  for (const nutrient of product.foodNutrients) {
+    const name = nutrient.nutrientName?.toLowerCase();
+    const value = nutrient.value || 0;
+    
+    if (name?.includes('energy') || name?.includes('calorie')) nutrients.calories = value;
+    if (name?.includes('protein')) nutrients.protein = value;
+    if (name?.includes('carbohydrate')) nutrients.carbs = value;
+    if (name?.includes('total lipid') || name?.includes('fat')) nutrients.fat = value;
+    if (name?.includes('fiber')) nutrients.fiber = value;
+    if (name?.includes('sugars')) nutrients.sugar = value;
+    if (name?.includes('sodium')) nutrients.sodium = value;
+  }
+  
+  return {
+    calories: Math.round(nutrients.calories || 0),
+    protein: Math.round((nutrients.protein || 0) * 10) / 10,
+    carbs: Math.round((nutrients.carbs || 0) * 10) / 10,
+    fat: Math.round((nutrients.fat || 0) * 10) / 10,
+    fiber: Math.round((nutrients.fiber || 0) * 10) / 10,
+    sugar: Math.round((nutrients.sugar || 0) * 10) / 10,
+    sodium: Math.round(nutrients.sodium || 0)
+  };
+}
+
+function extractNutritionOFF(product: any): NutritionData | null {
   const nutriments = product.nutriments;
   if (!nutriments) return null;
 
-  // Convert per 100g values to reasonable serving sizes
-  const servingSizeMultiplier = 0.3; // Assume ~30g serving for most products
+  const servingSizeMultiplier = 1.0; // Use per 100g values directly
 
   return {
     calories: Math.round((nutriments.energy_kcal_100g || nutriments['energy-kcal_100g'] || 0) * servingSizeMultiplier),
@@ -199,18 +291,32 @@ function extractNutrition(product: any): NutritionData | null {
     fat: Math.round(((nutriments.fat_100g || nutriments['fat_100g'] || 0) * servingSizeMultiplier) * 10) / 10,
     fiber: Math.round(((nutriments.fiber_100g || nutriments['fiber_100g'] || 0) * servingSizeMultiplier) * 10) / 10,
     sugar: Math.round(((nutriments.sugars_100g || nutriments['sugars_100g'] || 0) * servingSizeMultiplier) * 10) / 10,
-    sodium: Math.round((nutriments.sodium_100g || nutriments['sodium_100g'] || 0) * servingSizeMultiplier * 1000) // Convert to mg
+    sodium: Math.round((nutriments.sodium_100g || nutriments['sodium_100g'] || 0) * servingSizeMultiplier * 1000)
   };
 }
 
+// Log failed lookups for training
+async function logFailedLookup(supabase: any, userId: string, foodName: string, confidence: number, reason: string) {
+  try {
+    await supabase.from('failed_food_lookups').insert({
+      user_id: userId,
+      food_name: foodName,
+      confidence: confidence,
+      failure_reason: reason,
+      created_at: new Date().toISOString()
+    });
+    console.log(`📝 Logged failed lookup: ${foodName} (${confidence}% confidence)`);
+  } catch (error) {
+    console.log(`❌ Failed to log lookup failure: ${error.message}`);
+  }
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify JWT token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
@@ -219,16 +325,12 @@ serve(async (req) => {
       });
     }
 
-    // Create Supabase client for auth verification
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
-      {
-        global: { headers: { Authorization: authHeader } }
-      }
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify the user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -239,12 +341,12 @@ serve(async (req) => {
 
     const { productName, ocrText, barcode }: ProductSearchRequest = await req.json();
     
-    console.log('🔍 Starting branded product search:', { productName, hasOCR: !!ocrText, hasBarcode: !!barcode });
+    console.log('🔍 Starting comprehensive branded product search:', { productName, hasOCR: !!ocrText, hasBarcode: !!barcode });
 
     let result: BrandedProductMatch = {
       found: false,
       confidence: 0,
-      source: 'fallback',
+      source: 'failed',
       debugInfo: {
         searchQuery: productName,
         candidatesFound: 0,
@@ -252,27 +354,23 @@ serve(async (req) => {
       }
     };
 
-    // Method 1: PRIORITY - Exact barcode match (overrides all other logic)
-    if (barcode && barcode.trim().length > 0) {
-      console.log('🏷️ BARCODE DETECTED - Attempting immediate Open Food Facts lookup:', barcode);
-      console.log('📊 Barcode detection status: ACTIVE - Will override all other matching logic if found');
+    // STEP 1: Barcode lookup (highest priority)
+    if (barcode?.trim()) {
+      console.log('🏷️ BARCODE LOOKUP:', barcode);
       
       try {
         const barcodeResponse = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-        console.log('🌐 Open Food Facts API response status:', barcodeResponse.status);
         
         if (barcodeResponse.ok) {
           const barcodeData = await barcodeResponse.json();
-          console.log('📋 API response status code:', barcodeData.status);
           
           if (barcodeData.status === 1 && barcodeData.product) {
-            const nutrition = extractNutrition(barcodeData.product);
-            console.log('🥗 Nutrition extraction result:', nutrition ? 'SUCCESS' : 'FAILED');
+            const nutrition = extractNutritionOFF(barcodeData.product);
             
-            if (nutrition) {
+            if (nutrition && nutrition.calories > 0) {
               result = {
                 found: true,
-                confidence: 99, // Maximum confidence for exact barcode matches
+                confidence: 99,
                 productId: barcode,
                 productName: barcodeData.product.product_name || productName,
                 brandName: barcodeData.product.brands,
@@ -281,145 +379,194 @@ serve(async (req) => {
                 debugInfo: {
                   searchQuery: barcode,
                   candidatesFound: 1,
-                  matchMethod: 'barcode_exact_match',
-                  fallbackReason: 'none_barcode_success'
+                  matchMethod: 'barcode_exact_match'
                 }
               };
-              console.log('✅ BARCODE SUCCESS - Exact branded match found:', result.productName);
-              console.log('🎯 OVERRIDING all other logic - returning branded nutrition immediately');
+              
+              console.log('✅ BARCODE SUCCESS:', result.productName);
               return new Response(JSON.stringify(result), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               });
-            } else {
-              console.log('⚠️ BARCODE FOUND but nutrition data incomplete - will fallback to fuzzy matching');
-              result.debugInfo.fallbackReason = 'barcode_found_incomplete_nutrition';
             }
-          } else {
-            console.log('❌ BARCODE NOT FOUND in Open Food Facts database - will fallback to fuzzy matching');
-            result.debugInfo.fallbackReason = 'barcode_not_in_database';
           }
-        } else {
-          console.log('❌ BARCODE API call failed with status:', barcodeResponse.status);
-          result.debugInfo.fallbackReason = `barcode_api_error_${barcodeResponse.status}`;
         }
       } catch (error) {
-        console.log('❌ BARCODE lookup exception:', error.message);
-        result.debugInfo.fallbackReason = `barcode_exception: ${error.message}`;
+        console.log('❌ Barcode lookup failed:', error.message);
       }
-      
-      console.log('🔄 Barcode path completed - proceeding to fuzzy matching fallback');
-    } else {
-      console.log('📊 Barcode detection status: NOT DETECTED - proceeding with fuzzy matching');
-      result.debugInfo.fallbackReason = 'no_barcode_detected';
     }
 
-    // Method 2: Fuzzy text matching with Open Food Facts search
-    const searchQuery = ocrText ? `${productName} ${ocrText}` : productName;
-    console.log('🔤 Attempting text search:', searchQuery.substring(0, 50) + '...');
+    // STEP 2: Generate search variations
+    const searchVariations = generateSearchVariations(productName, ocrText);
+    console.log('🔄 Search variations:', searchVariations);
 
-    try {
-      const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=10`;
-      const searchResponse = await fetch(searchUrl);
+    let bestMatch: any = null;
+    let bestScore = 0;
+    let bestConfidence = 0;
+    let bestSource = '';
+    let totalCandidates = 0;
+
+    // STEP 3: Try USDA FoodData Central
+    const usdaApiKey = Deno.env.get('USDA_API_KEY');
+    if (usdaApiKey) {
+      console.log('🇺🇸 Searching USDA FoodData Central...');
       
-      if (searchResponse.ok) {
-        const searchData = await searchResponse.json();
-        
-        result.debugInfo.candidatesFound = searchData.products?.length || 0;
-        console.log(`📦 Found ${result.debugInfo.candidatesFound} product candidates`);
-
-        if (searchData.products && searchData.products.length > 0) {
-          let bestMatch = null;
-          let bestScore = 0;
-          let bestMatchDetails: string[] = [];
-
-          console.log('🧩 Enhanced fuzzy matching analysis:');
+      for (const variation of searchVariations.slice(0, 3)) { // Limit variations to avoid rate limits
+        try {
+          const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(variation)}&dataType=Branded&pageSize=10`;
+          const usdaResponse = await fetch(usdaUrl);
           
-          // Enhanced fuzzy matching for each candidate
-          for (const product of searchData.products) {
-            if (!product.product_name) continue;
-
-            const matchResult = calculateEnhancedSimilarity(
-              productName, 
-              product.product_name, 
-              ocrText || '', 
-              product.brands || ''
-            );
+          if (usdaResponse.ok) {
+            const usdaData = await usdaResponse.json();
+            totalCandidates += usdaData.foods?.length || 0;
             
-            console.log(`📊 Enhanced analysis for "${product.product_name}":`);
-            console.log(`   🎯 Score: ${Math.round(matchResult.score * 100)}% (${matchResult.matchType})`);
-            console.log(`   📝 Details: ${matchResult.details.join(', ')}`);
-
-            if (matchResult.score > bestScore && matchResult.score > 0.6) {
-              bestScore = matchResult.score;
-              bestMatch = product;
-              bestMatchDetails = matchResult.details;
-              console.log(`   ⭐ NEW BEST MATCH!`);
-            }
-          }
-
-          // Enhanced confidence scoring and decision making
-          if (bestMatch && bestScore > 0.7) { // Lowered threshold to 70% for enhanced matching
-            const nutrition = extractNutrition(bestMatch);
-            if (nutrition) {
-              const confidence = Math.round(bestScore * 100);
+            for (const food of usdaData.foods || []) {
+              const matchResult = calculateAdvancedSimilarity(productName, food.description || '', food.brandName || '');
               
-              result = {
-                found: true,
-                confidence,
-                productId: bestMatch.code,
-                productName: bestMatch.product_name,
-                brandName: bestMatch.brands,
-                nutrition,
-                source: 'fuzzy_match',
-                debugInfo: {
-                  searchQuery,
-                  candidatesFound: result.debugInfo.candidatesFound,
-                  matchMethod: `enhanced_fuzzy_${confidence}%`,
-                  fallbackReason: `match_details: ${bestMatchDetails.join('; ')}`
+              if (matchResult.confidence > bestConfidence) {
+                const nutrition = extractNutritionUSDA(food);
+                if (nutrition && nutrition.calories > 0) {
+                  bestMatch = food;
+                  bestScore = matchResult.score;
+                  bestConfidence = matchResult.confidence;
+                  bestSource = 'usda';
+                  result.debugInfo.confidenceBreakdown = matchResult.breakdown;
                 }
-              };
-
-              console.log(`✅ Enhanced fuzzy match found: "${result.productName}"`);
-              console.log(`🎯 Confidence: ${confidence}% with details: ${bestMatchDetails.join(', ')}`);
-
-              // Return branded data if confidence is >85% (lowered from 90% for enhanced matching)
-              if (confidence >= 85) {
-                console.log(`🚀 HIGH CONFIDENCE MATCH - Returning branded nutrition data`);
-                return new Response(JSON.stringify(result), {
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
-              } else {
-                console.log(`⚠️ Confidence ${confidence}% below 85% threshold, will fallback to generic`);
-                result.debugInfo.fallbackReason = `enhanced_confidence_${confidence}%_below_85%_threshold`;
               }
-            } else {
-              console.log('❌ Enhanced match found but nutrition extraction failed');
-              result.debugInfo.fallbackReason = 'enhanced_match_no_nutrition';
             }
-          } else {
-            console.log(`❌ No suitable enhanced matches found (best score: ${Math.round(bestScore * 100)}%)`);
-            result.debugInfo.fallbackReason = `best_enhanced_score_${Math.round(bestScore * 100)}%_below_70%`;
           }
-        } else {
-          console.log('❌ No product candidates found in search results');
-          result.debugInfo.fallbackReason = 'no_candidates_from_search';
+        } catch (error) {
+          console.log(`❌ USDA search failed for "${variation}":`, error.message);
         }
       }
-    } catch (error) {
-      console.log('❌ Text search failed:', error.message);
-      result.debugInfo.fallbackReason = `search_error: ${error.message}`;
     }
 
-    // Method 3: Fallback to generic nutrition estimation
-    console.log('🔄 Falling back to generic nutrition estimation');
+    // STEP 4: Try Open Food Facts
+    console.log('🌍 Searching Open Food Facts...');
+    
+    for (const variation of searchVariations.slice(0, 4)) {
+      try {
+        const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(variation)}&search_simple=1&action=process&json=1&page_size=10`;
+        const offResponse = await fetch(offUrl);
+        
+        if (offResponse.ok) {
+          const offData = await offResponse.json();
+          totalCandidates += offData.products?.length || 0;
+          
+          for (const product of offData.products || []) {
+            if (!product.product_name) continue;
+            
+            const matchResult = calculateAdvancedSimilarity(productName, product.product_name, product.brands || '');
+            
+            if (matchResult.confidence > bestConfidence) {
+              const nutrition = extractNutritionOFF(product);
+              if (nutrition && nutrition.calories > 0) {
+                bestMatch = product;
+                bestScore = matchResult.score;
+                bestConfidence = matchResult.confidence;
+                bestSource = 'openfoodfacts';
+                result.debugInfo.confidenceBreakdown = matchResult.breakdown;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`❌ Open Food Facts search failed for "${variation}":`, error.message);
+      }
+    }
+
+    result.debugInfo.candidatesFound = totalCandidates;
+    result.debugInfo.searchVariations = searchVariations;
+
+    // STEP 5: Apply confidence thresholds
+    if (bestMatch && bestConfidence >= 70) {
+      console.log(`✅ HIGH CONFIDENCE MATCH (${bestConfidence}%):`, bestMatch.product_name || bestMatch.description);
+      
+      const nutrition = bestSource === 'usda' ? extractNutritionUSDA(bestMatch) : extractNutritionOFF(bestMatch);
+      
+      result = {
+        found: true,
+        confidence: bestConfidence,
+        productId: bestMatch.code || bestMatch.fdcId?.toString(),
+        productName: bestMatch.product_name || bestMatch.description,
+        brandName: bestMatch.brands || bestMatch.brandName,
+        nutrition: nutrition!,
+        source: bestSource as any,
+        debugInfo: {
+          ...result.debugInfo,
+          matchMethod: `${bestSource}_fuzzy_match_${bestConfidence}%`
+        }
+      };
+      
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // STEP 6: Medium confidence with category fallback
+    if (bestMatch && bestConfidence >= 20 && bestConfidence < 70) {
+      console.log(`⚠️ MEDIUM CONFIDENCE (${bestConfidence}%) - Applying category fallback`);
+      
+      const category = detectFoodCategory(productName);
+      if (category && CATEGORY_FALLBACKS[category]) {
+        result = {
+          found: true,
+          confidence: bestConfidence,
+          productId: bestMatch.code || bestMatch.fdcId?.toString(),
+          productName: bestMatch.product_name || bestMatch.description,
+          brandName: bestMatch.brands || bestMatch.brandName,
+          nutrition: CATEGORY_FALLBACKS[category],
+          source: 'category_fallback',
+          category,
+          warningMessage: "We used a smart estimate based on food category. You can edit or continue.",
+          debugInfo: {
+            ...result.debugInfo,
+            matchMethod: `category_fallback_${category}_${bestConfidence}%`
+          }
+        };
+        
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // STEP 7: Pure category fallback (no good matches found)
+    const category = detectFoodCategory(productName);
+    if (category && CATEGORY_FALLBACKS[category]) {
+      console.log(`🎯 CATEGORY FALLBACK: Detected "${category}" for "${productName}"`);
+      
+      result = {
+        found: true,
+        confidence: 50,
+        productName: productName,
+        nutrition: CATEGORY_FALLBACKS[category],
+        source: 'category_fallback',
+        category,
+        warningMessage: "We used a smart estimate based on food category. You can edit or continue.",
+        debugInfo: {
+          ...result.debugInfo,
+          matchMethod: `pure_category_fallback_${category}`
+        }
+      };
+      
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // STEP 8: Log failure and reject
+    console.log(`❌ LOOKUP FAILED: No suitable matches found (best: ${bestConfidence}%)`);
+    
+    await logFailedLookup(supabase, user.id, productName, bestConfidence, 'no_suitable_matches');
+    
     result = {
       found: false,
-      confidence: 50, // Generic confidence
-      source: 'fallback',
+      confidence: bestConfidence,
+      source: 'failed',
       debugInfo: {
         ...result.debugInfo,
-        matchMethod: 'generic_fallback',
-        fallbackReason: result.debugInfo.fallbackReason || 'no_suitable_matches_found'
+        matchMethod: 'failed_all_methods',
+        fallbackReason: `insufficient_confidence_${bestConfidence}%`
       }
     };
 
