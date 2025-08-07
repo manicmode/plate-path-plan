@@ -1607,9 +1607,12 @@ const CameraPage = () => {
     // Set food data first, then show confirmation to prevent empty flash
     setRecognizedFoods([foodItem]);
     setInputSource('photo');
-    // Show confirmation only after food data is set
-    setShowConfirmation(true);
-    // Note: setShowVoiceAnalyzing(false) is now handled by FoodConfirmationCard
+    
+    // Small delay to ensure smooth transition without main UI flashing
+    setTimeout(() => {
+      setShowConfirmation(true);
+      // Note: setShowVoiceAnalyzing(false) is now handled by FoodConfirmationCard after modal is rendered
+    }, 50);
     
     if (items.length > 1) {
       toast.success(`Confirming item ${index + 1} of ${items.length}: ${currentItem.name}`);

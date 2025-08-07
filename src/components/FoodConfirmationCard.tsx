@@ -125,10 +125,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Hide voice analyzing overlay when confirmation modal is fully mounted and open
   React.useEffect(() => {
     if (isOpen && currentFoodItem && onVoiceAnalyzingComplete) {
-      // Small delay to ensure the modal is fully rendered before hiding the overlay
+      // Ensure the modal is fully rendered and stable before hiding the overlay
       const timer = setTimeout(() => {
         onVoiceAnalyzingComplete();
-      }, 100);
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
