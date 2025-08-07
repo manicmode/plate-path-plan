@@ -1606,12 +1606,12 @@ const CameraPage = () => {
     
     // Add a small delay to ensure clean transition and prevent old data flash
     setTimeout(() => {
-      // Hide voice analyzing overlay before showing confirmation
-      setShowVoiceAnalyzing(false);
-      // Use the existing FoodConfirmationCard flow
+      // Use the existing FoodConfirmationCard flow FIRST
       setRecognizedFoods([foodItem]);
       setShowConfirmation(true);
       setInputSource('photo');
+      // Hide voice analyzing overlay AFTER showing confirmation to prevent UI flash
+      setShowVoiceAnalyzing(false);
     }, 50); // 50ms delay to ensure state is cleared first
     
     if (items.length > 1) {
