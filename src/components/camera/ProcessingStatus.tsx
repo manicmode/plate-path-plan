@@ -18,11 +18,11 @@ export const ProcessingStatus = ({
   success, 
   showTimeout 
 }: ProcessingStatusProps) => {
-  const [countdown, setCountdown] = useState(15);
+  const [countdown, setCountdown] = useState(30);
 
   useEffect(() => {
     if (isProcessing && showTimeout) {
-      setCountdown(15);
+      setCountdown(30);
       const timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
@@ -74,9 +74,9 @@ export const ProcessingStatus = ({
                 <p className="text-lg font-medium text-blue-800 dark:text-blue-200">
                   {processingStep || 'Analyzing your meal...'}
                 </p>
-                {showTimeout && countdown > 0 && (
+                {showTimeout && (
                   <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                    ⏱️ Processing: {countdown}s remaining (max 15s)
+                    {countdown > 0 ? `⏱️ Processing: ${countdown}s remaining (max 30s)` : '⏱️ Finalizing...'}
                   </p>
                 )}
               </div>

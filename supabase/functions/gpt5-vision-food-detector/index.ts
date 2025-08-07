@@ -1,4 +1,4 @@
-// GPT-5 Optimized Vision Food Detector - Fixed Token Parameter: 2025-01-08
+// GPT-5 Vision Food Detector - Extended Timeout Support: 2025-01-08
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callOpenAI, getModelForFunction } from '../_shared/gpt5-utils.ts';
@@ -32,6 +32,11 @@ serve(async (req) => {
     let result;
     
     try {
+      // Add timeout support for OpenAI calls
+      const timeoutMs = Number(Deno.env.get('VISION_TIMEOUT_MS') || '45000');
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+      
       result = await callOpenAI('gpt5-vision-food-detector', {
         model,
         messages: [
@@ -54,6 +59,8 @@ serve(async (req) => {
         max_tokens: 300,
         temperature: 0.1
       });
+      
+      clearTimeout(timeoutId);
     } catch (error) {
       console.error('[gpt5-vision fallback] Primary GPT-5 failed:', error?.message || error);
       

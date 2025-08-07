@@ -144,7 +144,7 @@ async function callGPT4Vision(imageBase64: string): Promise<Array<{ name: string
     console.log('🚀 [GPT-5 Vision] Starting food detection with GPT-5...');
     const startTime = Date.now();
     
-    // Call our Supabase edge function that handles OpenAI API
+    // Call our Supabase edge function that handles OpenAI API (client-side timeout handled at app level)
     const { data, error } = await supabase.functions.invoke('gpt5-vision-food-detector', {
       body: { 
         imageBase64: imageBase64,
@@ -268,11 +268,11 @@ export async function detectFoodsFromAllSources(image: string, abortSignal?: Abo
     return gptResults;
   })();
   
-  // Add 10-second timeout to detection
+  // Add 30-second timeout to detection
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
-      reject(new Error('DETECTION_TIMEOUT: Food detection took too long (10s limit)'));
-    }, 10000);
+      reject(new Error('DETECTION_TIMEOUT: Food detection took too long (30s limit)'));
+    }, 30000);
   });
   
   let gptResults;
