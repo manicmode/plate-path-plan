@@ -16,6 +16,17 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     console.log('🔍 [sendToLogVoice] Input text length:', text.length);
     console.log('🔍 [sendToLogVoice] Input text type:', typeof text);
     
+    // Get current session for authenticated request
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.access_token) {
+      console.error('❌ [sendToLogVoice] Auth session error:', sessionError);
+      throw new Error('User not authenticated. Please log in and try again.');
+    }
+    
+    console.log('🔍 [sendToLogVoice] Session found, user authenticated');
+    
     const requestBody = { text };
     console.log('🔍 [sendToLogVoice] Request body:', requestBody);
     
@@ -23,7 +34,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw'
+        'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify(requestBody)
     });
