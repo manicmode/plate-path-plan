@@ -34,6 +34,7 @@ export const useReviewNotifications = () => {
     // Clear stored timer IDs
     const existingWeekly = localStorage.getItem('weeklyReviewScheduled');
     const existingMonthly = localStorage.getItem('monthlyReviewScheduled');
+    const existingMonthlyInterval = localStorage.getItem('monthlyReportCheckInterval');
     
     if (existingWeekly) {
       clearTimeout(parseInt(existingWeekly));
@@ -42,6 +43,10 @@ export const useReviewNotifications = () => {
     if (existingMonthly) {
       clearTimeout(parseInt(existingMonthly));
       localStorage.removeItem('monthlyReviewScheduled');
+    }
+    if (existingMonthlyInterval) {
+      clearInterval(parseInt(existingMonthlyInterval));
+      localStorage.removeItem('monthlyReportCheckInterval');
     }
   };
 
@@ -111,42 +116,55 @@ export const useReviewNotifications = () => {
         console.log('⏭️ Weekly notification sent recently, skipping');
       }
 
-      // Schedule monthly review (1st of next month at 8 AM)
+      // Check for actual monthly reports instead of scheduling based on time
       if (!wasNotificationSentRecently('monthly')) {
-        const nextMonth = new Date(now);
+        console.log('🔍 Checking for available monthly reports...');
         
-        // Properly calculate next month
-        if (now.getDate() === 1 && now.getHours() < 8) {
-          // If it's the 1st before 8 AM, schedule for today
-          nextMonth.setDate(1);
-          nextMonth.setHours(8, 0, 0, 0);
-        } else {
-          // Calculate next month properly
-          nextMonth.setMonth(now.getMonth() + 1, 1); // Set to 1st day of next month
-          nextMonth.setHours(8, 0, 0, 0); // 8 AM
-        }
-        
-        const monthlyDelay = nextMonth.getTime() - now.getTime();
-        
-        // Timer validation - only schedule if delay is > 1 minute
-        if (monthlyDelay > 60000) {
-          console.log(`📅 Monthly notification scheduled for: ${nextMonth.toISOString()} (${Math.round(monthlyDelay / 1000 / 60 / 60 / 24)} days from now)`);
-          
-          const monthlyTimeout = setTimeout(() => {
-            if (!wasNotificationSentRecently('monthly')) {
-              new Notification('Monthly Health Review Ready! 🧠', {
-                body: 'Your health review is ready! Open VOYAGE to see what\'s working for you 💪',
-                icon: '/favicon.ico',
-                tag: 'monthly-review'
-              });
-              markNotificationSent('monthly');
+        // Check if monthly reports are available every hour instead of scheduling fixed notifications
+        const checkReportsInterval = setInterval(async () => {
+          try {
+            const { supabase } = await import('@/integrations/supabase/client');
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) return;
+            
+            // Check if user has any monthly reports
+            const { data: monthlyReports } = await supabase
+              .from('monthly_reports')
+              .select('id, title, created_at')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            if (monthlyReports && monthlyReports.length > 0) {
+              // Check if we already notified about this specific report
+              const latestReport = monthlyReports[0];
+              const lastNotifiedReportId = localStorage.getItem('lastNotifiedMonthlyReport');
+              
+              if (lastNotifiedReportId !== latestReport.id && !wasNotificationSentRecently('monthly')) {
+                new Notification('Monthly Health Review Ready! 🧠', {
+                  body: 'Your health review is ready! Open VOYAGE to see what\'s working for you 💪',
+                  icon: '/favicon.ico',
+                  tag: 'monthly-review'
+                });
+                
+                markNotificationSent('monthly');
+                localStorage.setItem('lastNotifiedMonthlyReport', latestReport.id);
+                console.log('📱 Sent monthly report notification for report:', latestReport.title);
+                
+                // Clear the interval once we've notified
+                clearInterval(checkReportsInterval);
+              }
             }
-          }, monthlyDelay);
-
-          localStorage.setItem('monthlyReviewScheduled', monthlyTimeout.toString());
-        } else {
-          console.warn(`⚠️ Monthly delay too short: ${monthlyDelay}ms, skipping`);
-        }
+          } catch (error) {
+            console.error('❌ Error checking for monthly reports:', error);
+          }
+        }, 60 * 60 * 1000); // Check every hour
+        
+        // Store interval ID for cleanup
+        localStorage.setItem('monthlyReportCheckInterval', checkReportsInterval.toString());
+        
+        console.log('✅ Set up monthly report checking (every hour)');
       } else {
         console.log('⏭️ Monthly notification sent recently, skipping');
       }
