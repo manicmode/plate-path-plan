@@ -30,7 +30,10 @@ interface BrandedProductMatch {
   productName?: string;
   brandName?: string;
   nutrition?: NutritionData;
-  source: 'usda' | 'openfoodfacts' | 'barcode' | 'category_fallback' | 'ai_estimate' | 'failed';
+  source: 'usda' | 'openfoodfacts' | 'barcode' | 'category_fallback' | 'gpt-fallback' | 'failed';
+  nutritionSource: 'usda' | 'openfoodfacts' | 'gpt-fallback' | 'category' | 'failed';
+  confidenceLabel: string;
+  isLowConfidence: boolean;
   category?: string;
   warningMessage?: string;
   debugInfo: {
@@ -40,6 +43,12 @@ interface BrandedProductMatch {
     searchVariations?: string[];
     fallbackReason?: string;
     confidenceBreakdown?: Record<string, number>;
+  };
+  lookupTrace?: {
+    tried: string[];
+    matchedBrand?: string;
+    finalSource: string;
+    confidence: number;
   };
 }
 
@@ -295,6 +304,117 @@ function extractNutritionOFF(product: any): NutritionData | null {
   };
 }
 
+// Generate confidence label based on confidence score and source
+function generateConfidenceLabel(confidence: number, source: string): string {
+  if (source === 'usda' || source === 'openfoodfacts') {
+    return `Official source: ${source.toUpperCase()}`;
+  }
+  
+  if (confidence < 50) {
+    return '⚠️ Estimate – official data not found';
+  } else if (confidence < 80) {
+    return 'AI estimate based on branded items';
+  } else {
+    return 'AI nutrition estimate – looks accurate 👍';
+  }
+}
+
+// Extract brand name from product name or explicit brand field
+function extractBrandName(productName: string, brandField?: string): string | undefined {
+  if (brandField) return brandField;
+  
+  const normalized = productName.toLowerCase();
+  const brandKeywords = {
+    'mcdonalds': ['mcdonald', 'mcd', 'big mac', 'quarter pounder'],
+    'burger king': ['burger king', 'bk', 'whopper'],
+    'subway': ['subway'],
+    'starbucks': ['starbucks'],
+    'kfc': ['kfc', 'kentucky fried'],
+    'taco bell': ['taco bell'],
+    'pizza hut': ['pizza hut'],
+    'dominos': ['dominos'],
+    'wendys': ['wendys'],
+    'chipotle': ['chipotle']
+  };
+  
+  for (const [brand, keywords] of Object.entries(brandKeywords)) {
+    if (keywords.some(keyword => normalized.includes(keyword))) {
+      return brand;
+    }
+  }
+  
+  return undefined;
+}
+
+// GPT fallback for nutrition estimation
+async function estimateNutritionWithGPT(productName: string): Promise<NutritionData | null> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    console.log('⚠️ OpenAI API key not available, skipping GPT fallback');
+    return null;
+  }
+
+  try {
+    console.log('🧠 Attempting GPT nutrition estimation for:', productName);
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a nutrition expert. Estimate nutritional information for foods. Return only valid JSON with calories, protein, carbs, fat, fiber, sugar, sodium (all numbers). Be realistic and conservative with estimates.'
+          },
+          {
+            role: 'user',
+            content: `Estimate nutrition info for: "${productName}". Return JSON only with: {"calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 200
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      try {
+        const nutrition = JSON.parse(content);
+        
+        // Validate the response has required fields and reasonable values
+        if (nutrition.calories > 0 && nutrition.calories < 5000 && 
+            typeof nutrition.protein === 'number' && 
+            typeof nutrition.carbs === 'number' && 
+            typeof nutrition.fat === 'number') {
+          
+          console.log('✅ GPT nutrition estimation successful:', nutrition);
+          return {
+            calories: Math.round(nutrition.calories),
+            protein: Math.round(nutrition.protein * 10) / 10,
+            carbs: Math.round(nutrition.carbs * 10) / 10,
+            fat: Math.round(nutrition.fat * 10) / 10,
+            fiber: Math.round((nutrition.fiber || 0) * 10) / 10,
+            sugar: Math.round((nutrition.sugar || 0) * 10) / 10,
+            sodium: Math.round(nutrition.sodium || 0)
+          };
+        }
+      } catch (parseError) {
+        console.log('❌ Failed to parse GPT response:', content);
+      }
+    }
+  } catch (error) {
+    console.log('❌ GPT nutrition estimation failed:', error.message);
+  }
+  
+  return null;
+}
+
 // Log failed lookups for training
 async function logFailedLookup(supabase: any, userId: string, foodName: string, confidence: number, reason: string) {
   try {
@@ -343,10 +463,14 @@ serve(async (req) => {
     
     console.log('🔍 Starting comprehensive branded product search:', { productName, hasOCR: !!ocrText, hasBarcode: !!barcode });
 
+    const lookupTrace: string[] = [];
     let result: BrandedProductMatch = {
       found: false,
       confidence: 0,
       source: 'failed',
+      nutritionSource: 'failed',
+      confidenceLabel: '',
+      isLowConfidence: true,
       debugInfo: {
         searchQuery: productName,
         candidatesFound: 0,
@@ -357,6 +481,7 @@ serve(async (req) => {
     // STEP 1: Barcode lookup (highest priority)
     if (barcode?.trim()) {
       console.log('🏷️ BARCODE LOOKUP:', barcode);
+      lookupTrace.push('barcode');
       
       try {
         const barcodeResponse = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
@@ -368,18 +493,27 @@ serve(async (req) => {
             const nutrition = extractNutritionOFF(barcodeData.product);
             
             if (nutrition && nutrition.calories > 0) {
+              const finalConfidence = 99;
               result = {
                 found: true,
-                confidence: 99,
+                confidence: finalConfidence,
                 productId: barcode,
                 productName: barcodeData.product.product_name || productName,
                 brandName: barcodeData.product.brands,
                 nutrition,
                 source: 'barcode',
+                nutritionSource: 'openfoodfacts',
+                confidenceLabel: generateConfidenceLabel(finalConfidence, 'openfoodfacts'),
+                isLowConfidence: false,
                 debugInfo: {
                   searchQuery: barcode,
                   candidatesFound: 1,
                   matchMethod: 'barcode_exact_match'
+                },
+                lookupTrace: {
+                  tried: lookupTrace,
+                  finalSource: 'barcode',
+                  confidence: finalConfidence
                 }
               };
               
@@ -405,14 +539,15 @@ serve(async (req) => {
     let bestSource = '';
     let totalCandidates = 0;
 
-    // STEP 3: Try USDA FoodData Central
+    // STEP 3: Try USDA FoodData Central (highest priority for official data)
+    lookupTrace.push('usda');
     const usdaApiKey = Deno.env.get('USDA_API_KEY');
     if (usdaApiKey) {
       console.log('🇺🇸 Searching USDA FoodData Central...');
       
-      for (const variation of searchVariations.slice(0, 3)) { // Limit variations to avoid rate limits
+      for (const variation of searchVariations.slice(0, 3)) {
         try {
-          const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(variation)}&dataType=Branded&pageSize=10`;
+          const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(variation)}&dataType=Branded&pageSize=15`;
           const usdaResponse = await fetch(usdaUrl);
           
           if (usdaResponse.ok) {
@@ -440,12 +575,21 @@ serve(async (req) => {
       }
     }
 
-    // STEP 4: Try Open Food Facts
+    // STEP 4: Try Open Food Facts (backup source)
+    lookupTrace.push('openfoodfacts');
     console.log('🌍 Searching Open Food Facts...');
     
     for (const variation of searchVariations.slice(0, 4)) {
       try {
-        const offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(variation)}&search_simple=1&action=process&json=1&page_size=10`;
+        // Enhanced OFF search with better brand filtering
+        const detectedBrand = extractBrandName(productName);
+        let offUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(variation)}&search_simple=1&action=process&json=1&page_size=15`;
+        
+        // Add brand filter if detected
+        if (detectedBrand) {
+          offUrl += `&brands=${encodeURIComponent(detectedBrand)}`;
+        }
+        
         const offResponse = await fetch(offUrl);
         
         if (offResponse.ok) {
@@ -477,11 +621,12 @@ serve(async (req) => {
     result.debugInfo.candidatesFound = totalCandidates;
     result.debugInfo.searchVariations = searchVariations;
 
-    // STEP 5: Apply confidence thresholds
+    // STEP 5: Apply confidence thresholds for official sources
     if (bestMatch && bestConfidence >= 70) {
       console.log(`✅ HIGH CONFIDENCE MATCH (${bestConfidence}%):`, bestMatch.product_name || bestMatch.description);
       
       const nutrition = bestSource === 'usda' ? extractNutritionUSDA(bestMatch) : extractNutritionOFF(bestMatch);
+      const detectedBrand = extractBrandName(productName, bestMatch.brands || bestMatch.brandName);
       
       result = {
         found: true,
@@ -491,9 +636,18 @@ serve(async (req) => {
         brandName: bestMatch.brands || bestMatch.brandName,
         nutrition: nutrition!,
         source: bestSource as any,
+        nutritionSource: bestSource as any,
+        confidenceLabel: generateConfidenceLabel(bestConfidence, bestSource),
+        isLowConfidence: false,
         debugInfo: {
           ...result.debugInfo,
-          matchMethod: `${bestSource}_fuzzy_match_${bestConfidence}%`
+          matchMethod: `${bestSource}_high_confidence_${bestConfidence}%`
+        },
+        lookupTrace: {
+          tried: lookupTrace,
+          matchedBrand: detectedBrand,
+          finalSource: bestSource,
+          confidence: bestConfidence
         }
       };
       
@@ -502,25 +656,83 @@ serve(async (req) => {
       });
     }
 
-    // STEP 6: Medium confidence with category fallback
+    // STEP 6: Medium confidence - try GPT fallback first, then category fallback
     if (bestMatch && bestConfidence >= 20 && bestConfidence < 70) {
-      console.log(`⚠️ MEDIUM CONFIDENCE (${bestConfidence}%) - Applying category fallback`);
+      console.log(`⚠️ MEDIUM CONFIDENCE (${bestConfidence}%) - Trying GPT fallback first`);
       
+      const detectedBrand = extractBrandName(productName, bestMatch.brands || bestMatch.brandName);
       const category = detectFoodCategory(productName);
+      
+      // Don't use GPT fallback if we have exact brand match and clear category
+      if (detectedBrand && category && !detectedBrand.toLowerCase().includes('generic')) {
+        console.log(`🚫 Skipping GPT fallback - exact brand "${detectedBrand}" with category "${category}" detected`);
+      } else {
+        // Try GPT fallback
+        lookupTrace.push('gpt');
+        const gptNutrition = await estimateNutritionWithGPT(productName);
+        
+        if (gptNutrition && gptNutrition.calories > 0) {
+          // Boost confidence for GPT if brand + category match is strong
+          let adjustedConfidence = bestConfidence;
+          if (detectedBrand && category) {
+            adjustedConfidence = Math.min(82, bestConfidence + 25); // Boost to 80+ range
+          }
+          
+          result = {
+            found: true,
+            confidence: adjustedConfidence,
+            productId: bestMatch.code || bestMatch.fdcId?.toString(),
+            productName: bestMatch.product_name || bestMatch.description || productName,
+            brandName: bestMatch.brands || bestMatch.brandName || detectedBrand,
+            nutrition: gptNutrition,
+            source: 'gpt-fallback',
+            nutritionSource: 'gpt-fallback',
+            confidenceLabel: generateConfidenceLabel(adjustedConfidence, 'gpt-fallback'),
+            isLowConfidence: adjustedConfidence < 50,
+            category,
+            warningMessage: adjustedConfidence < 50 ? "⚠️ Estimate – official data not found" : undefined,
+            debugInfo: {
+              ...result.debugInfo,
+              matchMethod: `gpt_fallback_${adjustedConfidence}%`
+            },
+            lookupTrace: {
+              tried: lookupTrace,
+              matchedBrand: detectedBrand,
+              finalSource: 'gpt-fallback',
+              confidence: adjustedConfidence
+            }
+          };
+          
+          return new Response(JSON.stringify(result), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+      
+      // Fall back to category if GPT failed or was skipped
       if (category && CATEGORY_FALLBACKS[category]) {
         result = {
           found: true,
           confidence: bestConfidence,
           productId: bestMatch.code || bestMatch.fdcId?.toString(),
           productName: bestMatch.product_name || bestMatch.description,
-          brandName: bestMatch.brands || bestMatch.brandName,
+          brandName: bestMatch.brands || bestMatch.brandName || detectedBrand,
           nutrition: CATEGORY_FALLBACKS[category],
           source: 'category_fallback',
+          nutritionSource: 'category',
+          confidenceLabel: 'AI estimate based on branded items',
+          isLowConfidence: bestConfidence < 50,
           category,
           warningMessage: "We used a smart estimate based on food category. You can edit or continue.",
           debugInfo: {
             ...result.debugInfo,
             matchMethod: `category_fallback_${category}_${bestConfidence}%`
+          },
+          lookupTrace: {
+            tried: lookupTrace,
+            matchedBrand: detectedBrand,
+            finalSource: 'category_fallback',
+            confidence: bestConfidence
           }
         };
         
@@ -530,7 +742,52 @@ serve(async (req) => {
       }
     }
 
-    // STEP 7: Pure category fallback (no good matches found)
+    // STEP 7: Pure GPT fallback (no matches found)
+    lookupTrace.push('gpt');
+    const gptNutrition = await estimateNutritionWithGPT(productName);
+    
+    if (gptNutrition && gptNutrition.calories > 0) {
+      const detectedBrand = extractBrandName(productName);
+      const category = detectFoodCategory(productName);
+      let gptConfidence = 45; // Default GPT confidence
+      
+      // Boost confidence if we detect brand + category
+      if (detectedBrand && category) {
+        gptConfidence = 75; // Higher confidence for branded items with clear category
+      } else if (category) {
+        gptConfidence = 60; // Medium confidence for categorized items
+      }
+      
+      result = {
+        found: true,
+        confidence: gptConfidence,
+        productName: productName,
+        brandName: detectedBrand,
+        nutrition: gptNutrition,
+        source: 'gpt-fallback',
+        nutritionSource: 'gpt-fallback',
+        confidenceLabel: generateConfidenceLabel(gptConfidence, 'gpt-fallback'),
+        isLowConfidence: gptConfidence < 50,
+        category,
+        warningMessage: gptConfidence < 50 ? "⚠️ Estimate – official data not found" : undefined,
+        debugInfo: {
+          ...result.debugInfo,
+          matchMethod: `pure_gpt_fallback_${gptConfidence}%`
+        },
+        lookupTrace: {
+          tried: lookupTrace,
+          matchedBrand: detectedBrand,
+          finalSource: 'gpt-fallback',
+          confidence: gptConfidence
+        }
+      };
+      
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // STEP 8: Pure category fallback (last resort)
     const category = detectFoodCategory(productName);
     if (category && CATEGORY_FALLBACKS[category]) {
       console.log(`🎯 CATEGORY FALLBACK: Detected "${category}" for "${productName}"`);
@@ -541,11 +798,19 @@ serve(async (req) => {
         productName: productName,
         nutrition: CATEGORY_FALLBACKS[category],
         source: 'category_fallback',
+        nutritionSource: 'category',
+        confidenceLabel: 'AI estimate based on branded items',
+        isLowConfidence: false,
         category,
         warningMessage: "We used a smart estimate based on food category. You can edit or continue.",
         debugInfo: {
           ...result.debugInfo,
           matchMethod: `pure_category_fallback_${category}`
+        },
+        lookupTrace: {
+          tried: lookupTrace,
+          finalSource: 'category_fallback',
+          confidence: 50
         }
       };
       
@@ -554,7 +819,7 @@ serve(async (req) => {
       });
     }
 
-    // STEP 8: Log failure and reject
+    // STEP 9: Log failure and reject
     console.log(`❌ LOOKUP FAILED: No suitable matches found (best: ${bestConfidence}%)`);
     
     await logFailedLookup(supabase, user.id, productName, bestConfidence, 'no_suitable_matches');
@@ -563,10 +828,18 @@ serve(async (req) => {
       found: false,
       confidence: bestConfidence,
       source: 'failed',
+      nutritionSource: 'failed',
+      confidenceLabel: '⚠️ Estimate – official data not found',
+      isLowConfidence: true,
       debugInfo: {
         ...result.debugInfo,
         matchMethod: 'failed_all_methods',
         fallbackReason: `insufficient_confidence_${bestConfidence}%`
+      },
+      lookupTrace: {
+        tried: lookupTrace,
+        finalSource: 'failed',
+        confidence: bestConfidence
       }
     };
 
