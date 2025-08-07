@@ -133,6 +133,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
+  if (!currentFoodItem) return null;
+
   const portionMultiplier = portionPercentage[0] / 100;
   
   const adjustedFood = {
