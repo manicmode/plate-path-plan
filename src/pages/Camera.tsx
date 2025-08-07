@@ -660,18 +660,11 @@ const CameraPage = () => {
         console.log(`  🏢 Brand: ${brandedResult.brandName || 'N/A'}`);
         console.log(`  🔍 Debug Info:`, brandedResult.debugInfo);
 
-        // Use branded nutrition with enhanced fallback logic
-        if (brandedResult.found && brandedResult.confidence >= 50) {
+        // Use branded nutrition if confidence is high enough (≥90%)
+        if (brandedResult.found && brandedResult.confidence >= 90) {
           debugLog.brandedProductMatched = true;
           debugLog.finalConfidence = brandedResult.confidence;
           debugLog.success = true;
-          
-          const isLowConfidence = brandedResult.confidence < 70;
-          let warningMessage = undefined;
-          
-          if (isLowConfidence) {
-            warningMessage = `Confidence is ${brandedResult.confidence}%. We had trouble finding accurate nutrition info. You can edit it manually or continue anyway.`;
-          }
           
           console.log('✅ BRANDED MATCH SUCCESS - Using branded nutrition data');
           console.log(`🎯 Final confidence: ${brandedResult.confidence}%`);
@@ -682,8 +675,6 @@ const CameraPage = () => {
             isBranded: true,
             source: 'branded-database',
             confidence: brandedResult.confidence / 100, // Convert percentage to decimal
-            isLowConfidence,
-            warningMessage,
             brandInfo: {
               productName: brandedResult.productName,
               brandName: brandedResult.brandName,
@@ -695,8 +686,8 @@ const CameraPage = () => {
           };
         } else {
           debugLog.fallbackUsed = true;
-          debugLog.errors.push(`Branded confidence ${brandedResult.confidence}% below 50% threshold`);
-          console.log(`⚠️ BRANDED MATCH INSUFFICIENT - Confidence ${brandedResult.confidence}% below 50% threshold`);
+          debugLog.errors.push(`Branded confidence ${brandedResult.confidence}% below 90% threshold`);
+          console.log(`⚠️ BRANDED MATCH INSUFFICIENT - Confidence ${brandedResult.confidence}% below 90% threshold`);
           console.log('🔄 Proceeding to generic fallback...');
         }
       } else {
