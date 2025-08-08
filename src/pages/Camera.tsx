@@ -1128,23 +1128,25 @@ const CameraPage = () => {
       // Wrap the primary call and parse in try/catch, and compute three booleans
       const primaryResp = await sendToLogVoice(voiceText); // existing function
       let primaryJson: any = null;
-      let primaryHttpOk = false;
-      let primaryJsonOk = false;
-      let primaryHasItems = false;
 
       try {
-        primaryHttpOk = !!primaryResp?.success;
-        // Parse the message field which contains the JSON response
         primaryJson = primaryResp?.message ? JSON.parse(primaryResp.message) : null;
-        primaryJsonOk = !!primaryJson && typeof primaryJson === 'object';
-        primaryHasItems = Array.isArray(primaryJson?.items) && primaryJson.items.length > 0;
       } catch (e) {
-        primaryJsonOk = false;
-        primaryHasItems = false;
+        primaryJson = null;
         console.error('GPT-5 primary JSON parse failed:', e);
       }
 
-      // Log decision factors once
+      const primaryHttpOk = !!primaryResp?.success; // Use success instead of ok for LogVoiceResponse
+      const primaryJsonOk = primaryJson && typeof primaryJson === "object";
+
+      const primaryItems = Array.isArray(primaryJson?.items)
+        ? primaryJson.items
+        : Array.isArray(primaryJson?.message?.items)
+        ? primaryJson.message.items
+        : [];
+
+      const primaryHasItems = primaryItems.length > 0;
+
       console.info("[GPT5 Decision]", { primaryHttpOk, primaryJsonOk, primaryHasItems });
 
       // Pick source once and log accurately
@@ -1173,8 +1175,15 @@ const CameraPage = () => {
           fallback_used: true,
         };
       } else {
-        console.info("✅ [Camera] Primary GPT-5 succeeded. Skipping fallback.");
-        chosen = { ...primaryJson, model_used: "gpt-5", fallback_used: false };
+        console.info("✅ Primary GPT-5 succeeded. Skipping fallback.");
+        chosen = {
+          success: true,
+          items: primaryItems,
+          model_used: primaryJson.model_used ?? "gpt-5",
+          fallback_used: false,
+          originalText: voiceText,
+          preprocessedText: primaryJson.preprocessedText ?? voiceText.toLowerCase(),
+        };
       }
 
       // Check final result success

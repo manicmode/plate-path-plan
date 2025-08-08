@@ -84,8 +84,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <AccessibleDialogContent 
         className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-        titleText="Review detected items"
-        descriptionText="Review detected food items and confirm to save them to your log."
+        title="Review detected items"
+        description="Confirm or adjust before saving."
       >
         <div className="p-6">
           <DialogHeader className="text-center mb-6">

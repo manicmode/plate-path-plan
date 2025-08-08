@@ -1,34 +1,31 @@
-// src/components/a11y/AccessibleDialogContent.tsx
 import * as React from "react";
-import { useId, useEffect } from "react";
-import { DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useId } from "react";
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-type Props = React.ComponentProps<typeof DialogContent> & {
-  titleText?: string;
-  descriptionText?: string;
+type Props = {
+  title: string;          // required
+  description: string;    // required
+  children: React.ReactNode;
+  className?: string;
 };
 
-export default function AccessibleDialogContent({
-  children,
-  titleText = "Dialog",
-  descriptionText = "This dialog requires your attention.",
-  ...props
-}: Props) {
+export default function AccessibleDialogContent({ title, description, children, className }: Props) {
   const titleId = useId();
   const descId = useId();
 
-  useEffect(() => {
-    console.info("[A11y] AccessibleDialogContent mounted", { titleId, descId, titleText });
-  }, [titleId, descId, titleText]);
+  React.useEffect(() => {
+    console.info("[A11y] AccessibleDialogContent mounted", { titleId, descId, titleText: title });
+  }, [titleId, descId, title]);
 
   return (
-    <DialogContent aria-describedby={descId} {...props}>
-      <DialogTitle id={titleId} className="sr-only">
-        {titleText}
-      </DialogTitle>
-      <DialogDescription id={descId} className="sr-only">
-        {descriptionText}
-      </DialogDescription>
+    <DialogContent
+      aria-describedby={descId}
+      className={className}
+    >
+      <DialogHeader>
+        <DialogTitle id={titleId}>{title}</DialogTitle>
+        <DialogDescription id={descId}>{description}</DialogDescription>
+      </DialogHeader>
       {children}
     </DialogContent>
   );

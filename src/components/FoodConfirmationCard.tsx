@@ -424,10 +424,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return (
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
         <AccessibleDialogContent 
-          showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          titleText="Loading next item"
-          descriptionText="Please wait while the next food item is being loaded."
+          title="Loading next item"
+          description="Please wait while the next food item is being loaded."
         >
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
@@ -453,10 +452,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     <>
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
          <AccessibleDialogContent 
-           showCloseButton={false}
            className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-           titleText="Confirm logged items"
-           descriptionText="Review detected items and confirm to save them to your log."
+           title="Confirm logged items"
+           description="We'll save these items to your log."
          >
           <div className="p-6">
             {/* Unknown Product Alert */}
