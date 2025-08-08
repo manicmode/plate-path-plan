@@ -85,6 +85,8 @@ interface VoiceApiResponse {
   suggestions?: string[];
   detectedItems?: string[];
   error?: string;
+  model_used?: string;
+  fallback_used?: boolean;
 }
 
 const CameraPage = () => {
@@ -1155,35 +1157,48 @@ const CameraPage = () => {
         }
       }
 
+      // Only attempt fallback if the primary request actually failed
       if (!result.success) {
-        // After retries failed, try fallback to log-voice function
-        console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
+        // Check if the parsed response shows actual failure
+        let actualFailure = true;
         try {
-          const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
-            },
-            body: JSON.stringify({ text: voiceText })
-          });
-          
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json();
-            result = {
-              success: true,
-              message: JSON.stringify({
+          const parsedResponse = JSON.parse(result.message || '{}');
+          actualFailure = !parsedResponse.success;
+        } catch {
+          // If we can't parse, assume it's a failure
+          actualFailure = true;
+        }
+
+        if (actualFailure) {
+          // After retries failed, try fallback to log-voice function
+          console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
+          try {
+            const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+              },
+              body: JSON.stringify({ text: voiceText })
+            });
+            
+            if (fallbackResponse.ok) {
+              const fallbackData = await fallbackResponse.json();
+              result = {
                 success: true,
-                items: fallbackData.items || [],
-                originalText: fallbackData.originalText || voiceText,
-                model_used: 'gpt-4o (fallback)',
-                fallback_used: true
-              })
-            };
-            console.log('✅ [Camera] Fallback to log-voice succeeded');
+                message: JSON.stringify({
+                  success: true,
+                  items: fallbackData.items || [],
+                  originalText: fallbackData.originalText || voiceText,
+                  model_used: 'gpt-4o (fallback)',
+                  fallback_used: true
+                })
+              };
+              console.log('✅ [Camera] Fallback to log-voice succeeded');
+            }
+          } catch (fallbackError) {
+            console.error('❌ [Camera] Fallback also failed:', fallbackError);
           }
-        } catch (fallbackError) {
-          console.error('❌ [Camera] Fallback also failed:', fallbackError);
         }
       }
 
@@ -1205,7 +1220,11 @@ const CameraPage = () => {
       // Parse the structured response from the updated edge function
       const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
 
-      console.log('🎤 [Camera] Voice API Response parsed:', voiceApiResponse);
+      console.log('🎤 [Camera] Voice API Response parsed:', {
+        ...voiceApiResponse,
+        model_used: voiceApiResponse.model_used || 'unknown',
+        fallback_used: voiceApiResponse.fallback_used || false
+      });
       setVoiceResults(voiceApiResponse);
 
       // Handle multiple food items from voice input
