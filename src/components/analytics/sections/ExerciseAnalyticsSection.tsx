@@ -230,7 +230,8 @@ return (
         </ErrorBoundary>
       </div>
 
-      {/* Streak Tracker */}
+      {/* Milestones & Streaks */}
+      <SectionHeader icon={Target} title="Milestones & Streaks" subtitle="Your achievements and workout streaks" />
       <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Streak data unavailable</div>}>
         <StreakTrackerCard 
           currentStreak={workoutStreak}
