@@ -728,11 +728,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800">
                     <h5 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">GPT-5 Parsed Output:</h5>
                     <div className="font-mono text-blue-700 dark:text-blue-300 space-y-1">
-                       <div>• name: "{currentFoodItem.name}"</div>
-                       <div>• quantity: "{currentFoodItem.quantity || 'none'}"</div>
-                       <div>• parsed_numeric: {effectiveQuantity}</div>
-                       <div>• confidence: {currentFoodItem.confidence || 'N/A'}</div>
-                       <div>• isEstimated: {isEstimated ? 'true' : 'false'}</div>
+                      <div>• name: "{currentFoodItem?.name || 'N/A'}"</div>
+                      <div>• quantity: "{currentFoodItem?.quantity || 'none'}"</div>
+                      <div>• parsed_numeric: {effectiveQuantity || 1}</div>
+                      <div>• confidence: {currentFoodItem?.confidence || 'N/A'}</div>
+                      <div>• isEstimated: {isEstimated ? 'true' : 'false'}</div>
                     </div>
                   </div>
                   
@@ -740,10 +740,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded border border-green-200 dark:border-green-800">
                     <h5 className="font-semibold text-green-800 dark:text-green-200 mb-1">Matched Database Item:</h5>
                     <div className="font-mono text-green-700 dark:text-green-300 space-y-1">
-                      <div>• id: {currentFoodItem.id || 'N/A'}</div>
-                      <div>• source: {currentFoodItem.source || 'unknown'}</div>
-                      <div>• calories_per_serving: {currentFoodItem.calories}</div>
-                      <div>• macros: P{currentFoodItem.protein}g C{currentFoodItem.carbs}g F{currentFoodItem.fat}g</div>
+                      <div>• id: {currentFoodItem?.id || 'N/A'}</div>
+                      <div>• source: {currentFoodItem?.source || 'unknown'}</div>
+                      <div>• calories_per_serving: {currentFoodItem?.calories || 0}</div>
+                      <div>• macros: P{currentFoodItem?.protein || 0}g C{currentFoodItem?.carbs || 0}g F{currentFoodItem?.fat || 0}g</div>
                     </div>
                   </div>
                   
@@ -751,12 +751,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-800">
                     <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Scaling Math:</h5>
                     <div className="font-mono text-orange-700 dark:text-orange-300 space-y-1">
-                       <div>• parsed_quantity: {effectiveQuantity}</div>
-                       <div>• portion_percentage: {portionPercentage[0]}%</div>
-                       <div>• base_calories_per_unit: {currentFoodItem.calories}</div>
-                       <div>• scaling_factor: {portionMultiplier.toFixed(2)}</div>
-                       <div>• final_calories: {adjustedFood.calories}</div>
-                       <div>• calculation: {effectiveQuantity} × {portionPercentage[0]}% × {currentFoodItem.calories} = {adjustedFood.calories}</div>
+                      <div>• parsed_quantity: {effectiveQuantity || 1}</div>
+                      <div>• portion_percentage: {portionPercentage?.[0] || 100}%</div>
+                      <div>• base_calories_per_unit: {currentFoodItem?.calories || 0}</div>
+                      <div>• scaling_factor: {portionMultiplier?.toFixed(2) || '1.00'}</div>
+                      <div>• final_calories: {adjustedFood?.calories || 0}</div>
+                      <div>• calculation: {effectiveQuantity || 1} × {portionPercentage?.[0] || 100}% × {currentFoodItem?.calories || 0} = {adjustedFood?.calories || 0}</div>
                     </div>
                   </div>
                 </div>

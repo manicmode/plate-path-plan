@@ -631,119 +631,140 @@ const CameraPage = () => {
     console.log('🍎 === NUTRITION ESTIMATION DEBUG START ===');
     console.log('📊 Initial parameters:', { foodName, hasOcrText: !!ocrText, hasBarcode: !!barcode, barcode });
     
-    // Try branded product matching first
+    // Strategy: Prefer generic USDA data unless barcode scan or exact branded match
     try {
-      console.log('🏷️ STEP 1: Attempting branded product matching...');
+      console.log('🔄 STEP 1: Trying generic USDA/GPT estimation first...');
       
-      if (barcode) {
-        debugLog.barcodeDetected = true;
-        console.log(`✅ BARCODE DETECTED: ${barcode}`);
-      } else {
-        console.log('❌ NO BARCODE DETECTED');
-      }
-      
-      const brandedResponse = await supabase.functions.invoke('match-branded-product', {
-        body: {
-          productName: foodName,
-          ocrText: ocrText,
-          barcode: barcode
-        }
-      });
-
-      if (brandedResponse.data && !brandedResponse.error) {
-        const brandedResult = brandedResponse.data;
-        debugLog.brandedMatchConfidence = brandedResult.confidence;
-        debugLog.brandedSource = brandedResult.source;
-        
-        console.log('🏷️ BRANDED PRODUCT MATCH RESULT:');
-        console.log('  ✅ Response received successfully');
-        console.log(`  📊 Found: ${brandedResult.found}`);
-        console.log(`  🎯 Confidence: ${brandedResult.confidence}%`);
-        console.log(`  📍 Source: ${brandedResult.source}`);
-        console.log(`  🏪 Product: ${brandedResult.productName || 'N/A'}`);
-        console.log(`  🏢 Brand: ${brandedResult.brandName || 'N/A'}`);
-        console.log(`  🔍 Debug Info:`, brandedResult.debugInfo);
-
-        // Use branded nutrition if confidence is high enough (≥90%)
-        if (brandedResult.found && brandedResult.confidence >= 90) {
-          debugLog.brandedProductMatched = true;
-          debugLog.finalConfidence = brandedResult.confidence;
-          debugLog.success = true;
-          
-          console.log('✅ BRANDED MATCH SUCCESS - Using branded nutrition data');
-          console.log(`🎯 Final confidence: ${brandedResult.confidence}%`);
-          console.log('🏆 BRANDED NUTRITION DATA:', brandedResult.nutrition);
-          
-          return {
-            ...brandedResult.nutrition,
-            isBranded: true,
-            source: 'branded-database',
-            confidence: brandedResult.confidence / 100, // Convert percentage to decimal
-            brandInfo: {
-              productName: brandedResult.productName,
-              brandName: brandedResult.brandName,
-              productId: brandedResult.productId,
-              confidence: brandedResult.confidence,
-              source: brandedResult.source
-            },
-            debugLog
-          };
-        } else {
-          debugLog.fallbackUsed = true;
-          debugLog.errors.push(`Branded confidence ${brandedResult.confidence}% below 90% threshold`);
-          console.log(`⚠️ BRANDED MATCH INSUFFICIENT - Confidence ${brandedResult.confidence}% below 90% threshold`);
-          console.log('🔄 Proceeding to generic fallback...');
-        }
-      } else {
-        debugLog.errors.push(`Branded API error: ${brandedResponse.error?.message || 'Unknown error'}`);
-        console.log('❌ BRANDED PRODUCT API ERROR:', brandedResponse.error);
-      }
-    } catch (error) {
-      debugLog.errors.push(`Branded matching exception: ${error.message}`);
-      console.error('❌ BRANDED PRODUCT MATCHING EXCEPTION:', error);
-    }
-
-    // Fallback to GPT nutrition estimation
-    console.log('🔄 STEP 2: Using GPT nutrition estimation...');
-    
-    try {
-      console.log(`🧠 Calling GPT nutrition estimator for: ${foodName}`);
-      
-      const { data, error } = await supabase.functions.invoke('gpt-nutrition-estimator', {
+      const { data: genericData, error: genericError } = await supabase.functions.invoke('gpt-nutrition-estimator', {
         body: { foodName: foodName }
       });
 
-      if (data && !error && data.nutrition) {
-        debugLog.fallbackUsed = false;
-        debugLog.finalConfidence = data.nutrition.confidence || 85;
-        debugLog.success = true;
+      if (genericData && !genericError && genericData.nutrition) {
+        console.log('✅ GENERIC NUTRITION SUCCESS:');
+        console.log(`  🎯 Confidence: ${genericData.nutrition.confidence}%`);
+        console.log('  🧪 Nutrition data:', genericData.nutrition);
         
-        console.log('✅ GPT NUTRITION SUCCESS:');
-        console.log(`  🎯 Confidence: ${data.nutrition.confidence}%`);
-        console.log('  🧪 Nutrition data:', data.nutrition);
-        
-        return {
-          calories: data.nutrition.calories,
-          protein: data.nutrition.protein,
-          carbs: data.nutrition.carbs,
-          fat: data.nutrition.fat,
-          fiber: data.nutrition.fiber,
-          sugar: data.nutrition.sugar,
-          sodium: data.nutrition.sodium,
-          saturated_fat: data.nutrition.saturated_fat,
+        // Store generic result for potential use
+        const genericResult = {
+          ...genericData.nutrition,
           isBranded: false,
-          source: 'gpt-individual',
-          confidence: (data.nutrition.confidence || 85) / 100,
+          source: 'usda-gpt-estimation',
+          confidence: (genericData.nutrition.confidence || 85) / 100,
           debugLog
         };
+
+        // Only check branded if we have a barcode OR generic confidence is low
+        if (barcode || (genericData.nutrition.confidence || 85) < 70) {
+          console.log('🏷️ STEP 2: Checking branded products...');
+          
+          if (barcode) {
+            debugLog.barcodeDetected = true;
+            console.log(`✅ BARCODE DETECTED: ${barcode} - Prioritizing branded match`);
+          } else {
+            console.log('⚠️ Low generic confidence - Checking branded as fallback');
+          }
+          
+          const brandedResponse = await supabase.functions.invoke('match-branded-product', {
+            body: {
+              productName: foodName,
+              ocrText: ocrText,
+              barcode: barcode
+            }
+          });
+
+          if (brandedResponse.data && !brandedResponse.error) {
+            const brandedResult = brandedResponse.data;
+            debugLog.brandedMatchConfidence = brandedResult.confidence;
+            debugLog.brandedSource = brandedResult.source;
+            
+            console.log('🏷️ BRANDED PRODUCT MATCH RESULT:');
+            console.log(`  📊 Found: ${brandedResult.found}`);
+            console.log(`  🎯 Confidence: ${brandedResult.confidence}%`);
+            console.log(`  📍 Source: ${brandedResult.source}`);
+            console.log(`  🏪 Product: ${brandedResult.productName || 'N/A'}`);
+            console.log(`  🏢 Brand: ${brandedResult.brandName || 'N/A'}`);
+
+            // Use branded if: 1) Barcode scan with match, 2) High confidence exact match with no good generic
+            const shouldUseBranded = (barcode && brandedResult.found && brandedResult.confidence >= 80) ||
+                                   (!barcode && brandedResult.found && brandedResult.confidence >= 95 && (genericData.nutrition.confidence || 85) < 70);
+
+            if (shouldUseBranded) {
+              debugLog.brandedProductMatched = true;
+              debugLog.finalConfidence = brandedResult.confidence;
+              debugLog.success = true;
+              
+              console.log('✅ USING BRANDED MATCH - High confidence or barcode scan');
+              console.log(`🎯 Final confidence: ${brandedResult.confidence}%`);
+              
+              return {
+                ...brandedResult.nutrition,
+                isBranded: true,
+                source: 'branded-database',
+                confidence: brandedResult.confidence / 100,
+                brandInfo: {
+                  productName: brandedResult.productName,
+                  brandName: brandedResult.brandName,
+                  productId: brandedResult.productId,
+                  confidence: brandedResult.confidence,
+                  source: brandedResult.source
+                },
+                debugLog
+              };
+            } else {
+              console.log(`⚠️ PREFERRING GENERIC - Branded confidence ${brandedResult.confidence}% not sufficient for non-barcode match`);
+            }
+          } else {
+            debugLog.errors.push(`Branded API error: ${brandedResponse.error?.message || 'Unknown error'}`);
+            console.log('❌ BRANDED PRODUCT API ERROR:', brandedResponse.error);
+          }
+        } else {
+          console.log('✅ USING GENERIC DATA - Good confidence and no barcode');
+        }
+
+        // Return generic result
+        debugLog.fallbackUsed = false;
+        debugLog.finalConfidence = genericData.nutrition.confidence || 85;
+        debugLog.success = true;
+        
+        return genericResult;
       } else {
-        debugLog.errors.push(`GPT nutrition API error: ${error?.message || 'No data returned'}`);
-        console.log('❌ GPT NUTRITION API ERROR:', error);
+        debugLog.errors.push(`Generic nutrition API error: ${genericError?.message || 'No data returned'}`);
+        console.log('❌ GENERIC NUTRITION API ERROR:', genericError);
       }
     } catch (error) {
-      debugLog.errors.push(`GPT nutrition exception: ${error.message}`);
-      console.error('❌ GPT NUTRITION EXCEPTION:', error);
+      debugLog.errors.push(`Generic nutrition exception: ${error.message}`);
+      console.error('❌ GENERIC NUTRITION EXCEPTION:', error);
     }
+
+    // Final fallback if both generic and branded failed
+    console.log('🔄 STEP 3: Both primary methods failed, using fallback estimation...');
+    
+    // Generate basic nutrition estimate based on food name
+    const fallbackNutrition = {
+      calories: 150,
+      protein: 8,
+      carbs: 20,
+      fat: 5,
+      fiber: 3,
+      sugar: 5,
+      sodium: 200,
+      saturated_fat: 2,
+      source: 'fallback-estimate',
+      confidence: 0.4
+    };
+    
+    debugLog.fallbackUsed = true;
+    debugLog.finalConfidence = 40;
+    debugLog.success = true;
+    debugLog.errors.push('Using fallback nutrition estimate');
+    
+    console.log('⚠️ USING FALLBACK NUTRITION ESTIMATE');
+    
+    return {
+      ...fallbackNutrition,
+      isBranded: false,
+      debugLog
+    };
 
     // Fallback to database lookups (stubbed for now)
     console.log('🔄 STEP 3: Attempting database lookups...');
@@ -1667,24 +1688,55 @@ const CameraPage = () => {
     // Log successful individual nutrition estimation
     console.log(`✅ [NUTRITION SUCCESS] ${currentItem.name}: ${nutrition.calories} cal, ${nutrition.protein}g protein, ${nutrition.carbs}g carbs, ${nutrition.fat}g fat | Source: ${nutrition.source || nutritionSource}`);
 
+    // Parse quantity for scaling nutrition values
+    const parseQuantity = (quantityStr?: string): { numeric: number; isEstimated: boolean } => {
+      if (!quantityStr) return { numeric: 1, isEstimated: true };
+      
+      // Extract numeric value from strings like "2", "1 cup", "6 oz", "2 slices"
+      const match = quantityStr.match(/^(\d+(?:\.\d+)?)/);
+      if (match) {
+        const numeric = parseFloat(match[1]);
+        return { numeric: isNaN(numeric) ? 1 : numeric, isEstimated: false };
+      }
+      
+      return { numeric: 1, isEstimated: true };
+    };
+
+    const voiceQuantity = (currentItem as any).voiceData?.quantity;
+    const { numeric: quantityMultiplier, isEstimated } = parseQuantity(voiceQuantity);
+
+    // Apply quantity scaling to nutrition values
+    const scaledNutrition = {
+      calories: Math.round(nutrition.calories * quantityMultiplier),
+      protein: Math.round((nutrition.protein || 0) * quantityMultiplier * 10) / 10,
+      carbs: Math.round((nutrition.carbs || 0) * quantityMultiplier * 10) / 10,
+      fat: Math.round((nutrition.fat || 0) * quantityMultiplier * 10) / 10,
+      fiber: Math.round((nutrition.fiber || 0) * quantityMultiplier * 10) / 10,
+      sugar: Math.round((nutrition.sugar || 0) * quantityMultiplier * 10) / 10,
+      sodium: Math.round((nutrition.sodium || 0) * quantityMultiplier),
+      saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * quantityMultiplier * 10) / 10
+    };
+
+    // Update display name with quantity
+    let displayName = currentItem.name;
+    if (quantityMultiplier > 1 || voiceQuantity) {
+      displayName = quantityMultiplier !== 1 ? `${quantityMultiplier} ${currentItem.name}` : currentItem.name;
+      if (isEstimated) {
+        displayName += ' (estimated)';
+      }
+    }
+
     const foodItem = {
       id: currentItem.id,
-      name: currentItem.name,
-      calories: Math.round(nutrition.calories),
-      protein: Math.round((nutrition.protein || 0) * 10) / 10,
-      carbs: Math.round((nutrition.carbs || 0) * 10) / 10,
-      fat: Math.round((nutrition.fat || 0) * 10) / 10,
-      fiber: Math.round((nutrition.fiber || 0) * 10) / 10,
-      sugar: Math.round((nutrition.sugar || 0) * 10) / 10,
-      sodium: Math.round(nutrition.sodium || 0),
-      saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * 10) / 10,
+      name: displayName,
+      ...scaledNutrition,
       confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
       source: nutrition.source || nutritionSource,
       image: selectedImage,
-      // Add quantity data for proper scaling
-      quantity: (currentItem as any).voiceData?.quantity || currentItem.portion,
-      parsedQuantity: undefined, // Will be calculated in FoodConfirmationCard
-      isEstimated: !(currentItem as any).voiceData?.quantity
+      // Store original data for debug purposes
+      quantity: voiceQuantity || currentItem.portion,
+      parsedQuantity: quantityMultiplier,
+      isEstimated
     };
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
