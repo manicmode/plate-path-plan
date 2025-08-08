@@ -1164,7 +1164,13 @@ const CameraPage = () => {
             id: `voice-item-${index}`,
             name: displayName,
             portion: item.quantity || '1 serving',
-            selected: true
+            selected: true,
+            // Store original voice data for nutrition scaling
+            voiceData: {
+              originalName: item.name,
+              quantity: item.quantity,
+              preparation: item.preparation
+            }
           };
         });
         
@@ -1672,9 +1678,13 @@ const CameraPage = () => {
       sugar: Math.round((nutrition.sugar || 0) * 10) / 10,
       sodium: Math.round(nutrition.sodium || 0),
       saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * 10) / 10,
-      confidence: Math.round((nutrition.confidence || confidence) * 100) / 100, // Use nutrition confidence if available
-      source: nutrition.source || nutritionSource, // Prefer nutrition source over fallback source  
-      image: selectedImage // Use the original photo as reference
+      confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
+      source: nutrition.source || nutritionSource,
+      image: selectedImage,
+      // Add quantity data for proper scaling
+      quantity: (currentItem as any).voiceData?.quantity || currentItem.portion,
+      parsedQuantity: undefined, // Will be calculated in FoodConfirmationCard
+      isEstimated: !(currentItem as any).voiceData?.quantity
     };
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);

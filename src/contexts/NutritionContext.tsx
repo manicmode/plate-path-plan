@@ -25,6 +25,9 @@ interface FoodItem {
   timestamp: Date;
   confirmed: boolean;
   databaseId?: string; // ID from nutrition_logs table for meal scoring
+  quantity?: string; // Parsed quantity from GPT (e.g., "2", "1 cup", "6 oz")
+  parsedQuantity?: number; // Numeric quantity for scaling (defaults to 1)
+  isEstimated?: boolean; // Whether quantity is estimated (no quantity parsed)
 }
 
 interface HydrationItem {

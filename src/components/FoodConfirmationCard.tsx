@@ -34,6 +34,9 @@ interface FoodItem {
   ingredientsAvailable?: boolean;
   source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
   confidence?: number; // Confidence score for the nutrition estimation
+  quantity?: string; // Parsed quantity from GPT (e.g., "2", "1 cup", "6 oz")
+  parsedQuantity?: number; // Numeric quantity for scaling (defaults to 1)
+  isEstimated?: boolean; // Whether quantity is estimated (no quantity parsed)
 }
 
 interface FoodConfirmationCardProps {
@@ -82,6 +85,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
+
+  // Utility function to parse quantity from string
+  const parseQuantity = (quantityStr?: string): { numeric: number; isEstimated: boolean } => {
+    if (!quantityStr) return { numeric: 1, isEstimated: true };
+    
+    // Extract numeric value from strings like "2", "1 cup", "6 oz", "2 slices"
+    const match = quantityStr.match(/^(\d+(?:\.\d+)?)/);
+    if (match) {
+      const numeric = parseFloat(match[1]);
+      return { numeric: isNaN(numeric) ? 1 : numeric, isEstimated: false };
+    }
+    
+    return { numeric: 1, isEstimated: true };
+  };
+
+  // Calculate base quantities for scaling
+  const { numeric: baseQuantity, isEstimated } = parseQuantity(currentFoodItem?.quantity);
+  const effectiveQuantity = currentFoodItem?.parsedQuantity ?? baseQuantity;
+  
+  // Calculate scaling factor: (portion slider) × (parsed quantity) 
+  const portionMultiplier = (portionPercentage[0] / 100) * effectiveQuantity;
 
   // Update currentFoodItem when foodItem prop changes
   React.useEffect(() => {
@@ -139,7 +163,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   if (!currentFoodItem) return null;
 
-  const portionMultiplier = portionPercentage[0] / 100;
+  
   
   const adjustedFood = {
     ...currentFoodItem,
@@ -158,9 +182,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       const debugInfo = {
         gpt5_parsed_output: {
           name: currentFoodItem.name,
-          quantity: portionPercentage[0],
+          quantity: currentFoodItem.quantity || 'none',
+          parsed_numeric: effectiveQuantity,
           unit: '%',
-          confidence: currentFoodItem.confidence || 'N/A'
+          confidence: currentFoodItem.confidence || 'N/A',
+          isEstimated
         },
         matched_database_item: {
           id: currentFoodItem.id || 'N/A',
@@ -179,10 +205,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           }
         },
         scaling_math: {
-          quantity: portionPercentage[0],
-          per_unit_calories: currentFoodItem.calories,
+          parsed_quantity: effectiveQuantity,
+          portion_percentage: portionPercentage[0],
+          base_calories_per_unit: currentFoodItem.calories,
           final_calories: adjustedFood.calories,
-          calculation: `${portionPercentage[0]}% × ${currentFoodItem.calories} = ${adjustedFood.calories}`
+          calculation: `${effectiveQuantity} × ${portionPercentage[0]}% × ${currentFoodItem.calories} = ${adjustedFood.calories}`,
+          scaling_factor: portionMultiplier
         }
       };
 
@@ -588,10 +616,26 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               )}
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {currentFoodItem.name}
+                  {effectiveQuantity > 1 || currentFoodItem.quantity ? (
+                    <>
+                      {effectiveQuantity !== 1 && `${effectiveQuantity} `}
+                      {currentFoodItem.name}
+                      {isEstimated && <span className="text-sm text-gray-500 ml-1">(estimated)</span>}
+                    </>
+                  ) : (
+                    <>
+                      {currentFoodItem.name}
+                      {isEstimated && <span className="text-sm text-gray-500 ml-1">(estimated)</span>}
+                    </>
+                  )}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {adjustedFood.calories} calories
+                  {effectiveQuantity > 1 && (
+                    <span className="ml-1 text-xs">
+                      ({Math.round(currentFoodItem.calories)} per unit)
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -684,9 +728,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800">
                     <h5 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">GPT-5 Parsed Output:</h5>
                     <div className="font-mono text-blue-700 dark:text-blue-300 space-y-1">
-                      <div>• name: "{currentFoodItem.name}"</div>
-                      <div>• quantity: {portionPercentage[0]}%</div>
-                      <div>• confidence: {currentFoodItem.confidence || 'N/A'}</div>
+                       <div>• name: "{currentFoodItem.name}"</div>
+                       <div>• quantity: "{currentFoodItem.quantity || 'none'}"</div>
+                       <div>• parsed_numeric: {effectiveQuantity}</div>
+                       <div>• confidence: {currentFoodItem.confidence || 'N/A'}</div>
+                       <div>• isEstimated: {isEstimated ? 'true' : 'false'}</div>
                     </div>
                   </div>
                   
@@ -705,8 +751,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-800">
                     <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Scaling Math:</h5>
                     <div className="font-mono text-orange-700 dark:text-orange-300 space-y-1">
-                      <div>• calculation: {portionPercentage[0]}% × {currentFoodItem.calories} = {adjustedFood.calories}</div>
-                      <div>• final_calories: {adjustedFood.calories}</div>
+                       <div>• parsed_quantity: {effectiveQuantity}</div>
+                       <div>• portion_percentage: {portionPercentage[0]}%</div>
+                       <div>• base_calories_per_unit: {currentFoodItem.calories}</div>
+                       <div>• scaling_factor: {portionMultiplier.toFixed(2)}</div>
+                       <div>• final_calories: {adjustedFood.calories}</div>
+                       <div>• calculation: {effectiveQuantity} × {portionPercentage[0]}% × {currentFoodItem.calories} = {adjustedFood.calories}</div>
                     </div>
                   </div>
                 </div>
