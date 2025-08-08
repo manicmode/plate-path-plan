@@ -13,6 +13,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
+import { substituteRecoveryPlaceholders } from '@/utils/recoveryPlaceholders';
 
 const RecoveryCoachSection = () => {
   const isMobile = useIsMobile();
