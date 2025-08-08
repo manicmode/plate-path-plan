@@ -92,18 +92,25 @@ export const useNutritionPersistence = () => {
         // Add to deduplication set to prevent processing duplicate saves
         addToRecentlySaved(savedId);
         
-        // Award nutrition XP
-        try {
-          const { error: xpError } = await supabase.functions.invoke('award-nutrition-xp', {
-            body: { 
-              user_id: user.id, 
-              activity_type: 'nutrition',
-              activity_id: savedId
-            }
-          });
-          if (xpError) console.warn('XP award failed:', xpError);
-        } catch (xpError) {
-          console.warn('XP award error:', xpError);
+        // Award nutrition XP (with feature flag)
+        if (process.env.NEXT_PUBLIC_ENABLE_XP === 'true') {
+          try {
+            const { error: xpError } = await supabase.functions.invoke('award-nutrition-xp', {
+              body: { 
+                user_id: user.id, 
+                activity_type: 'nutrition',
+                activity_id: savedId
+              }
+            });
+            if (xpError) console.warn('XP award failed:', xpError);
+          } catch (xpError) {
+            console.warn('XP award error:', xpError);
+            toast({
+              title: "XP award failed",
+              description: "Food was saved successfully, but XP couldn't be awarded",
+              variant: "destructive"
+            });
+          }
         }
 
         return savedId;
