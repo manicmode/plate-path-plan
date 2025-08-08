@@ -8,7 +8,7 @@ import { RecoveryInsightsCard } from '@/components/analytics/recovery/RecoveryIn
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
 import { RecoveryActivityTrends } from '@/components/analytics/recovery/RecoveryActivityTrends';
-import { Pill, Gauge, PieChart as PieChartIcon, History, Lightbulb, Star, BarChart3 } from 'lucide-react';
+import { Pill, Gauge, History, Lightbulb, Star, BarChart3 } from 'lucide-react';
 
 interface RecoveryAnalyticsSectionProps {
   weeklyAverage?: any;
@@ -61,11 +61,6 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
       <RecoveryActivityTrends />
       
       {/* Recovery Activity Breakdown */}
-      <SectionHeader 
-        icon={PieChartIcon}
-        title="Recovery Activity Breakdown"
-        subtitle="Meditation, Breathing, Sleep, Yoga, Thermotherapy"
-      />
       <RecoveryTypesPieChart />
       
       {/* Streaks & Session History */}
