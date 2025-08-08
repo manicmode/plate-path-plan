@@ -1139,13 +1139,7 @@ const CameraPage = () => {
       const primaryHttpOk = !!primaryResp?.ok; // Use the actual HTTP response ok status
       const primaryJsonOk = primaryJson && typeof primaryJson === "object";
 
-      const primaryItems = Array.isArray(primaryJson?.items)
-        ? primaryJson.items
-        : Array.isArray(primaryJson?.message?.items)
-        ? primaryJson.message.items
-        : [];
-
-      const primaryHasItems = primaryItems.length > 0;
+      const primaryHasItems = Array.isArray(primaryJson?.items) && primaryJson.items.length > 0;
 
       console.info("[GPT5 Decision]", { primaryHttpOk, primaryJsonOk, primaryHasItems });
 
@@ -1178,7 +1172,7 @@ const CameraPage = () => {
         console.info("✅ Primary GPT-5 succeeded. Skipping fallback.");
         chosen = {
           success: true,
-          items: primaryItems,
+          items: primaryJson.items,
           model_used: primaryJson.model_used ?? "gpt-5",
           fallback_used: false,
           originalText: voiceText,
