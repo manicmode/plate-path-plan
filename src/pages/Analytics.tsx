@@ -70,31 +70,29 @@ export default function Analytics() {
           />
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
-          
-          <SectionHeader 
-            icon={Apple} 
-            title="Meal Quality & Trends" 
-            subtitle="Food quality insights and consumption patterns" 
-          />
           <MealQualityAnalyticsSection />
+          
+          <div className="pt-8">
+            <SectionHeader 
+              icon={Apple} 
+              title="Trends & Analysis" 
+              subtitle="Food patterns and consumption insights over time" 
+            />
+          </div>
           <MealQualityTrendChart />
           <FlaggedIngredientHistoryChart />
           <TopFoodsWeekChart />
-          
-          <SectionHeader 
-            icon={Apple} 
-            title="Insights & Analysis" 
-            subtitle="AI-powered recommendations and behavioral patterns" 
-          />
           <TagInsightsSection />
           <SmartInsightsSection />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
           
-          <SectionHeader 
-            icon={Apple} 
-            title="Progress & Achievements" 
-            subtitle="Your nutrition journey and milestones" 
-          />
+          <div className="pt-8">
+            <SectionHeader 
+              icon={Apple} 
+              title="Progress & Achievements" 
+              subtitle="Your nutrition journey and milestones" 
+            />
+          </div>
           <AchievementsSection />
           <GamificationSection />
           <MonthlySummaryViewer />
@@ -108,23 +106,27 @@ export default function Analytics() {
           />
           <WeeklyWorkoutDurationChart />
           <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
-          
-          <SectionHeader 
-            icon={Activity} 
-            title="Training Breakdown" 
-            subtitle="Detailed analysis of your workout patterns" 
-          />
           <ExerciseAnalyticsSection />
+          
+          <div className="pt-8">
+            <SectionHeader 
+              icon={Activity} 
+              title="Training Analysis" 
+              subtitle="Detailed breakdown of your workout patterns" 
+            />
+          </div>
           <CaloriesBurnedChart />
           <MuscleGroupDistributionChart />
-          
-          <SectionHeader 
-            icon={Activity} 
-            title="Goals & Achievements" 
-            subtitle="Progress tracking and motivational insights" 
-          />
           <MonthlyGoalProgress />
           <BestStreakHistoryChart />
+          
+          <div className="pt-8">
+            <SectionHeader 
+              icon={Activity} 
+              title="Motivation & Achievements" 
+              subtitle="Progress tracking and motivational insights" 
+            />
+          </div>
           <WorkoutTrophyCard />
           <MotivationCard />
         </TabsContent>
