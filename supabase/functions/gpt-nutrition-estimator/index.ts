@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,134 +8,170 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('🔍 gpt-nutrition-estimator function started at:', new Date().toISOString());
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { foodName, amountPercentage = 100, mealType } = await req.json();
-
-    if (!foodName?.trim()) {
-      return new Response(
-        JSON.stringify({ error: 'Food name is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.error('🚨 No authorization header');
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.error('🚨 Authentication failed:', userError);
+      return new Response(JSON.stringify({ error: 'Authentication failed' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('🔍 Authenticated user:', user.id);
+
+    const { foodName, amountPercentage = 100, mealType } = await req.json();
+    console.log('🔍 Request params:', { foodName, amountPercentage, mealType });
+
+    if (!foodName || typeof foodName !== 'string') {
+      console.error('🚨 Invalid or missing foodName');
+      return new Response(JSON.stringify({ error: 'Food name is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Call OpenAI to estimate nutrition
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('🚨 OpenAI API key not configured');
+      return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`🧠 [GPT Nutrition] Estimating nutrition for: "${foodName}" at ${amountPercentage}%`);
-
-    const systemPrompt = `You are a nutrition expert. Estimate nutrition facts for food items with high accuracy.
-
-RULES:
-- Return ONLY valid JSON, no explanations
-- All values must be numbers (integers or decimals)
-- Base estimates on a standard serving size, then adjust for the percentage
-- Confidence should be 70-95 (higher for common foods, lower for complex dishes)
-- If food name is vague, make reasonable assumptions
-
-Required JSON format:
+    const prompt = `Estimate the nutritional information for "${foodName}" at ${amountPercentage}% of a standard serving size.
+    
+Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):
 {
-  "calories": <number>,
-  "protein": <number>,
-  "carbs": <number>, 
-  "fat": <number>,
-  "fiber": <number>,
-  "sugar": <number>,
-  "sodium": <number>,
-  "saturated_fat": <number>,
-  "confidence": <number 70-95>
-}`;
+  "calories": number,
+  "protein": number (grams),
+  "carbs": number (grams),
+  "fat": number (grams),
+  "fiber": number (grams),
+  "sugar": number (grams),
+  "sodium": number (milligrams),
+  "saturated_fat": number (grams),
+  "confidence": number (1-100, where 100 is most confident)
+}
 
-    const userPrompt = `Food: "${foodName}"
-Amount: ${amountPercentage}% of typical serving
-${mealType ? `Meal type: ${mealType}` : ''}
+Base the estimate on a typical serving size, then adjust by the ${amountPercentage}% factor. Be conservative with estimates if unsure.`;
 
-Estimate nutrition facts and return JSON only.`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    console.log('🔍 Making OpenAI API call...');
+    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o', // Use GPT-4 for nutrition estimation as requested
+        model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          {
+            role: 'system',
+            content: 'You are a nutrition expert. Provide accurate nutritional estimates based on standard food databases like USDA. Return only valid JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
         ],
-        temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: 300,
+        temperature: 0.1,
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+    if (!openAIResponse.ok) {
+      const errorText = await openAIResponse.text();
+      console.error('🚨 OpenAI API error:', openAIResponse.status, errorText);
+      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
     }
 
-    const data = await response.json();
-    const nutritionData = data.choices[0].message.content;
+    const openAIData = await openAIResponse.json();
+    console.log('🔍 OpenAI response received');
 
-    console.log(`✅ [GPT Nutrition] Raw response: ${nutritionData}`);
+    if (!openAIData.choices || !openAIData.choices[0] || !openAIData.choices[0].message) {
+      throw new Error('Invalid OpenAI response structure');
+    }
 
-    // Parse and validate JSON
-    let parsedNutrition;
+    const nutritionText = openAIData.choices[0].message.content.trim();
+    console.log('🔍 Raw nutrition text:', nutritionText);
+
+    // Parse the JSON response
+    let nutrition;
     try {
-      parsedNutrition = JSON.parse(nutritionData);
+      // Remove any markdown formatting if present
+      const cleanJson = nutritionText.replace(/```json\n?|\n?```/g, '').trim();
+      nutrition = JSON.parse(cleanJson);
     } catch (parseError) {
-      console.error('❌ [GPT Nutrition] Failed to parse JSON:', parseError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid nutrition data format' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('🚨 Failed to parse nutrition JSON:', parseError, nutritionText);
+      throw new Error('Failed to parse nutrition data from AI response');
     }
 
-    // Ensure all required fields are present and valid
+    // Validate required fields
     const requiredFields = ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium', 'saturated_fat', 'confidence'];
     for (const field of requiredFields) {
-      if (typeof parsedNutrition[field] !== 'number') {
-        parsedNutrition[field] = 0;
+      if (typeof nutrition[field] !== 'number') {
+        console.error(`🚨 Missing or invalid field: ${field}`, nutrition);
+        throw new Error(`Invalid nutrition data: missing ${field}`);
       }
     }
 
-    // Round nutrition values for database compatibility
-    const sanitizedNutrition = {
-      calories: Math.round(parsedNutrition.calories),
-      protein: Math.round(parsedNutrition.protein * 10) / 10, // 1 decimal place
-      carbs: Math.round(parsedNutrition.carbs * 10) / 10,
-      fat: Math.round(parsedNutrition.fat * 10) / 10,
-      fiber: Math.round(parsedNutrition.fiber * 10) / 10,
-      sugar: Math.round(parsedNutrition.sugar * 10) / 10,
-      sodium: Math.round(parsedNutrition.sodium),
-      saturated_fat: Math.round(parsedNutrition.saturated_fat * 10) / 10,
-      confidence: Math.round(parsedNutrition.confidence)
-    };
+    // Ensure values are reasonable
+    if (nutrition.calories < 0 || nutrition.calories > 5000) {
+      throw new Error(`Unreasonable calorie estimate: ${nutrition.calories}`);
+    }
 
-    console.log(`✅ [GPT Nutrition] Estimation complete:`, sanitizedNutrition);
+    console.log('✅ Successfully estimated nutrition:', {
+      foodName,
+      amountPercentage,
+      calories: nutrition.calories,
+      confidence: nutrition.confidence
+    });
 
-    return new Response(
-      JSON.stringify({
-        nutrition: sanitizedNutrition,
-        foodName: foodName.trim(),
-        amountPercentage,
-        mealType: mealType || null
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({
+      nutrition,
+      foodName,
+      amountPercentage,
+      mealType
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
-    console.error('❌ [GPT Nutrition] Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Failed to estimate nutrition' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('🚨 Critical error in gpt-nutrition-estimator:', error);
+    return new Response(JSON.stringify({
+      error: 'Nutrition estimation failed',
+      details: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

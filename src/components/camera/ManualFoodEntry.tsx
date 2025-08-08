@@ -128,7 +128,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
     } catch (error) {
       console.error('❌ [Manual Entry] Error:', error);
-      toast.error('Something went wrong. Please try again.');
+      console.error('❌ [Manual Entry] Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        name: (error as Error).name
+      });
+      toast.error('Manual entry failed: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }

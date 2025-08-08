@@ -60,29 +60,45 @@ export const useNutritionPersistence = () => {
         name: food.name,
         confidence: food.confidence,
         confidenceInteger,
-        calories: food.calories
+        calories: food.calories,
+        user_id: user.id,
+        timestamp: food.timestamp.toISOString()
       });
+
+      const insertData = {
+        user_id: user.id,
+        food_name: food.name,
+        calories: food.calories,
+        protein: food.protein,
+        carbs: food.carbs,
+        fat: food.fat,
+        fiber: food.fiber,
+        sugar: food.sugar,
+        sodium: food.sodium,
+        saturated_fat: food.saturated_fat || (food.fat * 0.3), // Fallback: 30% of total fat
+        confidence: confidenceInteger, // Use integer version
+        image_url: food.image,
+        created_at: food.timestamp.toISOString()
+      };
+
+      console.log('🔍 Full insert data object:', insertData);
 
       const { data, error } = await supabase
         .from('nutrition_logs')
-        .insert({
-          user_id: user.id,
-          food_name: food.name,
-          calories: food.calories,
-          protein: food.protein,
-          carbs: food.carbs,
-          fat: food.fat,
-          fiber: food.fiber,
-          sugar: food.sugar,
-          sodium: food.sodium,
-          saturated_fat: food.saturated_fat || (food.fat * 0.3), // Fallback: 30% of total fat
-          confidence: confidenceInteger, // Use integer version
-          image_url: food.image,
-          created_at: food.timestamp.toISOString()
-        })
+        .insert(insertData)
         .select();
 
-      if (error) throw error;
+      console.log('🔍 Supabase insert result:', { data, error });
+      
+      if (error) {
+        console.error('🚨 Database insert error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
       console.log('✅ Food saved to database successfully:', food.name);
       
       if (data && data.length > 0) {
