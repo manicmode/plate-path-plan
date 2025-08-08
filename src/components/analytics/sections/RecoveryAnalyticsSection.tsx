@@ -9,6 +9,7 @@ import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
 import { RecoveryActivityTrends } from '@/components/analytics/recovery/RecoveryActivityTrends';
 import { Pill, Gauge, Lightbulb, Star, BarChart3 } from 'lucide-react';
+import { SupplementTrendsChart } from '@/components/analytics/recovery/SupplementTrendsChart';
 
 interface RecoveryAnalyticsSectionProps {
   weeklyAverage?: any;
@@ -41,6 +42,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
               color="#EC4899"
             />
           </div>
+          <SupplementTrendsChart />
         </>
       )}
 
