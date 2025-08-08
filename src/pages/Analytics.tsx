@@ -54,11 +54,11 @@ export default function Analytics() {
 
         <TabsContent value="nutrition" className="space-y-6 mt-6">
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
-          <DailyAveragesSection weeklyAverage={weeklyAverage} />
-          <MealQualityAnalyticsSection />
-          <SmartInsightsSection />
-          <TagInsightsSection />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
+          <MealQualityAnalyticsSection />
+          <TagInsightsSection />
+          <SmartInsightsSection />
+          <DailyAveragesSection weeklyAverage={weeklyAverage} />
           <AchievementsSection />
           <GamificationSection />
           <MonthlySummaryViewer />
