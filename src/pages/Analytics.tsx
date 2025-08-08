@@ -16,6 +16,9 @@ import { ExerciseAnalyticsSection } from '@/components/analytics/sections/Exerci
 import { MotivationCard } from '@/components/analytics/MotivationCard';
 import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
 import { RecoveryAnalyticsSection } from '@/components/analytics/sections/RecoveryAnalyticsSection';
+import { MealQualityTrendChart } from '@/components/analytics/charts/MealQualityTrendChart';
+import { FlaggedIngredientHistoryChart } from '@/components/analytics/charts/FlaggedIngredientHistoryChart';
+import { TopFoodsWeekChart } from '@/components/analytics/charts/TopFoodsWeekChart';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
@@ -56,6 +59,9 @@ export default function Analytics() {
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
           <MealQualityAnalyticsSection />
+          <MealQualityTrendChart />
+          <FlaggedIngredientHistoryChart />
+          <TopFoodsWeekChart />
           <TagInsightsSection />
           <SmartInsightsSection />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
