@@ -1304,6 +1304,7 @@ const CameraPage = () => {
     setShowManualEdit(false); // Hide the manual edit form
 
     try {
+      console.info("[ManualEntry][Submit]", { text: manualEditText });
       console.log('🔍 Manual Entry - Starting analysis for text:', manualEditText);
       
       // Add retry logic similar to voice processing
@@ -1354,6 +1355,7 @@ const CameraPage = () => {
           const fallbackItems = parseSimpleList(manualEditText);
           if (fallbackItems.length >= 1) {
             toast.success("Using quick parse while AI thinks.");
+            console.info("[ManualEntry][UsingItems]", fallbackItems);
             
             // Convert fallback items to the same format as voice results
             const voiceSummaryItems = fallbackItems.map((item, index) => {
@@ -1407,6 +1409,7 @@ const CameraPage = () => {
         // Show transcribed text
         toast.success(`Found ${result.items.length} food item(s) from: "${result.originalText}"`);
         
+        console.info("[ManualEntry][UsingItems]", result.items);
         // Convert voice items to summary items for unified processing
         const voiceSummaryItems: SummaryItem[] = result.items.map((item, index) => {
           // Create display name with quantity and preparation
