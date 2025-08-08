@@ -1693,54 +1693,109 @@ const CameraPage = () => {
     const baseServingLabel = nutrition.serving_size || nutrition.serving_label || '100g'; // Default to 100g if no serving info
     const voiceQuantity = (currentItem as any).voiceData?.quantity;
     
-    // Normalize nutrition based on serving and user quantity
-    const normalizedNutrition = normalizeNutrition(
-      {
-        calories: nutrition.calories,
-        protein: nutrition.protein || 0,
-        carbs: nutrition.carbs || 0,
-        fat: nutrition.fat || 0,
-        fiber: nutrition.fiber || 0,
-        sugar: nutrition.sugar || 0,
-        sodium: nutrition.sodium || 0,
-        saturated_fat: nutrition.saturated_fat || (nutrition.fat * 0.3)
-      },
-      baseServingLabel,
-      voiceQuantity
-    );
+    let foodItem;
+    
+    try {
+      // Normalize nutrition based on serving and user quantity
+      const normalizedNutrition = normalizeNutrition(
+        {
+          calories: nutrition.calories || 0,
+          protein: nutrition.protein || 0,
+          carbs: nutrition.carbs || 0,
+          fat: nutrition.fat || 0,
+          fiber: nutrition.fiber || 0,
+          sugar: nutrition.sugar || 0,
+          sodium: nutrition.sodium || 0,
+          saturated_fat: nutrition.saturated_fat || (nutrition.fat * 0.3)
+        },
+        baseServingLabel,
+        voiceQuantity
+      );
 
-    // Generate display title with proper quantity and unit
-    const displayName = generateDisplayTitle(
-      currentItem.name,
-      normalizedNutrition.finalQuantity,
-      normalizedNutrition.finalUnit,
-      !voiceQuantity // isEstimated if no voice quantity provided
-    );
+      // Generate display title with proper quantity and unit
+      const displayName = generateDisplayTitle(
+        currentItem.name,
+        normalizedNutrition.finalQuantity,
+        normalizedNutrition.finalUnit,
+        !voiceQuantity // isEstimated if no voice quantity provided
+      );
 
-    const foodItem = {
-      id: currentItem.id,
-      name: displayName,
-      calories: normalizedNutrition.calories,
-      protein: normalizedNutrition.protein,
-      carbs: normalizedNutrition.carbs,
-      fat: normalizedNutrition.fat,
-      fiber: normalizedNutrition.fiber,
-      sugar: normalizedNutrition.sugar,
-      sodium: normalizedNutrition.sodium,
-      confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
-      source: nutrition.source || nutritionSource,
-      image: selectedImage,
-      // Store original and normalized data for debug purposes
-      quantity: voiceQuantity || currentItem.portion,
-      parsedQuantity: normalizedNutrition.finalQuantity,
-      isEstimated: !voiceQuantity,
-      // Serving normalization debug data
-      baseServingLabel: normalizedNutrition.servingInfo.baseServingLabel,
-      baseServingQuantity: normalizedNutrition.servingInfo.baseServingQuantity,
-      baseServingUnit: normalizedNutrition.servingInfo.baseServingUnit,
-      perUnitCalories: normalizedNutrition.perUnitCalories,
-      scalingFactor: normalizedNutrition.scalingFactor
-    };
+      // Log serving normalization debug info
+      console.log('🔍 [SERVING NORMALIZATION]', {
+        foodName: currentItem.name,
+        baseServingLabel: normalizedNutrition.servingInfo.baseServingLabel,
+        baseServingQuantity: normalizedNutrition.servingInfo.baseServingQuantity,
+        baseServingUnit: normalizedNutrition.servingInfo.baseServingUnit,
+        userQuantity: voiceQuantity,
+        parsedUserQuantity: normalizedNutrition.finalQuantity,
+        perUnitCalories: normalizedNutrition.perUnitCalories,
+        scalingFactor: normalizedNutrition.scalingFactor,
+        finalCalories: normalizedNutrition.calories,
+        calculation: `${normalizedNutrition.perUnitCalories.toFixed(1)} × ${normalizedNutrition.finalQuantity} = ${normalizedNutrition.calories}`
+      });
+
+      foodItem = {
+        id: currentItem.id,
+        name: displayName,
+        calories: normalizedNutrition.calories,
+        protein: normalizedNutrition.protein,
+        carbs: normalizedNutrition.carbs,
+        fat: normalizedNutrition.fat,
+        fiber: normalizedNutrition.fiber,
+        sugar: normalizedNutrition.sugar,
+        sodium: normalizedNutrition.sodium,
+        confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
+        source: nutrition.source || nutritionSource,
+        image: selectedImage,
+        // Store original and normalized data for debug purposes
+        quantity: voiceQuantity || currentItem.portion,
+        parsedQuantity: normalizedNutrition.finalQuantity,
+        isEstimated: !voiceQuantity,
+        // Serving normalization debug data
+        baseServingLabel: normalizedNutrition.servingInfo.baseServingLabel,
+        baseServingQuantity: normalizedNutrition.servingInfo.baseServingQuantity,
+        baseServingUnit: normalizedNutrition.servingInfo.baseServingUnit,
+        perUnitCalories: normalizedNutrition.perUnitCalories,
+        scalingFactor: normalizedNutrition.scalingFactor
+      };
+    } catch (normalizationError) {
+      console.error('🚨 [SERVING NORMALIZATION ERROR]', normalizationError);
+      
+      // Fallback to simple scaling if normalization fails
+      const fallbackQuantity = parseFloat(voiceQuantity?.match(/(\d+(?:\.\d+)?)/)?.[1] || '1');
+      const scaledCalories = Math.round((nutrition.calories || 0) * fallbackQuantity);
+      
+      console.log('🔄 [FALLBACK SCALING]', {
+        foodName: currentItem.name,
+        fallbackQuantity,
+        baseCalories: nutrition.calories,
+        scaledCalories
+      });
+
+      foodItem = {
+        id: currentItem.id,
+        name: `${fallbackQuantity > 1 ? `${fallbackQuantity} ` : ''}${currentItem.name}${!voiceQuantity ? ' (estimated)' : ''}`,
+        calories: scaledCalories,
+        protein: Math.round((nutrition.protein || 0) * fallbackQuantity * 10) / 10,
+        carbs: Math.round((nutrition.carbs || 0) * fallbackQuantity * 10) / 10,
+        fat: Math.round((nutrition.fat || 0) * fallbackQuantity * 10) / 10,
+        fiber: Math.round((nutrition.fiber || 0) * fallbackQuantity * 10) / 10,
+        sugar: Math.round((nutrition.sugar || 0) * fallbackQuantity * 10) / 10,
+        sodium: Math.round((nutrition.sodium || 0) * fallbackQuantity),
+        confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
+        source: nutrition.source || nutritionSource,
+        image: selectedImage,
+        quantity: voiceQuantity || currentItem.portion,
+        parsedQuantity: fallbackQuantity,
+        isEstimated: !voiceQuantity,
+        // Fallback data
+        baseServingLabel: baseServingLabel,
+        baseServingQuantity: 1,
+        baseServingUnit: 'serving',
+        perUnitCalories: nutrition.calories || 0,
+        scalingFactor: fallbackQuantity
+      };
+    }
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
     
