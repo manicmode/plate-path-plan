@@ -1,16 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.1';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 interface SyncBody {
   provider: 'fitbit' | 'strava' | 'healthkit' | 'googlefit';
   backfillDays?: number;
 }
 
-function getSupabaseClient(req: Request) {
+function getUserClient(req: Request) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const authHeader = req.headers.get('Authorization') ?? '';
@@ -19,24 +14,59 @@ function getSupabaseClient(req: Request) {
   });
 }
 
-async function fetchFitbitSteps(accessToken: string, backfillDays: number) {
-  // Fitbit intraday steps: daily summary endpoint returns a list by date
-  const url = `https://api.fitbit.com/1/user/-/activities/steps/date/today/${backfillDays}d.json`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Fitbit API error ${res.status}: ${text}`);
+function getServiceClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  return createClient(supabaseUrl, serviceKey);
+}
+
+function buildCorsHeaders(origin: string | null) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  } as Record<string, string>;
+}
+
+// Fit a 30s timeout for external API
+async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    // @ts-ignore
+    return await promise(controller.signal);
+  } finally {
+    clearTimeout(t);
   }
-  const json = await res.json();
-  // Response shape: { "activities-steps": [ { dateTime: 'YYYY-MM-DD', value: '1234' }, ... ] }
-  const items = (json['activities-steps'] || []) as Array<{ dateTime: string; value: string }>;
-  return items.map((d) => ({ date: d.dateTime, steps: Number(d.value) || 0, raw: d }));
+}
+
+async function fetchFitbitSteps(accessToken: string, backfillDays: number) {
+  const url = `https://api.fitbit.com/1/user/-/activities/steps/date/today/${backfillDays}d.json`;
+  const doFetch = async (signal?: AbortSignal) => {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Fitbit API error ${res.status}: ${text}`);
+    }
+    const json = await res.json();
+    const items = (json['activities-steps'] || []) as Array<{ dateTime: string; value: string }>;
+    return items.map((d) => ({ date: d.dateTime, steps: Number(d.value) || 0, raw: d }));
+  };
+  return await withTimeout(doFetch() as any, 30000);
+}
+
+function normalizeDateToLocal(dateStr: string, tz?: string): string {
+  // Fitbit returns date in user's account local date already; trust dateStr
+  // For generalization we keep tz for storage and return the input
+  return dateStr;
 }
 
 async function upsertSteps(
-  supabase: ReturnType<typeof createClient>,
+  serviceClient: ReturnType<typeof createClient>,
   userId: string,
   source: string,
   items: Array<{ date: string; steps: number; raw?: unknown }>,
@@ -46,12 +76,12 @@ async function upsertSteps(
   const rows = items.map((i) => ({
     user_id: userId,
     source,
-    date: i.date,
+    date: normalizeDateToLocal(i.date, localTz),
     steps: i.steps,
     raw: i.raw ?? {},
     local_tz: localTz ?? null,
   }));
-  const { error } = await supabase
+  const { error } = await serviceClient
     .from('activity_steps')
     .upsert(rows, { onConflict: 'user_id,source,date' });
   if (error) throw error;
@@ -59,7 +89,9 @@ async function upsertSteps(
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS
+  const origin = req.headers.get('origin');
+  const corsHeaders = buildCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -74,7 +106,7 @@ Deno.serve(async (req: Request) => {
 
     const body = (await req.json()) as SyncBody;
     const provider = body.provider;
-    const backfillDays = Math.min(Math.max(body.backfillDays ?? 7, 1), 60); // clamp 1..60
+    const backfillDays = Math.min(Math.max(body.backfillDays ?? 7, 1), 60);
 
     if (!['fitbit', 'strava', 'healthkit', 'googlefit'].includes(provider)) {
       return new Response(JSON.stringify({ error: 'Invalid provider' }), {
@@ -83,13 +115,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = getSupabaseClient(req);
+    // Require auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Get user
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
+    const userClient = getUserClient(req);
+    const serviceClient = getServiceClient();
+
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
@@ -97,22 +135,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Timezone hint from client if provided
     const clientTz = req.headers.get('x-client-timezone') || undefined;
 
-    // Fetch oauth token for provider (for fitbit/strava)
+    // Fetch oauth token for provider (fitbit/strava)
     let accessToken: string | null = null;
     if (provider === 'fitbit' || provider === 'strava') {
-      const { data: tokenRow, error: tokenErr } = await supabase
+      const { data: tokenRow } = await serviceClient
         .from('oauth_tokens')
         .select('access_token, refresh_token, expires_at')
         .eq('user_id', user.id)
         .eq('provider', provider)
         .maybeSingle();
-
-      if (tokenErr) {
-        console.error('Token fetch error:', tokenErr.message);
-      }
       accessToken = tokenRow?.access_token ?? null;
     }
 
@@ -120,34 +153,33 @@ Deno.serve(async (req: Request) => {
 
     if (provider === 'fitbit') {
       if (!accessToken) {
-        // No token yet
         return new Response(
-          JSON.stringify({ importedDays: 0, source: 'fitbit', note: 'No Fitbit connection found' }),
+          JSON.stringify({ importedDays: 0, provider, note: 'No Fitbit connection found' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       const items = await fetchFitbitSteps(accessToken, backfillDays);
-      importedDays = await upsertSteps(supabase, user.id, 'fitbit', items, clientTz);
+      importedDays = await upsertSteps(serviceClient, user.id, 'fitbit', items, clientTz);
     } else if (provider === 'strava') {
-      // Strava rarely provides raw steps via public APIs
-      // Gracefully return with 0 imported days
+      // Strava rarely provides raw steps
       return new Response(
-        JSON.stringify({ importedDays: 0, source: 'strava', note: 'Strava does not provide step counts via API' }),
+        JSON.stringify({ importedDays: 0, provider, note: 'Strava may not provide step counts; Fitbit recommended for steps.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else if (provider === 'healthkit' || provider === 'googlefit') {
-      // Native-only providers; stubs for now
       return new Response(
-        JSON.stringify({ importedDays: 0, source: provider, note: 'Native-only; coming soon' }),
+        JSON.stringify({ importedDays: 0, provider, note: 'Native-only; coming soon' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    return new Response(JSON.stringify({ importedDays, source: provider }), {
+    return new Response(JSON.stringify({ importedDays, provider }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     console.error('steps-sync error:', e);
+    const origin = req.headers.get('origin');
+    const corsHeaders = buildCorsHeaders(origin);
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

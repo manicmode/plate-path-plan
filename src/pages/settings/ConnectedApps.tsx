@@ -121,7 +121,7 @@ const ConnectedApps: React.FC = () => {
                         <Unplug className="h-4 w-4" />
                         <span className="ml-2">Disconnect</span>
                       </Button>
-                      <Button variant="default" size="sm" onClick={() => toast({ title: 'Connect', description: 'OAuth setup required. Ask admin to configure.' })}>
+                      <Button variant="default" size="sm" onClick={() => toast({ title: 'Connect', description: p.key === 'strava' ? 'Strava may not return steps; Fitbit recommended.' : 'OAuth setup required.' })}>
                         <PlugZap className="h-4 w-4" />
                         <span className="ml-2">Connect</span>
                       </Button>
@@ -176,6 +176,9 @@ const ProviderStatusInline: React.FC<{ userId?: string | null; provider: string 
     <div className="text-xs text-muted-foreground">
       {status.connected ? 'Connected' : 'Not Connected'}
       {status.lastSync ? ` • Last sync: ${new Date(status.lastSync).toLocaleDateString()}` : ''}
+      {provider === 'strava' && (
+        <div className="mt-1 text-[11px] text-muted-foreground">Strava may not provide step counts; Fitbit recommended for steps.</div>
+      )}
     </div>
   );
 };
