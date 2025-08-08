@@ -249,10 +249,6 @@ return (
         />
       </ErrorBoundary>
 
-      {/* Monthly Exercise Report */}
-      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Monthly report unavailable</div>}>
-        <MonthlyExerciseReportCard />
-      </ErrorBoundary>
 
       {/* Muscle Group Analytics */}
       <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Muscle group analytics unavailable</div>}>
@@ -262,6 +258,11 @@ return (
       {/* Performance Charts Section */}
       <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Performance charts unavailable</div>}>
         <PerformanceChartsSection />
+      </ErrorBoundary>
+
+      {/* Monthly Exercise Report */}
+      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Monthly report unavailable</div>}>
+        <MonthlyExerciseReportCard />
       </ErrorBoundary>
     </div>
   </ErrorBoundary>
