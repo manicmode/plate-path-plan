@@ -1,8 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom, PlugZap } from 'lucide-react';
+import { Camera, TrendingUp, Droplets, Pill, Zap, Target, Sparkles, ChevronDown, ChevronUp, Clock, MoreHorizontal, RefreshCw, Plus, Activity, Timer, Footprints, Dumbbell, Atom } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
-// ... keep existing code
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useDailyScore } from '@/hooks/useDailyScore';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +23,6 @@ import { useToxinDetections } from '@/hooks/useToxinDetections';
 import { useDeferredToxinData } from '@/hooks/useDeferredToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
-import { AddStepsQuickAction } from '@/components/AddStepsQuickAction';
 import { XPDemoCard } from '@/components/xp/XPDemoCard';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
@@ -1190,7 +1188,6 @@ const Home = () => {
                 <Clock className="h-3 w-3" />
                 {isMobile ? 'Remind' : 'Log Exercise Reminder'}
               </button>
-              <AddStepsQuickAction />
             </div>
 
             {/* Header with icon and title */}
@@ -1285,19 +1282,14 @@ const Home = () => {
               </div>
               
               <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white mb-1">
-                      {exerciseSummary.todaySteps.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-white/70">
-                      Goal: {stepsGoal.toLocaleString()}
-                    </div>
-                    {exerciseSummary.todaySteps === 0 && (
-                      <div className="mt-1 text-xs text-white/80">
-                        Connect an activity provider to see your steps. <a href="/settings/connected-apps" className="underline">Connect Apps</a>
-                      </div>
-                    )}
+                <div>
+                  <div className="text-2xl font-bold text-white mb-1">
+                    {exerciseSummary.todaySteps.toLocaleString()}
                   </div>
+                  <div className="text-sm text-white/70">
+                    Goal: {stepsGoal.toLocaleString()}
+                  </div>
+                </div>
                 
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm text-white/80">

@@ -11,6 +11,7 @@ interface EnhancedStreakTrackerProps {
 export const EnhancedStreakTracker = ({ className }: EnhancedStreakTrackerProps) => {
   const { weeklyChartData } = useRealExerciseData('30d');
 
+  // Calculate streaks (simplified logic - would be dynamic in real implementation)
   const currentStreak = weeklyChartData.filter(day => day.duration > 0).length; // Mock calculation based on active days
   const longestStreak = 12; // Mock calculation
   const weeklyGoal = 4;
@@ -102,7 +103,7 @@ export const EnhancedStreakTracker = ({ className }: EnhancedStreakTrackerProps)
                   {day.duration > 0 ? '✓' : '·'}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {(day.label ?? (day as any).day).slice(0, 1)}
+                  {day.day.slice(0, 1)}
                 </div>
               </div>
             ))}

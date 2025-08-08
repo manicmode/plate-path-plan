@@ -88,8 +88,6 @@ const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
 const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const InfluencerDashboard = lazy(() => import('@/pages/InfluencerDashboard'));
-const ConnectedApps = lazy(() => import('@/pages/settings/ConnectedApps'));
-const OAuthCallback = lazy(() => import('@/pages/auth/OAuthCallback'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -175,7 +173,6 @@ function AppContent() {
               <Route path="*" element={
                 <Layout>
                   <Routes>
-                    <Route path="/auth/callback/:provider" element={<ProtectedRoute><OAuthCallback /></ProtectedRoute>} />
                     <Route path="/" element={<Index />} />
                     <Route path="/home" element={
                       <ProtectedRoute>
@@ -250,11 +247,6 @@ function AppContent() {
                     <Route path="/profile" element={
                       <ProtectedRoute>
                         <Profile />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/settings/connected-apps" element={
-                      <ProtectedRoute>
-                        <ConnectedApps />
                       </ProtectedRoute>
                     } />
                     <Route path="/game-and-challenge" element={

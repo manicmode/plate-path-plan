@@ -37,7 +37,7 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
   useEffect(() => {
     if (!user?.id) return;
 
-    const fetchData = async () => {
+    const fetchExerciseData = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -45,70 +45,52 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
         const daysBack = timeRange === '7d' ? 7 : 30;
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - daysBack);
-        const startISO = startDate.toISOString().split('T')[0];
 
-        // Fetch exercise logs (duration/calories)
-        const { data: exData, error: exErr } = await supabase
+        const { data, error: queryError } = await supabase
           .from('exercise_logs')
           .select('*')
           .eq('user_id', user.id)
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: true });
-        if (exErr) throw exErr;
 
-        // Fetch steps from activity_steps_daily view
-        const { data: stepsData, error: stepsErr } = await supabase
-          .from('activity_steps_daily')
-          .select('date, steps')
-          .eq('user_id', user.id)
-          .gte('date', startISO)
-          .order('date', { ascending: true });
-        if (stepsErr) throw stepsErr;
+        if (queryError) {
+          console.error('Error fetching exercise data:', queryError);
+          setError(queryError.message);
+          return;
+        }
 
-        // Group exercise logs by date
-        const grouped: Record<string, ExerciseEntry> = {};
-        exData?.forEach((entry) => {
+        // Group data by date and sum values for each day
+        const groupedData: Record<string, ExerciseEntry> = {};
+        const today = new Date().toISOString().split('T')[0];
+
+        data?.forEach((entry) => {
           const date = new Date(entry.created_at).toISOString().split('T')[0];
-          if (!grouped[date]) {
-            grouped[date] = {
+          
+          if (!groupedData[date]) {
+            groupedData[date] = {
               date,
               steps: 0,
               duration_minutes: 0,
               calories_burned: 0,
               activity_type: entry.activity_type,
-              intensity_level: entry.intensity_level || 'moderate',
+              intensity_level: entry.intensity_level || 'moderate'
             };
           }
-          grouped[date].duration_minutes += entry.duration_minutes || 0;
-          grouped[date].calories_burned += entry.calories_burned || 0;
+
+          groupedData[date].steps += entry.steps || 0;
+          groupedData[date].duration_minutes += entry.duration_minutes || 0;
+          groupedData[date].calories_burned += entry.calories_burned || 0;
         });
 
-        // Overlay steps from activity_steps_daily, taking max per date (view already maxes)
-        stepsData?.forEach((row: any) => {
-          const date = row.date;
-          if (!grouped[date]) {
-            grouped[date] = {
-              date,
-              steps: row.steps || 0,
-              duration_minutes: 0,
-              calories_burned: 0,
-              activity_type: 'general',
-              intensity_level: 'moderate',
-            };
-          } else {
-            grouped[date].steps = Math.max(grouped[date].steps || 0, row.steps || 0);
-          }
-        });
+        const exerciseEntries = Object.values(groupedData);
+        setExerciseData(exerciseEntries);
 
-        const today = new Date().toISOString().split('T')[0];
-        const entries = Object.values(grouped);
-        setExerciseData(entries);
+        // Calculate summary statistics
+        const totalSteps = exerciseEntries.reduce((sum, entry) => sum + entry.steps, 0);
+        const totalDuration = exerciseEntries.reduce((sum, entry) => sum + entry.duration_minutes, 0);
+        const totalCalories = exerciseEntries.reduce((sum, entry) => sum + entry.calories_burned, 0);
 
-        const totalSteps = entries.reduce((s, e) => s + (e.steps || 0), 0);
-        const totalDuration = entries.reduce((s, e) => s + (e.duration_minutes || 0), 0);
-        const totalCalories = entries.reduce((s, e) => s + (e.calories_burned || 0), 0);
-
-        const todayData = grouped[today];
+        const todayData = groupedData[today];
         const todaySteps = todayData?.steps || 0;
         const todayDuration = todayData?.duration_minutes || 0;
         const todayCalories = todayData?.calories_burned || 0;
@@ -121,6 +103,7 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
           todayDuration,
           todayCalories,
         });
+
       } catch (err) {
         console.error('Error in useRealExerciseData:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -129,32 +112,31 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
       }
     };
 
-    fetchData();
+    fetchExerciseData();
   }, [user?.id, timeRange]);
 
-  // Format data for charts using fixed 7 daily buckets ending today
+  // Format data for charts (last 7 days with proper day labels)
   const getWeeklyChartData = () => {
-    const end = new Date();
-    const letters = ['S','M','T','W','T','F','S'];
-    const start = new Date(end);
-    start.setDate(end.getDate() - 6);
-    const out: Array<{ label: string; fullLabel: string; steps: number; calories: number; duration: number; date: string; day?: string }> = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const key = d.toISOString().slice(0,10);
-      const day = exerciseData.find((e) => e.date === key);
-        out.push({
-          label: letters[d.getDay()],
-          fullLabel: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }),
-          steps: day?.steps || 0,
-          calories: day?.calories_burned || 0,
-          duration: day?.duration_minutes || 0,
-          date: key,
-          day: letters[d.getDay()],
-        });
+    const weekData = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayData = exerciseData.find(entry => entry.date === dateStr);
+      const dayName = i === 0 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()] || 'Day';
+      
+      weekData.push({
+        day: dayName,
+        steps: dayData?.steps || 0,
+        calories: dayData?.calories_burned || 0,
+        duration: dayData?.duration_minutes || 0,
+      });
     }
-    return out;
+    
+    return weekData;
   };
 
   return {

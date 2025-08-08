@@ -120,8 +120,8 @@ export const useAnalyticsCalculations = () => {
   const stepsData = useMemo(() => {
     if (exerciseWeeklyData.length > 0) {
       return exerciseWeeklyData.map(day => ({
-        day: (day as any).label ?? (day as any).day,
-        steps: (day as any).steps,
+        day: day.day,
+        steps: day.steps,
       }));
     }
     // Return empty array if no data available
@@ -132,8 +132,8 @@ export const useAnalyticsCalculations = () => {
   const exerciseCaloriesData = useMemo(() => {
     if (exerciseWeeklyData.length > 0) {
       return exerciseWeeklyData.map(day => ({
-        day: (day as any).label ?? (day as any).day,
-        calories: (day as any).calories,
+        day: day.day,
+        calories: day.calories,
       }));
     }
     // Return empty array if no data available

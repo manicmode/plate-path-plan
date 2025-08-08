@@ -55,10 +55,10 @@ export const ExerciseAnalyticsSection = () => {
   const chartData = React.useMemo(() => {
     // Format workout frequency data from real exercise data
     const workoutFrequencyData = weeklyChartData.map((day) => ({
-      day: (day as any).label ?? (day as any).day,
-      workouts: (day as any).duration > 0 ? 1 : 0, // Count days with any workout
-      calories: (day as any).calories,
-      duration: (day as any).duration
+      day: day.day,
+      workouts: day.duration > 0 ? 1 : 0, // Count days with any workout
+      calories: day.calories,
+      duration: day.duration
     }));
 
     // Format duration chart data with stable date calculation

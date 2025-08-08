@@ -30,42 +30,34 @@ const ProgressCalories = () => {
   const targetCalories = user?.targetCalories || 2000;
   const todayProgress = getTodaysProgress();
 
-  // Format data with fixed buckets using zero-fill helpers
+  // Format data for charts with day names and real data
   const getDailyChartData = () => {
-    const end = new Date();
-    const letters = ['S','M','T','W','T','F','S'];
-    const start = new Date(end);
-    start.setDate(end.getDate()-6);
-    const map = new Map<string, number>();
-    dailyData.forEach(d => map.set(d.date.slice(0,10), (map.get(d.date.slice(0,10))||0) + d.calories));
-    const out: any[] = [];
-    for (let i=0;i<7;i++){
-      const day = new Date(start);
-      day.setDate(start.getDate()+i);
-      const key = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
-      out.push({ name: letters[day.getDay()], value: map.get(key) ?? 0, target: targetCalories, date: key });
-    }
-    return out;
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
+    return dailyData.map((data, index) => ({
+      name: index === 6 ? 'Today' : dayNames[index],
+      value: data.calories,
+      target: targetCalories,
+      date: data.date
+    }));
   };
 
   const getWeeklyChartData = () => {
-    // 4 buckets Wk1..Wk4 (current week = 4)
-    const startOfWeek = (d: Date) => { const nd = new Date(d); const day = (nd.getDay()+6)%7; nd.setDate(nd.getDate()-day); nd.setHours(0,0,0,0); return nd; };
-    const end = startOfWeek(new Date());
-    const weeks: Date[] = [new Date(end)];
-    for (let i=1;i<4;i++) weeks.unshift(new Date(end.getTime() - (3-i+1)*7*24*3600*1000));
-    const sumByWeek = new Map<string, number>();
-    weeklyData.forEach(w => { const key = w.date; sumByWeek.set(key, (sumByWeek.get(key)||0)+w.calories); });
-    return weeks.map((wkStart, idx) => ({ name: `Wk ${idx+1}`, value: sumByWeek.get(`${wkStart.getFullYear()}-${String(wkStart.getMonth()+1).padStart(2,'0')}-${String(wkStart.getDate()).padStart(2,'0')}`) ?? 0, target: targetCalories, date: wkStart.toISOString().slice(0,10) }));
+    return weeklyData.map((data, index) => ({
+      name: `Week ${index + 1}`,
+      value: data.calories,
+      target: targetCalories,
+      date: data.date
+    }));
   };
 
   const getMonthlyChartData = () => {
-    const end = new Date();
-    const months: { y: number; m: number }[] = [];
-    for (let i=11;i>=0;i--){ const d=new Date(end.getFullYear(), end.getMonth()-i, 1); months.push({ y: d.getFullYear(), m: d.getMonth()+1 }); }
-    const sumByMonth = new Map<string, number>();
-    monthlyData.forEach(m => { const key = m.date.slice(0,7); sumByMonth.set(key, (sumByMonth.get(key)||0)+m.calories); });
-    return months.map(({y,m}, idx) => ({ name: new Date(y, m-1, 1).toLocaleString(undefined,{ month:'short'}), value: sumByMonth.get(`${y}-${String(m).padStart(2,'0')}`) ?? 0, target: targetCalories, date: `${y}-${String(m).padStart(2,'0')}` }));
+    const monthNames = ['Jan', 'Feb', 'Mar'];
+    return monthlyData.map((data, index) => ({
+      name: monthNames[index] || `Month ${index + 1}`,
+      value: data.calories,
+      target: targetCalories,
+      date: data.date
+    }));
   };
 
   const getCurrentData = () => {

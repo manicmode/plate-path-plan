@@ -410,17 +410,6 @@ const ProfileContent = () => {
         onEditToggle={() => setIsEditing(!isEditing)}
       />
 
-      {/* Connected Apps */}
-      <Card className="border">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <div className="font-medium">Connected Apps</div>
-            <div className="text-xs text-muted-foreground">Connect Fitbit, Strava, and more</div>
-          </div>
-          <a href="/settings/connected-apps" className="underline text-sm">Open</a>
-        </CardContent>
-      </Card>
-
       {/* Reminder Management */}
       <ReminderManagement />
 
