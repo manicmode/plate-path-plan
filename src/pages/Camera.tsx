@@ -1903,6 +1903,25 @@ const CameraPage = () => {
     }
   };
 
+  const handleCancelAll = () => {
+    console.info('[ConfirmFlow] Cancel All pressed');
+    // Clear pending items / selections
+    setPendingItems([]);
+    setCurrentItemIndex(0);
+    setRecognizedFoods([]);
+    // Reset any in-progress state
+    setIsProcessingVoice(false);
+    setIsProcessingFood(false);
+    setIsManualAnalyzing(false);
+    // Close dialog
+    setShowConfirmation(false);
+    setShowReviewScreen(false);
+    setShowSummaryPanel(false);
+    setShowTransition(false);
+    toast.success('Logging canceled');
+    resetState();
+  };
+
   const handleConfirmFood = async (foodItem: any) => {
     // Prevent double-processing
     if (isProcessingFood) {
@@ -2710,6 +2729,7 @@ const CameraPage = () => {
         }}
         onConfirm={handleConfirmFood}
         onSkip={handleSkipFood}
+        onCancelAll={handleCancelAll}
         foodItem={recognizedFoods[0] || null}
         showSkip={pendingItems.length > 1}
         currentIndex={currentItemIndex}

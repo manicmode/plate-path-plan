@@ -42,6 +42,7 @@ interface FoodConfirmationCardProps {
   onClose: () => void;
   onConfirm: (foodItem: FoodItem) => void;
   onSkip?: () => void; // Skip functionality (now "Don't Log")
+  onCancelAll?: () => void; // Cancel all items functionality
   foodItem: FoodItem | null;
   showSkip?: boolean; // Whether to show "Don't Log" button
   currentIndex?: number; // Current item index for multi-item flow
@@ -55,6 +56,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   onClose,
   onConfirm,
   onSkip,
+  onCancelAll,
   foodItem,
   showSkip = false,
   currentIndex,
@@ -521,14 +523,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </span>
               </button>
               
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                {totalItems > 1 && (
-                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                    Item {((currentIndex ?? 0) + 1)} of {totalItems}
-                  </div>
-                )}
-                Confirm Food Log
-              </h1>
+              {/* Only show Item X of Y indicator */}
+              {totalItems > 1 && (
+                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                  Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                </div>
+              )}
             </div>
 
             {/* Food Item Display */}
@@ -936,15 +936,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     )}
                     
                     {/* Cancel All - Right Half */}
-                    <DialogClose asChild>
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel All
-                      </Button>
-                    </DialogClose>
+                    <Button
+                      variant="outline"
+                      onClick={onCancelAll}
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel All
+                    </Button>
                   </div>
                   
                   {/* Log Item - Full Width Primary */}
