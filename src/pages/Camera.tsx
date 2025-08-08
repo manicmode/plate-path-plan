@@ -1318,31 +1318,43 @@ const CameraPage = () => {
         }
       }
 
-      console.log('🔍 Manual Entry - sendToLogVoice result:', result);
+      console.info("[ManualEntry][Result]", { 
+        ok: result.ok, 
+        status: result.status, 
+        success: result.success, 
+        itemsLen: result.items?.length 
+      });
 
-      if (!result.success) {
-        const errorData = result.message ? JSON.parse(result.message) : {};
-        console.error('🔍 Manual Entry - Analysis failed:', errorData);
+      // Check for success: both success flag and items present
+      const isSuccess = result.success === true && result.items?.length > 0;
+
+      if (!isSuccess) {
+        let errorMessage = 'Failed to process manual input';
+        
+        if (result.ok === true && result.items?.length === 0) {
+          errorMessage = "No items detected. Try '2 eggs and 1 avocado' format.";
+        } else if (result.ok === false) {
+          errorMessage = `Server error ${result.status}`;
+        }
         
         showErrorState(
-          errorData.errorType || 'ANALYSIS_ERROR',
-          errorData.errorMessage || result.error || 'Failed to process manual input',
-          errorData.suggestions || ['Please try again with more specific descriptions']
+          'ANALYSIS_ERROR',
+          errorMessage,
+          ['Please try again with more specific descriptions']
         );
         return;
       }
 
       setProcessingStep('Preparing...');
-      const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
-      setVoiceResults(voiceApiResponse);
+      setVoiceResults(result);
 
       // Handle multiple food items from manual input
-      if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
+      if (result.items && result.items.length > 0) {
         // Show transcribed text
-        toast.success(`Found ${voiceApiResponse.items.length} food item(s) from: "${voiceApiResponse.originalText}"`);
+        toast.success(`Found ${result.items.length} food item(s) from: "${result.originalText}"`);
         
         // Convert voice items to summary items for unified processing
-        const voiceSummaryItems: SummaryItem[] = voiceApiResponse.items.map((item, index) => {
+        const voiceSummaryItems: SummaryItem[] = result.items.map((item, index) => {
           // Create display name with quantity and preparation
           let displayName = item.name;
           if (item.preparation) {
