@@ -10,6 +10,18 @@ import { getLocalDateString } from '@/lib/dateUtils';
 import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
 import { useXPSystem } from '@/hooks/useXPSystem';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { toast } from '@/hooks/use-toast';
+
+// Debug logger for Realtime status changes
+const DEBUG = process.env.NEXT_PUBLIC_DEBUG_REALTIME === 'true';
+let lastStatus: string | null = null;
+const logStatus = (s: string) => {
+  if (!DEBUG) return;
+  if (s !== lastStatus) { 
+    console.log("Nutrition log subscription status:", s); 
+    lastStatus = s; 
+  }
+};
 
 interface FoodItem {
   id: string;
@@ -632,10 +644,9 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
         }
       )
       .subscribe((status) => {
-        console.log('📡 Realtime subscription status:', status);
+        logStatus(status);
         
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to nutrition Realtime updates');
           backoffAttemptRef.current = 0; // Reset backoff on successful connection
           
           if (reconnectTimeoutRef.current) {
@@ -643,7 +654,6 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
             reconnectTimeoutRef.current = null;
           }
         } else if (status === 'CLOSED' && user?.id) {
-          console.log('❌ Realtime connection closed, scheduling reconnect');
           scheduleReconnect();
         }
       });
