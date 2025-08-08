@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
@@ -9,6 +9,7 @@ import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { getLocalDateString } from '@/lib/dateUtils';
 import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
 import { useXPSystem } from '@/hooks/useXPSystem';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface FoodItem {
   id: string;
@@ -117,6 +118,12 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const { isRecentlySaved } = useNutritionDeduplication();
   const { user } = useAuth();
   const { awardNutritionXP } = useXPSystem();
+  
+  // Singleton Realtime channel management
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const backoffAttemptRef = useRef<number>(0);
+  const maxBackoffMs = 30000; // 30 seconds max
   
   // State for daily targets
   const [dailyTargets, setDailyTargets] = useState({
@@ -444,6 +451,227 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       setCoachCtaQueue(prev => prev.slice(1)); // Remove the first item from queue
     }
   };
+
+  // Helper function to check if event is for current day
+  const isEventForToday = (eventTimestamp: string): boolean => {
+    const eventDate = new Date(eventTimestamp);
+    const eventDateString = getLocalDateString(eventDate);
+    const currentDateString = getLocalDateString();
+    return eventDateString === currentDateString;
+  };
+
+  // Exponential backoff reconnection
+  const scheduleReconnect = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    const backoffMs = Math.min(
+      Math.pow(2, backoffAttemptRef.current) * 1000,
+      maxBackoffMs
+    );
+    
+    console.log(`🔄 Scheduling Realtime reconnect in ${backoffMs}ms (attempt ${backoffAttemptRef.current + 1})`);
+    
+    reconnectTimeoutRef.current = window.setTimeout(() => {
+      backoffAttemptRef.current++;
+      setupRealtimeSubscription();
+    }, backoffMs);
+  };
+
+  // Setup Realtime subscription
+  const setupRealtimeSubscription = () => {
+    if (!user?.id) return;
+
+    // Clean up existing channel if any
+    if (realtimeChannelRef.current) {
+      console.log('🧹 Cleaning up existing Realtime channel');
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+
+    console.log('🔌 Setting up Realtime subscription for nutrition data');
+    
+    const channel = supabase
+      .channel('nutrition-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'nutrition_logs',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🍽️ Nutrition log inserted:', payload);
+          
+          // Filter by current day
+          if (!isEventForToday(payload.new.created_at)) {
+            console.log('📅 Ignoring nutrition event from different day');
+            return;
+          }
+
+          // Check if this is a duplicate based on ID
+          if (isRecentlySaved(payload.new.id)) {
+            console.log('🔄 Skipping duplicate nutrition insert event');
+            return;
+          }
+
+          // Convert database record to FoodItem format
+          const newFood: FoodItem = {
+            id: payload.new.id,
+            name: payload.new.food_name,
+            calories: payload.new.calories || 0,
+            protein: payload.new.protein || 0,
+            carbs: payload.new.carbs || 0,
+            fat: payload.new.fat || 0,
+            fiber: payload.new.fiber || 0,
+            sugar: payload.new.sugar || 0,
+            sodium: payload.new.sodium || 0,
+            saturated_fat: payload.new.saturated_fat || (payload.new.fat || 0) * 0.3,
+            timestamp: new Date(payload.new.created_at),
+            confirmed: true,
+            databaseId: payload.new.id,
+          };
+
+          // Update current day with new food
+          setCurrentDay(prev => {
+            const updatedFoods = [...prev.foods, newFood];
+            const totals = calculateTotals(updatedFoods, prev.hydration);
+            return {
+              ...prev,
+              foods: updatedFoods,
+              ...totals,
+            };
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'hydration_logs',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('💧 Hydration log inserted:', payload);
+          
+          // Filter by current day
+          if (!isEventForToday(payload.new.created_at)) {
+            console.log('📅 Ignoring hydration event from different day');
+            return;
+          }
+
+          // Check if this is a duplicate
+          if (isRecentlySaved(payload.new.id)) {
+            console.log('🔄 Skipping duplicate hydration insert event');
+            return;
+          }
+
+          // Convert database record to HydrationItem format
+          const newHydration: HydrationItem = {
+            id: payload.new.id,
+            name: payload.new.name,
+            volume: payload.new.volume,
+            type: payload.new.type || 'water',
+            timestamp: new Date(payload.new.created_at),
+          };
+
+          // Update current day with new hydration
+          setCurrentDay(prev => {
+            const updatedHydration = [...prev.hydration, newHydration];
+            const totals = calculateTotals(prev.foods, updatedHydration);
+            return {
+              ...prev,
+              hydration: updatedHydration,
+              ...totals,
+            };
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'supplement_logs',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('💊 Supplement log inserted:', payload);
+          
+          // Filter by current day
+          if (!isEventForToday(payload.new.created_at)) {
+            console.log('📅 Ignoring supplement event from different day');
+            return;
+          }
+
+          // Check if this is a duplicate
+          if (isRecentlySaved(payload.new.id)) {
+            console.log('🔄 Skipping duplicate supplement insert event');
+            return;
+          }
+
+          // Convert database record to SupplementItem format
+          const newSupplement: SupplementItem = {
+            id: payload.new.id,
+            name: payload.new.name,
+            dosage: payload.new.dosage || 0,
+            unit: payload.new.unit || 'mg',
+            frequency: payload.new.frequency,
+            notifications: [], // Not stored in supplement_logs table
+            timestamp: new Date(payload.new.created_at),
+          };
+
+          // Update current day with new supplement
+          setCurrentDay(prev => ({
+            ...prev,
+            supplements: [...prev.supplements, newSupplement],
+          }));
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Realtime subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to nutrition Realtime updates');
+          backoffAttemptRef.current = 0; // Reset backoff on successful connection
+          
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
+        } else if (status === 'CLOSED' && user?.id) {
+          console.log('❌ Realtime connection closed, scheduling reconnect');
+          scheduleReconnect();
+        }
+      });
+
+    realtimeChannelRef.current = channel;
+  };
+
+  // Initialize Realtime subscription once
+  useEffect(() => {
+    if (user?.id) {
+      setupRealtimeSubscription();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🧹 Cleaning up Realtime subscription');
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+    };
+  }, [user?.id]); // Only depend on user ID
 
   return (
     <NutritionContext.Provider
