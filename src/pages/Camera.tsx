@@ -1144,26 +1144,14 @@ const CameraPage = () => {
         console.error('GPT-5 primary JSON parse failed:', e);
       }
 
+      // Log decision factors once
+      console.info("[GPT5 Decision]", { primaryHttpOk, primaryJsonOk, primaryHasItems });
+
       // Pick source once and log accurately
       let chosen: any;
 
-      if (primaryHttpOk && primaryJsonOk && primaryHasItems) {
-        chosen = {
-          ...primaryJson,
-          model_used: primaryJson?.model_used ?? 'gpt-5',
-          fallback_used: false,
-        };
-        console.info('🎤 [Camera] Primary GPT-5 succeeded. Skipping fallback.', {
-          success: primaryResp?.success,
-          items: chosen.items?.length ?? 0,
-        });
-      } else {
-        console.warn('🔄 [Camera] Primary GPT-5 failed, attempting fallback...', {
-          primaryHttpOk,
-          primaryJsonOk,
-          primaryHasItems,
-          success: primaryResp?.success,
-        });
+      if (!primaryHttpOk || !primaryJsonOk || !primaryHasItems) {
+        console.warn("🔄 [Camera] Primary GPT-5 failed, attempting fallback...", { primaryHttpOk, primaryJsonOk, primaryHasItems });
         
         const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
           method: 'POST',
@@ -1184,6 +1172,9 @@ const CameraPage = () => {
           model_used: fb?.model_used ?? 'gpt-4o (fallback)',
           fallback_used: true,
         };
+      } else {
+        console.info("✅ [Camera] Primary GPT-5 succeeded. Skipping fallback.");
+        chosen = { ...primaryJson, model_used: "gpt-5", fallback_used: false };
       }
 
       // Check final result success
