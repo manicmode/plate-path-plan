@@ -14,15 +14,12 @@ export const DailyAveragesSection = ({ weeklyAverage }: DailyAveragesSectionProp
   const [isDailyAveragesOpen, setIsDailyAveragesOpen] = useState(false);
 
   return (
-    <div className="mb-16">
+    <div className="mb-6">
       <Collapsible open={isDailyAveragesOpen} onOpenChange={setIsDailyAveragesOpen}>
         <CollapsibleTrigger asChild>
           <div className="flex items-center gap-3 mb-6 cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl p-3 -m-3 transition-all duration-200">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-              <TrendingUp className="h-6 w-6 text-white" />
-            </div>
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Daily Averages</h2>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Daily Averages</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">Your weekly performance overview</p>
             </div>
             <div className="flex items-center gap-2">

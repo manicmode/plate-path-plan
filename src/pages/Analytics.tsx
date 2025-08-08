@@ -27,6 +27,7 @@ import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreak
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
+import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
 import { Activity, Apple, Heart } from 'lucide-react';
 
 export default function Analytics() {
@@ -63,6 +64,7 @@ export default function Analytics() {
         </TabsList>
 
         <TabsContent value="nutrition" className="space-y-6 mt-6">
+          {/* Daily Overview Section */}
           <SectionHeader 
             icon={Apple} 
             title="Daily Overview" 
@@ -70,32 +72,44 @@ export default function Analytics() {
           />
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
+          <MealQualityTrendChart />
           <MealQualityAnalyticsSection />
-          <DailyAveragesSection weeklyAverage={weeklyAverage} />
           
+          {/* Weekly & Average Performance Section */}
           <div className="pt-8">
             <SectionHeader 
               icon={Apple} 
-              title="Insights & Analysis" 
-              subtitle="Food patterns, AI recommendations, and consumption trends" 
+              title="Weekly & Average Performance" 
+              subtitle="Weekly trends and average daily metrics" 
             />
           </div>
-          <MealQualityTrendChart />
-          <FlaggedIngredientHistoryChart />
-          <TopFoodsWeekChart />
-          <TagInsightsSection />
-          <SmartInsightsSection />
+          <DailyAveragesSection weeklyAverage={weeklyAverage} />
+          <WeeklyOverviewChart />
           
+          {/* Progress & Achievements Section */}
           <div className="pt-8">
             <SectionHeader 
               icon={Apple} 
               title="Progress & Achievements" 
-              subtitle="Your nutrition journey and milestones" 
+              subtitle="Milestones, streaks, and nutrition journey" 
             />
           </div>
           <AchievementsSection />
           <GamificationSection />
           <MonthlySummaryViewer />
+          
+          {/* Long-Term Trends & Insights Section */}
+          <div className="pt-8">
+            <SectionHeader 
+              icon={Apple} 
+              title="Trends & Analysis" 
+              subtitle="Pattern insights and long-term consumption trends" 
+            />
+          </div>
+          <FlaggedIngredientHistoryChart />
+          <TopFoodsWeekChart />
+          <TagInsightsSection />
+          <SmartInsightsSection />
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
