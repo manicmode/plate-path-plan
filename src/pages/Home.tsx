@@ -24,6 +24,7 @@ import { useToxinDetections } from '@/hooks/useToxinDetections';
 import { useDeferredToxinData } from '@/hooks/useDeferredToxinData';
 import { useAutomaticToxinDetection } from '@/hooks/useAutomaticToxinDetection';
 import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
+import { AddStepsQuickAction } from '@/components/AddStepsQuickAction';
 import { XPDemoCard } from '@/components/xp/XPDemoCard';
 import { useTrackerInsights } from '@/hooks/useTrackerInsights';
 import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
