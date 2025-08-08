@@ -13,7 +13,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
-import { substituteRecoveryPlaceholders } from '@/utils/recoveryPlaceholders';
+
 
 const RecoveryCoachSection = () => {
   const isMobile = useIsMobile();
@@ -22,16 +22,13 @@ const RecoveryCoachSection = () => {
   const [showPraiseMessage, setShowPraiseMessage] = useState<string | null>(null);
   const { trackInteraction } = useCoachInteractions();
 
-const handleCommand = async (command: string) => {
-  // 🎮 Coach Gamification System - Track skill panel interaction
-  const trackResult = await trackInteraction('recovery', 'skill_panel');
-  if (trackResult?.should_praise && trackResult.praise_message) {
-    setShowPraiseMessage(trackResult.praise_message);
-    setTimeout(() => setShowPraiseMessage(null), 8000);
-  }
-  // Personalize placeholders, then auto-send to chat
-  const text = await substituteRecoveryPlaceholders(command);
-  window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text } }));
+const handleSkillCommand = (prompt: string) => {
+  window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text: prompt } }));
+};
+
+const handleChipCommand = (cmd: { chipId: string; text: string }) => {
+  console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'recovery', chipId: cmd.chipId, usingContext: true }));
+  window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text: cmd.text, chipId: cmd.chipId } }));
 };
 
   // Recovery Skill Panel Categories
@@ -140,7 +137,7 @@ const handleCommand = async (command: string) => {
           title="🧘 Recovery Expert Skills"
           icon={<Heart className="h-4 w-4 text-orange-600" />}
           categories={recoverySkillCategories}
-          onCommandClick={handleCommand}
+          onCommandClick={handleSkillCommand}
           isLoading={false}
           gradientColors="from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20"
         />

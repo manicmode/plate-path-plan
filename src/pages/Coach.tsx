@@ -371,11 +371,13 @@ setMessages(prev => {
     }
   };
 
-  const quickQuestions = [
-    "Analyze my progress",
-    "Weekly focus tips",
-    "Build daily routine",
-    "Personalized advice",
+  const nutritionChips = [
+    { id: 'nutr_week', label: "How’s my week?", message: "Am I on track for {{goal_primary}}? Analyze my last 7 days." },
+    { id: 'nutr_protein_3d', label: "Protein plan (3 days)", message: "Give me a 3-day plan to hit {{protein_target_g}}g protein/day." },
+    { id: 'nutr_snacking', label: "Fix my late-night snacking", message: "I snack at night; adjust calories & snack ideas for me." },
+    { id: 'nutr_grocery', label: "Grocery list for my goals", message: "Build a 10-item grocery list for {{goal_primary}} this week." },
+    { id: 'nutr_hydration_fiber', label: "Hydration + fiber tune-up", message: "Optimize water and fiber based on {{water_ml_7d}}ml & {{fiber_g_7d}}g averages." },
+    { id: 'nutr_calorie_check', label: "Calorie target sanity check", message: "Given {{avg_cals_7d}} kcal avg, should I raise/lower my daily target?" },
   ];
 
   const recipePrompts = [
@@ -654,16 +656,19 @@ setMessages(prev => {
         </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           <div className="grid grid-cols-2 gap-3">
-            {quickQuestions.map((question, index) => (
+            {nutritionChips.map((chip) => (
               <Button
-                key={index}
+                key={chip.id}
                 variant="outline"
                 size="sm"
-                onClick={() => handleQuickQuestion(question)}
+                onClick={() => { 
+                  console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'nutrition', chipId: chip.id, usingContext: useMyData }));
+                  handleQuickQuestion(chip.message);
+                }}
                 className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20 border-purple-200 dark:border-purple-700 hover:from-purple-100 hover:to-emerald-100 dark:hover:from-purple-800/30 dark:hover:to-emerald-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
                 disabled={isLoading}
               >
-                {question}
+                {chip.label}
               </Button>
             ))}
           </div>

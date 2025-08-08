@@ -88,13 +88,13 @@ export default function AIFitnessCoach() {
   // Check nudge content availability
   const nudgeContent = useNudgeContentChecker({ maxEntries: 3, showOnlyRecent: true });
 
-  const smartPrompts = [
-    { emoji: '📊', text: 'How Am I Doing?', message: 'How am I doing this week? Give me a complete analysis of my workout progress and patterns.' },
-    { emoji: '🚀', text: 'Give Me a Challenge', message: 'Give me a new challenge based on my workout history. I want to push myself!' },
-    { emoji: '🔥', text: 'Motivate Me!', message: 'I need some serious motivation to stay consistent with my fitness routine! Hype me up!' },
-    { emoji: '💡', text: 'Areas to Improve', message: 'What areas should I focus on improving? Give me specific suggestions based on my workouts.' },
-    { emoji: '🧘', text: 'Recovery Advice', message: 'Should I take a rest day or keep pushing? Help me with recovery planning.' },
-    { emoji: '🤝', text: 'Team Check', message: 'How is our squad doing? Any teammates who need support?' }
+  const exerciseChips = [
+    { id: 'ex_tuneup', emoji: '📊', text: 'Weekly tune-up', message: 'How am I doing this week? ({{workouts_7d}} workouts, avg {{avg_duration_min_7d}} min)' },
+    { id: 'ex_consistency', emoji: '📈', text: 'Consistency boost to 60%', message: 'I’m at {{consistency_pct_30d}}% consistency — give me a plan to hit 60%.' },
+    { id: 'ex_tomorrow', emoji: '⏱️', text: 'Tomorrow’s workout (time-boxed)', message: 'Design a {{avg_duration_min_7d}}-minute workout for tomorrow aligned to {{goal_primary}}.' },
+    { id: 'ex_balance', emoji: '🧩', text: 'Balance weak areas', message: 'Address my biggest gap: {{muscle_coverage_gap}} — what should I add this week?' },
+    { id: 'ex_streak', emoji: '🔥', text: 'Streak builder', message: 'Current streak {{current_streak_days}} (best {{best_streak_days}}). How do I extend it?' },
+    { id: 'ex_travel', emoji: '✈️', text: 'Travel/Busy plan', message: 'I’m busy this week — give me 3 short workouts (≤25 min) I can do anywhere.' }
   ];
 
   // Remove social coach message injection to keep chat clean - move to nudge section instead
@@ -575,16 +575,19 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground font-medium">🚀 Quick Actions - Get instant insights:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {smartPrompts.map((prompt, index) => (
+            {exerciseChips.map((chip) => (
               <Button
-                key={index}
+                key={chip.id}
                 variant="outline"
-                onClick={() => handlePromptClick(prompt.message)}
+                onClick={() => { 
+                  console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'exercise', chipId: chip.id, usingContext: useMyData }));
+                  handlePromptClick(chip.message);
+                }}
                 className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-300 hover:scale-105 text-left justify-start h-auto py-3"
                 disabled={isLoading}
               >
-                <span className="mr-2 text-lg">{prompt.emoji}</span>
-                <span className="text-sm font-medium">{prompt.text}</span>
+                <span className="mr-2 text-lg">{chip.emoji}</span>
+                <span className="text-sm font-medium">{chip.text}</span>
               </Button>
             ))}
           </div>
