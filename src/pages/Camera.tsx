@@ -1125,125 +1125,83 @@ const CameraPage = () => {
       const maxRetries = 2;
       let result;
       
-      while (retryCount <= maxRetries) {
-        try {
-          result = await sendToLogVoice(voiceText);
-          
-          // If successful, break out of retry loop
-          if (result.success) break;
-          
-          // Check if we should retry based on error type
-          const errorData = result.message ? JSON.parse(result.message) : {};
-          const shouldRetry = retryCount < maxRetries && (
-            errorData.errorType === 'HTTP_ERROR' || 
-            result.error?.includes('401') || 
-            result.error?.includes('429') || 
-            result.error?.includes('5')
-          );
-          
-          if (!shouldRetry) break;
-          
-          // Exponential backoff: 1s, 2s
-          const backoffMs = Math.pow(2, retryCount) * 1000;
-          console.log(`🔄 [Camera] Retrying voice request in ${backoffMs}ms (attempt ${retryCount + 1}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, backoffMs));
-          retryCount++;
-          
-        } catch (error) {
-          if (retryCount >= maxRetries) throw error;
-          retryCount++;
-          const backoffMs = Math.pow(2, retryCount) * 1000;
-          await new Promise(resolve => setTimeout(resolve, backoffMs));
-        }
-      }
+      // Wrap the primary call and parse in try/catch, and compute three booleans
+      const primaryResp = await sendToLogVoice(voiceText); // existing function
+      let primaryJson: any = null;
+      let primaryHttpOk = false;
+      let primaryJsonOk = false;
+      let primaryHasItems = false;
 
-      // After we get the primary response + json:
-      const primaryHttpOk = result.success; // response from sendToLogVoice
-      let primaryJson;
       try {
-        primaryJson = JSON.parse(result.message || '{}');
-      } catch {
-        primaryJson = null;
+        primaryHttpOk = !!primaryResp?.success;
+        // Parse the message field which contains the JSON response
+        primaryJson = primaryResp?.message ? JSON.parse(primaryResp.message) : null;
+        primaryJsonOk = !!primaryJson && typeof primaryJson === 'object';
+        primaryHasItems = Array.isArray(primaryJson?.items) && primaryJson.items.length > 0;
+      } catch (e) {
+        primaryJsonOk = false;
+        primaryHasItems = false;
+        console.error('GPT-5 primary JSON parse failed:', e);
       }
-      
-      const primaryJsonOk =
-        primaryJson &&
-        (
-          primaryJson.success === true ||               // explicit success flag
-          (Array.isArray(primaryJson.items) && primaryJson.items.length > 0) // or items exist
-        );
 
-      // NEW: decide if fallback is needed
-      const shouldFallback = !primaryHttpOk || !primaryJsonOk;
+      // Pick source once and log accurately
+      let chosen: any;
 
-      // Log accurately
-      if (!shouldFallback) {
-        console.log('🎤 [Camera] Primary GPT-5 succeeded. Skipping fallback.');
-        // Normalize flags for the rest of the pipeline
-        const normalized = {
+      if (primaryHttpOk && primaryJsonOk && primaryHasItems) {
+        chosen = {
           ...primaryJson,
-          success: true,
-          model_used: primaryJson.model_used ?? 'gpt-5',
+          model_used: primaryJson?.model_used ?? 'gpt-5',
           fallback_used: false,
         };
-        // Continue with the existing downstream processing
-        result = {
-          success: true,
-          message: JSON.stringify(normalized)
-        };
+        console.info('🎤 [Camera] Primary GPT-5 succeeded. Skipping fallback.', {
+          success: primaryResp?.success,
+          items: chosen.items?.length ?? 0,
+        });
       } else {
-        // Only here if primary actually failed
         console.warn('🔄 [Camera] Primary GPT-5 failed, attempting fallback...', {
           primaryHttpOk,
           primaryJsonOk,
+          primaryHasItems,
+          success: primaryResp?.success,
         });
         
-        try {
-          const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
-            },
-            body: JSON.stringify({ text: voiceText })
-          });
-          
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json();
-            const fbNormalized = {
-              ...fallbackData,
-              success: fallbackData?.success === true || (Array.isArray(fallbackData?.items) && fallbackData.items.length > 0),
-              model_used: fallbackData?.model_used ?? 'gpt-4o (fallback)',
-              fallback_used: true,
-            };
-            result = {
-              success: true,
-              message: JSON.stringify(fbNormalized)
-            };
-            console.log('✅ [Camera] Fallback to log-voice succeeded');
-          }
-        } catch (fallbackError) {
-          console.error('❌ [Camera] Fallback also failed:', fallbackError);
-        }
+        const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+          },
+          body: JSON.stringify({ text: voiceText })
+        });
+        
+        const fb = fallbackResponse.ok ? await fallbackResponse.json() : null;
+        // ensure a consistent shape
+        chosen = {
+          ...fb,
+          success: fb?.success === true || (Array.isArray(fb?.items) && fb.items.length > 0),
+          items: fb?.items || [],
+          originalText: fb?.originalText || voiceText,
+          model_used: fb?.model_used ?? 'gpt-4o (fallback)',
+          fallback_used: true,
+        };
       }
 
-      if (!result.success) {
+      // Check final result success
+      if (!chosen?.success && (!chosen?.items || chosen.items.length === 0)) {
         // Handle structured error response from edge function
-        console.error('❌ [Camera] Voice processing failed after retries. Result:', result);
-        const errorData = result.message ? JSON.parse(result.message) : {};
-        console.error('❌ [Camera] Parsed error data:', errorData);
+        console.error('❌ [Camera] Voice processing failed after retries. Result:', chosen);
         
         showErrorState(
-          errorData.errorType || 'UNKNOWN_ERROR',
-          errorData.errorMessage || result.error || 'Failed to process voice input',
-          errorData.suggestions || ['Please try again with more specific descriptions']
+          'UNKNOWN_ERROR',
+          'Failed to process voice input',
+          ['Please try again with more specific descriptions']
         );
         return;
       }
 
       setProcessingStep('Preparing...');
-      // Parse the structured response from the updated edge function
-      const voiceApiResponse: VoiceApiResponse = JSON.parse(result.message);
+      // Use chosen directly instead of parsing result.message again
+      const voiceApiResponse: VoiceApiResponse = chosen;
 
       console.log('🎤 [Camera] Voice API Response parsed:', {
         ...voiceApiResponse,
