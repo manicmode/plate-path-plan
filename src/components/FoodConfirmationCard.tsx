@@ -178,47 +178,51 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Debug logging when confirmation card opens or portion changes
   React.useEffect(() => {
-    if (isDebugMode && currentFoodItem && isOpen) {
-      const debugInfo = {
-        gpt5_parsed_output: {
-          name: currentFoodItem.name,
-          quantity: currentFoodItem.quantity || 'none',
-          parsed_numeric: effectiveQuantity,
-          unit: '%',
-          confidence: currentFoodItem.confidence || 'N/A',
-          isEstimated
-        },
-        matched_database_item: {
-          id: currentFoodItem.id || 'N/A',
-          name: currentFoodItem.name,
-          source: currentFoodItem.source || 'unknown',
-          serving_size: '100g', // Default serving size
-          unit: 'g',
-          calories_per_serving: currentFoodItem.calories,
-          macros: {
-            protein: currentFoodItem.protein,
-            carbs: currentFoodItem.carbs,
-            fat: currentFoodItem.fat,
-            fiber: currentFoodItem.fiber,
-            sugar: currentFoodItem.sugar,
-            sodium: currentFoodItem.sodium
+    if (isDebugMode && currentFoodItem && isOpen && adjustedFood) {
+      try {
+        const debugInfo = {
+          gpt5_parsed_output: {
+            name: currentFoodItem?.name || 'N/A',
+            quantity: currentFoodItem?.quantity || 'none',
+            parsed_numeric: effectiveQuantity != null ? effectiveQuantity : 'N/A',
+            unit: '%',
+            confidence: currentFoodItem?.confidence != null ? currentFoodItem.confidence : 'N/A',
+            isEstimated: isEstimated != null ? isEstimated : 'N/A'
+          },
+          matched_database_item: {
+            id: currentFoodItem?.id || 'N/A',
+            name: currentFoodItem?.name || 'N/A',
+            source: currentFoodItem?.source || 'unknown',
+            serving_size: '100g', // Default serving size
+            unit: 'g',
+            calories_per_serving: currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A',
+            macros: {
+              protein: currentFoodItem?.protein != null ? currentFoodItem.protein : 'N/A',
+              carbs: currentFoodItem?.carbs != null ? currentFoodItem.carbs : 'N/A',
+              fat: currentFoodItem?.fat != null ? currentFoodItem.fat : 'N/A',
+              fiber: currentFoodItem?.fiber != null ? currentFoodItem.fiber : 'N/A',
+              sugar: currentFoodItem?.sugar != null ? currentFoodItem.sugar : 'N/A',
+              sodium: currentFoodItem?.sodium != null ? currentFoodItem.sodium : 'N/A'
+            }
+          },
+          scaling_math: {
+            parsed_quantity: effectiveQuantity != null ? effectiveQuantity : 'N/A',
+            portion_percentage: portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A',
+            base_calories_per_unit: currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A',
+            final_calories: adjustedFood?.calories != null ? adjustedFood.calories : 'N/A',
+            calculation: `${effectiveQuantity != null ? effectiveQuantity : 'N/A'} × ${portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}% × ${currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'} = ${adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}`,
+            scaling_factor: portionMultiplier != null ? portionMultiplier : 'N/A'
           }
-        },
-        scaling_math: {
-          parsed_quantity: effectiveQuantity,
-          portion_percentage: portionPercentage[0],
-          base_calories_per_unit: currentFoodItem.calories,
-          final_calories: adjustedFood.calories,
-          calculation: `${effectiveQuantity} × ${portionPercentage[0]}% × ${currentFoodItem.calories} = ${adjustedFood.calories}`,
-          scaling_factor: portionMultiplier
-        }
-      };
+        };
 
-      console.group('🔍 VOYAGE DEBUG: Food Confirmation Details');
-      console.log('GPT-5 Parsed Output:', debugInfo.gpt5_parsed_output);
-      console.log('Matched Database Item:', debugInfo.matched_database_item);
-      console.log('Scaling Math:', debugInfo.scaling_math);
-      console.groupEnd();
+        console.group('🔍 VOYAGE DEBUG: Food Confirmation Details');
+        console.log('GPT-5 Parsed Output:', debugInfo.gpt5_parsed_output);
+        console.log('Matched Database Item:', debugInfo.matched_database_item);
+        console.log('Scaling Math:', debugInfo.scaling_math);
+        console.groupEnd();
+      } catch (error) {
+        console.warn('🔍 VOYAGE DEBUG: Error logging debug info:', error);
+      }
     }
   }, [isDebugMode, currentFoodItem, isOpen, portionPercentage, adjustedFood]);
 
@@ -714,7 +718,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             )}
 
             {/* Developer Debug Panel */}
-            {isDebugMode && (
+            {isDebugMode && currentFoodItem && adjustedFood && (
               <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-purple-600 dark:text-purple-400 font-mono text-sm">🔍</span>
@@ -730,9 +734,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="font-mono text-blue-700 dark:text-blue-300 space-y-1">
                       <div>• name: "{currentFoodItem?.name || 'N/A'}"</div>
                       <div>• quantity: "{currentFoodItem?.quantity || 'none'}"</div>
-                      <div>• parsed_numeric: {effectiveQuantity || 1}</div>
-                      <div>• confidence: {currentFoodItem?.confidence || 'N/A'}</div>
-                      <div>• isEstimated: {isEstimated ? 'true' : 'false'}</div>
+                      <div>• parsed_numeric: {effectiveQuantity != null ? effectiveQuantity : 'N/A'}</div>
+                      <div>• confidence: {currentFoodItem?.confidence != null ? currentFoodItem.confidence : 'N/A'}</div>
+                      <div>• isEstimated: {isEstimated != null ? (isEstimated ? 'true' : 'false') : 'N/A'}</div>
                     </div>
                   </div>
                   
@@ -742,8 +746,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="font-mono text-green-700 dark:text-green-300 space-y-1">
                       <div>• id: {currentFoodItem?.id || 'N/A'}</div>
                       <div>• source: {currentFoodItem?.source || 'unknown'}</div>
-                      <div>• calories_per_serving: {currentFoodItem?.calories || 0}</div>
-                      <div>• macros: P{currentFoodItem?.protein || 0}g C{currentFoodItem?.carbs || 0}g F{currentFoodItem?.fat || 0}g</div>
+                      <div>• calories_per_serving: {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'}</div>
+                      <div>• macros: P{currentFoodItem?.protein != null ? currentFoodItem.protein : 'N/A'}g C{currentFoodItem?.carbs != null ? currentFoodItem.carbs : 'N/A'}g F{currentFoodItem?.fat != null ? currentFoodItem.fat : 'N/A'}g</div>
                     </div>
                   </div>
                   
@@ -751,12 +755,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-800">
                     <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Scaling Math:</h5>
                     <div className="font-mono text-orange-700 dark:text-orange-300 space-y-1">
-                      <div>• parsed_quantity: {effectiveQuantity || 1}</div>
-                      <div>• portion_percentage: {portionPercentage?.[0] || 100}%</div>
-                      <div>• base_calories_per_unit: {currentFoodItem?.calories || 0}</div>
-                      <div>• scaling_factor: {portionMultiplier?.toFixed(2) || '1.00'}</div>
-                      <div>• final_calories: {adjustedFood?.calories || 0}</div>
-                      <div>• calculation: {effectiveQuantity || 1} × {portionPercentage?.[0] || 100}% × {currentFoodItem?.calories || 0} = {adjustedFood?.calories || 0}</div>
+                      <div>• parsed_quantity: {effectiveQuantity != null ? effectiveQuantity : 'N/A'}</div>
+                      <div>• portion_percentage: {portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}%</div>
+                      <div>• base_calories_per_unit: {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'}</div>
+                      <div>• scaling_factor: {portionMultiplier != null ? portionMultiplier.toFixed(2) : 'N/A'}</div>
+                      <div>• final_calories: {adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}</div>
+                      <div>• calculation: {effectiveQuantity != null ? effectiveQuantity : 'N/A'} × {portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}% × {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'} = {adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}</div>
                     </div>
                   </div>
                 </div>
