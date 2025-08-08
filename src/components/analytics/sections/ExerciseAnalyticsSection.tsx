@@ -18,6 +18,7 @@ import { useWorkoutAnalytics } from '@/hooks/useWorkoutAnalytics';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreakHistoryChart';
+import { MuscleGroupDistributionChart } from '@/components/analytics/charts/MuscleGroupDistributionChart';
 
 export const ExerciseAnalyticsSection = () => {
   const {
@@ -230,6 +231,10 @@ return (
           />
         </ErrorBoundary>
       </div>
+
+      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Muscle group distribution unavailable</div>}>
+        <MuscleGroupDistributionChart />
+      </ErrorBoundary>
 
       {/* Milestones & Streaks */}
       <SectionHeader icon={Target} title="Milestones & Streaks" subtitle="Your achievements and workout streaks" />

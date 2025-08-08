@@ -21,7 +21,7 @@ import { FlaggedIngredientHistoryChart } from '@/components/analytics/charts/Fla
 import { TopFoodsWeekChart } from '@/components/analytics/charts/TopFoodsWeekChart';
 import { WeeklyWorkoutDurationChart } from '@/components/analytics/charts/WeeklyWorkoutDurationChart';
 import { CaloriesBurnedChart } from '@/components/analytics/charts/CaloriesBurnedChart';
-import { MuscleGroupDistributionChart } from '@/components/analytics/charts/MuscleGroupDistributionChart';
+
 import { MonthlyGoalProgress } from '@/components/analytics/charts/MonthlyGoalProgress';
 import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreakHistoryChart';
 import { MuscleGroupAnalytics } from '@/components/analytics/MuscleGroupAnalytics';
@@ -160,7 +160,6 @@ export default function Analytics() {
               <MonthlyGoalProgress />
               <WorkoutTrophyCard />
               <ExerciseAnalyticsSection />
-              <MuscleGroupDistributionChart />
             </div>
           </div>
 
