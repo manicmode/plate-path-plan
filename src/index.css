@@ -568,6 +568,59 @@
       0 0 0 12px transparent;
   }
 
+  /* Value Slider with Bubble */
+  .value-slider {
+    position: relative;
+    padding-top: 28px; /* space for bubble */
+  }
+
+  .value-bubble {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%) translateY(-4px);
+    background: rgba(0,0,0,0.75);
+    color: white;
+    font-size: 12px;
+    line-height: 1;
+    padding: 6px 8px;
+    border-radius: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease;
+    will-change: transform, opacity;
+    z-index: 10;
+  }
+
+  .value-bubble.show { 
+    opacity: 1; 
+    transform: translateX(-50%) translateY(0); 
+  }
+
+  .value-bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%; 
+    bottom: -5px;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(0,0,0,0.75);
+  }
+
+  /* Light mode bubble */
+  .value-bubble {
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+  }
+
+  .dark .value-bubble {
+    background: rgba(255,255,255,0.9);
+    color: rgba(0,0,0,0.9);
+  }
+
+  .dark .value-bubble::after {
+    border-top-color: rgba(255,255,255,0.9);
+  }
+
   .ai-insights-card {
     background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(168, 85, 247, 0.08) 50%, rgba(255, 255, 255, 0.95) 100%);
   }

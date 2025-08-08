@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { SmoothSlider } from './SmoothSlider';
+import ValueSlider from '@/components/ui/ValueSlider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart, Zap, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -122,19 +122,21 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
             <CardContent className="p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <Heart className="h-5 w-5 text-pink-500" />
-                <span className="font-semibold text-gray-900 dark:text-white">Mood</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  Mood 
+                  <span className="sr-only">Current value {mood} of 10</span>
+                  <span aria-hidden className="ml-2 text-muted-foreground">{mood}/10</span>
+                </span>
               </div>
               <div className="space-y-3">
                 <div className="text-center">
                   <span className="text-4xl">{MOOD_EMOJIS[mood - 1]}</span>
                 </div>
-                <SmoothSlider
-                  value={mood}
-                  onChange={setMood}
-                  min={1}
-                  max={10}
-                  step={1}
-                  className="w-full"
+                <ValueSlider 
+                  value={mood} 
+                  onChange={setMood} 
+                  ariaLabel="Mood" 
+                  className="mb-6" 
                 />
               </div>
             </CardContent>
@@ -145,16 +147,17 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
             <CardContent className="p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <Zap className="h-5 w-5 text-yellow-500" />
-                <span className="font-semibold text-gray-900 dark:text-white">Energy Level</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  Energy Level
+                  <span className="sr-only">Current value {energy} of 10</span>
+                  <span aria-hidden className="ml-2 text-muted-foreground">{energy}/10</span>
+                </span>
               </div>
-              <SmoothSlider
-                value={energy}
-                onChange={setEnergy}
-                min={1}
-                max={10}
-                step={1}
-                className="w-full"
-                showValue={true}
+              <ValueSlider 
+                value={energy} 
+                onChange={setEnergy} 
+                ariaLabel="Energy" 
+                className="mb-6" 
               />
             </CardContent>
           </Card>
@@ -164,19 +167,20 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
             <CardContent className="p-4">
               <div className="flex items-center space-x-2 mb-3">
                 <Shield className="h-5 w-5 text-green-500" />
-                <span className="font-semibold text-gray-900 dark:text-white">Overall Wellness</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  Overall Wellness
+                  <span className="sr-only">Current value {wellness} of 10</span>
+                  <span aria-hidden className="ml-2 text-muted-foreground">{wellness}/10</span>
+                </span>
               </div>
               <div className="space-y-3">
                 <div className="text-center">
                   <span className="text-4xl">{WELLNESS_EMOJIS[wellness - 1]}</span>
                 </div>
-                <SmoothSlider
-                  value={wellness}
-                  onChange={setWellness}
-                  min={1}
-                  max={10}
-                  step={1}
-                  className="w-full"
+                <ValueSlider 
+                  value={wellness} 
+                  onChange={setWellness} 
+                  ariaLabel="Wellness" 
                 />
               </div>
             </CardContent>
