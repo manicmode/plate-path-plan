@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -71,7 +71,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
+  const titleId = useId();
+  const descId = useId();
   const { toast } = useToast();
+
+  // A11y console logging
+  useEffect(() => {
+    console.info("[A11y] Review/Confirm dialog wired with title/description", { titleId, descId });
+  }, [titleId, descId]);
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
@@ -425,7 +432,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          aria-describedby={descId}
         >
+          <DialogTitle id={titleId} className="sr-only">
+            Confirm logged items  
+          </DialogTitle>
+          <DialogDescription id={descId} className="sr-only">
+            Review detected items and confirm to save them to your log.
+          </DialogDescription>
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
@@ -449,15 +463,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-        <DialogContent 
-          showCloseButton={false}
-          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          aria-describedby="review-dialog-desc"
-        >
-          <DialogTitle className="sr-only" id="review-dialog-title">Review</DialogTitle>
-          <DialogDescription className="sr-only" id="review-dialog-desc">
-            Confirm details and proceed.
-          </DialogDescription>
+         <DialogContent 
+           showCloseButton={false}
+           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+           aria-describedby={descId}
+         >
+           <DialogTitle id={titleId} className="sr-only">
+             Confirm logged items
+           </DialogTitle>
+           <DialogDescription id={descId} className="sr-only">
+             Review detected items and confirm to save them to your log.
+           </DialogDescription>
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
