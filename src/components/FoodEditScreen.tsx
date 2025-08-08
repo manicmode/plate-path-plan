@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -103,6 +103,9 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               Edit Food Item
             </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
+              Adjust the nutrition information for this food item.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">

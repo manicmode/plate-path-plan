@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Clock, 
   Users, 
@@ -334,6 +334,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Invite Friends to Challenge</DialogTitle>
+                    <DialogDescription>Share the invite code below to invite friends to join this challenge.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="text-center p-4 bg-muted/30 rounded-lg">

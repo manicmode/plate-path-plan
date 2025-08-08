@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
+import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ScanBarcode, AlertCircle, FileText, Smartphone, Globe } from 'lucide-react';
 import { BarcodeScanner as CapBarcodeScanner, BarcodeFormat, LensFacing } from '@capacitor-mlkit/barcode-scanning';
@@ -251,7 +252,11 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" showCloseButton={false}>
+      <AccessibleDialogContent 
+        title="Barcode Scanner"
+        description="Position the barcode within the camera view to scan"
+        className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+      >
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -481,7 +486,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             </>
           )}
         </div>
-      </DialogContent>
+      </AccessibleDialogContent>
     </Dialog>
   );
 };

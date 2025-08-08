@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -71,9 +71,9 @@ export const SupplementListModal = ({
           <>
             <DialogHeader className="space-y-2 mb-4">
               <DialogTitle className="text-xl font-bold">AI Recommendations</DialogTitle>
-              <p className="text-sm text-muted-foreground">
+              <DialogDescription className="text-sm text-muted-foreground">
                 Based on your health goals for <span className="font-semibold text-primary">{categoryName}</span>:
-              </p>
+              </DialogDescription>
             </DialogHeader>
 
             {/* Scrollable Supplement List */}

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, AlertCircle, Target, Eye } from 'lucide-react';
@@ -17,6 +17,9 @@ export default function ScanTipsModal({ isOpen, onClose }: ScanTipsModalProps) {
             <Target className="h-6 w-6 text-primary" />
             Perfect Body Scan Tips
           </DialogTitle>
+          <DialogDescription>
+            Follow these tips to get the most accurate body scan results.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">

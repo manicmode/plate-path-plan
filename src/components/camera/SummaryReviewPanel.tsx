@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,9 +63,9 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
               <CheckCircle className="h-6 w-6 text-emerald-500" />
               Review Detected Items
             </DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Tap the items you'd like to confirm for your food log
-            </p>
+            </DialogDescription>
           </DialogHeader>
 
           {/* Summary Stats */}

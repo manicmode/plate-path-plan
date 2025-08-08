@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Star, Crown, Sparkles } from 'lucide-react';
@@ -60,7 +61,11 @@ export function BadgeUnlockAnimation({ badge, open, onOpenChange }: BadgeUnlockA
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-0 bg-transparent shadow-none p-0">
+      <AccessibleDialogContent 
+        title="Badge Unlocked!"
+        description={`You've earned the ${badge.title} badge!`}
+        className="max-w-md border-0 bg-transparent shadow-none p-0"
+      >
         <div className="relative">
           {/* Confetti Animation */}
           {showConfetti && (
@@ -202,7 +207,7 @@ export function BadgeUnlockAnimation({ badge, open, onOpenChange }: BadgeUnlockA
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </AccessibleDialogContent>
     </Dialog>
   );
 }
