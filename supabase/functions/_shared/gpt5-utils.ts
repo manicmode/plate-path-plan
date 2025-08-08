@@ -95,13 +95,9 @@ function prepareOpenAIRequest(request: OpenAIRequest): any {
   const requestBody: any = {
     model: request.model,
     messages: request.messages,
+    temperature: request.temperature,
     response_format: request.response_format
   };
-
-  // GPT-5 models only support default temperature (1.0)
-  if (!isGpt5 && request.temperature !== undefined) {
-    requestBody.temperature = request.temperature;
-  }
 
   // Use appropriate token parameter based on model
   if (request.max_tokens !== undefined) {
