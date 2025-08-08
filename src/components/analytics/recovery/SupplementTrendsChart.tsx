@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Pill } from 'lucide-react';
+import { format, startOfWeek, subWeeks, subMonths } from 'date-fns';
 
 // Types
 type ViewType = 'daily' | 'weekly' | 'monthly';
@@ -24,36 +25,46 @@ function generateData(view: ViewType): DataPoint[] {
   const now = new Date();
 
   if (view === 'daily') {
-    // Last 7 days
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return Array.from({ length: 7 }).map((_, i) => {
+    // Exactly last 7 consecutive days ending today
+    const points: DataPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
-      d.setDate(now.getDate() - (6 - i));
-      return {
-        label: days[d.getDay()],
-        count: Math.round(rand() * 4 + rand() * 2),
-      };
-    });
+      d.setDate(now.getDate() - i);
+      points.push({
+        label: format(d, 'EEE'),
+        count: Math.round(rand() * 4 + rand() * 2), // 0..6 taken
+      });
+    }
+    return points;
   }
 
   if (view === 'weekly') {
-    // Last 4 weeks
-    return Array.from({ length: 4 }).map((_, i) => ({
-      label: `Week ${i + 1}`,
-      count: Math.round(rand() * 20 + 5),
-    }));
+    // Exactly last 4 consecutive weeks ending current week
+    const points: DataPoint[] = [];
+    const currentWeekStart = startOfWeek(now, { weekStartsOn: 0 }); // Sunday start
+    for (let i = 3; i >= 0; i--) {
+      const wkStart = subWeeks(currentWeekStart, i);
+      points.push({
+        label: `Wk ${format(wkStart, 'MMM d')}`,
+        count: Math.round(rand() * 20 + 5),
+      });
+    }
+    return points;
   }
 
-  // monthly - last 12 months
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return Array.from({ length: 12 }).map((_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    return {
-      label: monthNames[d.getMonth()],
+  // Exactly last 12 consecutive months ending current month
+  const points: DataPoint[] = [];
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  for (let i = 11; i >= 0; i--) {
+    const m = subMonths(currentMonthStart, i);
+    points.push({
+      label: format(m, 'MMM'),
       count: Math.round(rand() * 80 + 10),
-    };
-  });
+    });
+  }
+  return points;
 }
+
 
 export const SupplementTrendsChart: React.FC = () => {
   const [view, setView] = useState<ViewType>('daily');
@@ -90,7 +101,7 @@ export const SupplementTrendsChart: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
-                <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" />
+                <XAxis dataKey="label" interval={0} tickMargin={8} stroke="hsl(var(--muted-foreground))" />
                 <YAxis allowDecimals={false} stroke="hsl(var(--muted-foreground))" label={{ value: 'Supplements', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }} />
                 <Tooltip formatter={(v: number) => [`${v} taken`, 'Supplements']} cursor={{ stroke: 'hsl(var(--primary) / 0.3)', strokeWidth: 1 }} />
                 <Line type="monotone" dataKey="count" name="Supplements" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
