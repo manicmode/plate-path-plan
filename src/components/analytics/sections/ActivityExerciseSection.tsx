@@ -24,7 +24,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
   return (
     <div>      
       {/* Progress Cards Row - Horizontal Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <DailyProgressCard
           title="Steps"
           value={Math.round(weeklyAverage.steps)}
