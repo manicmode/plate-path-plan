@@ -260,10 +260,6 @@ return (
         <PerformanceChartsSection />
       </ErrorBoundary>
 
-      {/* Muscle Group Analytics */}
-      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Muscle group analytics unavailable</div>}>
-        <MuscleGroupAnalytics />
-      </ErrorBoundary>
 
       {/* Monthly Exercise Report */}
       <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Monthly report unavailable</div>}>

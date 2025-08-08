@@ -24,6 +24,7 @@ import { CaloriesBurnedChart } from '@/components/analytics/charts/CaloriesBurne
 import { MuscleGroupDistributionChart } from '@/components/analytics/charts/MuscleGroupDistributionChart';
 import { MonthlyGoalProgress } from '@/components/analytics/charts/MonthlyGoalProgress';
 import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreakHistoryChart';
+import { MuscleGroupAnalytics } from '@/components/analytics/MuscleGroupAnalytics';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
@@ -172,6 +173,7 @@ export default function Analytics() {
             />
             <div className="space-y-6">
               <MotivationCard />
+              <MuscleGroupAnalytics />
             </div>
           </div>
         </TabsContent>
