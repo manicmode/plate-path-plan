@@ -134,66 +134,44 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
-          {/* Section 1: Daily Overview */}
+          {/* Section 1: Workout Summary */}
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
-              title="Daily Overview" 
-              subtitle="Today's exercise minutes and calories burned" 
+              title="Workout Summary" 
+              subtitle="Total workouts, exercise time, and calories burned" 
             />
             <div className="space-y-6">
               <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
-            </div>
-          </div>
-
-          {/* Section 2: Weekly & Monthly Trends */}
-          <div className="mb-12">
-            <SectionHeader 
-              icon={Activity} 
-              title="Weekly & Monthly Trends" 
-              subtitle="Exercise patterns and progress over time" 
-            />
-            <div className="space-y-6">
               <WeeklyWorkoutDurationChart />
               <CaloriesBurnedChart />
-              <MonthlyGoalProgress />
             </div>
           </div>
 
-          {/* Section 3: Workout Breakdown */}
+          {/* Section 2: Performance Analysis */}
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
-              title="Workout Breakdown" 
-              subtitle="Exercise types, duration split, and muscle group focus" 
+              title="Performance Analysis" 
+              subtitle="Workout patterns, muscle groups, and progress tracking" 
             />
             <div className="space-y-6">
               <ExerciseAnalyticsSection />
               <MuscleGroupDistributionChart />
+              <MonthlyGoalProgress />
             </div>
           </div>
 
-          {/* Section 4: Milestones & Streaks */}
+          {/* Section 3: Achievements & Milestones */}
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
-              title="Milestones & Streaks" 
-              subtitle="Workout consistency and achievement tracking" 
+              title="Achievements & Milestones" 
+              subtitle="Streaks, personal records, and motivational insights" 
             />
             <div className="space-y-6">
               <BestStreakHistoryChart />
               <WorkoutTrophyCard />
-            </div>
-          </div>
-
-          {/* Section 5: Personal Bests */}
-          <div className="mb-12">
-            <SectionHeader 
-              icon={Activity} 
-              title="Personal Bests" 
-              subtitle="Your top achievements and motivational insights" 
-            />
-            <div className="space-y-6">
               <MotivationCard />
             </div>
           </div>

@@ -43,45 +43,64 @@ export const CaloriesBurnedChart = () => {
   }
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-700 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          🔥 Calories Burned from Exercise
-        </CardTitle>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-primary">{summary.totalCalories}</div>
-          <div className="text-sm text-muted-foreground">kcal this week</div>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-orange-900 dark:text-orange-100 flex items-center gap-2">
+              🔥 Calories Burned from Exercise
+            </CardTitle>
+            <p className="text-sm text-orange-600 dark:text-orange-300 mt-1">Weekly calorie burn from workouts</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">{summary.totalCalories}</div>
+            <div className="text-sm text-orange-500 dark:text-orange-400">kcal this week</div>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={weeklyChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
             <XAxis 
               dataKey="day" 
-              stroke="hsl(var(--muted-foreground))"
+              stroke="#ea580c"
               fontSize={12}
+              fontWeight={500}
             />
             <YAxis 
-              stroke="hsl(var(--muted-foreground))"
+              stroke="#ea580c"
               fontSize={12}
+              fontWeight={500}
             />
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                color: 'hsl(var(--foreground))'
+                backgroundColor: 'white',
+                border: '2px solid #f97316',
+                borderRadius: '12px',
+                boxShadow: '0 8px 25px rgba(249, 115, 22, 0.2)',
+                fontSize: '14px',
+                fontWeight: '500'
               }}
               formatter={(value: number) => [`${value} kcal`, 'Calories']}
             />
             <Area 
               type="monotone" 
               dataKey="calories" 
-              stroke="hsl(var(--destructive))"
-              fill="hsl(var(--destructive) / 0.2)"
-              strokeWidth={2}
+              stroke="url(#orangeGradient)"
+              fill="url(#orangeAreaGradient)"
+              strokeWidth={3}
             />
+            <defs>
+              <linearGradient id="orangeGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#f97316" />
+                <stop offset="100%" stopColor="#dc2626" />
+              </linearGradient>
+              <linearGradient id="orangeAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f97316" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
           </AreaChart>
         </ResponsiveContainer>
       </CardContent>
