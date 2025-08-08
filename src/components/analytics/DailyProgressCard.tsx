@@ -81,7 +81,7 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
         <div className="space-y-3 flex-1">
           <div className="flex items-center justify-center">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-3xl font-extrabold text-gray-900 dark:text-white">
                 {Math.round(value).toLocaleString()}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-300">{unit}</div>

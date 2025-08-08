@@ -11,7 +11,7 @@ import { ActivityExerciseSection } from '@/components/analytics/sections/Activit
 import { AchievementsSection } from '@/components/analytics/sections/AchievementsSection';
 import { GamificationSection } from '@/components/analytics/sections/GamificationSection';
 import { MonthlySummaryViewer } from '@/components/analytics/MonthlySummaryViewer';
-
+import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
 import { ExerciseAnalyticsSection } from '@/components/analytics/sections/ExerciseAnalyticsSection';
 import { MotivationCard } from '@/components/analytics/MotivationCard';
 import { WorkoutTrophyCard } from '@/components/analytics/WorkoutTrophyCard';
@@ -183,6 +183,7 @@ export default function Analytics() {
             title="Mind & Body Wellness" 
             subtitle="Mood trends and recovery insights" 
           />
+          <MoodWellnessTrendChart />
           <RecoveryAnalyticsSection weeklyAverage={weeklyAverage} />
         </TabsContent>
 

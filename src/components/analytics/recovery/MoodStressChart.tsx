@@ -10,7 +10,7 @@ interface MoodStressData {
   stress: number;
 }
 
-export const MoodStressChart = ({ hideTitle = false }: { hideTitle?: boolean }) => {
+export const MoodStressChart = () => {
   const isMobile = useIsMobile();
   const [data, setData] = useState<MoodStressData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,14 +45,12 @@ export const MoodStressChart = ({ hideTitle = false }: { hideTitle?: boolean }) 
 
   return (
     <Card className="glass-card border-0 rounded-3xl animate-fade-in">
-{!hideTitle && (
-        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-            <TrendingUp className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
-            <span>📈 Mood & Stress Trends</span>
-          </CardTitle>
-        </CardHeader>
-      )}
+      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+        <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+          <TrendingUp className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+          <span>📈 Mood & Stress Trends</span>
+        </CardTitle>
+      </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">

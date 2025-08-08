@@ -7,8 +7,7 @@ import { StreakTrackerCard } from '@/components/analytics/recovery/StreakTracker
 import { RecoveryInsightsCard } from '@/components/analytics/recovery/RecoveryInsightsCard';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
-import { RecoveryActivityTrends } from '@/components/analytics/recovery/RecoveryActivityTrends';
-import { TrendingUp, Pill, Gauge, Brain, PieChart as PieChartIcon, History, Lightbulb, Star, BarChart3 } from 'lucide-react';
+import { TrendingUp, Pill, Gauge, Brain, PieChart as PieChartIcon, History, Lightbulb, Star } from 'lucide-react';
 
 interface RecoveryAnalyticsSectionProps {
   weeklyAverage?: any;
@@ -18,7 +17,12 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
   return (
     <div className="max-w-md mx-auto w-full space-y-6">
       {/* Mood & Wellness Trends (Hero) */}
-      <MoodWellnessTrendChart hideTitle />
+      <SectionHeader 
+        icon={TrendingUp}
+        title="Mood & Wellness Trends"
+        subtitle="Your mood, energy, and wellness over time"
+      />
+      <MoodWellnessTrendChart />
 
       {/* Supplement Tracking */}
       {weeklyAverage && (
@@ -47,7 +51,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Recovery Overview"
         subtitle="Streaks and recovery score"
       />
-      <RecoveryOverviewCard hideTitle />
+      <RecoveryOverviewCard />
       
       {/* Mood & Stress Trends */}
       <SectionHeader 
@@ -55,15 +59,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Mood & Stress Trends"
         subtitle="Weekly mood and stress chart"
       />
-      <MoodStressChart hideTitle />
-      
-      {/* Recovery Activity Trends */}
-      <SectionHeader 
-        icon={BarChart3}
-        title="Recovery Activity Trends"
-        subtitle="Current vs previous period"
-      />
-      <RecoveryActivityTrends hideTitle />
+      <MoodStressChart />
       
       {/* Recovery Activity Breakdown */}
       <SectionHeader 
@@ -71,21 +67,21 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Recovery Activity Breakdown"
         subtitle="Meditation, Breathing, Sleep, Yoga, Thermotherapy"
       />
-      <RecoveryTypesPieChart hideTitle />
+      <RecoveryTypesPieChart />
       
       {/* Streaks & Session History */}
       <SectionHeader 
         icon={History}
         title="Streaks & Session History"
       />
-      <StreakTrackerCard hideTitle />
+      <StreakTrackerCard />
       
       {/* Smart Insights & Suggestions */}
       <SectionHeader 
         icon={Lightbulb}
         title="Smart Insights & Suggestions"
       />
-      <RecoveryInsightsCard hideTitle />
+      <RecoveryInsightsCard />
     </div>
   );
 };
