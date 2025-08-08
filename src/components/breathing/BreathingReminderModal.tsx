@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Clock, CalendarDays } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -147,11 +147,7 @@ export const BreathingReminderModal = ({ isOpen, onClose, reminder }: BreathingR
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md" aria-describedby="breathing-reminder-desc">
-        <DialogTitle id="breathing-reminder-title" className="sr-only">Breathing reminder</DialogTitle>
-        <DialogDescription id="breathing-reminder-desc" className="sr-only">
-          Set up or edit breathing exercise reminders.
-        </DialogDescription>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />

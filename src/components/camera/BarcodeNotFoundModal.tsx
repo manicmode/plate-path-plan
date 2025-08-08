@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Search, FileText, ArrowLeft } from 'lucide-react';
 
@@ -20,11 +20,7 @@ export const BarcodeNotFoundModal: React.FC<BarcodeNotFoundModalProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0" aria-describedby="barcode-not-found-desc">
-        <DialogTitle id="barcode-not-found-title" className="sr-only">Barcode not found</DialogTitle>
-        <DialogDescription id="barcode-not-found-desc" className="sr-only">
-          Product not found in database with options to add manually or try again.
-        </DialogDescription>
+      <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0">
         <DialogHeader className="text-center pb-4">
           <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="h-8 w-8 text-orange-600" />

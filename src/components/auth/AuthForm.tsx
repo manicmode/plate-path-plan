@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { User, Lock, Mail, AlertTriangle } from 'lucide-react';
@@ -476,11 +476,7 @@ const AuthForm = () => {
                         🔑 Forgot your password?
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md" aria-describedby="reset-password-desc">
-                      <DialogTitle id="reset-password-title" className="sr-only">Reset password</DialogTitle>
-                      <DialogDescription id="reset-password-desc" className="sr-only">
-                        Enter your email to reset your password.
-                      </DialogDescription>
+                    <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle>Reset Password</DialogTitle>
                       </DialogHeader>

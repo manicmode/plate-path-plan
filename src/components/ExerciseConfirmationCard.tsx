@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -150,24 +150,24 @@ export const ExerciseConfirmationCard = ({
     }
   }, [isOpen, onClose]);
 
+  // Don't render if not open
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-md shadow-2xl border-border bg-card p-0" 
-        aria-describedby="exercise-confirm-desc"
-        showCloseButton={false}
-      >
-        <DialogTitle id="exercise-confirm-title" className="sr-only">Confirm exercise</DialogTitle>
-        <DialogDescription id="exercise-confirm-desc" className="sr-only">
-          Review exercise details before saving.
-        </DialogDescription>
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2 }}
-          >
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ duration: 0.2 }}
+          className="w-full max-w-md"
+        >
+          <Card ref={cardRef} className="shadow-2xl border-border bg-card">
+            <VisuallyHidden>
+              <h2>Confirm Exercise Log</h2>
+              <p>Review and confirm your exercise details before logging.</p>
+            </VisuallyHidden>
             <CardContent className="p-0">
               {/* Header */}
               <div className="p-6 pb-4">
@@ -317,9 +317,9 @@ export const ExerciseConfirmationCard = ({
                 </div>
               </div>
             </CardContent>
-          </motion.div>
-        </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+          </Card>
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 };
