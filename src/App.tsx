@@ -414,12 +414,8 @@ function AppContent() {
             isOpen={showMoodModal} 
             onClose={() => setShowMoodModal(false)} 
           />
-          
-          {/* Global Mystery Gift Box - Always Floating */}
-          <ErrorBoundary>
-            <MysteryBox />
-          </ErrorBoundary>
-          
+          <MysteryBox />
+          <WorkoutCompletionModal />
           <Toaster />
         </>
       )}
