@@ -71,6 +71,7 @@ export default function Analytics() {
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
           <MealQualityAnalyticsSection />
+          <DailyAveragesSection weeklyAverage={weeklyAverage} />
           
           <div className="pt-8">
             <SectionHeader 
@@ -82,9 +83,16 @@ export default function Analytics() {
           <MealQualityTrendChart />
           <FlaggedIngredientHistoryChart />
           <TopFoodsWeekChart />
+          
+          <div className="pt-8">
+            <SectionHeader 
+              icon={Apple} 
+              title="Smart Insights" 
+              subtitle="AI-powered recommendations and behavioral patterns" 
+            />
+          </div>
           <TagInsightsSection />
           <SmartInsightsSection />
-          <DailyAveragesSection weeklyAverage={weeklyAverage} />
           
           <div className="pt-8">
             <SectionHeader 
