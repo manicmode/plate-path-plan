@@ -453,16 +453,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          aria-describedby="food-confirmation-description"
+          aria-describedby="dialog-desc"
         >
-          <VisuallyHidden>
-            <DialogHeader>
-              <DialogTitle>Confirm Food Log</DialogTitle>
-              <DialogDescription id="food-confirmation-description">
-                Review and confirm your food item before logging it to your nutrition tracker.
-              </DialogDescription>
-            </DialogHeader>
-          </VisuallyHidden>
+          <DialogTitle id="dialog-title" className="sr-only">Review</DialogTitle>
+          <DialogDescription id="dialog-desc" className="sr-only">Confirm details</DialogDescription>
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (

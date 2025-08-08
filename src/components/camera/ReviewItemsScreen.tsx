@@ -82,16 +82,10 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby="review-detected-items-description">
+      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby="dialog-desc">
         <div className="p-6">
-          <VisuallyHidden>
-            <DialogHeader>
-              <DialogTitle>Review Detected Items</DialogTitle>
-              <DialogDescription id="review-detected-items-description">
-                Check and edit the food items detected in your image
-              </DialogDescription>
-            </DialogHeader>
-          </VisuallyHidden>
+          <DialogTitle id="dialog-title" className="sr-only">Review</DialogTitle>
+          <DialogDescription id="dialog-desc" className="sr-only">Confirm details</DialogDescription>
           <DialogHeader className="text-center mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Review Detected Items
