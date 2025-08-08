@@ -3,6 +3,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { routeGPTModel } from "./GPTRouter";
+import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 
 // Real Google Vision API call via Supabase edge function
 async function detectWithGoogle(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
@@ -268,11 +269,11 @@ export async function detectFoodsFromAllSources(image: string, abortSignal?: Abo
     return gptResults;
   })();
   
-  // Add 30-second timeout to detection
+  // Add timeout to detection using shared constant
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
-      reject(new Error('DETECTION_TIMEOUT: Food detection took too long (30s limit)'));
-    }, 30000);
+      reject(new Error('DETECTION_TIMEOUT: Food detection took too long'));
+    }, ANALYSIS_TIMEOUT_MS);
   });
   
   let gptResults;

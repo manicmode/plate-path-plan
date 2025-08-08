@@ -35,6 +35,7 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
+import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
 import { DebugPanel } from '@/components/camera/DebugPanel';
 // Import smoke tests for development
@@ -97,6 +98,7 @@ const CameraPage = () => {
   useScrollToTop();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisRequestId, setAnalysisRequestId] = useState<string | null>(null);
   const [recognizedFoods, setRecognizedFoods] = useState<RecognizedFood[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showVoiceEntry, setShowVoiceEntry] = useState(false);
@@ -168,14 +170,14 @@ const CameraPage = () => {
   const { hasTimedOut, showRecovery, retry, forceSkip } = useLoadingTimeout(
     isAnalyzing || isMultiAILoading || isProcessingFood,
     {
-      timeoutMs: 15000,
+      timeoutMs: ANALYSIS_TIMEOUT_MS,
       onTimeout: () => {
         console.error('⏰ Global loading timeout reached');
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
         setErrorType('timeout');
-        setErrorMessage('Operation timed out. Please try again.');
+        setErrorMessage('Analysis timed out. Please try again or use manual entry.');
         setShowError(true);
       }
     }
@@ -190,6 +192,13 @@ const CameraPage = () => {
       navigate('/camera', { replace: true });
     }
   }, [location.search, navigate]);
+
+  // Auto-dismiss error when analysis succeeds
+  useEffect(() => {
+    if (recognizedFoods.length > 0 || reviewItems.length > 0) {
+      setShowError(false);
+    }
+  }, [recognizedFoods.length, reviewItems.length]);
 
   // Helper function to convert File to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -468,18 +477,23 @@ const CameraPage = () => {
     // Create AbortController for this request
     abortControllerRef.current = new AbortController();
     
-    // Add 15-second global timeout with comprehensive error handling
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('TIMEOUT: Image analysis took too long (15s limit)'));
-      }, 15000);
-    });
+    // Generate unique request ID and setup abort controller
+    const requestId = crypto.randomUUID();
+    setAnalysisRequestId(requestId);
+    
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    
+    const timeoutId = setTimeout(() => {
+      console.warn('⏰ Analysis timeout reached, aborting request');
+      controller.abort('timeout');
+    }, ANALYSIS_TIMEOUT_MS);
     
     try {
       // STEP 1: Check if this looks like a barcode FIRST
-      setProcessingStep('Analyzing image type...');
+      setProcessingStep('Analyzing your photo… this can take up to ~35s for complex images.');
       
-      // Wrap analysis in Promise.race with timeout
+      // Wrap analysis with abort controller
       const analysisPromise = (async () => {
         const isBarcode = await isLikelyBarcode(selectedImage);
         
@@ -574,42 +588,47 @@ const CameraPage = () => {
         }
       })();
       
-      // Race analysis with timeout
-      await Promise.race([analysisPromise, timeoutPromise]);
+      // Await analysis with abort controller
+      await analysisPromise;
       
     } catch (error) {
       console.error('=== IMAGE ANALYSIS FAILED ===', error);
       
-      if (error.name === 'AbortError') {
-        console.log('Analysis was cancelled');
-        toast.info('Analysis cancelled');
-        return;
-      }
+      const isAborted = error.name === 'AbortError' || controller.signal.aborted;
+      const isTimeout = isAborted && error.message === 'timeout';
       
-      // Handle timeout errors specifically
-      if (error.message?.includes('TIMEOUT')) {
-        console.error('⏰ Analysis timeout reached');
-        setErrorType('timeout');
-        setErrorMessage('Image analysis timed out. This may be due to slow internet or high server load.');
-        setErrorSuggestions([
-          'Try a clearer, smaller image',
-          'Check your internet connection',
-          'Retry in a few moments',
-          'Try manual food entry instead'
-        ]);
-        setShowError(true);
-        toast.error('Analysis timed out. Please try again or use manual entry.');
-        return;
+      // Only show error if this is still the current request
+      if (analysisRequestId === requestId) {
+        if (isTimeout) {
+          console.error('⏰ Analysis timeout reached');
+          setErrorType('timeout');
+          setErrorMessage('Image analysis timed out. This may be due to slow internet or high server load.');
+          setErrorSuggestions([
+            'Try a clearer, smaller image',
+            'Check your internet connection',
+            'Retry in a few moments',
+            'Try manual food entry instead'
+          ]);
+          setShowError(true);
+          toast.error('Analysis timed out. Please try again or use manual entry.');
+        } else if (isAborted) {
+          console.log('Analysis was cancelled');
+          toast.info('Analysis cancelled');
+        } else {
+          // Generic fallback with error display
+          setErrorType('analysis');
+          setErrorMessage(error instanceof Error ? error.message : 'Failed to analyze image');
+          setShowError(true);
+          toast.error('Failed to analyze image. Please try again.');
+        }
       }
-      
-      // Generic fallback with error display
-      setErrorType('analysis');
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to analyze image');
-      setShowError(true);
-      toast.error('Failed to analyze image. Please try again.');
     } finally {
+      clearTimeout(timeoutId);
       setIsAnalyzing(false);
       setProcessingStep('');
+      if (analysisRequestId === requestId) {
+        setAnalysisRequestId(null);
+      }
       abortControllerRef.current = null;
     }
   };
