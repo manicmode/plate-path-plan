@@ -64,53 +64,73 @@ export default function Analytics() {
         </TabsList>
 
         <TabsContent value="nutrition" className="space-y-6 mt-6">
-          {/* Daily Overview Section */}
-          <SectionHeader 
-            icon={Apple} 
-            title="Daily Overview" 
-            subtitle="Today's nutrition progress and breakdown" 
-          />
-          <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
-          <MacrosHydrationSection macroData={macroData} progress={progress} />
-          <MealQualityTrendChart />
-          <MealQualityAnalyticsSection />
-          
-          {/* Weekly & Average Performance Section */}
-          <div className="pt-8">
+          {/* Section 1: Today's Breakdown */}
+          <div className="mb-12">
             <SectionHeader 
               icon={Apple} 
-              title="Weekly & Average Performance" 
+              title="Today's Breakdown" 
+              subtitle="Today's nutrition progress and breakdown" 
+            />
+            <div className="space-y-6">
+              <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
+              <MacrosHydrationSection macroData={macroData} progress={progress} />
+            </div>
+          </div>
+          
+          {/* Section 2: Quality & Trends */}
+          <div className="mb-12">
+            <SectionHeader 
+              icon={Apple} 
+              title="Quality & Trends" 
+              subtitle="Meal quality patterns and consumption trends" 
+            />
+            <div className="space-y-6">
+              <MealQualityTrendChart />
+              <MealQualityAnalyticsSection />
+            </div>
+          </div>
+          
+          {/* Section 3: Insights */}
+          <div className="mb-12">
+            <SectionHeader 
+              icon={Apple} 
+              title="Insights" 
+              subtitle="Smart analysis and pattern recognition" 
+            />
+            <div className="space-y-6">
+              <SmartInsightsSection />
+              <TagInsightsSection />
+            </div>
+          </div>
+          
+          {/* Section 4: Averages & Performance */}
+          <div className="mb-12">
+            <SectionHeader 
+              icon={Apple} 
+              title="Averages & Performance" 
               subtitle="Weekly trends and average daily metrics" 
             />
+            <div className="space-y-6">
+              <DailyAveragesSection weeklyAverage={weeklyAverage} />
+              <WeeklyOverviewChart />
+              <FlaggedIngredientHistoryChart />
+              <TopFoodsWeekChart />
+            </div>
           </div>
-          <DailyAveragesSection weeklyAverage={weeklyAverage} />
-          <WeeklyOverviewChart />
           
-          {/* Progress & Achievements Section */}
-          <AchievementsSection />
-          <GamificationSection />
-          
-          <div className="pt-8">
+          {/* Section 5: Progress & Achievements */}
+          <div className="mb-12">
             <SectionHeader 
               icon={Apple} 
               title="Progress & Achievements" 
               subtitle="Milestones, streaks, and nutrition journey" 
             />
+            <div className="space-y-6">
+              <AchievementsSection />
+              <GamificationSection />
+              <MonthlySummaryViewer />
+            </div>
           </div>
-          <MonthlySummaryViewer />
-          
-          {/* Long-Term Trends & Insights Section */}
-          <div className="pt-8">
-            <SectionHeader 
-              icon={Apple} 
-              title="Trends & Analysis" 
-              subtitle="Pattern insights and long-term consumption trends" 
-            />
-          </div>
-          <FlaggedIngredientHistoryChart />
-          <TopFoodsWeekChart />
-          <TagInsightsSection />
-          <SmartInsightsSection />
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
