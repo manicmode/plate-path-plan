@@ -26,10 +26,6 @@ const handleSkillCommand = (prompt: string) => {
   window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text: prompt } }));
 };
 
-const handleChipCommand = (cmd: { chipId: string; text: string }) => {
-  console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'recovery', chipId: cmd.chipId, usingContext: true }));
-  window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text: cmd.text, chipId: cmd.chipId } }));
-};
 
   // Recovery Skill Panel Categories
   const recoverySkillCategories = [
@@ -143,7 +139,7 @@ const handleChipCommand = (cmd: { chipId: string; text: string }) => {
         />
         
 {/* Command Buttons */}
-<RecoveryCommandBar onCommand={(cmd) => window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text: cmd } }))} />
+<RecoveryCommandBar />
         
         {/* Tips or Motivation */}
         <RecoveryTips />

@@ -48,13 +48,21 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   // Listen for programmatic sends from SkillPanel/CommandBar
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { text: string; chipId?: string };
-      if (detail?.text) {
-        if (detail.chipId) {
-          console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'recovery', chipId: detail.chipId, usingContext: useMyData }));
-        }
-        sendMessage(detail.text);
+      const raw = (e as CustomEvent).detail as any;
+      let text = '' as string;
+      let chipId: string | undefined = undefined;
+      if (typeof raw === 'string') {
+        text = raw;
+        chipId = 'unknown';
+      } else if (raw && typeof raw === 'object') {
+        text = raw.text || '';
+        chipId = raw.chipId;
       }
+      if (!text) return;
+      if (chipId) {
+        console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'recovery', chipId, usingContext: useMyData }));
+      }
+      sendMessage(text);
     };
     window.addEventListener('recovery-chat:send', handler as EventListener);
     return () => window.removeEventListener('recovery-chat:send', handler as EventListener);

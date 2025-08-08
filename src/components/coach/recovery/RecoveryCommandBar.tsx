@@ -3,8 +3,14 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Zap } from 'lucide-react';
 
+type RecoveryCommand = {
+  chipId: string;
+  text: string;
+  meta?: Record<string, any>;
+};
+
 interface RecoveryCommandBarProps {
-  onCommand?: (payload: { chipId: string; text: string }) => void;
+  onCommand?: (payload: RecoveryCommand) => void;
 }
 
 export const RecoveryCommandBar = ({ onCommand }: RecoveryCommandBarProps) => {
@@ -19,10 +25,13 @@ export const RecoveryCommandBar = ({ onCommand }: RecoveryCommandBarProps) => {
     { id: 'rec_sync_training', label: 'Recovery + training sync', message: 'Align recovery with training so {{goal_primary}} stays on track.' },
   ];
 
-  const handleCommand = (cmd: { chipId: string; text: string }) => {
-    if (onCommand) {
-      onCommand(cmd);
-    }
+  const handleCommand = (cmd: RecoveryCommand) => {
+    // Fire global event for Recovery chat listener
+    window.dispatchEvent(
+      new CustomEvent('recovery-chat:send', { detail: { chipId: cmd.chipId, text: cmd.text } })
+    );
+    // Optional callback for parents
+    onCommand?.(cmd);
   };
 
   return (
