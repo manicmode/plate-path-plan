@@ -2659,41 +2659,43 @@ const CameraPage = () => {
       )}
 
       {/* Food Confirmation Card */}
-      <FoodConfirmationCard
-        isOpen={showConfirmation}
-        isProcessingFood={isProcessingFood}
-        onClose={() => {
-          setShowConfirmation(false);
-          setIsProcessingFood(false); // Reset processing state when closing
-          // Reset multi-item flow if needed
-          if (pendingItems.length > 0) {
-            setPendingItems([]);
-            setCurrentItemIndex(0);
-          }
-          setShowTransition(false);
-          // Return to the appropriate previous screen
-          if (selectedImage && !showSummaryPanel) {
-            // Return to camera analysis view
-            setIsAnalyzing(false);
-          } else if (summaryItems.length > 0) {
-            // Return to summary panel if it was the previous screen
-            setShowSummaryPanel(true);
-          } else {
-            // Reset to camera home
-            resetState();
-          }
-        }}
-        onConfirm={handleConfirmFood}
-        onSkip={handleSkipFood}
-        foodItem={recognizedFoods[0] || null}
-        showSkip={pendingItems.length > 1}
-        currentIndex={currentItemIndex}
-        onVoiceAnalyzingComplete={() => {
-          setShowVoiceAnalyzing(false);
-          setShowProcessingNextItem(false);
-        }}
-        totalItems={pendingItems.length}
-      />
+      {showConfirmation && (
+        <FoodConfirmationCard
+          isOpen={showConfirmation}
+          isProcessingFood={isProcessingFood}
+          onClose={() => {
+            setShowConfirmation(false);
+            setIsProcessingFood(false); // Reset processing state when closing
+            // Reset multi-item flow if needed
+            if (pendingItems.length > 0) {
+              setPendingItems([]);
+              setCurrentItemIndex(0);
+            }
+            setShowTransition(false);
+            // Return to the appropriate previous screen
+            if (selectedImage && !showSummaryPanel) {
+              // Return to camera analysis view
+              setIsAnalyzing(false);
+            } else if (summaryItems.length > 0) {
+              // Return to summary panel if it was the previous screen
+              setShowSummaryPanel(true);
+            } else {
+              // Reset to camera home
+              resetState();
+            }
+          }}
+          onConfirm={handleConfirmFood}
+          onSkip={handleSkipFood}
+          foodItem={recognizedFoods[0] || null}
+          showSkip={pendingItems.length > 1}
+          currentIndex={currentItemIndex}
+          onVoiceAnalyzingComplete={() => {
+            setShowVoiceAnalyzing(false);
+            setShowProcessingNextItem(false);
+          }}
+          totalItems={pendingItems.length}
+        />
+      )}
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
       {inputSource !== 'barcode' && (
@@ -2776,10 +2778,12 @@ const CameraPage = () => {
       )}
 
       {/* Manual Food Entry Modal */}
-      <ManualFoodEntry
-        isOpen={showManualFoodEntry}
-        onClose={() => setShowManualFoodEntry(false)}
-      />
+      {showManualFoodEntry && (
+        <ManualFoodEntry
+          isOpen={showManualFoodEntry}
+          onClose={() => setShowManualFoodEntry(false)}
+        />
+      )}
 
       {/* Debug components removed - clean production interface */}
       
