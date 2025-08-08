@@ -5,7 +5,9 @@ import { MoodStressChart } from '@/components/analytics/recovery/MoodStressChart
 import { RecoveryTypesPieChart } from '@/components/analytics/recovery/RecoveryTypesPieChart';
 import { StreakTrackerCard } from '@/components/analytics/recovery/StreakTrackerCard';
 import { RecoveryInsightsCard } from '@/components/analytics/recovery/RecoveryInsightsCard';
-import { Star } from 'lucide-react';
+import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
+import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
+import { TrendingUp, Pill, Gauge, Brain, PieChart as PieChartIcon, History, Lightbulb, Star } from 'lucide-react';
 
 interface RecoveryAnalyticsSectionProps {
   weeklyAverage?: any;
@@ -14,32 +16,71 @@ interface RecoveryAnalyticsSectionProps {
 export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSectionProps = {}) => {
   return (
     <div className="max-w-md mx-auto w-full space-y-6">
-      {/* Supplements Progress Card */}
+      {/* Mood & Wellness Trends (Hero) */}
+      <SectionHeader 
+        icon={TrendingUp}
+        title="Mood & Wellness Trends"
+        subtitle="Your mood, energy, and wellness over time"
+      />
+      <MoodWellnessTrendChart />
+
+      {/* Supplement Tracking */}
       {weeklyAverage && (
-        <div className="mb-6">
-          <DailyProgressCard
-            title="Daily Supplements"
-            value={weeklyAverage.supplements || 0}
-            target={5}
-            unit="taken"
-            icon={<Star className="h-6 w-6" />}
-            color="#EC4899"
+        <>
+          <SectionHeader 
+            icon={Pill}
+            title="Supplement Tracking"
+            subtitle="Daily supplements taken"
           />
-        </div>
+          <div className="mb-6">
+            <DailyProgressCard
+              title="Daily Supplements"
+              value={weeklyAverage.supplements || 0}
+              target={5}
+              unit="taken"
+              icon={<Star className="h-6 w-6" />}
+              color="#EC4899"
+            />
+          </div>
+        </>
       )}
-      {/* Recovery Overview Card */}
+
+      {/* Recovery Overview */}
+      <SectionHeader 
+        icon={Gauge}
+        title="Recovery Overview"
+        subtitle="Streaks and recovery score"
+      />
       <RecoveryOverviewCard />
       
-      {/* Mood & Stress Graph */}
+      {/* Mood & Stress Trends */}
+      <SectionHeader 
+        icon={Brain}
+        title="Mood & Stress Trends"
+        subtitle="Weekly mood and stress chart"
+      />
       <MoodStressChart />
       
-      {/* Recovery Types Pie Chart */}
+      {/* Recovery Activity Breakdown */}
+      <SectionHeader 
+        icon={PieChartIcon}
+        title="Recovery Activity Breakdown"
+        subtitle="Meditation, Breathing, Sleep, Yoga, Thermotherapy"
+      />
       <RecoveryTypesPieChart />
       
-      {/* Streak Tracker & Session Logs */}
+      {/* Streaks & Session History */}
+      <SectionHeader 
+        icon={History}
+        title="Streaks & Session History"
+      />
       <StreakTrackerCard />
       
-      {/* Insights & Nudges */}
+      {/* Smart Insights & Suggestions */}
+      <SectionHeader 
+        icon={Lightbulb}
+        title="Smart Insights & Suggestions"
+      />
       <RecoveryInsightsCard />
     </div>
   );

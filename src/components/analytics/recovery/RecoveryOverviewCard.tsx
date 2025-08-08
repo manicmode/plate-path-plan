@@ -119,9 +119,9 @@ export const RecoveryOverviewCard = () => {
               {stats.recoveryScore}/100
             </span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-6">
             <div 
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-blue-500 to-cyan-500 h-6 rounded-full transition-all duration-500"
               style={{ width: `${stats.recoveryScore}%` }}
             ></div>
           </div>

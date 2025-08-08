@@ -18,9 +18,9 @@ export const RecoveryTypesPieChart = () => {
   useEffect(() => {
     // Mock data for recovery types
     const mockData: RecoveryTypeData[] = [
-      { name: 'Meditation', value: 35, color: 'hsl(219 100% 62%)' },
+      { name: 'Meditation', value: 35, color: 'hsl(262 83% 58%)' },
       { name: 'Breathing', value: 28, color: 'hsl(192 100% 45%)' },
-      { name: 'Sleep', value: 20, color: 'hsl(262 83% 58%)' },
+      { name: 'Sleep', value: 20, color: 'hsl(219 100% 62%)' },
       { name: 'Yoga', value: 12, color: 'hsl(158 100% 39%)' },
       { name: 'Thermotherapy', value: 5, color: 'hsl(14 100% 55%)' },
     ];
