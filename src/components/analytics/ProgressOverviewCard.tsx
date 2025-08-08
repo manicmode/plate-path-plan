@@ -25,7 +25,7 @@ export const ProgressOverviewCard = ({ className }: ProgressOverviewCardProps) =
                              latestInsight?.volume_trend === 'decreasing' ? '-10%' : '0%';
 
   const aiInsights = [
-    `You're most consistent on ${mostActiveDay.day}s`,
+    `You're most consistent on ${(mostActiveDay as any).label ?? (mostActiveDay as any).day}s`,
     `Total training volume ${totalVolumeIncrease} this month`,
     `${workoutDays.length}/7 days active this week`,
     latestInsight?.progress_message || "Keep up the great work!"

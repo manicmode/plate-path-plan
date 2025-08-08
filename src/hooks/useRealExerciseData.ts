@@ -138,20 +138,21 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
     const letters = ['S','M','T','W','T','F','S'];
     const start = new Date(end);
     start.setDate(end.getDate() - 6);
-    const out: Array<{ label: string; fullLabel: string; steps: number; calories: number; duration: number; date: string }> = [];
+    const out: Array<{ label: string; fullLabel: string; steps: number; calories: number; duration: number; date: string; day?: string }> = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       const key = d.toISOString().slice(0,10);
       const day = exerciseData.find((e) => e.date === key);
-      out.push({
-        label: letters[d.getDay()],
-        fullLabel: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }),
-        steps: day?.steps || 0,
-        calories: day?.calories_burned || 0,
-        duration: day?.duration_minutes || 0,
-        date: key,
-      });
+        out.push({
+          label: letters[d.getDay()],
+          fullLabel: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }),
+          steps: day?.steps || 0,
+          calories: day?.calories_burned || 0,
+          duration: day?.duration_minutes || 0,
+          date: key,
+          day: letters[d.getDay()],
+        });
     }
     return out;
   };

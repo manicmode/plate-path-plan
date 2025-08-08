@@ -12,9 +12,9 @@ export const WorkoutVolumeChart = ({ className }: WorkoutVolumeChartProps) => {
 
   // Format data for the chart
   const chartData = weeklyChartData.map((day) => ({
-    day: day.day,
-    minutes: day.duration,
-    calories: day.calories,
+    day: (day as any).label ?? (day as any).day,
+    minutes: (day as any).duration,
+    calories: (day as any).calories,
   }));
 
   // Calculate averages

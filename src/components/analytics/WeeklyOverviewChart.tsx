@@ -66,7 +66,7 @@ export const WeeklyOverviewChart = () => {
         };
 
         return {
-          day: day.day,
+          day: (day as any).label ?? (day as any).day,
           value: getValue(),
           target: currentMetric?.target || 0
         };
