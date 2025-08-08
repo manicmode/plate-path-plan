@@ -1734,11 +1734,17 @@ const CameraPage = () => {
 
     const itemQuantity = (currentItem as any).quantity || (currentItem as any).portion || '1';
     
+    // Check if this is an egg item for per-unit override
+    const normalizedName = currentItem.name.toLowerCase().replace(/s$/, '');
+    const isEggItem = normalizedName.includes('egg');
+    const selectedSize = isEggItem ? ((currentItem as any).eggSize || 'large') : undefined;
+    
     const normalized = normalizeServing(
       currentItem.name,
       itemQuantity,
       baseNutrition,
-      nutrition.serving_size
+      nutrition.serving_size,
+      selectedSize
     );
 
     // Get debug info for the panel
@@ -1748,7 +1754,8 @@ const CameraPage = () => {
       baseNutrition,
       nutrition.serving_size,
       nutrition.debugLog?.sourceChosen,
-      nutrition.debugLog?.reason
+      nutrition.debugLog?.reason,
+      selectedSize
     );
 
     // Log successful individual nutrition estimation with normalized values
@@ -1757,7 +1764,7 @@ const CameraPage = () => {
 
     const foodItem = {
       id: currentItem.id,
-      name: normalized.titleText,
+      name: normalized.titleText.replace(/\s+/g, ' '), // Ensure single spacing
       displayName: currentItem.name, // Keep original for processing
       quantity: itemQuantity, // Keep original quantity
       calories: Math.round(normalized.finalCalories),

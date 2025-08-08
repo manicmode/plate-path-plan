@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, ArrowRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -11,6 +12,7 @@ export interface ReviewItem {
   portion: string;
   selected: boolean;
   id: string;
+  eggSize?: string;
 }
 
 interface ReviewItemsScreenProps {
@@ -44,7 +46,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   }, [items, isOpen]);
 
-  const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected', value: string | boolean) => {
+  const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected' | 'eggSize', value: string | boolean) => {
     setItems(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
@@ -127,6 +129,30 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                           className="mt-1"
                         />
                       </div>
+                      
+                      {/* Egg Size Selector */}
+                      {item.name.toLowerCase().includes('egg') && (
+                        <div>
+                          <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Egg Size
+                          </label>
+                          <Select
+                            value={item.eggSize || 'large'}
+                            onValueChange={(value) => handleItemChange(item.id, 'eggSize', value)}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select egg size" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="small">Small (54 kcal)</SelectItem>
+                              <SelectItem value="medium">Medium (63 kcal)</SelectItem>
+                              <SelectItem value="large">Large (72 kcal)</SelectItem>
+                              <SelectItem value="xl">XL (80 kcal)</SelectItem>
+                              <SelectItem value="jumbo">Jumbo (90 kcal)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
 
                     {items.length > 1 && (

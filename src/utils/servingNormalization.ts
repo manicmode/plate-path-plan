@@ -31,6 +31,19 @@ export interface NormalizationResult {
   nutrition: PerUnitNutrition;
 }
 
+export const COUNT_BASED_OVERRIDES_KCAL: Record<string, { perUnitKcal: number, sizes?: Record<string, number> }> = {
+  egg: {
+    perUnitKcal: 72, // default = large egg
+    sizes: {
+      small: 54,
+      medium: 63,
+      large: 72,
+      xl: 80,
+      jumbo: 90
+    }
+  }
+};
+
 const COUNT_UNITS = ['piece', 'pieces', 'slice', 'slices', 'egg', 'eggs', 'item', 'items', 'unit', 'units', 'serving', 'servings'];
 const WEIGHT_UNITS = ['g', 'gram', 'grams', 'kg', 'kilogram', 'kilograms', 'oz', 'ounce', 'ounces', 'lb', 'pound', 'pounds'];
 
@@ -91,12 +104,54 @@ export function normalizeServing(
   foodName: string,
   quantity: string,
   baseNutrition: PerUnitNutrition,
-  baseServingInfo?: string
+  baseServingInfo?: string,
+  selectedSize?: string
 ): NormalizationResult {
   // Parse user quantity
   const quantityMatch = quantity.match(/(\d+(?:\.\d+)?)\s*(.*)/) || ['', '1', ''];
   const userQuantity = parseFloat(quantityMatch[1]) || 1;
   const userUnit = quantityMatch[2]?.toLowerCase().trim() || '';
+  
+  // Check for count-based overrides (like eggs)
+  const normalizedFoodName = foodName.toLowerCase().replace(/s$/, ''); // Remove plural
+  const override = COUNT_BASED_OVERRIDES_KCAL[normalizedFoodName];
+  
+  if (override) {
+    // Use per-unit override for specific foods like eggs
+    const sizeKey = selectedSize?.toLowerCase() || 'large';
+    const perUnitKcal = override.sizes?.[sizeKey] || override.perUnitKcal;
+    
+    const perUnitNutrition: PerUnitNutrition = {
+      calories: perUnitKcal,
+      protein: baseNutrition.protein / baseNutrition.calories * perUnitKcal,
+      carbs: baseNutrition.carbs / baseNutrition.calories * perUnitKcal,
+      fat: baseNutrition.fat / baseNutrition.calories * perUnitKcal,
+      fiber: baseNutrition.fiber / baseNutrition.calories * perUnitKcal,
+      sugar: baseNutrition.sugar / baseNutrition.calories * perUnitKcal,
+      sodium: baseNutrition.sodium / baseNutrition.calories * perUnitKcal,
+      saturated_fat: baseNutrition.saturated_fat ? baseNutrition.saturated_fat / baseNutrition.calories * perUnitKcal : undefined
+    };
+    
+    const finalNutrition: PerUnitNutrition = {
+      calories: perUnitNutrition.calories * userQuantity,
+      protein: perUnitNutrition.protein * userQuantity,
+      carbs: perUnitNutrition.carbs * userQuantity,
+      fat: perUnitNutrition.fat * userQuantity,
+      fiber: perUnitNutrition.fiber * userQuantity,
+      sugar: perUnitNutrition.sugar * userQuantity,
+      sodium: perUnitNutrition.sodium * userQuantity,
+      saturated_fat: perUnitNutrition.saturated_fat ? perUnitNutrition.saturated_fat * userQuantity : undefined
+    };
+    
+    return {
+      titleText: `${userQuantity} ${selectedSize || 'large'} ${normalizedFoodName}${userQuantity > 1 ? 's' : ''}`,
+      subtitleText: `Per-unit override (≈${selectedSize === 'large' ? '50' : '45-60'}g each)`,
+      perUnitCalories: perUnitKcal,
+      effectiveQuantity: userQuantity,
+      finalCalories: finalNutrition.calories,
+      nutrition: finalNutrition
+    };
+  }
   
   // Parse base serving if provided
   const parsedServing = baseServingInfo ? parseServingLabel(baseServingInfo) : null;
@@ -170,10 +225,20 @@ export function getServingDebugInfo(
   baseNutrition: PerUnitNutrition,
   baseServingInfo?: string,
   sourceChosen?: string,
-  reason?: string
+  reason?: string,
+  selectedSize?: string
 ) {
-  const normalized = normalizeServing(foodName, quantity, baseNutrition, baseServingInfo);
+  const normalized = normalizeServing(foodName, quantity, baseNutrition, baseServingInfo, selectedSize);
   const parsedServing = baseServingInfo ? parseServingLabel(baseServingInfo) : null;
+  
+  // Check if this used an override
+  const normalizedFoodName = foodName.toLowerCase().replace(/s$/, '');
+  const usedOverride = COUNT_BASED_OVERRIDES_KCAL[normalizedFoodName];
+  
+  if (usedOverride) {
+    sourceChosen = 'per-unit-override';
+    reason = 'count_based_override';
+  }
   
   return {
     ...normalized,
