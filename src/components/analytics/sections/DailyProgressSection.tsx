@@ -11,12 +11,9 @@ interface DailyProgressSectionProps {
 
 export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressSectionProps) => {
   const { user } = useAuth();
-  
-  // Convert targetHydration (glasses) to ml
-  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       <DailyProgressCard
         title="Calories"
         value={progress.calories}
@@ -32,22 +29,6 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="g"
         icon={<Zap className="h-6 w-6" />}
         color="#10B981"
-      />
-      <DailyProgressCard
-        title="Hydration"
-        value={progress.hydration}
-        target={hydrationTargetMl}
-        unit="ml"
-        icon={<Droplets className="h-6 w-6" />}
-        color="#06B6D4"
-      />
-      <DailyProgressCard
-        title="Steps"
-        value={Math.round(weeklyAverage.steps)}
-        target={10000}
-        unit="steps"
-        icon={<Activity className="h-6 w-6" />}
-        color="#22C55E"
       />
     </div>
   );

@@ -65,7 +65,7 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
-          <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} />
+          <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
           <ExerciseAnalyticsSection />
           <WorkoutTrophyCard />
           <MotivationCard />
@@ -73,7 +73,7 @@ export default function Analytics() {
 
         <TabsContent value="recovery" className="space-y-6 mt-6">
           <MoodWellnessTrendChart />
-          <RecoveryAnalyticsSection />
+          <RecoveryAnalyticsSection weeklyAverage={weeklyAverage} />
         </TabsContent>
 
       </Tabs>

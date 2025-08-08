@@ -2,8 +2,10 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
-import { Activity, Flame } from 'lucide-react';
+import { Activity, Flame, Droplets } from 'lucide-react';
+import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
+import { useAuth } from '@/contexts/auth';
 import { CircularProgress } from '@/components/analytics/ui/CircularProgress';
 import { CustomTooltip } from '@/components/analytics/ui/CustomTooltip';
 
@@ -11,12 +13,45 @@ interface ActivityExerciseSectionProps {
   stepsData: any[];
   exerciseCaloriesData: any[];
   weeklyAverage: any;
+  progress: any;
 }
 
-export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weeklyAverage }: ActivityExerciseSectionProps) => {
+export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weeklyAverage, progress }: ActivityExerciseSectionProps) => {
+  const { user } = useAuth();
+  // Convert targetHydration (glasses) to ml
+  const hydrationTargetMl = (user?.targetHydration || 8) * 250;
+
   return (
     <div>
-      <SectionHeader icon={Activity} title="Activity & Exercise" subtitle="Steps and calories burned" />
+      <SectionHeader icon={Activity} title="Activity & Exercise" subtitle="Steps, exercise, and hydration" />
+      
+      {/* Progress Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <DailyProgressCard
+          title="Steps"
+          value={Math.round(weeklyAverage.steps)}
+          target={10000}
+          unit="steps"
+          icon={<Activity className="h-6 w-6" />}
+          color="#22C55E"
+        />
+        <DailyProgressCard
+          title="Exercise Calories"
+          value={Math.round(weeklyAverage.exerciseMinutes * 8)}
+          target={500}
+          unit="kcal"
+          icon={<Flame className="h-6 w-6" />}
+          color="#F97316"
+        />
+        <DailyProgressCard
+          title="Hydration"
+          value={progress.hydration}
+          target={hydrationTargetMl}
+          unit="ml"
+          icon={<Droplets className="h-6 w-6" />}
+          color="#06B6D4"
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
           <CardHeader>

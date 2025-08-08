@@ -80,50 +80,6 @@ export const DailyAveragesSection = ({ weeklyAverage }: DailyAveragesSectionProp
               target={user?.targetFat || 70}
               isCompact={true}
             />
-            <EnhancedDailyAverageCard
-              title="Avg Daily Hydration"
-              value={weeklyAverage.hydration}
-              suffix="ml"
-              icon={<Droplets className="h-6 w-6" />}
-              gradientFrom="#06B6D4"
-              gradientTo="#22D3EE"
-              progress={Math.round((weeklyAverage.hydration / (user?.targetHydration || 2000)) * 100)}
-              target={user?.targetHydration || 2000}
-              isCompact={true}
-            />
-            <EnhancedDailyAverageCard
-              title="Avg Daily Steps"
-              value={weeklyAverage.steps}
-              suffix=""
-              icon={<Activity className="h-6 w-6" />}
-              gradientFrom="#3B82F6"
-              gradientTo="#60A5FA"
-              progress={Math.round((weeklyAverage.steps / 10000) * 100)}
-              target={10000}
-              isCompact={true}
-            />
-            <EnhancedDailyAverageCard
-              title="Avg Exercise Minutes"
-              value={weeklyAverage.exerciseMinutes}
-              suffix=" min"
-              icon={<Flame className="h-6 w-6" />}
-              gradientFrom="#EF4444"
-              gradientTo="#F87171"
-              progress={Math.round((weeklyAverage.exerciseMinutes / 60) * 100)}
-              target={60}
-              isCompact={true}
-            />
-            <EnhancedDailyAverageCard
-              title="Avg Daily Supplements"
-              value={weeklyAverage.supplements}
-              suffix=""
-              icon={<Star className="h-6 w-6" />}
-              gradientFrom="#EC4899"
-              gradientTo="#F472B6"
-              progress={Math.round((weeklyAverage.supplements / 5) * 100)}
-              target={5}
-              isCompact={true}
-            />
           </div>
         </CollapsibleContent>
       </Collapsible>
