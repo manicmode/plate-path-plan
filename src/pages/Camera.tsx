@@ -1277,6 +1277,26 @@ const CameraPage = () => {
       return;
     }
 
+
+    // Tiny fallback parser for simple inputs
+    function parseSimpleList(text: string) {
+      // handles "2 eggs, 1 avocado" or "two eggs and one avocado"
+      const map: Record<string, number> = { one:1, two:2, three:3, four:4, five:5 };
+      return text
+        .toLowerCase()
+        .replace(/ and /g, ", ")
+        .split(",")
+        .map(s => s.trim())
+        .map(s => {
+          const m = s.match(/^(\d+|one|two|three|four|five)\s+(.+)$/i);
+          if (!m) return null;
+          const qty = map[m[1]] ?? Number(m[1]) ?? 1;
+          const name = m[2].trim();
+          return { name, quantity: String(qty), preparation: "" };
+        })
+        .filter(Boolean);
+    }
+
     setIsProcessingVoice(true);
     setIsManualAnalyzing(true);
     setShowVoiceAnalyzing(true); // Show "Analyzing Manual Input..." overlay
@@ -1329,6 +1349,40 @@ const CameraPage = () => {
       const isSuccess = result.success === true && result.items?.length > 0;
 
       if (!isSuccess) {
+        // Try fallback parser if AI failed but server responded
+        if (result.ok === true && result.items?.length === 0) {
+          const fallbackItems = parseSimpleList(manualEditText);
+          if (fallbackItems.length >= 1) {
+            toast.success("Using quick parse while AI thinks.");
+            
+            // Convert fallback items to the same format as voice results
+            const voiceSummaryItems = fallbackItems.map((item, index) => {
+              let displayName = item.name;
+              if (item.preparation) {
+                displayName = `${item.preparation} ${item.name}`;
+              }
+              
+              return {
+                id: `manual-fallback-${index}`,
+                name: displayName,
+                portion: item.quantity || '1 serving',
+                selected: true
+              };
+            });
+            
+            // Use unified pending items flow
+            setPendingItems(voiceSummaryItems);
+            setCurrentItemIndex(0);
+            setShowManualEdit(false);
+            resetErrorState();
+            
+            // Process the first item
+            processCurrentItem(voiceSummaryItems, 0);
+            return;
+          }
+        }
+        
+        // Original error handling
         let errorMessage = 'Failed to process manual input';
         
         if (result.ok === true && result.items?.length === 0) {
