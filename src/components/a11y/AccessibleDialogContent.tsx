@@ -7,9 +7,10 @@ type Props = {
   description: string;    // required
   children: React.ReactNode;
   className?: string;
+  showCloseButton?: boolean;
 };
 
-export default function AccessibleDialogContent({ title, description, children, className }: Props) {
+export default function AccessibleDialogContent({ title, description, children, className, showCloseButton = false }: Props) {
   const titleId = useId();
   const descId = useId();
 
@@ -31,6 +32,7 @@ export default function AccessibleDialogContent({ title, description, children, 
     <DialogContent
       aria-describedby={descId}
       className={className}
+      showCloseButton={showCloseButton}
     >
       <DialogHeader className="sr-only">
         <DialogTitle id={titleId}>{title}</DialogTitle>
