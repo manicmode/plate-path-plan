@@ -1130,7 +1130,7 @@ const CameraPage = () => {
       let primaryJson: any = null;
 
       try {
-        primaryJson = primaryResp?.message ? JSON.parse(primaryResp.message) : null;
+        primaryJson = primaryResp?.raw || null;
       } catch (e) {
         primaryJson = null;
         console.error('GPT-5 primary JSON parse failed:', e);

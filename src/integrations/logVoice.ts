@@ -4,9 +4,15 @@ export interface LogVoiceRequest {
 }
 
 export interface LogVoiceResponse {
-  message: string;
+  ok: boolean;
+  status: number;
   success: boolean;
-  ok: boolean; // HTTP response.ok status
+  items: any[];
+  model_used: string;
+  fallback_used: boolean;
+  originalText: string | null;
+  preprocessedText: string | null;
+  raw: any;
   error?: string;
 }
 
@@ -46,82 +52,48 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     console.log('🔍 [sendToLogVoice] Response headers:', Object.fromEntries(response.headers.entries()));
 
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ [sendToLogVoice] HTTP error response:', errorText);
-      console.error('❌ [sendToLogVoice] Response status:', response.status);
-      console.error('❌ [sendToLogVoice] Response status text:', response.statusText);
-      
-      // Try to parse the error response for better error messages
-      try {
-        const errorData = JSON.parse(errorText);
-        return {
-          message: JSON.stringify(errorData),
-          success: false,
-          ok: response.ok,
-          error: errorData.errorMessage || `HTTP ${response.status}: ${response.statusText}`
-        };
-      } catch {
-        return {
-          message: JSON.stringify({
-            success: false,
-            errorType: 'HTTP_ERROR',
-            errorMessage: `Request failed with status ${response.status}`,
-            suggestions: ['Check your internet connection', 'Try again in a moment'],
-            details: errorText
-          }),
-          success: false,
-          ok: response.ok,
-          error: `HTTP ${response.status}: ${response.statusText}`
-        };
-      }
-    }
-
-    const data = await response.json();
+    const raw = await response.json();
+    
+    // Normalize item extraction
+    const items = 
+      Array.isArray(raw?.items) ? raw.items :
+      Array.isArray(raw?.message?.items) ? raw.message.items : [];
+    
+    const itemsPath = 
+      Array.isArray(raw?.items) ? "root.items" :
+      Array.isArray(raw?.message?.items) ? "message.items" : "none";
+    
+    // Log raw response details
+    console.info('[sendToLogVoice][RAW]', {
+      ok: response.ok,
+      status: response.status,
+      rawBody: raw,
+      itemsFoundPath: itemsPath,
+      itemsLength: items.length
+    });
     
     // Log GPT-5 performance metrics
-    if (data.processing_stats || data.model_used) {
+    if (raw.processing_stats || raw.model_used) {
       console.log('🚀 [GPT-5 Voice] Performance metrics:', {
-        model: data.model_used || 'gpt-5-mini',
+        model: raw.model_used || 'gpt-5-mini',
         latency_ms: latency,
-        tokens: data.processing_stats?.tokens,
-        fallback_used: data.fallback_used || false
+        tokens: raw.processing_stats?.tokens,
+        fallback_used: raw.fallback_used || false
       });
     }
     
-    console.log('🚀 [GPT-5 Voice] Response data:', data);
-    
-    // Normalize response JSON structure
-    if (data.success && data.items) {
-      // Successful response with items - ensure clean JSON structure
-      const normalizedData = {
-        success: true,
-        items: data.items,
-        originalText: data.originalText || '',
-        model_used: data.model_used,
-        processing_stats: data.processing_stats,
-        fallback_used: data.fallback_used
-      };
-      return {
-        message: JSON.stringify(normalizedData),
-        success: true,
-        ok: response.ok
-      };
-    } else {
-      // Handle structured error responses - ensure clean JSON structure
-      const normalizedError = {
-        success: false,
-        errorType: data.errorType || 'PROCESSING_ERROR',
-        errorMessage: data.errorMessage || data.error || 'Unknown error occurred',
-        suggestions: data.suggestions || []
-      };
-      return {
-        message: JSON.stringify(normalizedError),
-        success: false,
-        ok: response.ok,
-        error: normalizedError.errorMessage
-      };
-    }
+    // Return structured object without nested JSON strings
+    return {
+      ok: response.ok,
+      status: response.status,
+      success: items.length > 0,
+      items,
+      model_used: raw?.model_used ?? "unknown",
+      fallback_used: !!raw?.fallback_used,
+      originalText: raw?.originalText ?? raw?.input_text ?? null,
+      preprocessedText: raw?.preprocessedText ?? null,
+      raw
+    };
   } catch (error) {
     console.error('❌ [sendToLogVoice] Network/parsing error:', error);
     console.error('❌ [sendToLogVoice] Error type:', typeof error);
@@ -137,9 +109,15 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     };
     
     return {
-      message: JSON.stringify(normalizedError),
+      ok: false,
+      status: 0,
       success: false,
-      ok: false, // Network errors are not HTTP ok
+      items: [],
+      model_used: "unknown",
+      fallback_used: false,
+      originalText: null,
+      preprocessedText: null,
+      raw: normalizedError,
       error: error instanceof Error ? error.message : 'Network error occurred'
     };
   }

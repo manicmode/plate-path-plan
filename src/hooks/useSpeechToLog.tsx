@@ -100,8 +100,8 @@ export const useSpeechToLog = ({ onFoodDetected, onError }: UseSpeechToLogProps)
         return;
       }
 
-      // Parse the successful response
-      const voiceApiResponse = JSON.parse(result.message);
+      // Get the successful response items directly
+      const voiceApiResponse = result;
       debugLog('Voice API response parsed', { items: voiceApiResponse.items?.length });
 
       if (voiceApiResponse.items && voiceApiResponse.items.length > 0) {
