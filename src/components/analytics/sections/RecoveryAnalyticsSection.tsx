@@ -20,6 +20,9 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
       {/* Mood & Wellness Trends (Hero) */}
       <MoodWellnessTrendChart />
 
+      {/* Mood & Stress Trends */}
+      <MoodStressChart />
+
       {/* Supplement Tracking */}
       {weeklyAverage && (
         <>
@@ -49,8 +52,6 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
       />
       <RecoveryOverviewCard />
       
-      {/* Mood & Stress Trends */}
-      <MoodStressChart />
 
       {/* Recovery Activity Trends */}
       <SectionHeader 
