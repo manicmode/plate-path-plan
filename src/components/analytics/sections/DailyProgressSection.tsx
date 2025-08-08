@@ -55,7 +55,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         color="#8B5CF6"
       />
       <DailyProgressCard
-        title="Water Intake"
+        title="Water"
         value={progress.water || 0}
         target={2000}
         unit="ml"
