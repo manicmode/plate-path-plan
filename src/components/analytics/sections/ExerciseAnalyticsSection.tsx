@@ -255,15 +255,14 @@ return (
         <BestStreakHistoryChart />
       </ErrorBoundary>
 
+      {/* Your Progress Journey */}
+      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Performance charts unavailable</div>}>
+        <PerformanceChartsSection />
+      </ErrorBoundary>
 
       {/* Muscle Group Analytics */}
       <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Muscle group analytics unavailable</div>}>
         <MuscleGroupAnalytics />
-      </ErrorBoundary>
-
-      {/* Performance Charts Section */}
-      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Performance charts unavailable</div>}>
-        <PerformanceChartsSection />
       </ErrorBoundary>
 
       {/* Monthly Exercise Report */}
