@@ -1,10 +1,10 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
 import { useNutritionDeduplication } from '@/hooks/useNutritionDeduplication';
 import { useAuth } from '@/contexts/auth';
-import { supabase } from '@/integrations/supabase/client';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
 import { getLocalDateString } from '@/lib/dateUtils';
 import { calculateTotalMicronutrients, type FoodMicronutrients } from '@/utils/micronutrientCalculations';
@@ -20,18 +20,19 @@ interface FoodItem {
   fiber: number;
   sugar: number;
   sodium: number;
-  saturated_fat: number;
+  saturated_fat?: number;
+  micronutrients?: FoodMicronutrients;
   image?: string;
   confidence?: number;
   timestamp: Date;
   confirmed: boolean;
-  databaseId?: string; // ID from nutrition_logs table for meal scoring
+  databaseId?: string;
 }
 
 interface HydrationItem {
   id: string;
   name: string;
-  volume: number; // in ml
+  volume: number;
   type: 'water' | 'other';
   image?: string;
   timestamp: Date;
@@ -43,7 +44,6 @@ interface SupplementItem {
   dosage: number;
   unit: string;
   frequency?: string;
-  notifications: { time: string; frequency: string }[];
   image?: string;
   timestamp: Date;
 }
@@ -53,44 +53,35 @@ interface DailyNutrition {
   foods: FoodItem[];
   hydration: HydrationItem[];
   supplements: SupplementItem[];
-  totalCalories: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
-  totalFiber: number;
-  totalSugar: number;
-  totalSodium: number;
-  totalSaturatedFat: number;
-  totalHydration: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  saturated_fat: number;
+  hydrationVolume: number;
+  supplementCount: number;
+  micronutrients: FoodMicronutrients;
 }
 
 interface NutritionContextType {
   currentDay: DailyNutrition;
   weeklyData: DailyNutrition[];
-  addFood: (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed' | 'saturated_fat'> & { saturated_fat?: number }) => void;
+  isLoading: boolean;
+  addFood: (food: Omit<FoodItem, 'id' | 'timestamp'>) => void;
   addHydration: (hydration: Omit<HydrationItem, 'id' | 'timestamp'>) => void;
   addSupplement: (supplement: Omit<SupplementItem, 'id' | 'timestamp'>) => void;
   confirmFood: (foodId: string) => void;
   removeFood: (foodId: string) => void;
-  updateFood: (foodId: string, updates: Partial<FoodItem>) => void;
-  getTodaysProgress: () => { 
-    calories: number; 
-    protein: number; 
-    carbs: number; 
-    fat: number; 
-    fiber: number;
-    sugar: number;
-    sodium: number;
-    saturated_fat: number;
-    hydration: number;
-    supplements: number;
-  };
+  getTodaysProgress: () => { calories: number; protein: number; carbs: number; fat: number; fiber: number; sugar: number; sodium: number; saturated_fat: number; hydrationVolume: number; supplementCount: number; micronutrients: FoodMicronutrients; hydration: HydrationItem[]; supplements: SupplementItem[] };
   getHydrationGoal: () => number;
   getSupplementGoal: () => number;
-  // Coach CTA functionality
+  loadTodaysData: (date: string) => void;
   coachCtaQueue: string[];
   currentCoachCta: string | null;
-  addCoachCta: (message: string) => void;
+  addCoachCta: (cta: string) => void;
   clearCoachCta: () => void;
 }
 
@@ -98,15 +89,20 @@ const NutritionContext = createContext<NutritionContextType | undefined>(undefin
 
 export const useNutrition = () => {
   const context = useContext(NutritionContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useNutrition must be used within a NutritionProvider');
   }
   return context;
 };
 
 interface NutritionProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
+
+// Singleton realtime channels to prevent subscription flapping
+let nutritionChannel: any = null;
+let hydrationChannel: any = null;
+let supplementChannel: any = null;
 
 export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const today = getLocalDateString();
@@ -153,31 +149,42 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     foods: [],
     hydration: [],
     supplements: [],
-    totalCalories: 0,
-    totalProtein: 0,
-    totalCarbs: 0,
-    totalFat: 0,
-    totalFiber: 0,
-    totalSugar: 0,
-    totalSodium: 0,
-    totalSaturatedFat: 0,
-    totalHydration: 0,
-  });
-
-  // Initialize with loaded data
-  useEffect(() => {
-    if (!isLoading && loadedData) {
-      const totals = calculateTotals(loadedData.foods, loadedData.hydration);
-      console.log(`📊 Setting current day data with totals:`, totals);
-      setCurrentDay({
-        date: today,
-        foods: loadedData.foods,
-        hydration: loadedData.hydration,
-        supplements: loadedData.supplements,
-        ...totals,
-      });
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    sugar: 0,
+    sodium: 0,
+    saturated_fat: 0,
+    hydrationVolume: 0,
+    supplementCount: 0,
+    micronutrients: {
+      vitaminA: 0,
+      vitaminC: 0,
+      vitaminD: 0,
+      vitaminE: 0,
+      vitaminK: 0,
+      thiamin: 0,
+      riboflavin: 0,
+      niacin: 0,
+      vitaminB6: 0,
+      folate: 0,
+      vitaminB12: 0,
+      biotin: 0,
+      pantothenicAcid: 0,
+      calcium: 0,
+      iron: 0,
+      magnesium: 0,
+      phosphorus: 0,
+      potassium: 0,
+      zinc: 0,
+      copper: 0,
+      manganese: 0,
+      selenium: 0,
+      chromium: 0
     }
-  }, [isLoading, loadedData, today]);
+  });
 
   // Real weekly data will be fetched from database - removing mock generation
   const generateWeeklyData = (currentDayData: DailyNutrition): DailyNutrition[] => {
@@ -222,43 +229,37 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
       hydration = [];
     }
 
-    // Only include confirmed foods in the totals calculation
-    const confirmedFoods = foods.filter(food => food.confirmed);
-    
-    const foodTotals = confirmedFoods.reduce((totals, food) => ({
-      totalCalories: totals.totalCalories + food.calories,
-      totalProtein: totals.totalProtein + food.protein,
-      totalCarbs: totals.totalCarbs + food.carbs,
-      totalFat: totals.totalFat + food.fat,
-      totalFiber: totals.totalFiber + food.fiber,
-      totalSugar: totals.totalSugar + food.sugar,
-      totalSodium: totals.totalSodium + food.sodium,
-      totalSaturatedFat: totals.totalSaturatedFat + (food.saturated_fat || food.fat * 0.3), // Fallback: 30% of total fat
-    }), {
-      totalCalories: 0,
-      totalProtein: 0,
-      totalCarbs: 0,
-      totalFat: 0,
-      totalFiber: 0,
-      totalSugar: 0,
-      totalSodium: 0,
-      totalSaturatedFat: 0,
-    });
+    const totals = foods.reduce(
+      (acc, food) => ({
+        calories: acc.calories + (food.calories || 0),
+        protein: acc.protein + (food.protein || 0),
+        carbs: acc.carbs + (food.carbs || 0),
+        fat: acc.fat + (food.fat || 0),
+        fiber: acc.fiber + (food.fiber || 0),
+        sugar: acc.sugar + (food.sugar || 0),
+        sodium: acc.sodium + (food.sodium || 0),
+        saturated_fat: acc.saturated_fat + (food.saturated_fat || 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, saturated_fat: 0 }
+    );
 
-    const totalHydration = Array.isArray(hydration) 
-      ? hydration.reduce((total, item) => total + item.volume, 0) 
-      : 0;
+    const hydrationVolume = hydration.reduce((acc, h) => acc + (h.volume || 0), 0);
+    const micronutrients = calculateTotalMicronutrients(foods.filter(f => f.micronutrients));
 
-    return { ...foodTotals, totalHydration };
+    return {
+      ...totals,
+      hydrationVolume,
+      supplementCount: 0, // Will be calculated from supplements
+      micronutrients
+    };
   };
 
-  const addFood = (food: Omit<FoodItem, 'id' | 'timestamp' | 'confirmed' | 'saturated_fat'> & { saturated_fat?: number }) => {
+  const addFood = (food: Omit<FoodItem, 'id' | 'timestamp'>) => {
     const newFood: FoodItem = {
       ...food,
-      saturated_fat: food.saturated_fat ?? food.fat * 0.3, // Fallback: 30% of total fat
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // More unique ID
+      id: Date.now().toString(),
       timestamp: new Date(),
-      confirmed: true, // Mark as confirmed when added through confirmation flow
+      confirmed: food.confirmed ?? true,
     };
 
     const updatedFoods = [...currentDay.foods, newFood];
@@ -365,100 +366,274 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     removeFromDB(foodId);
   };
 
-  const updateFood = (foodId: string, updates: Partial<FoodItem>) => {
-    const updatedFoods = currentDay.foods.map(food =>
-      food.id === foodId ? { ...food, ...updates } : food
-    );
-    const totals = calculateTotals(updatedFoods, currentDay.hydration);
-
-    setCurrentDay({
-      ...currentDay,
-      foods: updatedFoods,
-      ...totals,
-    });
-  };
-
   const getTodaysProgress = () => {
-    // Calculate micronutrients from confirmed foods with type guard
-    const foods = Array.isArray(currentDay.foods) ? currentDay.foods : [];
-    const confirmedFoods = foods.filter(food => food.confirmed);
-    const micronutrients = calculateTotalMicronutrients(confirmedFoods);
-    
     return {
-      calories: currentDay.totalCalories,
-      protein: currentDay.totalProtein,
-      carbs: currentDay.totalCarbs,
-      fat: currentDay.totalFat,
-      fiber: currentDay.totalFiber,
-      sugar: currentDay.totalSugar,
-      sodium: currentDay.totalSodium,
-      saturated_fat: currentDay.totalSaturatedFat,
-      hydration: currentDay.totalHydration,
-      supplements: currentDay.supplements.length,
-      // Add micronutrients to progress
-      iron: micronutrients.iron,
-      magnesium: micronutrients.magnesium,
-      calcium: micronutrients.calcium,
-      zinc: micronutrients.zinc,
-      vitaminA: micronutrients.vitaminA,
-      vitaminB12: micronutrients.vitaminB12,
-      vitaminC: micronutrients.vitaminC,
-      vitaminD: micronutrients.vitaminD,
+      calories: currentDay.calories,
+      protein: currentDay.protein,
+      carbs: currentDay.carbs,
+      fat: currentDay.fat,
+      fiber: currentDay.fiber,
+      sugar: currentDay.sugar,
+      sodium: currentDay.sodium,
+      saturated_fat: currentDay.saturated_fat,
+      hydrationVolume: currentDay.hydrationVolume,
+      supplementCount: currentDay.supplementCount,
+      micronutrients: currentDay.micronutrients,
+      hydration: currentDay.hydration,
+      supplements: currentDay.supplements,
+      totalCalories: currentDay.calories,
+      totalProtein: currentDay.protein,
+      totalCarbs: currentDay.carbs,
+      totalFat: currentDay.fat,
+      totalHydration: currentDay.hydrationVolume
     };
   };
 
-  // Use proper ml conversion from user profile or daily targets
   const getHydrationGoal = () => {
-    if (dailyTargets.hydration_ml) return dailyTargets.hydration_ml;
-    // Convert targetHydration (glasses) to ml
-    return (user?.targetHydration || 8) * 250;
+    return dailyTargets.hydration_ml || 2000; // Default 2L
   };
-  
-  const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default
 
-  // Coach CTA functions
-  const addCoachCta = (message: string) => {
-    // Add to queue if not already there
-    setCoachCtaQueue(prev => {
-      if (!prev.includes(message)) {
-        return [...prev, message];
-      }
-      return prev;
-    });
-    
-    // If no current CTA is active, set the first one from queue
+  const getSupplementGoal = () => {
+    return dailyTargets.supplement_count || 3; // Default 3 supplements
+  };
+
+  // Coach CTA management
+  const addCoachCta = (cta: string) => {
+    setCoachCtaQueue(prev => [...prev, cta]);
     if (!currentCoachCta) {
-      setCurrentCoachCta(message);
-      // Remove from queue once it becomes current
-      setCoachCtaQueue(prev => prev.filter(msg => msg !== message));
+      setCurrentCoachCta(cta);
     }
   };
 
   const clearCoachCta = () => {
-    setCurrentCoachCta(null);
-    
-    // If there are more CTAs in queue, activate the next one
-    if (coachCtaQueue.length > 0) {
-      const nextCta = coachCtaQueue[0];
-      setCurrentCoachCta(nextCta);
-      setCoachCtaQueue(prev => prev.slice(1)); // Remove the first item from queue
-    }
+    setCoachCtaQueue(prev => {
+      const newQueue = prev.slice(1);
+      setCurrentCoachCta(newQueue[0] || null);
+      return newQueue;
+    });
   };
+
+  // Singleton realtime subscriptions with exponential backoff
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const backoffDelayRef = useRef(1000); // Start with 1 second
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Initialize singleton channels with proper cleanup
+    const initializeRealtimeChannels = () => {
+      console.log('🔗 Initializing singleton realtime channels');
+
+      // Nutrition logs channel
+      if (!nutritionChannel) {
+        nutritionChannel = supabase
+          .channel('nutrition_logs_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'nutrition_logs',
+              filter: `user_id=eq.${user.id}`
+            },
+            (payload) => {
+              const newFood = payload.new;
+              
+              // Skip if this was recently saved by us to prevent duplicates
+              if (isRecentlySaved(newFood.id)) {
+                console.log('🔄 Skipping duplicate food from realtime:', newFood.id);
+                return;
+              }
+              
+              // Filter events by current date
+              const logDate = new Date(newFood.created_at).toLocaleDateString();
+              const currentDate = new Date().toLocaleDateString();
+              
+              if (logDate === currentDate) {
+                setCurrentDay(prev => ({
+                  ...prev,
+                  foods: [...prev.foods, {
+                    id: newFood.id,
+                    name: newFood.food_name,
+                    calories: newFood.calories,
+                    protein: newFood.protein,
+                    carbs: newFood.carbs,
+                    fat: newFood.fat,
+                    fiber: newFood.fiber,
+                    sugar: newFood.sugar,
+                    sodium: newFood.sodium,
+                    saturated_fat: newFood.saturated_fat || 0,
+                    timestamp: new Date(newFood.created_at),
+                    confirmed: true,
+                    databaseId: newFood.id
+                  }]
+                }));
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log('📡 Nutrition realtime status:', status);
+            if (status === 'CLOSED') {
+              handleReconnect();
+            } else if (status === 'SUBSCRIBED') {
+              // Reset backoff on successful connection
+              backoffDelayRef.current = 1000;
+            }
+          });
+      }
+
+      // Similar for hydration and supplements...
+      if (!hydrationChannel) {
+        hydrationChannel = supabase
+          .channel('hydration_logs_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'hydration_logs',
+              filter: `user_id=eq.${user.id}`
+            },
+            (payload) => {
+              const newHydration = payload.new;
+              
+              if (isRecentlySaved(newHydration.id)) {
+                console.log('🔄 Skipping duplicate hydration from realtime:', newHydration.id);
+                return;
+              }
+              
+              const logDate = new Date(newHydration.created_at).toLocaleDateString();
+              const currentDate = new Date().toLocaleDateString();
+              
+              if (logDate === currentDate) {
+                setCurrentDay(prev => ({
+                  ...prev,
+                  hydration: [...prev.hydration, {
+                    id: newHydration.id,
+                    name: newHydration.name,
+                    volume: newHydration.volume,
+                    type: newHydration.type,
+                    timestamp: new Date(newHydration.created_at)
+                  }]
+                }));
+              }
+            }
+          )
+          .subscribe();
+      }
+
+      if (!supplementChannel) {
+        supplementChannel = supabase
+          .channel('supplement_logs_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'supplement_logs',
+              filter: `user_id=eq.${user.id}`
+            },
+            (payload) => {
+              const newSupplement = payload.new;
+              
+              if (isRecentlySaved(newSupplement.id)) {
+                console.log('🔄 Skipping duplicate supplement from realtime:', newSupplement.id);
+                return;
+              }
+              
+              const logDate = new Date(newSupplement.created_at).toLocaleDateString();
+              const currentDate = new Date().toLocaleDateString();
+              
+              if (logDate === currentDate) {
+                setCurrentDay(prev => ({
+                  ...prev,
+                  supplements: [...prev.supplements, {
+                    id: newSupplement.id,
+                    name: newSupplement.name,
+                    dosage: newSupplement.dosage,
+                    unit: newSupplement.unit,
+                    frequency: newSupplement.frequency,
+                    timestamp: new Date(newSupplement.created_at)
+                  }]
+                }));
+              }
+            }
+          )
+          .subscribe();
+      }
+    };
+
+    const handleReconnect = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+
+      console.log(`🔄 Reconnecting realtime in ${backoffDelayRef.current}ms`);
+      
+      reconnectTimeoutRef.current = setTimeout(() => {
+        // Cleanup existing channels
+        if (nutritionChannel) {
+          supabase.removeChannel(nutritionChannel);
+          nutritionChannel = null;
+        }
+        if (hydrationChannel) {
+          supabase.removeChannel(hydrationChannel);
+          hydrationChannel = null;
+        }
+        if (supplementChannel) {
+          supabase.removeChannel(supplementChannel);
+          supplementChannel = null;
+        }
+
+        // Reinitialize
+        initializeRealtimeChannels();
+        
+        // Exponential backoff (max 30 seconds)
+        backoffDelayRef.current = Math.min(backoffDelayRef.current * 2, 30000);
+      }, backoffDelayRef.current);
+    };
+
+    initializeRealtimeChannels();
+
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      // Note: Don't cleanup singleton channels on unmount
+      // They'll be cleaned up when the user logs out
+    };
+  }, [user?.id, isRecentlySaved]);
+
+  // Update state when loader data changes
+  useEffect(() => {
+    if (loadedData) {
+      const totals = calculateTotals(loadedData.foods || [], loadedData.hydration || []);
+      setCurrentDay({
+        date: today, // Use today instead of loadedData.date
+        foods: loadedData.foods || [],
+        hydration: loadedData.hydration || [],
+        supplements: loadedData.supplements || [],
+        supplementCount: (loadedData.supplements || []).length,
+        ...totals,
+      });
+    }
+  }, [loadedData]);
 
   return (
     <NutritionContext.Provider
       value={{
         currentDay,
         weeklyData,
+        isLoading,
         addFood,
         addHydration,
         addSupplement,
         confirmFood,
         removeFood,
-        updateFood,
         getTodaysProgress,
         getHydrationGoal,
         getSupplementGoal,
+        loadTodaysData,
         coachCtaQueue,
         currentCoachCta,
         addCoachCta,

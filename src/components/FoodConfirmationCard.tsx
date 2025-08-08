@@ -456,12 +456,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           aria-describedby="food-confirmation-description"
         >
           <VisuallyHidden>
-            <DialogHeader>
-              <DialogTitle>Confirm Food Log</DialogTitle>
-              <DialogDescription id="food-confirmation-description">
-                Review and confirm your food item before logging it to your nutrition tracker.
-              </DialogDescription>
-            </DialogHeader>
+            <DialogTitle id="food-confirmation-title">Confirm Food Log</DialogTitle>
+            <DialogDescription id="food-confirmation-description">
+              Review and confirm your food item details before logging it to your nutrition tracker.
+            </DialogDescription>
           </VisuallyHidden>
           <div className="p-6">
             {/* Unknown Product Alert */}

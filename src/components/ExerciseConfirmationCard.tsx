@@ -163,10 +163,10 @@ export const ExerciseConfirmationCard = ({
           transition={{ duration: 0.2 }}
           className="w-full max-w-md"
         >
-          <Card ref={cardRef} className="shadow-2xl border-border bg-card">
+          <Card ref={cardRef} className="shadow-2xl border-border bg-card" aria-describedby="exercise-confirmation-description">
             <VisuallyHidden>
-              <h2>Confirm Exercise Log</h2>
-              <p>Review and confirm your exercise details before logging.</p>
+              <h2 id="exercise-confirmation-title">Confirm Exercise Log</h2>
+              <p id="exercise-confirmation-description">Review and confirm your exercise details before logging.</p>
             </VisuallyHidden>
             <CardContent className="p-0">
               {/* Header */}
