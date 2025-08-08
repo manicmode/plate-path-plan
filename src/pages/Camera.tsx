@@ -1157,55 +1157,73 @@ const CameraPage = () => {
         }
       }
 
-      // Only attempt fallback if the primary request actually failed
-      if (!result.success) {
-        // Check if the parsed response shows actual failure
-        let actualFailure = true;
-        try {
-          const parsedResponse = JSON.parse(result.message || '{}');
-          actualFailure = !parsedResponse.success;
-        } catch {
-          // If we can't parse, assume it's a failure
-          actualFailure = true;
-        }
+      // After we get the primary response + json:
+      const primaryHttpOk = result.success; // response from sendToLogVoice
+      let primaryJson;
+      try {
+        primaryJson = JSON.parse(result.message || '{}');
+      } catch {
+        primaryJson = null;
+      }
+      
+      const primaryJsonOk =
+        primaryJson &&
+        (
+          primaryJson.success === true ||               // explicit success flag
+          (Array.isArray(primaryJson.items) && primaryJson.items.length > 0) // or items exist
+        );
 
-        if (actualFailure) {
-          // Create local flag to track if we actually attempt fallback
-          let attemptedFallback = false;
+      // NEW: decide if fallback is needed
+      const shouldFallback = !primaryHttpOk || !primaryJsonOk;
+
+      // Log accurately
+      if (!shouldFallback) {
+        console.log('🎤 [Camera] Primary GPT-5 succeeded. Skipping fallback.');
+        // Normalize flags for the rest of the pipeline
+        const normalized = {
+          ...primaryJson,
+          success: true,
+          model_used: primaryJson.model_used ?? 'gpt-5',
+          fallback_used: false,
+        };
+        // Continue with the existing downstream processing
+        result = {
+          success: true,
+          message: JSON.stringify(normalized)
+        };
+      } else {
+        // Only here if primary actually failed
+        console.warn('🔄 [Camera] Primary GPT-5 failed, attempting fallback...', {
+          primaryHttpOk,
+          primaryJsonOk,
+        });
+        
+        try {
+          const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+            },
+            body: JSON.stringify({ text: voiceText })
+          });
           
-          // After retries failed, try fallback to log-voice function
-          try {
-            attemptedFallback = true;
-            console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
-            
-            const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
-              },
-              body: JSON.stringify({ text: voiceText })
-            });
-            
-            if (fallbackResponse.ok) {
-              const fallbackData = await fallbackResponse.json();
-              result = {
-                success: true,
-                message: JSON.stringify({
-                  success: true,
-                  items: fallbackData.items || [],
-                  originalText: fallbackData.originalText || voiceText,
-                  model_used: 'gpt-4o (fallback)',
-                  fallback_used: true
-                })
-              };
-              console.log('✅ [Camera] Fallback to log-voice succeeded');
-            }
-          } catch (fallbackError) {
-            if (attemptedFallback) {
-              console.error('❌ [Camera] Fallback also failed:', fallbackError);
-            }
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            const fbNormalized = {
+              ...fallbackData,
+              success: fallbackData?.success === true || (Array.isArray(fallbackData?.items) && fallbackData.items.length > 0),
+              model_used: fallbackData?.model_used ?? 'gpt-4o (fallback)',
+              fallback_used: true,
+            };
+            result = {
+              success: true,
+              message: JSON.stringify(fbNormalized)
+            };
+            console.log('✅ [Camera] Fallback to log-voice succeeded');
           }
+        } catch (fallbackError) {
+          console.error('❌ [Camera] Fallback also failed:', fallbackError);
         }
       }
 
