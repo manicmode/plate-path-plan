@@ -162,6 +162,8 @@ export const ExerciseAnalyticsSection = () => {
 return (
   <ErrorBoundary>
     <div className="space-y-4">
+      {/* Workout Breakdowns */}
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white">Workout Breakdowns</h3>
       {/* Quick Action Button */}
       <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
         <CardContent className="p-6 pb-4">
