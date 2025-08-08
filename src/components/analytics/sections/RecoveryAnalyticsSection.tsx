@@ -18,11 +18,11 @@ interface RecoveryAnalyticsSectionProps {
 export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSectionProps = {}) => {
   return (
     <div className="max-w-md mx-auto w-full space-y-6">
-      {/* Mood & Wellness Trends (Hero) */}
-      <MoodWellnessTrendChart />
-
-      {/* Mood & Stress Trends */}
+      {/* Mood & Stress Trends (Hero) */}
       <MoodStressChart />
+
+      {/* Mood & Wellness Trends */}
+      <MoodWellnessTrendChart />
 
       {/* Supplement Tracking */}
       {weeklyAverage && (
