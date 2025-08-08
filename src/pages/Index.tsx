@@ -36,6 +36,17 @@ const Index = () => {
     }
   }, [searchParams, navigate]);
 
+  console.log('🐛 DEBUG Index render:', {
+    loading,
+    sessionChecked,
+    isInitialLoad,
+    isAuthenticated,
+    showRecovery,
+    shouldShowLoading: loading || !sessionChecked || isInitialLoad,
+    url: window.location.href,
+    timestamp: new Date().toISOString()
+  });
+
   // Show loading until we have a definitive auth state AND session is checked
   if (loading || !sessionChecked || isInitialLoad) {
     return (

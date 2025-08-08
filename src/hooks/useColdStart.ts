@@ -88,8 +88,18 @@ export const useColdStart = () => {
     setIsColdStart(false);
   };
 
+  const shouldShowSplash = isColdStart && !isReady;
+  
+  console.log('🐛 DEBUG useColdStart return:', {
+    isColdStart,
+    isReady,
+    shouldShowSplash,
+    isMobile,
+    timestamp: new Date().toISOString()
+  });
+
   return {
-    isColdStart: isColdStart && !isReady,
+    isColdStart: shouldShowSplash,
     completeSplash
   };
 };

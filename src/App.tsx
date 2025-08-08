@@ -122,6 +122,18 @@ function AppContent() {
     timestamp: new Date().toISOString() 
   });
 
+  // Add debugging for white page issue
+  console.log('🐛 DEBUG AppContent state:', {
+    isColdStart,
+    isProcessing,
+    showMoodModal,
+    shouldShowSplash: isColdStart,
+    shouldShowAuth: isProcessing,
+    shouldShowMainApp: !isColdStart,
+    url: window.location.href,
+    timestamp: new Date().toISOString()
+  });
+
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
     prefetchCriticalComponents();
