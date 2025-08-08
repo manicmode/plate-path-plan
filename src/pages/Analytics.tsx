@@ -19,11 +19,6 @@ import { RecoveryAnalyticsSection } from '@/components/analytics/sections/Recove
 import { MealQualityTrendChart } from '@/components/analytics/charts/MealQualityTrendChart';
 import { FlaggedIngredientHistoryChart } from '@/components/analytics/charts/FlaggedIngredientHistoryChart';
 import { TopFoodsWeekChart } from '@/components/analytics/charts/TopFoodsWeekChart';
-import { WeeklyWorkoutDurationChart } from '@/components/analytics/charts/WeeklyWorkoutDurationChart';
-import { CaloriesBurnedChart } from '@/components/analytics/charts/CaloriesBurnedChart';
-import { MuscleGroupDistributionChart } from '@/components/analytics/charts/MuscleGroupDistributionChart';
-import { MonthlyGoalProgress } from '@/components/analytics/charts/MonthlyGoalProgress';
-import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreakHistoryChart';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
 
@@ -76,13 +71,10 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
-          <WeeklyWorkoutDurationChart />
+          <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
+          <ExerciseAnalyticsSection />
           <WorkoutTrophyCard />
           <MotivationCard />
-          <CaloriesBurnedChart />
-          <MuscleGroupDistributionChart />
-          <MonthlyGoalProgress />
-          <BestStreakHistoryChart />
         </TabsContent>
 
         <TabsContent value="recovery" className="space-y-6 mt-6">
