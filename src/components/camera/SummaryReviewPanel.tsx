@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,7 +56,11 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby="summary-review-desc">
+        <DialogTitle id="summary-review-title" className="sr-only">Review detected items</DialogTitle>
+        <DialogDescription id="summary-review-desc" className="sr-only">
+          Review and select items detected in your scan.
+        </DialogDescription>
         <div className="p-6">
           <DialogHeader className="text-center mb-6">
             <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">

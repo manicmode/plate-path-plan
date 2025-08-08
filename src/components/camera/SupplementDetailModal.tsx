@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, User } from 'lucide-react';
@@ -32,7 +32,11 @@ export const SupplementDetailModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 shadow-2xl data-[state=open]:translate-x-[-50%] data-[state=open]:translate-y-[-50%]">
+      <DialogContent className="max-w-sm max-h-[90vh] bg-background border border-border rounded-2xl overflow-hidden p-0 shadow-2xl data-[state=open]:translate-x-[-50%] data-[state=open]:translate-y-[-50%]" aria-describedby="supplement-detail-desc">
+        <DialogTitle id="supplement-detail-title" className="sr-only">Supplement details</DialogTitle>
+        <DialogDescription id="supplement-detail-desc" className="sr-only">
+          View detailed information about this supplement.
+        </DialogDescription>
         {/* Header with Back Button */}
         <div className="flex items-center space-x-4 p-6 pb-4">
           <Button

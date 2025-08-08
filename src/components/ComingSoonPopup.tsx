@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 
@@ -16,7 +16,11 @@ export const ComingSoonPopup: React.FC<ComingSoonPopupProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="coming-soon-desc">
+        <DialogTitle id="coming-soon-title" className="sr-only">Coming soon feature</DialogTitle>
+        <DialogDescription id="coming-soon-desc" className="sr-only">
+          This feature is coming soon.
+        </DialogDescription>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-center justify-center">
             <Sparkles className="h-6 w-6 text-primary" />

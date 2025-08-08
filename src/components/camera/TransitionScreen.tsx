@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 
 interface TransitionScreenProps {
@@ -61,7 +61,11 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby="transition-desc">
+        <DialogTitle id="transition-title" className="sr-only">Loading transition</DialogTitle>
+        <DialogDescription id="transition-desc" className="sr-only">
+          Loading next food item for review.
+        </DialogDescription>
         <div className="p-8 text-center">
           {/* Loading Animation */}
           <div className="mb-6">

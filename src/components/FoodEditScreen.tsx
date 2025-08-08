@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,7 +97,12 @@ const FoodEditScreen: React.FC<FoodEditScreenProps> = ({
       <DialogContent 
         showCloseButton={false}
         className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
+        aria-describedby="food-edit-desc"
       >
+        <DialogTitle id="food-edit-title" className="sr-only">Edit food item</DialogTitle>
+        <DialogDescription id="food-edit-desc" className="sr-only">
+          Review and edit food item details before saving.
+        </DialogDescription>
         <div className="p-6">
           <DialogHeader className="text-center mb-6">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">

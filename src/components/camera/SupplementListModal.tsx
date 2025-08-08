@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,12 @@ export const SupplementListModal = ({
       <DialogContent 
         className="max-w-md max-h-[85vh] bg-background border border-border rounded-lg p-6 z-[60] shadow-lg data-[state=open]:translate-x-[-50%] data-[state=open]:translate-y-[-50%]"
         showCloseButton={true}
+        aria-describedby="supplement-list-desc"
       >
+        <DialogTitle id="supplement-list-title" className="sr-only">Supplement list</DialogTitle>
+        <DialogDescription id="supplement-list-desc" className="sr-only">
+          Browse and select supplements from this category.
+        </DialogDescription>
         {isLoading ? (
           // Loading State with Fun Animation
           <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-6">
