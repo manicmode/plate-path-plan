@@ -10,7 +10,7 @@ interface RecoveryStats {
   weeklyTrend: 'up' | 'down' | 'stable';
 }
 
-export const RecoveryOverviewCard = () => {
+export const RecoveryOverviewCard = ({ hideTitle = false }: { hideTitle?: boolean }) => {
   const isMobile = useIsMobile();
   const [stats, setStats] = useState<RecoveryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,12 +62,14 @@ export const RecoveryOverviewCard = () => {
 
   return (
     <Card className="glass-card border-0 rounded-3xl animate-fade-in">
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
-          <span>🧘 Recovery Overview</span>
-        </CardTitle>
-      </CardHeader>
+{!hideTitle && (
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+            <span>🧘 Recovery Overview</span>
+          </CardTitle>
+        </CardHeader>
+      )}
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-4`}>
         {/* Weekly Summary */}
         <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-700">

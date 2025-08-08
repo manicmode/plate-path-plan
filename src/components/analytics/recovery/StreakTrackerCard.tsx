@@ -17,7 +17,7 @@ interface SessionLog {
   duration: number;
 }
 
-export const StreakTrackerCard = () => {
+export const StreakTrackerCard = ({ hideTitle = false }: { hideTitle?: boolean }) => {
   const isMobile = useIsMobile();
   const [streaks, setStreaks] = useState<StreakData[]>([]);
   const [sessionLogs, setSessionLogs] = useState<SessionLog[]>([]);
@@ -67,12 +67,14 @@ export const StreakTrackerCard = () => {
 
   return (
     <Card className="glass-card border-0 rounded-3xl animate-fade-in">
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Flame className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
-          <span>🔥 Streaks & Session History</span>
-        </CardTitle>
-      </CardHeader>
+{!hideTitle && (
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Flame className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
+            <span>🔥 Streaks & Session History</span>
+          </CardTitle>
+        </CardHeader>
+      )}
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-4`}>
         {/* Current Streaks */}
         <div>

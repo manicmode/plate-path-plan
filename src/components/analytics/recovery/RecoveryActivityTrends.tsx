@@ -73,7 +73,7 @@ const buildMockData = (item: RecoveryKey, period: PeriodKey): TrendPoint[] => {
   });
 };
 
-export const RecoveryActivityTrends: React.FC = () => {
+export const RecoveryActivityTrends: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
   const isMobile = useIsMobile();
   const [item, setItem] = useState<RecoveryKey>('meditation');
   const [period, setPeriod] = useState<PeriodKey>('7d');
@@ -101,17 +101,19 @@ export const RecoveryActivityTrends: React.FC = () => {
 
   return (
     <Card className="glass-card border-0 rounded-3xl animate-fade-in">
-      <CardHeader className={isMobile ? 'pb-3' : 'pb-4'}>
-        <CardTitle className={`flex items-center justify-between ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <div className="flex items-center gap-2">
-            <span className="inline-grid place-items-center p-2 rounded-xl" style={{ background: `${color}20` }}>
-              <span className="w-3 h-3 rounded-full" style={{ background: color }} />
-            </span>
-            <span>📈 Recovery Activity Trends</span>
-          </div>
-          <div className="hidden sm:flex text-xs text-muted-foreground">Current vs previous period</div>
-        </CardTitle>
-      </CardHeader>
+{!hideTitle && (
+        <CardHeader className={isMobile ? 'pb-3' : 'pb-4'}>
+          <CardTitle className={`flex items-center justify-between ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <div className="flex items-center gap-2">
+              <span className="inline-grid place-items-center p-2 rounded-xl" style={{ background: `${color}20` }}>
+                <span className="w-3 h-3 rounded-full" style={{ background: color }} />
+              </span>
+              <span>📈 Recovery Activity Trends</span>
+            </div>
+            <div className="hidden sm:flex text-xs text-muted-foreground">Current vs previous period</div>
+          </CardTitle>
+        </CardHeader>
+      )}
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         {/* Controls */}
         <div className={`grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-3'} mb-4`}>

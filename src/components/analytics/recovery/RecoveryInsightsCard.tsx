@@ -10,7 +10,7 @@ interface Insight {
   color: string;
 }
 
-export const RecoveryInsightsCard = () => {
+export const RecoveryInsightsCard = ({ hideTitle = false }: { hideTitle?: boolean }) => {
   const isMobile = useIsMobile();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,12 +102,14 @@ export const RecoveryInsightsCard = () => {
 
   return (
     <Card className="glass-card border-0 rounded-3xl animate-fade-in">
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Lightbulb className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
-          <span>💡 Smart Insights & Suggestions</span>
-        </CardTitle>
-      </CardHeader>
+{!hideTitle && (
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Lightbulb className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+            <span>💡 Smart Insights & Suggestions</span>
+          </CardTitle>
+        </CardHeader>
+      )}
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-3`}>
         {insights.map((insight, index) => (
           <div key={index} className={`bg-gradient-to-r ${insight.color} rounded-2xl p-4 border`}>

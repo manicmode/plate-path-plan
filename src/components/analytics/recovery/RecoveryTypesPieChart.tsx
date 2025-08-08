@@ -10,7 +10,7 @@ interface RecoveryTypeData {
   color: string;
 }
 
-export const RecoveryTypesPieChart = () => {
+export const RecoveryTypesPieChart = ({ hideTitle = false }: { hideTitle?: boolean }) => {
   const isMobile = useIsMobile();
   const [data, setData] = useState<RecoveryTypeData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,12 +60,14 @@ export const RecoveryTypesPieChart = () => {
 
   return (
     <Card className="glass-card border-0 rounded-3xl animate-fade-in">
-      <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Activity className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
-          <span>🥧 Recovery Practice Breakdown</span>
-        </CardTitle>
-      </CardHeader>
+{!hideTitle && (
+        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Activity className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+            <span>🥧 Recovery Practice Breakdown</span>
+          </CardTitle>
+        </CardHeader>
+      )}
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">

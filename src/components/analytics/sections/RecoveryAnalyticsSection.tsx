@@ -47,7 +47,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Recovery Overview"
         subtitle="Streaks and recovery score"
       />
-      <RecoveryOverviewCard />
+      <RecoveryOverviewCard hideTitle />
       
       {/* Mood & Stress Trends */}
       <SectionHeader 
@@ -55,7 +55,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Mood & Stress Trends"
         subtitle="Weekly mood and stress chart"
       />
-      <MoodStressChart />
+      <MoodStressChart hideTitle />
       
       {/* Recovery Activity Trends */}
       <SectionHeader 
@@ -63,7 +63,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Recovery Activity Trends"
         subtitle="Current vs previous period"
       />
-      <RecoveryActivityTrends />
+      <RecoveryActivityTrends hideTitle />
       
       {/* Recovery Activity Breakdown */}
       <SectionHeader 
@@ -71,21 +71,21 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="Recovery Activity Breakdown"
         subtitle="Meditation, Breathing, Sleep, Yoga, Thermotherapy"
       />
-      <RecoveryTypesPieChart />
+      <RecoveryTypesPieChart hideTitle />
       
       {/* Streaks & Session History */}
       <SectionHeader 
         icon={History}
         title="Streaks & Session History"
       />
-      <StreakTrackerCard />
+      <StreakTrackerCard hideTitle />
       
       {/* Smart Insights & Suggestions */}
       <SectionHeader 
         icon={Lightbulb}
         title="Smart Insights & Suggestions"
       />
-      <RecoveryInsightsCard />
+      <RecoveryInsightsCard hideTitle />
     </div>
   );
 };
