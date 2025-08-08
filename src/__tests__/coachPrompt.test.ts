@@ -27,6 +27,11 @@ describe('closing line builder', () => {
     const line = buildClosingLine('exercise', { workouts_7d: 3, avg_duration_min_7d: 42, consistency_pct_30d: 25, next_small_goal: 'Add 10 min walk Tue' });
     expect(line).toContain('Next step: Add 10 min walk Tue.');
   });
+
+  it('includes protein target when present (nutrition)', () => {
+    const line = buildClosingLine('nutrition', { avg_cals_7d: 1900, protein_g_7d: 110, protein_target_g: 130 });
+    expect(line).toContain('Target next: 130g.');
+  });
 });
 
 describe('prompt builder', () => {

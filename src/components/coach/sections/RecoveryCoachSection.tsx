@@ -29,8 +29,8 @@ const handleCommand = async (command: string) => {
     setShowPraiseMessage(trackResult.praise_message);
     setTimeout(() => setShowPraiseMessage(null), 8000);
   }
-  // Auto-send to chat
-  const text = command.replace(/\{([^}]+)\}/g, '___');
+  // Personalize placeholders, then auto-send to chat
+  const text = await substituteRecoveryPlaceholders(command);
   window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text } }));
 };
 

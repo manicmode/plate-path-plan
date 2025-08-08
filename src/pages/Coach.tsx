@@ -227,18 +227,20 @@ Take a breath... let's explore your nutrition journey together with care and int
     recordCoachInteraction();
 
 try {
-  // Optionally fetch server-built context (best data snapshot)
-  let serverContext: any = null;
+// Optionally fetch server-built context (best data snapshot)
+let serverContext: any = null;
+if (useMyData) {
   try {
     const ctxResp = await supabase.functions.invoke('coach-context', {} as any);
     if (!ctxResp.error) serverContext = ctxResp.data;
   } catch (_) {}
+}
 
-  const contextData = {
-    voiceProfile: "confident_gentle", // 🎙️ Voice metadata for Nutrition Coach
-    coachType: 'nutrition',
-    context: serverContext,
-  };
+const contextData = {
+  voiceProfile: "confident_gentle", // 🎙️ Voice metadata for Nutrition Coach
+  coachType: 'nutrition',
+  context: serverContext,
+};
 
   const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
     body: {
@@ -267,16 +269,16 @@ setMessages(prev => {
   arr.push(aiMessage as any);
   return arr;
 });
-} catch (error) {
+} catch (error: any) {
   handleError(error as Error, 'Sending message');
+  const friendly = (error && typeof error.message === 'string') ? error.message : 'Using a generic answer; I’ll personalize once your data loads.';
   toast.error('Using a generic answer; I’ll personalize once your data loads.');
   const errorMessage: Message = {
     id: (Date.now() + 1).toString(),
-    content: "I'm sorry, I couldn't personalize your response right now. Let's try again soon!",
+    content: friendly,
     isUser: false,
     timestamp: new Date(),
   };
-  
   setMessages(prev => [...prev, errorMessage]);
 } finally {
   setIsLoading(false);
@@ -610,6 +612,9 @@ setMessages(prev => {
               )}
             </Button>
           </div>
+          {!useMyData && (
+            <div className="text-xs text-muted-foreground pl-1">Personalization off — generic guidance only.</div>
+          )}
         </CardContent>
         </Card>
 

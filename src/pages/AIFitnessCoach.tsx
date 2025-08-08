@@ -160,9 +160,10 @@ export default function AIFitnessCoach() {
       }
       messagesToSet.push({ role: 'assistant' as const, content: aiContent });
       setMessages(messagesToSet);
-    } catch (err) {
+    } catch (err: any) {
       const messagesToSet = [...newMessages, { role: 'assistant' as const, content: 'Using general guidance; log more workouts/meals/recovery to personalize.' }];
-      messagesToSet.push({ role: 'assistant' as const, content: "I'm having trouble personalizing right now. Here's general guidance: Aim for 3×45-min sessions this week and keep intensity moderate." });
+      const friendly = (err && typeof err.message === 'string') ? err.message : "I'm having trouble personalizing right now. Here's general guidance: Aim for 3×45-min sessions this week and keep intensity moderate.";
+      messagesToSet.push({ role: 'assistant' as const, content: friendly });
       setMessages(messagesToSet);
     } finally {
       setIsLoading(false);

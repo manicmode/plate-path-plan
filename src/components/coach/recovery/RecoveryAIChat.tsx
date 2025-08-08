@@ -121,12 +121,12 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
       }
 
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error('Using a generic answer; I’ll personalize once your data loads.');
+      const friendly = (error && typeof error.message === 'string') ? error.message : 'Using a generic answer; I’ll personalize once your data loads.';
       const genericMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm sorry, I'm having trouble personalizing right now. Here's a general recommendation: focus on gentle breathwork and consistent sleep.",
+        content: friendly,
         isUser: false,
         timestamp: new Date(),
       };
@@ -254,7 +254,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
             </Button>
           </div>
           {!useMyData && (
-            <div className="text-xs text-muted-foreground pl-1">Personalization off</div>
+            <div className="text-xs text-muted-foreground pl-1">Personalization off — generic guidance only.</div>
           )}
         </div>
       </CardContent>

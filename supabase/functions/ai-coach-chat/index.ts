@@ -63,12 +63,14 @@ function buildTokenMap(ctx: any, coachType: string) {
     avg_cals_7d: nutrition.avg_cals_7d,
     protein_g_7d: nutrition.protein_g_7d,
     fiber_g_7d: nutrition.fiber_g_7d,
+    protein_target_g: nutrition.protein_target_g,
 
     workouts_7d: exercise.workouts_7d,
     avg_duration_min_7d: exercise.avg_duration_min_7d,
     consistency_pct_30d: exercise.consistency_pct_30d,
     current_streak_days: exercise.current_streak_days,
     best_streak_days: exercise.best_streak_days,
+    next_small_goal: exercise.next_small_goal,
 
     sleep_avg_7d: recovery.sleep_avg_7d,
     stress_avg_7d: recovery.stress_avg_7d,
@@ -76,6 +78,7 @@ function buildTokenMap(ctx: any, coachType: string) {
     med_sessions_7d: recovery.med_sessions_7d,
     breath_sessions_7d: recovery.breath_sessions_7d,
     supp_days_7d: recovery.supp_days_7d,
+    next_recovery_action: recovery.next_recovery_action,
   };
   return map;
 }
@@ -86,7 +89,8 @@ function buildClosingLine(coach: 'nutrition'|'exercise'|'recovery', t: Record<st
     if (t.avg_cals_7d != null) parts.push(`This week you averaged ${t.avg_cals_7d} kcal`);
     if (t.protein_g_7d != null) parts.push(`and ${t.protein_g_7d}g protein`);
     const base = parts.join(' ') || undefined;
-    return base ? `Closing: ${base}.` : '';
+    const target = t.protein_target_g != null ? ` Target next: ${t.protein_target_g}g.` : '';
+    return base ? `Closing: ${base}.${target}` : '';
   }
   if (coach === 'exercise') {
     const frags: string[] = [];
@@ -104,7 +108,9 @@ function buildClosingLine(coach: 'nutrition'|'exercise'|'recovery', t: Record<st
   if (t.sleep_avg_7d != null) segs.push(`Sleep ${t.sleep_avg_7d}h`);
   if (t.stress_avg_7d != null) segs.push(`stress ${t.stress_avg_7d}/10`);
   if (t.recovery_score != null) segs.push(`recovery ${t.recovery_score}/100`);
-  return segs.length ? `Closing: ${segs.join(', ')}.` : '';
+  const base = segs.length ? `Closing: ${segs.join(', ')}.` : '';
+  const tryAction = t.next_recovery_action ? ` Try: ${t.next_recovery_action}.` : '';
+  return base ? `${base}${tryAction}` : '';
 }
 
 function logEvent(event: string, payload: Record<string, any> = {}) {
@@ -165,6 +171,7 @@ serve(async (req) => {
       const arr = rateStore.get(userId) || [];
       const recent = arr.filter(ts => now - ts < windowMs);
       if (recent.length >= maxReqPerMin) {
+        logEvent('coach_rate_limit_minute_hit', { coachType });
         return new Response(JSON.stringify({ error: 'Rate limit: Please wait a moment before asking again.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -181,6 +188,7 @@ serve(async (req) => {
       }
       const current = dailyStore.get(dailyKey)!;
       if (current.count >= 40) {
+        logEvent('coach_rate_limit_daily_hit', { coachType });
         return new Response(JSON.stringify({ error: "You’ve hit today’s limit. Try again tomorrow." }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

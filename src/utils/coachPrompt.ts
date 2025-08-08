@@ -16,7 +16,8 @@ export function buildClosingLine(coach: CoachType, t: Record<string, any>) {
     if (t.avg_cals_7d != null) parts.push(`This week you averaged ${t.avg_cals_7d} kcal`);
     if (t.protein_g_7d != null) parts.push(`and ${t.protein_g_7d}g protein`);
     const base = parts.join(' ') || undefined;
-    return base ? `Closing: ${base}.` : '';
+    const target = t.protein_target_g != null ? ` Target next: ${t.protein_target_g}g.` : '';
+    return base ? `Closing: ${base}.${target}` : '';
   }
   if (coach === 'exercise') {
     const frags: string[] = [];
@@ -33,7 +34,9 @@ export function buildClosingLine(coach: CoachType, t: Record<string, any>) {
   if (t.sleep_avg_7d != null) segs.push(`Sleep ${t.sleep_avg_7d}h`);
   if (t.stress_avg_7d != null) segs.push(`stress ${t.stress_avg_7d}/10`);
   if (t.recovery_score != null) segs.push(`recovery ${t.recovery_score}/100`);
-  return segs.length ? `Closing: ${segs.join(', ')}.` : '';
+  const base = segs.length ? `Closing: ${segs.join(', ')}.` : '';
+  const tryAction = t.next_recovery_action ? ` Try: ${t.next_recovery_action}.` : '';
+  return base ? `${base}${tryAction}` : '';
 }
 
 export function buildSystemPrompt(coach: CoachType, useContext: boolean, contextPayload: any) {
