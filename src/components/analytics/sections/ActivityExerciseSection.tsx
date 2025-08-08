@@ -34,7 +34,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
           color="#22C55E"
         />
         <DailyProgressCard
-          title="Exercise Calories"
+          title="Exercise"
           value={Math.round(weeklyAverage.exerciseMinutes * 8)}
           target={500}
           unit="kcal"
