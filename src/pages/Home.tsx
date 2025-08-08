@@ -1111,7 +1111,7 @@ const Home = () => {
         <div className={`grid grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'} items-stretch`}>
           {/* Enhanced Hydration Action Card */}
           <Card 
-            className={`modern-action-card hydration-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'} shadow-lg hover:shadow-xl`}
+            className={`modern-action-card hydration-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'}`}
             onClick={() => navigate('/hydration')}
           >
             <CardContent className="flex flex-col items-center justify-center h-full p-0">
@@ -1133,7 +1133,7 @@ const Home = () => {
 
           {/* Enhanced Supplements Action Card */}
           <Card 
-            className={`modern-action-card supplements-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'} shadow-lg hover:shadow-xl`}
+            className={`modern-action-card supplements-action-card border-0 rounded-3xl overflow-hidden hover:scale-105 transition-all duration-500 cursor-pointer ${isMobile ? 'h-36' : 'h-40'}`}
             onClick={() => navigate('/supplements')}
           >
             <CardContent className="flex flex-col items-center justify-center h-full p-0">
@@ -1159,7 +1159,7 @@ const Home = () => {
       <div className="mt-16 px-2 sm:px-4">
         <div>
           <Card 
-            className={`modern-action-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 shadow-lg hover:shadow-xl`}
+            className={`modern-action-card net-calories-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500`}
           >
           <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative`}>
             {/* Action Buttons - Upper Right Corner */}
@@ -1438,7 +1438,7 @@ const Home = () => {
                   return (
                     <div key={macro.name} className="space-y-3">
                       <Card
-                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
+                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 w-full cursor-pointer`}
                         style={{ animationDelay: `${index * 100}ms` }}
                         onClick={() => openInsights({ 
                           type: macro.name.toLowerCase(), 
@@ -1528,7 +1528,7 @@ const Home = () => {
                   return (
                     <div key={micro.name} className="space-y-3">
                       <Card
-                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 shadow-lg hover:shadow-xl w-full cursor-pointer`}
+                        className={`modern-nutrient-card nutrients-card border-0 ${isMobile ? 'h-40' : 'h-44'} rounded-3xl animate-slide-up hover:scale-105 transition-all duration-500 w-full cursor-pointer`}
                         style={{ animationDelay: `${index * 100}ms` }}
                         onClick={() => openInsights({ 
                           type: micro.name.toLowerCase(), 
