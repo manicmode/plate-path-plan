@@ -22,10 +22,8 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
   const hydrationTargetMl = (user?.targetHydration || 8) * 250;
 
   return (
-    <div>
-      <SectionHeader icon={Activity} title="Activity & Exercise" subtitle="Steps, exercise, and hydration" />
-      
-      {/* Progress Cards Row */}
+    <div>      
+      {/* Progress Cards Row - Horizontal Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <DailyProgressCard
           title="Steps"
