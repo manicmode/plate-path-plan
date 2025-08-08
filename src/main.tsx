@@ -12,19 +12,6 @@ import { applySecurityHeaders } from "./lib/securityHeaders";
 import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 
-// Initialize debug logging toggle
-declare global {
-  interface Window {
-    __VOYAGE_DEBUG_LOGGING?: boolean;
-  }
-}
-
-// Set up developer debug logging toggle
-if (typeof window !== 'undefined') {
-  window.__VOYAGE_DEBUG_LOGGING = false; // Default to false
-  console.log('🔍 Voyage Debug: Set window.__VOYAGE_DEBUG_LOGGING = true to enable food logging debug panel');
-}
-
 // Apply security headers on app initialization
 applySecurityHeaders();
 

@@ -76,9 +76,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
-  // Debug flag for developer logging
-  const isDebugMode = typeof window !== 'undefined' && (window as any).__VOYAGE_DEBUG_LOGGING === true;
-
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
@@ -136,7 +133,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
-
   if (!currentFoodItem) return null;
 
   const portionMultiplier = portionPercentage[0] / 100;
@@ -151,48 +147,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     sugar: Math.round(currentFoodItem.sugar * portionMultiplier * 10) / 10,
     sodium: Math.round(currentFoodItem.sodium * portionMultiplier),
   };
-
-  // Debug logging when confirmation card opens or portion changes
-  React.useEffect(() => {
-    if (isDebugMode && currentFoodItem && isOpen) {
-      const debugInfo = {
-        gpt5_parsed_output: {
-          name: currentFoodItem.name,
-          quantity: portionPercentage[0],
-          unit: '%',
-          confidence: currentFoodItem.confidence || 'N/A'
-        },
-        matched_database_item: {
-          id: currentFoodItem.id || 'N/A',
-          name: currentFoodItem.name,
-          source: currentFoodItem.source || 'unknown',
-          serving_size: '100g', // Default serving size
-          unit: 'g',
-          calories_per_serving: currentFoodItem.calories,
-          macros: {
-            protein: currentFoodItem.protein,
-            carbs: currentFoodItem.carbs,
-            fat: currentFoodItem.fat,
-            fiber: currentFoodItem.fiber,
-            sugar: currentFoodItem.sugar,
-            sodium: currentFoodItem.sodium
-          }
-        },
-        scaling_math: {
-          quantity: portionPercentage[0],
-          per_unit_calories: currentFoodItem.calories,
-          final_calories: adjustedFood.calories,
-          calculation: `${portionPercentage[0]}% × ${currentFoodItem.calories} = ${adjustedFood.calories}`
-        }
-      };
-
-      console.group('🔍 VOYAGE DEBUG: Food Confirmation Details');
-      console.log('GPT-5 Parsed Output:', debugInfo.gpt5_parsed_output);
-      console.log('Matched Database Item:', debugInfo.matched_database_item);
-      console.log('Scaling Math:', debugInfo.scaling_math);
-      console.groupEnd();
-    }
-  }, [isDebugMode, currentFoodItem, isOpen, portionPercentage, adjustedFood]);
 
   const getHealthScore = (food: FoodItem) => {
     let score = 70; // Base score
@@ -665,54 +619,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       </Badge>
                     )}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Developer Debug Panel */}
-            {isDebugMode && (
-              <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-purple-600 dark:text-purple-400 font-mono text-sm">🔍</span>
-                  <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-                    Developer Debug Panel
-                  </h4>
-                </div>
-                
-                <div className="space-y-3 text-xs">
-                  {/* GPT-5 Parsed Output */}
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800">
-                    <h5 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">GPT-5 Parsed Output:</h5>
-                    <div className="font-mono text-blue-700 dark:text-blue-300 space-y-1">
-                      <div>• name: "{currentFoodItem.name}"</div>
-                      <div>• quantity: {portionPercentage[0]}%</div>
-                      <div>• confidence: {currentFoodItem.confidence || 'N/A'}</div>
-                    </div>
-                  </div>
-                  
-                  {/* Matched Database Item */}
-                  <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded border border-green-200 dark:border-green-800">
-                    <h5 className="font-semibold text-green-800 dark:text-green-200 mb-1">Matched Database Item:</h5>
-                    <div className="font-mono text-green-700 dark:text-green-300 space-y-1">
-                      <div>• id: {currentFoodItem.id || 'N/A'}</div>
-                      <div>• source: {currentFoodItem.source || 'unknown'}</div>
-                      <div>• calories_per_serving: {currentFoodItem.calories}</div>
-                      <div>• macros: P{currentFoodItem.protein}g C{currentFoodItem.carbs}g F{currentFoodItem.fat}g</div>
-                    </div>
-                  </div>
-                  
-                  {/* Scaling Math */}
-                  <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-800">
-                    <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Scaling Math:</h5>
-                    <div className="font-mono text-orange-700 dark:text-orange-300 space-y-1">
-                      <div>• calculation: {portionPercentage[0]}% × {currentFoodItem.calories} = {adjustedFood.calories}</div>
-                      <div>• final_calories: {adjustedFood.calories}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-3 text-xs text-purple-600 dark:text-purple-400">
-                  Toggle with: <code className="bg-purple-100 dark:bg-purple-800 px-1 rounded">window.__VOYAGE_DEBUG_LOGGING = true/false</code>
                 </div>
               </div>
             )}
