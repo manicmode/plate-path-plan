@@ -42,7 +42,7 @@ interface AIPattern {
   severity: 'warning' | 'info';
 }
 
-export const MoodWellnessTrendChart: React.FC = () => {
+export const MoodWellnessTrendChart: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -343,12 +343,14 @@ export const MoodWellnessTrendChart: React.FC = () => {
   if (loading) {
     return (
       <Card className="animate-slide-up glass-card border-0 rounded-3xl">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            <span>Mood & Wellness Trends</span>
-          </CardTitle>
-        </CardHeader>
+{!hideTitle && (
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              <span>Mood & Wellness Trends</span>
+            </CardTitle>
+          </CardHeader>
+        )}
         <CardContent>
           <div className="h-80 flex items-center justify-center">
             <div className="animate-pulse text-gray-500">Loading mood data...</div>
@@ -361,12 +363,14 @@ export const MoodWellnessTrendChart: React.FC = () => {
   if (!chartData.length) {
     return (
       <Card className="animate-slide-up glass-card border-0 rounded-3xl">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            <span>Mood & Wellness Trends</span>
-          </CardTitle>
-        </CardHeader>
+{!hideTitle && (
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              <span>Mood & Wellness Trends</span>
+            </CardTitle>
+          </CardHeader>
+        )}
         <CardContent>
           <div className="h-80 flex flex-col items-center justify-center text-center space-y-4">
             <div className="text-gray-400 text-4xl">🌙</div>
@@ -383,30 +387,31 @@ export const MoodWellnessTrendChart: React.FC = () => {
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl">
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <div>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
-              <span>Mood & Wellness Trends</span>
-            </CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Track your emotional and physical wellbeing over time
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            {!hideTitle && (
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <span>Mood & Wellness Trends</span>
+                </CardTitle>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Track your emotional and physical wellbeing over time
+                </p>
+              </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+                <SelectTrigger className="w-32 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="7day">7-Day Avg</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
-              <SelectTrigger className="w-32 rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="7day">7-Day Avg</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
         {/* Patterns Alert */}
         {aiPatterns.length > 0 && (
