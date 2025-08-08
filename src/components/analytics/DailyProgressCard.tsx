@@ -95,17 +95,19 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color, onC
             </div>
           </div>
           
-          {/* Progress bar with centered percentage */}
-          <div className="space-y-2">
-            <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div 
-                className={`h-full ${getProgressBarColor()} transition-all duration-1000 ease-out rounded-full`}
-                style={{ width: `${percentage}%` }}
-              />
-              {/* Centered percentage on progress bar with improved contrast */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className={`text-sm font-bold ${getStatusColor()}`} style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                  {percentage}%
+          {/* Progress bar with centered percentage - full-bleed within card padding */}
+          <div className="-mx-4 sm:-mx-6">
+            <div className="space-y-2">
+              <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full ${getProgressBarColor()} transition-all duration-1000 ease-out rounded-full`}
+                  style={{ width: `${percentage}%` }}
+                />
+                {/* Centered percentage on progress bar with improved contrast */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={`text-sm font-bold ${getStatusColor()}`} style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                    {percentage}%
+                  </div>
                 </div>
               </div>
             </div>
