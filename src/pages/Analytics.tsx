@@ -138,8 +138,8 @@ export default function Analytics() {
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
-              title="Workout Summary" 
-              subtitle="Total workouts, exercise time, and calories burned" 
+              title="Daily Overview" 
+              subtitle="Total workouts, exercise time, and calories burned"
             />
             <div className="space-y-6">
               <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
