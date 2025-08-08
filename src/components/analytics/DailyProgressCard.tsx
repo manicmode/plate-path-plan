@@ -96,7 +96,7 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color, onC
           </div>
           
           {/* Progress bar with centered percentage */}
-          <div className="space-y-2">
+          <div className="-mx-6">
             <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
                 className={`h-full ${getProgressBarColor()} transition-all duration-1000 ease-out rounded-full`}
