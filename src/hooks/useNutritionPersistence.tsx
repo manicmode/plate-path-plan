@@ -92,7 +92,7 @@ export const useNutritionPersistence = () => {
         // Add to deduplication set to prevent processing duplicate saves
         addToRecentlySaved(savedId);
         
-        // Award nutrition XP (non-blocking)
+        // Award nutrition XP
         try {
           const { error: xpError } = await supabase.functions.invoke('award-nutrition-xp', {
             body: { 
@@ -101,21 +101,9 @@ export const useNutritionPersistence = () => {
               activity_id: savedId
             }
           });
-          if (xpError) {
-            console.warn('XP award failed:', xpError);
-            toast({
-              title: "XP Award Issue",
-              description: "Food logged successfully, but XP award failed. Please contact support if this persists.",
-              duration: 3000,
-            });
-          }
+          if (xpError) console.warn('XP award failed:', xpError);
         } catch (xpError) {
           console.warn('XP award error:', xpError);
-          toast({
-            title: "XP Award Issue", 
-            description: "Food logged successfully, but XP award failed.",
-            duration: 3000,
-          });
         }
 
         return savedId;

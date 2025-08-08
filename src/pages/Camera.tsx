@@ -1123,35 +1123,23 @@ const CameraPage = () => {
       const maxRetries = 2;
       let result;
       
-      // Main retry loop for GPT-5 voice processing
       while (retryCount <= maxRetries) {
         try {
-          console.log(`🔄 [Camera] Voice request attempt ${retryCount + 1}/${maxRetries + 1}`);
-          const response = await supabase.functions.invoke('log-voice-gpt5', {
-            body: { text: voiceText }
-          });
+          result = await sendToLogVoice(voiceText);
           
-          // Check if response is successful
-          if (response.data?.success) {
-            result = { success: true, message: JSON.stringify(response.data) };
-            break;
-          } else if (!response.error) {
-            // Response came back but success is false - not a network error
-            result = { success: false, error: response.data?.errorMessage || 'GPT-5 processing failed' };
-            break;
-          }
+          // If successful, break out of retry loop
+          if (result.success) break;
           
-          // Handle network/server errors for retry
+          // Check if we should retry based on error type
+          const errorData = result.message ? JSON.parse(result.message) : {};
           const shouldRetry = retryCount < maxRetries && (
-            response.error?.message?.includes('401') || 
-            response.error?.message?.includes('429') || 
-            response.error?.message?.includes('5')
+            errorData.errorType === 'HTTP_ERROR' || 
+            result.error?.includes('401') || 
+            result.error?.includes('429') || 
+            result.error?.includes('5')
           );
           
-          if (!shouldRetry) {
-            result = { success: false, error: response.error?.message || 'GPT-5 processing failed' };
-            break;
-          }
+          if (!shouldRetry) break;
           
           // Exponential backoff: 1s, 2s
           const backoffMs = Math.pow(2, retryCount) * 1000;
@@ -1160,29 +1148,34 @@ const CameraPage = () => {
           retryCount++;
           
         } catch (error) {
-          if (retryCount >= maxRetries) {
-            result = { success: false, error: error.message };
-            break;
-          }
+          if (retryCount >= maxRetries) throw error;
           retryCount++;
           const backoffMs = Math.pow(2, retryCount) * 1000;
           await new Promise(resolve => setTimeout(resolve, backoffMs));
         }
       }
 
-      // Only attempt fallback if primary call truly failed
       if (!result.success) {
+        // After retries failed, try fallback to log-voice function
         console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
         try {
-          const fallbackResult = await supabase.functions.invoke('log-voice', {
-            body: { text: voiceText }
+          const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+            },
+            body: JSON.stringify({ text: voiceText })
           });
           
-          if (fallbackResult.data?.success) {
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
             result = {
               success: true,
               message: JSON.stringify({
-                ...fallbackResult.data,
+                success: true,
+                items: fallbackData.items || [],
+                originalText: fallbackData.originalText || voiceText,
                 model_used: 'gpt-4o (fallback)',
                 fallback_used: true
               })
