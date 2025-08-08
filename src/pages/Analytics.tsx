@@ -170,7 +170,6 @@ export default function Analytics() {
               subtitle="Streaks, personal records, and motivational insights" 
             />
             <div className="space-y-6">
-              <BestStreakHistoryChart />
               <WorkoutTrophyCard />
               <MotivationCard />
             </div>

@@ -17,6 +17,7 @@ import { MuscleGroupAnalytics } from '@/components/analytics/MuscleGroupAnalytic
 import { useWorkoutAnalytics } from '@/hooks/useWorkoutAnalytics';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
+import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreakHistoryChart';
 
 export const ExerciseAnalyticsSection = () => {
   const {
@@ -247,6 +248,11 @@ return (
           trends={trendData || []}
           insights={aiInsights || []}
         />
+      </ErrorBoundary>
+
+      {/* Workout Streak History */}
+      <ErrorBoundary fallback={<div className="p-4 text-center text-muted-foreground">Streak history unavailable</div>}>
+        <BestStreakHistoryChart />
       </ErrorBoundary>
 
 
