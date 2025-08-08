@@ -132,28 +132,28 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
     fetchData();
   }, [user?.id, timeRange]);
 
-  // Format data for charts (last 7 days with proper day labels)
+  // Format data for charts using fixed 7 daily buckets ending today
   const getWeeklyChartData = () => {
-    const weekData = [] as Array<{ day: string; steps: number; calories: number; duration: number }>;
-    const today = new Date();
-
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayData = exerciseData.find((entry) => entry.date === dateStr);
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const dayName = i === 0 ? 'Today' : dayNames[date.getDay()];
-
-      weekData.push({
-        day: dayName,
-        steps: dayData?.steps || 0,
-        calories: dayData?.calories_burned || 0,
-        duration: dayData?.duration_minutes || 0,
+    const end = new Date();
+    const letters = ['S','M','T','W','T','F','S'];
+    const start = new Date(end);
+    start.setDate(end.getDate() - 6);
+    const out: Array<{ label: string; fullLabel: string; steps: number; calories: number; duration: number; date: string }> = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = d.toISOString().slice(0,10);
+      const day = exerciseData.find((e) => e.date === key);
+      out.push({
+        label: letters[d.getDay()],
+        fullLabel: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }),
+        steps: day?.steps || 0,
+        calories: day?.calories_burned || 0,
+        duration: day?.duration_minutes || 0,
+        date: key,
       });
     }
-
-    return weekData;
+    return out;
   };
 
   return {

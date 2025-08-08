@@ -11,21 +11,20 @@ interface EnhancedStreakTrackerProps {
 export const EnhancedStreakTracker = ({ className }: EnhancedStreakTrackerProps) => {
   const { weeklyChartData } = useRealExerciseData('30d');
 
-  // Calculate streaks (simplified logic - would be dynamic in real implementation)
   const currentStreak = weeklyChartData.filter(day => day.duration > 0).length; // Mock calculation based on active days
   const longestStreak = 12; // Mock calculation
   const weeklyGoal = 4;
   const thisWeekWorkouts = weeklyChartData.filter(day => day.duration > 0).length;
   const weeklyProgress = Math.min((thisWeekWorkouts / weeklyGoal) * 100, 100);
 
+  const mostActiveDay = weeklyChartData.reduce((max, day) =>
+    day.duration > max.duration ? day : max,
   const getStreakMessage = () => {
     if (currentStreak >= 7) return "🔥 You're on fire! Keep it up!";
     if (currentStreak >= 3) return "💪 Great momentum! Don't stop now!";
     if (currentStreak === 0) return "🌟 Ready for a fresh start?";
     return "🎯 Building your streak...";
   };
-
-  const getStreakColor = () => {
     if (currentStreak >= 7) return "from-orange-500 to-red-500";
     if (currentStreak >= 3) return "from-blue-500 to-purple-500";
     return "from-gray-400 to-gray-500";
