@@ -7,7 +7,8 @@ import { StreakTrackerCard } from '@/components/analytics/recovery/StreakTracker
 import { RecoveryInsightsCard } from '@/components/analytics/recovery/RecoveryInsightsCard';
 import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrendChart';
-import { TrendingUp, Pill, Gauge, Brain, PieChart as PieChartIcon, History, Lightbulb, Star } from 'lucide-react';
+import { RecoveryActivityTrends } from '@/components/analytics/recovery/RecoveryActivityTrends';
+import { TrendingUp, Pill, Gauge, Brain, PieChart as PieChartIcon, History, Lightbulb, Star, BarChart3 } from 'lucide-react';
 
 interface RecoveryAnalyticsSectionProps {
   weeklyAverage?: any;
@@ -60,6 +61,14 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         subtitle="Weekly mood and stress chart"
       />
       <MoodStressChart />
+      
+      {/* Recovery Activity Trends */}
+      <SectionHeader 
+        icon={BarChart3}
+        title="Recovery Activity Trends"
+        subtitle="Current vs previous period"
+      />
+      <RecoveryActivityTrends />
       
       {/* Recovery Activity Breakdown */}
       <SectionHeader 
