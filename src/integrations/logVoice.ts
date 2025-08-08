@@ -6,6 +6,7 @@ export interface LogVoiceRequest {
 export interface LogVoiceResponse {
   message: string;
   success: boolean;
+  ok: boolean; // HTTP response.ok status
   error?: string;
 }
 
@@ -57,6 +58,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
         return {
           message: JSON.stringify(errorData),
           success: false,
+          ok: response.ok,
           error: errorData.errorMessage || `HTTP ${response.status}: ${response.statusText}`
         };
       } catch {
@@ -69,6 +71,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
             details: errorText
           }),
           success: false,
+          ok: response.ok,
           error: `HTTP ${response.status}: ${response.statusText}`
         };
       }
@@ -101,7 +104,8 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       };
       return {
         message: JSON.stringify(normalizedData),
-        success: true
+        success: true,
+        ok: response.ok
       };
     } else {
       // Handle structured error responses - ensure clean JSON structure
@@ -114,6 +118,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
       return {
         message: JSON.stringify(normalizedError),
         success: false,
+        ok: response.ok,
         error: normalizedError.errorMessage
       };
     }
@@ -134,6 +139,7 @@ export const sendToLogVoice = async (text: string): Promise<LogVoiceResponse> =>
     return {
       message: JSON.stringify(normalizedError),
       success: false,
+      ok: false, // Network errors are not HTTP ok
       error: error instanceof Error ? error.message : 'Network error occurred'
     };
   }

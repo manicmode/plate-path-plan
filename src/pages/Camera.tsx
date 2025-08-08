@@ -1136,7 +1136,7 @@ const CameraPage = () => {
         console.error('GPT-5 primary JSON parse failed:', e);
       }
 
-      const primaryHttpOk = !!primaryResp?.success; // Use success instead of ok for LogVoiceResponse
+      const primaryHttpOk = !!primaryResp?.ok; // Use the actual HTTP response ok status
       const primaryJsonOk = primaryJson && typeof primaryJson === "object";
 
       const primaryItems = Array.isArray(primaryJson?.items)
