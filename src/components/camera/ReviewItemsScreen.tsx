@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -83,13 +84,21 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby="review-detected-items-description">
         <div className="p-6">
+          <VisuallyHidden>
+            <DialogHeader>
+              <DialogTitle>Review Detected Items</DialogTitle>
+              <DialogDescription id="review-detected-items-description">
+                Check and edit the food items detected in your image
+              </DialogDescription>
+            </DialogHeader>
+          </VisuallyHidden>
           <DialogHeader className="text-center mb-6">
-            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Review Detected Items
-            </DialogTitle>
-            <DialogDescription id="review-detected-items-description" className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Check and edit the food items detected in your image
-            </DialogDescription>
+            </p>
           </DialogHeader>
 
           <div className="space-y-4 max-h-96 overflow-y-auto">

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
+import { useNutritionDeduplication } from '@/hooks/useNutritionDeduplication';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { triggerDailyScoreCalculation } from '@/lib/dailyScoreUtils';
@@ -113,6 +114,7 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   
   const { data: loadedData, isLoading, loadTodaysData } = useNutritionLoader();
   const { saveFood, saveHydration, saveSupplement, removeFood: removeFromDB } = useNutritionPersistence();
+  const { isRecentlySaved } = useNutritionDeduplication();
   const { user } = useAuth();
   const { awardNutritionXP } = useXPSystem();
   

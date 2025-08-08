@@ -238,6 +238,17 @@ export function getServingDebugInfo(
   if (usedOverride) {
     sourceChosen = 'per-unit-override';
     reason = 'count_based_override';
+    
+    return {
+      ...normalized,
+      baseServingLabel: "1 large egg (≈50g)",
+      baseServingQuantity: 1,
+      baseServingUnit: "egg",
+      sourceChosen: sourceChosen,
+      reason: reason,
+      isCountBased: true,
+      isWeightBased: false
+    };
   }
   
   return {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -454,12 +455,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           aria-describedby="food-confirmation-description"
         >
-          <DialogHeader className="sr-only">
-            <DialogTitle>Confirm Food Log</DialogTitle>
-            <DialogDescription id="food-confirmation-description">
-              Review and confirm your food item before logging it to your nutrition tracker.
-            </DialogDescription>
-          </DialogHeader>
+          <VisuallyHidden>
+            <DialogHeader>
+              <DialogTitle>Confirm Food Log</DialogTitle>
+              <DialogDescription id="food-confirmation-description">
+                Review and confirm your food item before logging it to your nutrition tracker.
+              </DialogDescription>
+            </DialogHeader>
+          </VisuallyHidden>
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (

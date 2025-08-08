@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -163,6 +164,10 @@ export const ExerciseConfirmationCard = ({
           className="w-full max-w-md"
         >
           <Card ref={cardRef} className="shadow-2xl border-border bg-card">
+            <VisuallyHidden>
+              <h2>Confirm Exercise Log</h2>
+              <p>Review and confirm your exercise details before logging.</p>
+            </VisuallyHidden>
             <CardContent className="p-0">
               {/* Header */}
               <div className="p-6 pb-4">

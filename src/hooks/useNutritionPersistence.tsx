@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { useToast } from '@/hooks/use-toast';
+import { useNutritionDeduplication } from './useNutritionDeduplication';
 import { safeSetJSON } from '@/lib/safeStorage';
 import { useMealScoring } from './useMealScoring';
 import { getLocalDateString } from '@/lib/dateUtils';
@@ -43,6 +45,8 @@ interface SupplementItem {
 
 export const useNutritionPersistence = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { addToRecentlySaved } = useNutritionDeduplication();
   const { scoreMealAfterInsert } = useMealScoring();
 
   const saveFood = useCallback(async (food: FoodItem): Promise<string | null> => {
@@ -80,6 +84,30 @@ export const useNutritionPersistence = () => {
 
       if (error) throw error;
       console.log('✅ Food saved to database successfully:', food.name);
+      
+      if (data && data.length > 0) {
+        const savedId = data[0].id;
+        console.log(`✅ Food saved with ID: ${savedId}`);
+        
+        // Add to deduplication set to prevent processing duplicate saves
+        addToRecentlySaved(savedId);
+        
+        // Award nutrition XP
+        try {
+          const { error: xpError } = await supabase.functions.invoke('award-nutrition-xp', {
+            body: { 
+              user_id: user.id, 
+              activity_type: 'nutrition',
+              activity_id: savedId
+            }
+          });
+          if (xpError) console.warn('XP award failed:', xpError);
+        } catch (xpError) {
+          console.warn('XP award error:', xpError);
+        }
+
+        return savedId;
+      }
       
       // Score the meal quality
       const scoringResult = await scoreMealAfterInsert(data, error);
