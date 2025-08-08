@@ -83,6 +83,17 @@ const Index = () => {
   // Force show auth form if taking too long or auth state is clear
   console.log('🐛 DEBUG Index: Showing content', { isAuthenticated, timestamp: new Date().toISOString() });
 
+  // EMERGENCY FALLBACK - Always show something
+  if (!isAuthenticated) {
+    console.log('🐛 DEBUG Index: Showing AuthForm');
+    return (
+      <div style={{ background: '#ffffff', color: '#000000', minHeight: '100vh', padding: '20px' }}>
+        <h1>VOYAGE - Sign In</h1>
+        <AuthForm />
+      </div>
+    );
+  }
+
   // Redirect to home if authenticated (no flash because of proper loading state above)
   if (isAuthenticated) {
     console.log('🐛 DEBUG Index: Redirecting to home');

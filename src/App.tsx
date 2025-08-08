@@ -134,6 +134,35 @@ function AppContent() {
     timestamp: new Date().toISOString()
   });
 
+  // EMERGENCY BYPASS - Force show content after 3 seconds regardless
+  const [emergencyBypass, setEmergencyBypass] = React.useState(false);
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('🚨 EMERGENCY BYPASS ACTIVATED');
+      setEmergencyBypass(true);
+      completeSplash();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // If emergency bypass is active, show minimal app
+  if (emergencyBypass) {
+    return (
+      <div style={{ background: '#ffffff', color: '#000000', minHeight: '100vh', padding: '20px' }}>
+        <h1>VOYAGE App - Emergency Mode</h1>
+        <p>Emergency bypass activated. App is loading...</p>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/home" element={<div>Home Page</div>} />
+            <Route path="*" element={<div>Page not found</div>} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+      </div>
+    );
+  }
+
   // Prefetch critical components after app has loaded
   React.useEffect(() => {
     prefetchCriticalComponents();
