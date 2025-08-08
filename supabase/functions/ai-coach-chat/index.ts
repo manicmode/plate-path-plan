@@ -45,16 +45,53 @@ serve(async (req) => {
   console.log('Request method:', req.method);
   console.log('Request headers:', Object.fromEntries(req.headers.entries()));
 
+  // Create supabase client authorized as caller to get user id for rate limiting
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+  const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: req.headers.get('Authorization') || '' } } })
+    : null;
+
+  // In-memory rate limit store per user (best-effort)
+  const rateStore = (globalThis as any).__ai_rate__ || ((globalThis as any).__ai_rate__ = new Map<string, number[]>());
+
   try {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify({
       messageLength: requestBody.message?.length,
       hasUserContext: !!requestBody.userContext,
-      userContext: requestBody.userContext
+      coachType: requestBody.coachType || requestBody.userContext?.coachType,
     }));
 
-    const { message, userContext, flaggedIngredients } = requestBody;
+    const { message, userContext, flaggedIngredients, coachType: coachTypeFromBody } = requestBody;
+    const coachType = coachTypeFromBody || userContext?.coachType || 'nutrition';
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
+    // Get user id for rate limit
+    let userId: string | null = null;
+    if (supabase) {
+      try {
+        const { data } = await supabase.auth.getUser();
+        userId = data?.user?.id || null;
+      } catch (_) {}
+    }
+
+    // Rate limit: 8/min per user
+    if (userId) {
+      const now = Date.now();
+      const windowMs = 60 * 1000;
+      const maxReq = 8;
+      const arr = rateStore.get(userId) || [];
+      const recent = arr.filter(ts => now - ts < windowMs);
+      if (recent.length >= maxReq) {
+        return new Response(JSON.stringify({ error: 'Rate limit: Please wait a moment before asking again.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      recent.push(now);
+      rateStore.set(userId, recent);
+    }
 
     // Enhanced API key validation
     if (!openAIApiKey) {
@@ -68,24 +105,7 @@ serve(async (req) => {
       });
     }
 
-    if (openAIApiKey.length < 20) {
-      console.error('CRITICAL: OpenAI API key appears to be invalid (too short)');
-      return new Response(JSON.stringify({ 
-        error: 'AI service configuration error. OpenAI API key appears invalid. Please contact support.' 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('OpenAI API key found, length:', openAIApiKey.length);
-    console.log('API key starts with:', openAIApiKey.substring(0, 10) + '...');
-    
-    // Log userContext for debugging data consumption
-    console.log('📊 AI Coach receiving user context:', JSON.stringify(userContext, null, 2));
-
     if (!message || message.trim().length === 0) {
-      console.error('Invalid message received:', message);
       return new Response(JSON.stringify({ 
         error: 'Please provide a valid message to continue our conversation.' 
       }), {
@@ -94,61 +114,30 @@ serve(async (req) => {
       });
     }
 
-    // Create system prompt with user context and flagged ingredients
-    let flaggedIngredientsContext = '';
-    if (flaggedIngredients && flaggedIngredients.length > 0) {
-      flaggedIngredientsContext = `
+    // Build role-specific personality and context prompt
+    const voiceProfile = userContext?.voiceProfile || (coachType === 'recovery' ? 'calm_serene' : coachType === 'exercise' ? 'gritty_hype' : 'confident_gentle');
 
-FLAGGED INGREDIENTS DETECTED:
-${flaggedIngredients.map(ing => `- ${ing.name} (${ing.category}, ${ing.severity} severity): ${ing.description}`).join('\n')}
+    const roleIntro = {
+      nutrition: 'You are the user\'s Nutrition Coach. Personalize guidance using their latest nutrition data.',
+      exercise: 'You are the user\'s Exercise Coach. Personalize guidance using their latest training data.',
+      recovery: 'You are the user\'s Recovery Coach. Personalize guidance using their latest recovery data.'
+    }[coachType as 'nutrition'|'exercise'|'recovery'];
 
-IMPORTANT: The user just logged food with these concerning ingredients. Your response should:
-1. Address the flagged ingredients specifically and personally
-2. Explain why they're concerning in simple terms
-3. Suggest healthier alternatives where possible
-4. Be supportive and encouraging, not judgmental
-5. Vary your tone based on severity:
-   - High severity: Be firm but kind ("This one's worth avoiding if possible")
-   - Moderate severity: Be informative and suggest alternatives
-   - Low severity: Educate and raise awareness
-6. Batch similar flags (e.g., "2 harmful additives and 1 allergen detected...")
-7. Keep the message under 200 words but make it actionable
+    const stylePrompt = {
+      confident_gentle: 'Use gentle, evidence-based guidance with supportive tone (🌿✨).',
+      gritty_hype: 'Be energetic, motivational, and direct (💪🔥).',
+      calm_serene: 'Be soothing, compassionate, and restorative (🌙🧘).'
+    }[voiceProfile as 'confident_gentle'|'gritty_hype'|'calm_serene'];
 
-Example tone: "Hey! I noticed your meal contains *Aspartame* (a harmful additive). It's been linked to headaches and neurological effects. If possible, try alternatives like stevia or monk fruit! Great job staying aware — you're doing amazing."`;
-    }
+    const ctx = userContext?.context || userContext?.contextSnapshot || userContext; // accept various fields
+    const numbersRule = 'Always reference 2–4 concrete numbers from context when relevant.';
+    const closeRule = 'Close with a 1-sentence plan you\'ll track this week.';
+    const safety = 'Stay strictly within your specialty; no medical diagnosis.';
 
-    // Extract voice profile for personality-aligned responses
-    const voiceProfile = userContext?.voiceProfile || "confident_gentle";
-    
-    // Personality-aligned system prompts
-    const personalityPrompts = {
-      "confident_gentle": "You are a calm, wise, and gentle nutrition coach. Use gentle language, nature emojis (🌿🌱💚✨), and speak with quiet confidence. Be like a mindful mentor who guides with wisdom rather than pressure. Focus on intention, balance, and self-awareness.",
-      "gritty_hype": "You are a LOUD, energetic, and motivational fitness coach. Use ALL CAPS for emphasis, lots of emojis (💪🔥💥🚀), and gritty, hyped-up language. Be like a personal trainer who gets PUMPED about everything fitness-related.",
-      "calm_serene": "You are a gentle, poetic, and emotionally supportive recovery coach. Use soft, flowing language with calming emojis (🌙💫🌊🕯️🧘). Speak like a wise, compassionate guide who understands the soul's need for rest and healing."
-    };
+    const recoveryFocus = coachType === 'recovery' ? '\nIf user asks a general question, answer briefly then translate it into a next step aligned with their goal and data.' : '';
 
-    const basePersonality = personalityPrompts[voiceProfile as keyof typeof personalityPrompts] || personalityPrompts["confident_gentle"];
-
-    const systemPrompt = `${basePersonality}
-    
-Your responses should be:
-- Encouraging and motivational (in your personality style)
-- Evidence-based and practical
-- Personalized to the user's data
-- Formatted with appropriate emojis and clear sections
-- Concise but comprehensive
-
-User Context:
-- Voice Profile: ${voiceProfile}
-- Target Calories: ${userContext?.user?.targetCalories || 'Not set'}
-- Target Protein: ${userContext?.user?.targetProtein || 'Not set'}g
-- Today's Progress: ${userContext?.todaysProgress?.calories || 0} calories, ${userContext?.todaysProgress?.protein || 0}g protein
-- Carbs: ${userContext?.todaysProgress?.carbs || 0}g, Fat: ${userContext?.todaysProgress?.fat || 0}g${flaggedIngredientsContext}
-
-Always provide actionable advice while maintaining your unique coaching personality.`;
-
-    console.log('System prompt created, length:', systemPrompt.length);
-    console.log('User message length:', message.length);
+    const systemPrompt = `${roleIntro}\n${stylePrompt}\n${numbersRule}\n${closeRule}\n${safety}${recoveryFocus}\n
+CONTEXT (may be partial, omit if missing):\n${ctx ? JSON.stringify(ctx).slice(0, 4000) : 'No context provided'}\n`;
 
     const requestPayload = {
       model: 'gpt-4o-mini',
@@ -160,17 +149,7 @@ Always provide actionable advice while maintaining your unique coaching personal
       temperature: 0.7,
     };
 
-    console.log('OpenAI request payload:', JSON.stringify({
-      model: requestPayload.model,
-      messagesCount: requestPayload.messages.length,
-      maxTokens: requestPayload.max_tokens,
-      temperature: requestPayload.temperature
-    }));
-
     const makeOpenAIRequest = async () => {
-      console.log('Making request to OpenAI API...');
-      const startTime = Date.now();
-      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -179,12 +158,6 @@ Always provide actionable advice while maintaining your unique coaching personal
         },
         body: JSON.stringify(requestPayload),
       });
-
-      const endTime = Date.now();
-      console.log(`OpenAI API request completed in ${endTime - startTime}ms`);
-      console.log('OpenAI response status:', response.status);
-      console.log('OpenAI response headers:', Object.fromEntries(response.headers.entries()));
-
       return response;
     };
 
@@ -192,96 +165,25 @@ Always provide actionable advice while maintaining your unique coaching personal
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error details:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        body: errorText
-      });
-      
-      // Parse error details if possible
-      try {
-        const errorJson = JSON.parse(errorText);
-        console.error('Parsed OpenAI error:', errorJson);
-        
-        if (errorJson.error?.code === 'invalid_api_key') {
-          return new Response(JSON.stringify({ 
-            error: 'AI service authentication failed. Please verify your OpenAI API key is valid and has sufficient credits.' 
-          }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        
-        if (errorJson.error?.code === 'insufficient_quota') {
-          return new Response(JSON.stringify({ 
-            error: 'AI service quota exceeded. Please check your OpenAI account credits and billing.' 
-          }), {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } catch (parseError) {
-        console.error('Could not parse OpenAI error response:', parseError);
-      }
-      
-      // Provide specific error messages based on status code
-      let errorMessage = 'AI service temporarily unavailable. Please try again.';
-      
-      if (response.status === 429) {
-        errorMessage = 'AI service is busy right now. Please wait a moment and try again.';
-      } else if (response.status === 401) {
-        errorMessage = 'AI service authentication error. Please contact support to verify API key configuration.';
-      } else if (response.status === 400) {
-        errorMessage = 'Invalid request format. Please try rephrasing your message.';
-      } else if (response.status === 500) {
-        errorMessage = 'AI service is experiencing issues. Please try again shortly.';
-      }
-      
-      return new Response(JSON.stringify({ error: errorMessage }), {
+      console.error('OpenAI error:', errorText);
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable. Please try again.' }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const data = await response.json();
-    console.log('OpenAI response structure:', {
-      hasChoices: !!data.choices,
-      choicesLength: data.choices?.length,
-      hasFirstChoice: !!data.choices?.[0],
-      hasMessage: !!data.choices?.[0]?.message,
-      hasContent: !!data.choices?.[0]?.message?.content,
-      usage: data.usage
-    });
-    
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected OpenAI response format:', data);
-      return new Response(JSON.stringify({ 
-        error: 'Received unexpected response format from AI service. Please try again.' 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const aiResponse = data.choices[0].message.content;
-    console.log('AI response generated successfully, length:', aiResponse?.length);
+    const aiResponse = data?.choices?.[0]?.message?.content || 'I\'m here to help.';
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('=== CRITICAL ERROR in ai-coach-chat function ===');
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    // Return user-friendly error messages
+    console.error('=== CRITICAL ERROR in ai-coach-chat function ===', error);
     const errorMessage = error.message?.includes('AI service') 
       ? error.message 
       : "I'm having trouble connecting right now. Please try again in a moment! 🤖";
-    
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

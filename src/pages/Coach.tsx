@@ -225,36 +225,27 @@ Take a breath... let's explore your nutrition journey together with care and int
     // Record coach interaction for notifications
     recordCoachInteraction();
 
-    try {
-      const contextData = {
-        voiceProfile: "confident_gentle", // 🎙️ Voice metadata for Nutrition Coach
-        user: {
-          name: user?.name,
-          targetCalories: user?.targetCalories,
-          targetProtein: user?.targetProtein,
-          targetCarbs: user?.targetCarbs,
-          targetFat: user?.targetFat,
-          allergies: user?.allergies,
-          dietaryGoals: user?.dietaryGoals,
-        },
-        todaysProgress: progress,
-        todaysFoods: currentDay.foods.map(f => ({
-          name: f.name,
-          calories: f.calories,
-          protein: f.protein,
-          carbs: f.carbs,
-          fat: f.fat,
-        })),
-        hydration: currentDay.totalHydration,
-        supplements: currentDay.supplements.length,
-      };
+try {
+  // Optionally fetch server-built context (best data snapshot)
+  let serverContext: any = null;
+  try {
+    const ctxResp = await supabase.functions.invoke('coach-context', {} as any);
+    if (!ctxResp.error) serverContext = ctxResp.data;
+  } catch (_) {}
 
-      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
-        body: {
-          message: messageToSend,
-          userContext: contextData,
-        },
-      });
+  const contextData = {
+    voiceProfile: "confident_gentle", // 🎙️ Voice metadata for Nutrition Coach
+    coachType: 'nutrition',
+    context: serverContext,
+  };
+
+  const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
+    body: {
+      coachType: 'nutrition',
+      message: messageToSend,
+      userContext: contextData,
+    },
+  });
 
       if (error) throw error;
 
@@ -266,22 +257,21 @@ Take a breath... let's explore your nutrition journey together with care and int
         isRecipe: isRecipeRequest,
       };
 
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      handleError(error as Error, 'Sending message');
-      toast.error('Failed to send message. Please try again.');
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+setMessages(prev => [...prev, aiMessage]);
+} catch (error) {
+  handleError(error as Error, 'Sending message');
+  toast.error('Using a generic answer; I’ll personalize once your data loads.');
+  const errorMessage: Message = {
+    id: (Date.now() + 1).toString(),
+    content: "I'm sorry, I couldn't personalize your response right now. Let's try again soon!",
+    isUser: false,
+    timestamp: new Date(),
+  };
+  
+  setMessages(prev => [...prev, errorMessage]);
+} finally {
+  setIsLoading(false);
+}
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -496,14 +486,20 @@ Take a breath... let's explore your nutrition journey together with care and int
         <LevelProgressBar theme="nutrition" />
       </div>
 
-      {/* Chat Interface with enhanced mobile optimization */}
-      <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
-        <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-            <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
-            <span>Chat with Your Coach</span>
-          </CardTitle>
-        </CardHeader>
+{/* Chat Interface with enhanced mobile optimization */}
+<Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
+  <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
+    <div className="flex items-center justify-between">
+      <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+        <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-600`} />
+        <span>Chat with Your Coach</span>
+      </CardTitle>
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <span className="text-xs">Use my data</span>
+        <input type="checkbox" aria-label="Use my data" className="accent-current" defaultChecked onChange={() => {}} />
+      </div>
+    </div>
+  </CardHeader>
         <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
           {/* Messages Container with optimized height for mobile */}
           <div className={`${isMobile ? (isLowMemory ? 'h-[400px]' : 'h-[500px]') : 'h-[600px]'} flex flex-col`}>

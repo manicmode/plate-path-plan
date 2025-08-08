@@ -21,17 +21,17 @@ const RecoveryCoachSection = () => {
   const [showPraiseMessage, setShowPraiseMessage] = useState<string | null>(null);
   const { trackInteraction } = useCoachInteractions();
 
-  const handleCommand = async (command: string) => {
-    // 🎮 Coach Gamification System - Track skill panel interaction
-    const trackResult = await trackInteraction('recovery', 'skill_panel');
-    if (trackResult?.should_praise && trackResult.praise_message) {
-      setShowPraiseMessage(trackResult.praise_message);
-      setTimeout(() => setShowPraiseMessage(null), 8000);
-    }
-    
-    // This will be handled by the RecoveryAIChat component
-    console.log('Recovery skill command:', command);
-  };
+const handleCommand = async (command: string) => {
+  // 🎮 Coach Gamification System - Track skill panel interaction
+  const trackResult = await trackInteraction('recovery', 'skill_panel');
+  if (trackResult?.should_praise && trackResult.praise_message) {
+    setShowPraiseMessage(trackResult.praise_message);
+    setTimeout(() => setShowPraiseMessage(null), 8000);
+  }
+  // Auto-send to chat
+  const text = command.replace(/\{([^}]+)\}/g, '___');
+  window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text } }));
+};
 
   // Recovery Skill Panel Categories
   const recoverySkillCategories = [
@@ -144,8 +144,8 @@ const RecoveryCoachSection = () => {
           gradientColors="from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20"
         />
         
-        {/* Command Buttons */}
-        <RecoveryCommandBar />
+{/* Command Buttons */}
+<RecoveryCommandBar onCommand={(cmd) => window.dispatchEvent(new CustomEvent('recovery-chat:send', { detail: { text: cmd } }))} />
         
         {/* Tips or Motivation */}
         <RecoveryTips />

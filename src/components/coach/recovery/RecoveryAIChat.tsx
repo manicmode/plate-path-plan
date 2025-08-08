@@ -32,6 +32,8 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [useMyData, setUseMyData] = useState(true);
+  const [isContextLoading, setIsContextLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   // 🎮 Coach Gamification System
@@ -42,6 +44,35 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Listen for programmatic sends from SkillPanel/CommandBar
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { text: string };
+      if (detail?.text) sendMessage(detail.text);
+    };
+    window.addEventListener('recovery-chat:send', handler as EventListener);
+    return () => window.removeEventListener('recovery-chat:send', handler as EventListener);
+  }, []);
+
+  const fetchContextIfNeeded = async () => {
+    if (!useMyData) return null;
+    setIsContextLoading(true);
+    const start = Date.now();
+    try {
+      const { data, error } = await supabase.functions.invoke('coach-context', {} as any);
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('coach-context failed, fallback to generic', err);
+      return null;
+    } finally {
+      const elapsed = Date.now() - start;
+      const minDelay = 300; // subtle shimmer
+      const remaining = Math.max(0, minDelay - elapsed);
+      setTimeout(() => setIsContextLoading(false), remaining);
+    }
+  };
 
   const sendMessage = async (messageText?: string) => {
     const messageToSend = messageText || input.trim();
@@ -62,14 +93,15 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     await trackInteraction('recovery', 'message');
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-recovery-coach-chat', {
+      const context = await fetchContextIfNeeded();
+      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
         body: {
+          coachType: 'recovery',
           message: messageToSend,
           userContext: {
-            voiceProfile: "calm_serene", // 🎙️ Voice metadata for Recovery Coach
-            user: {
-              name: user?.name,
-            },
+            voiceProfile: 'calm_serene',
+            coachType: 'recovery',
+            context,
           },
         },
       });
@@ -86,16 +118,14 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message. Please try again.');
-      
-      const errorMessage: Message = {
+      toast.error('Using a generic answer; I’ll personalize once your data loads.');
+      const genericMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
+        content: "I'm sorry, I'm having trouble personalizing right now. Here's a general recommendation: focus on gentle breathwork and consistent sleep.",
         isUser: false,
         timestamp: new Date(),
       };
-      
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, genericMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -111,16 +141,31 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   return (
     <Card className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-        <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
-          <span>Chat with Your Coach</span>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Sparkles className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
+            <span>Chat with Your Coach</span>
+          </CardTitle>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-xs">Use my data</span>
+            <input
+              type="checkbox"
+              checked={useMyData}
+              onChange={(e) => setUseMyData(e.target.checked)}
+              className="accent-current"
+              aria-label="Use my data"
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         {/* Messages Container with optimized height for mobile */}
         <div className={`${isMobile ? 'h-[500px]' : 'h-[600px]'} flex flex-col`}>
           <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
             <div className="space-y-4 py-2">
+              {isContextLoading && (
+                <div className="text-xs text-muted-foreground">Personalizing with your data…</div>
+              )}
               {messages.map((message) => (
                 <div key={message.id}>
                   <div
