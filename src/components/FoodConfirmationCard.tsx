@@ -1,5 +1,6 @@
-import React, { useState, useId, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -71,14 +72,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [qualityData, setQualityData] = useState<any>(null);
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
-  const titleId = useId();
-  const descId = useId();
   const { toast } = useToast();
-
-  // A11y console logging
-  useEffect(() => {
-    console.info("[A11y] Review/Confirm dialog wired with title/description", { titleId, descId });
-  }, [titleId, descId]);
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
@@ -429,17 +423,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   if (!currentFoodItem && isOpen) {
     return (
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-        <DialogContent 
+        <AccessibleDialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          aria-describedby={descId}
+          titleText="Loading next item"
+          descriptionText="Please wait while the next food item is being loaded."
         >
-          <DialogTitle id={titleId} className="sr-only">
-            Confirm logged items  
-          </DialogTitle>
-          <DialogDescription id={descId} className="sr-only">
-            Review detected items and confirm to save them to your log.
-          </DialogDescription>
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
@@ -455,7 +444,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               )}
             </div>
           </div>
-        </DialogContent>
+        </AccessibleDialogContent>
       </Dialog>
     );
   }
@@ -463,17 +452,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-         <DialogContent 
+         <AccessibleDialogContent 
            showCloseButton={false}
            className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-           aria-describedby={descId}
+           titleText="Confirm logged items"
+           descriptionText="Review detected items and confirm to save them to your log."
          >
-           <DialogTitle id={titleId} className="sr-only">
-             Confirm logged items
-           </DialogTitle>
-           <DialogDescription id={descId} className="sr-only">
-             Review detected items and confirm to save them to your log.
-           </DialogDescription>
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
@@ -539,14 +523,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </span>
               </button>
               
-              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                 {totalItems > 1 && (
                   <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
                     Item {((currentIndex ?? 0) + 1)} of {totalItems}
                   </div>
                 )}
                 Confirm Food Log
-              </DialogTitle>
+              </h1>
             </DialogHeader>
 
             {/* Food Item Display */}
@@ -1023,7 +1007,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               )}
             </div>
           </div>
-        </DialogContent>
+        </AccessibleDialogContent>
       </Dialog>
 
       {/* Edit Screen */}

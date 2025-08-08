@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useId } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,14 +29,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   onNext,
   items: initialItems
 }) => {
-  const titleId = useId();
-  const descId = useId();
   const [items, setItems] = useState<ReviewItem[]>([]);
-
-  // A11y console logging
-  useEffect(() => {
-    console.info("[A11y] Review/Confirm dialog wired with title/description", { titleId, descId });
-  }, [titleId, descId]);
 
   // Atomic handoff - update items when props change
   React.useEffect(() => {
@@ -88,13 +82,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby={descId}>
-        <DialogTitle id={titleId} className="sr-only">
-          Review detected items
-        </DialogTitle>
-        <DialogDescription id={descId} className="sr-only">
-          Review detected food items and confirm to save them to your log.
-        </DialogDescription>
+      <AccessibleDialogContent 
+        className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+        titleText="Review detected items"
+        descriptionText="Review detected food items and confirm to save them to your log."
+      >
         <div className="p-6">
           <DialogHeader className="text-center mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -225,7 +217,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             </p>
           )}
         </div>
-      </DialogContent>
+      </AccessibleDialogContent>
     </Dialog>
   );
 };
