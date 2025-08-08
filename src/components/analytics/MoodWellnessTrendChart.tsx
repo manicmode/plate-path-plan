@@ -369,10 +369,10 @@ export const MoodWellnessTrendChart: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="h-80 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="text-gray-400 text-lg">📊</div>
+            <div className="text-gray-400 text-4xl">🌙</div>
             <div>
-              <p className="text-gray-600 dark:text-gray-400">No mood data available yet</p>
-              <p className="text-sm text-gray-500 mt-1">Start logging your daily mood to see trends!</p>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">No check-ins yet. Log your first mood today.</p>
+              <p className="text-sm text-gray-500 mt-1">Track your daily mood, energy, and wellness to see trends over time</p>
             </div>
           </div>
         </CardContent>

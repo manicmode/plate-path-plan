@@ -42,6 +42,8 @@ import { useCriticalDataLoading, useDeferredHomeDataLoading, useNonCriticalDataL
 import { MeditationNudgeBanner } from '@/components/meditation/MeditationNudgeBanner';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 import { LevelProgressBar } from '@/components/level/LevelProgressBar';
+import { MoodCheckinBanner } from '@/components/mood/MoodCheckinBanner';
+import { DailyCheckinButton } from '@/components/mood/DailyCheckinButton';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { SmartLogAI } from '@/components/SmartLogAI';
@@ -904,6 +906,9 @@ const Home = () => {
 
   return (
     <div className="space-y-12 sm:space-y-16 animate-fade-in">
+      {/* Mood Check-in Banner */}
+      <MoodCheckinBanner />
+      
       {/* Meditation Nudge Banner */}
       <MeditationNudgeBanner />
       
@@ -1164,6 +1169,11 @@ const Home = () => {
           <CardContent className={`${isMobile ? 'p-5' : 'p-6'} relative`}>
             {/* Action Buttons - Upper Right Corner */}
             <div className="absolute top-4 right-4 flex flex-col gap-2">
+              <DailyCheckinButton 
+                variant="secondary" 
+                size="sm" 
+                className="text-xs px-3 py-2"
+              />
               <button
                 onClick={() => setShowExerciseForm(true)}
                 className="action-button-full log-workout-button text-xs px-3 py-2"

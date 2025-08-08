@@ -17,6 +17,7 @@ import { DietaryGoals } from '@/components/profile/DietaryGoals';
 import { TrackerSelection } from '@/components/profile/TrackerSelection';
 import { AllergiesSection } from '@/components/profile/AllergiesSection';
 import { NotificationSettings } from '@/components/profile/NotificationSettings';
+import { MoodCheckinSettings } from '@/components/mood/MoodCheckinSettings';
 import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { DailyTargetsCard } from '@/components/profile/DailyTargetsCard';
@@ -399,6 +400,9 @@ const ProfileContent = () => {
 
       {/* Notification Settings */}
       <NotificationSettings />
+
+      {/* Mood Check-In Settings */}
+      <MoodCheckinSettings />
 
       {/* Global Barcode Settings */}
       <GlobalBarcodeSettings 

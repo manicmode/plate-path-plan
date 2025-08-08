@@ -63,7 +63,6 @@ export default function Analytics() {
           <AchievementsSection />
           <GamificationSection />
           <MonthlySummaryViewer />
-          <MoodWellnessTrendChart />
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
@@ -73,6 +72,7 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="recovery" className="space-y-6 mt-6">
+          <MoodWellnessTrendChart />
           <RecoveryAnalyticsSection />
         </TabsContent>
 

@@ -16,6 +16,8 @@ import { CoachErrorRecovery } from '@/components/CoachErrorRecovery';
 import { AINudgeChatEntries } from '@/components/meditation/AINudgeChatEntries';
 import { BreathingNudgeBanner } from '@/components/breathing/BreathingNudgeBanner';
 import { AIRecoveryChallengeChatEntries } from '@/components/recovery/AIRecoveryChallengeChatEntries';
+import { MoodCheckinBanner } from '@/components/mood/MoodCheckinBanner';
+import { DailyCheckinButton } from '@/components/mood/DailyCheckinButton';
 import { useNudgeContentChecker } from '@/hooks/useNudgeContentChecker';
 import { EmptyNudgeState } from '@/components/common/EmptyNudgeState';
 import { LoadingNudgeState } from '@/components/common/LoadingNudgeState';
@@ -775,10 +777,19 @@ Take a breath... let's explore your nutrition journey together with care and int
                 </CardTitle>
               </CardHeader>
               <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-                <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
+                <div className="space-y-4">
+                  {/* Daily Check-In Quick Action */}
+                  <div className="flex justify-center">
+                    <DailyCheckinButton size="sm" />
+                  </div>
+                  <AIRecoveryChallengeChatEntries maxEntries={3} showOnlyRecent={true} />
+                </div>
               </CardContent>
             </Card>
           )}
+          
+          {/* Recovery Mood Banner */}
+          <MoodCheckinBanner />
         </>
       ) : (
         <Card className="glass-card border-0 rounded-3xl">
