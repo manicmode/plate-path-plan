@@ -18,11 +18,6 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
   return (
     <div className="max-w-md mx-auto w-full space-y-6">
       {/* Mood & Wellness Trends (Hero) */}
-      <SectionHeader 
-        icon={TrendingUp}
-        title="Mood & Wellness Trends"
-        subtitle="Your mood, energy, and wellness over time"
-      />
       <MoodWellnessTrendChart />
 
       {/* Supplement Tracking */}
