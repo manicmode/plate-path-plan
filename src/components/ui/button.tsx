@@ -41,26 +41,22 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    // Improved click handling that doesn't interfere with Radix UI components
+    const lastClickTimeRef = React.useRef<number>(0);
+
+    // Simple one-shot guard to prevent double-clicks within 300ms
     const handleClick = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
       if (props.disabled) {
-        e.preventDefault();
-        e.stopPropagation();
         return;
       }
       
-      // Let the original onClick handler run without interference
+      const now = Date.now();
+      if (now - lastClickTimeRef.current < 300) {
+        return; // Ignore rapid successive clicks
+      }
+      lastClickTimeRef.current = now;
+      
       props.onClick?.(e);
     }, [props.disabled, props.onClick]);
-
-    // Prevent touch events from interfering with click
-    const handleTouchStart = React.useCallback((e: React.TouchEvent<HTMLButtonElement>) => {
-      if (props.disabled) {
-        e.preventDefault();
-        return;
-      }
-      props.onTouchStart?.(e);
-    }, [props.disabled, props.onTouchStart]);
 
     if (asChild) {
       return (
@@ -78,7 +74,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         {...props}
         onClick={handleClick}
-        onTouchStart={handleTouchStart}
         style={{ 
           touchAction: 'manipulation',
           userSelect: 'none',

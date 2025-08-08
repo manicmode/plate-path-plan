@@ -304,6 +304,8 @@ export const ExerciseConfirmationCard = ({
                     onClick={handleConfirmLog}
                     className="flex-1 bg-primary hover:bg-primary/90"
                     disabled={isLogging}
+                    aria-busy={isLogging}
+                    style={isLogging ? { pointerEvents: 'none' } : {}}
                   >
                     {isLogging ? 'Logging...' : 'Log Exercise'}
                   </Button>

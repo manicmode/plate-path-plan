@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -277,6 +277,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       return;
     }
     
+    // Set confirming state immediately to disable button and prevent double-clicks
     setIsConfirming(true);
     
     try {
@@ -451,7 +452,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          aria-describedby="food-confirmation-description"
         >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Confirm Food Log</DialogTitle>
+            <DialogDescription id="food-confirmation-description">
+              Review and confirm your food item before logging it to your nutrition tracker.
+            </DialogDescription>
+          </DialogHeader>
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
@@ -932,25 +940,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     )}
                     
                     {/* Cancel All - Right Half */}
-                    <Button
-                      variant="outline"
-                      onClick={onClose}
-                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel All
-                    </Button>
+                    <DialogClose asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel All
+                      </Button>
+                    </DialogClose>
                   </div>
                   
                   {/* Log Item - Full Width Primary */}
                   <Button
                     onClick={handleConfirm}
                     disabled={isConfirming || isProcessingFood || portionPercentage[0] === 0}
+                    aria-busy={isConfirming || isProcessingFood}
                     className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
                       !isConfirming && !isProcessingFood && portionPercentage[0] > 0
                         ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    } ${(isConfirming || isProcessingFood) ? 'animate-pulse' : ''}`}
+                    } ${(isConfirming || isProcessingFood) ? 'animate-pulse pointer-events-none' : ''}`}
                   >
                     {isConfirming || isProcessingFood ? (
                       <>
@@ -966,23 +976,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 // Single-Item Layout
                 <>
                   {/* Cancel - Full Width Red Text */}
-                  <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className="w-full border-gray-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    Cancel
-                  </Button>
+                  <DialogClose asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      Cancel
+                    </Button>
+                  </DialogClose>
                   
                   {/* Log Food - Full Width Primary */}
                   <Button
                     onClick={handleConfirm}
                     disabled={isConfirming || portionPercentage[0] === 0}
+                    aria-busy={isConfirming}
                     className={`w-full h-12 text-lg font-semibold transition-all duration-300 ${
                       !isConfirming && portionPercentage[0] > 0
                         ? 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white hover:scale-105 shadow-lg'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    } ${isConfirming ? 'animate-pulse' : ''}`}
+                    } ${isConfirming ? 'animate-pulse pointer-events-none' : ''}`}
                   >
                     {isConfirming ? (
                       <>

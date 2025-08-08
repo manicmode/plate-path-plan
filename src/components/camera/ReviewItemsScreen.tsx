@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -81,15 +81,15 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden" aria-describedby="review-detected-items-description">
         <div className="p-6">
           <DialogHeader className="text-center mb-6">
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               Review Detected Items
             </DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <DialogDescription id="review-detected-items-description" className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Check and edit the food items detected in your image
-            </p>
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -183,13 +183,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           </div>
 
           <div className="flex justify-between items-center mt-6">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1 mr-3"
-            >
-              Cancel
-            </Button>
+            <DialogClose asChild>
+              <Button
+                variant="outline"
+                className="flex-1 mr-3"
+              >
+                Cancel
+              </Button>
+            </DialogClose>
             
             <Button
               onClick={handleNext}
