@@ -26,6 +26,8 @@ import { MonthlyGoalProgress } from '@/components/analytics/charts/MonthlyGoalPr
 import { BestStreakHistoryChart } from '@/components/analytics/charts/BestStreakHistoryChart';
 import { useAnalyticsCalculations } from '@/components/analytics/utils/analyticsCalculations';
 import { useMilestoneTracker } from '@/hooks/useMilestoneTracker';
+import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
+import { Activity, Apple, Heart } from 'lucide-react';
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('nutrition');
@@ -61,26 +63,66 @@ export default function Analytics() {
         </TabsList>
 
         <TabsContent value="nutrition" className="space-y-6 mt-6">
+          <SectionHeader 
+            icon={Apple} 
+            title="Daily Overview" 
+            subtitle="Today's nutrition progress and breakdown" 
+          />
           <DailyProgressSection progress={progress} weeklyAverage={weeklyAverage} />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
+          
+          <SectionHeader 
+            icon={Apple} 
+            title="Meal Quality & Trends" 
+            subtitle="Food quality insights and consumption patterns" 
+          />
           <MealQualityAnalyticsSection />
           <MealQualityTrendChart />
           <FlaggedIngredientHistoryChart />
           <TopFoodsWeekChart />
+          
+          <SectionHeader 
+            icon={Apple} 
+            title="Insights & Analysis" 
+            subtitle="AI-powered recommendations and behavioral patterns" 
+          />
           <TagInsightsSection />
           <SmartInsightsSection />
           <DailyAveragesSection weeklyAverage={weeklyAverage} />
+          
+          <SectionHeader 
+            icon={Apple} 
+            title="Progress & Achievements" 
+            subtitle="Your nutrition journey and milestones" 
+          />
           <AchievementsSection />
           <GamificationSection />
           <MonthlySummaryViewer />
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
+          <SectionHeader 
+            icon={Activity} 
+            title="Workout Performance" 
+            subtitle="Recent training activity and daily metrics" 
+          />
           <WeeklyWorkoutDurationChart />
           <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
+          
+          <SectionHeader 
+            icon={Activity} 
+            title="Training Breakdown" 
+            subtitle="Detailed analysis of your workout patterns" 
+          />
           <ExerciseAnalyticsSection />
           <CaloriesBurnedChart />
           <MuscleGroupDistributionChart />
+          
+          <SectionHeader 
+            icon={Activity} 
+            title="Goals & Achievements" 
+            subtitle="Progress tracking and motivational insights" 
+          />
           <MonthlyGoalProgress />
           <BestStreakHistoryChart />
           <WorkoutTrophyCard />
@@ -88,6 +130,11 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="recovery" className="space-y-6 mt-6">
+          <SectionHeader 
+            icon={Heart} 
+            title="Mind & Body Wellness" 
+            subtitle="Mood trends and recovery insights" 
+          />
           <MoodWellnessTrendChart />
           <RecoveryAnalyticsSection weeklyAverage={weeklyAverage} />
         </TabsContent>
