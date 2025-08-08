@@ -10,6 +10,31 @@ interface ExerciseProgressChartProps {
 }
 
 export const ExerciseProgressChart = ({ data }: ExerciseProgressChartProps) => {
+  // Enforce 7-day buckets ending today with zero-fill
+  const buckets = React.useMemo(() => {
+    const end = new Date();
+    const letters = ['S','M','T','W','T','F','S'];
+    const start = new Date(end);
+    start.setDate(end.getDate() - 6);
+    const arr: { key: string; label: string; full: string }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      arr.push({ key, label: letters[d.getDay()], full: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }) });
+    }
+    return arr;
+  }, []);
+
+  const series = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of data || []) {
+      const key = row.date?.slice(0,10);
+      if (key) map.set(key, (map.get(key) || 0) + (row.duration || 0));
+    }
+    return buckets.map(b => ({ date: b.key, label: b.label, full: b.full, duration: map.get(b.key) ?? 0 }));
+  }, [data, buckets]);
+
   return (
     <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-orange-500/60 dark:bg-gradient-to-r dark:from-orange-500/30 dark:to-amber-500/30">
       <CardHeader>
@@ -20,22 +45,18 @@ export const ExerciseProgressChart = ({ data }: ExerciseProgressChartProps) => {
       <CardContent className="p-6">
         <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data}>
+              <LineChart data={series}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="label" 
                   tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => {
-                    const date = new Date(value);
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                  }}
                 />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip 
                   formatter={(value: number) => [`${value} min`, 'Duration']}
-                  labelFormatter={(label) => {
-                    const date = new Date(label);
-                    return date.toLocaleDateString();
+                  labelFormatter={(_label, payload) => {
+                    const p = (payload && payload[0] && (payload[0] as any).payload) as any;
+                    return p?.full || '';
                   }}
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',

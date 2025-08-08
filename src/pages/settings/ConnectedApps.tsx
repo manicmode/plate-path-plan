@@ -1,12 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, PlugZap, RefreshCw, Unplug, Watch, Apple, Activity, Footprints } from 'lucide-react';
+import { Loader2, PlugZap, RefreshCw, Unplug, Watch, Apple, Activity, Footprints, AlertTriangle } from 'lucide-react';
 import { featureFlags } from '@/config/features';
 import { Link } from 'react-router-dom';
+import { fetchOAuthConfig, getAuthorizeUrl, ProviderConfig } from '@/lib/providers';
 
 const providers: { key: 'fitbit' | 'healthkit' | 'googlefit' | 'strava'; name: string; icon: React.ReactNode }[] = [
   { key: 'fitbit', name: 'Fitbit', icon: <Activity className="h-5 w-5" /> },
@@ -28,6 +29,18 @@ const ConnectedApps: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { loadingKey, setLoadingKey, refresh } = useProviderStatus(user?.id);
+  const [cfg, setCfg] = useState<ProviderConfig | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const c = await fetchOAuthConfig();
+        setCfg(c);
+      } catch (e) {
+        console.warn('oauth-config failed');
+      }
+    })();
+  }, []);
 
   const handleSync = async (provider: 'fitbit' | 'strava' | 'healthkit' | 'googlefit') => {
     try {
@@ -50,11 +63,7 @@ const ConnectedApps: React.FC = () => {
   const handleDisconnect = async (provider: string) => {
     try {
       setLoadingKey(provider);
-      const { error } = await supabase
-        .from('oauth_tokens')
-        .delete()
-        .eq('user_id', user?.id)
-        .eq('provider', provider);
+      const { error } = await supabase.functions.invoke('oauth-disconnect', { body: { provider } });
       if (error) throw error;
       toast({ title: 'Disconnected', description: `${provider} disconnected.` });
       refresh();
@@ -104,8 +113,16 @@ const ConnectedApps: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">{p.icon}</div>
                   <div>
-                    <div className="font-medium">{p.name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {p.name}
+                      {['fitbit','strava'].includes(p.key) && cfg && ((p.key==='fitbit' && !cfg.fitbit.configured) || (p.key==='strava' && !cfg.strava.configured)) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 flex items-center gap-1"><AlertTriangle className="h-3 w-3"/> Not configured</span>
+                      )}
+                    </div>
                     <ProviderStatusInline userId={user?.id} provider={p.key} />
+                    {p.key === 'strava' && (
+                      <div className="mt-1 text-[11px] text-muted-foreground">Strava may not provide step counts; Fitbit recommended for steps.</div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -121,7 +138,24 @@ const ConnectedApps: React.FC = () => {
                         <Unplug className="h-4 w-4" />
                         <span className="ml-2">Disconnect</span>
                       </Button>
-                      <Button variant="default" size="sm" onClick={() => toast({ title: 'Connect', description: p.key === 'strava' ? 'Strava may not return steps; Fitbit recommended.' : 'OAuth setup required.' })}>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            if (!cfg) { toast({ title: 'Config loading…' }); return; }
+                            const url = getAuthorizeUrl(p.key as any, cfg, window.location.origin + `/auth/callback/${p.key}`);
+                            if (!url) {
+                              toast({ title: 'Not configured', description: 'Provider credentials missing.' });
+                              return;
+                            }
+                            window.location.href = url;
+                          } catch (e: any) {
+                            toast({ title: 'Error', description: e.message || 'Please try again', variant: 'destructive' });
+                          }
+                        }}
+                        disabled={!cfg || (p.key === 'fitbit' ? !cfg?.fitbit.configured : p.key === 'strava' ? !cfg?.strava.configured : false)}
+                      >
                         <PlugZap className="h-4 w-4" />
                         <span className="ml-2">Connect</span>
                       </Button>

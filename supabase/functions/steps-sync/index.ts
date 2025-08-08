@@ -137,16 +137,79 @@ Deno.serve(async (req: Request) => {
 
     const clientTz = req.headers.get('x-client-timezone') || undefined;
 
-    // Fetch oauth token for provider (fitbit/strava)
+    // Fetch oauth token for provider (fitbit/strava) and refresh if needed
     let accessToken: string | null = null;
     if (provider === 'fitbit' || provider === 'strava') {
-      const { data: tokenRow } = await serviceClient
+      const { data: tokenRow, error: tokErr } = await serviceClient
         .from('oauth_tokens')
         .select('access_token, refresh_token, expires_at')
         .eq('user_id', user.id)
         .eq('provider', provider)
         .maybeSingle();
-      accessToken = tokenRow?.access_token ?? null;
+      if (tokErr) throw tokErr;
+      if (tokenRow?.access_token) {
+        const now = Math.floor(Date.now() / 1000);
+        let newAccess = tokenRow.access_token as string;
+        let newRefresh = tokenRow.refresh_token as string | null;
+        let newExpires = tokenRow.expires_at as number | null;
+
+        const needsRefresh = !newExpires || newExpires - now < 120; // refresh if expiring soon
+        if (needsRefresh && tokenRow.refresh_token) {
+          try {
+            if (provider === 'fitbit') {
+              const clientId = Deno.env.get('FITBIT_CLIENT_ID')?.trim();
+              const clientSecret = Deno.env.get('FITBIT_CLIENT_SECRET')?.trim();
+              if (!clientId || !clientSecret) throw new Error('Fitbit not configured');
+              const basic = btoa(`${clientId}:${clientSecret}`);
+              const params = new URLSearchParams();
+              params.set('grant_type', 'refresh_token');
+              params.set('refresh_token', tokenRow.refresh_token);
+              const res = await fetch('https://api.fitbit.com/oauth2/token', {
+                method: 'POST',
+                headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString(),
+              });
+              const text = await res.text();
+              if (!res.ok) throw new Error(`Fitbit refresh error ${res.status}`);
+              const json = JSON.parse(text);
+              newAccess = json.access_token;
+              newRefresh = json.refresh_token || newRefresh;
+              newExpires = Math.floor(Date.now() / 1000) + (json.expires_in || 28800);
+            } else if (provider === 'strava') {
+              const clientId = Deno.env.get('STRAVA_CLIENT_ID')?.trim();
+              const clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET')?.trim();
+              if (!clientId || !clientSecret) throw new Error('Strava not configured');
+              const params = new URLSearchParams();
+              params.set('client_id', clientId);
+              params.set('client_secret', clientSecret);
+              params.set('grant_type', 'refresh_token');
+              params.set('refresh_token', tokenRow.refresh_token);
+              const res = await fetch('https://www.strava.com/oauth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString(),
+              });
+              const text = await res.text();
+              if (!res.ok) throw new Error(`Strava refresh error ${res.status}`);
+              const json = JSON.parse(text);
+              newAccess = json.access_token;
+              newRefresh = json.refresh_token || newRefresh;
+              newExpires = json.expires_at || newExpires;
+            }
+
+            // persist refresh results
+            const { error: upErr } = await serviceClient
+              .from('oauth_tokens')
+              .update({ access_token: newAccess, refresh_token: newRefresh, expires_at: newExpires, updated_at: new Date().toISOString() })
+              .eq('user_id', user.id)
+              .eq('provider', provider);
+            if (upErr) throw upErr;
+          } catch (_e) {
+            // Ignore; will try with current token
+          }
+        }
+        accessToken = newAccess;
+      }
     }
 
     let importedDays = 0;
@@ -161,7 +224,6 @@ Deno.serve(async (req: Request) => {
       const items = await fetchFitbitSteps(accessToken, backfillDays);
       importedDays = await upsertSteps(serviceClient, user.id, 'fitbit', items, clientTz);
     } else if (provider === 'strava') {
-      // Strava rarely provides raw steps
       return new Response(
         JSON.stringify({ importedDays: 0, provider, note: 'Strava may not provide step counts; Fitbit recommended for steps.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
