@@ -74,7 +74,7 @@ export const MacrosHydrationSection = ({ macroData, progress }: MacrosHydrationS
               {macroData.map((macro, index) => (
                 <div key={index}>
                   <div className="w-4 h-4 rounded-full mx-auto mb-2 shadow-sm" style={{ backgroundColor: macro.color }}></div>
-                  <div className="text-sm text-gray-900 dark:text-white font-semibold">{Math.round(macro.value)}g</div>
+                  <div className="text-sm text-gray-900 dark:text-white font-semibold">{macro.value}g</div>
                   <div className="text-xs text-gray-600 dark:text-gray-300">{macro.name}</div>
                 </div>
               ))}
