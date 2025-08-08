@@ -52,6 +52,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
       />
       <RecoveryOverviewCard />
       <RecoveryTypesPieChart />
+      <StreakTrackerCard />
       
 
       {/* Recovery Activity Trends */}
@@ -64,8 +65,6 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
       
       {/* Recovery Activity Breakdown */}
       
-      {/* Streaks & Session History */}
-      <StreakTrackerCard />
       
       {/* Smart Insights & Suggestions */}
       <SectionHeader 
