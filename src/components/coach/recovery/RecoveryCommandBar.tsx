@@ -49,7 +49,7 @@ export const RecoveryCommandBar = ({ onCommand }: RecoveryCommandBarProps) => {
               key={cmd.id}
               variant="outline"
               size="sm"
-              onClick={() => handleCommand({ chipId: cmd.id, text: cmd.message })}
+              onClick={() => { window.dispatchEvent(new Event('coach:scrollToChat')); handleCommand({ chipId: cmd.id, text: cmd.message }); }}
               className={`${isMobile ? 'text-xs px-3 py-3 h-auto' : 'text-sm px-4 py-4 h-auto'} text-center justify-center font-semibold bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 border-orange-200 dark:border-orange-700 hover:from-orange-100 hover:to-pink-100 dark:hover:from-orange-800/30 dark:hover:to-pink-800/30 transition-all duration-200 hover:scale-105 whitespace-normal leading-tight`}
               disabled={false}
             >

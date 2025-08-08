@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell, TrendingUp, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +32,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { supabase } from '@/integrations/supabase/client';
+import { scrollToAlignTop } from '@/utils/scroll';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -81,9 +82,17 @@ export default function AIFitnessCoach() {
     timestamp: number;
   }>>([]);
   useScrollToTop();
+  const chatCardRef = useRef<HTMLDivElement>(null);
   
   const { sendNudge } = useSocialAccountability();
   const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set());
+
+  // Align chat to top on chip taps or programmatic requests
+  useEffect(() => {
+    const cb = () => scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
+    window.addEventListener('coach:scrollToChat', cb as any);
+    return () => window.removeEventListener('coach:scrollToChat', cb as any);
+  }, []);
 
   // Check nudge content availability
   const nudgeContent = useNudgeContentChecker({ maxEntries: 3, showOnlyRecent: true });
@@ -438,7 +447,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         </div>
 
         {/* AI Chat Box */}
-        <Card className="glass-card border-0 rounded-3xl">
+        <Card ref={chatCardRef} className="glass-card border-0 rounded-3xl">
           <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
             <div className="flex items-center justify-between">
               <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>

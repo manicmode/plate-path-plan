@@ -28,6 +28,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
+import { scrollToAlignTop } from '@/utils/scroll';
 
 interface Message {
   id: string;
@@ -107,6 +108,12 @@ Take a breath... let's explore your nutrition journey together with care and int
     window.scrollTo(0, 0);
   }, []);
 
+  // Align chat to top on chip taps or programmatic requests
+  useEffect(() => {
+    const cb = () => scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
+    window.addEventListener('coach:scrollToChat', cb as any);
+    return () => window.removeEventListener('coach:scrollToChat', cb as any);
+  }, []);
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
@@ -115,19 +122,9 @@ Take a breath... let's explore your nutrition journey together with care and int
 
   // Scroll to chat window function for commands with improved alignment
   const scrollToTop = () => {
-    // Scroll to the chat card with better positioning for mobile
     if (chatCardRef.current) {
-      const headerHeight = isMobile ? 80 : 100; // Account for mobile header
-      const alignmentOffset = isMobile ? 25 : 30; // Small offset to center better
-      const cardTop = chatCardRef.current.offsetTop - headerHeight + alignmentOffset;
-      
-      window.scrollTo({ 
-        top: cardTop, 
-        behavior: 'smooth' 
-      });
+      scrollToAlignTop(chatCardRef.current, { reassertDelayMs: 140 });
     }
-    
-    // Immediately scroll chat area to bottom to show latest content
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
@@ -662,6 +659,8 @@ setMessages(prev => {
                 variant="outline"
                 size="sm"
                 onClick={() => { 
+                  window.dispatchEvent(new Event('coach:scrollToChat'));
+                  if (chatCardRef.current) scrollToAlignTop(chatCardRef.current);
                   console.log(JSON.stringify({ event: 'coach_chip_clicked', coachType: 'nutrition', chipId: chip.id, usingContext: useMyData }));
                   handleQuickQuestion(chip.message);
                 }}
