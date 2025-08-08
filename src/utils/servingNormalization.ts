@@ -269,7 +269,7 @@ export function selectPreferredNutritionSource(
 }
 
 /**
- * Generate display title with quantity and unit
+ * Generate display title with quantity and unit, handling unit mismatches
  */
 export function generateDisplayTitle(
   foodName: string,
@@ -281,8 +281,30 @@ export function generateDisplayTitle(
   
   if (quantity > 1 || unit) {
     const quantityStr = quantity === Math.floor(quantity) ? quantity.toString() : quantity.toFixed(1);
-    const unitStr = unit && unit !== 'serving' ? ` ${unit}` : '';
-    title = `${quantityStr}${unitStr} ${foodName}`;
+    
+    // Handle unit compatibility - avoid nonsensical combinations
+    if (unit && unit !== 'serving') {
+      const weightUnits = ['g', 'gram', 'grams', 'kg', 'kilogram', 'kilograms', 'oz', 'ounce', 'ounces'];
+      const countUnits = ['egg', 'eggs', 'slice', 'slices', 'piece', 'pieces', 'cup', 'cups'];
+      const isWeightUnit = weightUnits.some(w => unit.toLowerCase().includes(w));
+      const isCountUnit = countUnits.some(c => unit.toLowerCase().includes(c));
+      
+      // Prevent titles like "1 g avocado" - keep weight-based as is for common weights
+      if (isWeightUnit && quantity <= 1) {
+        // For single weight units, show the food name as-is and let serving info handle the details
+        title = foodName;
+      } else if (isCountUnit || quantity > 1) {
+        // Show quantity for count units or multiple quantities
+        const displayUnit = isCountUnit ? '' : ` ${unit}`;
+        title = `${quantityStr}${displayUnit} ${foodName}`;
+      } else {
+        // Default case
+        title = `${quantityStr} ${unit} ${foodName}`;
+      }
+    } else if (quantity > 1) {
+      // No unit but quantity > 1
+      title = `${quantityStr} ${foodName}`;
+    }
   }
   
   if (isEstimated) {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -123,6 +123,20 @@ const CameraPage = () => {
   // Summary Review Panel states
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [summaryItems, setSummaryItems] = useState<SummaryItem[]>([]);
+  
+  // Atomic handoff: Watch reviewItems and only open modal when data is ready
+  useEffect(() => {
+    console.log('🔍 [Camera] ReviewItems effect:', { reviewItemsLength: reviewItems.length, showReviewScreen });
+    if (reviewItems.length > 0 && !showReviewScreen) {
+      console.log('🔍 [Camera] Opening review screen with', reviewItems.length, 'items');
+      setShowReviewScreen(true);
+    }
+  // Safe review screen close handler
+  const handleReviewScreenClose = () => {
+    console.log('🔍 [Camera] Review screen closing');
+    setShowReviewScreen(false);
+    setReviewItems([]);
+  };
   
   // Transition states
   const [showTransition, setShowTransition] = useState(false);
@@ -1554,9 +1568,14 @@ const CameraPage = () => {
     setShowTransition(true);
   };
 
-  // Legacy handler for backward compatibility
+  // Enhanced handler with atomic state management
   const handleReviewNext = async (selectedItems: ReviewItem[]) => {
+    console.log('🔍 [Camera] handleReviewNext called with', selectedItems.length, 'items');
+    
+    // Close review screen first
     setShowReviewScreen(false);
+    // Clear review items to prevent reopening
+    setReviewItems([]);
     
     if (selectedItems.length === 0) {
       toast.error('No items selected to confirm');
@@ -2090,8 +2109,14 @@ const CameraPage = () => {
     setVoiceResults(null);
     setInputSource('photo'); // Always reset to photo mode
     setProcessingStep('');
-    setShowReviewScreen(false);
-    setReviewItems([]);
+    
+    // Safe cleanup: Only clear review items when fully closing, not during transitions
+    if (!pendingItems.length && !showConfirmation) {
+      console.log('🔍 [Camera] Safe cleanup - clearing review state');
+      setShowReviewScreen(false);
+      setReviewItems([]);
+    }
+    
     setSelectedFoodItem(null);
     
     // Reset barcode-related state
@@ -2696,7 +2721,7 @@ const CameraPage = () => {
       {inputSource !== 'barcode' && (
         <ReviewItemsScreen
           isOpen={showReviewScreen}
-          onClose={() => setShowReviewScreen(false)}
+          onClose={handleReviewScreenClose}
           onNext={handleReviewNext}
           items={reviewItems}
         />

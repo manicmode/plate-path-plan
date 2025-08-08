@@ -27,14 +27,54 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   items: initialItems
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Instrumentation for debugging
+  console.log('🔍 [ReviewItemsScreen] Render state:', { 
+    isOpen, 
+    initialItemsLength: (initialItems ?? []).length, 
+    itemsLength: items.length, 
+    activeIndex, 
+    hasCurrentItem: !!(items[activeIndex]) 
+  });
 
   // Update items when props change - improved state management
   React.useEffect(() => {
-    console.log('ReviewItemsScreen received items:', initialItems);
+    console.log('🔍 [ReviewItemsScreen] Received items:', initialItems);
     if (Array.isArray(initialItems) && initialItems.length > 0) {
       setItems(initialItems);
+      // Reset activeIndex to 0 when new items arrive
+      setActiveIndex(0);
+    } else if (initialItems && initialItems.length === 0) {
+      // Clear items if empty array is passed
+      setItems([]);
+      setActiveIndex(0);
     }
   }, [initialItems]);
+
+  // Clamp activeIndex when items change or get deleted
+  React.useEffect(() => {
+    if (items.length > 0) {
+      const maxIndex = items.length - 1;
+      if (activeIndex > maxIndex) {
+        console.log('🔍 [ReviewItemsScreen] Clamping activeIndex from', activeIndex, 'to', maxIndex);
+        setActiveIndex(maxIndex);
+      }
+    }
+  }, [items.length, activeIndex]);
+
+  // Strong guards - return null if data is invalid
+  if (!isOpen || !Array.isArray(items) || items.length === 0) {
+    console.log('🔍 [ReviewItemsScreen] Returning null - invalid state:', { isOpen, itemsValid: Array.isArray(items), itemsLength: items.length });
+    return null;
+  }
+
+  // Derive current item safely
+  const currentItem = items[activeIndex] ?? null;
+  if (!currentItem) {
+    console.log('🔍 [ReviewItemsScreen] No current item at index:', activeIndex);
+    return null;
+  }
 
   const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected', value: string | boolean) => {
     setItems(prev => prev.map(item => 
@@ -53,7 +93,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleRemoveItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
+    const newItems = items.filter(item => item.id !== id);
+    setItems(newItems);
+    
+    // If we removed the current item and it was the last one, move to previous
+    if (newItems.length > 0 && activeIndex >= newItems.length) {
+      setActiveIndex(newItems.length - 1);
+    }
   };
 
   const handleNext = () => {
@@ -61,13 +107,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     if (selectedItems.length === 0) {
       return;
     }
+    console.log('🔍 [ReviewItemsScreen] Proceeding with', selectedItems.length, 'items');
     onNext(selectedItems);
   };
 
   const selectedCount = items.filter(item => item.selected && item.name.trim() && item.portion.trim()).length;
-
-  // Debug logging
-  console.log('ReviewItemsScreen render - isOpen:', isOpen, 'items count:', items.length, 'selectedCount:', selectedCount);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -83,7 +127,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           </DialogHeader>
 
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {items.map((item, index) => (
+            {(items ?? []).map((item, index) => (
               <Card key={item.id} className="border border-gray-200 dark:border-gray-700">
                 <CardContent className="p-4">
                   <div className="flex items-start space-x-3">
