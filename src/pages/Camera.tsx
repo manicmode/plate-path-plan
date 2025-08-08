@@ -20,6 +20,7 @@ import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
 import { useMealScoring } from '@/hooks/useMealScoring';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
+import { normalizeNutrition, generateDisplayTitle } from '@/utils/servingNormalization';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -1688,55 +1689,57 @@ const CameraPage = () => {
     // Log successful individual nutrition estimation
     console.log(`✅ [NUTRITION SUCCESS] ${currentItem.name}: ${nutrition.calories} cal, ${nutrition.protein}g protein, ${nutrition.carbs}g carbs, ${nutrition.fat}g fat | Source: ${nutrition.source || nutritionSource}`);
 
-    // Parse quantity for scaling nutrition values
-    const parseQuantity = (quantityStr?: string): { numeric: number; isEstimated: boolean } => {
-      if (!quantityStr) return { numeric: 1, isEstimated: true };
-      
-      // Extract numeric value from strings like "2", "1 cup", "6 oz", "2 slices"
-      const match = quantityStr.match(/^(\d+(?:\.\d+)?)/);
-      if (match) {
-        const numeric = parseFloat(match[1]);
-        return { numeric: isNaN(numeric) ? 1 : numeric, isEstimated: false };
-      }
-      
-      return { numeric: 1, isEstimated: true };
-    };
-
+    // Get the base serving information from the nutrition data
+    const baseServingLabel = nutrition.serving_size || nutrition.serving_label || '100g'; // Default to 100g if no serving info
     const voiceQuantity = (currentItem as any).voiceData?.quantity;
-    const { numeric: quantityMultiplier, isEstimated } = parseQuantity(voiceQuantity);
+    
+    // Normalize nutrition based on serving and user quantity
+    const normalizedNutrition = normalizeNutrition(
+      {
+        calories: nutrition.calories,
+        protein: nutrition.protein || 0,
+        carbs: nutrition.carbs || 0,
+        fat: nutrition.fat || 0,
+        fiber: nutrition.fiber || 0,
+        sugar: nutrition.sugar || 0,
+        sodium: nutrition.sodium || 0,
+        saturated_fat: nutrition.saturated_fat || (nutrition.fat * 0.3)
+      },
+      baseServingLabel,
+      voiceQuantity
+    );
 
-    // Apply quantity scaling to nutrition values
-    const scaledNutrition = {
-      calories: Math.round(nutrition.calories * quantityMultiplier),
-      protein: Math.round((nutrition.protein || 0) * quantityMultiplier * 10) / 10,
-      carbs: Math.round((nutrition.carbs || 0) * quantityMultiplier * 10) / 10,
-      fat: Math.round((nutrition.fat || 0) * quantityMultiplier * 10) / 10,
-      fiber: Math.round((nutrition.fiber || 0) * quantityMultiplier * 10) / 10,
-      sugar: Math.round((nutrition.sugar || 0) * quantityMultiplier * 10) / 10,
-      sodium: Math.round((nutrition.sodium || 0) * quantityMultiplier),
-      saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * quantityMultiplier * 10) / 10
-    };
-
-    // Update display name with quantity
-    let displayName = currentItem.name;
-    if (quantityMultiplier > 1 || voiceQuantity) {
-      displayName = quantityMultiplier !== 1 ? `${quantityMultiplier} ${currentItem.name}` : currentItem.name;
-      if (isEstimated) {
-        displayName += ' (estimated)';
-      }
-    }
+    // Generate display title with proper quantity and unit
+    const displayName = generateDisplayTitle(
+      currentItem.name,
+      normalizedNutrition.finalQuantity,
+      normalizedNutrition.finalUnit,
+      !voiceQuantity // isEstimated if no voice quantity provided
+    );
 
     const foodItem = {
       id: currentItem.id,
       name: displayName,
-      ...scaledNutrition,
+      calories: normalizedNutrition.calories,
+      protein: normalizedNutrition.protein,
+      carbs: normalizedNutrition.carbs,
+      fat: normalizedNutrition.fat,
+      fiber: normalizedNutrition.fiber,
+      sugar: normalizedNutrition.sugar,
+      sodium: normalizedNutrition.sodium,
       confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
       source: nutrition.source || nutritionSource,
       image: selectedImage,
-      // Store original data for debug purposes
+      // Store original and normalized data for debug purposes
       quantity: voiceQuantity || currentItem.portion,
-      parsedQuantity: quantityMultiplier,
-      isEstimated
+      parsedQuantity: normalizedNutrition.finalQuantity,
+      isEstimated: !voiceQuantity,
+      // Serving normalization debug data
+      baseServingLabel: normalizedNutrition.servingInfo.baseServingLabel,
+      baseServingQuantity: normalizedNutrition.servingInfo.baseServingQuantity,
+      baseServingUnit: normalizedNutrition.servingInfo.baseServingUnit,
+      perUnitCalories: normalizedNutrition.perUnitCalories,
+      scalingFactor: normalizedNutrition.scalingFactor
     };
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);

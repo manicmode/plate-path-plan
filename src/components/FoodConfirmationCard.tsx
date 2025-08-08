@@ -37,6 +37,12 @@ interface FoodItem {
   quantity?: string; // Parsed quantity from GPT (e.g., "2", "1 cup", "6 oz")
   parsedQuantity?: number; // Numeric quantity for scaling (defaults to 1)
   isEstimated?: boolean; // Whether quantity is estimated (no quantity parsed)
+  // Serving normalization debug data
+  baseServingLabel?: string; // Base serving from database (e.g., "2 large eggs", "100g")
+  baseServingQuantity?: number; // Numeric part of base serving (e.g., 2, 100)
+  baseServingUnit?: string; // Unit part of base serving (e.g., "eggs", "g")
+  perUnitCalories?: number; // Calories per single unit after normalization
+  scalingFactor?: number; // Final scaling factor applied
 }
 
 interface FoodConfirmationCardProps {
@@ -185,7 +191,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             name: currentFoodItem?.name || 'N/A',
             quantity: currentFoodItem?.quantity || 'none',
             parsed_numeric: effectiveQuantity != null ? effectiveQuantity : 'N/A',
-            unit: '%',
+            unit: currentFoodItem?.baseServingUnit || '%',
             confidence: currentFoodItem?.confidence != null ? currentFoodItem.confidence : 'N/A',
             isEstimated: isEstimated != null ? isEstimated : 'N/A'
           },
@@ -193,9 +199,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             id: currentFoodItem?.id || 'N/A',
             name: currentFoodItem?.name || 'N/A',
             source: currentFoodItem?.source || 'unknown',
-            serving_size: '100g', // Default serving size
-            unit: 'g',
-            calories_per_serving: currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A',
+            base_serving_label: currentFoodItem?.baseServingLabel || 'N/A',
+            base_serving_quantity: currentFoodItem?.baseServingQuantity != null ? currentFoodItem.baseServingQuantity : 'N/A',
+            base_serving_unit: currentFoodItem?.baseServingUnit || 'N/A',
+            calories_per_base_serving: currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A',
+            per_unit_calories: currentFoodItem?.perUnitCalories != null ? currentFoodItem.perUnitCalories : 'N/A',
             macros: {
               protein: currentFoodItem?.protein != null ? currentFoodItem.protein : 'N/A',
               carbs: currentFoodItem?.carbs != null ? currentFoodItem.carbs : 'N/A',
@@ -205,20 +213,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               sodium: currentFoodItem?.sodium != null ? currentFoodItem.sodium : 'N/A'
             }
           },
-          scaling_math: {
-            parsed_quantity: effectiveQuantity != null ? effectiveQuantity : 'N/A',
+          serving_normalization: {
+            base_serving_label: currentFoodItem?.baseServingLabel || 'N/A',
+            base_serving_quantity: currentFoodItem?.baseServingQuantity != null ? currentFoodItem.baseServingQuantity : 'N/A',
+            base_serving_unit: currentFoodItem?.baseServingUnit || 'N/A',
+            per_unit_calories: currentFoodItem?.perUnitCalories != null ? currentFoodItem.perUnitCalories : 'N/A',
+            user_quantity: effectiveQuantity != null ? effectiveQuantity : 'N/A',
             portion_percentage: portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A',
-            base_calories_per_unit: currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A',
+            scaling_factor: currentFoodItem?.scalingFactor != null ? currentFoodItem.scalingFactor : 'N/A',
             final_calories: adjustedFood?.calories != null ? adjustedFood.calories : 'N/A',
-            calculation: `${effectiveQuantity != null ? effectiveQuantity : 'N/A'} × ${portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}% × ${currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'} = ${adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}`,
-            scaling_factor: portionMultiplier != null ? portionMultiplier : 'N/A'
+            calculation: `${currentFoodItem?.perUnitCalories != null ? currentFoodItem.perUnitCalories : 'N/A'} × ${effectiveQuantity != null ? effectiveQuantity : 'N/A'} × ${portionPercentage?.[0] != null ? (portionPercentage[0] / 100) : 'N/A'} = ${adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}`
           }
         };
 
         console.group('🔍 VOYAGE DEBUG: Food Confirmation Details');
         console.log('GPT-5 Parsed Output:', debugInfo.gpt5_parsed_output);
         console.log('Matched Database Item:', debugInfo.matched_database_item);
-        console.log('Scaling Math:', debugInfo.scaling_math);
+        console.log('Serving Normalization:', debugInfo.serving_normalization);
         console.groupEnd();
       } catch (error) {
         console.warn('🔍 VOYAGE DEBUG: Error logging debug info:', error);
@@ -635,12 +646,22 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {adjustedFood.calories} calories
-                  {effectiveQuantity > 1 && (
+                  {effectiveQuantity > 1 && currentFoodItem.perUnitCalories && (
                     <span className="ml-1 text-xs">
-                      ({Math.round(currentFoodItem.calories)} per unit)
+                      ({Math.round(currentFoodItem.perUnitCalories)} per unit)
                     </span>
                   )}
                 </p>
+                {/* Show serving info if available */}
+                {currentFoodItem.baseServingLabel && currentFoodItem.baseServingLabel !== '100g' && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Based on: {currentFoodItem.baseServingLabel}
+                    {currentFoodItem.baseServingUnit && currentFoodItem.quantity && 
+                     !currentFoodItem.quantity.toLowerCase().includes(currentFoodItem.baseServingUnit.toLowerCase()) && (
+                      <span className="ml-1 text-orange-600">• Tap Edit to adjust serving</span>
+                    )}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -735,6 +756,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       <div>• name: "{currentFoodItem?.name || 'N/A'}"</div>
                       <div>• quantity: "{currentFoodItem?.quantity || 'none'}"</div>
                       <div>• parsed_numeric: {effectiveQuantity != null ? effectiveQuantity : 'N/A'}</div>
+                      <div>• unit: {currentFoodItem?.baseServingUnit || 'N/A'}</div>
                       <div>• confidence: {currentFoodItem?.confidence != null ? currentFoodItem.confidence : 'N/A'}</div>
                       <div>• isEstimated: {isEstimated != null ? (isEstimated ? 'true' : 'false') : 'N/A'}</div>
                     </div>
@@ -746,21 +768,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     <div className="font-mono text-green-700 dark:text-green-300 space-y-1">
                       <div>• id: {currentFoodItem?.id || 'N/A'}</div>
                       <div>• source: {currentFoodItem?.source || 'unknown'}</div>
-                      <div>• calories_per_serving: {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'}</div>
+                      <div>• base_serving: {currentFoodItem?.baseServingLabel || 'N/A'}</div>
+                      <div>• base_quantity: {currentFoodItem?.baseServingQuantity != null ? currentFoodItem.baseServingQuantity : 'N/A'}</div>
+                      <div>• base_unit: {currentFoodItem?.baseServingUnit || 'N/A'}</div>
+                      <div>• calories_per_base: {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'}</div>
                       <div>• macros: P{currentFoodItem?.protein != null ? currentFoodItem.protein : 'N/A'}g C{currentFoodItem?.carbs != null ? currentFoodItem.carbs : 'N/A'}g F{currentFoodItem?.fat != null ? currentFoodItem.fat : 'N/A'}g</div>
                     </div>
                   </div>
                   
-                  {/* Scaling Math */}
+                  {/* Serving Normalization */}
                   <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-800">
-                    <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Scaling Math:</h5>
+                    <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Serving Normalization:</h5>
                     <div className="font-mono text-orange-700 dark:text-orange-300 space-y-1">
-                      <div>• parsed_quantity: {effectiveQuantity != null ? effectiveQuantity : 'N/A'}</div>
-                      <div>• portion_percentage: {portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}%</div>
-                      <div>• base_calories_per_unit: {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'}</div>
-                      <div>• scaling_factor: {portionMultiplier != null ? portionMultiplier.toFixed(2) : 'N/A'}</div>
+                      <div>• base_serving: {currentFoodItem?.baseServingLabel || 'N/A'}</div>
+                      <div>• per_unit_calories: {currentFoodItem?.perUnitCalories != null ? currentFoodItem.perUnitCalories.toFixed(1) : 'N/A'}</div>
+                      <div>• user_quantity: {effectiveQuantity != null ? effectiveQuantity : 'N/A'}</div>
+                      <div>• portion_slider: {portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}%</div>
+                      <div>• scaling_factor: {currentFoodItem?.scalingFactor != null ? currentFoodItem.scalingFactor.toFixed(2) : 'N/A'}</div>
                       <div>• final_calories: {adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}</div>
-                      <div>• calculation: {effectiveQuantity != null ? effectiveQuantity : 'N/A'} × {portionPercentage?.[0] != null ? portionPercentage[0] : 'N/A'}% × {currentFoodItem?.calories != null ? currentFoodItem.calories : 'N/A'} = {adjustedFood?.calories != null ? adjustedFood.calories : 'N/A'}</div>
+                      <div className="text-xs">• calc: {currentFoodItem?.perUnitCalories != null ? currentFoodItem.perUnitCalories.toFixed(1) : 'N/A'} × {effectiveQuantity != null ? effectiveQuantity : 'N/A'} × {portionPercentage?.[0] != null ? (portionPercentage[0] / 100).toFixed(2) : 'N/A'}</div>
                     </div>
                   </div>
                 </div>
