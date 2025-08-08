@@ -134,17 +134,15 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
-          {/* Section 1: Workout Summary */}
+          {/* Section 1: Daily Overview */}
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
               title="Daily Overview" 
-              subtitle="Total workouts, exercise time, and calories burned"
+              subtitle="Total workouts, exercise time, and calories burned" 
             />
             <div className="space-y-6">
               <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
-              <WeeklyWorkoutDurationChart />
-              <CaloriesBurnedChart />
             </div>
           </div>
 
@@ -156,9 +154,17 @@ export default function Analytics() {
               subtitle="Workout patterns, muscle groups, and progress tracking" 
             />
             <div className="space-y-6">
+              {/* Weekly & Monthly Trends Subsection */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Weekly & Monthly Trends</h3>
+                <div className="space-y-6">
+                  <WeeklyWorkoutDurationChart />
+                  <CaloriesBurnedChart />
+                  <MonthlyGoalProgress />
+                </div>
+              </div>
               <ExerciseAnalyticsSection />
               <MuscleGroupDistributionChart />
-              <MonthlyGoalProgress />
             </div>
           </div>
 
