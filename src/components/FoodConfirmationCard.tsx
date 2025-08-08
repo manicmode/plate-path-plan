@@ -453,7 +453,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
          <AccessibleDialogContent 
            className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-           title="Confirm logged items"
+           title="Confirm Food Log"
            description="We'll save these items to your log."
          >
           <div className="p-6">
@@ -493,7 +493,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             )}
 
-            <DialogHeader className="text-center mb-4 relative">
+            <div className="text-center mb-4 relative">
               {/* Edit Button - Top Right Only */}
               <div className="absolute -top-2 -right-2">
                 <Button
@@ -529,7 +529,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 )}
                 Confirm Food Log
               </h1>
-            </DialogHeader>
+            </div>
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">

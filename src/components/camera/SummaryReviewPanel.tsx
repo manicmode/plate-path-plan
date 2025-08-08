@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,17 +57,21 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+      <AccessibleDialogContent 
+        className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+        title="Review items"
+        description="Select the items you want to log."
+      >
         <div className="p-6">
-          <DialogHeader className="text-center mb-6">
-            <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
               <CheckCircle className="h-6 w-6 text-emerald-500" />
               Review Detected Items
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Tap the items you'd like to confirm for your food log
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
 
           {/* Summary Stats */}
           <div className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 rounded-2xl p-4 mb-6">
@@ -167,7 +172,7 @@ export const SummaryReviewPanel: React.FC<SummaryReviewPanelProps> = ({
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </AccessibleDialogContent>
     </Dialog>
   );
 };

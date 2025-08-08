@@ -85,17 +85,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       <AccessibleDialogContent 
         className="max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
         title="Review detected items"
-        description="Confirm or adjust before saving."
+        description="Select the items you want to log."
       >
         <div className="p-6">
-          <DialogHeader className="text-center mb-6">
+          <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Review Detected Items
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Check and edit the food items detected in your image
             </p>
-          </DialogHeader>
+          </div>
 
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {items.map((item, index) => (

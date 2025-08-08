@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Progress } from '@/components/ui/progress';
 
 interface TransitionScreenProps {
@@ -61,7 +62,11 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden">
+      <AccessibleDialogContent 
+        className="max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+        title="Processing food items"
+        description="Please wait while we analyze your food items."
+      >
         <div className="p-8 text-center">
           {/* Loading Animation */}
           <div className="mb-6">
@@ -108,7 +113,7 @@ export const TransitionScreen: React.FC<TransitionScreenProps> = ({
             ))}
           </div>
         </div>
-      </DialogContent>
+      </AccessibleDialogContent>
     </Dialog>
   );
 };

@@ -14,8 +14,18 @@ export default function AccessibleDialogContent({ title, description, children, 
   const descId = useId();
 
   React.useEffect(() => {
-    console.info("[A11y] AccessibleDialogContent mounted", { titleId, descId, titleText: title });
-  }, [titleId, descId, title]);
+    console.info("[A11y] AccessibleDialogContent mounted", { titleText: title, descriptionText: description, titleId, descId });
+    
+    // In development, warn about empty title or description
+    if (process.env.NODE_ENV === 'development') {
+      if (!title || title.trim() === '') {
+        console.warn("[A11y] AccessibleDialogContent: Empty title provided. This may cause accessibility issues.");
+      }
+      if (!description || description.trim() === '') {
+        console.warn("[A11y] AccessibleDialogContent: Empty description provided. This may cause accessibility issues.");
+      }
+    }
+  }, [title, description, titleId, descId]);
 
   return (
     <DialogContent
