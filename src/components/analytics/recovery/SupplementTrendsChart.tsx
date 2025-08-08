@@ -11,7 +11,6 @@ type ViewType = 'daily' | 'weekly' | 'monthly';
 interface DataPoint {
   label: string;
   count: number;
-  dateISO?: string;
 }
 
 // Simple seeded PRNG for consistent demo data
