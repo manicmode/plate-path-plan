@@ -150,19 +150,13 @@ export default function Analytics() {
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
-              title="Performance Analysis" 
-              subtitle="Workout patterns, muscle groups, and progress tracking" 
+              title="Weekly & Monthly Trends" 
+              subtitle="Exercise patterns and progress over time" 
             />
             <div className="space-y-6">
-              {/* Weekly & Monthly Trends Subsection */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Weekly & Monthly Trends</h3>
-                <div className="space-y-6">
-                  <WeeklyWorkoutDurationChart />
-                  <CaloriesBurnedChart />
-                  <MonthlyGoalProgress />
-                </div>
-              </div>
+              <WeeklyWorkoutDurationChart />
+              <CaloriesBurnedChart />
+              <MonthlyGoalProgress />
               <ExerciseAnalyticsSection />
               <MuscleGroupDistributionChart />
             </div>
