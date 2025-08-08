@@ -49,8 +49,8 @@ export const useColdStart = () => {
           timestamp: new Date().toISOString()
         });
 
-        // Force shorter display time to prevent white page issue
-        const minDisplayTime = isMobile ? 1000 : 1500; // Much shorter 
+        // Very short display time to prevent white page issue
+        const minDisplayTime = 500; // Much shorter - just enough to show splash
         setTimeout(() => {
           console.log('🚀 Cold start ready timer complete', { 
             isMobile, 
