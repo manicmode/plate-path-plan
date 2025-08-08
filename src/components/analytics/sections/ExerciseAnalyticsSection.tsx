@@ -16,6 +16,7 @@ import { PerformanceChartsSection } from '@/components/analytics/PerformanceChar
 import { MuscleGroupAnalytics } from '@/components/analytics/MuscleGroupAnalytics';
 import { useWorkoutAnalytics } from '@/hooks/useWorkoutAnalytics';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 
 export const ExerciseAnalyticsSection = () => {
   const {
@@ -162,9 +163,7 @@ export const ExerciseAnalyticsSection = () => {
 return (
   <ErrorBoundary>
     <div className="space-y-4">
-      {/* Workout Breakdowns */}
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white">Workout Breakdowns</h3>
-      {/* Quick Action Button */}
+      <SectionHeader icon={Activity} title="Workout Breakdowns" subtitle="Plans and detailed breakdowns" />
       <Card className="w-full shadow-lg bg-card dark:!border-2 dark:!border-purple-500/60 dark:bg-gradient-to-r dark:from-purple-500/30 dark:to-blue-500/30">
         <CardContent className="p-6 pb-4">
           <div className="flex items-center justify-between">
