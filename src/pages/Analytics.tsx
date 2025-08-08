@@ -76,21 +76,13 @@ export default function Analytics() {
           <div className="pt-8">
             <SectionHeader 
               icon={Apple} 
-              title="Trends & Analysis" 
-              subtitle="Food patterns and consumption insights over time" 
+              title="Insights & Analysis" 
+              subtitle="Food patterns, AI recommendations, and consumption trends" 
             />
           </div>
           <MealQualityTrendChart />
           <FlaggedIngredientHistoryChart />
           <TopFoodsWeekChart />
-          
-          <div className="pt-8">
-            <SectionHeader 
-              icon={Apple} 
-              title="Smart Insights" 
-              subtitle="AI-powered recommendations and behavioral patterns" 
-            />
-          </div>
           <TagInsightsSection />
           <SmartInsightsSection />
           
@@ -109,32 +101,16 @@ export default function Analytics() {
         <TabsContent value="exercise" className="space-y-6 mt-6">
           <SectionHeader 
             icon={Activity} 
-            title="Workout Performance" 
-            subtitle="Recent training activity and daily metrics" 
+            title="Performance & Analysis" 
+            subtitle="Workout metrics, training patterns, and progress tracking" 
           />
           <WeeklyWorkoutDurationChart />
           <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} progress={progress} />
           <ExerciseAnalyticsSection />
-          
-          <div className="pt-8">
-            <SectionHeader 
-              icon={Activity} 
-              title="Training Analysis" 
-              subtitle="Detailed breakdown of your workout patterns" 
-            />
-          </div>
           <CaloriesBurnedChart />
           <MuscleGroupDistributionChart />
           <MonthlyGoalProgress />
           <BestStreakHistoryChart />
-          
-          <div className="pt-8">
-            <SectionHeader 
-              icon={Activity} 
-              title="Motivation & Achievements" 
-              subtitle="Progress tracking and motivational insights" 
-            />
-          </div>
           <WorkoutTrophyCard />
           <MotivationCard />
         </TabsContent>
