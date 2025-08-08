@@ -28,13 +28,21 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
 }) => {
   const [items, setItems] = useState<ReviewItem[]>([]);
 
-  // Update items when props change - improved state management
+  // Atomic handoff - update items when props change
   React.useEffect(() => {
     console.log('ReviewItemsScreen received items:', initialItems);
     if (Array.isArray(initialItems) && initialItems.length > 0) {
       setItems(initialItems);
     }
   }, [initialItems]);
+  
+  // Auto-open when items are set
+  React.useEffect(() => {
+    if (items.length > 0 && !isOpen) {
+      // Items ready but modal not open - this shouldn't happen with atomic handoff
+      console.log('Items ready but modal not open');
+    }
+  }, [items, isOpen]);
 
   const handleItemChange = (id: string, field: 'name' | 'portion' | 'selected', value: string | boolean) => {
     setItems(prev => prev.map(item => 

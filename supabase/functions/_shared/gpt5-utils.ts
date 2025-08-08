@@ -94,16 +94,23 @@ function prepareOpenAIRequest(request: OpenAIRequest): any {
   const isGpt5 = isGpt5Model(request.model);
   const requestBody: any = {
     model: request.model,
-    messages: request.messages,
-    temperature: request.temperature,
-    response_format: request.response_format
+    messages: request.messages
   };
 
-  // Use appropriate token parameter based on model
-  if (request.max_tokens !== undefined) {
-    if (isGpt5) {
+  // For GPT-5 models, only send supported parameters
+  if (isGpt5) {
+    // GPT-5 only supports max_completion_tokens, not temperature/presence/frequency
+    if (request.max_tokens !== undefined) {
       requestBody.max_completion_tokens = request.max_tokens;
-    } else {
+    }
+    if (request.response_format) {
+      requestBody.response_format = request.response_format;
+    }
+  } else {
+    // For non-GPT-5 models, include all traditional parameters
+    requestBody.temperature = request.temperature;
+    requestBody.response_format = request.response_format;
+    if (request.max_tokens !== undefined) {
       requestBody.max_tokens = request.max_tokens;
     }
   }

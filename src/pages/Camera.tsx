@@ -35,6 +35,8 @@ import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
 import { MultiAIFoodDetection } from '@/components/camera/MultiAIFoodDetection';
 import { detectFoodsFromAllSources } from '@/utils/multiFoodDetector';
 import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
+import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalization';
+import { DebugPanel } from '@/components/camera/DebugPanel';
 // Import smoke tests for development
 import '@/utils/smokeTests';
 import jsQR from 'jsqr';
@@ -622,6 +624,9 @@ const CameraPage = () => {
       brandedProductMatched: false,
       brandedMatchConfidence: 0,
       brandedSource: null,
+      genericConfidence: 0,
+      sourceChosen: 'unknown',
+      reason: 'no_decision_made',
       fallbackUsed: false,
       finalConfidence: 0,
       errors: [] as string[],
@@ -631,9 +636,12 @@ const CameraPage = () => {
     console.log('🍎 === NUTRITION ESTIMATION DEBUG START ===');
     console.log('📊 Initial parameters:', { foodName, hasOcrText: !!ocrText, hasBarcode: !!barcode, barcode });
     
-    // Try branded product matching first
+    // Step 1: Get both branded and generic data in parallel
+    let brandedResult = null;
+    let genericResult = null;
+    
     try {
-      console.log('🏷️ STEP 1: Attempting branded product matching...');
+      console.log('🔄 STEP 1: Getting both branded and generic nutrition data...');
       
       if (barcode) {
         debugLog.barcodeDetected = true;
@@ -642,16 +650,23 @@ const CameraPage = () => {
         console.log('❌ NO BARCODE DETECTED');
       }
       
-      const brandedResponse = await supabase.functions.invoke('match-branded-product', {
-        body: {
-          productName: foodName,
-          ocrText: ocrText,
-          barcode: barcode
-        }
-      });
+      // Run both lookups in parallel
+      const [brandedResponse, genericResponse] = await Promise.allSettled([
+        supabase.functions.invoke('match-branded-product', {
+          body: {
+            productName: foodName,
+            ocrText: ocrText,
+            barcode: barcode
+          }
+        }),
+        supabase.functions.invoke('gpt-nutrition-estimator', {
+          body: { foodName: foodName }
+        })
+      ]);
 
-      if (brandedResponse.data && !brandedResponse.error) {
-        const brandedResult = brandedResponse.data;
+      // Process branded response
+      if (brandedResponse.status === 'fulfilled' && brandedResponse.value.data && !brandedResponse.value.error) {
+        brandedResult = brandedResponse.value.data;
         debugLog.brandedMatchConfidence = brandedResult.confidence;
         debugLog.brandedSource = brandedResult.source;
         
@@ -662,87 +677,134 @@ const CameraPage = () => {
         console.log(`  📍 Source: ${brandedResult.source}`);
         console.log(`  🏪 Product: ${brandedResult.productName || 'N/A'}`);
         console.log(`  🏢 Brand: ${brandedResult.brandName || 'N/A'}`);
-        console.log(`  🔍 Debug Info:`, brandedResult.debugInfo);
-
-        // Use branded nutrition if confidence is high enough (≥90%)
-        if (brandedResult.found && brandedResult.confidence >= 90) {
-          debugLog.brandedProductMatched = true;
-          debugLog.finalConfidence = brandedResult.confidence;
-          debugLog.success = true;
-          
-          console.log('✅ BRANDED MATCH SUCCESS - Using branded nutrition data');
-          console.log(`🎯 Final confidence: ${brandedResult.confidence}%`);
-          console.log('🏆 BRANDED NUTRITION DATA:', brandedResult.nutrition);
-          
-          return {
-            ...brandedResult.nutrition,
-            isBranded: true,
-            source: 'branded-database',
-            confidence: brandedResult.confidence / 100, // Convert percentage to decimal
-            brandInfo: {
-              productName: brandedResult.productName,
-              brandName: brandedResult.brandName,
-              productId: brandedResult.productId,
-              confidence: brandedResult.confidence,
-              source: brandedResult.source
-            },
-            debugLog
-          };
-        } else {
-          debugLog.fallbackUsed = true;
-          debugLog.errors.push(`Branded confidence ${brandedResult.confidence}% below 90% threshold`);
-          console.log(`⚠️ BRANDED MATCH INSUFFICIENT - Confidence ${brandedResult.confidence}% below 90% threshold`);
-          console.log('🔄 Proceeding to generic fallback...');
-        }
       } else {
-        debugLog.errors.push(`Branded API error: ${brandedResponse.error?.message || 'Unknown error'}`);
-        console.log('❌ BRANDED PRODUCT API ERROR:', brandedResponse.error);
+        debugLog.errors.push(`Branded API error: ${brandedResponse.status === 'fulfilled' ? brandedResponse.value.error?.message : brandedResponse.reason || 'Unknown error'}`);
+        console.log('❌ BRANDED PRODUCT API ERROR:', brandedResponse.status === 'fulfilled' ? brandedResponse.value.error : brandedResponse.reason);
       }
-    } catch (error) {
-      debugLog.errors.push(`Branded matching exception: ${error.message}`);
-      console.error('❌ BRANDED PRODUCT MATCHING EXCEPTION:', error);
-    }
 
-    // Fallback to GPT nutrition estimation
-    console.log('🔄 STEP 2: Using GPT nutrition estimation...');
-    
-    try {
-      console.log(`🧠 Calling GPT nutrition estimator for: ${foodName}`);
+      // Process generic response
+      if (genericResponse.status === 'fulfilled' && genericResponse.value.data && !genericResponse.value.error) {
+        genericResult = genericResponse.value.data;
+        debugLog.genericConfidence = genericResult.nutrition?.confidence || 85;
+        
+        console.log('🧠 GENERIC NUTRITION RESULT:');
+        console.log('  ✅ Response received successfully');
+        console.log(`  🎯 Confidence: ${debugLog.genericConfidence}%`);
+        console.log('  🧪 Nutrition data:', genericResult.nutrition);
+      } else {
+        debugLog.errors.push(`Generic API error: ${genericResponse.status === 'fulfilled' ? genericResponse.value.error?.message : genericResponse.reason || 'Unknown error'}`);
+        console.log('❌ GENERIC NUTRITION API ERROR:', genericResponse.status === 'fulfilled' ? genericResponse.value.error : genericResponse.reason);
+      }
+
+      // Step 2: Choose the best source based on the new logic
+      console.log('🤔 STEP 2: Choosing best nutrition source...');
       
-      const { data, error } = await supabase.functions.invoke('gpt-nutrition-estimator', {
-        body: { foodName: foodName }
-      });
+      const hasBarcode = !!barcode;
+      const brandedConfidence = brandedResult?.confidence || 0;
+      const genericConfidence = debugLog.genericConfidence || 0;
+      const brandedFound = brandedResult?.found || false;
+      const genericFound = !!genericResult?.nutrition;
+      
+      // Check for name token conflicts (prevent "MILKY WAY eggs" type issues)
+      const hasNameConflict = brandedResult?.productName && foodName ? 
+        !brandedResult.productName.toLowerCase().split(' ').some(token => 
+          foodName.toLowerCase().split(' ').includes(token)
+        ) : false;
 
-      if (data && !error && data.nutrition) {
-        debugLog.fallbackUsed = false;
-        debugLog.finalConfidence = data.nutrition.confidence || 85;
+      console.log('📊 DECISION FACTORS:');
+      console.log(`  🏷️ Has barcode: ${hasBarcode}`);
+      console.log(`  📈 Branded confidence: ${brandedConfidence}%`);
+      console.log(`  📈 Generic confidence: ${genericConfidence}%`);
+      console.log(`  ✅ Branded found: ${brandedFound}`);
+      console.log(`  ✅ Generic found: ${genericFound}`);
+      console.log(`  ⚠️ Name conflict: ${hasNameConflict}`);
+      console.log(`  🔤 Food name: "${foodName}"`);
+      console.log(`  🏪 Branded name: "${brandedResult?.productName || 'N/A'}"`);
+
+      let chosenSource = null;
+      let reason = '';
+
+      // Decision logic: Prefer GENERIC unless specific conditions are met
+      if (hasBarcode && brandedFound && brandedConfidence >= 95) {
+        // Use branded if we have a barcode and high confidence
+        chosenSource = 'branded';
+        reason = 'barcode_high_confidence';
+      } else if (hasNameConflict) {
+        // Never use branded if there's a name conflict
+        chosenSource = 'generic';
+        reason = 'name_conflict_avoid_branded';
+      } else if (!genericFound && brandedFound && brandedConfidence >= 90) {
+        // Use branded only if generic failed and branded is decent
+        chosenSource = 'branded';
+        reason = 'generic_failed_branded_available';
+      } else if (genericFound && brandedFound && genericConfidence < 70 && brandedConfidence >= 95) {
+        // Use branded only if generic confidence is low AND branded is very high AND no conflicts
+        chosenSource = 'branded';
+        reason = 'low_generic_high_branded';
+      } else if (genericFound) {
+        // Default: prefer generic
+        chosenSource = 'generic';
+        reason = 'prefer_generic';
+      } else if (brandedFound) {
+        // Last resort: use branded if available
+        chosenSource = 'branded';
+        reason = 'last_resort_branded';
+      }
+
+      debugLog.sourceChosen = chosenSource || 'none';
+      debugLog.reason = reason;
+
+      console.log(`🎯 DECISION: Using ${chosenSource} source (${reason})`);
+
+      // Return the chosen result
+      if (chosenSource === 'branded' && brandedResult) {
+        debugLog.brandedProductMatched = true;
+        debugLog.finalConfidence = brandedResult.confidence;
         debugLog.success = true;
         
-        console.log('✅ GPT NUTRITION SUCCESS:');
-        console.log(`  🎯 Confidence: ${data.nutrition.confidence}%`);
-        console.log('  🧪 Nutrition data:', data.nutrition);
+        console.log('✅ RETURNING BRANDED NUTRITION DATA');
+        console.log('🏆 BRANDED NUTRITION DATA:', brandedResult.nutrition);
         
         return {
-          calories: data.nutrition.calories,
-          protein: data.nutrition.protein,
-          carbs: data.nutrition.carbs,
-          fat: data.nutrition.fat,
-          fiber: data.nutrition.fiber,
-          sugar: data.nutrition.sugar,
-          sodium: data.nutrition.sodium,
-          saturated_fat: data.nutrition.saturated_fat,
-          isBranded: false,
-          source: 'gpt-individual',
-          confidence: (data.nutrition.confidence || 85) / 100,
+          ...brandedResult.nutrition,
+          isBranded: true,
+          source: 'branded-database',
+          confidence: brandedResult.confidence / 100,
+          brandInfo: {
+            productName: brandedResult.productName,
+            brandName: brandedResult.brandName,
+            productId: brandedResult.productId,
+            confidence: brandedResult.confidence,
+            source: brandedResult.source
+          },
           debugLog
         };
-      } else {
-        debugLog.errors.push(`GPT nutrition API error: ${error?.message || 'No data returned'}`);
-        console.log('❌ GPT NUTRITION API ERROR:', error);
+      } else if (chosenSource === 'generic' && genericResult) {
+        debugLog.finalConfidence = genericResult.nutrition.confidence || 85;
+        debugLog.success = true;
+        
+        console.log('✅ RETURNING GENERIC NUTRITION DATA');
+        console.log('🧪 GENERIC NUTRITION DATA:', genericResult.nutrition);
+        
+        return {
+          calories: genericResult.nutrition.calories,
+          protein: genericResult.nutrition.protein,
+          carbs: genericResult.nutrition.carbs,
+          fat: genericResult.nutrition.fat,
+          fiber: genericResult.nutrition.fiber,
+          sugar: genericResult.nutrition.sugar,
+          sodium: genericResult.nutrition.sodium,
+          saturated_fat: genericResult.nutrition.saturated_fat,
+          isBranded: false,
+          source: 'usda-gpt-estimation',
+          confidence: (genericResult.nutrition.confidence || 85) / 100,
+          debugLog
+        };
       }
+
     } catch (error) {
-      debugLog.errors.push(`GPT nutrition exception: ${error.message}`);
-      console.error('❌ GPT NUTRITION EXCEPTION:', error);
+      debugLog.errors.push(`Nutrition estimation exception: ${error.message}`);
+      console.error('❌ NUTRITION ESTIMATION EXCEPTION:', error);
     }
 
     // Fallback to database lookups (stubbed for now)
@@ -1658,23 +1720,59 @@ const CameraPage = () => {
     // Run the identical values check
     identicalValuesCheck(nutrition, currentItem.name);
     
-    // Log successful individual nutrition estimation
-    console.log(`✅ [NUTRITION SUCCESS] ${currentItem.name}: ${nutrition.calories} cal, ${nutrition.protein}g protein, ${nutrition.carbs}g carbs, ${nutrition.fat}g fat | Source: ${nutrition.source || nutritionSource}`);
+    // Apply serving normalization
+    const baseNutrition = {
+      calories: nutrition.calories,
+      protein: nutrition.protein || 0,
+      carbs: nutrition.carbs || 0,
+      fat: nutrition.fat || 0,
+      fiber: nutrition.fiber || 0,
+      sugar: nutrition.sugar || 0,
+      sodium: nutrition.sodium || 0,
+      saturated_fat: nutrition.saturated_fat || nutrition.fat * 0.3
+    };
+
+    const itemQuantity = (currentItem as any).quantity || (currentItem as any).portion || '1';
+    
+    const normalized = normalizeServing(
+      currentItem.name,
+      itemQuantity,
+      baseNutrition,
+      nutrition.serving_size
+    );
+
+    // Get debug info for the panel
+    const debugInfo = getServingDebugInfo(
+      currentItem.name,
+      itemQuantity,
+      baseNutrition,
+      nutrition.serving_size,
+      nutrition.debugLog?.sourceChosen,
+      nutrition.debugLog?.reason
+    );
+
+    // Log successful individual nutrition estimation with normalized values
+    console.log(`✅ [NUTRITION SUCCESS] ${normalized.titleText}: ${normalized.finalCalories} cal | Source: ${nutrition.source || nutritionSource}`);
+    console.log('🔧 [SERVING DEBUG]', debugInfo);
 
     const foodItem = {
       id: currentItem.id,
-      name: currentItem.name,
-      calories: Math.round(nutrition.calories),
-      protein: Math.round((nutrition.protein || 0) * 10) / 10,
-      carbs: Math.round((nutrition.carbs || 0) * 10) / 10,
-      fat: Math.round((nutrition.fat || 0) * 10) / 10,
-      fiber: Math.round((nutrition.fiber || 0) * 10) / 10,
-      sugar: Math.round((nutrition.sugar || 0) * 10) / 10,
-      sodium: Math.round(nutrition.sodium || 0),
-      saturated_fat: Math.round((nutrition.saturated_fat || nutrition.fat * 0.3) * 10) / 10,
-      confidence: Math.round((nutrition.confidence || confidence) * 100) / 100, // Use nutrition confidence if available
-      source: nutrition.source || nutritionSource, // Prefer nutrition source over fallback source  
-      image: selectedImage // Use the original photo as reference
+      name: normalized.titleText,
+      displayName: currentItem.name, // Keep original for processing
+      quantity: itemQuantity, // Keep original quantity
+      calories: Math.round(normalized.finalCalories),
+      protein: Math.round(normalized.nutrition.protein * 10) / 10,
+      carbs: Math.round(normalized.nutrition.carbs * 10) / 10,
+      fat: Math.round(normalized.nutrition.fat * 10) / 10,
+      fiber: Math.round(normalized.nutrition.fiber * 10) / 10,
+      sugar: Math.round(normalized.nutrition.sugar * 10) / 10,
+      sodium: Math.round(normalized.nutrition.sodium),
+      saturated_fat: Math.round((normalized.nutrition.saturated_fat || 0) * 10) / 10,
+      confidence: Math.round((nutrition.confidence || confidence) * 100) / 100,
+      source: nutrition.source || nutritionSource,
+      image: selectedImage,
+      // Add serving normalization debug info
+      servingDebug: debugInfo
     };
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
@@ -2636,7 +2734,11 @@ const CameraPage = () => {
         onClose={() => setShowManualFoodEntry(false)}
       />
 
-      {/* Debug components removed - clean production interface */}
+      {/* Debug Panel - Dev only */}
+      <DebugPanel 
+        isVisible={showConfirmation && (recognizedFoods[0] as any)?.servingDebug}
+        debugInfo={(recognizedFoods[0] as any)?.servingDebug}
+      />
       
     </div>
   );
