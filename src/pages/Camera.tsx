@@ -1170,9 +1170,14 @@ const CameraPage = () => {
         }
 
         if (actualFailure) {
+          // Create local flag to track if we actually attempt fallback
+          let attemptedFallback = false;
+          
           // After retries failed, try fallback to log-voice function
-          console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
           try {
+            attemptedFallback = true;
+            console.log('🔄 [Camera] Primary GPT-5 failed, attempting fallback to log-voice...');
+            
             const fallbackResponse = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/log-voice', {
               method: 'POST',
               headers: {
@@ -1197,7 +1202,9 @@ const CameraPage = () => {
               console.log('✅ [Camera] Fallback to log-voice succeeded');
             }
           } catch (fallbackError) {
-            console.error('❌ [Camera] Fallback also failed:', fallbackError);
+            if (attemptedFallback) {
+              console.error('❌ [Camera] Fallback also failed:', fallbackError);
+            }
           }
         }
       }
