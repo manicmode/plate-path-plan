@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_steps: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          local_tz: string | null
+          raw: Json | null
+          source: string
+          steps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          local_tz?: string | null
+          raw?: Json | null
+          source: string
+          steps?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          local_tz?: string | null
+          raw?: Json | null
+          source?: string
+          steps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_generated_routines: {
         Row: {
           created_at: string
@@ -1895,6 +1931,42 @@ export type Database = {
           source?: string | null
           sugar?: number | null
           trigger_tags?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      oauth_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          provider: string
+          refresh_token: string | null
+          scopes: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          provider: string
+          refresh_token?: string | null
+          scopes?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          provider?: string
+          refresh_token?: string | null
+          scopes?: string[] | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -4607,6 +4679,15 @@ export type Database = {
       }
     }
     Views: {
+      activity_steps_daily: {
+        Row: {
+          date: string | null
+          source_count: number | null
+          steps: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       muscle_group_trends: {
         Row: {
           avg_sets_per_exercise: number | null
