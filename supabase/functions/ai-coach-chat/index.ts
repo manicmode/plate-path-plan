@@ -86,7 +86,6 @@ function buildClosingLine(coach: 'nutrition'|'exercise'|'recovery', t: Record<st
     if (t.avg_cals_7d != null) parts.push(`This week you averaged ${t.avg_cals_7d} kcal`);
     if (t.protein_g_7d != null) parts.push(`and ${t.protein_g_7d}g protein`);
     const base = parts.join(' ') || undefined;
-    // protein_target_g may be unavailable; omit if missing
     return base ? `Closing: ${base}.` : '';
   }
   if (coach === 'exercise') {
@@ -94,7 +93,11 @@ function buildClosingLine(coach: 'nutrition'|'exercise'|'recovery', t: Record<st
     if (t.workouts_7d != null) frags.push(`${t.workouts_7d} workouts`);
     if (t.avg_duration_min_7d != null) frags.push(`avg ${t.avg_duration_min_7d} min`);
     if (t.consistency_pct_30d != null) frags.push(`consistency ${t.consistency_pct_30d}%`);
-    return frags.length ? `Closing: ${frags.join(', ')}.` : '';
+    let line = frags.length ? `Closing: ${frags.join(', ')}.` : '';
+    if (t.next_small_goal) {
+      line = line ? `${line} Next step: ${t.next_small_goal}.` : `Closing: Next step: ${t.next_small_goal}.`;
+    }
+    return line;
   }
   // recovery
   const segs: string[] = [];

@@ -31,6 +31,7 @@ import { SkillPanel } from '@/components/coach/SkillPanel';
 import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -54,6 +55,8 @@ export default function AIFitnessCoach() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [useMyData, setUseMyData] = useState(true);
+  const [isContextLoading, setIsContextLoading] = useState(false);
   
   // 🎮 Coach Gamification System
   const [showPraiseMessage, setShowPraiseMessage] = useState<string | null>(null);
@@ -113,17 +116,57 @@ export default function AIFitnessCoach() {
     const newMessages = [...messages, { role: 'user' as const, content: message }];
     setMessages(newMessages);
     setInputMessage('');
-    
-    // Process message with intelligent coach logic (includes voiceProfile: exerciseCoachVoiceProfile)
-    setTimeout(() => {
-      const coachResponse = processUserInput(message);
-      setMessages([...newMessages, { 
-        role: 'assistant', 
-        content: coachResponse.message,
-        emoji: coachResponse.emoji
-      }]);
+
+    // Fetch context if needed
+    let context: any = null;
+    let usedGeneric = false;
+    if (useMyData) {
+      setIsContextLoading(true);
+      const start = Date.now();
+      try {
+        const { data, error } = await supabase.functions.invoke('coach-context', {} as any);
+        if (!error) context = data;
+        else usedGeneric = true;
+      } catch (_){ usedGeneric = true; }
+      finally {
+        const elapsed = Date.now() - start;
+        const minDelay = 300;
+        const remaining = Math.max(0, minDelay - elapsed);
+        setTimeout(() => setIsContextLoading(false), remaining);
+      }
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-coach-chat', {
+        body: {
+          coachType: 'exercise',
+          message,
+          useContext: useMyData,
+          userContext: {
+            voiceProfile: exerciseCoachVoiceProfile,
+            coachType: 'exercise',
+            context,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      const aiContent = data.response as string;
+
+      const messagesToSet = [...newMessages];
+      if (useMyData && (!context || usedGeneric)) {
+        messagesToSet.push({ role: 'assistant' as const, content: 'Using general guidance; log more workouts/meals/recovery to personalize.' });
+      }
+      messagesToSet.push({ role: 'assistant' as const, content: aiContent });
+      setMessages(messagesToSet);
+    } catch (err) {
+      const messagesToSet = [...newMessages, { role: 'assistant' as const, content: 'Using general guidance; log more workouts/meals/recovery to personalize.' }];
+      messagesToSet.push({ role: 'assistant' as const, content: "I'm having trouble personalizing right now. Here's general guidance: Aim for 3×45-min sessions this week and keep intensity moderate." });
+      setMessages(messagesToSet);
+    } finally {
       setIsLoading(false);
-    }, 1500); // Slightly longer to simulate analysis
+    }
   };
 
   const handlePromptClick = async (promptMessage: string) => {
@@ -396,10 +439,16 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
         {/* AI Chat Box */}
         <Card className="glass-card border-0 rounded-3xl">
           <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
-            <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-              <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
-              <span>Chat with Your Coach</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+                <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-500`} />
+                <span>Chat with Your Coach</span>
+              </CardTitle>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="text-xs">Use my data</span>
+                <input type="checkbox" aria-label="Use my data" className="accent-current" checked={useMyData} onChange={(e)=>setUseMyData(e.target.checked)} />
+              </div>
+            </div>
           </CardHeader>
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
             {/* Messages Container with optimized height for mobile */}
@@ -465,27 +514,32 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
             </div>
 
             {/* Input Area */}
-            <div className={`flex space-x-2 mt-4`}>
-              <Input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
-                placeholder="Ask your fitness coach..."
-                disabled={isLoading}
-                className="flex-1 rounded-2xl"
-              />
-              <Button
-                onClick={() => handleSendMessage(inputMessage)}
-                disabled={!inputMessage.trim() || isLoading}
-                size="sm"
-                className="bg-orange-500 hover:bg-orange-600 rounded-2xl px-4"
-              >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+            <div className={`flex flex-col gap-2 mt-4`}>
+              <div className={`flex space-x-2`}>
+                <Input
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
+                  placeholder="Ask your fitness coach..."
+                  disabled={isLoading}
+                  className="flex-1 rounded-2xl"
+                />
+                <Button
+                  onClick={() => handleSendMessage(inputMessage)}
+                  disabled={!inputMessage.trim() || isLoading}
+                  size="sm"
+                  className="bg-orange-500 hover:bg-orange-600 rounded-2xl px-4"
+                >
+                  {isLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {!useMyData && (
+                <div className="text-xs text-muted-foreground pl-1">Personalization off — generic guidance only.</div>
+              )}
             </div>
           </CardContent>
         </Card>

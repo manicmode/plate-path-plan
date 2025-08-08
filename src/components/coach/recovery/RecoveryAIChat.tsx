@@ -116,6 +116,10 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
         timestamp: new Date(),
       };
 
+      if (useMyData && !context) {
+        setMessages(prev => [...prev, { id: (Date.now() + 0.5).toString(), content: 'Using general guidance; log more workouts/meals/recovery to personalize.', isUser: false, timestamp: new Date() }]);
+      }
+
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error sending message:', error);

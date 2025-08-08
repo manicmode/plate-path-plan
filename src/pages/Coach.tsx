@@ -259,7 +259,14 @@ try {
         isRecipe: isRecipeRequest,
       };
 
-setMessages(prev => [...prev, aiMessage]);
+setMessages(prev => {
+  const arr = [...prev];
+  if (useMyData && !contextData.context) {
+    arr.push({ id: (Date.now() + 0.5).toString(), content: 'Using general guidance; log more workouts/meals/recovery to personalize.', isUser: false, timestamp: new Date() } as any);
+  }
+  arr.push(aiMessage as any);
+  return arr;
+});
 } catch (error) {
   handleError(error as Error, 'Sending message');
   toast.error('Using a generic answer; I’ll personalize once your data loads.');
@@ -501,9 +508,9 @@ setMessages(prev => [...prev, aiMessage]);
         <input type="checkbox" aria-label="Use my data" className="accent-current" checked={useMyData} onChange={(e)=>setUseMyData(e.target.checked)} />
       </div>
     </div>
-  </CardHeader>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          {/* Messages Container with optimized height for mobile */}
+          </CardHeader>
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+            {/* Messages Container with optimized height for mobile */}
           <div className={`${isMobile ? (isLowMemory ? 'h-[400px]' : 'h-[500px]') : 'h-[600px]'} flex flex-col`}>
             <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
               <div className="space-y-4 py-2">
