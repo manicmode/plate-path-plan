@@ -1689,6 +1689,57 @@ export type Database = {
         }
         Relationships: []
       }
+      mood_checkin_prefs: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          reminder_time_local: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          reminder_time_local?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          reminder_time_local?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mood_checkin_sends: {
+        Row: {
+          date_key: string
+          id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          date_key: string
+          id?: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          date_key?: string
+          id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mood_logs: {
         Row: {
           ai_detected_tags: string[] | null
@@ -4795,6 +4846,10 @@ export type Database = {
       }
       check_social_badges: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      ensure_mood_prefs: {
+        Args: { p_user: string; p_tz: string; p_time?: string }
         Returns: undefined
       }
       find_user_friends: {
