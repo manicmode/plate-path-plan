@@ -167,8 +167,8 @@ export default function Analytics() {
           <div className="mb-12">
             <SectionHeader 
               icon={Activity} 
-              title="Achievements & Milestones" 
-              subtitle="Streaks, personal records, and motivational insights" 
+              title="AI Insights & Recommendations" 
+              subtitle="Personalized tips, coaching messages, and muscle insights" 
             />
             <div className="space-y-6">
               <MotivationCard />
