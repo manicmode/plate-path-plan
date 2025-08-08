@@ -424,11 +424,19 @@
 
   /* Enhanced Action Card Specific Styles with Better Backgrounds */
   .log-food-card {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(147, 197, 253, 0.08) 50%, rgba(255, 255, 255, 0.95) 100%);
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 197, 253, 0.06) 50%, rgba(255, 255, 255, 0.95) 100%);
+    box-shadow: 
+      0 10px 25px -5px rgba(59, 130, 246, 0.15),
+      0 20px 40px -10px rgba(59, 130, 246, 0.08),
+      0 0 0 1px rgba(59, 130, 246, 0.05);
   }
 
   .dark .log-food-card {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.20) 0%, rgba(147, 197, 253, 0.15) 50%, rgba(255, 255, 255, 0.10) 100%);
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.10) 50%, rgba(255, 255, 255, 0.08) 100%);
+    box-shadow: 
+      0 10px 25px -5px rgba(59, 130, 246, 0.25),
+      0 20px 40px -10px rgba(59, 130, 246, 0.15),
+      0 0 0 1px rgba(59, 130, 246, 0.1);
   }
 
   .hydration-action-card {
@@ -458,9 +466,8 @@
   /* Enhanced Glow Effects with Better Animation */
   .log-food-glow {
     box-shadow: 
-      0 0 25px rgba(59, 130, 246, 0.4),
-      0 0 50px rgba(59, 130, 246, 0.2),
-      0 8px 24px rgba(59, 130, 246, 0.25);
+      0 8px 16px -4px rgba(59, 130, 246, 0.3),
+      0 0 20px rgba(59, 130, 246, 0.2);
   }
 
   .hydration-action-glow {

@@ -1050,12 +1050,12 @@ const Home = () => {
       <div className="space-y-6 sm:space-y-8 px-2 sm:px-4">
         {/* Primary Action: Log Food - Full Width */}
         <Card 
-          className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer shadow-xl hover:shadow-2xl"
+          className="modern-action-card log-food-card border-0 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 cursor-pointer"
           onClick={() => navigate('/camera')}
         >
           <CardContent className={`${isMobile ? 'p-6' : 'p-8'} text-center`}>
             <div className="flex flex-col items-center space-y-4">
-              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-blue-500 to-sky-500 rounded-3xl flex items-center justify-center shadow-2xl log-food-glow`}>
+              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-gradient-to-br from-blue-500 to-sky-500 rounded-3xl flex items-center justify-center log-food-glow`}>
                 <Camera className={`${isMobile ? 'h-8 w-8' : 'h-10 w-10'} text-white`} />
               </div>
               <div className="space-y-2">
