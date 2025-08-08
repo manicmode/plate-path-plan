@@ -37,7 +37,7 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
   useEffect(() => {
     if (!user?.id) return;
 
-    const fetchExerciseData = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -45,52 +45,70 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
         const daysBack = timeRange === '7d' ? 7 : 30;
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - daysBack);
+        const startISO = startDate.toISOString().split('T')[0];
 
-        const { data, error: queryError } = await supabase
+        // Fetch exercise logs (duration/calories)
+        const { data: exData, error: exErr } = await supabase
           .from('exercise_logs')
           .select('*')
           .eq('user_id', user.id)
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: true });
+        if (exErr) throw exErr;
 
-        if (queryError) {
-          console.error('Error fetching exercise data:', queryError);
-          setError(queryError.message);
-          return;
-        }
+        // Fetch steps from activity_steps_daily view
+        const { data: stepsData, error: stepsErr } = await supabase
+          .from('activity_steps_daily')
+          .select('date, steps')
+          .eq('user_id', user.id)
+          .gte('date', startISO)
+          .order('date', { ascending: true });
+        if (stepsErr) throw stepsErr;
 
-        // Group data by date and sum values for each day
-        const groupedData: Record<string, ExerciseEntry> = {};
-        const today = new Date().toISOString().split('T')[0];
-
-        data?.forEach((entry) => {
+        // Group exercise logs by date
+        const grouped: Record<string, ExerciseEntry> = {};
+        exData?.forEach((entry) => {
           const date = new Date(entry.created_at).toISOString().split('T')[0];
-          
-          if (!groupedData[date]) {
-            groupedData[date] = {
+          if (!grouped[date]) {
+            grouped[date] = {
               date,
               steps: 0,
               duration_minutes: 0,
               calories_burned: 0,
               activity_type: entry.activity_type,
-              intensity_level: entry.intensity_level || 'moderate'
+              intensity_level: entry.intensity_level || 'moderate',
             };
           }
-
-          groupedData[date].steps += entry.steps || 0;
-          groupedData[date].duration_minutes += entry.duration_minutes || 0;
-          groupedData[date].calories_burned += entry.calories_burned || 0;
+          grouped[date].duration_minutes += entry.duration_minutes || 0;
+          grouped[date].calories_burned += entry.calories_burned || 0;
         });
 
-        const exerciseEntries = Object.values(groupedData);
-        setExerciseData(exerciseEntries);
+        // Overlay steps from activity_steps_daily, taking max per date (view already maxes)
+        stepsData?.forEach((row: any) => {
+          const date = row.date;
+          if (!grouped[date]) {
+            grouped[date] = {
+              date,
+              steps: row.steps || 0,
+              duration_minutes: 0,
+              calories_burned: 0,
+              activity_type: 'general',
+              intensity_level: 'moderate',
+            };
+          } else {
+            grouped[date].steps = Math.max(grouped[date].steps || 0, row.steps || 0);
+          }
+        });
 
-        // Calculate summary statistics
-        const totalSteps = exerciseEntries.reduce((sum, entry) => sum + entry.steps, 0);
-        const totalDuration = exerciseEntries.reduce((sum, entry) => sum + entry.duration_minutes, 0);
-        const totalCalories = exerciseEntries.reduce((sum, entry) => sum + entry.calories_burned, 0);
+        const today = new Date().toISOString().split('T')[0];
+        const entries = Object.values(grouped);
+        setExerciseData(entries);
 
-        const todayData = groupedData[today];
+        const totalSteps = entries.reduce((s, e) => s + (e.steps || 0), 0);
+        const totalDuration = entries.reduce((s, e) => s + (e.duration_minutes || 0), 0);
+        const totalCalories = entries.reduce((s, e) => s + (e.calories_burned || 0), 0);
+
+        const todayData = grouped[today];
         const todaySteps = todayData?.steps || 0;
         const todayDuration = todayData?.duration_minutes || 0;
         const todayCalories = todayData?.calories_burned || 0;
@@ -103,7 +121,6 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
           todayDuration,
           todayCalories,
         });
-
       } catch (err) {
         console.error('Error in useRealExerciseData:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -112,22 +129,22 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
       }
     };
 
-    fetchExerciseData();
+    fetchData();
   }, [user?.id, timeRange]);
 
   // Format data for charts (last 7 days with proper day labels)
   const getWeeklyChartData = () => {
-    const weekData = [];
+    const weekData = [] as Array<{ day: string; steps: number; calories: number; duration: number }>;
     const today = new Date();
-    
+
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      
-      const dayData = exerciseData.find(entry => entry.date === dateStr);
-      const dayName = i === 0 ? 'Today' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()] || 'Day';
-      
+      const dayData = exerciseData.find((entry) => entry.date === dateStr);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = i === 0 ? 'Today' : dayNames[date.getDay()];
+
       weekData.push({
         day: dayName,
         steps: dayData?.steps || 0,
@@ -135,7 +152,7 @@ export const useRealExerciseData = (timeRange: '7d' | '30d' = '7d') => {
         duration: dayData?.duration_minutes || 0,
       });
     }
-    
+
     return weekData;
   };
 
