@@ -43,40 +43,55 @@ export const WeeklyWorkoutDurationChart = () => {
   }
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-blue-200 dark:border-blue-700 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          📊 Weekly Workout Duration
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-blue-900 dark:text-blue-100 flex items-center gap-2">
+              📊 Weekly Workout Duration
+            </CardTitle>
+            <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">Minutes exercised each day</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={weeklyChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#bfdbfe" />
             <XAxis 
               dataKey="day" 
-              stroke="hsl(var(--muted-foreground))"
+              stroke="#1e40af"
               fontSize={12}
+              fontWeight={500}
             />
             <YAxis 
-              stroke="hsl(var(--muted-foreground))"
+              stroke="#1e40af"
               fontSize={12}
-              label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
+              fontWeight={500}
+              label={{ value: 'Minutes', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
             />
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                color: 'hsl(var(--foreground))'
+                backgroundColor: 'white',
+                border: '2px solid #3b82f6',
+                borderRadius: '12px',
+                boxShadow: '0 8px 25px rgba(59, 130, 246, 0.2)',
+                fontSize: '14px',
+                fontWeight: '500'
               }}
               formatter={(value: number) => [`${value} min`, 'Duration']}
             />
             <Bar 
               dataKey="duration" 
-              fill="hsl(var(--primary))"
-              radius={[4, 4, 0, 0]}
+              fill="url(#blueGradient)"
+              radius={[6, 6, 0, 0]}
             />
+            <defs>
+              <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor="#06b6d4" />
+              </linearGradient>
+            </defs>
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

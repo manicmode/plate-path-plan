@@ -4,12 +4,14 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { useMuscleGroupTrends } from '@/hooks/useMuscleGroupTrends';
 
 const COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--secondary))',
-  'hsl(var(--accent))',
-  'hsl(var(--destructive))',
-  'hsl(var(--warning))',
-  'hsl(var(--success))'
+  '#8b5cf6', // Purple
+  '#06b6d4', // Cyan  
+  '#f59e0b', // Amber
+  '#ef4444', // Red
+  '#10b981', // Emerald
+  '#3b82f6', // Blue
+  '#f97316', // Orange
+  '#84cc16'  // Lime
 ];
 
 export const MuscleGroupDistributionChart = () => {
@@ -58,12 +60,16 @@ export const MuscleGroupDistributionChart = () => {
   }));
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-200 dark:border-red-700 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          🎯 Muscle Group Distribution
-        </CardTitle>
-        <div className="text-sm text-muted-foreground">Training time this month</div>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-red-900 dark:text-red-100 flex items-center gap-2">
+              🎯 Muscle Group Distribution
+            </CardTitle>
+            <p className="text-sm text-red-600 dark:text-red-300 mt-1">Training focus this month</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={280}>
@@ -83,10 +89,12 @@ export const MuscleGroupDistributionChart = () => {
             </Pie>
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                color: 'hsl(var(--foreground))'
+                backgroundColor: 'white',
+                border: '2px solid #ef4444',
+                borderRadius: '12px',
+                boxShadow: '0 8px 25px rgba(239, 68, 68, 0.2)',
+                fontSize: '14px',
+                fontWeight: '500'
               }}
               formatter={(value: number, name: string, props: any) => [
                 `${value} sets (${props.payload.percentage}%)`, 
@@ -96,7 +104,11 @@ export const MuscleGroupDistributionChart = () => {
             <Legend 
               verticalAlign="bottom" 
               height={36}
-              formatter={(value: string) => <span style={{ color: 'hsl(var(--foreground))' }}>{value}</span>}
+              wrapperStyle={{ 
+                fontSize: '14px', 
+                fontWeight: '500',
+                color: '#1f2937'
+              }}
             />
           </PieChart>
         </ResponsiveContainer>

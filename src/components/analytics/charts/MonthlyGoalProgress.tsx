@@ -54,43 +54,54 @@ export const MonthlyGoalProgress = () => {
   const minutesProgress = Math.min((summary.totalDuration / monthlyMinutesGoal) * 100, 100);
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-700 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          🎯 Monthly Goal Progress
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-green-900 dark:text-green-100 flex items-center gap-2">
+              🎯 Monthly Goal Progress
+            </CardTitle>
+            <p className="text-sm text-green-600 dark:text-green-300 mt-1">Track your monthly fitness goals</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium">Workouts</span>
-            <span className="text-sm text-muted-foreground">
+        <div className="p-4 bg-white/50 dark:bg-white/5 rounded-lg border border-green-200/50">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-semibold text-green-800 dark:text-green-200">Workouts</span>
+            <span className="text-sm font-bold text-green-600 dark:text-green-400">
               {estimatedWorkouts} / {monthlyWorkoutGoal}
             </span>
           </div>
-          <Progress value={workoutProgress} className="h-3" />
-          <div className="text-xs text-muted-foreground mt-1">
+          <Progress 
+            value={workoutProgress} 
+            className="h-3 bg-green-100 dark:bg-green-900/30" 
+          />
+          <div className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
             {Math.round(workoutProgress)}% complete
           </div>
         </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium">Exercise Minutes</span>
-            <span className="text-sm text-muted-foreground">
+        <div className="p-4 bg-white/50 dark:bg-white/5 rounded-lg border border-green-200/50">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-semibold text-green-800 dark:text-green-200">Exercise Minutes</span>
+            <span className="text-sm font-bold text-green-600 dark:text-green-400">
               {summary.totalDuration} / {monthlyMinutesGoal}
             </span>
           </div>
-          <Progress value={minutesProgress} className="h-3" />
-          <div className="text-xs text-muted-foreground mt-1">
+          <Progress 
+            value={minutesProgress} 
+            className="h-3 bg-green-100 dark:bg-green-900/30" 
+          />
+          <div className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
             {Math.round(minutesProgress)}% complete
           </div>
         </div>
 
         {(workoutProgress >= 100 || minutesProgress >= 100) && (
-          <div className="text-center p-2 bg-success/10 text-success rounded-lg">
-            <div className="text-lg">🎉</div>
-            <div className="text-sm font-medium">Goal achieved!</div>
+          <div className="text-center p-4 bg-gradient-to-r from-green-400 to-emerald-400 text-white rounded-lg shadow-lg">
+            <div className="text-2xl mb-1">🎉</div>
+            <div className="text-sm font-bold">Goal achieved! Keep up the great work!</div>
           </div>
         )}
       </CardContent>
