@@ -71,7 +71,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
       {/* Smart Insights & Suggestions */}
       <SectionHeader 
         icon={Lightbulb}
-        title="Smart Insights & Suggestions"
+        title="AI Coach Recommendations"
       />
       <RecoveryInsightsCard />
     </div>
