@@ -19,10 +19,10 @@ declare global {
   }
 }
 
-// Set up developer debug logging toggle
+// Set up developer debug logging toggle - default to true for now
 if (typeof window !== 'undefined') {
-  window.__VOYAGE_DEBUG_LOGGING = false; // Default to false
-  console.log('🔍 Voyage Debug: Set window.__VOYAGE_DEBUG_LOGGING = true to enable food logging debug panel');
+  window.__VOYAGE_DEBUG_LOGGING = window.__VOYAGE_DEBUG_LOGGING ?? true; // Default to true
+  console.log('🔍 Voyage Debug: Food logging debug panel is enabled by default. Set window.__VOYAGE_DEBUG_LOGGING = false to disable.');
 }
 
 // Apply security headers on app initialization
