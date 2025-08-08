@@ -59,11 +59,7 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color, onC
     return 'text-white drop-shadow-sm';
   };
 
-  const getProgressBarColor = () => {
-    if (percentage >= 100) return 'bg-emerald-500';
-    if (percentage >= 50) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+  // Progress bar color matches the tile icon color via inline style
 
   const shouldShowConfetti = percentage >= 100;
 
@@ -100,8 +96,8 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color, onC
             <div className="space-y-2">
               <div className="relative h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full ${getProgressBarColor()} transition-all duration-1000 ease-out rounded-full`}
-                  style={{ width: `${percentage}%` }}
+                  className="h-full transition-all duration-1000 ease-out rounded-full"
+                  style={{ width: `${percentage}%`, backgroundColor: color }}
                 />
                 {/* Centered percentage on progress bar with improved contrast */}
                 <div className="absolute inset-0 flex items-center justify-center">
