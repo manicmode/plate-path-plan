@@ -10,6 +10,7 @@ interface DailyProgressCardProps {
   unit: string;
   icon: React.ReactNode;
   color: string;
+  onClick?: () => void;
 }
 
 // Session-only storage for played goal sounds (shared across all instances)
@@ -22,7 +23,7 @@ const getPlayedGoalSounds = (): Set<string> => {
   return playedGoalSounds;
 };
 
-export const DailyProgressCard = ({ title, value, target, unit, icon, color }: DailyProgressCardProps) => {
+export const DailyProgressCard = ({ title, value, target, unit, icon, color, onClick }: DailyProgressCardProps) => {
   const percentage = Math.min(100, Math.round((value / target) * 100));
   const { playGoalHit } = useSound();
   
@@ -67,7 +68,12 @@ export const DailyProgressCard = ({ title, value, target, unit, icon, color }: D
   const shouldShowConfetti = percentage >= 100;
 
   return (
-    <Card className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden h-[230px] mb-0 !mb-0">
+    <Card 
+      className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden h-[230px] mb-0 !mb-0 cursor-pointer"
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : -1}
+    >
       <CardContent className="p-6 h-full flex flex-col justify-between">
         <div className="flex items-center justify-center mb-4">
           <div className={`p-3 rounded-xl shadow-lg`} style={{ backgroundColor: `${color}20` }}>

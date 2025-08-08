@@ -1,8 +1,8 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { DailyProgressCard } from '@/components/analytics/DailyProgressCard';
 import { Flame, Zap, Droplets, Activity, Wheat, Leaf } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
+import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 
 interface DailyProgressSectionProps {
   progress: any;
@@ -11,6 +11,14 @@ interface DailyProgressSectionProps {
 
 export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressSectionProps) => {
   const { user } = useAuth();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);
+
+  const openChart = (type: string, name: string, color: string) => {
+    setTracker({ type, name, color });
+    setIsOpen(true);
+  };
 
   return (
     <div className="grid grid-cols-3 gap-4">
@@ -21,6 +29,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="kcal"
         icon={<Flame className="h-6 w-6" />}
         color="#F97316"
+        onClick={() => openChart('calories', 'Calories', '#F97316')}
       />
       <DailyProgressCard
         title="Protein"
@@ -29,6 +38,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="g"
         icon={<Zap className="h-6 w-6" />}
         color="#10B981"
+        onClick={() => openChart('protein', 'Protein', '#10B981')}
       />
       <DailyProgressCard
         title="Carbs"
@@ -37,6 +47,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="g"
         icon={<Wheat className="h-6 w-6" />}
         color="#3B82F6"
+        onClick={() => openChart('carbs', 'Carbs', '#3B82F6')}
       />
       <DailyProgressCard
         title="Fat"
@@ -45,6 +56,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="g"
         icon={<Activity className="h-6 w-6" />}
         color="#EF4444"
+        onClick={() => openChart('fat', 'Fat', '#EF4444')}
       />
       <DailyProgressCard
         title="Fiber"
@@ -53,6 +65,7 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="g"
         icon={<Leaf className="h-6 w-6" />}
         color="#8B5CF6"
+        onClick={() => openChart('fiber', 'Fiber', '#8B5CF6')}
       />
       <DailyProgressCard
         title="Water"
@@ -61,7 +74,18 @@ export const DailyProgressSection = ({ progress, weeklyAverage }: DailyProgressS
         unit="ml"
         icon={<Droplets className="h-6 w-6" />}
         color="#06B6D4"
+        onClick={() => openChart('hydration', 'Hydration', '#06B6D4')}
       />
+
+      {tracker && (
+        <TrackerInsightsPopup
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          trackerType={tracker.type}
+          trackerName={tracker.name}
+          trackerColor={tracker.color}
+        />
+      )}
     </div>
   );
 };

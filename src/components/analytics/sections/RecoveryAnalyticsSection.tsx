@@ -10,12 +10,18 @@ import { MoodWellnessTrendChart } from '@/components/analytics/MoodWellnessTrend
 import { RecoveryActivityTrends } from '@/components/analytics/recovery/RecoveryActivityTrends';
 import { Pill, Gauge, Lightbulb, Star, BarChart3 } from 'lucide-react';
 import { SupplementTrendsChart } from '@/components/analytics/recovery/SupplementTrendsChart';
+import { useState } from 'react';
+import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 
 interface RecoveryAnalyticsSectionProps {
   weeklyAverage?: any;
 }
 
 export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSectionProps = {}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);
+  const openChart = (type: string, name: string, color: string) => { setTracker({ type, name, color }); setIsOpen(true); };
+
   return (
     <div className="max-w-md mx-auto w-full space-y-6">
       {/* Mood & Stress Trends (Hero) */}
@@ -40,6 +46,7 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
               unit="taken"
               icon={<Star className="h-6 w-6" />}
               color="#EC4899"
+              onClick={() => openChart('supplements', 'Supplements', '#EC4899')}
             />
           </div>
           <SupplementTrendsChart />
@@ -74,6 +81,16 @@ export const RecoveryAnalyticsSection = ({ weeklyAverage }: RecoveryAnalyticsSec
         title="AI Coach Recommendations"
       />
       <RecoveryInsightsCard />
+
+      {tracker && (
+        <TrackerInsightsPopup
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          trackerType={tracker.type}
+          trackerName={tracker.name}
+          trackerColor={tracker.color}
+        />
+      )}
     </div>
   );
 };

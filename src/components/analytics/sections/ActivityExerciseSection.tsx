@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
 import { Activity, Flame, Droplets } from 'lucide-react';
@@ -8,6 +8,7 @@ import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { useAuth } from '@/contexts/auth';
 import { CircularProgress } from '@/components/analytics/ui/CircularProgress';
 import { CustomTooltip } from '@/components/analytics/ui/CustomTooltip';
+import { TrackerInsightsPopup } from '@/components/tracker-insights/TrackerInsightsPopup';
 
 interface ActivityExerciseSectionProps {
   stepsData: any[];
@@ -21,6 +22,13 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
   // Convert targetHydration (glasses) to ml
   const hydrationTargetMl = (user?.targetHydration || 8) * 250;
 
+  const [isOpen, setIsOpen] = useState(false);
+  const [tracker, setTracker] = useState<{ type: string; name: string; color: string } | null>(null);
+
+  const openChart = (type: string, name: string, color: string) => {
+    setTracker({ type, name, color });
+    setIsOpen(true);
+  };
   return (
     <div>      
       {/* Progress Cards Row - Horizontal Layout */}
@@ -32,6 +40,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
           unit="steps"
           icon={<Activity className="h-6 w-6" />}
           color="#22C55E"
+          onClick={() => openChart('steps', 'Steps', '#22C55E')}
         />
         <DailyProgressCard
           title="Exercise"
@@ -40,6 +49,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
           unit="kcal"
           icon={<Flame className="h-6 w-6" />}
           color="#F97316"
+          onClick={() => openChart('exercise', 'Exercise', '#F97316')}
         />
         <DailyProgressCard
           title="Hydration"
@@ -48,6 +58,7 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
           unit="ml"
           icon={<Droplets className="h-6 w-6" />}
           color="#06B6D4"
+          onClick={() => openChart('hydration', 'Hydration', '#06B6D4')}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,6 +180,16 @@ export const ActivityExerciseSection = ({ stepsData, exerciseCaloriesData, weekl
           </CardContent>
         </Card>
       </div>
+
+      {tracker && (
+        <TrackerInsightsPopup
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          trackerType={tracker.type}
+          trackerName={tracker.name}
+          trackerColor={tracker.color}
+        />
+      )}
     </div>
   );
 };
