@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
+import { SmoothSlider } from './SmoothSlider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart, Zap, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,7 +109,7 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto rounded-3xl border-0 bg-gradient-to-br from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20">
+      <DialogContent className="mood-modal max-w-md mx-auto rounded-3xl border-0 bg-gradient-to-br from-purple-50 to-emerald-50 dark:from-purple-900/20 dark:to-emerald-900/20">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-bold bg-gradient-to-r from-purple-600 to-emerald-600 bg-clip-text text-transparent">
             {existingLog ? 'Update Your Daily Check-In' : 'Daily Mood & Wellness Check-In'}
@@ -127,13 +127,10 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
               <div className="space-y-3">
                 <div className="text-center">
                   <span className="text-4xl">{MOOD_EMOJIS[mood - 1]}</span>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {mood}/10
-                  </p>
                 </div>
-                <Slider
-                  value={[mood]}
-                  onValueChange={(value) => setMood(value[0])}
+                <SmoothSlider
+                  value={mood}
+                  onChange={setMood}
                   min={1}
                   max={10}
                   step={1}
@@ -150,21 +147,15 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
                 <Zap className="h-5 w-5 text-yellow-500" />
                 <span className="font-semibold text-gray-900 dark:text-white">Energy Level</span>
               </div>
-              <div className="space-y-3">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {energy}/10
-                  </p>
-                </div>
-                <Slider
-                  value={[energy]}
-                  onValueChange={(value) => setEnergy(value[0])}
-                  min={1}
-                  max={10}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
+              <SmoothSlider
+                value={energy}
+                onChange={setEnergy}
+                min={1}
+                max={10}
+                step={1}
+                className="w-full"
+                showValue={true}
+              />
             </CardContent>
           </Card>
 
@@ -178,13 +169,10 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
               <div className="space-y-3">
                 <div className="text-center">
                   <span className="text-4xl">{WELLNESS_EMOJIS[wellness - 1]}</span>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {wellness}/10
-                  </p>
                 </div>
-                <Slider
-                  value={[wellness]}
-                  onValueChange={(value) => setWellness(value[0])}
+                <SmoothSlider
+                  value={wellness}
+                  onChange={setWellness}
                   min={1}
                   max={10}
                   step={1}
