@@ -67,6 +67,7 @@ Take a breath... let's explore your nutrition journey together with care and int
   const { trackInteraction } = useCoachInteractions();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const chatCardRef = useRef<HTMLDivElement>(null);
+  const [useMyData, setUseMyData] = useState(true);
 
   const progress = getTodaysProgress();
 
@@ -243,6 +244,7 @@ try {
     body: {
       coachType: 'nutrition',
       message: messageToSend,
+      useContext: useMyData,
       userContext: contextData,
     },
   });
@@ -496,7 +498,7 @@ setMessages(prev => [...prev, aiMessage]);
       </CardTitle>
       <div className="flex items-center gap-2 text-muted-foreground">
         <span className="text-xs">Use my data</span>
-        <input type="checkbox" aria-label="Use my data" className="accent-current" defaultChecked onChange={() => {}} />
+        <input type="checkbox" aria-label="Use my data" className="accent-current" checked={useMyData} onChange={(e)=>setUseMyData(e.target.checked)} />
       </div>
     </div>
   </CardHeader>

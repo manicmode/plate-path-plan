@@ -59,13 +59,13 @@ serve(async (req) => {
 
     const context: any = { asOf: new Date().toISOString() };
 
-    // -------- Profile --------
+    // -------- Profile & Goals (best-effort) --------
     try {
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('first_name, last_name, primary_goal, diet_preferences, injuries, wake_time_local, sleep_time_local')
+        .select('first_name, last_name, primary_goal, secondary_goal, diet_preferences, injuries, wake_time_local, sleep_time_local, age, sex, height_cm, weight_kg')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       if (profile) {
         context.profile = {
           firstName: profile.first_name || undefined,
@@ -74,6 +74,14 @@ serve(async (req) => {
           injuries: Array.isArray(profile.injuries) ? profile.injuries : undefined,
           wakeWindow: profile.wake_time_local || undefined,
           sleepWindow: profile.sleep_time_local || undefined,
+          age: profile.age ?? undefined,
+          sex: profile.sex ?? undefined,
+          height_cm: profile.height_cm ?? undefined,
+          weight_kg: profile.weight_kg ?? undefined,
+        };
+        context.goals = {
+          primary: profile.primary_goal ?? null,
+          secondary: profile.secondary_goal ?? null,
         };
       }
     } catch (_) {}
@@ -90,7 +98,7 @@ serve(async (req) => {
       // Today totals from nutrition_logs
       const { data: foods } = await supabase
         .from('nutrition_logs')
-        .select('calories, protein, carbs, fat, food_name, created_at')
+        .select('calories, protein, carbs, fat, fiber, food_name, created_at')
         .eq('user_id', userId)
         .gte('created_at', `${todayStr}T00:00:00Z`);
 
@@ -99,9 +107,10 @@ serve(async (req) => {
         acc.protein += Number(f.protein) || 0;
         acc.carbs += Number(f.carbs) || 0;
         acc.fat += Number(f.fat) || 0;
+        acc.fiber += Number(f.fiber) || 0;
         acc.names.push(f.food_name);
         return acc;
-      }, { cals: 0, protein: 0, carbs: 0, fat: 0, names: [] as string[] });
+      }, { cals: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, names: [] as string[] });
 
       // Hydration today and target
       const { data: hyd } = await supabase
@@ -121,10 +130,10 @@ serve(async (req) => {
 
       const hydrationPct = todayTarget?.hydration_ml ? Math.round((waterMl / Number(todayTarget.hydration_ml)) * 100) : undefined;
 
-      // 7d protein goal hits & net calories trend tag
+      // 7d aggregates
       const { data: last7Foods } = await supabase
         .from('nutrition_logs')
-        .select('calories, protein, created_at')
+        .select('calories, protein, fiber, created_at')
         .eq('user_id', userId)
         .gte('created_at', sevenDaysAgo.toISOString());
 
@@ -191,13 +200,13 @@ serve(async (req) => {
         .eq('user_id', userId)
         .gte('created_at', twentyEightDaysAgo.toISOString());
 
-      const thisWeek = (workouts || []).filter(w => new Date(w.created_at) >= addDays(today, -6));
-      const totalMinutes = thisWeek.reduce((s, w) => s + (Number(w.duration_minutes) || 0), 0);
-      const totalCalories = thisWeek.reduce((s, w) => s + (Number(w.calories_burned) || 0), 0);
+      const last7 = (workouts || []).filter(w => new Date(w.created_at) >= addDays(today, -6));
+      const totalMinutes7 = last7.reduce((s, w) => s + (Number(w.duration_minutes) || 0), 0);
+      const totalCalories7 = last7.reduce((s, w) => s + (Number(w.calories_burned) || 0), 0);
 
-      // Consistency over last 28 days
+      // Consistency over last 28-30 days (approx)
       const daysWithWorkout = new Set((workouts || []).map((w: any) => dayKey(new Date(w.created_at))));
-      const consistencyPct = Math.round((daysWithWorkout.size / 28) * 100);
+      const consistencyPct = Math.round((daysWithWorkout.size / 30) * 100);
 
       // Simple current/best streak over last 60 days (best-effort)
       const past60Ago = addDays(today, -59);
@@ -215,10 +224,16 @@ serve(async (req) => {
       }
 
       context.exercise = {
-        thisWeek: { workouts: thisWeek.length, minutes: totalMinutes, calories: totalCalories },
+        thisWeek: { workouts: last7.length, minutes: totalMinutes7, calories: totalCalories7 },
         consistency: { ratePct: consistencyPct, streakDays: current, bestStreakDays: best },
-        // muscleCoverage: omitted if unavailable
       };
+
+      // Compact
+      context.exercise.workouts_7d = last7.length;
+      context.exercise.avg_duration_min_7d = last7.length ? Math.round(totalMinutes7 / last7.length) : null;
+      context.exercise.consistency_pct_30d = consistencyPct;
+      context.exercise.current_streak_days = current;
+      context.exercise.best_streak_days = best;
     } catch (_) {}
 
     // -------- Recovery --------
@@ -246,18 +261,23 @@ serve(async (req) => {
         } catch (_) {}
       }
 
-      // Practice mix last 14d from recovery_session_logs
+      // Practice mix last 14d + 7d session counts
       let practiceMix: any;
+      let med7 = 0, breath7 = 0;
       try {
-        const { data: sessions } = await supabase
+        const { data: sessions14 } = await supabase
           .from('recovery_session_logs')
           .select('category, completed_at, duration_minutes')
           .eq('user_id', userId)
           .gte('completed_at', fourteenDaysAgo.toISOString());
-        if (sessions && sessions.length) {
+        if (sessions14 && sessions14.length) {
           const counts: Record<string, number> = {};
-          for (const s of sessions) {
+          for (const s of sessions14) {
             counts[s.category] = (counts[s.category] || 0) + 1;
+            if (new Date(s.completed_at) >= sevenDaysAgo) {
+              if (s.category === 'meditation') med7++;
+              if (s.category === 'breathing') breath7++;
+            }
           }
           const total = Object.values(counts).reduce((a: number,b: number)=>a+b,0) || 1;
           practiceMix = Object.fromEntries(Object.entries(counts).map(([k,v]) => [k, Math.round((Number(v)/total)*100)]));
@@ -306,7 +326,7 @@ serve(async (req) => {
         }
       } catch (_) {}
 
-      // Sleep metrics from sleep_streaks or logs table if exists (best-effort)
+      // Sleep metrics from sleep_logs
       let lastSleepHours: number | undefined, avgSleep7d: number | undefined;
       try {
         const { data: sleepLogs } = await supabase
@@ -322,7 +342,7 @@ serve(async (req) => {
         }
       } catch (_) {}
 
-      // Supplements adherence already computed later but ensure present
+      // Supplements adherence 7d
       const sevenDaysAgoISO = sevenDaysAgo.toISOString();
       const { data: supp7 } = await supabase
         .from('supplement_logs')
@@ -333,27 +353,30 @@ serve(async (req) => {
       const adherence7dPct = Math.round((daysWithSupp.size/7)*100);
 
       context.recovery = {
-        recoveryScore: undefined, // omit if not in DB
         moodStress: { moodAvg, stressAvg, trend },
         practices: { mix: practiceMix, streaks },
         supplements: { takenToday: undefined, adherence7dPct },
         derived: {
           last_sleep_hours: lastSleepHours,
           avg_sleep_7d: avgSleep7d,
-          peak_stress_day: undefined as string | undefined, // set below if available
+          peak_stress_day: peakStressDay,
           top_practice: undefined as string | undefined,
-          longest_recovery_streak: longestName && longestDays ? `${longestName} ${longestDays}d` : undefined,
+          longest_recovery_streak: undefined as string | undefined,
         }
       };
-      if ((context as any).recovery?.moodStress) {
-        (context as any).recovery.derived.peak_stress_day = (context as any).recovery.moodStress?.trend ? peakStressDay : peakStressDay;
-      }
       if (practiceMix) {
         const top = Object.entries(practiceMix as Record<string, number>).sort((a,b)=>b[1]-a[1])[0];
         if (top) (context as any).recovery.derived.top_practice = top[0];
-      } else if (longestName) {
-        (context as any).recovery.derived.top_practice = longestName;
       }
+
+      // Compact tokens
+      context.recovery.sleep_avg_7d = avgSleep7d ?? null;
+      context.recovery.stress_avg_7d = stressAvg ?? null;
+      context.recovery.recovery_score = null; // not available
+      context.recovery.med_sessions_7d = med7;
+      context.recovery.breath_sessions_7d = breath7;
+      context.recovery.supp_days_7d = daysWithSupp.size;
+
     } catch (_) {}
 
     // -------- Supplements today (taken count) --------
@@ -363,18 +386,32 @@ serve(async (req) => {
         .select('id')
         .eq('user_id', userId)
         .gte('created_at', `${todayStr}T00:00:00Z`);
-      if (!context.recovery) context.recovery = {};
+      if (!context.recovery) context.recovery = {} as any;
       if (!context.recovery.supplements) context.recovery.supplements = {} as any;
       (context.recovery.supplements as any).takenToday = (suppToday||[]).length;
     } catch (_) {}
 
-    // -------- Insights (best-effort simple strings) --------
+    // -------- Insights & Recent Flags --------
     try {
       const insights: string[] = [];
       if (context.nutrition?.week?.proteinGoalHitDays != null) insights.push(`Protein hits ${context.nutrition.week.proteinGoalHitDays}/7`);
       if (context.exercise?.thisWeek?.workouts != null) insights.push(`Workouts ${context.exercise.thisWeek.workouts} this week`);
       if (context.recovery?.moodStress?.stressAvg != null) insights.push(`Stress avg ${context.recovery.moodStress.stressAvg}/10`);
       if (insights.length) context.insights = insights.slice(0,4);
+
+      // Recent flags from daily targets (7d)
+      const { data: tgt7 } = await supabase
+        .from('daily_nutrition_targets')
+        .select('flagged_ingredients, target_date')
+        .eq('user_id', userId)
+        .gte('target_date', dayKey(sevenDaysAgo));
+      if (tgt7 && tgt7.length) {
+        const set = new Set<string>();
+        for (const t of tgt7) {
+          (t.flagged_ingredients || []).forEach((f: string) => set.add(f));
+        }
+        context.recent_flags = Array.from(set);
+      }
     } catch (_) {}
 
     cache.set(userId, { data: context, expiresAt: Date.now() + 5 * 60 * 1000 });

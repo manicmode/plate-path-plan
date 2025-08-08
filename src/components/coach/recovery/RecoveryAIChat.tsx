@@ -98,6 +98,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
         body: {
           coachType: 'recovery',
           message: messageToSend,
+          useContext: useMyData,
           userContext: {
             voiceProfile: 'calm_serene',
             coachType: 'recovery',
@@ -225,27 +226,32 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
         </div>
 
         {/* Input Area */}
-        <div className={`flex space-x-2 mt-4`}>
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask me anything..."
-            disabled={isLoading}
-            className="flex-1 rounded-2xl"
-          />
-          <Button
-            onClick={() => sendMessage()}
-            disabled={!input.trim() || isLoading}
-            size="sm"
-            className="bg-orange-500 hover:bg-orange-600 rounded-2xl px-4"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+        <div className={`flex flex-col gap-2 mt-4`}>
+          <div className="flex space-x-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me anything..."
+              disabled={isLoading}
+              className="flex-1 rounded-2xl"
+            />
+            <Button
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || isLoading}
+              size="sm"
+              className="bg-orange-500 hover:bg-orange-600 rounded-2xl px-4"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          {!useMyData && (
+            <div className="text-xs text-muted-foreground pl-1">Personalization off</div>
+          )}
         </div>
       </CardContent>
     </Card>
