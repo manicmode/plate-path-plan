@@ -87,6 +87,9 @@ export default function Analytics() {
           <WeeklyOverviewChart />
           
           {/* Progress & Achievements Section */}
+          <AchievementsSection />
+          <GamificationSection />
+          
           <div className="pt-8">
             <SectionHeader 
               icon={Apple} 
@@ -94,8 +97,6 @@ export default function Analytics() {
               subtitle="Milestones, streaks, and nutrition journey" 
             />
           </div>
-          <AchievementsSection />
-          <GamificationSection />
           <MonthlySummaryViewer />
           
           {/* Long-Term Trends & Insights Section */}
