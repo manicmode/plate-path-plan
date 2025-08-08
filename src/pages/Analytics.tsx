@@ -59,13 +59,13 @@ export default function Analytics() {
           <SmartInsightsSection />
           <TagInsightsSection />
           <MacrosHydrationSection macroData={macroData} progress={progress} />
-          <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} />
           <AchievementsSection />
           <GamificationSection />
           <MonthlySummaryViewer />
         </TabsContent>
 
         <TabsContent value="exercise" className="space-y-6 mt-6">
+          <ActivityExerciseSection stepsData={stepsData} exerciseCaloriesData={exerciseCaloriesData} weeklyAverage={weeklyAverage} />
           <ExerciseAnalyticsSection />
           <WorkoutTrophyCard />
           <MotivationCard />
