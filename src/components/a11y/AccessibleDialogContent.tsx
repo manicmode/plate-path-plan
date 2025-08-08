@@ -32,7 +32,7 @@ export default function AccessibleDialogContent({ title, description, children, 
       aria-describedby={descId}
       className={className}
     >
-      <DialogHeader>
+      <DialogHeader className="sr-only">
         <DialogTitle id={titleId}>{title}</DialogTitle>
         <DialogDescription id={descId}>{description}</DialogDescription>
       </DialogHeader>
