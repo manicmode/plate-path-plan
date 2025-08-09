@@ -216,6 +216,24 @@ export const DailyTargetsCard = () => {
     );
   }
 
+  const renderRow = (
+    label: string,
+    value: number | null | undefined,
+    unit: string,
+    colorClass: string
+  ) => {
+    if (value === null || value === undefined) return null;
+    return (
+      <div className="grid grid-cols-[1fr,auto] items-baseline py-2 border-b border-white/5 last:border-b-0">
+        <div className="text-sm text-muted-foreground truncate">{label}</div>
+        <div className="justify-self-end inline-flex items-baseline gap-1">
+          <span className={`font-bold min-w-[3ch] text-right ${colorClass}`}>{value}</span>
+          {unit ? <span className="text-xs text-muted-foreground">{unit}</span> : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -236,62 +254,17 @@ export const DailyTargetsCard = () => {
           )}
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {targets.calories && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{Math.round(targets.calories)}</div>
-              <div className="text-sm text-muted-foreground">Calories</div>
-            </div>
-          )}
-          {targets.protein && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{Math.round(targets.protein)}g</div>
-              <div className="text-sm text-muted-foreground">Protein</div>
-            </div>
-          )}
-          {targets.carbs && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{Math.round(targets.carbs)}g</div>
-              <div className="text-sm text-muted-foreground">Carbs</div>
-            </div>
-          )}
-          {targets.fat && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{Math.round(targets.fat)}g</div>
-              <div className="text-sm text-muted-foreground">Fat</div>
-            </div>
-          )}
-          {targets.fiber && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{Math.round(targets.fiber)}g</div>
-              <div className="text-sm text-muted-foreground">Fiber</div>
-            </div>
-          )}
-          {targets.sugar && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-pink-600">{Math.round(targets.sugar)}g</div>
-              <div className="text-sm text-muted-foreground">Sugar</div>
-            </div>
-          )}
-          {targets.sodium && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{Math.round(targets.sodium)}mg</div>
-              <div className="text-sm text-muted-foreground">Sodium</div>
-            </div>
-          )}
-          {targets.saturated_fat && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{Math.round(targets.saturated_fat)}g</div>
-              <div className="text-sm text-muted-foreground">Sat Fat</div>
-            </div>
-          )}
-          {targets.hydration_ml && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-cyan-600">{Math.round(targets.hydration_ml / 240)}</div>
-              <div className="text-sm text-muted-foreground">Glasses H₂O</div>
-            </div>
-          )}
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1">
+          {renderRow('Calories', targets.calories ? Math.round(targets.calories) : null, '', 'text-primary')}
+          {renderRow('Protein', targets.protein ? Math.round(targets.protein) : null, 'g', 'text-blue-600')}
+          {renderRow('Carbs', targets.carbs ? Math.round(targets.carbs) : null, 'g', 'text-green-600')}
+          {renderRow('Fat', targets.fat ? Math.round(targets.fat) : null, 'g', 'text-yellow-600')}
+          {renderRow('Fiber', targets.fiber ? Math.round(targets.fiber) : null, 'g', 'text-orange-600')}
+          {renderRow('Sugar', targets.sugar ? Math.round(targets.sugar) : null, 'g', 'text-pink-600')}
+          {renderRow('Sodium', targets.sodium ? Math.round(targets.sodium) : null, 'mg', 'text-red-600')}
+          {renderRow('Sat Fat', targets.saturated_fat ? Math.round(targets.saturated_fat) : null, 'g', 'text-purple-600')}
+          {renderRow('Hydration', targets.hydration_ml ? Math.round(targets.hydration_ml / 240) : null, 'glasses', 'text-cyan-600')}
         </div>
         
         {targets.supplement_count && (
