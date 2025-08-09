@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { useNutritionLoader } from '@/hooks/useNutritionLoader';
 import { useNutritionPersistence } from '@/hooks/useNutritionPersistence';
@@ -427,33 +427,44 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
   const getSupplementGoal = () => dailyTargets.supplement_count || 3; // Use daily targets or 3 supplements default
 
   // Coach CTA functions
-  const addCoachCta = (message: string) => {
+  const addCoachCta = useCallback((message: string) => {
+    let added = false;
     // Add to queue if not already there
     setCoachCtaQueue(prev => {
       if (!prev.includes(message)) {
+        added = true;
         return [...prev, message];
       }
       return prev;
     });
-    
-    // If no current CTA is active, set the first one from queue
+
+    // If no current CTA is active, set the first one from queue or this message
     if (!currentCoachCta) {
       setCurrentCoachCta(message);
       // Remove from queue once it becomes current
       setCoachCtaQueue(prev => prev.filter(msg => msg !== message));
     }
-  };
 
-  const clearCoachCta = () => {
-    setCurrentCoachCta(null);
-    
-    // If there are more CTAs in queue, activate the next one
-    if (coachCtaQueue.length > 0) {
-      const nextCta = coachCtaQueue[0];
-      setCurrentCoachCta(nextCta);
-      setCoachCtaQueue(prev => prev.slice(1)); // Remove the first item from queue
+    // Bump enqueue id only when a new message is enqueued
+    if (added) {
+      enqueueCounterRef.current += 1;
+      setLastCoachCtaEnqueueId(enqueueCounterRef.current);
     }
-  };
+  }, [currentCoachCta]);
+
+  const clearCoachCta = useCallback(() => {
+    setCurrentCoachCta(null);
+
+    // If there are more CTAs in queue, activate the next one
+    setCoachCtaQueue(prev => {
+      if (prev.length > 0) {
+        const [nextCta, ...rest] = prev;
+        setCurrentCoachCta(nextCta);
+        return rest;
+      }
+      return prev;
+    });
+  }, []);
 
   // Helper function to check if event is for current day
   const isEventForToday = (eventTimestamp: string): boolean => {
@@ -676,26 +687,44 @@ export const NutritionProvider = ({ children }: NutritionProviderProps) => {
     };
   }, [user?.id]); // Only depend on user ID
 
+  const contextValue = useMemo(() => ({
+    currentDay,
+    weeklyData,
+    addFood,
+    addHydration,
+    addSupplement,
+    confirmFood,
+    removeFood,
+    updateFood,
+    getTodaysProgress,
+    getHydrationGoal,
+    getSupplementGoal,
+    coachCtaQueue,
+    currentCoachCta,
+    addCoachCta,
+    clearCoachCta,
+    lastCoachCtaEnqueueId,
+  }), [
+    currentDay,
+    weeklyData,
+    addFood,
+    addHydration,
+    addSupplement,
+    confirmFood,
+    removeFood,
+    updateFood,
+    getTodaysProgress,
+    getHydrationGoal,
+    getSupplementGoal,
+    coachCtaQueue,
+    currentCoachCta,
+    addCoachCta,
+    clearCoachCta,
+    lastCoachCtaEnqueueId,
+  ]);
+
   return (
-    <NutritionContext.Provider
-      value={{
-        currentDay,
-        weeklyData,
-        addFood,
-        addHydration,
-        addSupplement,
-        confirmFood,
-        removeFood,
-        updateFood,
-        getTodaysProgress,
-        getHydrationGoal,
-        getSupplementGoal,
-        coachCtaQueue,
-        currentCoachCta,
-        addCoachCta,
-        clearCoachCta,
-      }}
-    >
+    <NutritionContext.Provider value={contextValue}>
       {children}
     </NutritionContext.Provider>
   );

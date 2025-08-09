@@ -74,7 +74,10 @@ export const CoachCtaDemo = () => {
               key={index}
               variant="outline"
               className="justify-start h-auto p-3"
-              onClick={() => sendCoachMessage(demo.message)}
+              onClick={() => {
+                console.debug('[CoachCtaDemo] Click', { type: demo.label, text: demo.message, timestamp: new Date().toISOString() });
+                sendCoachMessage(demo.message);
+              }}
             >
               <demo.icon className={`h-4 w-4 mr-2 ${demo.color}`} />
               <div className="text-left">
@@ -92,7 +95,10 @@ export const CoachCtaDemo = () => {
           <Button
             variant="destructive"
             size="sm"
-            onClick={clearCurrentMessage}
+            onClick={() => {
+              console.debug('[CoachCtaDemo] Click', { type: 'Clear Current', text: queueInfo.currentMessage, timestamp: new Date().toISOString() });
+              clearCurrentMessage();
+            }}
             disabled={!queueInfo.hasActiveMessage}
           >
             Clear Current
@@ -102,9 +108,13 @@ export const CoachCtaDemo = () => {
             variant="secondary"
             size="sm"
             onClick={() => {
-              sendCoachMessage("🚀 Multiple message test 1");
-              sendCoachMessage("🎉 Multiple message test 2");
-              sendCoachMessage("💪 Multiple message test 3");
+              const ts = new Date().toISOString();
+              console.debug('[CoachCtaDemo] Click', { type: 'Test Queue', text: '🚀 Multiple message test 1', timestamp: ts });
+              sendCoachMessage('🚀 Multiple message test 1');
+              console.debug('[CoachCtaDemo] Click', { type: 'Test Queue', text: '🎉 Multiple message test 2', timestamp: ts });
+              sendCoachMessage('🎉 Multiple message test 2');
+              console.debug('[CoachCtaDemo] Click', { type: 'Test Queue', text: '💪 Multiple message test 3', timestamp: ts });
+              sendCoachMessage('💪 Multiple message test 3');
             }}
           >
             Test Queue (3 messages)

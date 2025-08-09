@@ -514,7 +514,7 @@ class SoundManager {
     }
     
     // Use a promise to handle potential autoplay restrictions with enhanced error handling
-    console.log(`🎵 Starting audio.play() for "${soundKey}"...`);
+    // audio.play() invoked
     
     try {
       const playPromise = audio.play();
@@ -539,7 +539,7 @@ class SoundManager {
           throw playError;
         });
         
-        console.log(`✅ Sound played successfully for "${soundKey}"`);
+        // Sound played successfully
       } else {
         console.warn(`⚠️ play() returned undefined for "${soundKey}"`);
       }

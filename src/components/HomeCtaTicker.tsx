@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -253,10 +253,12 @@ interface HomeCtaTickerProps {
 
 export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
   const { user } = useAuth();
-  const { getTodaysProgress, currentDay, currentCoachCta, clearCoachCta } = useNutrition();
+  const { getTodaysProgress, currentDay, currentCoachCta, clearCoachCta, lastCoachCtaEnqueueId } = useNutrition();
   const isMobile = useIsMobile();
   const { playReminderChime, playAIThought } = useSound();
   const progress = getTodaysProgress();
+
+  const lastEnqueueIdRef = useRef<number>(0);
 
   const [showCta, setShowCta] = useState(false);
   const [currentCtaMessage, setCurrentCtaMessage] = useState<string>('');
@@ -539,9 +541,6 @@ export const HomeCtaTicker: React.FC<HomeCtaTickerProps> = ({ className }) => {
         setCurrentCtaMessage(currentCoachCta);
         setCurrentCtaId('coach-dynamic');
         setShowCta(true);
-        
-        // Play AI thought sound for coach messages
-        playAIThought();
         
         // Auto-hide after 15 seconds and clear coach CTA
         setTimeout(() => {
