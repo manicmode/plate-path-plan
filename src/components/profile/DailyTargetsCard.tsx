@@ -236,12 +236,12 @@ export const DailyTargetsCard = () => {
           )}
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+      <CardContent className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
           {/* Column 1 */}
           <div className="flex flex-col">
             {targets.calories && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Calories</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-primary min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.calories)}</span>
@@ -250,7 +250,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.protein && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Protein</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-blue-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.protein)}</span>
@@ -260,7 +260,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.carbs && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Carbs</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-green-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.carbs)}</span>
@@ -270,7 +270,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.fat && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fat</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-yellow-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fat)}</span>
@@ -280,7 +280,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.fiber && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Fiber</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-orange-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.fiber)}</span>
@@ -293,7 +293,7 @@ export const DailyTargetsCard = () => {
           {/* Column 2 */}
           <div className="flex flex-col">
             {targets.sugar && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sugar</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-pink-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sugar)}</span>
@@ -303,7 +303,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.sodium && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sodium</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-red-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.sodium)}</span>
@@ -313,7 +313,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.saturated_fat && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Sat Fat</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-purple-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.saturated_fat)}</span>
@@ -323,7 +323,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.hydration_ml && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Hydration</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold text-cyan-600 min-w-[3ch] md:min-w-[4ch] text-right">{Math.round(targets.hydration_ml / 240)}</span>
@@ -333,7 +333,7 @@ export const DailyTargetsCard = () => {
             )}
 
             {targets.supplement_count && (
-              <div className="grid grid-cols-[1fr_auto] items-center py-1 border-t first:border-t-0 border-border/50">
+              <div className="grid grid-cols-[1fr_auto] items-center py-0.5 md:py-1 border-b last:border-b-0 border-border/40">
                 <div className="truncate whitespace-nowrap text-sm text-muted-foreground">Supplements</div>
                 <div className="flex items-baseline gap-1 justify-end">
                   <span className="text-2xl font-bold min-w-[2ch] text-right">{targets.supplement_count}</span>
