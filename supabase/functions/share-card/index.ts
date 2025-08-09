@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
     const path = `${userId}/${id}.png`
     const { error: uploadErr } = await supabase.storage
       .from('shares')
-      .upload(path, new Blob([png], { type: 'image/png' }), { upsert: true, cacheControl: '86400' })
+      .upload(path, new Blob([png], { type: 'image/png' }), { upsert: true, cacheControl: 'public, max-age=86400, immutable' })
     if (uploadErr) throw uploadErr
 
     const { data: pub } = supabase.storage.from('shares').getPublicUrl(path, { download: false })
@@ -296,9 +296,6 @@ Deno.serve(async (req) => {
     if (insErr) throw insErr
 
     return new Response(
-      JSON.stringify({ id: inserted.id, imageUrl, title, description }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
       JSON.stringify({ id: inserted.id, imageUrl, title, description }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
