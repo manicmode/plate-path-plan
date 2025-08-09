@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Heart, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { lockViewportDuring } from '@/utils/scrollLock';
+import { withFrozenScroll } from '@/utils/freezeScroll';
 
 interface DietaryGoalsProps {
   dietaryGoals: string[];
@@ -37,8 +37,7 @@ export const DietaryGoals = ({ dietaryGoals, isEditing, onToggleGoal, onEditTogg
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
-            lockViewportDuring(() => onEditToggle());
+withFrozenScroll(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

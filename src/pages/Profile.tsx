@@ -33,7 +33,7 @@ import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
-import { lockViewportDuring } from '@/utils/scrollLock';
+import { withFrozenScroll } from '@/utils/freezeScroll';
 const saveUserPreferences = (preferences: any) => {
   try {
     localStorage.setItem('user_preferences', JSON.stringify(preferences));
@@ -125,7 +125,7 @@ const ProfileContent = () => {
           if (fieldId) {
             const element = document.getElementById(fieldId);
             if (element) {
-              element.focus?.({ preventScroll: true });
+              requestAnimationFrame(() => element.focus?.({ preventScroll: true }));
             }
           }
         }, 100);
@@ -296,11 +296,11 @@ const ProfileContent = () => {
         user={user}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
-        onEditToggle={() => lockViewportDuring(() => setIsEditing(!isEditing))}
+onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       />
 
       {/* Onboarding Completion Card - Show if onboarding not completed */}
-      <OnboardingCompletionCard onStartOnboarding={() => lockViewportDuring(() => handleStartOnboarding())} />
+<OnboardingCompletionCard onStartOnboarding={() => withFrozenScroll(() => handleStartOnboarding())} />
 
         {/* Streak Badges Section */}
         <StreakBadgesSection />
@@ -321,7 +321,7 @@ const ProfileContent = () => {
         formData={formData}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
-        onEditToggle={() => lockViewportDuring(() => setIsEditing(!isEditing))}
+onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       />
 
       {/* Dietary Goals */}
@@ -329,7 +329,7 @@ const ProfileContent = () => {
         dietaryGoals={formData.dietaryGoals}
         isEditing={isEditing}
         onToggleGoal={toggleDietaryGoal}
-        onEditToggle={() => lockViewportDuring(() => setIsEditing(!isEditing))}
+onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       />
 
       {/* Allergies */}
@@ -337,7 +337,7 @@ const ProfileContent = () => {
         allergies={formData.allergies}
         isEditing={isEditing}
         onAllergiesChange={(allergies) => updateFormData({ allergies })}
-        onEditToggle={() => lockViewportDuring(() => setIsEditing(!isEditing))}
+onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       />
 
 
@@ -347,12 +347,12 @@ const ProfileContent = () => {
         userSelectedTrackers={userSelectedTrackers}
         isEditing={isEditing}
         onToggleTracker={toggleTracker}
-        onEditToggle={() => lockViewportDuring(() => setIsEditing(!isEditing))}
+onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       />
 
       {/* Health & Goal Settings */}
       <HealthGoalSettings
-        onUpdateSettings={() => lockViewportDuring(() => handleUpdateHealthSettings())}
+        onUpdateSettings={() => withFrozenScroll(() => handleUpdateHealthSettings())}
         lastUpdated={user?.updated_at}
       />
 
@@ -365,7 +365,7 @@ const ProfileContent = () => {
       {/* Global Barcode Settings */}
       <GlobalBarcodeSettings 
         isEditing={isEditing}
-        onEditToggle={() => lockViewportDuring(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       />
 
       {/* Reminder Management */}

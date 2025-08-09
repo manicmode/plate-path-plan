@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Shield, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { lockViewportDuring } from '@/utils/scrollLock';
+import { withFrozenScroll } from '@/utils/freezeScroll';
 
 interface AllergiesSectionProps {
   allergies: string;
@@ -30,8 +30,7 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
-            lockViewportDuring(() => onEditToggle());
+withFrozenScroll(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

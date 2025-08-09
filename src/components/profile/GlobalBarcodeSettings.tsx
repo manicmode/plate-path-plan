@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Globe, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
-import { lockViewportDuring } from '@/utils/scrollLock';
+import { withFrozenScroll } from '@/utils/freezeScroll';
 
 interface GlobalBarcodeSettingsProps {
   isEditing: boolean;
@@ -70,8 +70,7 @@ export const GlobalBarcodeSettings = ({ isEditing, onEditToggle }: GlobalBarcode
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
-              lockViewportDuring(() => onEditToggle());
+withFrozenScroll(() => onEditToggle());
             }}
             className="w-full opacity-70 hover:opacity-100"
             style={{ touchAction: 'manipulation' }}

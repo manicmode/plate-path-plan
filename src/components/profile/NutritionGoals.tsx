@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { lockViewportDuring } from '@/utils/scrollLock';
+import { withFrozenScroll } from '@/utils/freezeScroll';
 
 interface NutritionGoalsProps {
   formData: {
@@ -164,8 +164,7 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
-            lockViewportDuring(() => onEditToggle());
+withFrozenScroll(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}
