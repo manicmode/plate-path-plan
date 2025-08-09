@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface User {
   name?: string;
@@ -52,7 +52,7 @@ export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderPr
       </div>
       <Button
         variant={isEditing ? "default" : "outline"}
-        onClick={() => withFrozenScroll(() => onEditToggle())}
+        onClick={() => withStabilizedViewport(() => onEditToggle())}
         size={isMobile ? "sm" : "default"}
         className={isMobile ? 'px-3' : ''}
       >

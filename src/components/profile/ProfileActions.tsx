@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface ProfileActionsProps {
   isEditing: boolean;
@@ -20,7 +20,7 @@ export const ProfileActions = ({ isEditing, onSave, onCancel }: ProfileActionsPr
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          withFrozenScroll(() => onSave());
+          withStabilizedViewport(() => onSave());
         }} 
         className={`${isMobile ? 'w-full h-12' : 'flex-1'} gradient-primary`}
         style={{ touchAction: 'manipulation' }}
@@ -32,7 +32,7 @@ export const ProfileActions = ({ isEditing, onSave, onCancel }: ProfileActionsPr
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          withFrozenScroll(() => onCancel());
+          withStabilizedViewport(() => onCancel());
         }}
         className={`${isMobile ? 'w-full h-12' : ''} glass-button border-0`}
         style={{ touchAction: 'manipulation' }}

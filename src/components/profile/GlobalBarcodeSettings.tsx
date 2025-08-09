@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Globe, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface GlobalBarcodeSettingsProps {
   isEditing: boolean;
@@ -70,7 +70,7 @@ export const GlobalBarcodeSettings = ({ isEditing, onEditToggle }: GlobalBarcode
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-withFrozenScroll(() => onEditToggle());
+withStabilizedViewport(() => onEditToggle());
             }}
             className="w-full opacity-70 hover:opacity-100"
             style={{ touchAction: 'manipulation' }}

@@ -6,7 +6,7 @@ import { Monitor, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { getAutoFilledTrackers, isAutoFilledTracker } from '@/lib/trackerUtils';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface TrackerSelectionProps {
   selectedTrackers: string[];
@@ -60,7 +60,7 @@ export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEdi
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-withFrozenScroll(() => onEditToggle());
+withStabilizedViewport(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

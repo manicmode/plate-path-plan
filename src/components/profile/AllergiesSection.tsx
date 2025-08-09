@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Shield, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface AllergiesSectionProps {
   allergies: string;
@@ -30,7 +30,7 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-withFrozenScroll(() => onEditToggle());
+            withStabilizedViewport(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

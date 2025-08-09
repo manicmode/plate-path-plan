@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Heart, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface DietaryGoalsProps {
   dietaryGoals: string[];
@@ -37,7 +37,7 @@ export const DietaryGoals = ({ dietaryGoals, isEditing, onToggleGoal, onEditTogg
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-withFrozenScroll(() => onEditToggle());
+withStabilizedViewport(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

@@ -33,7 +33,7 @@ import { ReminderManagement } from '@/components/reminder/ReminderManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getAutoFilledTrackers } from '@/lib/trackerUtils';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 const saveUserPreferences = (preferences: any) => {
   try {
     localStorage.setItem('user_preferences', JSON.stringify(preferences));
@@ -125,7 +125,7 @@ const ProfileContent = () => {
           if (fieldId) {
             const element = document.getElementById(fieldId);
             if (element) {
-              requestAnimationFrame(() => element.focus?.({ preventScroll: true }));
+              requestAnimationFrame(() => { requestAnimationFrame(() => { element.focus?.({ preventScroll: true }); }); });
             }
           }
         }, 100);
@@ -296,11 +296,11 @@ const ProfileContent = () => {
         user={user}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
-onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
+onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       />
 
       {/* Onboarding Completion Card - Show if onboarding not completed */}
-<OnboardingCompletionCard onStartOnboarding={() => withFrozenScroll(() => handleStartOnboarding())} />
+<OnboardingCompletionCard onStartOnboarding={() => withStabilizedViewport(() => handleStartOnboarding())} />
 
         {/* Streak Badges Section */}
         <StreakBadgesSection />
@@ -321,7 +321,7 @@ onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
         formData={formData}
         isEditing={isEditing}
         onFormDataChange={updateFormData}
-onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
+onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       />
 
       {/* Dietary Goals */}
@@ -329,7 +329,7 @@ onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
         dietaryGoals={formData.dietaryGoals}
         isEditing={isEditing}
         onToggleGoal={toggleDietaryGoal}
-onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
+onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       />
 
       {/* Allergies */}
@@ -337,7 +337,7 @@ onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
         allergies={formData.allergies}
         isEditing={isEditing}
         onAllergiesChange={(allergies) => updateFormData({ allergies })}
-onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
+onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       />
 
 
@@ -347,12 +347,12 @@ onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
         userSelectedTrackers={userSelectedTrackers}
         isEditing={isEditing}
         onToggleTracker={toggleTracker}
-onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
+onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       />
 
       {/* Health & Goal Settings */}
       <HealthGoalSettings
-        onUpdateSettings={() => withFrozenScroll(() => handleUpdateHealthSettings())}
+        onUpdateSettings={() => withStabilizedViewport(() => handleUpdateHealthSettings())}
         lastUpdated={user?.updated_at}
       />
 
@@ -365,7 +365,7 @@ onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
       {/* Global Barcode Settings */}
       <GlobalBarcodeSettings 
         isEditing={isEditing}
-        onEditToggle={() => withFrozenScroll(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       />
 
       {/* Reminder Management */}

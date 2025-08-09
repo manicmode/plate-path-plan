@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface NutritionGoalsProps {
   formData: {
@@ -164,7 +164,7 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-withFrozenScroll(() => onEditToggle());
+withStabilizedViewport(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

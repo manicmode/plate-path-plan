@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
-import { withFrozenScroll } from '@/utils/freezeScroll';
+import { withStabilizedViewport } from '@/utils/scrollStabilizer';
 
 interface PersonalInformationProps {
   formData: {
@@ -178,7 +178,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-withFrozenScroll(() => onEditToggle());
+withStabilizedViewport(() => onEditToggle());
           }}
             size={isMobile ? "sm" : "default"}
             className="w-fit"
