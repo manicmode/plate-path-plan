@@ -76,3 +76,27 @@ export function scrollToAlignTop(targetEl: HTMLElement | null, opts?: { offsetTo
     }, delay);
   });
 }
+
+// Additional utilities: align a child element to the top within a scrollable ancestor
+export function getOffsetTopRelative(child: HTMLElement, ancestor: HTMLElement) {
+  let y = 0; let el: HTMLElement | null = child;
+  while (el && el !== ancestor) { y += el.offsetTop; el = el.offsetParent as HTMLElement | null; }
+  return y;
+}
+
+export function alignChildTopInScrollable(
+  ancestor: HTMLElement,
+  child: HTMLElement,
+  opts?: { smooth?: boolean; offset?: number; reassert?: boolean }
+) {
+  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const offset = opts?.offset ?? 0;
+  const target = Math.max(0, getOffsetTopRelative(child, ancestor) - offset);
+  ancestor.scrollTo({ top: target, behavior: (opts?.smooth && !prefersReduced) ? 'smooth' : 'auto' });
+  if (opts?.reassert) {
+    requestAnimationFrame(() => setTimeout(() => {
+      const again = Math.max(0, getOffsetTopRelative(child, ancestor) - offset);
+      ancestor.scrollTo({ top: again, behavior: 'auto' });
+    }, 120));
+  }
+}

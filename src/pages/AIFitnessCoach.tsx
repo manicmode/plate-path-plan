@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, Trophy, Target, Lightbulb, Zap, Send, Users, RotateCcw, Lock, Unlock, Plus, Dumbbell, TrendingUp, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,7 +32,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { supabase } from '@/integrations/supabase/client';
-import { scrollToAlignTop } from '@/utils/scroll';
+import { scrollToAlignTop, alignChildTopInScrollable } from '@/utils/scroll';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -83,6 +83,8 @@ export default function AIFitnessCoach() {
   }>>([]);
   useScrollToTop();
   const chatCardRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const pendingPinMsgIdRef = useRef<string | null>(null);
   
   const { sendNudge } = useSocialAccountability();
   const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set());
@@ -97,6 +99,22 @@ export default function AIFitnessCoach() {
       window.removeEventListener('exercise-chat:send', onScrollRequest as any);
     };
   }, []);
+
+  // After render, align the latest user message to top inside chat viewport
+  useLayoutEffect(() => {
+    const id = pendingPinMsgIdRef.current;
+    if (!id) return;
+    const root = scrollAreaRef.current as HTMLElement | null;
+    const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLElement) || root;
+    if (!scroller) return;
+    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"]`);
+    if (!node) return;
+    alignChildTopInScrollable(scroller, node, { smooth: true, reassert: true });
+    pendingPinMsgIdRef.current = null;
+    node.querySelectorAll('img').forEach(img => {
+      img.addEventListener('load', () => alignChildTopInScrollable(scroller, node, { reassert: true }), { once: true });
+    });
+  }, [messages]);
 
   // Check nudge content availability
   const nudgeContent = useNudgeContentChecker({ maxEntries: 3, showOnlyRecent: true });
@@ -126,9 +144,12 @@ export default function AIFitnessCoach() {
     }
     
     setIsLoading(true);
-    const newMessages = [...messages, { role: 'user' as const, content: message }];
+    const userId = (globalThis.crypto?.randomUUID?.() ?? Date.now().toString());
+    const newMessages = [...messages, { id: userId, role: 'user' as const, content: message }];
     setMessages(newMessages);
+    pendingPinMsgIdRef.current = userId;
     setInputMessage('');
+
 
     // Fetch context if needed
     let context: any = null;
@@ -472,7 +493,7 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
           <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
             {/* Messages Container with optimized height for mobile */}
             <div className={`${isMobile ? 'h-[500px]' : 'h-[600px]'} flex flex-col`}>
-              <ScrollArea className="flex-1 px-3 w-full">
+              <ScrollArea className="flex-1 px-3 w-full" ref={scrollAreaRef}>
                 <div className="space-y-4 py-2">
                   {messages.map((message, index) => (
                     <div key={index}>

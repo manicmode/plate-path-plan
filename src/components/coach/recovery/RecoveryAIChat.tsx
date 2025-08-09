@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-import { scrollToAlignTop } from '@/utils/scroll';
+import { scrollToAlignTop, alignChildTopInScrollable } from '@/utils/scroll';
 
 interface Message {
   id: string;
@@ -37,14 +37,16 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
   const [isContextLoading, setIsContextLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const pendingPinMsgIdRef = useRef<string | null>(null);
 
   // 🎮 Coach Gamification System
   const { trackInteraction } = useCoachInteractions();
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    const root = scrollAreaRef.current as HTMLElement | null;
+    const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLDivElement) || root;
+    if (!scroller) return;
+    // Do not auto-scroll to bottom on new messages; we'll pin user message to top instead
   }, [messages]);
 
   // Align chat to top on chip taps or programmatic requests
@@ -110,6 +112,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     };
 
     setMessages(prev => [...prev, userMessage]);
+    pendingPinMsgIdRef.current = userMessage.id;
     setInput('');
     setIsLoading(true);
 
@@ -167,6 +170,21 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     }
   };
 
+  useLayoutEffect(() => {
+    const id = pendingPinMsgIdRef.current;
+    if (!id) return;
+    const root = scrollAreaRef.current as HTMLElement | null;
+    const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLElement) || root;
+    if (!scroller) return;
+    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"]`);
+    if (!node) return;
+    alignChildTopInScrollable(scroller, node, { smooth: true, reassert: true });
+    pendingPinMsgIdRef.current = null;
+    node.querySelectorAll('img').forEach(img => {
+      img.addEventListener('load', () => alignChildTopInScrollable(scroller, node, { reassert: true }), { once: true });
+    });
+  }, [messages]);
+
   return (
     <Card ref={chatContainerRef} className="glass-card border-0 rounded-3xl">
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
@@ -216,6 +234,8 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
                       )}
                     </div>
                     <div
+                      data-msg-id={message.id}
+                      data-role={message.isUser ? 'user' : 'assistant'}
                         className={`flex-1 p-3 rounded-2xl break-words ${
                           message.isUser
                             ? 'bg-pink-500 text-white max-w-[80%] ml-auto'

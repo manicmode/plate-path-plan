@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
-import { scrollToAlignTop } from '@/utils/scroll';
+import { scrollToAlignTop, alignChildTopInScrollable } from '@/utils/scroll';
 
 interface Message {
   id: string;
@@ -69,6 +69,7 @@ Take a breath... let's explore your nutrition journey together with care and int
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const chatCardRef = useRef<HTMLDivElement>(null);
   const [useMyData, setUseMyData] = useState(true);
+  const pendingPinMsgIdRef = useRef<string | null>(null);
 
   const progress = getTodaysProgress();
 
@@ -115,9 +116,27 @@ Take a breath... let's explore your nutrition journey together with care and int
     return () => window.removeEventListener('coach:scrollToChat', cb as any);
   }, []);
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    const root = scrollAreaRef.current as HTMLElement | null;
+    const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLDivElement) || root;
+    if (!scroller) return;
+    // Do not auto-scroll to bottom; we pin user message to top when sending
+    // Keep this here for potential future non-send updates
+  }, [messages]);
+
+  // After render, align the latest user message to top inside chat viewport
+  useLayoutEffect(() => {
+    const id = pendingPinMsgIdRef.current;
+    if (!id) return;
+    const root = scrollAreaRef.current as HTMLElement | null;
+    const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLElement) || root;
+    if (!scroller) return;
+    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"]`);
+    if (!node) return;
+    alignChildTopInScrollable(scroller, node, { smooth: true, reassert: true });
+    pendingPinMsgIdRef.current = null;
+    node.querySelectorAll('img').forEach(img => {
+      img.addEventListener('load', () => alignChildTopInScrollable(scroller, node, { reassert: true }), { once: true });
+    });
   }, [messages]);
 
   // Scroll to chat window function for commands with improved alignment
@@ -210,6 +229,7 @@ Take a breath... let's explore your nutrition journey together with care and int
     };
 
     setMessages(prev => [...prev, userMessage]);
+    pendingPinMsgIdRef.current = userMessage.id;
     setInput('');
     setIsLoading(true);
 
@@ -536,6 +556,8 @@ setMessages(prev => {
                         )}
                       </div>
                       <div
+                        data-msg-id={message.id}
+                        data-role={message.isUser ? 'user' : 'assistant'}
                         className={`flex-1 p-3 rounded-2xl break-words ${
                           message.isUser
                             ? 'bg-emerald-600 text-white max-w-[80%] ml-auto'
