@@ -1610,9 +1610,6 @@ const CameraPage = () => {
           image_url: selectedImage || null,
         };
 
-        if (import.meta.env.DEV) {
-          console.log('[DEV][Camera.handleConfirmRecognizedFoods] nutrition_logs.insert payload', payload);
-        }
 
         const { data, error } = await supabase
           .from('nutrition_logs')

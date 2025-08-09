@@ -29,9 +29,6 @@ import { HealthCheckModal } from '@/components/health-check/HealthCheckModal';
 import { DailyScoreCard } from '@/components/analytics/DailyScoreCard';
 import { ComingSoonPopup } from '@/components/ComingSoonPopup';
 import { supabase } from '@/integrations/supabase/client';
-import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
-import { StartupSoundTest } from '@/components/debug/StartupSoundTest';
-import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
 
 import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { useDeferredHydrationData } from '@/hooks/useDeferredHydrationData';
@@ -1833,15 +1830,6 @@ const Home = () => {
         onClose={() => setIsHealthCheckOpen(false)} 
       />
       
-      {/* Development Test Components */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 space-y-6">
-          <StartupSoundTest />
-          <CoachCtaDemo />
-          
-          <MealScoringTestComponent />
-        </div>
-      )}
       
       {/* Coming Soon Popup */}
       <ComingSoonPopup 

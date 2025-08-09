@@ -56,14 +56,6 @@ export const useNutritionPersistence = () => {
       // Ensure confidence is always an integer for database compatibility
       const confidenceInteger = food.confidence ? Math.round(food.confidence) : 100;
       
-      console.log('🔍 Manual Log Debug - Food data before database insert:', {
-        name: food.name,
-        confidence: food.confidence,
-        confidenceInteger,
-        calories: food.calories,
-        user_id: user.id,
-        timestamp: food.timestamp.toISOString()
-      });
 
       const insertData = {
         user_id: user.id,
@@ -81,20 +73,14 @@ export const useNutritionPersistence = () => {
         created_at: food.timestamp.toISOString()
       };
 
-      console.log('🔍 Full insert data object:', insertData);
+      
 
-      if (import.meta.env.DEV) {
-        console.log('[DEV][useNutritionPersistence.saveFood] nutrition_logs.insert payload', insertData);
-      }
 
       const { data, error } = await supabase
         .from('nutrition_logs')
         .insert(insertData)
         .select();
 
-      if (import.meta.env.DEV) {
-        console.log('[DEV][useNutritionPersistence.saveFood] nutrition_logs.insert result', { data, error });
-      }
       
       if (error) {
         console.error('🚨 Database insert error details:', {
@@ -103,10 +89,6 @@ export const useNutritionPersistence = () => {
           hint: error.hint,
           code: error.code
         });
-        if (import.meta.env.DEV) {
-          console.log('[DEV][useNutritionPersistence.saveFood] insert error raw', error);
-          console.log('[DEV][useNutritionPersistence.saveFood] error status', { status: (error as any)?.status, statusText: (error as any)?.statusText });
-        }
         throw error;
       }
       console.log('✅ Food saved to database successfully:', food.name);

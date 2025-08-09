@@ -13,9 +13,6 @@ export const useMealScoring = () => {
 
     try {
       console.log('🎯 Scoring meal quality for meal ID:', mealId);
-      if (import.meta.env.DEV) {
-        console.log('[DEV][useMealScoring.scoreMeal] invoking edge function score-meal-quality with body', { meal_id: mealId });
-      }
       
       const { data, error } = await supabase.functions.invoke('score-meal-quality', {
         body: {
@@ -23,20 +20,9 @@ export const useMealScoring = () => {
         }
       });
 
-      if (import.meta.env.DEV) {
-        console.log('[DEV][useMealScoring.scoreMeal] invoke result from score-meal-quality', { data, error });
-      }
 
       if (error) {
         console.error('❌ Error scoring meal:', error);
-        if (import.meta.env.DEV) {
-          console.log('[DEV][useMealScoring.scoreMeal] invoke error details', {
-            status: (error as any)?.status,
-            statusText: (error as any)?.statusText,
-            message: (error as any)?.message,
-            details: (error as any)?.details,
-          });
-        }
         return null;
       }
 

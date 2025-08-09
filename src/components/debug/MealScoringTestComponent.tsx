@@ -18,14 +18,6 @@ export const MealScoringTestComponent = () => {
   const loadRecentMeals = async () => {
     if (!user) return;
     
-    if (import.meta.env.DEV) {
-      console.log('[DEV][MealScoringTestComponent.loadRecentMeals] Query nutrition_logs select', {
-        select: 'id, food_name, created_at',
-        filters: { user_id: user.id },
-        order: { created_at: 'desc' },
-        limit: 5,
-      });
-    }
     
     const { data, error } = await supabase
       .from('nutrition_logs')
@@ -34,9 +26,6 @@ export const MealScoringTestComponent = () => {
       .order('created_at', { ascending: false })
       .limit(5);
     
-    if (import.meta.env.DEV) {
-      console.log('[DEV][MealScoringTestComponent.loadRecentMeals] Result', { count: data?.length || 0, error });
-    }
     
     setRecentMeals(data || []);
   };
@@ -80,9 +69,6 @@ export const MealScoringTestComponent = () => {
         }
       };
 
-      if (import.meta.env.DEV) {
-        console.log('[DEV][MealScoringTestComponent.createTestMeal] nutrition_logs.insert payload', payload);
-      }
 
       const { data, error } = await supabase
         .from('nutrition_logs')
@@ -90,9 +76,6 @@ export const MealScoringTestComponent = () => {
         .select()
         .single();
 
-      if (import.meta.env.DEV) {
-        console.log('[DEV][MealScoringTestComponent.createTestMeal] insert result', { data, error });
-      }
 
       if (error) throw error;
       
