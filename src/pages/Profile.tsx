@@ -10,7 +10,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import ProfileHeader from '@/components/profile/ProfileHeader';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
 import { NutritionGoals } from '@/components/profile/NutritionGoals';
 import { DietaryGoals } from '@/components/profile/DietaryGoals';
@@ -262,6 +262,13 @@ const ProfileContent = () => {
     setShowOnboarding(true);
   };
 
+  if (showOnboarding || showHealthSettings) {
+    return (
+      <OnboardingScreen 
+        onComplete={handleOnboardingComplete} 
+      />
+    );
+  }
 
   return (
     <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''} ProfilePageRoot`}>
@@ -273,8 +280,7 @@ const ProfileContent = () => {
 
       {/* Avatar Hero Card */}
       <AvatarHeroCard user={user} />
-        {!(showOnboarding || showHealthSettings) ? (
-          <div className={`ProfileContent ${editingSection ? 'isEditing' : ''}`}>
+
       {/* Personal Information - Moved directly below avatar */}
       <PersonalInformation 
         formData={formData}
@@ -364,13 +370,7 @@ const ProfileContent = () => {
       />
 
       {/* Logout */}
-        <LogoutSection onLogout={logout} />
-          </div>
-        ) : (
-          <OnboardingScreen 
-            onComplete={handleOnboardingComplete} 
-          />
-        )}
+      <LogoutSection onLogout={logout} />
     </div>
   );
 };
