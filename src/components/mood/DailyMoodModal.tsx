@@ -246,7 +246,20 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
               </div>
               <div className="space-y-2">
                 <div className="text-center">
-                  <span className="checkin-emoji">{WELLNESS_EMOJIS[wellness - 1]}</span>
+                  <EmojiPicker
+                    open={wellnessPickerOpen}
+                    onOpenChange={setWellnessPickerOpen}
+                    items={WELLNESS_MAP}
+                    onSelectItem={(item) => { setWellness(item.value); setWellnessEmojiOverride(item.emoji); }}
+                    onAuto={() => setWellnessEmojiOverride(null)}
+                    currentEmoji={wellnessEmoji}
+                    className="checkin-emoji-button"
+                    ariaLabel="Pick wellness emoji"
+                    title="Pick wellness"
+                  />
+                  {wellnessMode === 'override' && (
+                    <span className="ml-1 align-top text-xs text-muted-foreground" aria-hidden>•</span>
+                  )}
                 </div>
                 <ValueSlider
                   value={wellness}
