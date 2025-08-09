@@ -1398,4 +1398,13 @@
   .AppScrollRoot { overflow: auto; overscroll-behavior: contain; will-change: scroll-position; }
   .ProfilePageRoot { overflow-anchor: none; overscroll-behavior: contain; }
   .ProfileCard { min-height: 56px; }
+  .ProfileHeader { position: sticky; top: 0; z-index: 30; backface-visibility: hidden; transform: translateZ(0); contain: layout paint; will-change: auto; }
+  .ProfileHeaderBanner { height: 88px; width: 100%; object-fit: cover; }
+
+  /* Identity card overlay to prevent layout shift */
+  .IdentityCard { position: relative; overflow: hidden; min-height: 220px; height: 220px; }
+  .IdentitySummary, .IdentityEditorOverlay { transition: opacity 160ms ease, transform 160ms ease; }
+  .IdentityEditorOverlay { position: absolute; inset: 0; display: grid; align-content: start; padding: 16px; pointer-events: auto; background: radial-gradient(120% 120% at 50% 0%, hsl(var(--background) / 0.04), hsl(var(--foreground) / 0.18)); }
+  .IdentitySummary.isHidden { opacity: 0; pointer-events: none; }
+  .IdentityEditorOverlay.isHidden { opacity: 0; pointer-events: none; transform: translateY(6px); }
 }

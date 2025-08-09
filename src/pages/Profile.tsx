@@ -10,7 +10,7 @@ import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import ProfileHeader from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
 import { NutritionGoals } from '@/components/profile/NutritionGoals';
 import { DietaryGoals } from '@/components/profile/DietaryGoals';
@@ -58,7 +58,8 @@ const ProfileContent = () => {
   // Use the scroll-to-top hook
   useScrollToTop();
   
-  const [isEditing, setIsEditing] = useState(false);
+  type ProfileSectionId = "identity" | "targets" | "goals" | "allergies" | "homeDisplay" | "notifications" | "nudges" | "barcode";
+  const [editingSection, setEditingSection] = useState<ProfileSectionId | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHealthSettings, setShowHealthSettings] = useState(false);
   const { toast } = useToast();
@@ -95,38 +96,28 @@ const ProfileContent = () => {
 
   // Save tracker preferences whenever selectedTrackers changes
   useEffect(() => {
-    if (isEditing && formData.selectedTrackers) {
+    if (editingSection !== null && formData.selectedTrackers) {
       saveUserPreferences({ selectedTrackers: formData.selectedTrackers });
     }
-  }, [formData.selectedTrackers, isEditing]);
+  }, [formData.selectedTrackers, editingSection]);
 
   // Handle URL parameters for auto-editing
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const shouldEdit = params.get('edit') === 'true';
     const focusField = params.get('focus');
-    
+
     if (shouldEdit) {
-      setIsEditing(true);
-      
-      // Focus on specific field if specified
-      if (focusField) {
+      // If focusing a target field, open targets; otherwise open identity by default
+      const targetFields = new Set(['calories','protein','carbs','fat','hydration','supplements']);
+      const openSection: ProfileSectionId = focusField && targetFields.has(focusField) ? 'targets' : 'identity';
+      setEditingSection(openSection);
+
+      if (focusField && targetFields.has(focusField)) {
         setTimeout(() => {
-          const fieldMap = {
-            'calories': 'calories',
-            'protein': 'protein', 
-            'carbs': 'carbs',
-            'fat': 'fat',
-            'hydration': 'hydration',
-            'supplements': 'supplements'
-          };
-          
-          const fieldId = fieldMap[focusField];
-          if (fieldId) {
-            const element = document.getElementById(fieldId);
-            if (element) {
-              requestAnimationFrame(() => { requestAnimationFrame(() => { element.focus?.({ preventScroll: true }); }); });
-            }
+          const element = document.getElementById(focusField);
+          if (element) {
+            requestAnimationFrame(() => { requestAnimationFrame(() => { element.focus?.({ preventScroll: true }); }); });
           }
         }, 100);
       }
@@ -172,12 +163,12 @@ const ProfileContent = () => {
 
     await updateSelectedTrackers(formData.selectedTrackers);
 
-    setIsEditing(false);
+    setEditingSection(null);
     toast({ title: 'Profile Updated!', description: 'Changes will appear on the home page.' });
   };
 
   const handleCancel = () => {
-    setIsEditing(false);
+    setEditingSection(null);
     const originalTrackers = user?.selectedTrackers || ['calories', 'protein', 'supplements'];
     setUserSelectedTrackers(originalTrackers);
     setFormData({
@@ -271,13 +262,6 @@ const ProfileContent = () => {
     setShowOnboarding(true);
   };
 
-  if (showOnboarding || showHealthSettings) {
-    return (
-      <OnboardingScreen 
-        onComplete={handleOnboardingComplete} 
-      />
-    );
-  }
 
   return (
     <div className={`space-y-4 sm:space-y-6 animate-fade-in ${isMobile ? 'pb-8' : ''} ProfilePageRoot`}>
@@ -289,14 +273,15 @@ const ProfileContent = () => {
 
       {/* Avatar Hero Card */}
       <AvatarHeroCard user={user} />
-
+        {!(showOnboarding || showHealthSettings) ? (
+          <div className={`ProfileContent ${editingSection ? 'isEditing' : ''}`}>
       {/* Personal Information - Moved directly below avatar */}
       <PersonalInformation 
         formData={formData}
         user={user}
-        isEditing={isEditing}
+        isEditing={editingSection === 'identity'}
         onFormDataChange={updateFormData}
-onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'identity' ? null : 'identity'))}
       />
 
       {/* Onboarding Completion Card - Show if onboarding not completed */}
@@ -319,25 +304,25 @@ onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       {/* Nutrition Goals */}
       <NutritionGoals 
         formData={formData}
-        isEditing={isEditing}
+        isEditing={editingSection === 'targets'}
         onFormDataChange={updateFormData}
-onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'targets' ? null : 'targets'))}
       />
 
       {/* Dietary Goals */}
       <DietaryGoals 
         dietaryGoals={formData.dietaryGoals}
-        isEditing={isEditing}
+        isEditing={editingSection === 'goals'}
         onToggleGoal={toggleDietaryGoal}
-onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'goals' ? null : 'goals'))}
       />
 
       {/* Allergies */}
       <AllergiesSection 
         allergies={formData.allergies}
-        isEditing={isEditing}
+        isEditing={editingSection === 'allergies'}
         onAllergiesChange={(allergies) => updateFormData({ allergies })}
-onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'allergies' ? null : 'allergies'))}
       />
 
 
@@ -345,9 +330,9 @@ onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
       <TrackerSelection 
         selectedTrackers={formData.selectedTrackers}
         userSelectedTrackers={userSelectedTrackers}
-        isEditing={isEditing}
+        isEditing={editingSection === 'homeDisplay'}
         onToggleTracker={toggleTracker}
-onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
+        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'homeDisplay' ? null : 'homeDisplay'))}
       />
 
       {/* Health & Goal Settings */}
@@ -364,8 +349,8 @@ onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
 
       {/* Global Barcode Settings */}
       <GlobalBarcodeSettings 
-        isEditing={isEditing}
-        onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
+        isEditing={editingSection === 'barcode'}
+        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'barcode' ? null : 'barcode'))}
       />
 
       {/* Reminder Management */}
@@ -373,13 +358,19 @@ onEditToggle={() => withStabilizedViewport(() => setIsEditing(!isEditing))}
 
       {/* Action Buttons */}
       <ProfileActions 
-        isEditing={isEditing}
-        onSave={handleSave}
-        onCancel={handleCancel}
+        isEditing={editingSection !== null}
+        onSave={() => withStabilizedViewport(() => handleSave())}
+        onCancel={() => withStabilizedViewport(() => handleCancel())}
       />
 
       {/* Logout */}
-      <LogoutSection onLogout={logout} />
+        <LogoutSection onLogout={logout} />
+          </div>
+        ) : (
+          <OnboardingScreen 
+            onComplete={handleOnboardingComplete} 
+          />
+        )}
     </div>
   );
 };

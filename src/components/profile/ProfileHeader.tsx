@@ -1,4 +1,4 @@
-
+import { memo, useEffect } from "react";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,11 +26,19 @@ const dietaryGoalOptions = [
   { id: 'general_health', label: 'General Health' },
 ];
 
-export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderProps) => {
+function ProfileHeader({ user, isEditing, onEditToggle }: ProfileHeaderProps) {
   const isMobile = useIsMobile();
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") console.count("[ProfileHeader] mounted");
+    return () => {
+      if (process.env.NODE_ENV !== "production") console.log("[ProfileHeader] unmounted");
+    };
+  }, []);
+
   return (
-    <div className={`flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'}`}>
+    <div className={`ProfileHeader flex items-center ${isMobile ? 'space-x-3' : 'space-x-4'}`}>
+
       <Avatar className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'}`}>
         <AvatarFallback className={`${isMobile ? 'text-xl' : 'text-2xl'} gradient-primary text-white`}>
           {user?.name?.charAt(0) || 'U'}
@@ -61,4 +69,6 @@ export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderPr
       </Button>
     </div>
   );
-};
+}
+
+export default memo(ProfileHeader);
