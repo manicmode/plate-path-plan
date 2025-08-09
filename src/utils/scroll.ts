@@ -100,3 +100,33 @@ export function alignChildTopInScrollable(
     }, 120));
   }
 }
+
+export function pinChildTop(
+  scroller: HTMLElement,
+  child: HTMLElement,
+  opts?: { offset?: number; reassertMs?: number }
+) {
+  const offset = opts?.offset ?? 0;
+  const target = Math.max(0, getOffsetTopRelative(child, scroller) - offset);
+  scroller.scrollTop = target;
+}
+
+export function settleAndPinTop(
+  scroller: HTMLElement,
+  child: HTMLElement,
+  opts?: { offset?: number; reassertMs?: number }
+) {
+  const { offset = 0, reassertMs = 140 } = opts || {};
+  // Phase 1: next microtask + double rAF to let DOM/layout settle
+  queueMicrotask(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => pinChildTop(scroller, child, { offset }));
+    });
+  });
+  // Phase 2: reassert after keyboard/images/markdown
+  setTimeout(() => pinChildTop(scroller, child, { offset }), reassertMs);
+  // Phase 3: reassert after any images load within this bubble
+  child.querySelectorAll('img')?.forEach(img => {
+    img.addEventListener('load', () => pinChildTop(scroller, child, { offset }), { once: true });
+  });
+}

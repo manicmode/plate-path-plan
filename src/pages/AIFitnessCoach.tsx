@@ -32,7 +32,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { supabase } from '@/integrations/supabase/client';
-import { scrollToAlignTop, alignChildTopInScrollable } from '@/utils/scroll';
+import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
 
 export default function AIFitnessCoach() {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ export default function AIFitnessCoach() {
     socialCoachMessage 
   } = useIntelligentFitnessCoach();
   
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; emoji?: string }>>([
+  const [messages, setMessages] = useState<Array<{ id?: string; role: 'user' | 'assistant'; content: string; emoji?: string }>>([
     { 
       role: 'assistant', 
       content: 'YO CHAMPION! 🔥💪 Your AI Fitness Coach is HERE and READY TO CRUSH IT! Time to UNLEASH the beast within! 🏆\n\nI\'m gonna push you. Challenge you. And celebrate EVERY victory with you! 🚀 No excuses, just RESULTS!\n\nWhat are we CONQUERING today?! Let\'s GO! 💯🔥',
@@ -107,12 +107,13 @@ export default function AIFitnessCoach() {
     const root = scrollAreaRef.current as HTMLElement | null;
     const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLElement) || root;
     if (!scroller) return;
-    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"]`);
+    scroller.setAttribute('data-chat-scroll-area', '');
+    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"][data-role="user"]`);
     if (!node) return;
-    alignChildTopInScrollable(scroller, node, { smooth: true, reassert: true });
+    settleAndPinTop(scroller, node, { reassertMs: 160 });
     pendingPinMsgIdRef.current = null;
     node.querySelectorAll('img').forEach(img => {
-      img.addEventListener('load', () => alignChildTopInScrollable(scroller, node, { reassert: true }), { once: true });
+      img.addEventListener('load', () => settleAndPinTop(scroller, node, { reassertMs: 160 }), { once: true });
     });
   }, [messages]);
 
@@ -512,17 +513,19 @@ Make it energetic and perfectly balanced with the rest of the week!"`;
                           {message.role === 'user' ? '👤' : message.emoji || '🤖'}
                         </div>
                         <div
-                            className={`flex-1 p-3 rounded-2xl break-words ${
-                              message.role === 'user'
-                                ? 'bg-orange-500 text-white max-w-[80%] ml-auto'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
-                            }`}
-                          style={{ 
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            wordBreak: 'break-word'
-                          }}
-                        >
+                          data-msg-id={message.id}
+                          data-role={message.role}
+                              className={`flex-1 p-3 rounded-2xl break-words ${
+                                message.role === 'user'
+                                  ? 'bg-orange-500 text-white max-w-[80%] ml-auto'
+                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white max-w-[85%]'
+                              }`}
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word',
+                              wordBreak: 'break-word'
+                            }}
+                          >
                           <p className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed whitespace-pre-wrap`}>
                             {message.content}
                           </p>

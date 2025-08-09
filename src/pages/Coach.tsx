@@ -28,7 +28,7 @@ import { useCoachInteractions } from '@/hooks/useCoachInteractions';
 import { CoachPraiseMessage } from '@/components/coach/CoachPraiseMessage';
 import { MyPraiseModal } from '@/components/coach/MyPraiseModal';
 import { AnimatePresence } from 'framer-motion';
-import { scrollToAlignTop, alignChildTopInScrollable } from '@/utils/scroll';
+import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
 
 interface Message {
   id: string;
@@ -130,12 +130,13 @@ Take a breath... let's explore your nutrition journey together with care and int
     const root = scrollAreaRef.current as HTMLElement | null;
     const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLElement) || root;
     if (!scroller) return;
-    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"]`);
+    scroller.setAttribute('data-chat-scroll-area', '');
+    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"][data-role="user"]`);
     if (!node) return;
-    alignChildTopInScrollable(scroller, node, { smooth: true, reassert: true });
+    settleAndPinTop(scroller, node, { reassertMs: 160 });
     pendingPinMsgIdRef.current = null;
     node.querySelectorAll('img').forEach(img => {
-      img.addEventListener('load', () => alignChildTopInScrollable(scroller, node, { reassert: true }), { once: true });
+      img.addEventListener('load', () => settleAndPinTop(scroller, node, { reassertMs: 160 }), { once: true });
     });
   }, [messages]);
 

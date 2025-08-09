@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-import { scrollToAlignTop, alignChildTopInScrollable } from '@/utils/scroll';
+import { scrollToAlignTop, settleAndPinTop } from '@/utils/scroll';
 
 interface Message {
   id: string;
@@ -46,6 +46,7 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     const root = scrollAreaRef.current as HTMLElement | null;
     const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLDivElement) || root;
     if (!scroller) return;
+    scroller.setAttribute('data-chat-scroll-area', '');
     // Do not auto-scroll to bottom on new messages; we'll pin user message to top instead
   }, [messages]);
 
@@ -176,12 +177,13 @@ Take a slow, deep breath with me... Let's journey together toward deeper rest, p
     const root = scrollAreaRef.current as HTMLElement | null;
     const scroller = (root?.querySelector?.('[data-radix-scroll-area-viewport]') as HTMLElement) || root;
     if (!scroller) return;
-    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"]`);
+    scroller.setAttribute('data-chat-scroll-area', '');
+    const node = scroller.querySelector<HTMLElement>(`[data-msg-id="${id}"][data-role="user"]`);
     if (!node) return;
-    alignChildTopInScrollable(scroller, node, { smooth: true, reassert: true });
+    settleAndPinTop(scroller, node, { reassertMs: 160 });
     pendingPinMsgIdRef.current = null;
     node.querySelectorAll('img').forEach(img => {
-      img.addEventListener('load', () => alignChildTopInScrollable(scroller, node, { reassert: true }), { once: true });
+      img.addEventListener('load', () => settleAndPinTop(scroller, node, { reassertMs: 160 }), { once: true });
     });
   }, [messages]);
 
