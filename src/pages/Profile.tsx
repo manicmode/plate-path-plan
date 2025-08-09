@@ -23,7 +23,7 @@ import { ProfileActions } from '@/components/profile/ProfileActions';
 import { LogoutSection } from '@/components/profile/LogoutSection';
 import { DailyTargetsCard } from '@/components/profile/DailyTargetsCard';
 
-import { GlobalBarcodeSettings } from '@/components/profile/GlobalBarcodeSettings';
+
 import { OnboardingCompletionCard } from '@/components/profile/OnboardingCompletionCard';
 import { OnboardingScreen } from '@/components/onboarding/OnboardingScreen';
 import { AvatarHeroCard } from '@/components/profile/AvatarHeroCard';
@@ -349,11 +349,6 @@ const ProfileContent = () => {
       {/* Mood Check-In Settings */}
       <MoodCheckinSettings />
 
-      {/* Global Barcode Settings */}
-      <GlobalBarcodeSettings 
-        isEditing={editingSection === 'barcode'}
-        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'barcode' ? null : 'barcode'))}
-      />
 
       {/* Reminder Management */}
       <ReminderManagement />
