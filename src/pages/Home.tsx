@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MealScoringTestComponent } from '@/components/debug/MealScoringTestComponent';
 import { StartupSoundTest } from '@/components/debug/StartupSoundTest';
 import { CoachCtaDemo } from '@/components/debug/CoachCtaDemo';
+import { AIThoughtVerifier } from '@/components/debug/AIThoughtVerifier';
 import { MoodForecastCard } from '@/components/MoodForecastCard';
 import { useDeferredHydrationData } from '@/hooks/useDeferredHydrationData';
 import { useDeferredDailyScore } from '@/hooks/useDeferredDailyScore';
@@ -1837,6 +1838,7 @@ const Home = () => {
         <div className="mt-8 space-y-6">
           <StartupSoundTest />
           <CoachCtaDemo />
+          <AIThoughtVerifier />
           <MealScoringTestComponent />
         </div>
       )}

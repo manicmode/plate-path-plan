@@ -637,6 +637,9 @@ export function playAIThought(arg?: number | { playbackRate?: number; detune?: n
     typeof arg === 'number'
       ? { playbackRate: arg }
       : { playbackRate: arg?.playbackRate ?? 1.0, detune: arg?.detune };
+  if (import.meta.env.DEV) {
+    console.log('[AIThought] playAIThought opts', { playbackRate: opts.playbackRate, detune: (opts as any).detune });
+  }
   // Forward to SoundManager; detune is accepted here for compatibility even if ignored by current implementation
   return soundManager.play('ai_thought', opts as any);
 }
