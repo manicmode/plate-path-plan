@@ -136,36 +136,36 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 p-1">
+        <div className="checkin-content">
           {/* Mood */}
-          <Card className="border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 mb-3">
+          <Card className="checkin-card compact border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
+            <CardContent className="checkin-inner p-4">
+              <div className="checkin-title flex items-center space-x-2 mb-2">
                 <Heart className="h-5 w-5 text-pink-500" />
                 <span className="font-semibold text-gray-900 dark:text-white">
-                  Mood 
+                  Mood
                   <span className="sr-only">Current value {mood} of 10</span>
                   <span aria-hidden className="ml-2 text-muted-foreground">{mood}/10</span>
                 </span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="text-center">
-                  <span className="text-4xl">{MOOD_EMOJIS[mood - 1]}</span>
+                  <span className="checkin-emoji">{MOOD_EMOJIS[mood - 1]}</span>
                 </div>
-                <ValueSlider 
-                  value={mood} 
-                  onChange={setMood} 
-                  ariaLabel="Mood" 
-                  className="mb-6" 
+                <ValueSlider
+                  value={mood}
+                  onChange={setMood}
+                  ariaLabel="Mood"
+                  className="checkin-slider"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Energy */}
-          <Card className="border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 mb-3">
+          <Card className="checkin-card compact border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
+            <CardContent className="checkin-inner p-4">
+              <div className="checkin-title flex items-center space-x-2 mb-2">
                 <Zap className="h-5 w-5 text-yellow-500" />
                 <span className="font-semibold text-gray-900 dark:text-white">
                   Energy Level
@@ -173,7 +173,7 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
                   <span aria-hidden className="ml-2 text-muted-foreground">{energy}/10</span>
                 </span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="text-center">
                   <EmojiPicker
                     open={pickerOpen}
@@ -181,6 +181,7 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
                     onSelect={(e) => setEnergyEmojiOverride(e)}
                     onAuto={() => setEnergyEmojiOverride(null)}
                     currentEmoji={energyEmoji}
+                    className="checkin-emoji-button"
                   />
                   {energyMode === 'override' && (
                     <span className="ml-1 align-top text-xs text-muted-foreground" aria-hidden>•</span>
@@ -189,20 +190,20 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
                     <button aria-label={`Energy emoji, ${energyMode === 'auto' ? `Auto (${energyEmoji})` : `Override (${energyEmoji})`}`} />
                   </span>
                 </div>
-                <ValueSlider 
-                  value={energy} 
-                  onChange={setEnergy} 
-                  ariaLabel="Energy" 
-                  className="mb-6" 
+                <ValueSlider
+                  value={energy}
+                  onChange={setEnergy}
+                  ariaLabel="Energy"
+                  className="checkin-slider"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Wellness */}
-          <Card className="border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 mb-3">
+          <Card className="checkin-card compact border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
+            <CardContent className="checkin-inner p-4">
+              <div className="checkin-title flex items-center space-x-2 mb-2">
                 <Shield className="h-5 w-5 text-green-500" />
                 <span className="font-semibold text-gray-900 dark:text-white">
                   Overall Wellness
@@ -210,58 +211,57 @@ export const DailyMoodModal: React.FC<DailyMoodModalProps> = ({ isOpen, onClose 
                   <span aria-hidden className="ml-2 text-muted-foreground">{wellness}/10</span>
                 </span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="text-center">
-                  <span className="text-4xl">{WELLNESS_EMOJIS[wellness - 1]}</span>
+                  <span className="checkin-emoji">{WELLNESS_EMOJIS[wellness - 1]}</span>
                 </div>
-                <ValueSlider 
-                  value={wellness} 
-                  onChange={setWellness} 
-                  ariaLabel="Wellness" 
+                <ValueSlider
+                  value={wellness}
+                  onChange={setWellness}
+                  ariaLabel="Wellness"
+                  className="checkin-slider"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Notes */}
-          <Card className="border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  Optional Notes
-                </span>
+          <Card className="checkin-card compact border-0 bg-white/50 dark:bg-black/20 rounded-2xl">
+            <CardContent className="checkin-inner p-4">
+              <div className="checkin-title flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900 dark:text-white">Optional Notes</span>
+                <span className="text-xs text-muted-foreground">{notes.length}/500</span>
               </div>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="How are you feeling today? Any specific thoughts or observations..."
-                className="rounded-xl border-0 bg-white/70 dark:bg-black/30 resize-none"
-                rows={3}
+                className="checkin-notes rounded-xl border-0 bg-white/70 dark:bg-black/30 resize-none"
+                rows={notesRows}
+                onFocus={() => setNotesRows(5)}
+                onBlur={() => setNotesRows(2)}
                 maxLength={500}
               />
-              <p className="text-xs text-gray-500 mt-1 text-right">
-                {notes.length}/500
-              </p>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Submit Button */}
-          <div className="space-y-3">
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-700 hover:to-emerald-700 text-white font-semibold"
-            >
-              {isSubmitting ? 'Saving...' : existingLog ? 'Update Check-In' : 'Save Check-In'}
-            </Button>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              className="w-full rounded-2xl"
-            >
-              Maybe Later
-            </Button>
-          </div>
+        {/* Footer buttons */}
+        <div className="checkin-footer">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-700 hover:to-emerald-700 text-white font-semibold"
+          >
+            {isSubmitting ? 'Saving...' : existingLog ? 'Update Check-In' : 'Save Check-In'}
+          </Button>
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            className="w-full rounded-2xl h-10"
+          >
+            Maybe Later
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
