@@ -26,6 +26,7 @@ import { Challenge, useChallenge } from '@/contexts/ChallengeContext';
 import { ChallengeChatModal } from './ChallengeChatModal';
 import { useToast } from '@/hooks/use-toast';
 import { useSound } from '@/hooks/useSound';
+import { ShareComposer } from '@/components/share/ShareComposer';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -39,6 +40,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const [showChat, setShowChat] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const { joinChallenge, leaveChallenenge } = useChallenge();
   const { toast } = useToast();
   const { playChallengeWin } = useSound();
@@ -106,19 +108,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   };
 
   const handleShareChallenge = () => {
-    const shareText = `Join me in the "${challenge.name}" challenge! Let's achieve our health goals together! 💪`;
-    if (navigator.share) {
-      navigator.share({
-        title: challenge.name,
-        text: shareText,
-      });
-    } else {
-      navigator.clipboard.writeText(shareText);
-      toast({
-        title: "Challenge Link Copied! 🔗",
-        description: "Share this with your friends",
-      });
-    }
+    setIsShareOpen(true);
   };
 
   const getGoalIcon = (goalType: string) => {
@@ -402,6 +392,23 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           </div>
         )}
       </Card>
+      <ShareComposer 
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        type="win"
+        initialTemplate="win_basic"
+        payload={{
+          title: challenge.name,
+          subtitle: getGoalText(challenge.goalType, challenge.customGoal),
+          statBlocks: [
+            { label: 'Participants', value: String(challenge.participants.length) },
+            { label: 'Time Left', value: timeLeft },
+          ],
+          emojiOrIcon: '🏆',
+          date: new Date().toLocaleDateString(),
+          theme: 'dark'
+        }}
+      />
     </>
   );
 };

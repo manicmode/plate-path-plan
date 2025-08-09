@@ -3,9 +3,10 @@ import { Dialog } from '@/components/ui/dialog';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Star, Crown, Sparkles } from 'lucide-react';
+import { Trophy, Star, Crown, Sparkles, Share2 } from 'lucide-react';
 import { type Badge as BadgeType } from '@/contexts/BadgeContext';
 import { cn } from '@/lib/utils';
+import { ShareComposer } from '@/components/share/ShareComposer';
 
 interface BadgeUnlockAnimationProps {
   badge: BadgeType | null;
@@ -16,6 +17,7 @@ interface BadgeUnlockAnimationProps {
 export function BadgeUnlockAnimation({ badge, open, onOpenChange }: BadgeUnlockAnimationProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [animationStage, setAnimationStage] = useState<'enter' | 'celebration' | 'exit'>('enter');
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useEffect(() => {
     if (open && badge) {
@@ -197,17 +199,36 @@ export function BadgeUnlockAnimation({ badge, open, onOpenChange }: BadgeUnlockA
               </p>
             </div>
 
-            {/* Close Button */}
-            <Button 
-              onClick={() => onOpenChange(false)}
-              className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
-              size="lg"
-            >
-              Continue Your Journey! 🚀
-            </Button>
+            {/* Share + Close Buttons */}
+            <div className="flex gap-3">
+              <Button variant="outline" size="sm" onClick={() => setIsShareOpen(true)} className="flex items-center gap-2">
+                <Share2 className="h-4 w-4" /> Share
+              </Button>
+              <Button 
+                onClick={() => onOpenChange(false)}
+                className="flex-1 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+                size="lg"
+              >
+                Continue Your Journey! 🚀
+              </Button>
+            </div>
           </div>
         </div>
       </AccessibleDialogContent>
+      <ShareComposer 
+        open={isShareOpen} 
+        onOpenChange={setIsShareOpen}
+        type="win"
+        initialTemplate="win_basic"
+        payload={{
+          title: badge.title,
+          subtitle: badge.description,
+          statBlocks: [{ label: 'Rarity', value: badge.rarity }],
+          emojiOrIcon: '🏅',
+          date: new Date().toLocaleDateString(),
+          theme: 'dark'
+        }}
+      />
     </Dialog>
   );
 }

@@ -83,6 +83,7 @@ const RoutineExecutionPage = lazy(() => import('@/pages/RoutineExecutionPage'));
 const RoutinePlayerPage = lazy(() => import('@/pages/RoutinePlayerPage'));
 const GuidedWorkoutPage = lazy(() => import('@/pages/GuidedWorkoutPage'));
 const SharedRoutine = lazy(() => import('@/pages/SharedRoutine'));
+const PublicShare = lazy(() => import('@/pages/share/PublicShare'));
 const InfluencerPortal = lazy(() => import('@/pages/InfluencerPortal'));
 const ChallengePreview = lazy(() => import('@/pages/ChallengePreview'));
 const PublicInfluencerProfile = lazy(() => import('@/pages/PublicInfluencerProfile'));
@@ -146,6 +147,7 @@ function AppContent() {
           <Suspense fallback={<SmartLoadingScreen><div /></SmartLoadingScreen>}>
             <Routes>
               {/* Fullscreen pages without Layout */}
+              <Route path="/s/:shareId" element={<PublicShare />} />
               <Route path="/shared-routine" element={<SharedRoutine />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/recovery-player" element={

@@ -2747,6 +2747,45 @@ export type Database = {
         }
         Relationships: []
       }
+      share_cards: {
+        Row: {
+          created_at: string
+          description: string | null
+          hash: string | null
+          id: string
+          image_url: string
+          is_public: boolean
+          owner_user_id: string
+          size: string
+          template: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          hash?: string | null
+          id?: string
+          image_url: string
+          is_public?: boolean
+          owner_user_id: string
+          size?: string
+          template: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          hash?: string | null
+          id?: string
+          image_url?: string
+          is_public?: boolean
+          owner_user_id?: string
+          size?: string
+          template?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       sleep_nudge_preferences: {
         Row: {
           created_at: string
@@ -3481,6 +3520,7 @@ export type Database = {
           selected_avatar_variant: number | null
           selected_badge_title: string | null
           selected_trackers: string[] | null
+          shares_count: number
           show_onboarding_reminder: boolean | null
           snacking_patterns: string | null
           social_eating_preferences: string | null
@@ -3569,6 +3609,7 @@ export type Database = {
           selected_avatar_variant?: number | null
           selected_badge_title?: string | null
           selected_trackers?: string[] | null
+          shares_count?: number
           show_onboarding_reminder?: boolean | null
           snacking_patterns?: string | null
           social_eating_preferences?: string | null
@@ -3657,6 +3698,7 @@ export type Database = {
           selected_avatar_variant?: number | null
           selected_badge_title?: string | null
           selected_trackers?: string[] | null
+          shares_count?: number
           show_onboarding_reminder?: boolean | null
           snacking_patterns?: string | null
           social_eating_preferences?: string | null

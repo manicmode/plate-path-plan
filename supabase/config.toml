@@ -42,3 +42,6 @@ verify_jwt = false
 
 [functions.gpt5-smart-food-analyzer]
 verify_jwt = false
+
+[functions.share-card]
+verify_jwt = true

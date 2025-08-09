@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Wind, Trophy, Calendar, Sparkles } from 'lucide-react'
+import { Wind, Trophy, Calendar, Sparkles, Share2 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { supabase } from '@/integrations/supabase/client'
 import { formatDistanceToNow, format } from 'date-fns'
+import { ShareComposer } from '@/components/share/ShareComposer'
 
 interface BreathingStreak {
   user_id: string
@@ -32,6 +34,7 @@ export const BreathingStreakDisplay = () => {
   const [streakData, setStreakData] = useState<BreathingStreak | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentMessage, setCurrentMessage] = useState(motivationalMessages[0])
+  const [shareOpen, setShareOpen] = useState(false)
 
   // Rotate motivational messages every 4 seconds
   useEffect(() => {
@@ -189,18 +192,20 @@ export const BreathingStreakDisplay = () => {
             </div>
           </div>
 
-          {/* Progress Indicator */}
+          {/* Progress Indicator and Share */}
           <div className="text-right space-y-1">
             <Badge variant="outline" className="border-cyan-300 text-cyan-700 dark:border-cyan-600 dark:text-cyan-300">
               {streakData.total_sessions} total session{streakData.total_sessions !== 1 ? 's' : ''}
             </Badge>
-            
             {streakData.last_completed_date && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Calendar className="h-3 w-3" />
                 <span>Last: {formatLastSessionDate(streakData.last_completed_date)}</span>
               </div>
             )}
+            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1 mt-2">
+              <Share2 className="h-3 w-3" /> Share
+            </Button>
           </div>
         </div>
 
@@ -236,6 +241,23 @@ export const BreathingStreakDisplay = () => {
           </p>
         </div>
       </div>
+      <ShareComposer 
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        type="streak"
+        initialTemplate="streak"
+        payload={{
+          title: `${streakData.current_streak}-Day Breathing Streak`,
+          subtitle: streakData.last_completed_date ? `Last: ${formatLastSessionDate(streakData.last_completed_date)}` : '',
+          statBlocks: [
+            { label: 'Total Sessions', value: String(streakData.total_sessions) },
+            { label: 'Longest', value: String(streakData.longest_streak) },
+          ],
+          emojiOrIcon: '🌬️',
+          date: new Date().toLocaleDateString(),
+          theme: 'dark'
+        }}
+      />
     </Card>
   )
 }
