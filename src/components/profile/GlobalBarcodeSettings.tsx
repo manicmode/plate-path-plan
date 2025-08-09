@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Globe, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeGetJSON, safeSetJSON } from '@/lib/safeStorage';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface GlobalBarcodeSettingsProps {
   isEditing: boolean;
@@ -23,7 +24,7 @@ export const GlobalBarcodeSettings = ({ isEditing, onEditToggle }: GlobalBarcode
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl">
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
           <Globe className="h-5 w-5 text-emerald-600" />
@@ -69,16 +70,8 @@ export const GlobalBarcodeSettings = ({ isEditing, onEditToggle }: GlobalBarcode
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              
-              // Store current scroll position
-              const currentScrollY = window.scrollY;
-              
-              onEditToggle();
-              
-              // Restore scroll position after DOM update
-              requestAnimationFrame(() => {
-                window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-              });
+              if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
+              lockViewportDuring(() => onEditToggle());
             }}
             className="w-full opacity-70 hover:opacity-100"
             style={{ touchAction: 'manipulation' }}

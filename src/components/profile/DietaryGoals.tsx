@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Heart, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface DietaryGoalsProps {
   dietaryGoals: string[];
@@ -24,7 +25,7 @@ export const DietaryGoals = ({ dietaryGoals, isEditing, onToggleGoal, onEditTogg
   const isMobile = useIsMobile();
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '300ms' }}>
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '300ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Heart className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-red-600`} />
@@ -36,16 +37,8 @@ export const DietaryGoals = ({ dietaryGoals, isEditing, onToggleGoal, onEditTogg
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Store current scroll position
-            const currentScrollY = window.scrollY;
-            
-            onEditToggle();
-            
-            // Restore scroll position after DOM update
-            requestAnimationFrame(() => {
-              window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-            });
+            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
+            lockViewportDuring(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

@@ -1392,3 +1392,9 @@
     }
   }
 }
+
+/* Profile-specific stability helpers */
+@layer utilities {
+  .ProfilePageRoot { overflow-anchor: none; }
+  .ProfileCard { min-height: 56px; }
+}

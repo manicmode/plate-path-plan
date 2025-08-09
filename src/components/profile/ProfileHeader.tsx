@@ -51,7 +51,7 @@ export const ProfileHeader = ({ user, isEditing, onEditToggle }: ProfileHeaderPr
       </div>
       <Button
         variant={isEditing ? "default" : "outline"}
-        onClick={onEditToggle}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY); }}
         size={isMobile ? "sm" : "default"}
         className={isMobile ? 'px-3' : ''}
       >

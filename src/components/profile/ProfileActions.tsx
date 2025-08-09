@@ -1,6 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface ProfileActionsProps {
   isEditing: boolean;

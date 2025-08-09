@@ -6,6 +6,7 @@ import { Monitor, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { getAutoFilledTrackers, isAutoFilledTracker } from '@/lib/trackerUtils';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface TrackerSelectionProps {
   selectedTrackers: string[];
@@ -47,7 +48,7 @@ export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEdi
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '350ms' }}>
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '350ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Monitor className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-emerald-600`} />
@@ -59,16 +60,8 @@ export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEdi
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Store current scroll position
-            const currentScrollY = window.scrollY;
-            
-            onEditToggle();
-            
-            // Restore scroll position after DOM update
-            requestAnimationFrame(() => {
-              window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-            });
+            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
+            lockViewportDuring(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

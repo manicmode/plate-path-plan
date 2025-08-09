@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Shield, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface AllergiesSectionProps {
   allergies: string;
@@ -17,7 +18,7 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
   const isMobile = useIsMobile();
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '400ms' }}>
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '400ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Shield className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-600`} />
@@ -29,16 +30,8 @@ export const AllergiesSection = ({ allergies, isEditing, onAllergiesChange, onEd
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Store current scroll position
-            const currentScrollY = window.scrollY;
-            
-            onEditToggle();
-            
-            // Restore scroll position after DOM update
-            requestAnimationFrame(() => {
-              window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-            });
+            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
+            lockViewportDuring(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}

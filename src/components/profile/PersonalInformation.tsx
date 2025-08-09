@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface PersonalInformationProps {
   formData: {
@@ -144,7 +145,7 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '100ms' }}>
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '100ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'}`}>
         <div className="flex flex-col items-center space-y-4">
           {/* Name and Info Section */}
@@ -174,20 +175,12 @@ export const PersonalInformation = ({ formData, user, isEditing, onFormDataChang
           {/* Edit Button */}
           <Button
             variant={isEditing ? "default" : "outline"}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              // Store current scroll position
-              const currentScrollY = window.scrollY;
-              
-              onEditToggle();
-              
-              // Restore scroll position after DOM update
-              requestAnimationFrame(() => {
-                window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-              });
-            }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
+            lockViewportDuring(() => onEditToggle());
+          }}
             size={isMobile ? "sm" : "default"}
             className="w-fit"
             style={{ touchAction: 'manipulation' }}

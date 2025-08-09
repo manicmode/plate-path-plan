@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { lockViewportDuring } from '@/utils/scrollLock';
 
 interface NutritionGoalsProps {
   formData: {
@@ -151,7 +152,7 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
   };
 
   return (
-    <Card className="animate-slide-up glass-card border-0 rounded-3xl" style={{ animationDelay: '200ms' }}>
+    <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '200ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
         <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           <Target className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-green-600`} />
@@ -163,16 +164,8 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Store current scroll position
-            const currentScrollY = window.scrollY;
-            
-            onEditToggle();
-            
-            // Restore scroll position after DOM update
-            requestAnimationFrame(() => {
-              window.scrollTo({ top: currentScrollY, behavior: 'instant' });
-            });
+            if (!import.meta.env.PROD) console.log("[Profile Edit] toggled, scrollY:", window.scrollY);
+            lockViewportDuring(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}
