@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 interface SoundContextType {
   isEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
-  playSound: (soundKey: string) => Promise<void>;
+  playSound: (soundKey: string, options?: { playbackRate?: number }) => Promise<void>;
   getAudioStatus: () => any;
   forceInitialize: () => Promise<void>;
   // Convenience methods for specific sounds
-  playAIThought: () => Promise<void>;
+  playAIThought: (options?: { playbackRate?: number }) => Promise<void>;
   playBodyScanCapture: () => Promise<void>;
   playChallengeWin: () => Promise<void>;
   playFoodLogConfirm: () => Promise<void>;
@@ -58,14 +58,14 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
     }
   };
 
-  const playSound = async (soundKey: string) => {
+  const playSound = async (soundKey: string, options?: { playbackRate?: number }) => {
     
     if (!isEnabled) {
       
       return;
     }
     try {
-      await soundManager.play(soundKey);
+      await soundManager.play(soundKey, options);
       
     } catch (error) {
       console.warn('🔊 SoundContext: Sound playback failed:', error);
@@ -88,7 +88,7 @@ export const SoundProvider: React.FC<SoundProviderProps> = ({ children }) => {
   };
 
   // Convenience methods for specific sounds
-  const playAIThought = () => playSound('ai_thought');
+  const playAIThought = (options?: { playbackRate?: number }) => playSound('ai_thought', options);
   const playBodyScanCapture = () => playSound('body_scan_camera');
   const playChallengeWin = () => playSound('challenge_win');
   const playFoodLogConfirm = () => playSound('food_log_confirm');

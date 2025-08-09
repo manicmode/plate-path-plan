@@ -398,7 +398,7 @@ class SoundManager {
   /**
    * Play a sound by key with ambient/non-interrupting audio settings
    */
-  async play(soundKey: string): Promise<void> {
+  async play(soundKey: string, opts?: { playbackRate?: number }): Promise<void> {
     
     
     if (!this.isEnabled) {
@@ -431,7 +431,7 @@ class SoundManager {
         await this.playNativeSound(soundKey, config);
       } else {
         // Use web audio with ambient settings
-        await this.playWebSound(soundKey, config);
+        await this.playWebSound(soundKey, config, opts);
       }
     } catch (error: any) {
       // Handle autoplay restrictions and other errors gracefully
@@ -465,7 +465,7 @@ class SoundManager {
   /**
    * Play sound using web audio with ambient settings (doesn't interrupt background audio)
    */
-  private async playWebSound(soundKey: string, config: SoundConfig): Promise<void> {
+  private async playWebSound(soundKey: string, config: SoundConfig, opts?: { playbackRate?: number }): Promise<void> {
     
     
     // Ensure audio system is initialized
@@ -487,6 +487,14 @@ class SoundManager {
 
     // Reset audio to beginning
     audio.currentTime = 0;
+    // Apply playback rate if provided
+    if (opts?.playbackRate && (audio as any).playbackRate !== undefined) {
+      try {
+        (audio as any).playbackRate = opts.playbackRate;
+      } catch {
+        // ignore if unsupported
+      }
+    }
     
     
     

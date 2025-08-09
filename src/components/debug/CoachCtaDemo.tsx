@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCoachCta } from '@/hooks/useCoachCta';
 import { MessageSquare, CheckCircle, AlertTriangle, Droplets, Utensils, Target } from 'lucide-react';
 import { useSound } from '@/hooks/useSound';
+import { useRef } from 'react';
 
 /**
  * Demo component to test Coach CTA functionality
@@ -13,12 +14,28 @@ export const CoachCtaDemo = () => {
   const queueInfo = getQueueInfo();
   const { playAIThought } = useSound();
 
+  const playbackRatesByType: Record<string, number> = {
+    'Healthy Choice': 0.98,
+    'Slip-up Support': 0.95,
+    'Hydration Reminder': 1.0,
+    'Meal Suggestion': 1.05,
+    'Goal Progress': 1.08,
+  };
+
+  const lastBeepRef = useRef<number>(0);
+
   const handleCtaClick = (ctaType: string, ctaText: string) => {
     if (import.meta.env.DEV) {
       console.log(`[CoachCtaDemo Click] Type: ${ctaType}, Text: "${ctaText}", Timestamp: ${new Date().toISOString()}`);
     }
-    // Play AI thought beep immediately on user click
-    void playAIThought();
+    // Play AI thought beep immediately on user click (throttled)
+    const now = Date.now();
+    const rate = playbackRatesByType[ctaType] ?? 1.0;
+    if (now - (lastBeepRef.current || 0) > 450) {
+      void playAIThought({ playbackRate: rate });
+      lastBeepRef.current = now;
+    }
+    // Enqueue after sound trigger
     sendCoachMessage(ctaText);
   };
 
