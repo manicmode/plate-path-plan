@@ -120,15 +120,37 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
   const handleSave = async () => {
     setSaving(true);
     try {
+      const upsertPayload = {
+        user_id: user?.id,
+        ...manualTargets,
+        is_enabled: isManualOverride,
+      };
       const { error } = await supabase
         .from('manual_nutrition_targets')
-        .upsert({
-          user_id: user?.id,
-          ...manualTargets,
-          is_enabled: isManualOverride
-        });
+        .upsert(upsertPayload);
 
       if (error) throw error;
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[NutritionGoals save] upsert payload', upsertPayload);
+      }
+
+      // Immediately refresh local view state so values update without reload
+      const localUpdate: any = {
+        useManualTargets: isManualOverride,
+        manualCalories: manualTargets?.calories ?? null,
+        manualProtein: manualTargets?.protein ?? null,
+        manualCarbs: manualTargets?.carbs ?? null,
+        manualFat: manualTargets?.fat ?? null,
+        manualFiber: manualTargets?.fiber ?? null,
+        manualSugar: manualTargets?.sugar ?? null,
+        manualSodium: manualTargets?.sodium ?? null,
+        manualSatFat: manualTargets?.saturated_fat ?? null,
+        manualHydration: manualTargets?.hydration_ml != null ? Math.round(manualTargets.hydration_ml / 240) : null,
+        manualSupplements: manualTargets?.supplement_count ?? null,
+      };
+      onFormDataChange?.(localUpdate);
+      onEditToggle?.();
       toast.success('Manual targets saved successfully!');
     } catch (error) {
       console.error('Error saving manual targets:', error);
@@ -163,42 +185,44 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
   };
 
   // View-mode compact binding helpers
-  const t: any = formData ?? {};
-  const asNumber = (v: any) => {
-    if (v === null || v === undefined) return null;
-    const n = typeof v === "string" ? Number(v) : (v as number);
-    return Number.isFinite(n) ? n : null;
-  };
   const fmt = (v: number | null) => (v === null ? "Not set" : Intl.NumberFormat().format(v));
+  const source = {
+    useManual: Boolean(isManualOverride),
+    get(field: string) {
+      // prefer manual -> explicit target -> auto/computed -> null
+      const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+      const f = cap(field);
+      const manualKey = `manual${f}`;
+      const targetKey = `target${f}`;
+      const autoKey = `auto${f}`;
+
+      const man = this.useManual ? (formData as any)?.[manualKey] : undefined;
+      if (man !== undefined && man !== null && man !== "") return Number(man);
+
+      const tgt = (formData as any)?.[targetKey];
+      if (tgt !== undefined && tgt !== null && tgt !== "") return Number(tgt);
+
+      const auto = (formData as any)?.[autoKey];
+      if (auto !== undefined && auto !== null && auto !== "") return Number(auto);
+
+      return null;
+    },
+  };
+
   const items = [
-    { key: "calories",  label: "Calories",      value: asNumber(t.targetCalories),    unit: "",         color: "text-emerald-400" },
-    { key: "protein",   label: "Protein (g)",   value: asNumber(t.targetProtein),     unit: "",         color: "text-sky-400" },
-    { key: "carbs",     label: "Carbs (g)",     value: asNumber(t.targetCarbs),       unit: "",         color: "text-green-400" },
-    { key: "fat",       label: "Fat (g)",       value: asNumber(t.targetFat),         unit: "",         color: "text-amber-400" },
-    { key: "fiber",     label: "Fiber (g)",     value: asNumber(t.targetFiber),       unit: "",         color: "text-orange-400" },
-    { key: "sugar",     label: "Sugar (g)",     value: asNumber(t.targetSugar),       unit: "",         color: "text-rose-400" },
-    { key: "sodium",    label: "Sodium (mg)",   value: asNumber(t.targetSodium),      unit: "",         color: "text-red-400" },
-    { key: "satFat",    label: "Sat Fat (g)",   value: asNumber(t.targetSatFat),      unit: "",         color: "text-violet-400" },
-    { key: "hydration", label: "Hydration",     value: asNumber(t.targetHydration),   unit: "glasses",  color: "text-cyan-400" },
-    { key: "supps",     label: "Supplements",   value: asNumber(t.targetSupplements), unit: "",         color: "text-indigo-400" },
+    { key: "calories",  label: "Calories",      value: source.get("Calories"),    unit: "",         color: "text-emerald-400" },
+    { key: "protein",   label: "Protein (g)",   value: source.get("Protein"),     unit: "",         color: "text-sky-400" },
+    { key: "carbs",     label: "Carbs (g)",     value: source.get("Carbs"),       unit: "",         color: "text-green-400" },
+    { key: "fat",       label: "Fat (g)",       value: source.get("Fat"),         unit: "",         color: "text-amber-400" },
+    { key: "fiber",     label: "Fiber (g)",     value: source.get("Fiber"),       unit: "",         color: "text-orange-400" },
+    { key: "sugar",     label: "Sugar (g)",     value: source.get("Sugar"),       unit: "",         color: "text-rose-400" },
+    { key: "sodium",    label: "Sodium (mg)",   value: source.get("Sodium"),      unit: "",         color: "text-red-400" },
+    { key: "satFat",    label: "Sat Fat (g)",   value: source.get("SatFat"),      unit: "",         color: "text-violet-400" },
+    { key: "hydration", label: "Hydration",     value: source.get("Hydration"),   unit: "glasses",  color: "text-cyan-400" },
+    { key: "supps",     label: "Supplements",   value: source.get("Supplements"), unit: "",         color: "text-indigo-400" },
   ];
   const colA = items.slice(0, 5);
   const colB = items.slice(5);
-
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[NutritionGoals view] targets", {
-      targetCalories: t.targetCalories,
-      targetProtein: t.targetProtein,
-      targetCarbs: t.targetCarbs,
-      targetFat: t.targetFat,
-      targetFiber: t.targetFiber,
-      targetSugar: t.targetSugar,
-      targetSodium: t.targetSodium,
-      targetSatFat: t.targetSatFat,
-      targetHydration: t.targetHydration,
-      targetSupplements: t.targetSupplements,
-    });
-  }
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '200ms' }}>
