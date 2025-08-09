@@ -14,7 +14,7 @@ import './profile.css';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import { PersonalInformation } from '@/components/profile/PersonalInformation';
 import { NutritionGoals } from '@/components/profile/NutritionGoals';
-import { DietaryGoals } from '@/components/profile/DietaryGoals';
+
 import { TrackerSelection } from '@/components/profile/TrackerSelection';
 import { AllergiesSection } from '@/components/profile/AllergiesSection';
 import { NotificationSettings } from '@/components/profile/NotificationSettings';
@@ -59,7 +59,7 @@ const ProfileContent = () => {
   // Use the scroll-to-top hook
   useScrollToTop();
   
-  type ProfileSectionId = "identity" | "targets" | "goals" | "allergies" | "homeDisplay" | "notifications" | "nudges" | "barcode";
+  type ProfileSectionId = "identity" | "targets" | "allergies" | "homeDisplay" | "notifications" | "nudges" | "barcode";
   const [editingSection, setEditingSection] = useState<ProfileSectionId | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHealthSettings, setShowHealthSettings] = useState(false);
@@ -188,14 +188,6 @@ const ProfileContent = () => {
     });
   };
 
-  const toggleDietaryGoal = (goalId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      dietaryGoals: prev.dietaryGoals.includes(goalId)
-        ? prev.dietaryGoals.filter(g => g !== goalId)
-        : [...prev.dietaryGoals, goalId]
-    }));
-  };
 
   const toggleTracker = (trackerId: string) => {
     const isUserSelected = userSelectedTrackers.includes(trackerId);
@@ -311,13 +303,6 @@ const ProfileContent = () => {
         onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'targets' ? null : 'targets'))}
       />
 
-      {/* Dietary Goals */}
-      <DietaryGoals 
-        dietaryGoals={formData.dietaryGoals}
-        isEditing={editingSection === 'goals'}
-        onToggleGoal={toggleDietaryGoal}
-        onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'goals' ? null : 'goals'))}
-      />
 
       {/* Allergies */}
       <AllergiesSection 
