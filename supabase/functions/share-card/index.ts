@@ -4,14 +4,14 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { Resvg, initWasm } from 'https://esm.sh/@resvg/resvg-wasm@2.4.1'
-import wasm from 'https://esm.sh/@resvg/resvg-wasm@2.4.1/index_bg.wasm?url'
+const wasmUrl = 'https://esm.sh/@resvg/resvg-wasm@2.4.1/index_bg.wasm'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-await initWasm(fetch(wasm).then((r) => r.arrayBuffer()))
+await initWasm(fetch(wasmUrl).then((r) => r.arrayBuffer()))
 
 function getSupabaseClient(req: Request) {
   const url = Deno.env.get('SUPABASE_URL')!
