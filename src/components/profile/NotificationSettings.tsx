@@ -14,6 +14,7 @@ import { useYogaNudges } from '@/hooks/useYogaNudges';
 import { useSleepNudges } from '@/hooks/useSleepNudges';
 import { useThermotherapyNudges } from '@/hooks/useThermotherapyNudges';
 import { toast } from 'sonner';
+import SectionCollapsible from '@/components/ui/SectionCollapsible';
 
 export const NotificationSettings = () => {
   const isMobile = useIsMobile();
@@ -25,6 +26,9 @@ export const NotificationSettings = () => {
   const { nudgePreferences: yogaNudgePreferences, updateNudgePreferences: updateYogaNudgePreferences } = useYogaNudges();
   const { nudgePreferences: sleepNudgePreferences, updateNudgePreferences: updateSleepNudgePreferences } = useSleepNudges();
   const { nudgePreferences: thermotherapyNudgePreferences, updateNudgePreferences: updateThermotherapyNudgePreferences } = useThermotherapyNudges();
+
+  const params = new URLSearchParams(window.location.search);
+  const deepOpen = params.get("open") === "notifications" || window.location.hash === "#notifications";
 
   const smartCoachNotifications = [
     { 
@@ -236,7 +240,8 @@ export const NotificationSettings = () => {
           </div>
         )}
 
-        {/* Smart Coach Notifications */}
+        <SectionCollapsible startOpen={deepOpen} storageKey="profile.smartNotifications.open" className="rounded-2xl" title="Smart Notifications">
+          {/* Smart Coach Notifications */}
         <div className="space-y-4">
           <h4 className={`font-semibold text-gray-900 dark:text-white flex items-center space-x-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
             <Brain className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-purple-600`} />
@@ -588,6 +593,7 @@ export const NotificationSettings = () => {
             No notifications will be sent during these hours
           </p>
         </div>
+      </SectionCollapsible>
       </CardContent>
     </Card>
   );
