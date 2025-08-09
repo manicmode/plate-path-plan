@@ -32,10 +32,13 @@ export const useXPSystem = () => {
       
       // Route nutrition-related awards through the canonical wrapper to enforce base_xp & cooldowns
       if (activityType === 'nutrition' || activityType === 'hydration' || activityType === 'supplement') {
-        const { error } = await supabase.rpc('award_nutrition_xp', {
-          p_user_id: user.id,
-          p_activity_type: activityType,
-          p_activity_id: activityId || null
+        // TEMP one-time debug (remove after test)
+        console.debug('[XP] calling award-nutrition-xp', { hasSessionUserId: !!user?.id, userIdSample: String(user?.id || '') });
+        const { error } = await supabase.functions.invoke('award-nutrition-xp', {
+          body: {
+            activityType: activityType,
+            activityId: activityId || null
+          }
         });
 
         if (error) {
@@ -92,10 +95,13 @@ export const useXPSystem = () => {
     if (!user?.id) return false;
 
     try {
-      const { error } = await supabase.rpc('award_nutrition_xp', {
-        p_user_id: user.id,
-        p_activity_type: activityType,
-        p_activity_id: activityId || null
+      // TEMP one-time debug (remove after test)
+      console.debug('[XP] calling award-nutrition-xp', { hasSessionUserId: !!user?.id, userIdSample: String(user?.id || '') });
+      const { error } = await supabase.functions.invoke('award-nutrition-xp', {
+        body: {
+          activityType: activityType,
+          activityId: activityId || null
+        }
       });
 
       if (error) {

@@ -40,12 +40,14 @@ serve(async (req) => {
       )
     }
 
-    // Parse request body
-    const { user_id, activity_type, activity_id } = await req.json()
+    // Parse request body (ignore any user_id from client)
+    const rawBody = await req.json().catch(() => ({} as any))
+    const activityType = rawBody?.activityType ?? rawBody?.activity_type
+    const activityId = rawBody?.activityId ?? rawBody?.activity_id ?? null
 
-    if (!user_id || !activity_type) {
+    if (!activityType) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: user_id, activity_type' }),
+        JSON.stringify({ error: 'Missing required field: activityType' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -53,7 +55,7 @@ serve(async (req) => {
       )
     }
 
-    // Create Supabase client
+    // Create Supabase client with the caller's JWT
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -64,11 +66,28 @@ serve(async (req) => {
       }
     )
 
+    // Derive authenticated user from JWT
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // Optionally warn if a user_id was sent (ignored)
+    if (rawBody?.user_id) {
+      console.warn('award-nutrition-xp: user_id in payload ignored')
+    }
+
     // Call the database function to award XP
     const { error } = await supabase.rpc('award_nutrition_xp', {
-      p_user_id: user_id,
-      p_activity_type: activity_type,
-      p_activity_id: activity_id
+      p_user_id: user.id,
+      p_activity_type: activityType,
+      p_activity_id: activityId
     })
 
     if (error) {
