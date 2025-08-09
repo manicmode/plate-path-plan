@@ -162,6 +162,44 @@ export const NutritionGoals = ({ formData, isEditing, onFormDataChange, onEditTo
     );
   };
 
+  // View-mode compact binding helpers
+  const t: any = formData ?? {};
+  const asNumber = (v: any) => {
+    if (v === null || v === undefined) return null;
+    const n = typeof v === "string" ? Number(v) : (v as number);
+    return Number.isFinite(n) ? n : null;
+  };
+  const fmt = (v: number | null) => (v === null ? "Not set" : Intl.NumberFormat().format(v));
+  const items = [
+    { key: "calories",  label: "Calories",      value: asNumber(t.targetCalories),    unit: "",         color: "text-emerald-400" },
+    { key: "protein",   label: "Protein (g)",   value: asNumber(t.targetProtein),     unit: "",         color: "text-sky-400" },
+    { key: "carbs",     label: "Carbs (g)",     value: asNumber(t.targetCarbs),       unit: "",         color: "text-green-400" },
+    { key: "fat",       label: "Fat (g)",       value: asNumber(t.targetFat),         unit: "",         color: "text-amber-400" },
+    { key: "fiber",     label: "Fiber (g)",     value: asNumber(t.targetFiber),       unit: "",         color: "text-orange-400" },
+    { key: "sugar",     label: "Sugar (g)",     value: asNumber(t.targetSugar),       unit: "",         color: "text-rose-400" },
+    { key: "sodium",    label: "Sodium (mg)",   value: asNumber(t.targetSodium),      unit: "",         color: "text-red-400" },
+    { key: "satFat",    label: "Sat Fat (g)",   value: asNumber(t.targetSatFat),      unit: "",         color: "text-violet-400" },
+    { key: "hydration", label: "Hydration",     value: asNumber(t.targetHydration),   unit: "glasses",  color: "text-cyan-400" },
+    { key: "supps",     label: "Supplements",   value: asNumber(t.targetSupplements), unit: "",         color: "text-indigo-400" },
+  ];
+  const colA = items.slice(0, 5);
+  const colB = items.slice(5);
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[NutritionGoals view] targets", {
+      targetCalories: t.targetCalories,
+      targetProtein: t.targetProtein,
+      targetCarbs: t.targetCarbs,
+      targetFat: t.targetFat,
+      targetFiber: t.targetFiber,
+      targetSugar: t.targetSugar,
+      targetSodium: t.targetSodium,
+      targetSatFat: t.targetSatFat,
+      targetHydration: t.targetHydration,
+      targetSupplements: t.targetSupplements,
+    });
+  }
+
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '200ms' }}>
       <CardHeader className={`${isMobile ? 'pb-3' : 'pb-4'} flex flex-row items-center justify-between`}>
@@ -183,7 +221,7 @@ withStabilizedViewport(() => onEditToggle());
           <Settings className="h-4 w-4" />
         </Button>
       </CardHeader>
-      <CardContent className={`space-y-3 sm:space-y-4 ${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+      <CardContent className="p-4 md:p-5 pt-0">
         {isEditing && (
           <div className="space-y-4 pb-4 border-b border-border">
             <div className="flex items-center space-x-3">
@@ -209,7 +247,31 @@ withStabilizedViewport(() => onEditToggle());
             )}
           </div>
         )}
-        <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-3 gap-4'}`}>
+        {!isEditing && (
+          <div className="mt-3 grid grid-cols-2 gap-x-10 gap-y-2">
+            {[colA, colB].map((col, ci) => (
+              <ul key={ci} className="space-y-1">
+                {col.map(({ key, label, value, unit, color }) => (
+                  <li key={key} className="flex items-center justify-between h-6">
+                    <span className="text-[13px] leading-[1.1] text-white/80 whitespace-nowrap truncate pr-3">
+                      {label}
+                    </span>
+                    <span className="inline-flex items-baseline gap-1 tabular-nums">
+                      <span className={`font-semibold ${color} text-[15px] leading-[1.1] min-w-[3ch] text-right`}>
+                        {fmt(value)}
+                      </span>
+                      <span className="text-white/60 text-[12px] leading-[1.1]">
+                        {value === null || !unit ? "" : unit}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ))}
+          </div>
+        )}
+        {isEditing && (
+          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-2 md:grid-cols-3 gap-4'}`}>
           <div className="space-y-2">
             <Label className={`${isMobile ? 'text-sm' : 'text-base'} whitespace-nowrap truncate`}>Calories</Label>
             {isEditing && isManualOverride ? (
@@ -494,7 +556,8 @@ withStabilizedViewport(() => onEditToggle());
               </>
             )}
           </div>
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
